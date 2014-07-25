@@ -167,6 +167,10 @@ JMX_PORT="7199"
 # performance benefit (around 5%).
 JVM_OPTS="$JVM_OPTS -ea"
 
+# use the server jit compiler, which is meant for long running processes. The runtime will optimize
+# it's generated machine code more aggressively, at the expense of generated code size and compilation time.
+JVM_OPTS="$JVM_OPTS -server"
+
 # add the jamm javaagent
 JVM_OPTS="$JVM_OPTS -javaagent:$CASSANDRA_HOME/lib/jamm-0.2.5.jar"
 
