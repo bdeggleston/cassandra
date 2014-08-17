@@ -74,8 +74,6 @@ import org.apache.cassandra.utils.memory.SlabPool;
 
 public class DatabaseDescriptor
 {
-    public static final DatabaseDescriptor instance = new DatabaseDescriptor();
-
     private static final Logger logger = LoggerFactory.getLogger(DatabaseDescriptor.class);
 
     /**
@@ -83,6 +81,8 @@ public class DatabaseDescriptor
      * when we send them over the wire, which works out to about 1700 tokens.
      */
     private static final int MAX_NUM_TOKENS = 1536;
+
+    public static final DatabaseDescriptor instance = new DatabaseDescriptor();
 
     private IEndpointSnitch snitch;
     private InetAddress listenAddress; // leave null so we can fall through to getLocalHost
@@ -385,7 +385,14 @@ public class DatabaseDescriptor
         }
         else
         {
-            rpcAddress = FBUtilities.getLocalAddress();
+            try
+            {
+                rpcAddress = listenAddress == null ? InetAddress.getLocalHost() : listenAddress;
+            }
+            catch (UnknownHostException e)
+            {
+                throw new ConfigurationException(e.getMessage());
+            }
         }
 
         /* RPC address to broadcast */
@@ -422,6 +429,7 @@ public class DatabaseDescriptor
         {
             throw new ConfigurationException("Missing endpoint_snitch directive");
         }
+        // TODO: initializes the storage service, which relies on the DatabaseDescriptor
         snitch = createEndpointSnitch(conf.endpoint_snitch);
         EndpointSnitchInfo.create();
 
@@ -626,7 +634,7 @@ public class DatabaseDescriptor
         if (!snitchClassName.contains("."))
             snitchClassName = "org.apache.cassandra.locator." + snitchClassName;
         IEndpointSnitch snitch = FBUtilities.construct(snitchClassName, "snitch");
-        return conf.dynamic_snitch ? new DynamicEndpointSnitch(snitch) : snitch;
+        return conf.dynamic_snitch ? new DynamicEndpointSnitch(snitch, null, getDynamicUpdateInterval(), getDynamicResetInterval(), getDynamicBadnessThreshold()) : snitch;
     }
 
     /** load keyspace (keyspace) definitions, but do not initialize the keyspace instances. */

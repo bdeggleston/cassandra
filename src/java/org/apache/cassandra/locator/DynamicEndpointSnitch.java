@@ -42,9 +42,9 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     private static final double ALPHA = 0.75; // set to 0.75 to make EDS more biased to towards the newer values
     private static final int WINDOW_SIZE = 100;
 
-    private int UPDATE_INTERVAL_IN_MS = DatabaseDescriptor.instance.getDynamicUpdateInterval();
-    private int RESET_INTERVAL_IN_MS = DatabaseDescriptor.instance.getDynamicResetInterval();
-    private double BADNESS_THRESHOLD = DatabaseDescriptor.instance.getDynamicBadnessThreshold();
+    private int UPDATE_INTERVAL_IN_MS;
+    private int RESET_INTERVAL_IN_MS;
+    private double BADNESS_THRESHOLD;
 
     // the score for a merged set of endpoints must be this much worse than the score for separate endpoints to
     // warrant not merging two ranges into a single range
@@ -64,6 +64,14 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     }
     public DynamicEndpointSnitch(IEndpointSnitch snitch, String instance)
     {
+        this(snitch, instance, DatabaseDescriptor.instance.getDynamicUpdateInterval(), DatabaseDescriptor.instance.getDynamicResetInterval(), DatabaseDescriptor.instance.getDynamicBadnessThreshold());
+
+    }
+    public DynamicEndpointSnitch(IEndpointSnitch snitch, String instance, int updateInterval, int resetInterval, double badnessThreshold)
+    {
+        UPDATE_INTERVAL_IN_MS = updateInterval;
+        RESET_INTERVAL_IN_MS = resetInterval;
+        BADNESS_THRESHOLD = badnessThreshold;
         mbeanName = "org.apache.cassandra.db:type=DynamicEndpointSnitch";
         if (instance != null)
             mbeanName += ",instance=" + instance;
