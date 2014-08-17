@@ -58,7 +58,7 @@ public class DropTableStatement extends SchemaAlteringStatement
     {
         try
         {
-            MigrationManager.announceColumnFamilyDrop(keyspace(), columnFamily(), isLocalOnly);
+            MigrationManager.instance.announceColumnFamilyDrop(keyspace(), columnFamily(), isLocalOnly);
         }
         catch (ConfigurationException e)
         {

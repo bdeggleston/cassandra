@@ -1534,7 +1534,7 @@ public class CassandraServer implements Cassandra.Iface
             if (!cfm.getTriggers().isEmpty())
                 state().ensureIsSuper("Only superusers are allowed to add triggers.");
 
-            MigrationManager.announceNewColumnFamily(cfm);
+            MigrationManager.instance.announceNewColumnFamily(cfm);
             return Schema.instance.getVersion().toString();
         }
         catch (RequestValidationException e)
@@ -1554,7 +1554,7 @@ public class CassandraServer implements Cassandra.Iface
         {
             String keyspace = cState.getKeyspace();
             cState.hasColumnFamilyAccess(keyspace, column_family, Permission.DROP);
-            MigrationManager.announceColumnFamilyDrop(keyspace, column_family);
+            MigrationManager.instance.announceColumnFamilyDrop(keyspace, column_family);
             return Schema.instance.getVersion().toString();
         }
         catch (RequestValidationException e)
@@ -1595,7 +1595,7 @@ public class CassandraServer implements Cassandra.Iface
 
                 cfDefs.add(cfm);
             }
-            MigrationManager.announceNewKeyspace(KSMetaData.fromThrift(ks_def, cfDefs.toArray(new CFMetaData[cfDefs.size()])));
+            MigrationManager.instance.announceNewKeyspace(KSMetaData.fromThrift(ks_def, cfDefs.toArray(new CFMetaData[cfDefs.size()])));
             return Schema.instance.getVersion().toString();
         }
         catch (RequestValidationException e)
@@ -1614,7 +1614,7 @@ public class CassandraServer implements Cassandra.Iface
             ThriftValidation.validateKeyspaceNotSystem(keyspace);
             state().hasKeyspaceAccess(keyspace, Permission.DROP);
 
-            MigrationManager.announceKeyspaceDrop(keyspace);
+            MigrationManager.instance.announceKeyspaceDrop(keyspace);
             return Schema.instance.getVersion().toString();
         }
         catch (RequestValidationException e)
@@ -1639,7 +1639,7 @@ public class CassandraServer implements Cassandra.Iface
             if (ks_def.getCf_defs() != null && ks_def.getCf_defs().size() > 0)
                 throw new InvalidRequestException("Keyspace update must not contain any table definitions.");
 
-            MigrationManager.announceKeyspaceUpdate(KSMetaData.fromThrift(ks_def));
+            MigrationManager.instance.announceKeyspaceUpdate(KSMetaData.fromThrift(ks_def));
             return Schema.instance.getVersion().toString();
         }
         catch (RequestValidationException e)
@@ -1674,7 +1674,7 @@ public class CassandraServer implements Cassandra.Iface
             if (!oldCfm.getTriggers().equals(cfm.getTriggers()))
                 state().ensureIsSuper("Only superusers are allowed to add or remove triggers.");
 
-            MigrationManager.announceColumnFamilyUpdate(cfm, true);
+            MigrationManager.instance.announceColumnFamilyUpdate(cfm, true);
             return Schema.instance.getVersion().toString();
         }
         catch (RequestValidationException e)

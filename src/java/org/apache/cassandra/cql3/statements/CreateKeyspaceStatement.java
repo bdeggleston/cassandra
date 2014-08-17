@@ -101,7 +101,7 @@ public class CreateKeyspaceStatement extends SchemaAlteringStatement
     {
         try
         {
-            MigrationManager.announceNewKeyspace(attrs.asKSMetadata(name), isLocalOnly);
+            MigrationManager.instance.announceNewKeyspace(attrs.asKSMetadata(name), isLocalOnly);
         }
         catch (AlreadyExistsException e)
         {

@@ -86,7 +86,7 @@ public class AlterKeyspaceStatement extends SchemaAlteringStatement
         if (ksm == null)
             throw new InvalidRequestException("Unknown keyspace " + name);
 
-        MigrationManager.announceKeyspaceUpdate(attrs.asKSMetadataUpdate(ksm), isLocalOnly);
+        MigrationManager.instance.announceKeyspaceUpdate(attrs.asKSMetadataUpdate(ksm), isLocalOnly);
     }
 
     public Event.SchemaChange changeEvent()

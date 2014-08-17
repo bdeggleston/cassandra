@@ -70,7 +70,7 @@ public class CreateTriggerStatement extends SchemaAlteringStatement
         CFMetaData cfm = Schema.instance.getCFMetaData(keyspace(), columnFamily()).copy();
         cfm.addTriggerDefinition(TriggerDefinition.create(triggerName, triggerClass));
         logger.info("Adding trigger with name {} and class {}", triggerName, triggerClass);
-        MigrationManager.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
+        MigrationManager.instance.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
     }
 
     public Event.SchemaChange changeEvent()

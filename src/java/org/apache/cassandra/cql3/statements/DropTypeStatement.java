@@ -145,6 +145,6 @@ public class DropTypeStatement extends SchemaAlteringStatement
         UserType toDrop = ksm.userTypes.getType(name.getUserTypeName());
         // Can be null with ifExists
         if (toDrop != null)
-            MigrationManager.announceTypeDrop(toDrop, isLocalOnly);
+            MigrationManager.instance.announceTypeDrop(toDrop, isLocalOnly);
     }
 }

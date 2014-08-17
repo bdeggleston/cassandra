@@ -109,7 +109,7 @@ public class CreateTableStatement extends SchemaAlteringStatement
     {
         try
         {
-           MigrationManager.announceNewColumnFamily(getCFMetaData(), isLocalOnly);
+           MigrationManager.instance.announceNewColumnFamily(getCFMetaData(), isLocalOnly);
         }
         catch (AlreadyExistsException e)
         {

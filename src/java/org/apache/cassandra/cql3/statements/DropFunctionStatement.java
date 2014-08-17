@@ -83,7 +83,7 @@ public final class DropFunctionStatement extends SchemaAlteringStatement
     {
         try
         {
-            MigrationManager.announceFunctionDrop(namespace, functionName, isLocalOnly);
+            MigrationManager.instance.announceFunctionDrop(namespace, functionName, isLocalOnly);
         }
         catch (InvalidRequestException e)
         {

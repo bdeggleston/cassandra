@@ -59,7 +59,7 @@ public class DropTriggerStatement extends SchemaAlteringStatement
         if (!cfm.removeTrigger(triggerName))
             throw new ConfigurationException(String.format("Trigger %s was not found", triggerName));
         logger.info("Dropping trigger with name {}", triggerName);
-        MigrationManager.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
+        MigrationManager.instance.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
     }
 
     public Event.SchemaChange changeEvent()

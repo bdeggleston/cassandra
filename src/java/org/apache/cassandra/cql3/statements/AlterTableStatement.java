@@ -256,7 +256,7 @@ public class AlterTableStatement extends SchemaAlteringStatement
                 break;
         }
 
-        MigrationManager.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
+        MigrationManager.instance.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
     }
 
     public String toString()

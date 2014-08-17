@@ -153,7 +153,7 @@ public final class CreateFunctionStatement extends SchemaAlteringStatement
 
     public void announceMigration(boolean isLocalOnly) throws RequestValidationException
     {
-        MigrationManager.announceNewFunction(ufMeta, isLocalOnly);
+        MigrationManager.instance.announceNewFunction(ufMeta, isLocalOnly);
     }
 
     public static final class Argument
