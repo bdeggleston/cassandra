@@ -17,42 +17,25 @@
  */
 package org.apache.cassandra.locator;
 
-import java.io.InputStream;
 import java.net.InetAddress;
-import java.net.URL;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import org.apache.cassandra.config.Config;
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.SeedProviderDef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Loader;
-import org.yaml.snakeyaml.TypeDescription;
-import org.yaml.snakeyaml.Yaml;
 
 public class SimpleSeedProvider implements SeedProvider
 {
     private static final Logger logger = LoggerFactory.getLogger(SimpleSeedProvider.class);
+    private final Map<String, String> parameters;
 
-    public SimpleSeedProvider(Map<String, String> args) {}
+    public SimpleSeedProvider(Map<String, String> args) {
+        parameters = new HashMap<>(args);
+    }
 
     public List<InetAddress> getSeeds()
     {
-        Config conf;
-        try
-        {
-            conf = DatabaseDescriptor.instance.loadConfig();
-        }
-        catch (Exception e)
-        {
-            throw new AssertionError(e);
-        }
-        String[] hosts = conf.seed_provider.parameters.get("seeds").split(",", -1);
+        String[] hosts = parameters.get("seeds").split(",", -1);
         List<InetAddress> seeds = new ArrayList<InetAddress>(hosts.length);
         for (String host : hosts)
         {
