@@ -98,15 +98,6 @@ public class StorageProxy implements StorageProxyMBean
 
     private StorageProxy()
     {
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        try
-        {
-            mbs.registerMBean(instance, new ObjectName(MBEAN_NAME));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
-        }
 
         standardWritePerformer = new WritePerformer()
         {
@@ -152,6 +143,17 @@ public class StorageProxy implements StorageProxyMBean
                         .execute(counterWriteTask(mutation, targets, responseHandler, localDataCenter));
             }
         };
+
+        // TODO: the reference is escaping the constructor. Fix this. It should probably happen wherever this is instantiated
+        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+        try
+        {
+            mbs.registerMBean(this, new ObjectName(MBEAN_NAME));
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
 
