@@ -227,7 +227,7 @@ public class CassandraDaemon
             ColumnFamilyStore.scrubDataDirectories(cfm);
         try
         {
-            SystemKeyspace.checkHealth();
+            SystemKeyspace.instance.checkHealth();
         }
         catch (ConfigurationException e)
         {
@@ -239,7 +239,7 @@ public class CassandraDaemon
         DatabaseDescriptor.instance.loadSchemas();
 
         // clean up compaction leftovers
-        Map<Pair<String, String>, Map<Integer, UUID>> unfinishedCompactions = SystemKeyspace.getUnfinishedCompactions();
+        Map<Pair<String, String>, Map<Integer, UUID>> unfinishedCompactions = SystemKeyspace.instance.getUnfinishedCompactions();
         for (Pair<String, String> kscf : unfinishedCompactions.keySet())
         {
             CFMetaData cfm = Schema.instance.getCFMetaData(kscf.left, kscf.right);
@@ -247,7 +247,7 @@ public class CassandraDaemon
             if (cfm != null)
                 ColumnFamilyStore.removeUnfinishedCompactionLeftovers(cfm, unfinishedCompactions.get(kscf));
         }
-        SystemKeyspace.discardCompactionsInProgress();
+        SystemKeyspace.instance.discardCompactionsInProgress();
 
         // clean up debris in the rest of the keyspaces
         for (String keyspaceName : Schema.instance.getKeyspaces())
@@ -330,7 +330,7 @@ public class CassandraDaemon
         };
         StorageServiceTasks.instance.optionalTasks.schedule(runnable, 5 * 60, TimeUnit.SECONDS);
 
-        SystemKeyspace.finishStartup();
+        SystemKeyspace.instance.finishStartup();
 
         // start server internals
         StorageService.instance.registerDaemon(this);

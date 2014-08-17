@@ -122,7 +122,7 @@ public class DefsTables
      */
     public static Collection<KSMetaData> loadFromKeyspace()
     {
-        List<Row> serializedSchema = SystemKeyspace.serializedSchema(SystemKeyspace.SCHEMA_KEYSPACES_CF);
+        List<Row> serializedSchema = SystemKeyspace.instance.serializedSchema(SystemKeyspace.SCHEMA_KEYSPACES_CF);
 
         List<KSMetaData> keyspaces = new ArrayList<KSMetaData>(serializedSchema.size());
 
@@ -139,7 +139,7 @@ public class DefsTables
 
     private static Row serializedColumnFamilies(DecoratedKey ksNameKey)
     {
-        ColumnFamilyStore cfsStore = SystemKeyspace.schemaCFS(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF);
+        ColumnFamilyStore cfsStore = SystemKeyspace.instance.schemaCFS(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF);
         return new Row(ksNameKey, cfsStore.getColumnFamily(QueryFilter.getIdentityFilter(ksNameKey,
                                                                                          SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF,
                                                                                          System.currentTimeMillis())));
@@ -147,7 +147,7 @@ public class DefsTables
 
     private static Row serializedUserTypes(DecoratedKey ksNameKey)
     {
-        ColumnFamilyStore cfsStore = SystemKeyspace.schemaCFS(SystemKeyspace.SCHEMA_USER_TYPES_CF);
+        ColumnFamilyStore cfsStore = SystemKeyspace.instance.schemaCFS(SystemKeyspace.SCHEMA_USER_TYPES_CF);
         return new Row(ksNameKey, cfsStore.getColumnFamily(QueryFilter.getIdentityFilter(ksNameKey,
                                                                                          SystemKeyspace.SCHEMA_USER_TYPES_CF,
                                                                                          System.currentTimeMillis())));
@@ -176,10 +176,10 @@ public class DefsTables
             keyspaces.add(ByteBufferUtil.string(mutation.key()));
 
         // current state of the schema
-        Map<DecoratedKey, ColumnFamily> oldKeyspaces = SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_KEYSPACES_CF, keyspaces);
-        Map<DecoratedKey, ColumnFamily> oldColumnFamilies = SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF, keyspaces);
-        Map<DecoratedKey, ColumnFamily> oldTypes = SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_USER_TYPES_CF, keyspaces);
-        Map<DecoratedKey, ColumnFamily> oldFunctions = SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_FUNCTIONS_CF);
+        Map<DecoratedKey, ColumnFamily> oldKeyspaces = SystemKeyspace.instance.getSchema(SystemKeyspace.SCHEMA_KEYSPACES_CF, keyspaces);
+        Map<DecoratedKey, ColumnFamily> oldColumnFamilies = SystemKeyspace.instance.getSchema(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF, keyspaces);
+        Map<DecoratedKey, ColumnFamily> oldTypes = SystemKeyspace.instance.getSchema(SystemKeyspace.SCHEMA_USER_TYPES_CF, keyspaces);
+        Map<DecoratedKey, ColumnFamily> oldFunctions = SystemKeyspace.instance.getSchema(SystemKeyspace.SCHEMA_FUNCTIONS_CF);
 
         for (Mutation mutation : mutations)
             mutation.apply();
@@ -188,10 +188,10 @@ public class DefsTables
             flushSchemaCFs();
 
         // with new data applied
-        Map<DecoratedKey, ColumnFamily> newKeyspaces = SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_KEYSPACES_CF, keyspaces);
-        Map<DecoratedKey, ColumnFamily> newColumnFamilies = SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF, keyspaces);
-        Map<DecoratedKey, ColumnFamily> newTypes = SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_USER_TYPES_CF, keyspaces);
-        Map<DecoratedKey, ColumnFamily> newFunctions = SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_FUNCTIONS_CF);
+        Map<DecoratedKey, ColumnFamily> newKeyspaces = SystemKeyspace.instance.getSchema(SystemKeyspace.SCHEMA_KEYSPACES_CF, keyspaces);
+        Map<DecoratedKey, ColumnFamily> newColumnFamilies = SystemKeyspace.instance.getSchema(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF, keyspaces);
+        Map<DecoratedKey, ColumnFamily> newTypes = SystemKeyspace.instance.getSchema(SystemKeyspace.SCHEMA_USER_TYPES_CF, keyspaces);
+        Map<DecoratedKey, ColumnFamily> newFunctions = SystemKeyspace.instance.getSchema(SystemKeyspace.SCHEMA_FUNCTIONS_CF);
 
         Set<String> keyspacesToDrop = mergeKeyspaces(oldKeyspaces, newKeyspaces);
         mergeColumnFamilies(oldColumnFamilies, newColumnFamilies);
@@ -641,7 +641,7 @@ public class DefsTables
     private static void flushSchemaCFs()
     {
         for (String cf : SystemKeyspace.allSchemaCfs)
-            SystemKeyspace.forceBlockingFlush(cf);
+            SystemKeyspace.instance.forceBlockingFlush(cf);
     }
 }
 

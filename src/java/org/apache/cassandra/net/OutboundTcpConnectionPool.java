@@ -48,7 +48,7 @@ public class OutboundTcpConnectionPool
     OutboundTcpConnectionPool(InetAddress remoteEp)
     {
         id = remoteEp;
-        resetedEndpoint = SystemKeyspace.getPreferredIP(remoteEp);
+        resetedEndpoint = SystemKeyspace.instance.getPreferredIP(remoteEp);
         started = new CountDownLatch(1);
 
         cmdCon = new OutboundTcpConnection(this);
@@ -89,7 +89,7 @@ public class OutboundTcpConnectionPool
      */
     public void reset(InetAddress remoteEP)
     {
-        SystemKeyspace.updatePreferredIP(id, remoteEP);
+        SystemKeyspace.instance.updatePreferredIP(id, remoteEP);
         resetedEndpoint = remoteEP;
         for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon })
             conn.softCloseSocket();

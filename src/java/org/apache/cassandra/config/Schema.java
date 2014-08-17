@@ -362,7 +362,7 @@ public class Schema
         {
             MessageDigest versionDigest = MessageDigest.getInstance("MD5");
 
-            for (Row row : SystemKeyspace.serializedSchema())
+            for (Row row : SystemKeyspace.instance.serializedSchema())
             {
                 if (invalidSchemaRow(row) || ignoredSchemaRow(row))
                     continue;
@@ -374,7 +374,7 @@ public class Schema
             }
 
             version = UUID.nameUUIDFromBytes(versionDigest.digest());
-            SystemKeyspace.updateSchemaVersion(version);
+            SystemKeyspace.instance.updateSchemaVersion(version);
         }
         catch (Exception e)
         {

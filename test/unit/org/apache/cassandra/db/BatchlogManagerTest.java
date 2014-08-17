@@ -153,7 +153,7 @@ public class BatchlogManagerTest
             long timestamp = System.currentTimeMillis() - DatabaseDescriptor.instance.getWriteRpcTimeout() * 2;
 
             if (i == 500)
-                SystemKeyspace.saveTruncationRecord(Keyspace.open(KEYSPACE1).getColumnFamilyStore("Standard2"),
+                SystemKeyspace.instance.saveTruncationRecord(Keyspace.open(KEYSPACE1).getColumnFamilyStore("Standard2"),
                                                     timestamp,
                                                     ReplayPosition.NONE);
 

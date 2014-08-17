@@ -632,7 +632,7 @@ public class DatabaseDescriptor
     /** load keyspace (keyspace) definitions, but do not initialize the keyspace instances. */
     public void loadSchemas()
     {
-        ColumnFamilyStore schemaCFS = SystemKeyspace.schemaCFS(SystemKeyspace.SCHEMA_KEYSPACES_CF);
+        ColumnFamilyStore schemaCFS = SystemKeyspace.instance.schemaCFS(SystemKeyspace.SCHEMA_KEYSPACES_CF);
 
         // if keyspace with definitions is empty try loading the old way
         if (schemaCFS.estimateKeys() == 0)
@@ -838,7 +838,7 @@ public class DatabaseDescriptor
 
     public boolean isReplacing()
     {
-        if (System.getProperty("cassandra.replace_address_first_boot", null) != null && SystemKeyspace.bootstrapComplete())
+        if (System.getProperty("cassandra.replace_address_first_boot", null) != null && SystemKeyspace.instance.bootstrapComplete())
         {
             logger.info("Replace address on first boot requested; this node is already bootstrapped");
             return false;

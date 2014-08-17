@@ -257,7 +257,7 @@ public class SecondaryIndexManager
         }
 
         index.removeIndex(column);
-        SystemKeyspace.setIndexRemoved(baseCfs.metadata.ksName, index.getNameForSystemKeyspace(column));
+        SystemKeyspace.instance.setIndexRemoved(baseCfs.metadata.ksName, index.getNameForSystemKeyspace(column));
     }
 
     /**

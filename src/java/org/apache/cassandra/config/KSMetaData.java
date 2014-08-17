@@ -225,7 +225,7 @@ public final class KSMetaData
 
     public KSMetaData reloadAttributes()
     {
-        Row ksDefRow = SystemKeyspace.readSchemaRow(SystemKeyspace.SCHEMA_KEYSPACES_CF, name);
+        Row ksDefRow = SystemKeyspace.instance.readSchemaRow(SystemKeyspace.SCHEMA_KEYSPACES_CF, name);
 
         if (ksDefRow.cf == null)
             throw new RuntimeException(String.format("%s not found in the schema definitions keyspaceName (%s).", name, SystemKeyspace.SCHEMA_KEYSPACES_CF));
@@ -235,7 +235,7 @@ public final class KSMetaData
 
     public Mutation dropFromSchema(long timestamp)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.getSchemaKSKey(name));
+        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(name));
 
         mutation.delete(SystemKeyspace.SCHEMA_KEYSPACES_CF, timestamp);
         mutation.delete(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF, timestamp);
@@ -249,7 +249,7 @@ public final class KSMetaData
 
     public Mutation toSchema(long timestamp)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.getSchemaKSKey(name));
+        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(name));
         ColumnFamily cf = mutation.addOrGet(CFMetaData.SchemaKeyspacesCf);
         CFRowAdder adder = new CFRowAdder(cf, CFMetaData.SchemaKeyspacesCf.comparator.builder().build(), timestamp);
 

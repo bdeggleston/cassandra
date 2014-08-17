@@ -124,7 +124,7 @@ public class CompactionTask extends AbstractCompactionTask
             }
         });
 
-        UUID taskId = SystemKeyspace.startCompaction(cfs, sstables);
+        UUID taskId = SystemKeyspace.instance.startCompaction(cfs, sstables);
 
         CompactionController controller = getCompactionController(sstables);
         Set<SSTableReader> actuallyCompact = Sets.difference(sstables, controller.getFullyExpiredSSTables());
@@ -196,7 +196,7 @@ public class CompactionTask extends AbstractCompactionTask
             // point of no return -- the new sstables are live on disk; next we'll start deleting the old ones
             // (in replaceCompactedSSTables)
             if (taskId != null)
-                SystemKeyspace.finishCompaction(taskId);
+                SystemKeyspace.instance.finishCompaction(taskId);
 
             if (collector != null)
                 collector.finishCompaction(ci);
@@ -245,7 +245,7 @@ public class CompactionTask extends AbstractCompactionTask
             mergedRows.put(rows, count);
         }
 
-        SystemKeyspace.updateCompactionHistory(cfs.keyspace.getName(), cfs.name, System.currentTimeMillis(), startsize, endsize, mergedRows);
+        SystemKeyspace.instance.updateCompactionHistory(cfs.keyspace.getName(), cfs.name, System.currentTimeMillis(), startsize, endsize, mergedRows);
         logger.info(String.format("Compacted %d sstables to [%s].  %,d bytes to %,d (~%d%% of original) in %,dms = %fMB/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}",
                                   oldSStables.size(), newSSTableNames.toString(), startsize, endsize, (int) (ratio * 100), dTime, mbps, totalSourceRows, totalKeysWritten, mergeSummary.toString()));
         logger.debug(String.format("CF Total Bytes Compacted: %,d", CompactionTask.addToTotalBytesCompacted(endsize)));
