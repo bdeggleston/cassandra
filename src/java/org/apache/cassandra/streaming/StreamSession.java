@@ -578,7 +578,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         logger.warn("[Stream #{}] Retrying for following error", planId(), e);
         // retry
         retries++;
-        if (retries > DatabaseDescriptor.getMaxStreamingRetries())
+        if (retries > DatabaseDescriptor.instance.getMaxStreamingRetries())
             onError(new IOException("Too many retries for " + header, e));
         else
             handler.sendMessage(new RetryMessage(header.cfId, header.sequenceNumber));

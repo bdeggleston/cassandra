@@ -68,7 +68,7 @@ public class CreateUserStatement extends AuthenticationStatement
         if (ifNotExists && Auth.isExistingUser(username))
             return null;
 
-        DatabaseDescriptor.getAuthenticator().create(username, opts.getOptions());
+        DatabaseDescriptor.instance.getAuthenticator().create(username, opts.getOptions());
         Auth.insertUser(username, superuser);
         return null;
     }

@@ -74,6 +74,8 @@ import org.apache.cassandra.utils.memory.SlabPool;
 
 public class DatabaseDescriptor
 {
+    public static final DatabaseDescriptor instance = new DatabaseDescriptor();
+
     private static final Logger logger = LoggerFactory.getLogger(DatabaseDescriptor.class);
 
     /**
@@ -82,38 +84,38 @@ public class DatabaseDescriptor
      */
     private static final int MAX_NUM_TOKENS = 1536;
 
-    private static IEndpointSnitch snitch;
-    private static InetAddress listenAddress; // leave null so we can fall through to getLocalHost
-    private static InetAddress broadcastAddress;
-    private static InetAddress rpcAddress;
-    private static InetAddress broadcastRpcAddress;
-    private static SeedProvider seedProvider;
-    private static IInternodeAuthenticator internodeAuthenticator;
+    private IEndpointSnitch snitch;
+    private InetAddress listenAddress; // leave null so we can fall through to getLocalHost
+    private InetAddress broadcastAddress;
+    private InetAddress rpcAddress;
+    private InetAddress broadcastRpcAddress;
+    private SeedProvider seedProvider;
+    private IInternodeAuthenticator internodeAuthenticator;
 
     /* Hashing strategy Random or OPHF */
-    private static IPartitioner<?> partitioner;
-    private static String paritionerName;
+    private IPartitioner<?> partitioner;
+    private String paritionerName;
 
-    private static Config.DiskAccessMode indexAccessMode;
+    private Config.DiskAccessMode indexAccessMode;
 
-    private static Config conf;
+    private final Config conf;
 
-    private static IAuthenticator authenticator = new AllowAllAuthenticator();
-    private static IAuthorizer authorizer = new AllowAllAuthorizer();
+    private IAuthenticator authenticator = new AllowAllAuthenticator();
+    private IAuthorizer authorizer = new AllowAllAuthorizer();
 
-    private static IRequestScheduler requestScheduler;
-    private static RequestSchedulerId requestSchedulerId;
-    private static RequestSchedulerOptions requestSchedulerOptions;
+    private IRequestScheduler requestScheduler;
+    private RequestSchedulerId requestSchedulerId;
+    private RequestSchedulerOptions requestSchedulerOptions;
 
-    private static long keyCacheSizeInMB;
-    private static long counterCacheSizeInMB;
-    private static IAllocator memoryAllocator;
-    private static long indexSummaryCapacityInMB;
+    private long keyCacheSizeInMB;
+    private long counterCacheSizeInMB;
+    private IAllocator memoryAllocator;
+    private long indexSummaryCapacityInMB;
 
-    private static String localDC;
-    private static Comparator<InetAddress> localComparator;
+    private String localDC;
+    private Comparator<InetAddress> localComparator;
 
-    static
+    private DatabaseDescriptor()
     {
         // In client mode, we use a default configuration. Note that the fields of this class will be
         // left unconfigured however (the partitioner or localDC will be null for instance) so this
@@ -125,28 +127,28 @@ public class DatabaseDescriptor
                 conf = new Config();
                 // at least we have to set memoryAllocator to open SSTable in client mode
                 memoryAllocator = FBUtilities.newOffHeapAllocator(conf.memory_allocator);
-            }
-            else
+            } else
             {
-                applyConfig(loadConfig());
+                conf = loadConfig();
+                applyConfig(conf);
             }
         }
         catch (ConfigurationException e)
         {
             logger.error("Fatal configuration error", e);
             System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
-            System.exit(1);
+            throw new IllegalStateException(e);
         }
         catch (Exception e)
         {
             logger.error("Fatal error during configuration loading", e);
             System.err.println(e.getMessage() + "\nFatal error during configuration loading; unable to start. See log for stacktrace.");
-            System.exit(1);
+            throw new IllegalStateException(e);
         }
     }
 
     @VisibleForTesting
-    public static Config loadConfig() throws ConfigurationException
+    public Config loadConfig() throws ConfigurationException
     {
         String loaderClass = System.getProperty("cassandra.config.loader");
         ConfigurationLoader loader = loaderClass == null
@@ -155,10 +157,8 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
-    private static void applyConfig(Config config) throws ConfigurationException
+    private void applyConfig(Config config) throws ConfigurationException
     {
-        conf = config;
-
         if (conf.commitlog_sync == null)
         {
             throw new ConfigurationException("Missing required directive CommitLogSync");
@@ -621,7 +621,7 @@ public class DatabaseDescriptor
             throw new ConfigurationException("The seed provider lists no seeds.");
     }
 
-    private static IEndpointSnitch createEndpointSnitch(String snitchClassName) throws ConfigurationException
+    private IEndpointSnitch createEndpointSnitch(String snitchClassName) throws ConfigurationException
     {
         if (!snitchClassName.contains("."))
             snitchClassName = "org.apache.cassandra.locator." + snitchClassName;
@@ -630,7 +630,7 @@ public class DatabaseDescriptor
     }
 
     /** load keyspace (keyspace) definitions, but do not initialize the keyspace instances. */
-    public static void loadSchemas()
+    public void loadSchemas()
     {
         ColumnFamilyStore schemaCFS = SystemKeyspace.schemaCFS(SystemKeyspace.SCHEMA_KEYSPACES_CF);
 
@@ -652,7 +652,7 @@ public class DatabaseDescriptor
         Schema.instance.updateVersion();
     }
 
-    private static boolean hasExistingNoSystemTables()
+    private boolean hasExistingNoSystemTables()
     {
         for (String dataDir : getAllDataFileLocations())
         {
@@ -676,22 +676,22 @@ public class DatabaseDescriptor
         return false;
     }
 
-    public static IAuthenticator getAuthenticator()
+    public IAuthenticator getAuthenticator()
     {
         return authenticator;
     }
 
-    public static IAuthorizer getAuthorizer()
+    public IAuthorizer getAuthorizer()
     {
         return authorizer;
     }
 
-    public static int getPermissionsValidity()
+    public int getPermissionsValidity()
     {
         return conf.permissions_validity_in_ms;
     }
 
-    public static int getThriftFramedTransportSize()
+    public int getThriftFramedTransportSize()
     {
         return conf.thrift_framed_transport_size_in_mb * 1024 * 1024;
     }
@@ -699,7 +699,7 @@ public class DatabaseDescriptor
     /**
      * Creates all storage-related directories.
      */
-    public static void createAllDirectories()
+    public void createAllDirectories()
     {
         try
         {
@@ -735,62 +735,62 @@ public class DatabaseDescriptor
         }
     }
 
-    public static IPartitioner<?> getPartitioner()
+    public IPartitioner<?> getPartitioner()
     {
         return partitioner;
     }
 
-    public static String getPartitionerName()
+    public String getPartitionerName()
     {
         return paritionerName;
     }
 
     /* For tests ONLY, don't use otherwise or all hell will break loose */
-    public static void setPartitioner(IPartitioner<?> newPartitioner)
+    public void setPartitioner(IPartitioner<?> newPartitioner)
     {
         partitioner = newPartitioner;
     }
 
-    public static IEndpointSnitch getEndpointSnitch()
+    public IEndpointSnitch getEndpointSnitch()
     {
         return snitch;
     }
-    public static void setEndpointSnitch(IEndpointSnitch eps)
+    public void setEndpointSnitch(IEndpointSnitch eps)
     {
         snitch = eps;
     }
 
-    public static IRequestScheduler getRequestScheduler()
+    public IRequestScheduler getRequestScheduler()
     {
         return requestScheduler;
     }
 
-    public static RequestSchedulerOptions getRequestSchedulerOptions()
+    public RequestSchedulerOptions getRequestSchedulerOptions()
     {
         return requestSchedulerOptions;
     }
 
-    public static RequestSchedulerId getRequestSchedulerId()
+    public RequestSchedulerId getRequestSchedulerId()
     {
         return requestSchedulerId;
     }
 
-    public static int getColumnIndexSize()
+    public int getColumnIndexSize()
     {
         return conf.column_index_size_in_kb * 1024;
     }
 
-    public static int getBatchSizeWarnThreshold()
+    public int getBatchSizeWarnThreshold()
     {
         return conf.batch_size_warn_threshold_in_kb * 1024;
     }
 
-    public static Collection<String> getInitialTokens()
+    public Collection<String> getInitialTokens()
     {
         return tokensFromString(System.getProperty("cassandra.initial_token", conf.initial_token));
     }
 
-    public static Collection<String> tokensFromString(String tokenString)
+    public Collection<String> tokensFromString(String tokenString)
     {
         List<String> tokens = new ArrayList<String>();
         if (tokenString != null)
@@ -799,12 +799,12 @@ public class DatabaseDescriptor
         return tokens;
     }
 
-    public static Integer getNumTokens()
+    public Integer getNumTokens()
     {
         return conf.num_tokens;
     }
 
-    public static InetAddress getReplaceAddress()
+    public InetAddress getReplaceAddress()
     {
         try
         {
@@ -820,12 +820,12 @@ public class DatabaseDescriptor
         }
     }
 
-    public static Collection<String> getReplaceTokens()
+    public Collection<String> getReplaceTokens()
     {
         return tokensFromString(System.getProperty("cassandra.replace_token", null));
     }
 
-    public static UUID getReplaceNode()
+    public UUID getReplaceNode()
     {
         try
         {
@@ -836,7 +836,7 @@ public class DatabaseDescriptor
         }
     }
 
-    public static boolean isReplacing()
+    public boolean isReplacing()
     {
         if (System.getProperty("cassandra.replace_address_first_boot", null) != null && SystemKeyspace.bootstrapComplete())
         {
@@ -846,113 +846,113 @@ public class DatabaseDescriptor
         return getReplaceAddress() != null;
     }
 
-    public static String getClusterName()
+    public String getClusterName()
     {
         return conf.cluster_name;
     }
 
-    public static int getMaxStreamingRetries()
+    public int getMaxStreamingRetries()
     {
         return conf.max_streaming_retries;
     }
 
-    public static int getStoragePort()
+    public int getStoragePort()
     {
         return Integer.parseInt(System.getProperty("cassandra.storage_port", conf.storage_port.toString()));
     }
 
-    public static int getSSLStoragePort()
+    public int getSSLStoragePort()
     {
         return Integer.parseInt(System.getProperty("cassandra.ssl_storage_port", conf.ssl_storage_port.toString()));
     }
 
-    public static int getRpcPort()
+    public int getRpcPort()
     {
         return Integer.parseInt(System.getProperty("cassandra.rpc_port", conf.rpc_port.toString()));
     }
 
-    public static int getRpcListenBacklog()
+    public int getRpcListenBacklog()
     {
         return conf.rpc_listen_backlog;
     }
 
-    public static long getRpcTimeout()
+    public long getRpcTimeout()
     {
         return conf.request_timeout_in_ms;
     }
 
-    public static void setRpcTimeout(Long timeOutInMillis)
+    public void setRpcTimeout(Long timeOutInMillis)
     {
         conf.request_timeout_in_ms = timeOutInMillis;
     }
 
-    public static long getReadRpcTimeout()
+    public long getReadRpcTimeout()
     {
         return conf.read_request_timeout_in_ms;
     }
 
-    public static void setReadRpcTimeout(Long timeOutInMillis)
+    public void setReadRpcTimeout(Long timeOutInMillis)
     {
         conf.read_request_timeout_in_ms = timeOutInMillis;
     }
 
-    public static long getRangeRpcTimeout()
+    public long getRangeRpcTimeout()
     {
         return conf.range_request_timeout_in_ms;
     }
 
-    public static void setRangeRpcTimeout(Long timeOutInMillis)
+    public void setRangeRpcTimeout(Long timeOutInMillis)
     {
         conf.range_request_timeout_in_ms = timeOutInMillis;
     }
 
-    public static long getWriteRpcTimeout()
+    public long getWriteRpcTimeout()
     {
         return conf.write_request_timeout_in_ms;
     }
 
-    public static void setWriteRpcTimeout(Long timeOutInMillis)
+    public void setWriteRpcTimeout(Long timeOutInMillis)
     {
         conf.write_request_timeout_in_ms = timeOutInMillis;
     }
 
-    public static long getCounterWriteRpcTimeout()
+    public long getCounterWriteRpcTimeout()
     {
         return conf.counter_write_request_timeout_in_ms;
     }
 
-    public static void setCounterWriteRpcTimeout(Long timeOutInMillis)
+    public void setCounterWriteRpcTimeout(Long timeOutInMillis)
     {
         conf.counter_write_request_timeout_in_ms = timeOutInMillis;
     }
 
-    public static long getCasContentionTimeout()
+    public long getCasContentionTimeout()
     {
         return conf.cas_contention_timeout_in_ms;
     }
 
-    public static void setCasContentionTimeout(Long timeOutInMillis)
+    public void setCasContentionTimeout(Long timeOutInMillis)
     {
         conf.cas_contention_timeout_in_ms = timeOutInMillis;
     }
 
-    public static long getTruncateRpcTimeout()
+    public long getTruncateRpcTimeout()
     {
         return conf.truncate_request_timeout_in_ms;
     }
 
-    public static void setTruncateRpcTimeout(Long timeOutInMillis)
+    public void setTruncateRpcTimeout(Long timeOutInMillis)
     {
         conf.truncate_request_timeout_in_ms = timeOutInMillis;
     }
 
-    public static boolean hasCrossNodeTimeout()
+    public boolean hasCrossNodeTimeout()
     {
         return conf.cross_node_timeout;
     }
 
     // not part of the Verb enum so we can change timeouts easily via JMX
-    public static long getTimeout(MessagingService.Verb verb)
+    public long getTimeout(MessagingService.Verb verb)
     {
         switch (verb)
         {
@@ -978,7 +978,7 @@ public class DatabaseDescriptor
     /**
      * @return the minimum configured {read, write, range, truncate, misc} timeout
      */
-    public static long getMinRpcTimeout()
+    public long getMinRpcTimeout()
     {
         return Longs.min(getRpcTimeout(),
                          getReadRpcTimeout(),
@@ -988,102 +988,102 @@ public class DatabaseDescriptor
                          getTruncateRpcTimeout());
     }
 
-    public static double getPhiConvictThreshold()
+    public double getPhiConvictThreshold()
     {
         return conf.phi_convict_threshold;
     }
 
-    public static void setPhiConvictThreshold(double phiConvictThreshold)
+    public void setPhiConvictThreshold(double phiConvictThreshold)
     {
         conf.phi_convict_threshold = phiConvictThreshold;
     }
 
-    public static int getConcurrentReaders()
+    public int getConcurrentReaders()
     {
         return conf.concurrent_reads;
     }
 
-    public static int getConcurrentWriters()
+    public int getConcurrentWriters()
     {
         return conf.concurrent_writes;
     }
 
-    public static int getConcurrentCounterWriters()
+    public int getConcurrentCounterWriters()
     {
         return conf.concurrent_counter_writes;
     }
 
-    public static int getFlushWriters()
+    public int getFlushWriters()
     {
             return conf.memtable_flush_writers;
     }
 
-    public static int getConcurrentCompactors()
+    public int getConcurrentCompactors()
     {
         return conf.concurrent_compactors;
     }
 
-    public static int getCompactionThroughputMbPerSec()
+    public int getCompactionThroughputMbPerSec()
     {
         return conf.compaction_throughput_mb_per_sec;
     }
 
-    public static void setCompactionThroughputMbPerSec(int value)
+    public void setCompactionThroughputMbPerSec(int value)
     {
         conf.compaction_throughput_mb_per_sec = value;
     }
 
-    public static boolean getDisableSTCSInL0()
+    public boolean getDisableSTCSInL0()
     {
         return Boolean.getBoolean("cassandra.disable_stcs_in_l0");
     }
 
-    public static int getStreamThroughputOutboundMegabitsPerSec()
+    public int getStreamThroughputOutboundMegabitsPerSec()
     {
         return conf.stream_throughput_outbound_megabits_per_sec;
     }
 
-    public static void setStreamThroughputOutboundMegabitsPerSec(int value)
+    public void setStreamThroughputOutboundMegabitsPerSec(int value)
     {
         conf.stream_throughput_outbound_megabits_per_sec = value;
     }
 
-    public static int getInterDCStreamThroughputOutboundMegabitsPerSec()
+    public int getInterDCStreamThroughputOutboundMegabitsPerSec()
     {
         return conf.inter_dc_stream_throughput_outbound_megabits_per_sec;
     }
 
-    public static void setInterDCStreamThroughputOutboundMegabitsPerSec(int value)
+    public void setInterDCStreamThroughputOutboundMegabitsPerSec(int value)
     {
         conf.inter_dc_stream_throughput_outbound_megabits_per_sec = value;
     }
 
-    public static String[] getAllDataFileLocations()
+    public String[] getAllDataFileLocations()
     {
         return conf.data_file_directories;
     }
 
-    public static String getCommitLogLocation()
+    public String getCommitLogLocation()
     {
         return conf.commitlog_directory;
     }
 
-    public static int getTombstoneWarnThreshold()
+    public int getTombstoneWarnThreshold()
     {
         return conf.tombstone_warn_threshold;
     }
 
-    public static void setTombstoneWarnThreshold(int threshold)
+    public void setTombstoneWarnThreshold(int threshold)
     {
         conf.tombstone_warn_threshold = threshold;
     }
 
-    public static int getTombstoneFailureThreshold()
+    public int getTombstoneFailureThreshold()
     {
         return conf.tombstone_failure_threshold;
     }
 
-    public static void setTombstoneFailureThreshold(int threshold)
+    public void setTombstoneFailureThreshold(int threshold)
     {
         conf.tombstone_failure_threshold = threshold;
     }
@@ -1091,197 +1091,197 @@ public class DatabaseDescriptor
     /**
      * size of commitlog segments to allocate
      */
-    public static int getCommitLogSegmentSize()
+    public int getCommitLogSegmentSize()
     {
         return conf.commitlog_segment_size_in_mb * 1024 * 1024;
     }
 
-    public static String getSavedCachesLocation()
+    public String getSavedCachesLocation()
     {
         return conf.saved_caches_directory;
     }
 
-    public static Set<InetAddress> getSeeds()
+    public Set<InetAddress> getSeeds()
     {
         return ImmutableSet.<InetAddress>builder().addAll(seedProvider.getSeeds()).build();
     }
 
-    public static InetAddress getListenAddress()
+    public InetAddress getListenAddress()
     {
         return listenAddress;
     }
 
-    public static InetAddress getBroadcastAddress()
+    public InetAddress getBroadcastAddress()
     {
         return broadcastAddress;
     }
 
-    public static IInternodeAuthenticator getInternodeAuthenticator()
+    public IInternodeAuthenticator getInternodeAuthenticator()
     {
         return internodeAuthenticator;
     }
 
-    public static void setBroadcastAddress(InetAddress broadcastAdd)
+    public void setBroadcastAddress(InetAddress broadcastAdd)
     {
         broadcastAddress = broadcastAdd;
     }
 
-    public static boolean startRpc()
+    public boolean startRpc()
     {
         return conf.start_rpc;
     }
 
-    public static InetAddress getRpcAddress()
+    public InetAddress getRpcAddress()
     {
         return rpcAddress;
     }
 
-    public static void setBroadcastRpcAddress(InetAddress broadcastRPCAddr)
+    public void setBroadcastRpcAddress(InetAddress broadcastRPCAddr)
     {
         broadcastRpcAddress = broadcastRPCAddr;
     }
 
-    public static InetAddress getBroadcastRpcAddress()
+    public InetAddress getBroadcastRpcAddress()
     {
         return broadcastRpcAddress;
     }
 
-    public static String getRpcServerType()
+    public String getRpcServerType()
     {
         return conf.rpc_server_type;
     }
 
-    public static boolean getRpcKeepAlive()
+    public boolean getRpcKeepAlive()
     {
         return conf.rpc_keepalive;
     }
 
-    public static Integer getRpcMinThreads()
+    public Integer getRpcMinThreads()
     {
         return conf.rpc_min_threads;
     }
 
-    public static Integer getRpcMaxThreads()
+    public Integer getRpcMaxThreads()
     {
         return conf.rpc_max_threads;
     }
 
-    public static Integer getRpcSendBufferSize()
+    public Integer getRpcSendBufferSize()
     {
         return conf.rpc_send_buff_size_in_bytes;
     }
 
-    public static Integer getRpcRecvBufferSize()
+    public Integer getRpcRecvBufferSize()
     {
         return conf.rpc_recv_buff_size_in_bytes;
     }
 
-    public static Integer getInternodeSendBufferSize()
+    public Integer getInternodeSendBufferSize()
     {
         return conf.internode_send_buff_size_in_bytes;
     }
 
-    public static Integer getInternodeRecvBufferSize()
+    public Integer getInternodeRecvBufferSize()
     {
         return conf.internode_recv_buff_size_in_bytes;
     }
 
-    public static boolean startNativeTransport()
+    public boolean startNativeTransport()
     {
         return conf.start_native_transport;
     }
 
-    public static int getNativeTransportPort()
+    public int getNativeTransportPort()
     {
         return Integer.parseInt(System.getProperty("cassandra.native_transport_port", conf.native_transport_port.toString()));
     }
 
-    public static Integer getNativeTransportMaxThreads()
+    public Integer getNativeTransportMaxThreads()
     {
         return conf.native_transport_max_threads;
     }
 
-    public static int getNativeTransportMaxFrameSize()
+    public int getNativeTransportMaxFrameSize()
     {
         return conf.native_transport_max_frame_size_in_mb * 1024 * 1024;
     }
 
-    public static double getCommitLogSyncBatchWindow()
+    public double getCommitLogSyncBatchWindow()
     {
         return conf.commitlog_sync_batch_window_in_ms;
     }
 
-    public static int getCommitLogSyncPeriod()
+    public int getCommitLogSyncPeriod()
     {
         return conf.commitlog_sync_period_in_ms;
     }
 
-    public static int getCommitLogPeriodicQueueSize()
+    public int getCommitLogPeriodicQueueSize()
     {
         return conf.commitlog_periodic_queue_size;
     }
 
-    public static Config.CommitLogSync getCommitLogSync()
+    public Config.CommitLogSync getCommitLogSync()
     {
         return conf.commitlog_sync;
     }
 
-    public static Config.DiskAccessMode getDiskAccessMode()
+    public Config.DiskAccessMode getDiskAccessMode()
     {
         return conf.disk_access_mode;
     }
 
-    public static Config.DiskAccessMode getIndexAccessMode()
+    public Config.DiskAccessMode getIndexAccessMode()
     {
         return indexAccessMode;
     }
 
-    public static void setDiskFailurePolicy(Config.DiskFailurePolicy policy)
+    public void setDiskFailurePolicy(Config.DiskFailurePolicy policy)
     {
         conf.disk_failure_policy = policy;
     }
 
-    public static Config.DiskFailurePolicy getDiskFailurePolicy()
+    public Config.DiskFailurePolicy getDiskFailurePolicy()
     {
         return conf.disk_failure_policy;
     }
 
-    public static void setCommitFailurePolicy(Config.CommitFailurePolicy policy)
+    public void setCommitFailurePolicy(Config.CommitFailurePolicy policy)
     {
         conf.commit_failure_policy = policy;
     }
 
-    public static Config.CommitFailurePolicy getCommitFailurePolicy()
+    public Config.CommitFailurePolicy getCommitFailurePolicy()
     {
         return conf.commit_failure_policy;
     }
 
-    public static boolean isSnapshotBeforeCompaction()
+    public boolean isSnapshotBeforeCompaction()
     {
         return conf.snapshot_before_compaction;
     }
 
-    public static boolean isAutoSnapshot() {
+    public boolean isAutoSnapshot() {
         return conf.auto_snapshot;
     }
 
     @VisibleForTesting
-    public static void setAutoSnapshot(boolean autoSnapshot) {
+    public void setAutoSnapshot(boolean autoSnapshot) {
         conf.auto_snapshot = autoSnapshot;
     }
 
-    public static boolean isAutoBootstrap()
+    public boolean isAutoBootstrap()
     {
         return Boolean.parseBoolean(System.getProperty("cassandra.auto_bootstrap", conf.auto_bootstrap.toString()));
     }
 
-    public static void setHintedHandoffEnabled(boolean hintedHandoffEnabled)
+    public void setHintedHandoffEnabled(boolean hintedHandoffEnabled)
     {
         conf.hinted_handoff_enabled_global = hintedHandoffEnabled;
         conf.hinted_handoff_enabled_by_dc.clear();
     }
 
-    public static void setHintedHandoffEnabled(final String dcNames)
+    public void setHintedHandoffEnabled(final String dcNames)
     {
         List<String> dcNameList;
         try
@@ -1300,43 +1300,43 @@ public class DatabaseDescriptor
         conf.hinted_handoff_enabled_by_dc.addAll(dcNameList);
     }
 
-    public static boolean hintedHandoffEnabled()
+    public boolean hintedHandoffEnabled()
     {
         return conf.hinted_handoff_enabled_global;
     }
 
-    public static Set<String> hintedHandoffEnabledByDC()
+    public Set<String> hintedHandoffEnabledByDC()
     {
         return Collections.unmodifiableSet(conf.hinted_handoff_enabled_by_dc);
     }
 
-    public static boolean shouldHintByDC()
+    public boolean shouldHintByDC()
     {
         return !conf.hinted_handoff_enabled_by_dc.isEmpty();
     }
 
-    public static boolean hintedHandoffEnabled(final String dcName)
+    public boolean hintedHandoffEnabled(final String dcName)
     {
         return conf.hinted_handoff_enabled_by_dc.contains(dcName);
     }
 
-    public static void setMaxHintWindow(int ms)
+    public void setMaxHintWindow(int ms)
     {
         conf.max_hint_window_in_ms = ms;
     }
 
-    public static int getMaxHintWindow()
+    public int getMaxHintWindow()
     {
         return conf.max_hint_window_in_ms;
     }
 
     @Deprecated
-    public static Integer getIndexInterval()
+    public Integer getIndexInterval()
     {
         return conf.index_interval;
     }
 
-    public static File getSerializedCachePath(String ksName, String cfName, UUID cfId, CacheService.CacheType cacheType, String version)
+    public File getSerializedCachePath(String ksName, String cfName, UUID cfId, CacheService.CacheType cacheType, String version)
     {
         StringBuilder builder = new StringBuilder();
         builder.append(ksName).append('-');
@@ -1348,210 +1348,210 @@ public class DatabaseDescriptor
         return new File(conf.saved_caches_directory, builder.toString());
     }
 
-    public static int getDynamicUpdateInterval()
+    public int getDynamicUpdateInterval()
     {
         return conf.dynamic_snitch_update_interval_in_ms;
     }
-    public static void setDynamicUpdateInterval(Integer dynamicUpdateInterval)
+    public void setDynamicUpdateInterval(Integer dynamicUpdateInterval)
     {
         conf.dynamic_snitch_update_interval_in_ms = dynamicUpdateInterval;
     }
 
-    public static int getDynamicResetInterval()
+    public int getDynamicResetInterval()
     {
         return conf.dynamic_snitch_reset_interval_in_ms;
     }
-    public static void setDynamicResetInterval(Integer dynamicResetInterval)
+    public void setDynamicResetInterval(Integer dynamicResetInterval)
     {
         conf.dynamic_snitch_reset_interval_in_ms = dynamicResetInterval;
     }
 
-    public static double getDynamicBadnessThreshold()
+    public double getDynamicBadnessThreshold()
     {
         return conf.dynamic_snitch_badness_threshold;
     }
 
-    public static void setDynamicBadnessThreshold(Double dynamicBadnessThreshold)
+    public void setDynamicBadnessThreshold(Double dynamicBadnessThreshold)
     {
         conf.dynamic_snitch_badness_threshold = dynamicBadnessThreshold;
     }
 
-    public static ServerEncryptionOptions getServerEncryptionOptions()
+    public ServerEncryptionOptions getServerEncryptionOptions()
     {
         return conf.server_encryption_options;
     }
 
-    public static ClientEncryptionOptions getClientEncryptionOptions()
+    public ClientEncryptionOptions getClientEncryptionOptions()
     {
         return conf.client_encryption_options;
     }
 
-    public static int getHintedHandoffThrottleInKB()
+    public int getHintedHandoffThrottleInKB()
     {
         return conf.hinted_handoff_throttle_in_kb;
     }
 
-    public static int getBatchlogReplayThrottleInKB()
+    public int getBatchlogReplayThrottleInKB()
     {
         return conf.batchlog_replay_throttle_in_kb;
     }
 
-    public static void setHintedHandoffThrottleInKB(Integer throttleInKB)
+    public void setHintedHandoffThrottleInKB(Integer throttleInKB)
     {
         conf.hinted_handoff_throttle_in_kb = throttleInKB;
     }
 
-    public static int getMaxHintsThread()
+    public int getMaxHintsThread()
     {
         return conf.max_hints_delivery_threads;
     }
 
-    public static boolean isIncrementalBackupsEnabled()
+    public boolean isIncrementalBackupsEnabled()
     {
         return conf.incremental_backups;
     }
 
-    public static void setIncrementalBackupsEnabled(boolean value)
+    public void setIncrementalBackupsEnabled(boolean value)
     {
         conf.incremental_backups = value;
     }
 
-    public static int getFileCacheSizeInMB()
+    public int getFileCacheSizeInMB()
     {
         return conf.file_cache_size_in_mb;
     }
 
-    public static long getTotalCommitlogSpaceInMB()
+    public long getTotalCommitlogSpaceInMB()
     {
         return conf.commitlog_total_space_in_mb;
     }
 
-    public static int getSSTablePreempiveOpenIntervalInMB()
+    public int getSSTablePreempiveOpenIntervalInMB()
     {
         return conf.sstable_preemptive_open_interval_in_mb;
     }
 
-    public static boolean getTrickleFsync()
+    public boolean getTrickleFsync()
     {
         return conf.trickle_fsync;
     }
 
-    public static int getTrickleFsyncIntervalInKb()
+    public int getTrickleFsyncIntervalInKb()
     {
         return conf.trickle_fsync_interval_in_kb;
     }
 
-    public static long getKeyCacheSizeInMB()
+    public long getKeyCacheSizeInMB()
     {
         return keyCacheSizeInMB;
     }
 
-    public static long getIndexSummaryCapacityInMB()
+    public long getIndexSummaryCapacityInMB()
     {
         return indexSummaryCapacityInMB;
     }
 
-    public static int getKeyCacheSavePeriod()
+    public int getKeyCacheSavePeriod()
     {
         return conf.key_cache_save_period;
     }
 
-    public static void setKeyCacheSavePeriod(int keyCacheSavePeriod)
+    public void setKeyCacheSavePeriod(int keyCacheSavePeriod)
     {
         conf.key_cache_save_period = keyCacheSavePeriod;
     }
 
-    public static int getKeyCacheKeysToSave()
+    public int getKeyCacheKeysToSave()
     {
         return conf.key_cache_keys_to_save;
     }
 
-    public static void setKeyCacheKeysToSave(int keyCacheKeysToSave)
+    public void setKeyCacheKeysToSave(int keyCacheKeysToSave)
     {
         conf.key_cache_keys_to_save = keyCacheKeysToSave;
     }
 
-    public static long getRowCacheSizeInMB()
+    public long getRowCacheSizeInMB()
     {
         return conf.row_cache_size_in_mb;
     }
 
-    public static int getRowCacheSavePeriod()
+    public int getRowCacheSavePeriod()
     {
         return conf.row_cache_save_period;
     }
 
-    public static void setRowCacheSavePeriod(int rowCacheSavePeriod)
+    public void setRowCacheSavePeriod(int rowCacheSavePeriod)
     {
         conf.row_cache_save_period = rowCacheSavePeriod;
     }
 
-    public static int getRowCacheKeysToSave()
+    public int getRowCacheKeysToSave()
     {
         return conf.row_cache_keys_to_save;
     }
 
-    public static long getCounterCacheSizeInMB()
+    public long getCounterCacheSizeInMB()
     {
         return counterCacheSizeInMB;
     }
 
-    public static int getCounterCacheSavePeriod()
+    public int getCounterCacheSavePeriod()
     {
         return conf.counter_cache_save_period;
     }
 
-    public static void setCounterCacheSavePeriod(int counterCacheSavePeriod)
+    public void setCounterCacheSavePeriod(int counterCacheSavePeriod)
     {
         conf.counter_cache_save_period = counterCacheSavePeriod;
     }
 
-    public static int getCounterCacheKeysToSave()
+    public int getCounterCacheKeysToSave()
     {
         return conf.counter_cache_keys_to_save;
     }
 
-    public static void setCounterCacheKeysToSave(int counterCacheKeysToSave)
+    public void setCounterCacheKeysToSave(int counterCacheKeysToSave)
     {
         conf.counter_cache_keys_to_save = counterCacheKeysToSave;
     }
 
-    public static IAllocator getoffHeapMemoryAllocator()
+    public IAllocator getoffHeapMemoryAllocator()
     {
         return memoryAllocator;
     }
 
-    public static void setRowCacheKeysToSave(int rowCacheKeysToSave)
+    public void setRowCacheKeysToSave(int rowCacheKeysToSave)
     {
         conf.row_cache_keys_to_save = rowCacheKeysToSave;
     }
 
-    public static int getStreamingSocketTimeout()
+    public int getStreamingSocketTimeout()
     {
         return conf.streaming_socket_timeout_in_ms;
     }
 
-    public static String getLocalDataCenter()
+    public String getLocalDataCenter()
     {
         return localDC;
     }
 
-    public static Comparator<InetAddress> getLocalComparator()
+    public Comparator<InetAddress> getLocalComparator()
     {
         return localComparator;
     }
 
-    public static Config.InternodeCompression internodeCompression()
+    public Config.InternodeCompression internodeCompression()
     {
         return conf.internode_compression;
     }
 
-    public static boolean getInterDCTcpNoDelay()
+    public boolean getInterDCTcpNoDelay()
     {
         return conf.inter_dc_tcp_nodelay;
     }
 
-    public static MemtablePool getMemtableAllocatorPool()
+    public MemtablePool getMemtableAllocatorPool()
     {
         long heapLimit = ((long) conf.memtable_heap_space_in_mb) << 20;
         long offHeapLimit = ((long) conf.memtable_offheap_space_in_mb) << 20;
@@ -1575,12 +1575,12 @@ public class DatabaseDescriptor
         }
     }
 
-    public static int getIndexSummaryResizeIntervalInMinutes()
+    public int getIndexSummaryResizeIntervalInMinutes()
     {
         return conf.index_summary_resize_interval_in_minutes;
     }
 
-    public static boolean hasLargeAddressSpace()
+    public boolean hasLargeAddressSpace()
     {
         // currently we just check if it's a 64bit arch, but any we only really care if the address space is large
         String datamodel = System.getProperty("sun.arch.data.model");

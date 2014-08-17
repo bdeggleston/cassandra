@@ -37,7 +37,7 @@ public class FileCacheService
 {
     private static final Logger logger = LoggerFactory.getLogger(FileCacheService.class);
 
-    private static final long MEMORY_USAGE_THRESHOLD = DatabaseDescriptor.getFileCacheSizeInMB() * 1024L * 1024L;
+    private static final long MEMORY_USAGE_THRESHOLD = DatabaseDescriptor.instance.getFileCacheSizeInMB() * 1024L * 1024L;
     private static final int AFTER_ACCESS_EXPIRATION = 512; // in millis
 
     public static FileCacheService instance = new FileCacheService();
@@ -110,7 +110,7 @@ public class FileCacheService
 
         cache = CacheBuilder.newBuilder()
                 .expireAfterAccess(AFTER_ACCESS_EXPIRATION, TimeUnit.MILLISECONDS)
-                .concurrencyLevel(DatabaseDescriptor.getConcurrentReaders())
+                .concurrencyLevel(DatabaseDescriptor.instance.getConcurrentReaders())
                 .removalListener(onRemove)
                 .initialCapacity(16 << 10)
                 .build();

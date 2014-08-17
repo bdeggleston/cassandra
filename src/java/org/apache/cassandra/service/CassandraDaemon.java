@@ -107,7 +107,7 @@ public class CassandraDaemon
             logger.info("Could not resolve local host");
         }
         // log warnings for different kinds of sub-optimal JVMs.  tldr use 64-bit Oracle >= 1.6u32
-        if (!DatabaseDescriptor.hasLargeAddressSpace())
+        if (!DatabaseDescriptor.instance.hasLargeAddressSpace())
             logger.info("32bit JVM detected.  It is recommended to run Cassandra on a 64bit JVM for better performance.");
         String javaVersion = System.getProperty("java.version");
         String javaVmName = System.getProperty("java.vm.name");
@@ -190,9 +190,9 @@ public class CassandraDaemon
         });
 
         // check all directories(data, commitlog, saved cache) for existence and permission
-        Iterable<String> dirs = Iterables.concat(Arrays.asList(DatabaseDescriptor.getAllDataFileLocations()),
-                                                 Arrays.asList(DatabaseDescriptor.getCommitLogLocation(),
-                                                               DatabaseDescriptor.getSavedCachesLocation()));
+        Iterable<String> dirs = Iterables.concat(Arrays.asList(DatabaseDescriptor.instance.getAllDataFileLocations()),
+                                                 Arrays.asList(DatabaseDescriptor.instance.getCommitLogLocation(),
+                                                               DatabaseDescriptor.instance.getSavedCachesLocation()));
         for (String dataDir : dirs)
         {
             logger.debug("Checking directory {}", dataDir);
@@ -236,7 +236,7 @@ public class CassandraDaemon
         }
 
         // load keyspace descriptions.
-        DatabaseDescriptor.loadSchemas();
+        DatabaseDescriptor.instance.loadSchemas();
 
         // clean up compaction leftovers
         Map<Pair<String, String>, Map<Integer, UUID>> unfinishedCompactions = SystemKeyspace.getUnfinishedCompactions();
@@ -370,14 +370,14 @@ public class CassandraDaemon
         UDFRegistry.init();
 
         // Thift
-        InetAddress rpcAddr = DatabaseDescriptor.getRpcAddress();
-        int rpcPort = DatabaseDescriptor.getRpcPort();
-        int listenBacklog = DatabaseDescriptor.getRpcListenBacklog();
+        InetAddress rpcAddr = DatabaseDescriptor.instance.getRpcAddress();
+        int rpcPort = DatabaseDescriptor.instance.getRpcPort();
+        int listenBacklog = DatabaseDescriptor.instance.getRpcListenBacklog();
         thriftServer = new ThriftServer(rpcAddr, rpcPort, listenBacklog);
 
         // Native transport
-        InetAddress nativeAddr = DatabaseDescriptor.getRpcAddress();
-        int nativePort = DatabaseDescriptor.getNativeTransportPort();
+        InetAddress nativeAddr = DatabaseDescriptor.instance.getRpcAddress();
+        int nativePort = DatabaseDescriptor.instance.getNativeTransportPort();
         nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort);
     }
 
@@ -404,13 +404,13 @@ public class CassandraDaemon
     public void start()
     {
         String nativeFlag = System.getProperty("cassandra.start_native_transport");
-        if ((nativeFlag != null && Boolean.parseBoolean(nativeFlag)) || (nativeFlag == null && DatabaseDescriptor.startNativeTransport()))
+        if ((nativeFlag != null && Boolean.parseBoolean(nativeFlag)) || (nativeFlag == null && DatabaseDescriptor.instance.startNativeTransport()))
             nativeServer.start();
         else
             logger.info("Not starting native transport as requested. Use JMX (StorageService->startNativeTransport()) or nodetool (enablebinary) to start it");
 
         String rpcFlag = System.getProperty("cassandra.start_rpc");
-        if ((rpcFlag != null && Boolean.parseBoolean(rpcFlag)) || (rpcFlag == null && DatabaseDescriptor.startRpc()))
+        if ((rpcFlag != null && Boolean.parseBoolean(rpcFlag)) || (rpcFlag == null && DatabaseDescriptor.instance.startRpc()))
             thriftServer.start();
         else
             logger.info("Not starting RPC server as requested. Use JMX (StorageService->startRPCServer()) or nodetool (enablethrift) to start it");

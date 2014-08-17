@@ -64,7 +64,7 @@ public class CommitLogSegment
     static
     {
         long maxId = Long.MIN_VALUE;
-        for (File file : new File(DatabaseDescriptor.getCommitLogLocation()).listFiles())
+        for (File file : new File(DatabaseDescriptor.instance.getCommitLogLocation()).listFiles())
         {
             if (CommitLogDescriptor.isValid(file.getName()))
                 maxId = Math.max(CommitLogDescriptor.fromFileName(file.getName()).id, maxId);
@@ -133,7 +133,7 @@ public class CommitLogSegment
     {
         id = getNextId();
         descriptor = new CommitLogDescriptor(id);
-        logFile = new File(DatabaseDescriptor.getCommitLogLocation(), descriptor.fileName());
+        logFile = new File(DatabaseDescriptor.instance.getCommitLogLocation(), descriptor.fileName());
         boolean isCreating = true;
 
         try
@@ -160,10 +160,10 @@ public class CommitLogSegment
             // Map the segment, extending or truncating it to the standard segment size.
             // (We may have restarted after a segment size configuration change, leaving "incorrectly"
             // sized segments on disk.)
-            logFileAccessor.setLength(DatabaseDescriptor.getCommitLogSegmentSize());
+            logFileAccessor.setLength(DatabaseDescriptor.instance.getCommitLogSegmentSize());
             fd = CLibrary.getfd(logFileAccessor.getFD());
 
-            buffer = logFileAccessor.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, DatabaseDescriptor.getCommitLogSegmentSize());
+            buffer = logFileAccessor.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, DatabaseDescriptor.instance.getCommitLogSegmentSize());
             // write the header
             CommitLogDescriptor.writeHeader(buffer, descriptor);
             // mark the initial sync marker as uninitialised

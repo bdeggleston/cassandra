@@ -97,7 +97,7 @@ public class ThriftServer implements CassandraDaemon.Server
 
     protected TTransportFactory getTransportFactory()
     {
-        int tFramedTransportSize = DatabaseDescriptor.getThriftFramedTransportSize();
+        int tFramedTransportSize = DatabaseDescriptor.instance.getThriftFramedTransportSize();
         return new TFramedTransport.Factory(tFramedTransportSize);
     }
 
@@ -123,12 +123,12 @@ public class ThriftServer implements CassandraDaemon.Server
             args.addr = new InetSocketAddress(listenAddr, listenPort);
             args.listenBacklog = listenBacklog;
             args.processor = processor;
-            args.keepAlive = DatabaseDescriptor.getRpcKeepAlive();
-            args.sendBufferSize = DatabaseDescriptor.getRpcSendBufferSize();
-            args.recvBufferSize = DatabaseDescriptor.getRpcRecvBufferSize();
+            args.keepAlive = DatabaseDescriptor.instance.getRpcKeepAlive();
+            args.sendBufferSize = DatabaseDescriptor.instance.getRpcSendBufferSize();
+            args.recvBufferSize = DatabaseDescriptor.instance.getRpcRecvBufferSize();
             args.inTransportFactory = transportFactory;
             args.outTransportFactory = transportFactory;
-            serverEngine = new TServerCustomFactory(DatabaseDescriptor.getRpcServerType()).buildTServer(args);
+            serverEngine = new TServerCustomFactory(DatabaseDescriptor.instance.getRpcServerType()).buildTServer(args);
         }
 
         public void run()

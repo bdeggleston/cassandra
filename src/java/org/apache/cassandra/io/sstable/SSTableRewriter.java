@@ -59,7 +59,7 @@ public class SSTableRewriter
     private static final long preemptiveOpenInterval;
     static
     {
-        long interval = DatabaseDescriptor.getSSTablePreempiveOpenIntervalInMB() * (1L << 20);
+        long interval = DatabaseDescriptor.instance.getSSTablePreempiveOpenIntervalInMB() * (1L << 20);
         if (interval < 0)
             interval = Long.MAX_VALUE;
         preemptiveOpenInterval = interval;

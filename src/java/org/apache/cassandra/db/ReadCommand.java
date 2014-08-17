@@ -124,7 +124,7 @@ public abstract class ReadCommand implements IReadCommand, Pageable
 
     public long getTimeout()
     {
-        return DatabaseDescriptor.getReadRpcTimeout();
+        return DatabaseDescriptor.instance.getReadRpcTimeout();
     }
 }
 

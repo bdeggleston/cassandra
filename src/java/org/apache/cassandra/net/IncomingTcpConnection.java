@@ -51,11 +51,11 @@ public class IncomingTcpConnection extends Thread
         this.version = version;
         this.compressed = compressed;
         this.socket = socket;
-        if (DatabaseDescriptor.getInternodeRecvBufferSize() != null)
+        if (DatabaseDescriptor.instance.getInternodeRecvBufferSize() != null)
         {
             try
             {
-                this.socket.setReceiveBufferSize(DatabaseDescriptor.getInternodeRecvBufferSize());
+                this.socket.setReceiveBufferSize(DatabaseDescriptor.instance.getInternodeRecvBufferSize());
             }
             catch (SocketException se)
             {
@@ -159,7 +159,7 @@ public class IncomingTcpConnection extends Thread
         long timestamp = System.currentTimeMillis();
         // make sure to readInt, even if cross_node_to is not enabled
         int partial = input.readInt();
-        if (DatabaseDescriptor.hasCrossNodeTimeout())
+        if (DatabaseDescriptor.instance.hasCrossNodeTimeout())
             timestamp = (timestamp & 0xFFFFFFFF00000000L) | (((partial & 0xFFFFFFFFL) << 2) >> 2);
 
         MessageIn message = MessageIn.read(input, version, id);

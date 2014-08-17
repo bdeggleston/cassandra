@@ -118,7 +118,7 @@ public class ServerConnection extends Connection
     {
         if (saslAuthenticator == null)
         {
-            IAuthenticator authenticator = DatabaseDescriptor.getAuthenticator();
+            IAuthenticator authenticator = DatabaseDescriptor.instance.getAuthenticator();
             assert authenticator instanceof ISaslAwareAuthenticator : "Configured IAuthenticator does not support SASL authentication";
             saslAuthenticator = ((ISaslAwareAuthenticator)authenticator).newAuthenticator();
         }

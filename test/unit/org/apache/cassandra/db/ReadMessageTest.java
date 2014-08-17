@@ -135,7 +135,7 @@ public class ReadMessageTest
         boolean commitLogMessageFound = false;
         boolean noCommitLogMessageFound = false;
 
-        File commitLogDir = new File(DatabaseDescriptor.getCommitLogLocation());
+        File commitLogDir = new File(DatabaseDescriptor.instance.getCommitLogLocation());
 
         byte[] commitBytes = "commit".getBytes("UTF-8");
 

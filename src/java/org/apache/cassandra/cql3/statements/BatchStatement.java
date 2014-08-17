@@ -240,7 +240,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
     private void verifyBatchSize(Iterable<ColumnFamily> cfs)
     {
         long size = 0;
-        long warnThreshold = DatabaseDescriptor.getBatchSizeWarnThreshold();
+        long warnThreshold = DatabaseDescriptor.instance.getBatchSizeWarnThreshold();
 
         for (ColumnFamily cf : cfs)
             size += cf.dataSize();

@@ -62,7 +62,7 @@ public class SSTableLevelResetter
         try
         {
             // load keyspace descriptions.
-            DatabaseDescriptor.loadSchemas();
+            DatabaseDescriptor.instance.loadSchemas();
 
             String keyspaceName = args[1];
             String columnfamily = args[2];

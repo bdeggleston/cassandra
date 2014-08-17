@@ -213,7 +213,7 @@ public class StorageProxy implements StorageProxyMBean
         CFMetaData metadata = Schema.instance.getCFMetaData(keyspaceName, cfName);
 
         long start = System.nanoTime();
-        long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
+        long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.instance.getCasContentionTimeout());
         while (System.nanoTime() - start < timeout)
         {
             // for simplicity, we'll do a single liveness check at the start of each attempt
@@ -270,7 +270,7 @@ public class StorageProxy implements StorageProxyMBean
 
     private static Predicate<InetAddress> sameDCPredicateFor(final String dc)
     {
-        final IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
+        final IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
         return new Predicate<InetAddress>()
         {
             public boolean apply(InetAddress host)
@@ -288,7 +288,7 @@ public class StorageProxy implements StorageProxyMBean
         if (consistencyForPaxos == ConsistencyLevel.LOCAL_SERIAL)
         {
             // Restrict naturalEndpoints and pendingEndpoints to node in the local DC only
-            String localDc = DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+            String localDc = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
             Predicate<InetAddress> isLocalDc = sameDCPredicateFor(localDc);
             naturalEndpoints = ImmutableList.copyOf(Iterables.filter(naturalEndpoints, isLocalDc));
             pendingEndpoints = ImmutableList.copyOf(Iterables.filter(pendingEndpoints, isLocalDc));
@@ -309,7 +309,7 @@ public class StorageProxy implements StorageProxyMBean
     private static UUID beginAndRepairPaxos(long start, ByteBuffer key, CFMetaData metadata, List<InetAddress> liveEndpoints, int requiredParticipants, ConsistencyLevel consistencyForPaxos, ConsistencyLevel consistencyForCommit)
     throws WriteTimeoutException
     {
-        long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
+        long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.instance.getCasContentionTimeout());
 
         PrepareCallback summary = null;
         while (System.nanoTime() - start < timeout)
@@ -449,7 +449,7 @@ public class StorageProxy implements StorageProxyMBean
     throws UnavailableException, OverloadedException, WriteTimeoutException
     {
         Tracing.trace("Determining replicas for mutation");
-        final String localDataCenter = DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+        final String localDataCenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
 
         long startTime = System.nanoTime();
         List<AbstractWriteResponseHandler> responseHandlers = new ArrayList<>(mutations.size());
@@ -559,7 +559,7 @@ public class StorageProxy implements StorageProxyMBean
         long startTime = System.nanoTime();
 
         List<WriteResponseHandlerWrapper> wrappers = new ArrayList<WriteResponseHandlerWrapper>(mutations.size());
-        String localDataCenter = DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+        String localDataCenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
 
         try
         {
@@ -747,7 +747,7 @@ public class StorageProxy implements StorageProxyMBean
     {
         TokenMetadata.Topology topology = StorageService.instance.getTokenMetadata().cachedOnlyTokenMap().getTopology();
         Multimap<String, InetAddress> localEndpoints = HashMultimap.create(topology.getDatacenterRacks().get(localDataCenter));
-        String localRack = DatabaseDescriptor.getEndpointSnitch().getRack(FBUtilities.getBroadcastAddress());
+        String localRack = DatabaseDescriptor.instance.getEndpointSnitch().getRack(FBUtilities.getBroadcastAddress());
 
         Collection<InetAddress> chosenEndpoints = new BatchlogManager.EndpointFilter(localRack, localEndpoints).filter();
         if (chosenEndpoints.isEmpty())
@@ -812,7 +812,7 @@ public class StorageProxy implements StorageProxyMBean
                     // belongs on a different server
                     if (message == null)
                         message = mutation.createMessage();
-                    String dc = DatabaseDescriptor.getEndpointSnitch().getDatacenter(destination);
+                    String dc = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(destination);
                     // direct writes to local DC or old Cassandra versions
                     // (1.1 knows how to forward old-style String message IDs; updated to int in 2.0)
                     if (localDataCenter.equals(dc))
@@ -1022,7 +1022,7 @@ public class StorageProxy implements StorageProxyMBean
     private static InetAddress findSuitableEndpoint(String keyspaceName, ByteBuffer key, String localDataCenter, ConsistencyLevel cl) throws UnavailableException
     {
         Keyspace keyspace = Keyspace.open(keyspaceName);
-        IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
+        IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
         List<InetAddress> endpoints = StorageService.instance.getLiveNaturalEndpoints(keyspace, key);
         if (endpoints.isEmpty())
             // TODO have a way to compute the consistency level
@@ -1304,7 +1304,7 @@ public class StorageProxy implements StorageProxyMBean
                     {
                         // wait for the repair writes to be acknowledged, to minimize impact on any replica that's
                         // behind on writes in case the out-of-sync row is read multiple times in quick succession
-                        FBUtilities.waitOnFutures(resolver.repairResults, DatabaseDescriptor.getWriteRpcTimeout());
+                        FBUtilities.waitOnFutures(resolver.repairResults, DatabaseDescriptor.instance.getWriteRpcTimeout());
                     }
                     catch (TimeoutException e)
                     {
@@ -1388,7 +1388,7 @@ public class StorageProxy implements StorageProxyMBean
     private static List<InetAddress> getLiveSortedEndpoints(Keyspace keyspace, RingPosition pos)
     {
         List<InetAddress> liveEndpoints = StorageService.instance.getLiveNaturalEndpoints(keyspace, pos);
-        DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getBroadcastAddress(), liveEndpoints);
+        DatabaseDescriptor.instance.getEndpointSnitch().sortByProximity(FBUtilities.getBroadcastAddress(), liveEndpoints);
         return liveEndpoints;
     }
 
@@ -1442,7 +1442,7 @@ public class StorageProxy implements StorageProxyMBean
         }
 
         // adjust resultRowsPerRange by the number of tokens this node has and the replication factor for this ks
-        return (resultRowsPerRange / DatabaseDescriptor.getNumTokens()) / keyspace.getReplicationStrategy().getReplicationFactor();
+        return (resultRowsPerRange / DatabaseDescriptor.instance.getNumTokens()) / keyspace.getReplicationStrategy().getReplicationFactor();
     }
 
     private static float calculateResultRowsUsingEstimatedKeys(ColumnFamilyStore cfs)
@@ -1543,7 +1543,7 @@ public class StorageProxy implements StorageProxyMBean
                         List<InetAddress> filteredMerged = consistency_level.filterForQuery(keyspace, merged);
 
                         // Estimate whether merging will be a win or not
-                        if (!DatabaseDescriptor.getEndpointSnitch().isWorthMergingForRangeQuery(filteredMerged, filteredEndpoints, nextFilteredEndpoints))
+                        if (!DatabaseDescriptor.instance.getEndpointSnitch().isWorthMergingForRangeQuery(filteredMerged, filteredEndpoints, nextFilteredEndpoints))
                             break;
 
                         // If we get there, merge this range and the next one
@@ -1634,7 +1634,7 @@ public class StorageProxy implements StorageProxyMBean
 
                 try
                 {
-                    FBUtilities.waitOnFutures(repairResponses, DatabaseDescriptor.getWriteRpcTimeout());
+                    FBUtilities.waitOnFutures(repairResponses, DatabaseDescriptor.instance.getWriteRpcTimeout());
                 }
                 catch (TimeoutException ex)
                 {
@@ -1730,7 +1730,7 @@ public class StorageProxy implements StorageProxyMBean
         try
         {
             // wait for as long as possible. timeout-1s if possible.
-            latch.await(DatabaseDescriptor.getRpcTimeout(), TimeUnit.MILLISECONDS);
+            latch.await(DatabaseDescriptor.instance.getRpcTimeout(), TimeUnit.MILLISECONDS);
         }
         catch (InterruptedException ex)
         {
@@ -1894,53 +1894,53 @@ public class StorageProxy implements StorageProxyMBean
 
     public boolean getHintedHandoffEnabled()
     {
-        return DatabaseDescriptor.hintedHandoffEnabled();
+        return DatabaseDescriptor.instance.hintedHandoffEnabled();
     }
 
     public Set<String> getHintedHandoffEnabledByDC()
     {
-        return DatabaseDescriptor.hintedHandoffEnabledByDC();
+        return DatabaseDescriptor.instance.hintedHandoffEnabledByDC();
     }
 
     public void setHintedHandoffEnabled(boolean b)
     {
-        DatabaseDescriptor.setHintedHandoffEnabled(b);
+        DatabaseDescriptor.instance.setHintedHandoffEnabled(b);
     }
 
     public void setHintedHandoffEnabledByDCList(String dcNames)
     {
-        DatabaseDescriptor.setHintedHandoffEnabled(dcNames);
+        DatabaseDescriptor.instance.setHintedHandoffEnabled(dcNames);
     }
 
     public int getMaxHintWindow()
     {
-        return DatabaseDescriptor.getMaxHintWindow();
+        return DatabaseDescriptor.instance.getMaxHintWindow();
     }
 
     public void setMaxHintWindow(int ms)
     {
-        DatabaseDescriptor.setMaxHintWindow(ms);
+        DatabaseDescriptor.instance.setMaxHintWindow(ms);
     }
 
     public static boolean shouldHint(InetAddress ep)
     {
-        if (DatabaseDescriptor.shouldHintByDC())
+        if (DatabaseDescriptor.instance.shouldHintByDC())
         {
-            final String dc = DatabaseDescriptor.getEndpointSnitch().getDatacenter(ep);
+            final String dc = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(ep);
             //Disable DC specific hints
-            if(!DatabaseDescriptor.hintedHandoffEnabled(dc))
+            if(!DatabaseDescriptor.instance.hintedHandoffEnabled(dc))
             {
                 HintedHandOffManager.instance.metrics.incrPastWindow(ep);
                 return false;
             }
         }
-        else if (!DatabaseDescriptor.hintedHandoffEnabled())
+        else if (!DatabaseDescriptor.instance.hintedHandoffEnabled())
         {
             HintedHandOffManager.instance.metrics.incrPastWindow(ep);
             return false;
         }
 
-        boolean hintWindowExpired = Gossiper.instance.getEndpointDowntime(ep) > DatabaseDescriptor.getMaxHintWindow();
+        boolean hintWindowExpired = Gossiper.instance.getEndpointDowntime(ep) > DatabaseDescriptor.instance.getMaxHintWindow();
         if (hintWindowExpired)
         {
             HintedHandOffManager.instance.metrics.incrPastWindow(ep);
@@ -2029,7 +2029,7 @@ public class StorageProxy implements StorageProxyMBean
         public final void run()
         {
 
-            if (TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - constructionTime) > DatabaseDescriptor.getTimeout(verb))
+            if (TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - constructionTime) > DatabaseDescriptor.instance.getTimeout(verb))
             {
                 MessagingService.instance().incrementDroppedMessages(verb);
                 return;
@@ -2056,7 +2056,7 @@ public class StorageProxy implements StorageProxyMBean
 
         public final void run()
         {
-            if (System.currentTimeMillis() > constructionTime + DatabaseDescriptor.getTimeout(MessagingService.Verb.MUTATION))
+            if (System.currentTimeMillis() > constructionTime + DatabaseDescriptor.instance.getTimeout(MessagingService.Verb.MUTATION))
             {
                 MessagingService.instance().incrementDroppedMessages(MessagingService.Verb.MUTATION);
                 HintRunnable runnable = new HintRunnable(FBUtilities.getBroadcastAddress())
@@ -2142,26 +2142,26 @@ public class StorageProxy implements StorageProxyMBean
             logger.warn("Some hints were not written before shutdown.  This is not supposed to happen.  You should (a) run repair, and (b) file a bug report");
     }
 
-    public Long getRpcTimeout() { return DatabaseDescriptor.getRpcTimeout(); }
-    public void setRpcTimeout(Long timeoutInMillis) { DatabaseDescriptor.setRpcTimeout(timeoutInMillis); }
+    public Long getRpcTimeout() { return DatabaseDescriptor.instance.getRpcTimeout(); }
+    public void setRpcTimeout(Long timeoutInMillis) { DatabaseDescriptor.instance.setRpcTimeout(timeoutInMillis); }
 
-    public Long getReadRpcTimeout() { return DatabaseDescriptor.getReadRpcTimeout(); }
-    public void setReadRpcTimeout(Long timeoutInMillis) { DatabaseDescriptor.setReadRpcTimeout(timeoutInMillis); }
+    public Long getReadRpcTimeout() { return DatabaseDescriptor.instance.getReadRpcTimeout(); }
+    public void setReadRpcTimeout(Long timeoutInMillis) { DatabaseDescriptor.instance.setReadRpcTimeout(timeoutInMillis); }
 
-    public Long getWriteRpcTimeout() { return DatabaseDescriptor.getWriteRpcTimeout(); }
-    public void setWriteRpcTimeout(Long timeoutInMillis) { DatabaseDescriptor.setWriteRpcTimeout(timeoutInMillis); }
+    public Long getWriteRpcTimeout() { return DatabaseDescriptor.instance.getWriteRpcTimeout(); }
+    public void setWriteRpcTimeout(Long timeoutInMillis) { DatabaseDescriptor.instance.setWriteRpcTimeout(timeoutInMillis); }
 
-    public Long getCounterWriteRpcTimeout() { return DatabaseDescriptor.getCounterWriteRpcTimeout(); }
-    public void setCounterWriteRpcTimeout(Long timeoutInMillis) { DatabaseDescriptor.setCounterWriteRpcTimeout(timeoutInMillis); }
+    public Long getCounterWriteRpcTimeout() { return DatabaseDescriptor.instance.getCounterWriteRpcTimeout(); }
+    public void setCounterWriteRpcTimeout(Long timeoutInMillis) { DatabaseDescriptor.instance.setCounterWriteRpcTimeout(timeoutInMillis); }
 
-    public Long getCasContentionTimeout() { return DatabaseDescriptor.getCasContentionTimeout(); }
-    public void setCasContentionTimeout(Long timeoutInMillis) { DatabaseDescriptor.setCasContentionTimeout(timeoutInMillis); }
+    public Long getCasContentionTimeout() { return DatabaseDescriptor.instance.getCasContentionTimeout(); }
+    public void setCasContentionTimeout(Long timeoutInMillis) { DatabaseDescriptor.instance.setCasContentionTimeout(timeoutInMillis); }
 
-    public Long getRangeRpcTimeout() { return DatabaseDescriptor.getRangeRpcTimeout(); }
-    public void setRangeRpcTimeout(Long timeoutInMillis) { DatabaseDescriptor.setRangeRpcTimeout(timeoutInMillis); }
+    public Long getRangeRpcTimeout() { return DatabaseDescriptor.instance.getRangeRpcTimeout(); }
+    public void setRangeRpcTimeout(Long timeoutInMillis) { DatabaseDescriptor.instance.setRangeRpcTimeout(timeoutInMillis); }
 
-    public Long getTruncateRpcTimeout() { return DatabaseDescriptor.getTruncateRpcTimeout(); }
-    public void setTruncateRpcTimeout(Long timeoutInMillis) { DatabaseDescriptor.setTruncateRpcTimeout(timeoutInMillis); }
+    public Long getTruncateRpcTimeout() { return DatabaseDescriptor.instance.getTruncateRpcTimeout(); }
+    public void setTruncateRpcTimeout(Long timeoutInMillis) { DatabaseDescriptor.instance.setTruncateRpcTimeout(timeoutInMillis); }
     public void reloadTriggerClasses() { TriggerExecutor.instance.reloadClasses(); }
 
     

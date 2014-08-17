@@ -66,7 +66,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
 
     public File getCachePath(String ksName, String cfName, UUID cfId, String version)
     {
-        return DatabaseDescriptor.getSerializedCachePath(ksName, cfName, cfId, cacheType, version);
+        return DatabaseDescriptor.instance.getSerializedCachePath(ksName, cfName, cfId, cacheType, version);
     }
 
     public Writer getWriter(int keysToSave)
@@ -263,7 +263,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
 
         private void deleteOldCacheFiles()
         {
-            File savedCachesDir = new File(DatabaseDescriptor.getSavedCachesLocation());
+            File savedCachesDir = new File(DatabaseDescriptor.instance.getSavedCachesLocation());
             assert savedCachesDir.exists() && savedCachesDir.isDirectory();
             File[] files = savedCachesDir.listFiles();
             if (files != null)

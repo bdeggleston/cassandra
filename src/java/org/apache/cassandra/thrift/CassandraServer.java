@@ -88,7 +88,7 @@ public class CassandraServer implements Cassandra.Iface
 
     public CassandraServer()
     {
-        requestScheduler = DatabaseDescriptor.getRequestScheduler();
+        requestScheduler = DatabaseDescriptor.instance.getRequestScheduler();
         registerMetrics();
     }
 
@@ -106,7 +106,7 @@ public class CassandraServer implements Cassandra.Iface
         List<Row> rows = null;
         try
         {
-            schedule(DatabaseDescriptor.getReadRpcTimeout());
+            schedule(DatabaseDescriptor.instance.getReadRpcTimeout());
             try
             {
                 rows = StorageProxy.read(commands, consistency_level);
@@ -775,7 +775,7 @@ public class CassandraServer implements Cassandra.Iface
                     cfExpected.addColumn(cfm.comparator.cellFromByteBuffer(column.name), column.value, column.timestamp);
             }
 
-            schedule(DatabaseDescriptor.getWriteRpcTimeout());
+            schedule(DatabaseDescriptor.instance.getWriteRpcTimeout());
             ColumnFamily result = StorageProxy.cas(cState.getKeyspace(),
                                                    column_family,
                                                    key,
@@ -1173,7 +1173,7 @@ public class CassandraServer implements Cassandra.Iface
                 bounds = new Bounds<RowPosition>(RowPosition.ForKey.get(range.start_key, p), end);
             }
             long now = System.currentTimeMillis();
-            schedule(DatabaseDescriptor.getRangeRpcTimeout());
+            schedule(DatabaseDescriptor.instance.getRangeRpcTimeout());
             try
             {
                 IDiskAtomFilter filter = ThriftValidation.asIFilter(predicate, metadata, column_parent.super_column);
@@ -1266,7 +1266,7 @@ public class CassandraServer implements Cassandra.Iface
 
             List<Row> rows;
             long now = System.currentTimeMillis();
-            schedule(DatabaseDescriptor.getRangeRpcTimeout());
+            schedule(DatabaseDescriptor.instance.getRangeRpcTimeout());
             try
             {
                 IDiskAtomFilter filter = ThriftValidation.asIFilter(predicate, metadata, null);
@@ -1396,7 +1396,7 @@ public class CassandraServer implements Cassandra.Iface
 
     public String describe_cluster_name() throws TException
     {
-        return DatabaseDescriptor.getClusterName();
+        return DatabaseDescriptor.instance.getClusterName();
     }
 
     public String describe_version() throws TException
@@ -1441,9 +1441,9 @@ public class CassandraServer implements Cassandra.Iface
 
     public String describe_snitch() throws TException
     {
-        if (DatabaseDescriptor.getEndpointSnitch() instanceof DynamicEndpointSnitch)
-            return ((DynamicEndpointSnitch)DatabaseDescriptor.getEndpointSnitch()).subsnitch.getClass().getName();
-        return DatabaseDescriptor.getEndpointSnitch().getClass().getName();
+        if (DatabaseDescriptor.instance.getEndpointSnitch() instanceof DynamicEndpointSnitch)
+            return ((DynamicEndpointSnitch)DatabaseDescriptor.instance.getEndpointSnitch()).subsnitch.getClass().getName();
+        return DatabaseDescriptor.instance.getEndpointSnitch().getClass().getName();
     }
 
     @Deprecated
@@ -1484,7 +1484,7 @@ public class CassandraServer implements Cassandra.Iface
     {
         try
         {
-            AuthenticatedUser user = DatabaseDescriptor.getAuthenticator().authenticate(auth_request.getCredentials());
+            AuthenticatedUser user = DatabaseDescriptor.instance.getAuthenticator().authenticate(auth_request.getCredentials());
             state().login(user);
         }
         catch (org.apache.cassandra.exceptions.AuthenticationException e)
@@ -1701,7 +1701,7 @@ public class CassandraServer implements Cassandra.Iface
                 logger.debug("truncating {}.{}", cState.getKeyspace(), cfname);
             }
 
-            schedule(DatabaseDescriptor.getTruncateRpcTimeout());
+            schedule(DatabaseDescriptor.instance.getTruncateRpcTimeout());
             try
             {
                 StorageProxy.truncateBlocking(cState.getKeyspace(), cfname);

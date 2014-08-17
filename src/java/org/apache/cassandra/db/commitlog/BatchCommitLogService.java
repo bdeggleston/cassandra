@@ -23,7 +23,7 @@ class BatchCommitLogService extends AbstractCommitLogService
 {
     public BatchCommitLogService(CommitLog commitLog)
     {
-        super(commitLog, "COMMIT-LOG-WRITER", (int) DatabaseDescriptor.getCommitLogSyncBatchWindow());
+        super(commitLog, "COMMIT-LOG-WRITER", (int) DatabaseDescriptor.instance.getCommitLogSyncBatchWindow());
     }
 
     protected void maybeWaitForSync(CommitLogSegment.Allocation alloc)

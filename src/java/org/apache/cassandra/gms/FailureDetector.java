@@ -179,12 +179,12 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean
 
     public void setPhiConvictThreshold(double phi)
     {
-        DatabaseDescriptor.setPhiConvictThreshold(phi);
+        DatabaseDescriptor.instance.setPhiConvictThreshold(phi);
     }
 
     public double getPhiConvictThreshold()
     {
-        return DatabaseDescriptor.getPhiConvictThreshold();
+        return DatabaseDescriptor.instance.getPhiConvictThreshold();
     }
 
     public boolean isAlive(InetAddress ep)

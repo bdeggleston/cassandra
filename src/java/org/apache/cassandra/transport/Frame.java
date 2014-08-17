@@ -143,7 +143,7 @@ public class Frame
 
     public static class Decoder extends ByteToMessageDecoder
     {
-        private static final int MAX_FRAME_LENGTH = DatabaseDescriptor.getNativeTransportMaxFrameSize();
+        private static final int MAX_FRAME_LENGTH = DatabaseDescriptor.instance.getNativeTransportMaxFrameSize();
 
         private boolean discardingTooLongFrame;
         private long tooLongFrameLength;

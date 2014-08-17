@@ -32,7 +32,7 @@ import org.apache.cassandra.db.WriteType;
  */
 public class DatacenterWriteResponseHandler extends WriteResponseHandler
 {
-    private static final IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
+    private static final IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
 
     public DatacenterWriteResponseHandler(Collection<InetAddress> naturalEndpoints,
                                           Collection<InetAddress> pendingEndpoints,
@@ -48,7 +48,7 @@ public class DatacenterWriteResponseHandler extends WriteResponseHandler
     @Override
     public void response(MessageIn message)
     {
-        if (message == null || DatabaseDescriptor.getLocalDataCenter().equals(snitch.getDatacenter(message.from)))
+        if (message == null || DatabaseDescriptor.instance.getLocalDataCenter().equals(snitch.getDatacenter(message.from)))
         {
             super.response(message);
         }

@@ -150,7 +150,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public static IPartitioner getPartitioner()
     {
-        return DatabaseDescriptor.getPartitioner();
+        return DatabaseDescriptor.instance.getPartitioner();
     }
 
     public Collection<Range<Token>> getLocalRanges(String keyspaceName)
@@ -415,7 +415,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public synchronized Collection<Token> prepareReplacementInfo() throws ConfigurationException
     {
-        logger.info("Gathering node replacement information for {}", DatabaseDescriptor.getReplaceAddress());
+        logger.info("Gathering node replacement information for {}", DatabaseDescriptor.instance.getReplaceAddress());
         if (!MessagingService.instance().isListening())
             MessagingService.instance().listen(FBUtilities.getLocalAddress());
 
@@ -424,14 +424,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         UUID hostId = null;
         // now that we've gossiped at least once, we should be able to find the node we're replacing
-        if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress())== null)
-            throw new RuntimeException("Cannot replace_address " + DatabaseDescriptor.getReplaceAddress() + " because it doesn't exist in gossip");
-        hostId = Gossiper.instance.getHostId(DatabaseDescriptor.getReplaceAddress());
+        if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.instance.getReplaceAddress())== null)
+            throw new RuntimeException("Cannot replace_address " + DatabaseDescriptor.instance.getReplaceAddress() + " because it doesn't exist in gossip");
+        hostId = Gossiper.instance.getHostId(DatabaseDescriptor.instance.getReplaceAddress());
         try
         {
-            if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress()).getApplicationState(ApplicationState.TOKENS) == null)
-                throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.getReplaceAddress() + " to replace");
-            Collection<Token> tokens = TokenSerializer.deserialize(getPartitioner(), new DataInputStream(new ByteArrayInputStream(getApplicationStateValue(DatabaseDescriptor.getReplaceAddress(), ApplicationState.TOKENS))));
+            if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.instance.getReplaceAddress()).getApplicationState(ApplicationState.TOKENS) == null)
+                throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.instance.getReplaceAddress() + " to replace");
+            Collection<Token> tokens = TokenSerializer.deserialize(getPartitioner(), new DataInputStream(new ByteArrayInputStream(getApplicationStateValue(DatabaseDescriptor.instance.getReplaceAddress(), ApplicationState.TOKENS))));
             
             SystemKeyspace.setLocalHostId(hostId); // use the replacee's host Id as our own so we receive hints, etc
             Gossiper.instance.resetEndpointStateMap(); // clean up since we have what we need
@@ -639,7 +639,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private boolean shouldBootstrap()
     {
-        return DatabaseDescriptor.isAutoBootstrap() && !SystemKeyspace.bootstrapComplete() && !DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress());
+        return DatabaseDescriptor.instance.isAutoBootstrap() && !SystemKeyspace.bootstrapComplete() && !DatabaseDescriptor.instance.getSeeds().contains(FBUtilities.getBroadcastAddress());
     }
 
     private void prepareToJoin() throws ConfigurationException
@@ -648,15 +648,15 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             Map<ApplicationState, VersionedValue> appStates = new HashMap<>();
 
-            if (DatabaseDescriptor.isReplacing() && !(Boolean.parseBoolean(System.getProperty("cassandra.join_ring", "true"))))
+            if (DatabaseDescriptor.instance.isReplacing() && !(Boolean.parseBoolean(System.getProperty("cassandra.join_ring", "true"))))
                 throw new ConfigurationException("Cannot set both join_ring=false and attempt to replace a node");
-            if (DatabaseDescriptor.getReplaceTokens().size() > 0 || DatabaseDescriptor.getReplaceNode() != null)
+            if (DatabaseDescriptor.instance.getReplaceTokens().size() > 0 || DatabaseDescriptor.instance.getReplaceNode() != null)
                 throw new RuntimeException("Replace method removed; use cassandra.replace_address instead");
-            if (DatabaseDescriptor.isReplacing())
+            if (DatabaseDescriptor.instance.isReplacing())
             {
                 if (SystemKeyspace.bootstrapComplete())
                     throw new RuntimeException("Cannot replace address with a node that is already bootstrapped");
-                if (!DatabaseDescriptor.isAutoBootstrap())
+                if (!DatabaseDescriptor.instance.isAutoBootstrap())
                     throw new RuntimeException("Trying to replace_address with auto_bootstrap disabled will not work, check your configuration");
                 bootstrapTokens = prepareReplacementInfo();
                 appStates.put(ApplicationState.STATUS, valueFactory.hibernate(true));
@@ -675,7 +675,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             getTokenMetadata().updateHostId(localHostId, FBUtilities.getBroadcastAddress());
             appStates.put(ApplicationState.NET_VERSION, valueFactory.networkVersion());
             appStates.put(ApplicationState.HOST_ID, valueFactory.hostId(localHostId));
-            appStates.put(ApplicationState.RPC_ADDRESS, valueFactory.rpcaddress(DatabaseDescriptor.getBroadcastRpcAddress()));
+            appStates.put(ApplicationState.RPC_ADDRESS, valueFactory.rpcaddress(DatabaseDescriptor.instance.getBroadcastRpcAddress()));
             appStates.put(ApplicationState.RELEASE_VERSION, valueFactory.releaseVersion());
             logger.info("Starting up server gossip");
             Gossiper.instance.register(this);
@@ -709,11 +709,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // to get schema info from gossip which defeats the purpose.  See CASSANDRA-4427 for the gory details.
         Set<InetAddress> current = new HashSet<>();
         logger.debug("Bootstrap variables: {} {} {} {}",
-                     DatabaseDescriptor.isAutoBootstrap(),
+                     DatabaseDescriptor.instance.isAutoBootstrap(),
                      SystemKeyspace.bootstrapInProgress(),
                      SystemKeyspace.bootstrapComplete(),
-                     DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress()));
-        if (DatabaseDescriptor.isAutoBootstrap() && !SystemKeyspace.bootstrapComplete() && DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress()))
+                     DatabaseDescriptor.instance.getSeeds().contains(FBUtilities.getBroadcastAddress()));
+        if (DatabaseDescriptor.instance.isAutoBootstrap() && !SystemKeyspace.bootstrapComplete() && DatabaseDescriptor.instance.getSeeds().contains(FBUtilities.getBroadcastAddress()))
             logger.info("This node will not auto bootstrap because it is configured to be a seed node.");
         if (shouldBootstrap())
         {
@@ -749,7 +749,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             if (logger.isDebugEnabled())
                 logger.debug("... got ring + schema info");
 
-            if (!DatabaseDescriptor.isReplacing())
+            if (!DatabaseDescriptor.instance.isReplacing())
             {
                 if (tokenMetadata.isMember(FBUtilities.getBroadcastAddress()))
                 {
@@ -761,7 +761,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
             else
             {
-                if (!DatabaseDescriptor.getReplaceAddress().equals(FBUtilities.getBroadcastAddress()))
+                if (!DatabaseDescriptor.instance.getReplaceAddress().equals(FBUtilities.getBroadcastAddress()))
                 {
                     try
                     {
@@ -814,11 +814,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             bootstrapTokens = SystemKeyspace.getSavedTokens();
             if (bootstrapTokens.isEmpty())
             {
-                Collection<String> initialTokens = DatabaseDescriptor.getInitialTokens();
+                Collection<String> initialTokens = DatabaseDescriptor.instance.getInitialTokens();
                 if (initialTokens.size() < 1)
                 {
-                    bootstrapTokens = BootStrapper.getRandomTokens(tokenMetadata, DatabaseDescriptor.getNumTokens());
-                    if (DatabaseDescriptor.getNumTokens() == 1)
+                    bootstrapTokens = BootStrapper.getRandomTokens(tokenMetadata, DatabaseDescriptor.instance.getNumTokens());
+                    if (DatabaseDescriptor.instance.getNumTokens() == 1)
                         logger.warn("Generated random token {}. Random tokens will result in an unbalanced ring; see http://wiki.apache.org/cassandra/Operations", bootstrapTokens);
                     else
                         logger.info("Generated random tokens. tokens are {}", bootstrapTokens);
@@ -833,8 +833,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
             else
             {
-                if (bootstrapTokens.size() != DatabaseDescriptor.getNumTokens())
-                    throw new ConfigurationException("Cannot change the number of tokens from " + bootstrapTokens.size() + " to " + DatabaseDescriptor.getNumTokens());
+                if (bootstrapTokens.size() != DatabaseDescriptor.instance.getNumTokens())
+                    throw new ConfigurationException("Cannot change the number of tokens from " + bootstrapTokens.size() + " to " + DatabaseDescriptor.instance.getNumTokens());
                 else
                     logger.info("Using saved tokens {}", bootstrapTokens);
             }
@@ -868,7 +868,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void gossipSnitchInfo()
     {
-        IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
+        IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
         String dc = snitch.getDatacenter(FBUtilities.getBroadcastAddress());
         String rack = snitch.getRack(FBUtilities.getBroadcastAddress());
         Gossiper.instance.addLocalApplicationState(ApplicationState.DC, StorageService.instance.valueFactory.datacenter(dc));
@@ -913,7 +913,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         RangeStreamer streamer = new RangeStreamer(tokenMetadata, FBUtilities.getBroadcastAddress(), "Rebuild");
         streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
         if (sourceDc != null)
-            streamer.addSourceFilter(new RangeStreamer.SingleDatacenterFilter(DatabaseDescriptor.getEndpointSnitch(), sourceDc));
+            streamer.addSourceFilter(new RangeStreamer.SingleDatacenterFilter(DatabaseDescriptor.instance.getEndpointSnitch(), sourceDc));
 
         for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
             streamer.addRanges(keyspaceName, getLocalRanges(keyspaceName));
@@ -936,33 +936,33 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void setStreamThroughputMbPerSec(int value)
     {
-        DatabaseDescriptor.setStreamThroughputOutboundMegabitsPerSec(value);
+        DatabaseDescriptor.instance.setStreamThroughputOutboundMegabitsPerSec(value);
         logger.info("setstreamthroughput: throttle set to {}", value);
     }
 
     public int getStreamThroughputMbPerSec()
     {
-        return DatabaseDescriptor.getStreamThroughputOutboundMegabitsPerSec();
+        return DatabaseDescriptor.instance.getStreamThroughputOutboundMegabitsPerSec();
     }
 
     public int getCompactionThroughputMbPerSec()
     {
-        return DatabaseDescriptor.getCompactionThroughputMbPerSec();
+        return DatabaseDescriptor.instance.getCompactionThroughputMbPerSec();
     }
 
     public void setCompactionThroughputMbPerSec(int value)
     {
-        DatabaseDescriptor.setCompactionThroughputMbPerSec(value);
+        DatabaseDescriptor.instance.setCompactionThroughputMbPerSec(value);
     }
 
     public boolean isIncrementalBackupsEnabled()
     {
-        return DatabaseDescriptor.isIncrementalBackupsEnabled();
+        return DatabaseDescriptor.instance.isIncrementalBackupsEnabled();
     }
 
     public void setIncrementalBackupsEnabled(boolean value)
     {
-        DatabaseDescriptor.setIncrementalBackupsEnabled(value);
+        DatabaseDescriptor.instance.setIncrementalBackupsEnabled(value);
     }
 
     private void setMode(Mode m, boolean log)
@@ -984,7 +984,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         isBootstrapMode = true;
         SystemKeyspace.updateTokens(tokens); // DON'T use setToken, that makes us part of the ring locally which is incorrect until we are done bootstrapping
-        if (!DatabaseDescriptor.isReplacing())
+        if (!DatabaseDescriptor.instance.isReplacing())
         {
             // if not an existing token then bootstrap
             // order is important here, the gossiper can fire in between adding these two states.  It's ok to send TOKENS without STATUS, but *not* vice versa.
@@ -998,7 +998,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             // Dont set any state for the node which is bootstrapping the existing token...
             tokenMetadata.updateNormalTokens(tokens, FBUtilities.getBroadcastAddress());
-            SystemKeyspace.removeEndpoint(DatabaseDescriptor.getReplaceAddress());
+            SystemKeyspace.removeEndpoint(DatabaseDescriptor.instance.getReplaceAddress());
         }
         if (!Gossiper.instance.seenAnySeed())
             throw new IllegalStateException("Unable to contact any seeds!");
@@ -1059,7 +1059,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public String getRpcaddress(InetAddress endpoint)
     {
         if (endpoint.equals(FBUtilities.getBroadcastAddress()))
-            return DatabaseDescriptor.getBroadcastRpcAddress().getHostAddress();
+            return DatabaseDescriptor.instance.getBroadcastRpcAddress().getHostAddress();
         else if (Gossiper.instance.getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.RPC_ADDRESS) == null)
             return endpoint.getHostAddress();
         else
@@ -1143,8 +1143,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private boolean isLocalDC(InetAddress targetHost)
     {
-        String remoteDC = DatabaseDescriptor.getEndpointSnitch().getDatacenter(targetHost);
-        String localDC = DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+        String remoteDC = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(targetHost);
+        String localDC = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
         return remoteDC.equals(localDC);
     }
 
@@ -1236,8 +1236,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             {
                 EndpointDetails details = new EndpointDetails();
                 details.host = endpoint.getHostAddress();
-                details.datacenter = DatabaseDescriptor.getEndpointSnitch().getDatacenter(endpoint);
-                details.rack = DatabaseDescriptor.getEndpointSnitch().getRack(endpoint);
+                details.datacenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(endpoint);
+                details.rack = DatabaseDescriptor.instance.getEndpointSnitch().getRack(endpoint);
 
                 endpoints.add(details.host);
                 rpc_endpoints.add(getRpcaddress(endpoint));
@@ -1529,7 +1529,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             UUID hostId = Gossiper.instance.getHostId(endpoint);
             InetAddress existing = tokenMetadata.getEndpointForHostId(hostId);
-            if (DatabaseDescriptor.isReplacing() && Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress()) != null && (hostId.equals(Gossiper.instance.getHostId(DatabaseDescriptor.getReplaceAddress()))))
+            if (DatabaseDescriptor.instance.isReplacing() && Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.instance.getReplaceAddress()) != null && (hostId.equals(Gossiper.instance.getHostId(DatabaseDescriptor.instance.getReplaceAddress()))))
                 logger.warn("Not updating token metadata for {} because I am replacing it", endpoint);
             else
             {
@@ -1816,7 +1816,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         for (Range<Token> range : ranges)
         {
             Collection<InetAddress> possibleRanges = rangeAddresses.get(range);
-            IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
+            IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
             List<InetAddress> sources = snitch.getSortedListByProximity(myAddress, possibleRanges);
 
             assert (!sources.contains(myAddress));
@@ -1850,7 +1850,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             AsyncOneResponse iar = MessagingService.instance().sendRR(msg, remote);
             try
             {
-                iar.get(DatabaseDescriptor.getRpcTimeout(), TimeUnit.MILLISECONDS);
+                iar.get(DatabaseDescriptor.instance.getRpcTimeout(), TimeUnit.MILLISECONDS);
                 return; // done
             }
             catch(TimeoutException e)
@@ -2125,7 +2125,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public String[] getAllDataFileLocations()
     {
-        String[] locations = DatabaseDescriptor.getAllDataFileLocations();
+        String[] locations = DatabaseDescriptor.instance.getAllDataFileLocations();
         for (int i = 0; i < locations.length; i++)
             locations[i] = FileUtils.getCanonicalPath(locations[i]);
         return locations;
@@ -2133,12 +2133,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public String getCommitLogLocation()
     {
-        return FileUtils.getCanonicalPath(DatabaseDescriptor.getCommitLogLocation());
+        return FileUtils.getCanonicalPath(DatabaseDescriptor.instance.getCommitLogLocation());
     }
 
     public String getSavedCachesLocation()
     {
-        return FileUtils.getCanonicalPath(DatabaseDescriptor.getSavedCachesLocation());
+        return FileUtils.getCanonicalPath(DatabaseDescriptor.instance.getSavedCachesLocation());
     }
 
     private List<String> stringify(Iterable<InetAddress> endpoints)
@@ -2287,7 +2287,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             tag = "";
 
         Set<String> keyspaces = new HashSet<>();
-        for (String dataDir : DatabaseDescriptor.getAllDataFileLocations())
+        for (String dataDir : DatabaseDescriptor.instance.getAllDataFileLocations())
         {
             for(String keyspaceDir : new File(dataDir).list())
             {
@@ -2563,7 +2563,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         Set<String> dataCenters = null;
         if (isLocal)
         {
-            dataCenters = Sets.newHashSet(DatabaseDescriptor.getLocalDataCenter());
+            dataCenters = Sets.newHashSet(DatabaseDescriptor.instance.getLocalDataCenter());
         }
         return createRepairTask(cmd, keyspace, ranges, isSequential, dataCenters, null, fullRepair, columnFamilies);
     }
@@ -2577,7 +2577,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                                 final boolean fullRepair,
                                                 final String... columnFamilies)
     {
-        if (dataCenters != null && !dataCenters.contains(DatabaseDescriptor.getLocalDataCenter()))
+        if (dataCenters != null && !dataCenters.contains(DatabaseDescriptor.instance.getLocalDataCenter()))
         {
             throw new IllegalArgumentException("the local data center must be part of the repair");
         }
@@ -3061,7 +3061,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         else
         {
             // stream to the closest peer as chosen by the snitch
-            DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getBroadcastAddress(), candidates);
+            DatabaseDescriptor.instance.getEndpointSnitch().sortByProximity(FBUtilities.getBroadcastAddress(), candidates);
             InetAddress hintsDestinationHost = candidates.get(0);
 
             // stream all hints -- range list will be a singleton of "the entire ring"
@@ -3167,7 +3167,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         private void calculateToFromStreams(Collection<Token> newTokens, List<String> keyspaceNames)
         {
             InetAddress localAddress = FBUtilities.getBroadcastAddress();
-            IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
+            IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
             TokenMetadata tokenMetaCloneAllSettled = tokenMetadata.cloneAfterAllSettled();
             // clone to avoid concurrent modification in calculateNaturalEndpoints
             TokenMetadata tokenMetaClone = tokenMetadata.cloneOnlyTokenMap();
@@ -3540,8 +3540,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     // Never ever do this at home. Used by tests.
     IPartitioner setPartitionerUnsafe(IPartitioner newPartitioner)
     {
-        IPartitioner oldPartitioner = DatabaseDescriptor.getPartitioner();
-        DatabaseDescriptor.setPartitioner(newPartitioner);
+        IPartitioner oldPartitioner = DatabaseDescriptor.instance.getPartitioner();
+        DatabaseDescriptor.instance.setPartitioner(newPartitioner);
         valueFactory = new VersionedValue.VersionedValueFactory(getPartitioner());
         return oldPartitioner;
     }
@@ -3658,7 +3658,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void updateSnitch(String epSnitchClassName, Boolean dynamic, Integer dynamicUpdateInterval, Integer dynamicResetInterval, Double dynamicBadnessThreshold) throws ClassNotFoundException
     {
-        IEndpointSnitch oldSnitch = DatabaseDescriptor.getEndpointSnitch();
+        IEndpointSnitch oldSnitch = DatabaseDescriptor.instance.getEndpointSnitch();
 
         // new snitch registers mbean during construction
         IEndpointSnitch newSnitch;
@@ -3672,14 +3672,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
         if (dynamic)
         {
-            DatabaseDescriptor.setDynamicUpdateInterval(dynamicUpdateInterval);
-            DatabaseDescriptor.setDynamicResetInterval(dynamicResetInterval);
-            DatabaseDescriptor.setDynamicBadnessThreshold(dynamicBadnessThreshold);
+            DatabaseDescriptor.instance.setDynamicUpdateInterval(dynamicUpdateInterval);
+            DatabaseDescriptor.instance.setDynamicResetInterval(dynamicResetInterval);
+            DatabaseDescriptor.instance.setDynamicBadnessThreshold(dynamicBadnessThreshold);
             newSnitch = new DynamicEndpointSnitch(newSnitch);
         }
 
         // point snitch references to the new instance
-        DatabaseDescriptor.setEndpointSnitch(newSnitch);
+        DatabaseDescriptor.instance.setEndpointSnitch(newSnitch);
         for (String ks : Schema.instance.getKeyspaces())
         {
             Keyspace.open(ks).getReplicationStrategy().snitch = newSnitch;
@@ -3826,7 +3826,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             {
                 try
                 {
-                    setPartitioner(DatabaseDescriptor.getPartitioner());
+                    setPartitioner(DatabaseDescriptor.instance.getPartitioner());
                     for (Map.Entry<Range<Token>, List<InetAddress>> entry : StorageService.instance.getRangeToAddressMap(keyspace).entrySet())
                     {
                         Range<Token> range = entry.getKey();
@@ -3925,38 +3925,38 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     /** Returns the name of the cluster */
     public String getClusterName()
     {
-        return DatabaseDescriptor.getClusterName();
+        return DatabaseDescriptor.instance.getClusterName();
     }
 
     /** Returns the cluster partitioner */
     public String getPartitionerName()
     {
-        return DatabaseDescriptor.getPartitionerName();
+        return DatabaseDescriptor.instance.getPartitionerName();
     }
 
     public int getTombstoneWarnThreshold()
     {
-        return DatabaseDescriptor.getTombstoneWarnThreshold();
+        return DatabaseDescriptor.instance.getTombstoneWarnThreshold();
     }
 
     public void setTombstoneWarnThreshold(int threshold)
     {
-        DatabaseDescriptor.setTombstoneWarnThreshold(threshold);
+        DatabaseDescriptor.instance.setTombstoneWarnThreshold(threshold);
     }
 
     public int getTombstoneFailureThreshold()
     {
-        return DatabaseDescriptor.getTombstoneFailureThreshold();
+        return DatabaseDescriptor.instance.getTombstoneFailureThreshold();
     }
 
     public void setTombstoneFailureThreshold(int threshold)
     {
-        DatabaseDescriptor.setTombstoneFailureThreshold(threshold);
+        DatabaseDescriptor.instance.setTombstoneFailureThreshold(threshold);
     }
 
     public void setHintedHandoffThrottleInKB(int throttleInKB)
     {
-        DatabaseDescriptor.setHintedHandoffThrottleInKB(throttleInKB);
+        DatabaseDescriptor.instance.setHintedHandoffThrottleInKB(throttleInKB);
         logger.info(String.format("Updated hinted_handoff_throttle_in_kb to %d", throttleInKB));
     }
 }

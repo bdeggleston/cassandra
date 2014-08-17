@@ -34,7 +34,7 @@ import org.apache.cassandra.tracing.Tracing;
 
 public class PaxosState
 {
-    private static final Striped<Lock> LOCKS = Striped.lazyWeakLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
+    private static final Striped<Lock> LOCKS = Striped.lazyWeakLock(DatabaseDescriptor.instance.getConcurrentWriters() * 1024);
 
     private final Commit promised;
     private final Commit accepted;

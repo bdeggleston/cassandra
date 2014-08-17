@@ -171,7 +171,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
         // the delay is here to give the node some time to see its peers - to reduce
         // "skipped default user setup: some nodes are were not ready" log spam.
         // It's the only reason for the delay.
-        if (DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress()) || !DatabaseDescriptor.isAutoBootstrap())
+        if (DatabaseDescriptor.instance.getSeeds().contains(FBUtilities.getBroadcastAddress()) || !DatabaseDescriptor.instance.isAutoBootstrap())
         {
             StorageService.tasks.schedule(new Runnable()
                                           {

@@ -46,7 +46,7 @@ public class SimpleSeedProvider implements SeedProvider
         Config conf;
         try
         {
-            conf = DatabaseDescriptor.loadConfig();
+            conf = DatabaseDescriptor.instance.loadConfig();
         }
         catch (Exception e)
         {

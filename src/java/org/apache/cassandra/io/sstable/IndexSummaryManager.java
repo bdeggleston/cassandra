@@ -94,13 +94,13 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
     {
         executor = new DebuggableScheduledThreadPoolExecutor(1, "IndexSummaryManager", Thread.MIN_PRIORITY);
 
-        long indexSummarySizeInMB = DatabaseDescriptor.getIndexSummaryCapacityInMB();
-        int interval = DatabaseDescriptor.getIndexSummaryResizeIntervalInMinutes();
+        long indexSummarySizeInMB = DatabaseDescriptor.instance.getIndexSummaryCapacityInMB();
+        int interval = DatabaseDescriptor.instance.getIndexSummaryResizeIntervalInMinutes();
         logger.info("Initializing index summary manager with a memory pool size of {} MB and a resize interval of {} minutes",
                     indexSummarySizeInMB, interval);
 
-        setMemoryPoolCapacityInMB(DatabaseDescriptor.getIndexSummaryCapacityInMB());
-        setResizeIntervalInMinutes(DatabaseDescriptor.getIndexSummaryResizeIntervalInMinutes());
+        setMemoryPoolCapacityInMB(DatabaseDescriptor.instance.getIndexSummaryCapacityInMB());
+        setResizeIntervalInMinutes(DatabaseDescriptor.instance.getIndexSummaryResizeIntervalInMinutes());
     }
 
     public int getResizeIntervalInMinutes()

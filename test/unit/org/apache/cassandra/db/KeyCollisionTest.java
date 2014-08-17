@@ -64,13 +64,13 @@ public class KeyCollisionTest
 
     protected void setUp()
     {
-        oldPartitioner = DatabaseDescriptor.getPartitioner();
-        DatabaseDescriptor.setPartitioner(new LengthPartitioner());
+        oldPartitioner = DatabaseDescriptor.instance.getPartitioner();
+        DatabaseDescriptor.instance.setPartitioner(new LengthPartitioner());
     }
 
     protected void tearDown()
     {
-        DatabaseDescriptor.setPartitioner(oldPartitioner);
+        DatabaseDescriptor.instance.setPartitioner(oldPartitioner);
     }
 
     @Test

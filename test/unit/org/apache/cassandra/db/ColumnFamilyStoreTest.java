@@ -1921,16 +1921,16 @@ public class ColumnFamilyStoreTest
         // start the generation counter at 1 again (other tests have incremented it already)
         cfs.resetFileIndexGenerator();
 
-        boolean incrementalBackupsEnabled = DatabaseDescriptor.isIncrementalBackupsEnabled();
+        boolean incrementalBackupsEnabled = DatabaseDescriptor.instance.isIncrementalBackupsEnabled();
         try
         {
             // avoid duplicate hardlinks to incremental backups
-            DatabaseDescriptor.setIncrementalBackupsEnabled(false);
+            DatabaseDescriptor.instance.setIncrementalBackupsEnabled(false);
             cfs.loadNewSSTables();
         }
         finally
         {
-            DatabaseDescriptor.setIncrementalBackupsEnabled(incrementalBackupsEnabled);
+            DatabaseDescriptor.instance.setIncrementalBackupsEnabled(incrementalBackupsEnabled);
         }
 
         assertEquals(2, cfs.getSSTables().size());

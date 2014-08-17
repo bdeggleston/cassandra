@@ -133,8 +133,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
                 if (gDigests.size() > 0)
                 {
-                    GossipDigestSyn digestSynMessage = new GossipDigestSyn(DatabaseDescriptor.getClusterName(),
-                                                                           DatabaseDescriptor.getPartitionerName(),
+                    GossipDigestSyn digestSynMessage = new GossipDigestSyn(DatabaseDescriptor.instance.getClusterName(),
+                                                                           DatabaseDescriptor.instance.getPartitionerName(),
                                                                            gDigests);
                     MessageOut<GossipDigestSyn> message = new MessageOut<GossipDigestSyn>(MessagingService.Verb.GOSSIP_DIGEST_SYN,
                                                                                           digestSynMessage,
@@ -1159,7 +1159,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
             localState.addApplicationState(entry.getKey(), entry.getValue());
 
         //notify snitches that Gossiper is about to start
-        DatabaseDescriptor.getEndpointSnitch().gossiperStarting();
+        DatabaseDescriptor.instance.getEndpointSnitch().gossiperStarting();
         if (logger.isTraceEnabled())
             logger.trace("gossip started with generation {}", localState.getHeartBeatState().getGeneration());
 
@@ -1178,8 +1178,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         buildSeedsList();
         // send a completely empty syn
         List<GossipDigest> gDigests = new ArrayList<GossipDigest>();
-        GossipDigestSyn digestSynMessage = new GossipDigestSyn(DatabaseDescriptor.getClusterName(),
-                DatabaseDescriptor.getPartitionerName(),
+        GossipDigestSyn digestSynMessage = new GossipDigestSyn(DatabaseDescriptor.instance.getClusterName(),
+                DatabaseDescriptor.instance.getPartitionerName(),
                 gDigests);
         MessageOut<GossipDigestSyn> message = new MessageOut<GossipDigestSyn>(MessagingService.Verb.GOSSIP_DIGEST_SYN,
                 digestSynMessage,
@@ -1208,7 +1208,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
     private void buildSeedsList()
     {
-        for (InetAddress seed : DatabaseDescriptor.getSeeds())
+        for (InetAddress seed : DatabaseDescriptor.instance.getSeeds())
         {
             if (seed.equals(FBUtilities.getBroadcastAddress()))
                 continue;

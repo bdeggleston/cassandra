@@ -78,8 +78,8 @@ public class SequentialWriter extends OutputStream implements WritableByteChanne
         filePath = file.getAbsolutePath();
 
         buffer = new byte[bufferSize];
-        this.trickleFsync = DatabaseDescriptor.getTrickleFsync();
-        this.trickleFsyncByteInterval = DatabaseDescriptor.getTrickleFsyncIntervalInKb() * 1024;
+        this.trickleFsync = DatabaseDescriptor.instance.getTrickleFsync();
+        this.trickleFsyncByteInterval = DatabaseDescriptor.instance.getTrickleFsyncIntervalInKb() * 1024;
 
         try
         {

@@ -69,7 +69,7 @@ public class DatabaseDescriptorTest
     public void testTransKsMigration() throws ConfigurationException
     {
         SchemaLoader.cleanupAndLeaveDirs();
-        DatabaseDescriptor.loadSchemas();
+        DatabaseDescriptor.instance.loadSchemas();
         assertEquals(0, Schema.instance.getNonSystemKeyspaces().size());
 
         Gossiper.instance.start((int)(System.currentTimeMillis() / 1000));
@@ -90,7 +90,7 @@ public class DatabaseDescriptorTest
             assertNull(Schema.instance.getKSMetaData("ks0"));
             assertNull(Schema.instance.getKSMetaData("ks1"));
 
-            DatabaseDescriptor.loadSchemas();
+            DatabaseDescriptor.instance.loadSchemas();
 
             assertNotNull(Schema.instance.getKSMetaData("ks0"));
             assertNotNull(Schema.instance.getKSMetaData("ks1"));
@@ -105,7 +105,7 @@ public class DatabaseDescriptorTest
     public void testConfigurationLoader() throws Exception
     {
         // By default, we should load from the yaml
-        Config config = DatabaseDescriptor.loadConfig();
+        Config config = DatabaseDescriptor.instance.loadConfig();
         assertEquals("Test Cluster", config.cluster_name);
         Keyspace.setInitialized();
 
@@ -113,7 +113,7 @@ public class DatabaseDescriptorTest
         ConfigurationLoader testLoader = new TestLoader();
         System.setProperty("cassandra.config.loader", testLoader.getClass().getName());
 
-        config = DatabaseDescriptor.loadConfig();
+        config = DatabaseDescriptor.instance.loadConfig();
         assertEquals("ConfigurationLoader Test", config.cluster_name);
     }
 

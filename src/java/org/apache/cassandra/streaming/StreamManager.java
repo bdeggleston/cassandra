@@ -70,15 +70,15 @@ public class StreamManager implements StreamManagerMBean
 
         public StreamRateLimiter(InetAddress peer)
         {
-            double throughput = ((double) DatabaseDescriptor.getStreamThroughputOutboundMegabitsPerSec()) * ONE_MEGA_BIT;
+            double throughput = ((double) DatabaseDescriptor.instance.getStreamThroughputOutboundMegabitsPerSec()) * ONE_MEGA_BIT;
             mayUpdateThroughput(throughput, limiter);
 
-            double interDCThroughput = ((double) DatabaseDescriptor.getInterDCStreamThroughputOutboundMegabitsPerSec()) * ONE_MEGA_BIT;
+            double interDCThroughput = ((double) DatabaseDescriptor.instance.getInterDCStreamThroughputOutboundMegabitsPerSec()) * ONE_MEGA_BIT;
             mayUpdateThroughput(interDCThroughput, interDCLimiter);
 
-            if (DatabaseDescriptor.getLocalDataCenter() != null && DatabaseDescriptor.getEndpointSnitch() != null)
-                isLocalDC = DatabaseDescriptor.getLocalDataCenter().equals(
-                            DatabaseDescriptor.getEndpointSnitch().getDatacenter(peer));
+            if (DatabaseDescriptor.instance.getLocalDataCenter() != null && DatabaseDescriptor.instance.getEndpointSnitch() != null)
+                isLocalDC = DatabaseDescriptor.instance.getLocalDataCenter().equals(
+                            DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(peer));
             else
                 isLocalDC = true;
         }

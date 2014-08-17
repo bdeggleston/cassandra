@@ -231,7 +231,7 @@ public class Mutation implements IMutation
 
     public long getTimeout()
     {
-        return DatabaseDescriptor.getWriteRpcTimeout();
+        return DatabaseDescriptor.instance.getWriteRpcTimeout();
     }
 
     public String toString()

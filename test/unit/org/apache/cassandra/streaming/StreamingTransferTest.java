@@ -298,8 +298,8 @@ public class StreamingTransferTest
         String key = "key1";
         Mutation rm = new Mutation(ks, ByteBufferUtil.bytes(key));
         // add columns of size slightly less than column_index_size to force insert column index
-        rm.add(cfname, cellname(1), ByteBuffer.wrap(new byte[DatabaseDescriptor.getColumnIndexSize() - 64]), 2);
-        rm.add(cfname, cellname(6), ByteBuffer.wrap(new byte[DatabaseDescriptor.getColumnIndexSize()]), 2);
+        rm.add(cfname, cellname(1), ByteBuffer.wrap(new byte[DatabaseDescriptor.instance.getColumnIndexSize() - 64]), 2);
+        rm.add(cfname, cellname(6), ByteBuffer.wrap(new byte[DatabaseDescriptor.instance.getColumnIndexSize()]), 2);
         ColumnFamily cf = rm.addOrGet(cfname);
         // add RangeTombstones
         cf.delete(new DeletionInfo(cellname(2), cellname(3), cf.getComparator(), 1, (int) (System.currentTimeMillis() / 1000)));

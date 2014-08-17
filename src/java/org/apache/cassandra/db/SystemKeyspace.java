@@ -132,7 +132,7 @@ public class SystemKeyspace
     private static void setupVersion()
     {
         String req = "INSERT INTO system.%s (key, release_version, cql_version, thrift_version, native_protocol_version, data_center, rack, partitioner) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
+        IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
         executeOnceInternal(String.format(req, LOCAL_CF),
                             LOCAL_KEY,
                             FBUtilities.getReleaseVersionString(),
@@ -141,7 +141,7 @@ public class SystemKeyspace
                             String.valueOf(Server.CURRENT_VERSION),
                             snitch.getDatacenter(FBUtilities.getBroadcastAddress()),
                             snitch.getRack(FBUtilities.getBroadcastAddress()),
-                            DatabaseDescriptor.getPartitioner().getClass().getName());
+                            DatabaseDescriptor.instance.getPartitioner().getClass().getName());
     }
 
     // TODO: In 3.0, remove this and the index_interval column from system.schema_columnfamilies
@@ -573,13 +573,13 @@ public class SystemKeyspace
 
             // no system files.  this is a new node.
             req = "INSERT INTO system.%s (key, cluster_name) VALUES ('%s', ?)";
-            executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY), DatabaseDescriptor.getClusterName());
+            executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY), DatabaseDescriptor.instance.getClusterName());
             return;
         }
 
         String savedClusterName = result.one().getString("cluster_name");
-        if (!DatabaseDescriptor.getClusterName().equals(savedClusterName))
-            throw new ConfigurationException("Saved cluster name " + savedClusterName + " != configured name " + DatabaseDescriptor.getClusterName());
+        if (!DatabaseDescriptor.instance.getClusterName().equals(savedClusterName))
+            throw new ConfigurationException("Saved cluster name " + savedClusterName + " != configured name " + DatabaseDescriptor.instance.getClusterName());
     }
 
     public static Collection<Token> getSavedTokens()

@@ -239,7 +239,7 @@ public class CustomTThreadPoolServer extends TServer
             TServerTransport serverTransport;
             try
             {
-                final ClientEncryptionOptions clientEnc = DatabaseDescriptor.getClientEncryptionOptions();
+                final ClientEncryptionOptions clientEnc = DatabaseDescriptor.instance.getClientEncryptionOptions();
                 if (clientEnc.enabled)
                 {
                     logger.info("enabling encrypted thrift connections between client and server");
@@ -264,8 +264,8 @@ public class CustomTThreadPoolServer extends TServer
             }
             // ThreadPool Server and will be invocation per connection basis...
             TThreadPoolServer.Args serverArgs = new TThreadPoolServer.Args(serverTransport)
-                                                                     .minWorkerThreads(DatabaseDescriptor.getRpcMinThreads())
-                                                                     .maxWorkerThreads(DatabaseDescriptor.getRpcMaxThreads())
+                                                                     .minWorkerThreads(DatabaseDescriptor.instance.getRpcMinThreads())
+                                                                     .maxWorkerThreads(DatabaseDescriptor.instance.getRpcMaxThreads())
                                                                      .inputTransportFactory(args.inTransportFactory)
                                                                      .outputTransportFactory(args.outTransportFactory)
                                                                      .inputProtocolFactory(args.tProtocolFactory)

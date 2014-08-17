@@ -175,7 +175,7 @@ public class DataTracker
 
     public void maybeIncrementallyBackup(final SSTableReader sstable)
     {
-        if (!DatabaseDescriptor.isIncrementalBackupsEnabled())
+        if (!DatabaseDescriptor.instance.isIncrementalBackupsEnabled())
             return;
 
         File backupsDir = Directories.getBackupsDirectory(sstable.descriptor);

@@ -141,9 +141,9 @@ public class FBUtilities
         if (localInetAddress == null)
             try
             {
-                localInetAddress = DatabaseDescriptor.getListenAddress() == null
+                localInetAddress = DatabaseDescriptor.instance.getListenAddress() == null
                                     ? InetAddress.getLocalHost()
-                                    : DatabaseDescriptor.getListenAddress();
+                                    : DatabaseDescriptor.instance.getListenAddress();
             }
             catch (UnknownHostException e)
             {
@@ -155,9 +155,9 @@ public class FBUtilities
     public static InetAddress getBroadcastAddress()
     {
         if (broadcastInetAddress == null)
-            broadcastInetAddress = DatabaseDescriptor.getBroadcastAddress() == null
+            broadcastInetAddress = DatabaseDescriptor.instance.getBroadcastAddress() == null
                                  ? getLocalAddress()
-                                 : DatabaseDescriptor.getBroadcastAddress();
+                                 : DatabaseDescriptor.instance.getBroadcastAddress();
         return broadcastInetAddress;
     }
 

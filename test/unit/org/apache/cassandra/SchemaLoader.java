@@ -426,7 +426,7 @@ public class SchemaLoader
     public static void cleanup()
     {
         // clean up commitlog
-        String[] directoryNames = { DatabaseDescriptor.getCommitLogLocation(), };
+        String[] directoryNames = { DatabaseDescriptor.instance.getCommitLogLocation(), };
         for (String dirName : directoryNames)
         {
             File dir = new File(dirName);
@@ -438,7 +438,7 @@ public class SchemaLoader
         cleanupSavedCaches();
 
         // clean up data directory which are stored as data directory/keyspace/data files
-        for (String dirName : DatabaseDescriptor.getAllDataFileLocations())
+        for (String dirName : DatabaseDescriptor.instance.getAllDataFileLocations())
         {
             File dir = new File(dirName);
             if (!dir.exists())
@@ -449,7 +449,7 @@ public class SchemaLoader
 
     public static void mkdirs()
     {
-        DatabaseDescriptor.createAllDirectories();
+        DatabaseDescriptor.instance.createAllDirectories();
     }
 
     public static void insertData(String keyspace, String columnFamily, int offset, int numberOfRows)
@@ -476,7 +476,7 @@ public class SchemaLoader
 
     public static void cleanupSavedCaches()
     {
-        File cachesDir = new File(DatabaseDescriptor.getSavedCachesLocation());
+        File cachesDir = new File(DatabaseDescriptor.instance.getSavedCachesLocation());
 
         if (!cachesDir.exists() || !cachesDir.isDirectory())
             return;

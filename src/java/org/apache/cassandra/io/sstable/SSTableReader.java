@@ -744,10 +744,10 @@ public class SSTableReader extends SSTable
      */
     private void load(boolean recreateBloomFilter, boolean saveSummaryIfCreated) throws IOException
     {
-        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.getIndexAccessMode());
+        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode());
         SegmentedFile.Builder dbuilder = compression
                                          ? SegmentedFile.getCompressedBuilder()
-                                         : SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode());
+                                         : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode());
 
         boolean summaryLoaded = loadSummary(ibuilder, dbuilder);
         if (recreateBloomFilter || !summaryLoaded)
@@ -999,10 +999,10 @@ public class SSTableReader extends SSTable
                 // we can use the existing index summary to make a smaller one
                 newSummary = IndexSummaryBuilder.downsample(indexSummary, samplingLevel, minIndexInterval, partitioner);
 
-                SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.getIndexAccessMode());
+                SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode());
                 SegmentedFile.Builder dbuilder = compression
                                                  ? SegmentedFile.getCompressedBuilder()
-                                                 : SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode());
+                                                 : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode());
                 saveSummary(ibuilder, dbuilder, newSummary);
             }
             else

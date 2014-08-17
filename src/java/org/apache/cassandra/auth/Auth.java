@@ -126,14 +126,14 @@ public class Auth
      */
     public static void setup()
     {
-        if (DatabaseDescriptor.getAuthenticator() instanceof AllowAllAuthenticator)
+        if (DatabaseDescriptor.instance.getAuthenticator() instanceof AllowAllAuthenticator)
             return;
 
         setupAuthKeyspace();
         setupTable(USERS_CF, USERS_CF_SCHEMA);
 
-        DatabaseDescriptor.getAuthenticator().setup();
-        DatabaseDescriptor.getAuthorizer().setup();
+        DatabaseDescriptor.instance.getAuthenticator().setup();
+        DatabaseDescriptor.instance.getAuthorizer().setup();
 
         // register a custom MigrationListener for permissions cleanup after dropped keyspaces/cfs.
         MigrationManager.instance.register(new MigrationListener());
@@ -141,7 +141,7 @@ public class Auth
         // the delay is here to give the node some time to see its peers - to reduce
         // "Skipped default superuser setup: some nodes were not ready" log spam.
         // It's the only reason for the delay.
-        if (DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress()) || !DatabaseDescriptor.isAutoBootstrap())
+        if (DatabaseDescriptor.instance.getSeeds().contains(FBUtilities.getBroadcastAddress()) || !DatabaseDescriptor.instance.isAutoBootstrap())
         {
             StorageService.tasks.schedule(new Runnable()
                                           {
@@ -279,12 +279,12 @@ public class Auth
     {
         public void onDropKeyspace(String ksName)
         {
-            DatabaseDescriptor.getAuthorizer().revokeAll(DataResource.keyspace(ksName));
+            DatabaseDescriptor.instance.getAuthorizer().revokeAll(DataResource.keyspace(ksName));
         }
 
         public void onDropColumnFamily(String ksName, String cfName)
         {
-            DatabaseDescriptor.getAuthorizer().revokeAll(DataResource.columnFamily(ksName, cfName));
+            DatabaseDescriptor.instance.getAuthorizer().revokeAll(DataResource.columnFamily(ksName, cfName));
         }
 
         public void onDropUserType(String ksName, String userType)

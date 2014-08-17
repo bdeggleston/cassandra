@@ -37,7 +37,7 @@ public class GrantStatement extends PermissionAlteringStatement
 
     public ResultMessage execute(ClientState state) throws RequestValidationException, RequestExecutionException
     {
-        DatabaseDescriptor.getAuthorizer().grant(state.getUser(), permissions, resource, username);
+        DatabaseDescriptor.instance.getAuthorizer().grant(state.getUser(), permissions, resource, username);
         return null;
     }
 }

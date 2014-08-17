@@ -27,7 +27,7 @@ import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.utils.FBUtilities;
 
-import static org.apache.cassandra.config.DatabaseDescriptor.*;
+import org.apache.cassandra.config.DatabaseDescriptor;
 
 
 /**
@@ -45,9 +45,9 @@ public class StageManager
 
     static
     {
-        stages.put(Stage.MUTATION, multiThreadedLowSignalStage(Stage.MUTATION, getConcurrentWriters()));
-        stages.put(Stage.COUNTER_MUTATION, multiThreadedLowSignalStage(Stage.COUNTER_MUTATION, getConcurrentCounterWriters()));
-        stages.put(Stage.READ, multiThreadedLowSignalStage(Stage.READ, getConcurrentReaders()));
+        stages.put(Stage.MUTATION, multiThreadedLowSignalStage(Stage.MUTATION, DatabaseDescriptor.instance.getConcurrentWriters()));
+        stages.put(Stage.COUNTER_MUTATION, multiThreadedLowSignalStage(Stage.COUNTER_MUTATION, DatabaseDescriptor.instance.getConcurrentCounterWriters()));
+        stages.put(Stage.READ, multiThreadedLowSignalStage(Stage.READ, DatabaseDescriptor.instance.getConcurrentReaders()));
         stages.put(Stage.REQUEST_RESPONSE, multiThreadedLowSignalStage(Stage.REQUEST_RESPONSE, FBUtilities.getAvailableProcessors()));
         stages.put(Stage.INTERNAL_RESPONSE, multiThreadedStage(Stage.INTERNAL_RESPONSE, FBUtilities.getAvailableProcessors()));
         // the rest are all single-threaded

@@ -69,7 +69,7 @@ public class Keyspace
     static
     {
         if (!StorageService.instance.isClientMode())
-            DatabaseDescriptor.createAllDirectories();
+            DatabaseDescriptor.instance.createAllDirectories();
     }
 
     public final KSMetaData metadata;
@@ -286,7 +286,7 @@ public class Keyspace
         replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(ksm.name,
                                                                                     ksm.strategyClass,
                                                                                     StorageService.instance.getTokenMetadata(),
-                                                                                    DatabaseDescriptor.getEndpointSnitch(),
+                                                                                    DatabaseDescriptor.instance.getEndpointSnitch(),
                                                                                     ksm.strategyOptions);
     }
 

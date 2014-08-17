@@ -206,11 +206,11 @@ public class SliceQueryFilter implements IDiskAtomFilter
             if (columnCounter.live() > count)
                 break;
 
-            if (respectTombstoneThresholds() && columnCounter.ignored() > DatabaseDescriptor.getTombstoneFailureThreshold())
+            if (respectTombstoneThresholds() && columnCounter.ignored() > DatabaseDescriptor.instance.getTombstoneFailureThreshold())
             {
-                Tracing.trace("Scanned over {} tombstones; query aborted (see tombstone_failure_threshold)", DatabaseDescriptor.getTombstoneFailureThreshold());
+                Tracing.trace("Scanned over {} tombstones; query aborted (see tombstone_failure_threshold)", DatabaseDescriptor.instance.getTombstoneFailureThreshold());
                 logger.error("Scanned over {} tombstones in {}.{}; query aborted (see tombstone_failure_threshold)",
-                             DatabaseDescriptor.getTombstoneFailureThreshold(), container.metadata().ksName, container.metadata().cfName);
+                             DatabaseDescriptor.instance.getTombstoneFailureThreshold(), container.metadata().ksName, container.metadata().cfName);
                 throw new TombstoneOverwhelmingException();
             }
 
@@ -218,7 +218,7 @@ public class SliceQueryFilter implements IDiskAtomFilter
         }
 
         Tracing.trace("Read {} live and {} tombstoned cells", columnCounter.live(), columnCounter.ignored());
-        if (respectTombstoneThresholds() && columnCounter.ignored() > DatabaseDescriptor.getTombstoneWarnThreshold())
+        if (respectTombstoneThresholds() && columnCounter.ignored() > DatabaseDescriptor.instance.getTombstoneWarnThreshold())
         {
             StringBuilder sb = new StringBuilder();
             CellNameType type = container.metadata().comparator;

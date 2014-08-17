@@ -245,7 +245,7 @@ public class CliTest
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
 
         // checking if we can connect to the running cassandra node on localhost
-        CliMain.connect("127.0.0.1", DatabaseDescriptor.getRpcPort());
+        CliMain.connect("127.0.0.1", DatabaseDescriptor.instance.getRpcPort());
 
         // setting new output stream
         CliMain.sessionState.setOut(new PrintStream(outStream));

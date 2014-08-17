@@ -64,7 +64,7 @@ public class MerkleTreeTest
         TOKEN_SCALE = new BigInteger("8");
         partitioner = new RandomPartitioner();
         // TODO need to trickle TokenSerializer
-        DatabaseDescriptor.setPartitioner(partitioner);
+        DatabaseDescriptor.instance.setPartitioner(partitioner);
         mt = new MerkleTree(partitioner, fullRange(), RECOMMENDED_DEPTH, Integer.MAX_VALUE);
     }
 

@@ -89,7 +89,7 @@ public class BulkLoader
                         options.serverEncOptions),
                 handler,
                 options.connectionsPerHost);
-        DatabaseDescriptor.setStreamThroughputOutboundMegabitsPerSec(options.throttle);
+        DatabaseDescriptor.instance.setStreamThroughputOutboundMegabitsPerSec(options.throttle);
         StreamResultFuture future = null;
 
         ProgressIndicator indicator = new ProgressIndicator();

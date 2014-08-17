@@ -50,7 +50,7 @@ public class DefaultConnectionFactory implements StreamConnectionFactory
             try
             {
                 Socket socket = OutboundTcpConnectionPool.newSocket(peer);
-                socket.setSoTimeout(DatabaseDescriptor.getStreamingSocketTimeout());
+                socket.setSoTimeout(DatabaseDescriptor.instance.getStreamingSocketTimeout());
                 socket.setKeepAlive(true);
                 return socket;
             }
@@ -59,7 +59,7 @@ public class DefaultConnectionFactory implements StreamConnectionFactory
                 if (++attempts >= MAX_CONNECT_ATTEMPTS)
                     throw e;
 
-                long waitms = DatabaseDescriptor.getRpcTimeout() * (long)Math.pow(2, attempts);
+                long waitms = DatabaseDescriptor.instance.getRpcTimeout() * (long)Math.pow(2, attempts);
                 logger.warn("Failed attempt " + attempts + " to connect to " + peer + ". Retrying in " + waitms + " ms. (" + e + ")");
                 try
                 {

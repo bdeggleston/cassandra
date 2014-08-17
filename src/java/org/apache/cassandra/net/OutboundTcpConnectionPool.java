@@ -125,13 +125,13 @@ public class OutboundTcpConnectionPool
         if (isEncryptedChannel(endpoint))
         {
             if (Config.getOutboundBindAny())
-                return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.getSSLStoragePort());
+                return SSLFactory.getSocket(DatabaseDescriptor.instance.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.instance.getSSLStoragePort());
             else
-                return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.getSSLStoragePort(), FBUtilities.getLocalAddress(), 0);
+                return SSLFactory.getSocket(DatabaseDescriptor.instance.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.instance.getSSLStoragePort(), FBUtilities.getLocalAddress(), 0);
         }
         else
         {
-            Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, DatabaseDescriptor.getStoragePort())).socket();
+            Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, DatabaseDescriptor.instance.getStoragePort())).socket();
             if (Config.getOutboundBindAny() && !socket.isBound())
                 socket.bind(new InetSocketAddress(FBUtilities.getLocalAddress(), 0));
             return socket;
@@ -147,8 +147,8 @@ public class OutboundTcpConnectionPool
 
     public static boolean isEncryptedChannel(InetAddress address)
     {
-        IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
-        switch (DatabaseDescriptor.getServerEncryptionOptions().internode_encryption)
+        IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
+        switch (DatabaseDescriptor.instance.getServerEncryptionOptions().internode_encryption)
         {
             case none:
                 return false; // if nothing needs to be encrypted then return immediately.

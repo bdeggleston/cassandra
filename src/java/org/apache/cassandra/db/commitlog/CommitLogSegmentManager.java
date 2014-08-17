@@ -111,7 +111,7 @@ public class CommitLogSegmentManager
                             if (availableSegments.isEmpty() && (activeSegments.isEmpty() || createReserveSegments))
                             {
                                 logger.debug("No segments in reserve; creating a fresh one");
-                                size.addAndGet(DatabaseDescriptor.getCommitLogSegmentSize());
+                                size.addAndGet(DatabaseDescriptor.instance.getCommitLogSegmentSize());
                                 // TODO : some error handling in case we fail to create a new segment
                                 availableSegments.add(CommitLogSegment.freshSegment());
                                 hasAvailableSegments.signalAll();
@@ -128,7 +128,7 @@ public class CommitLogSegmentManager
                                     if (segment == allocatingFrom)
                                         break;
                                     segmentsToRecycle.add(segment);
-                                    spaceToReclaim += DatabaseDescriptor.getCommitLogSegmentSize();
+                                    spaceToReclaim += DatabaseDescriptor.instance.getCommitLogSegmentSize();
                                     if (spaceToReclaim + unused >= 0)
                                         break;
                                 }
@@ -373,7 +373,7 @@ public class CommitLogSegmentManager
 
         logger.debug("Recycling {}", file);
         // this wasn't previously a live segment, so add it to the managed size when we make it live
-        size.addAndGet(DatabaseDescriptor.getCommitLogSegmentSize());
+        size.addAndGet(DatabaseDescriptor.instance.getCommitLogSegmentSize());
         segmentManagementTasks.add(new Callable<CommitLogSegment>()
         {
             public CommitLogSegment call()
@@ -391,7 +391,7 @@ public class CommitLogSegmentManager
     private void discardSegment(final CommitLogSegment segment, final boolean deleteFile)
     {
         logger.debug("Segment {} is no longer active and will be deleted {}", segment, deleteFile ? "now" : "by the archive script");
-        size.addAndGet(-DatabaseDescriptor.getCommitLogSegmentSize());
+        size.addAndGet(-DatabaseDescriptor.instance.getCommitLogSegmentSize());
 
         segmentManagementTasks.add(new Callable<CommitLogSegment>()
         {
@@ -439,7 +439,7 @@ public class CommitLogSegmentManager
     {
         long currentSize = size.get();
         logger.debug("Total active commitlog segment space used is {}", currentSize);
-        return DatabaseDescriptor.getTotalCommitlogSpaceInMB() * 1024 * 1024 - currentSize;
+        return DatabaseDescriptor.instance.getTotalCommitlogSpaceInMB() * 1024 * 1024 - currentSize;
     }
 
     /**
