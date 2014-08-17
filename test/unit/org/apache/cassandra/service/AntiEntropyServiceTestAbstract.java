@@ -113,8 +113,8 @@ public abstract class AntiEntropyServiceTestAbstract
         aes = ActiveRepairService.instance;
         TokenMetadata tmd = StorageService.instance.getTokenMetadata();
         tmd.clearUnsafe();
-        StorageService.instance.setTokens(Collections.singleton(StorageService.getPartitioner().getRandomToken()));
-        tmd.updateNormalToken(StorageService.getPartitioner().getMinimumToken(), REMOTE);
+        StorageService.instance.setTokens(Collections.singleton(StorageService.instance.getPartitioner().getRandomToken()));
+        tmd.updateNormalToken(StorageService.instance.getPartitioner().getMinimumToken(), REMOTE);
         assert tmd.isMember(REMOTE);
 
         MessagingService.instance().setVersion(REMOTE, MessagingService.current_version);
@@ -257,7 +257,7 @@ public abstract class AntiEntropyServiceTestAbstract
         for (int i = 1; i <= max; i++)
         {
             InetAddress endpoint = InetAddress.getByName("127.0.0." + i);
-            tmd.updateNormalToken(StorageService.getPartitioner().getRandomToken(), endpoint);
+            tmd.updateNormalToken(StorageService.instance.getPartitioner().getRandomToken(), endpoint);
             endpoints.add(endpoint);
         }
         return endpoints;

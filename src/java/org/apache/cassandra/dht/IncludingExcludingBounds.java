@@ -31,7 +31,7 @@ public class IncludingExcludingBounds<T extends RingPosition> extends AbstractBo
 {
     public IncludingExcludingBounds(T left, T right)
     {
-        this(left, right, StorageService.getPartitioner());
+        this(left, right, StorageService.instance.getPartitioner());
     }
 
     IncludingExcludingBounds(T left, T right, IPartitioner partitioner)

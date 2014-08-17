@@ -58,7 +58,7 @@ public class ValidatorTest
 {
     private static final String keyspace = "ValidatorTest";
     private static final String columnFamily = "Standard1";
-    private final IPartitioner partitioner = StorageService.getPartitioner();
+    private final IPartitioner partitioner = StorageService.instance.getPartitioner();
 
     @BeforeClass
     public static void defineSchema() throws Exception

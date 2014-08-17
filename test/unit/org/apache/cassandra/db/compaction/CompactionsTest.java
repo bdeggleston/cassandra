@@ -410,7 +410,7 @@ public class CompactionsTest
                                                  0,
                                                  0,
                                                  cfs.metadata,
-                                                 StorageService.getPartitioner(),
+                                                 StorageService.instance.getPartitioner(),
                                                  new MetadataCollector(cfs.metadata.comparator));
 
 
@@ -423,7 +423,7 @@ public class CompactionsTest
                                    0,
                                    0,
                                    cfs.metadata,
-                                   StorageService.getPartitioner(),
+                                   StorageService.instance.getPartitioner(),
                                    new MetadataCollector(cfs.metadata.comparator));
 
         writer.append(Util.dk("0"), cf);

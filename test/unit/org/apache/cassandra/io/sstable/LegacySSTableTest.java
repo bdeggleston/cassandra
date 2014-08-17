@@ -126,7 +126,7 @@ public class LegacySSTableTest
     private void testStreaming(String version) throws Exception
     {
         SSTableReader sstable = SSTableReader.open(getDescriptor(version));
-        IPartitioner p = StorageService.getPartitioner();
+        IPartitioner p = StorageService.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
         ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("100"))));
         ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("100")), p.getMinimumToken()));

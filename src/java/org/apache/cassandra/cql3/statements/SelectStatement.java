@@ -369,7 +369,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
 
     private AbstractBounds<RowPosition> getKeyBounds(QueryOptions options) throws InvalidRequestException
     {
-        IPartitioner<?> p = StorageService.getPartitioner();
+        IPartitioner<?> p = StorageService.instance.getPartitioner();
 
         if (onToken)
         {
@@ -1642,7 +1642,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                 receiver = new ColumnSpecification(def.ksName,
                                                    def.cfName,
                                                    new ColumnIdentifier("partition key token", true),
-                                                   StorageService.getPartitioner().getTokenValidator());
+                                                   StorageService.instance.getPartitioner().getTokenValidator());
             }
 
             switch (newRel.operator())

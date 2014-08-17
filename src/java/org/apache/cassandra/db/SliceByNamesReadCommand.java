@@ -51,7 +51,7 @@ public class SliceByNamesReadCommand extends ReadCommand
 
     public Row getRow(Keyspace keyspace)
     {
-        DecoratedKey dk = StorageService.getPartitioner().decorateKey(key);
+        DecoratedKey dk = StorageService.instance.getPartitioner().decorateKey(key);
         return keyspace.getRow(new QueryFilter(dk, cfName, filter, timestamp));
     }
 

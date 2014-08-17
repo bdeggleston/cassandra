@@ -35,7 +35,7 @@ public class SerializationsTest extends AbstractSerializationsTester
     {
         IFilter bf = FilterFactory.getFilter(1000000, 0.0001, offheap);
         for (int i = 0; i < 100; i++)
-            bf.add(StorageService.getPartitioner().getTokenFactory().toByteArray(StorageService.getPartitioner().getRandomToken()));
+            bf.add(StorageService.instance.getPartitioner().getTokenFactory().toByteArray(StorageService.instance.getPartitioner().getRandomToken()));
         DataOutputStreamAndChannel out = getOutput("utils.BloomFilter.bin");
         FilterFactory.serialize(bf, out);
         out.close();

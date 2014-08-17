@@ -344,7 +344,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         UUID hostId = Gossiper.instance.getHostId(endpoint);
         logger.info("Started hinted handoff for host: {} with IP: {}", hostId, endpoint);
         final ByteBuffer hostIdBytes = ByteBuffer.wrap(UUIDGen.decompose(hostId));
-        DecoratedKey epkey =  StorageService.getPartitioner().decorateKey(hostIdBytes);
+        DecoratedKey epkey =  StorageService.instance.getPartitioner().decorateKey(hostIdBytes);
 
         final AtomicInteger rowsReplayed = new AtomicInteger(0);
         Composite startColumn = Composites.EMPTY;
@@ -506,7 +506,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         if (logger.isDebugEnabled())
           logger.debug("Started scheduleAllDeliveries");
 
-        IPartitioner p = StorageService.getPartitioner();
+        IPartitioner p = StorageService.instance.getPartitioner();
         RowPosition minPos = p.getMinimumToken().minKeyBound();
         Range<RowPosition> range = new Range<RowPosition>(minPos, minPos, p);
         IDiskAtomFilter filter = new NamesQueryFilter(ImmutableSortedSet.<CellName>of());
@@ -565,7 +565,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     public List<String> listEndpointsPendingHints()
     {
-        Token.TokenFactory tokenFactory = StorageService.getPartitioner().getTokenFactory();
+        Token.TokenFactory tokenFactory = StorageService.instance.getPartitioner().getTokenFactory();
 
         // Extract the keys as strings to be reported.
         LinkedList<String> result = new LinkedList<String>();
@@ -585,7 +585,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                           columnCount);
 
         // From keys "" to ""...
-        IPartitioner<?> partitioner = StorageService.getPartitioner();
+        IPartitioner<?> partitioner = StorageService.instance.getPartitioner();
         RowPosition minPos = partitioner.getMinimumToken().minKeyBound();
         Range<RowPosition> range = new Range<RowPosition>(minPos, minPos);
 

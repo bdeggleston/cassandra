@@ -70,7 +70,7 @@ public class BootStrapperTest
         StorageService ss = StorageService.instance;
 
         generateFakeEndpoints(numOldNodes);
-        Token myToken = StorageService.getPartitioner().getRandomToken();
+        Token myToken = StorageService.instance.getPartitioner().getRandomToken();
         InetAddress myEndpoint = InetAddress.getByName("127.0.0.1");
 
         TokenMetadata tmd = ss.getTokenMetadata();
@@ -113,7 +113,7 @@ public class BootStrapperTest
     {
         TokenMetadata tmd = StorageService.instance.getTokenMetadata();
         tmd.clearUnsafe();
-        IPartitioner<?> p = StorageService.getPartitioner();
+        IPartitioner<?> p = StorageService.instance.getPartitioner();
 
         for (int i = 1; i <= numOldNodes; i++)
         {

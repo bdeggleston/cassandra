@@ -502,7 +502,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
             {
                 // TODO this is broken
                 logger.warn("Unable to calculate tokens for {}.  Will use a random one", address);
-                tokens = Collections.singletonList(StorageService.getPartitioner().getRandomToken());
+                tokens = Collections.singletonList(StorageService.instance.getPartitioner().getRandomToken());
             }
             int generation = epState.getHeartBeatState().getGeneration();
             logger.info("Sleeping for {}ms to ensure {} does not change", StorageService.RING_DELAY, endpoint);

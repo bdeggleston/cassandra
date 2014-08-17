@@ -64,9 +64,9 @@ public abstract class SecondaryIndex
 
     public static final String CUSTOM_INDEX_OPTION_NAME = "class_name";
 
-    public static final AbstractType<?> keyComparator = StorageService.getPartitioner().preservesOrder()
+    public static final AbstractType<?> keyComparator = StorageService.instance.getPartitioner().preservesOrder()
                                                       ? BytesType.instance
-                                                      : new LocalByPartionerType(StorageService.getPartitioner());
+                                                      : new LocalByPartionerType(StorageService.instance.getPartitioner());
 
     /**
      * Base CF that has many indexes

@@ -41,7 +41,7 @@ public abstract class AbstractRowResolver implements IResponseResolver<ReadRespo
 
     public AbstractRowResolver(ByteBuffer key, String keyspaceName)
     {
-        this.key = StorageService.getPartitioner().decorateKey(key);
+        this.key = StorageService.instance.getPartitioner().decorateKey(key);
         this.keyspaceName = keyspaceName;
     }
 

@@ -241,7 +241,7 @@ public class ColumnFamilyStoreTest
     {
         ColumnFamilyStore cfs = insertKey1Key2();
 
-        IPartitioner<?> p = StorageService.getPartitioner();
+        IPartitioner<?> p = StorageService.instance.getPartitioner();
         List<Row> result = cfs.getRangeSlice(Util.range(p, "key1", "key2"),
                                              null,
                                              Util.namesFilter(cfs, "asdf"),
@@ -1761,7 +1761,7 @@ public class ColumnFamilyStoreTest
         ByteBuffer key = bytes("key");
 
         // 1st sstable
-        SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(), cfmeta, StorageService.getPartitioner());
+        SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(), cfmeta, StorageService.instance.getPartitioner());
         writer.newRow(key);
         writer.addColumn(bytes("col"), bytes("val"), 1);
         writer.close();
@@ -1774,7 +1774,7 @@ public class ColumnFamilyStoreTest
 
         // simulate incomplete compaction
         writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                         cfmeta, StorageService.getPartitioner())
+                                         cfmeta, StorageService.instance.getPartitioner())
         {
             protected SSTableWriter getWriter()
             {
@@ -1784,7 +1784,7 @@ public class ColumnFamilyStoreTest
                                          0,
                                          ActiveRepairService.UNREPAIRED_SSTABLE,
                                          metadata,
-                                         StorageService.getPartitioner(),
+                                         StorageService.instance.getPartitioner(),
                                          collector);
             }
         };
@@ -1829,7 +1829,7 @@ public class ColumnFamilyStoreTest
         // Write SSTable generation 3 that has ancestors 1 and 2
         final Set<Integer> ancestors = Sets.newHashSet(1, 2);
         SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                                cfmeta, StorageService.getPartitioner())
+                                                cfmeta, StorageService.instance.getPartitioner())
         {
             protected SSTableWriter getWriter()
             {
@@ -1841,7 +1841,7 @@ public class ColumnFamilyStoreTest
                                          0,
                                          ActiveRepairService.UNREPAIRED_SSTABLE,
                                          metadata,
-                                         StorageService.getPartitioner(),
+                                         StorageService.instance.getPartitioner(),
                                          collector);
             }
         };
@@ -1896,13 +1896,13 @@ public class ColumnFamilyStoreTest
         ByteBuffer key = bytes("key");
 
         SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                                             cfmeta, StorageService.getPartitioner());
+                                                             cfmeta, StorageService.instance.getPartitioner());
         writer.newRow(key);
         writer.addColumn(bytes("col"), bytes("val"), 1);
         writer.close();
 
         writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                         cfmeta, StorageService.getPartitioner());
+                                         cfmeta, StorageService.instance.getPartitioner());
         writer.newRow(key);
         writer.addColumn(bytes("col"), bytes("val"), 1);
         writer.close();
