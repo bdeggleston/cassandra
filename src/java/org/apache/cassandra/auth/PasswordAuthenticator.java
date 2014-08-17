@@ -167,7 +167,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
 
     public void setup()
     {
-        Auth.setupTable(CREDENTIALS_CF, CREDENTIALS_CF_SCHEMA);
+        Auth.instance.setupTable(CREDENTIALS_CF, CREDENTIALS_CF_SCHEMA);
 
         // the delay is here to give the node some time to see its peers - to reduce
         // "skipped default user setup: some nodes are were not ready" log spam.

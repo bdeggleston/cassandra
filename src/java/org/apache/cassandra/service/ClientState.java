@@ -175,7 +175,7 @@ public class ClientState
      */
     public void login(AuthenticatedUser user) throws AuthenticationException
     {
-        if (!user.isAnonymous() && !Auth.isExistingUser(user.getName()))
+        if (!user.isAnonymous() && !Auth.instance.isExistingUser(user.getName()))
            throw new AuthenticationException(String.format("User %s doesn't exist - create it with CREATE USER query first",
                                                            user.getName()));
         this.user = user;

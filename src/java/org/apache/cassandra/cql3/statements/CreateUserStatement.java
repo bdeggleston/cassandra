@@ -52,7 +52,7 @@ public class CreateUserStatement extends AuthenticationStatement
         // validate login here before checkAccess to avoid leaking user existence to anonymous users.
         state.ensureNotAnonymous();
 
-        if (!ifNotExists && Auth.isExistingUser(username))
+        if (!ifNotExists && Auth.instance.isExistingUser(username))
             throw new InvalidRequestException(String.format("User %s already exists", username));
     }
 
@@ -65,11 +65,11 @@ public class CreateUserStatement extends AuthenticationStatement
     public ResultMessage execute(ClientState state) throws RequestValidationException, RequestExecutionException
     {
         // not rejected in validate()
-        if (ifNotExists && Auth.isExistingUser(username))
+        if (ifNotExists && Auth.instance.isExistingUser(username))
             return null;
 
         DatabaseDescriptor.instance.getAuthenticator().create(username, opts.getOptions());
-        Auth.insertUser(username, superuser);
+        Auth.instance.insertUser(username, superuser);
         return null;
     }
 }

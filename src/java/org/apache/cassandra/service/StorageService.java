@@ -840,7 +840,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     Gossiper.instance.replacedEndpoint(existing);
             assert tokenMetadata.sortedTokens().size() > 0;
 
-            Auth.setup();
+            Auth.instance.setup();
         }
         else
         {
@@ -879,7 +879,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             logger.info("Leaving write survey mode and joining ring at operator request");
             assert tokenMetadata.sortedTokens().size() > 0;
 
-            Auth.setup();
+            Auth.instance.setup();
         }
     }
 

@@ -238,7 +238,7 @@ public class CassandraAuthorizer implements IAuthorizer
 
     public void setup()
     {
-        Auth.setupTable(PERMISSIONS_CF, PERMISSIONS_CF_SCHEMA);
+        Auth.instance.setupTable(PERMISSIONS_CF, PERMISSIONS_CF_SCHEMA);
 
         try
         {
