@@ -49,6 +49,6 @@ public class WriteCallbackInfo extends CallbackInfo
         return allowHints
             && sentMessage.verb != MessagingService.Verb.COUNTER_MUTATION
             && consistencyLevel != ConsistencyLevel.ANY
-            && StorageProxy.shouldHint(target);
+            && StorageProxy.instance.shouldHint(target);
     }
 }

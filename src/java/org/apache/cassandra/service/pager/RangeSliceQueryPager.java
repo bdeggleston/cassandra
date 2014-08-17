@@ -86,7 +86,7 @@ public class RangeSliceQueryPager extends AbstractQueryPager
 
         return localQuery
              ? pageCmd.executeLocally()
-             : StorageProxy.getRangeSlice(pageCmd, consistencyLevel);
+             : StorageProxy.instance.getRangeSlice(pageCmd, consistencyLevel);
     }
 
     protected boolean containsPreviousLast(Row first)

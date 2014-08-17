@@ -294,7 +294,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         verifyBatchSize(cfs);
 
         boolean mutateAtomic = (type == Type.LOGGED && mutations.size() > 1);
-        StorageProxy.mutateWithTriggers(mutations, cl, mutateAtomic);
+        StorageProxy.instance.mutateWithTriggers(mutations, cl, mutateAtomic);
     }
 
     private ResultMessage executeWithConditions(BatchQueryOptions options, long now)
@@ -346,7 +346,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         }
 
         verifyBatchSize(Collections.singleton(updates));
-        ColumnFamily result = StorageProxy.cas(ksName, cfName, key, conditions, updates, options.getSerialConsistency(), options.getConsistency());
+        ColumnFamily result = StorageProxy.instance.cas(ksName, cfName, key, conditions, updates, options.getSerialConsistency(), options.getConsistency());
         return new ResultMessage.Rows(ModificationStatement.buildCasResultSet(ksName, key, cfName, result, columnsWithConditions, true, options.forStatement(0)));
     }
 

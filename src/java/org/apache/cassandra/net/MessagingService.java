@@ -353,7 +353,7 @@ public final class MessagingService implements MessagingServiceMBean
                 {
                     Mutation mutation = (Mutation) ((WriteCallbackInfo) expiredCallbackInfo).sentMessage.payload;
 
-                    return StorageProxy.submitHint(mutation, expiredCallbackInfo.target, null);
+                    return StorageProxy.instance.submitHint(mutation, expiredCallbackInfo.target, null);
                 }
 
                 return null;

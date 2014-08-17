@@ -92,7 +92,7 @@ public class StorageProxyTest
     private void testGRR(AbstractBounds<Token> queryRange, AbstractBounds<Token>... expected)
     {
         // Testing for tokens
-        List<AbstractBounds<Token>> restricted = StorageProxy.getRestrictedRanges(queryRange);
+        List<AbstractBounds<Token>> restricted = StorageProxy.instance.getRestrictedRanges(queryRange);
         assertEquals(restricted.toString(), expected.length, restricted.size());
         for (int i = 0; i < expected.length; i++)
             assertEquals("Mismatch for index " + i + ": " + restricted, expected[i], restricted.get(i));
@@ -102,7 +102,7 @@ public class StorageProxyTest
     private void testGRRKeys(AbstractBounds<RowPosition> queryRange, AbstractBounds<RowPosition>... expected)
     {
         // Testing for keys
-        List<AbstractBounds<RowPosition>> restrictedKeys = StorageProxy.getRestrictedRanges(queryRange);
+        List<AbstractBounds<RowPosition>> restrictedKeys = StorageProxy.instance.getRestrictedRanges(queryRange);
         assertEquals(restrictedKeys.toString(), expected.length, restrictedKeys.size());
         for (int i = 0; i < expected.length; i++)
             assertEquals("Mismatch for index " + i + ": " + restrictedKeys, expected[i], restrictedKeys.get(i));

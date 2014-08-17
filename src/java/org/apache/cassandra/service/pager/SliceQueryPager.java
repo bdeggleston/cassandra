@@ -82,7 +82,7 @@ public class SliceQueryPager extends AbstractQueryPager implements SinglePartiti
         ReadCommand pageCmd = command.withUpdatedFilter(filter);
         return localQuery
              ? Collections.singletonList(pageCmd.getRow(Keyspace.open(command.ksName)))
-             : StorageProxy.read(Collections.singletonList(pageCmd), consistencyLevel);
+             : StorageProxy.instance.read(Collections.singletonList(pageCmd), consistencyLevel);
     }
 
     protected boolean containsPreviousLast(Row first)

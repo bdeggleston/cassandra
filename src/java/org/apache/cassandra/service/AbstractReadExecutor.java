@@ -150,7 +150,7 @@ public abstract class AbstractReadExecutor
     public static AbstractReadExecutor getReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel) throws UnavailableException
     {
         Keyspace keyspace = Keyspace.open(command.ksName);
-        List<InetAddress> allReplicas = StorageProxy.getLiveSortedEndpoints(keyspace, command.key);
+        List<InetAddress> allReplicas = StorageProxy.instance.getLiveSortedEndpoints(keyspace, command.key);
         ReadRepairDecision repairDecision = Schema.instance.getCFMetaData(command.ksName, command.cfName).newReadRepairDecision();
         List<InetAddress> targetReplicas = consistencyLevel.filterForQuery(keyspace, allReplicas, repairDecision);
 

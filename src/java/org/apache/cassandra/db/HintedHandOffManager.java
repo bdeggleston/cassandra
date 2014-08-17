@@ -598,7 +598,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                           range,
                                                           null,
                                                           LARGE_NUMBER);
-            return StorageProxy.getRangeSlice(cmd, ConsistencyLevel.ONE);
+            return StorageProxy.instance.getRangeSlice(cmd, ConsistencyLevel.ONE);
         }
         catch (Exception e)
         {
