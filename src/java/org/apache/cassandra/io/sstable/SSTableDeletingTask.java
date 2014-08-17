@@ -24,12 +24,12 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.Sets;
+import org.apache.cassandra.service.StorageServiceTasks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.db.DataTracker;
 import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 
 public class SSTableDeletingTask implements Runnable
@@ -63,7 +63,7 @@ public class SSTableDeletingTask implements Runnable
 
     public void schedule()
     {
-        StorageService.tasks.submit(this);
+        StorageServiceTasks.instance.tasks.submit(this);
     }
 
     public void run()
@@ -111,7 +111,7 @@ public class SSTableDeletingTask implements Runnable
             }
         };
 
-        FBUtilities.waitOnFuture(StorageService.tasks.schedule(runnable, 0, TimeUnit.MILLISECONDS));
+        FBUtilities.waitOnFuture(StorageServiceTasks.instance.tasks.schedule(runnable, 0, TimeUnit.MILLISECONDS));
     }
 }
 

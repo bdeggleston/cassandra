@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.cassandra.service.StorageServiceTasks;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -40,7 +41,6 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.service.CacheService;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.junit.Assert.assertEquals;
@@ -180,7 +180,7 @@ public class KeyCacheTest
             reader.releaseReference();
 
         Uninterruptibles.sleepUninterruptibly(10, TimeUnit.MILLISECONDS);;
-        while (StorageService.tasks.getActiveCount() + StorageService.tasks.getQueue().size() > 0);
+        while (StorageServiceTasks.instance.tasks.getActiveCount() + StorageServiceTasks.instance.tasks.getQueue().size() > 0);
 
         // after releasing the reference this should drop to 2
         assertKeyCacheSize(2, KEYSPACE1, COLUMN_FAMILY1);

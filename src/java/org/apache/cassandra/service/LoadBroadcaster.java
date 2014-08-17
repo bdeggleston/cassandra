@@ -91,7 +91,7 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber
                                                            StorageService.instance.valueFactory.load(StorageService.instance.getLoad()));
             }
         };
-        StorageService.scheduledTasks.scheduleWithFixedDelay(runnable, 2 * Gossiper.intervalInMillis, BROADCAST_INTERVAL, TimeUnit.MILLISECONDS);
+        StorageServiceTasks.instance.scheduledTasks.scheduleWithFixedDelay(runnable, 2 * Gossiper.intervalInMillis, BROADCAST_INTERVAL, TimeUnit.MILLISECONDS);
     }
 }
 

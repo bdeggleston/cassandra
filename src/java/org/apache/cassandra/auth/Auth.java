@@ -143,7 +143,7 @@ public class Auth
         // It's the only reason for the delay.
         if (DatabaseDescriptor.instance.getSeeds().contains(FBUtilities.getBroadcastAddress()) || !DatabaseDescriptor.instance.isAutoBootstrap())
         {
-            StorageService.tasks.schedule(new Runnable()
+            StorageServiceTasks.instance.tasks.schedule(new Runnable()
                                           {
                                               public void run()
                                               {

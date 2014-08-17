@@ -129,7 +129,7 @@ public class MigrationManager
                     submitMigrationTask(endpoint);
                 }
             };
-            StorageService.optionalTasks.schedule(runnable, MIGRATION_DELAY_IN_MS, TimeUnit.MILLISECONDS);
+            StorageServiceTasks.instance.optionalTasks.schedule(runnable, MIGRATION_DELAY_IN_MS, TimeUnit.MILLISECONDS);
         }
     }
 

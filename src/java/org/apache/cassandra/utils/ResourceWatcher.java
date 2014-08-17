@@ -20,16 +20,15 @@ package org.apache.cassandra.utils;
 import java.io.File;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.service.StorageServiceTasks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.apache.cassandra.service.StorageService;
 
 public class ResourceWatcher
 {
     public static void watch(String resource, Runnable callback, int period)
     {
-        StorageService.scheduledTasks.scheduleWithFixedDelay(new WatchedResource(resource, callback), period, period, TimeUnit.MILLISECONDS);
+        StorageServiceTasks.instance.scheduledTasks.scheduleWithFixedDelay(new WatchedResource(resource, callback), period, period, TimeUnit.MILLISECONDS);
     }
 
     public static class WatchedResource implements Runnable

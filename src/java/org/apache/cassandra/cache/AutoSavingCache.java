@@ -23,6 +23,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.service.StorageServiceTasks;
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,6 @@ import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.io.util.LengthAvailableInputStream;
 import org.apache.cassandra.io.util.SequentialWriter;
 import org.apache.cassandra.service.CacheService;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.Pair;
 
 public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K, V>
@@ -90,7 +90,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
                     submitWrite(keysToSave);
                 }
             };
-            saveTask = StorageService.optionalTasks.scheduleWithFixedDelay(runnable,
+            saveTask = StorageServiceTasks.instance.optionalTasks.scheduleWithFixedDelay(runnable,
                                                                            savePeriodInSeconds,
                                                                            savePeriodInSeconds,
                                                                            TimeUnit.SECONDS);

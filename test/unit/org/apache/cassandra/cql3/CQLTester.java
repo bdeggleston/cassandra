@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
+import org.apache.cassandra.service.StorageServiceTasks;
 import org.junit.AfterClass;
 import org.junit.After;
 import org.junit.Assert;
@@ -35,14 +36,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.SchemaLoader;
-import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.io.util.FileUtils;
-import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.utils.ByteBufferUtil;
 
 /**
  * Base class for CQL tests.
@@ -87,7 +85,7 @@ public abstract class CQLTester
         currentTypes.clear();
 
         // We want to clean up after the test, but dropping a table is rather long so just do that asynchronously
-        StorageService.optionalTasks.execute(new Runnable()
+        StorageServiceTasks.instance.optionalTasks.execute(new Runnable()
         {
             public void run()
             {
@@ -104,7 +102,7 @@ public abstract class CQLTester
                     // mono-threaded, just push a task on the queue to find when it's empty. No perfect but good enough.
 
                     final CountDownLatch latch = new CountDownLatch(1);
-                    StorageService.tasks.execute(new Runnable()
+                    StorageServiceTasks.instance.tasks.execute(new Runnable()
                     {
                             public void run()
                             {

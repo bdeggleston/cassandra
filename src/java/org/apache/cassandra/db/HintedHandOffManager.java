@@ -175,7 +175,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                 metrics.log();
             }
         };
-        StorageService.optionalTasks.scheduleWithFixedDelay(runnable, 10, 10, TimeUnit.MINUTES);
+        StorageServiceTasks.instance.optionalTasks.scheduleWithFixedDelay(runnable, 10, 10, TimeUnit.MINUTES);
     }
 
     private static void deleteHint(ByteBuffer tokenBytes, CellName columnName, long timestamp)
@@ -225,7 +225,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                 }
             }
         };
-        StorageService.optionalTasks.submit(runnable);
+        StorageServiceTasks.instance.optionalTasks.submit(runnable);
     }
 
     //foobar
@@ -246,7 +246,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                 }
             }
         };
-        StorageService.optionalTasks.submit(runnable).get();
+        StorageServiceTasks.instance.optionalTasks.submit(runnable).get();
 
     }
 

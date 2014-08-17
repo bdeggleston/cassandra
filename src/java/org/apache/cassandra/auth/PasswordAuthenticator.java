@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import org.apache.cassandra.service.StorageServiceTasks;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -173,7 +174,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
         // It's the only reason for the delay.
         if (DatabaseDescriptor.instance.getSeeds().contains(FBUtilities.getBroadcastAddress()) || !DatabaseDescriptor.instance.isAutoBootstrap())
         {
-            StorageService.tasks.schedule(new Runnable()
+            StorageServiceTasks.instance.tasks.schedule(new Runnable()
                                           {
                                               public void run()
                                               {

@@ -27,7 +27,7 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.SSTableWriter;
-import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.StorageServiceTasks;
 import org.apache.cassandra.utils.Pair;
 
 /**
@@ -80,7 +80,7 @@ public class StreamReceiveTask extends StreamTask
     private void complete()
     {
         if (!sstables.isEmpty())
-            StorageService.tasks.submit(new OnCompletionRunnable(this));
+            StorageServiceTasks.instance.tasks.submit(new OnCompletionRunnable(this));
     }
 
     private static class OnCompletionRunnable implements Runnable
@@ -132,6 +132,6 @@ public class StreamReceiveTask extends StreamTask
                     writer.abort();
             }
         };
-        StorageService.tasks.submit(r);
+        StorageServiceTasks.instance.tasks.submit(r);
     }
 }
