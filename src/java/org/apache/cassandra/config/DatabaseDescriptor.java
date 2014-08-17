@@ -385,14 +385,7 @@ public class DatabaseDescriptor
         }
         else
         {
-            try
-            {
-                rpcAddress = listenAddress == null ? InetAddress.getLocalHost() : listenAddress;
-            }
-            catch (UnknownHostException e)
-            {
-                throw new ConfigurationException(e.getMessage());
-            }
+            rpcAddress = getLocalAddress();
         }
 
         /* RPC address to broadcast */
@@ -429,11 +422,10 @@ public class DatabaseDescriptor
         {
             throw new ConfigurationException("Missing endpoint_snitch directive");
         }
-        // TODO: initializes the storage service, which relies on the DatabaseDescriptor
         snitch = createEndpointSnitch(conf.endpoint_snitch);
         EndpointSnitchInfo.create();
 
-        localDC = snitch.getDatacenter(FBUtilities.getBroadcastAddress());
+        localDC = snitch.getDatacenter(getBroadcastAddress());
         localComparator = new Comparator<InetAddress>()
         {
             public int compare(InetAddress endpoint1, InetAddress endpoint2)
@@ -1119,9 +1111,21 @@ public class DatabaseDescriptor
         return listenAddress;
     }
 
+    public InetAddress getLocalAddress()
+    {
+        try
+        {
+            return getListenAddress() == null ? InetAddress.getLocalHost() : getListenAddress();
+        }
+        catch (UnknownHostException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
     public InetAddress getBroadcastAddress()
     {
-        return broadcastAddress;
+        return broadcastAddress == null ? getLocalAddress() : broadcastAddress;
     }
 
     public IInternodeAuthenticator getInternodeAuthenticator()

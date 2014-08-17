@@ -135,31 +135,23 @@ public class FBUtilities
 
     /**
      * Please use getBroadcastAddress instead. You need this only when you have to listen/connect.
+     * @deprecated use DatabaseDescriptor.getLocalAddress
      */
+    @Deprecated
     public static InetAddress getLocalAddress()
     {
-        if (localInetAddress == null)
-            try
-            {
-                localInetAddress = DatabaseDescriptor.instance.getListenAddress() == null
-                                    ? InetAddress.getLocalHost()
-                                    : DatabaseDescriptor.instance.getListenAddress();
-            }
-            catch (UnknownHostException e)
-            {
-                throw new RuntimeException(e);
-            }
-        return localInetAddress;
+        return DatabaseDescriptor.instance.getLocalAddress();
     }
 
+    /**
+     * @deprecated use DatabaseDescriptor.getBroadcastAddress
+     */
+    @Deprecated
     public static InetAddress getBroadcastAddress()
     {
-        if (broadcastInetAddress == null)
-            broadcastInetAddress = DatabaseDescriptor.instance.getBroadcastAddress() == null
-                                 ? getLocalAddress()
-                                 : DatabaseDescriptor.instance.getBroadcastAddress();
-        return broadcastInetAddress;
+        return DatabaseDescriptor.instance.getBroadcastAddress();
     }
+
 
     public static Collection<InetAddress> getAllLocalAddresses()
     {
