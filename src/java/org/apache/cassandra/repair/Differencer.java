@@ -66,7 +66,7 @@ public class Differencer implements Runnable
         {
             logger.info(String.format(format, "are consistent"));
             // send back sync complete message
-            MessagingService.instance().sendOneWay(new SyncComplete(desc, r1.endpoint, r2.endpoint, true).createMessage(), FBUtilities.getLocalAddress());
+            MessagingService.instance.sendOneWay(new SyncComplete(desc, r1.endpoint, r2.endpoint, true).createMessage(), FBUtilities.getLocalAddress());
             return;
         }
 

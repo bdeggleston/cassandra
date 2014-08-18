@@ -75,7 +75,7 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
     private void forwardToSource()
     {
         logger.info(String.format("[repair #%s] Forwarding streaming repair of %d ranges to %s (to be streamed with %s)", desc.sessionId, request.ranges.size(), request.src, request.dst));
-        MessagingService.instance().sendOneWay(request.createMessage(), request.src);
+        MessagingService.instance.sendOneWay(request.createMessage(), request.src);
     }
 
     public void handleStreamEvent(StreamEvent event)
@@ -90,7 +90,7 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
     public void onSuccess(StreamState state)
     {
         logger.info(String.format("[repair #%s] streaming task succeed, returning response to %s", desc.sessionId, request.initiator));
-        MessagingService.instance().sendOneWay(new SyncComplete(desc, request.src, request.dst, true).createMessage(), request.initiator);
+        MessagingService.instance.sendOneWay(new SyncComplete(desc, request.src, request.dst, true).createMessage(), request.initiator);
     }
 
     /**
@@ -98,6 +98,6 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
      */
     public void onFailure(Throwable t)
     {
-        MessagingService.instance().sendOneWay(new SyncComplete(desc, request.src, request.dst, false).createMessage(), request.initiator);
+        MessagingService.instance.sendOneWay(new SyncComplete(desc, request.src, request.dst, false).createMessage(), request.initiator);
     }
 }

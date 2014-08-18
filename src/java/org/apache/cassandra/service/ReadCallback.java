@@ -190,7 +190,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
 
                 MessageOut<ReadCommand> message = ((ReadCommand) command).createMessage();
                 for (InetAddress endpoint : endpoints)
-                    MessagingService.instance().sendRR(message, endpoint, repairHandler);
+                    MessagingService.instance.sendRR(message, endpoint, repairHandler);
             }
         }
     }

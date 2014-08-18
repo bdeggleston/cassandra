@@ -82,7 +82,7 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
                                                                                         GossipDigestAck.serializer);
         if (logger.isTraceEnabled())
             logger.trace("Sending a GossipDigestAckMessage to {}", from);
-        MessagingService.instance().sendOneWay(gDigestAckMessage, from);
+        MessagingService.instance.sendOneWay(gDigestAckMessage, from);
     }
 
     /*

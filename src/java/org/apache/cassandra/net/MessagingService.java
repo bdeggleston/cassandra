@@ -303,14 +303,16 @@ public final class MessagingService implements MessagingServiceMBean
     // protocol versions of the other nodes in the cluster
     private final ConcurrentMap<InetAddress, Integer> versions = new NonBlockingHashMap<InetAddress, Integer>();
 
-    private static class MSHandle
-    {
-        public static final MessagingService instance = new MessagingService();
-    }
-    public static MessagingService instance()
-    {
-        return MSHandle.instance;
-    }
+//    private static class MSHandle
+//    {
+//        public static final MessagingService instance = new MessagingService();
+//    }
+//    public static MessagingService instance()
+//    {
+//        return MSHandle.instance;
+//    }
+
+    public static final MessagingService instance = new MessagingService();
 
     private MessagingService()
     {
@@ -362,6 +364,7 @@ public final class MessagingService implements MessagingServiceMBean
 
         callbacks = new ExpiringMap<Integer, CallbackInfo>(DatabaseDescriptor.instance.getMinRpcTimeout(), timeoutReporter);
 
+        // TODO: instance is escaping constructor
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
         {
@@ -584,9 +587,9 @@ public final class MessagingService implements MessagingServiceMBean
         return messageId;
     }
 
-    private static final AtomicInteger idGen = new AtomicInteger(0);
+    private final AtomicInteger idGen = new AtomicInteger(0);
 
-    private static int nextId()
+    private int nextId()
     {
         return idGen.incrementAndGet();
     }

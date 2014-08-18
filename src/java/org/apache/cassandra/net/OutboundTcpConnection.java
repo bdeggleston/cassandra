@@ -316,7 +316,7 @@ public class OutboundTcpConnection extends Thread
         long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.instance.getRpcTimeout());
         while (System.nanoTime() - start < timeout)
         {
-            targetVersion = MessagingService.instance().getVersion(poolReference.endPoint());
+            targetVersion = MessagingService.instance.getVersion(poolReference.endPoint());
             try
             {
                 socket = poolReference.newSocket();
@@ -360,7 +360,7 @@ public class OutboundTcpConnection extends Thread
                 if (targetVersion > maxTargetVersion)
                 {
                     logger.debug("Target max version is {}; will reconnect with that version", maxTargetVersion);
-                    MessagingService.instance().setVersion(poolReference.endPoint(), maxTargetVersion);
+                    MessagingService.instance.setVersion(poolReference.endPoint(), maxTargetVersion);
                     disconnect();
                     return false;
                 }
@@ -369,7 +369,7 @@ public class OutboundTcpConnection extends Thread
                 {
                     logger.trace("Detected higher max version {} (using {}); will reconnect when queued messages are done",
                                  maxTargetVersion, targetVersion);
-                    MessagingService.instance().setVersion(poolReference.endPoint(), Math.min(MessagingService.current_version, maxTargetVersion));
+                    MessagingService.instance.setVersion(poolReference.endPoint(), Math.min(MessagingService.current_version, maxTargetVersion));
                     softCloseSocket();
                 }
 

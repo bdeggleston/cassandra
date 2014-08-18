@@ -51,12 +51,12 @@ public class TruncateVerbHandler implements IVerbHandler<Truncation>
 
         TruncateResponse response = new TruncateResponse(t.keyspace, t.columnFamily, true);
         logger.trace("{} applied.  Enqueuing response to {}@{} ", new Object[]{ t, id, message.from });
-        MessagingService.instance().sendReply(response.createMessage(), id, message.from);
+        MessagingService.instance.sendReply(response.createMessage(), id, message.from);
     }
 
     private static void respondError(Truncation t, MessageIn truncateRequestMessage)
     {
         TruncateResponse response = new TruncateResponse(t.keyspace, t.columnFamily, false);
-        MessagingService.instance().sendOneWay(response.createMessage(), truncateRequestMessage.from);
+        MessagingService.instance.sendOneWay(response.createMessage(), truncateRequestMessage.from);
     }
 }

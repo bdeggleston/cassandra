@@ -56,7 +56,7 @@ public class ReadVerbHandler implements IVerbHandler<ReadCommand>
                                                                       getResponse(command, row),
                                                                       ReadResponse.serializer);
         Tracing.trace("Enqueuing response to {}", message.from);
-        MessagingService.instance().sendReply(reply, id, message.from);
+        MessagingService.instance.sendReply(reply, id, message.from);
     }
 
     public static ReadResponse getResponse(ReadCommand command, Row row)

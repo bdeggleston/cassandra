@@ -383,7 +383,7 @@ public class StorageProxy implements StorageProxyMBean
     {
         MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_COMMIT, commit, Commit.serializer);
         for (InetAddress target : replicas)
-            MessagingService.instance().sendOneWay(message, target);
+            MessagingService.instance.sendOneWay(message, target);
     }
 
     private PrepareCallback preparePaxos(Commit toPrepare, List<InetAddress> endpoints, int requiredParticipants, ConsistencyLevel consistencyForPaxos)
@@ -392,7 +392,7 @@ public class StorageProxy implements StorageProxyMBean
         PrepareCallback callback = new PrepareCallback(toPrepare.key, toPrepare.update.metadata(), requiredParticipants, consistencyForPaxos);
         MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_PREPARE, toPrepare, Commit.serializer);
         for (InetAddress target : endpoints)
-            MessagingService.instance().sendRR(message, target, callback);
+            MessagingService.instance.sendRR(message, target, callback);
         callback.await();
         return callback;
     }
@@ -403,7 +403,7 @@ public class StorageProxy implements StorageProxyMBean
         ProposeCallback callback = new ProposeCallback(endpoints.size(), requiredParticipants, !timeoutIfPartial, consistencyLevel);
         MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_PROPOSE, proposal, Commit.serializer);
         for (InetAddress target : endpoints)
-            MessagingService.instance().sendRR(message, target, callback);
+            MessagingService.instance.sendRR(message, target, callback);
 
         callback.await();
 
@@ -431,7 +431,7 @@ public class StorageProxy implements StorageProxyMBean
         for (InetAddress destination : Iterables.concat(naturalEndpoints, pendingEndpoints))
         {
             if (FailureDetector.instance.isAlive(destination))
-                MessagingService.instance().sendRR(message, destination, responseHandler);
+                MessagingService.instance.sendRR(message, destination, responseHandler);
         }
 
         responseHandler.get();
@@ -618,18 +618,18 @@ public class StorageProxy implements StorageProxyMBean
                                                       .createMessage();
         for (InetAddress target : endpoints)
         {
-            int targetVersion = MessagingService.instance().getVersion(target);
+            int targetVersion = MessagingService.instance.getVersion(target);
             if (target.equals(FBUtilities.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS)
             {
                 insertLocal(message.payload, handler);
             }
             else if (targetVersion == MessagingService.current_version)
             {
-                MessagingService.instance().sendRR(message, target, handler, false);
+                MessagingService.instance.sendRR(message, target, handler, false);
             }
             else
             {
-                MessagingService.instance().sendRR(BatchlogManager.getBatchlogMutationFor(mutations, uuid, targetVersion)
+                MessagingService.instance.sendRR(BatchlogManager.getBatchlogMutationFor(mutations, uuid, targetVersion)
                                                                   .createMessage(),
                                                    target,
                                                    handler,
@@ -656,7 +656,7 @@ public class StorageProxy implements StorageProxyMBean
             if (target.equals(FBUtilities.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS)
                 insertLocal(message.payload, handler);
             else
-                MessagingService.instance().sendRR(message, target, handler, false);
+                MessagingService.instance.sendRR(message, target, handler, false);
         }
     }
 
@@ -818,7 +818,7 @@ public class StorageProxy implements StorageProxyMBean
                     // (1.1 knows how to forward old-style String message IDs; updated to int in 2.0)
                     if (localDataCenter.equals(dc))
                     {
-                        MessagingService.instance().sendRR(message, destination, responseHandler, true);
+                        MessagingService.instance.sendRR(message, destination, responseHandler, true);
                     } else
                     {
                         Collection<InetAddress> messages = (dcGroups != null) ? dcGroups.get(dc) : null;
@@ -930,7 +930,7 @@ public class StorageProxy implements StorageProxyMBean
             {
                 InetAddress destination = iter.next();
                 CompactEndpointSerializationHelper.serialize(destination, out);
-                int id = MessagingService.instance().addCallback(handler,
+                int id = MessagingService.instance.addCallback(handler,
                                                                  message,
                                                                  destination,
                                                                  message.getTimeout(),
@@ -941,7 +941,7 @@ public class StorageProxy implements StorageProxyMBean
             }
             message = message.withParameter(Mutation.FORWARD_TO, out.getData());
             // send the combined message + forward headers
-            int id = MessagingService.instance().sendRR(message, target, handler, true);
+            int id = MessagingService.instance.sendRR(message, target, handler, true);
             logger.trace("Sending message to {}@{}", id, target);
         }
         catch (IOException e)
@@ -1005,7 +1005,7 @@ public class StorageProxy implements StorageProxyMBean
             AbstractWriteResponseHandler responseHandler = new WriteResponseHandler(endpoint, WriteType.COUNTER);
 
             Tracing.trace("Enqueuing counter update to {}", endpoint);
-            MessagingService.instance().sendRR(cm.makeMutationMessage(), endpoint, responseHandler, false);
+            MessagingService.instance.sendRR(cm.makeMutationMessage(), endpoint, responseHandler, false);
             return responseHandler;
         }
     }
@@ -1275,7 +1275,7 @@ public class StorageProxy implements StorageProxyMBean
                     for (InetAddress endpoint : exec.getContactedReplicas())
                     {
                         Tracing.trace("Enqueuing full data read to {}", endpoint);
-                        MessagingService.instance().sendRR(message, endpoint, repairHandler);
+                        MessagingService.instance.sendRR(message, endpoint, repairHandler);
                     }
                 }
             }
@@ -1355,7 +1355,7 @@ public class StorageProxy implements StorageProxyMBean
             Keyspace keyspace = Keyspace.open(command.ksName);
             Row r = command.getRow(keyspace);
             ReadResponse result = ReadVerbHandler.getResponse(command, r);
-            MessagingService.instance().addLatency(FBUtilities.getBroadcastAddress(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+            MessagingService.instance.addLatency(FBUtilities.getBroadcastAddress(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
             handler.response(result);
         }
     }
@@ -1376,7 +1376,7 @@ public class StorageProxy implements StorageProxyMBean
         protected void runMayThrow()
         {
             RangeSliceReply result = new RangeSliceReply(command.executeLocally());
-            MessagingService.instance().addLatency(FBUtilities.getBroadcastAddress(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+            MessagingService.instance.addLatency(FBUtilities.getBroadcastAddress(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
             handler.response(result);
         }
     }
@@ -1574,7 +1574,7 @@ public class StorageProxy implements StorageProxyMBean
                         for (InetAddress endpoint : filteredEndpoints)
                         {
                             Tracing.trace("Enqueuing request to {}", endpoint);
-                            MessagingService.instance().sendRR(message, endpoint, handler);
+                            MessagingService.instance.sendRR(message, endpoint, handler);
                         }
                     }
                     scanHandlers.add(Pair.create(nodeCmd, handler));
@@ -1726,7 +1726,7 @@ public class StorageProxy implements StorageProxyMBean
         // an empty message acts as a request to the SchemaCheckVerbHandler.
         MessageOut message = new MessageOut(MessagingService.Verb.SCHEMA_CHECK);
         for (InetAddress endpoint : liveHosts)
-            MessagingService.instance().sendRR(message, endpoint, cb);
+            MessagingService.instance.sendRR(message, endpoint, cb);
 
         try
         {
@@ -1982,7 +1982,7 @@ public class StorageProxy implements StorageProxyMBean
         final Truncation truncation = new Truncation(keyspace, cfname);
         MessageOut<Truncation> message = truncation.createMessage();
         for (InetAddress endpoint : allEndpoints)
-            MessagingService.instance().sendRR(message, endpoint, responseHandler);
+            MessagingService.instance.sendRR(message, endpoint, responseHandler);
 
         // Wait for all
         try
@@ -2032,7 +2032,7 @@ public class StorageProxy implements StorageProxyMBean
 
             if (TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - constructionTime) > DatabaseDescriptor.instance.getTimeout(verb))
             {
-                MessagingService.instance().incrementDroppedMessages(verb);
+                MessagingService.instance.incrementDroppedMessages(verb);
                 return;
             }
             try
@@ -2059,7 +2059,7 @@ public class StorageProxy implements StorageProxyMBean
         {
             if (System.currentTimeMillis() > constructionTime + DatabaseDescriptor.instance.getTimeout(MessagingService.Verb.MUTATION))
             {
-                MessagingService.instance().incrementDroppedMessages(MessagingService.Verb.MUTATION);
+                MessagingService.instance.incrementDroppedMessages(MessagingService.Verb.MUTATION);
                 HintRunnable runnable = new HintRunnable(FBUtilities.getBroadcastAddress())
                 {
                     protected void runMayThrow() throws Exception

@@ -398,7 +398,7 @@ public class BatchlogManager implements BatchlogManagerMBean
             ReplayWriteResponseHandler handler = new ReplayWriteResponseHandler(liveEndpoints);
             MessageOut<Mutation> message = mutation.createMessage();
             for (InetAddress endpoint : liveEndpoints)
-                MessagingService.instance().sendRR(message, endpoint, handler, false);
+                MessagingService.instance.sendRR(message, endpoint, handler, false);
             return handler;
         }
 

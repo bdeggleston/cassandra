@@ -122,7 +122,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
             try
             {
                 //wait on messaging service to start listening
-                MessagingService.instance().waitUntilListening();
+                MessagingService.instance.waitUntilListening();
 
                 /* Update the local heartbeat counter. */
                 endpointStateMap.get(FBUtilities.getBroadcastAddress()).getHeartBeatState().updateHeartBeat();
@@ -355,9 +355,9 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         unreachableEndpoints.remove(endpoint);
         // do not remove endpointState until the quarantine expires
         FailureDetector.instance.remove(endpoint);
-        MessagingService.instance().resetVersion(endpoint);
+        MessagingService.instance.resetVersion(endpoint);
         quarantineEndpoint(endpoint);
-        MessagingService.instance().destroyConnectionPool(endpoint);
+        MessagingService.instance.destroyConnectionPool(endpoint);
         if (logger.isDebugEnabled())
             logger.debug("removing endpoint {}", endpoint);
     }
@@ -553,7 +553,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         InetAddress to = liveEndpoints.get(index);
         if (logger.isTraceEnabled())
             logger.trace("Sending a GossipDigestSyn to {} ...", to);
-        MessagingService.instance().sendOneWay(message, to);
+        MessagingService.instance.sendOneWay(message, to);
         return seeds.contains(to);
     }
 
@@ -715,7 +715,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
     public boolean usesHostId(InetAddress endpoint)
     {
-        if (MessagingService.instance().knowsVersion(endpoint))
+        if (MessagingService.instance.knowsVersion(endpoint))
             return true;
         else if (getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.NET_VERSION) != null)
             return true;
@@ -838,7 +838,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
     private void markAlive(final InetAddress addr, final EndpointState localState)
     {
-        if (MessagingService.instance().getVersion(addr) < MessagingService.VERSION_20)
+        if (MessagingService.instance.getVersion(addr) < MessagingService.VERSION_20)
         {
             realMarkAlive(addr, localState);
             return;
@@ -860,7 +860,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
                 realMarkAlive(addr, localState);
             }
         };
-        MessagingService.instance().sendRR(echoMessage, addr, echoHandler);
+        MessagingService.instance.sendRR(echoMessage, addr, echoHandler);
     }
 
     private void realMarkAlive(final InetAddress addr, final EndpointState localState)
@@ -1186,7 +1186,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
                 GossipDigestSyn.serializer);
         inShadowRound = true;
         for (InetAddress seed : seeds)
-            MessagingService.instance().sendOneWay(message, seed);
+            MessagingService.instance.sendOneWay(message, seed);
         int slept = 0;
         try
         {
@@ -1280,7 +1280,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         Uninterruptibles.sleepUninterruptibly(intervalInMillis * 2, TimeUnit.MILLISECONDS);
         MessageOut message = new MessageOut(MessagingService.Verb.GOSSIP_SHUTDOWN);
         for (InetAddress ep : liveEndpoints)
-            MessagingService.instance().sendOneWay(message, ep);
+            MessagingService.instance.sendOneWay(message, ep);
     }
 
     public boolean isEnabled()

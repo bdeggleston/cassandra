@@ -46,11 +46,11 @@ public class MessageDeliveryTask implements Runnable
         if (MessagingService.DROPPABLE_VERBS.contains(verb)
             && System.currentTimeMillis() > constructionTime + message.getTimeout())
         {
-            MessagingService.instance().incrementDroppedMessages(verb);
+            MessagingService.instance.incrementDroppedMessages(verb);
             return;
         }
 
-        IVerbHandler verbHandler = MessagingService.instance().getVerbHandler(verb);
+        IVerbHandler verbHandler = MessagingService.instance.getVerbHandler(verb);
         if (verbHandler == null)
         {
             logger.debug("Unknown verb {}", verb);
@@ -67,7 +67,7 @@ public class MessageDeliveryTask implements Runnable
             {
                 MessageOut response = new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE)
                                                     .withParameter(MessagingService.FAILURE_RESPONSE_PARAM, MessagingService.ONE_BYTE);
-                MessagingService.instance().sendReply(response, id, message.from);
+                MessagingService.instance.sendReply(response, id, message.from);
             }
 
             throw t;

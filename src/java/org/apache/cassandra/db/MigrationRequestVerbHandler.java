@@ -42,6 +42,6 @@ public class MigrationRequestVerbHandler implements IVerbHandler
         MessageOut<Collection<Mutation>> response = new MessageOut<>(MessagingService.Verb.INTERNAL_RESPONSE,
                                                                      SystemKeyspace.instance.serializeSchema(),
                                                                      MigrationManager.MigrationsSerializer.instance);
-        MessagingService.instance().sendReply(response, id, message.from);
+        MessagingService.instance.sendReply(response, id, message.from);
     }
 }

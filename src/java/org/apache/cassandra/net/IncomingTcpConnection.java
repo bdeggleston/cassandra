@@ -137,7 +137,7 @@ public class IncomingTcpConnection extends Thread
             logger.info("Received messages from newer protocol version {}. Ignoring", version);
             return;
         }
-        MessagingService.instance().setVersion(from, maxVersion);
+        MessagingService.instance.setVersion(from, maxVersion);
         logger.debug("Set version for {} to {} (will use {})", from, maxVersion, Math.min(MessagingService.current_version, maxVersion));
         // outbound side will reconnect if necessary to upgrade version
 
@@ -170,7 +170,7 @@ public class IncomingTcpConnection extends Thread
         }
         if (version <= MessagingService.current_version)
         {
-            MessagingService.instance().receive(message, id, timestamp);
+            MessagingService.instance.receive(message, id, timestamp);
         }
         else
         {
@@ -183,7 +183,7 @@ public class IncomingTcpConnection extends Thread
     {
         // reset version here, since we set when starting an incoming socket
         if (from != null)
-            MessagingService.instance().resetVersion(from);
+            MessagingService.instance.resetVersion(from);
         try
         {
             socket.close();

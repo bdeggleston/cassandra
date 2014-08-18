@@ -70,7 +70,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 ActiveRepairService.instance.registerParentRepairSession(prepareMessage.parentRepairSession,
                                                                          columnFamilyStores,
                                                                          prepareMessage.ranges);
-                MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE), id, message.from);
+                MessagingService.instance.sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE), id, message.from);
                 break;
 
             case SNAPSHOT:
@@ -85,7 +85,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 });
 
                 logger.debug("Enqueuing response to snapshot request {} to {}", desc.sessionId, message.from);
-                MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE), id, message.from);
+                MessagingService.instance.sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE), id, message.from);
                 break;
 
             case VALIDATION_REQUEST:

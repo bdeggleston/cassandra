@@ -81,6 +81,6 @@ class MigrationTask extends WrappedRunnable
                 return false;
             }
         };
-        MessagingService.instance().sendRR(message, endpoint, cb);
+        MessagingService.instance.sendRR(message, endpoint, cb);
     }
 }

@@ -32,6 +32,6 @@ public class PrepareVerbHandler implements IVerbHandler<Commit>
     {
         PrepareResponse response = PaxosState.prepare(message.payload);
         MessageOut<PrepareResponse> reply = new MessageOut<PrepareResponse>(MessagingService.Verb.REQUEST_RESPONSE, response, PrepareResponse.serializer);
-        MessagingService.instance().sendReply(reply, id, message.from);
+        MessagingService.instance.sendReply(reply, id, message.from);
     }
 }

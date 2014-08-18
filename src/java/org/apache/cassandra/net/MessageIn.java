@@ -85,7 +85,7 @@ public class MessageIn<T>
         IVersionedSerializer<T2> serializer = (IVersionedSerializer<T2>) MessagingService.verbSerializers.get(verb);
         if (serializer instanceof MessagingService.CallbackDeterminedSerializer)
         {
-            CallbackInfo callback = MessagingService.instance().getRegisteredCallback(id);
+            CallbackInfo callback = MessagingService.instance.getRegisteredCallback(id);
             if (callback == null)
             {
                 // reply for expired callback.  we'll have to skip it.

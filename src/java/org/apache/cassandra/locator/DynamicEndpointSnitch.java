@@ -242,9 +242,9 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
             return;
         if (!registered)
         {
-            if (MessagingService.instance() != null)
+            if (MessagingService.instance != null)
             {
-                MessagingService.instance().register(this);
+                MessagingService.instance.register(this);
                 registered = true;
             }
 
