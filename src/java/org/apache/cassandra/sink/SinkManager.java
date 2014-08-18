@@ -27,36 +27,38 @@ import org.apache.cassandra.net.MessageOut;
 
 public class SinkManager
 {
-    private static final Set<IMessageSink> messageSinks = new CopyOnWriteArraySet<>();
-    private static final Set<IRequestSink> requestSinks = new CopyOnWriteArraySet<>();
+    public static SinkManager instance = new SinkManager();
 
-    public static void add(IMessageSink ms)
+    private final Set<IMessageSink> messageSinks = new CopyOnWriteArraySet<>();
+    private final Set<IRequestSink> requestSinks = new CopyOnWriteArraySet<>();
+
+    public void add(IMessageSink ms)
     {
         messageSinks.add(ms);
     }
 
-    public static void add(IRequestSink rs)
+    public void add(IRequestSink rs)
     {
         requestSinks.add(rs);
     }
 
-    public static void remove(IMessageSink ms)
+    public void remove(IMessageSink ms)
     {
         messageSinks.remove(ms);
     }
 
-    public static void remove(IRequestSink rs)
+    public void remove(IRequestSink rs)
     {
         requestSinks.remove(rs);
     }
 
-    public static void clear()
+    public void clear()
     {
         messageSinks.clear();
         requestSinks.clear();
     }
 
-    public static MessageOut processOutboundMessage(MessageOut message, int id, InetAddress to)
+    public MessageOut processOutboundMessage(MessageOut message, int id, InetAddress to)
     {
         if (messageSinks.isEmpty())
             return message;
@@ -70,7 +72,7 @@ public class SinkManager
         return message;
     }
 
-    public static MessageIn processInboundMessage(MessageIn message, int id)
+    public MessageIn processInboundMessage(MessageIn message, int id)
     {
         if (messageSinks.isEmpty())
             return message;
@@ -84,7 +86,7 @@ public class SinkManager
         return message;
     }
 
-    public static IMutation processWriteRequest(IMutation mutation)
+    public IMutation processWriteRequest(IMutation mutation)
     {
         if (requestSinks.isEmpty())
             return mutation;

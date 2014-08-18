@@ -667,7 +667,7 @@ public final class MessagingService implements MessagingServiceMBean
             logger.trace("Message-to-self {} going over MessagingService", message);
 
         // message sinks are a testing hook
-        MessageOut processedMessage = SinkManager.processOutboundMessage(message, id, to);
+        MessageOut processedMessage = SinkManager.instance.processOutboundMessage(message, id, to);
         if (processedMessage == null)
         {
             return;
@@ -728,7 +728,7 @@ public final class MessagingService implements MessagingServiceMBean
             state.trace("Message received from {}", message.from);
 
         Verb verb = message.verb;
-        message = SinkManager.processInboundMessage(message, id);
+        message = SinkManager.instance.processInboundMessage(message, id);
         if (message == null)
         {
             incrementRejectedMessages(verb);

@@ -90,7 +90,7 @@ public class RemoveTest
     @After
     public void tearDown()
     {
-        SinkManager.clear();
+        SinkManager.instance.clear();
         MessagingService.instance().clearCallbacksUnsafe();
         MessagingService.instance().shutdown();
     }
