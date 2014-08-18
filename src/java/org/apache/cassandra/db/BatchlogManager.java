@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.marshal.UUIDType;
@@ -57,7 +58,6 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.WrappedRunnable;
 
-import static org.apache.cassandra.cql3.QueryProcessor.executeInternal;
 
 public class BatchlogManager implements BatchlogManagerMBean
 {
@@ -99,7 +99,7 @@ public class BatchlogManager implements BatchlogManagerMBean
     public int countAllBatches()
     {
         String query = String.format("SELECT count(*) FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.BATCHLOG_CF);
-        return (int) executeInternal(query).one().getLong("count");
+        return (int) QueryProcessor.instance.executeInternal(query).one().getLong("count");
     }
 
     public long getTotalBatchesReplayed()
@@ -168,7 +168,7 @@ public class BatchlogManager implements BatchlogManagerMBean
 
         try
         {
-            UntypedResultSet page = executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s LIMIT %d",
+            UntypedResultSet page = QueryProcessor.instance.executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s LIMIT %d",
                                                                   Keyspace.SYSTEM_KS,
                                                                   SystemKeyspace.BATCHLOG_CF,
                                                                   PAGE_SIZE));
@@ -180,7 +180,7 @@ public class BatchlogManager implements BatchlogManagerMBean
                 if (page.size() < PAGE_SIZE)
                     break; // we've exhausted the batchlog, next query would be empty.
 
-                page = executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s WHERE token(id) > token(?) LIMIT %d",
+                page = QueryProcessor.instance.executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s WHERE token(id) > token(?) LIMIT %d",
                                                      Keyspace.SYSTEM_KS,
                                                      SystemKeyspace.BATCHLOG_CF,
                                                      PAGE_SIZE), 

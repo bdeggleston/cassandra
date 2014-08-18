@@ -447,7 +447,7 @@ public class CQLSSTableWriter implements Closeable
             try
             {
                 ClientState state = ClientState.forInternalCalls();
-                ParsedStatement.Prepared prepared = QueryProcessor.getStatement(query, state);
+                ParsedStatement.Prepared prepared = QueryProcessor.instance.getStatement(query, state);
                 CQLStatement stmt = prepared.statement;
                 stmt.validate(state);
 

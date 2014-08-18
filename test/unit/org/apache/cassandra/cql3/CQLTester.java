@@ -178,7 +178,7 @@ public abstract class CQLTester
         try
         {
             // executeOnceInternal don't work for schema changes
-            QueryProcessor.executeOnceInternal(query);
+            QueryProcessor.instance.executeOnceInternal(query);
         }
         catch (Exception e)
         {
@@ -199,13 +199,13 @@ public abstract class CQLTester
             if (USE_PREPARED_VALUES)
             {
                 logger.info("Executing: {} with values {}", query, formatAllValues(values));
-                rs = QueryProcessor.executeOnceInternal(query, transformValues(values));
+                rs = QueryProcessor.instance.executeOnceInternal(query, transformValues(values));
             }
             else
             {
                 query = replaceValues(query, values);
                 logger.info("Executing: {}", query);
-                rs = QueryProcessor.executeOnceInternal(query);
+                rs = QueryProcessor.instance.executeOnceInternal(query);
             }
             if (rs != null)
                 logger.info("Got {} rows", rs.size());

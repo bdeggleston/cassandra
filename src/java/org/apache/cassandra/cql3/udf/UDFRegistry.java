@@ -64,7 +64,7 @@ public class UDFRegistry
     public static void refreshInitial()
     {
         logger.debug("Refreshing UDFs");
-        for (UntypedResultSet.Row row : QueryProcessor.executeOnceInternal(SELECT_CQL))
+        for (UntypedResultSet.Row row : QueryProcessor.instance.executeOnceInternal(SELECT_CQL))
         {
             UFMetaData uf = UFMetaData.fromSchema(row);
             UDFFunctionOverloads sigMap = functions.get(uf.qualifiedName);

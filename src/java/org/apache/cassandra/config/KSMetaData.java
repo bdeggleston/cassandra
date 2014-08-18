@@ -87,6 +87,7 @@ public final class KSMetaData
         return new KSMetaData(ksm.name, ksm.strategyClass, ksm.strategyOptions, ksm.durableWrites, cfDefs, ksm.userTypes);
     }
 
+    // TODO: would this be better in the SystemKeyspace class?
     public static KSMetaData systemKeyspace()
     {
         List<CFMetaData> cfDefs = Arrays.asList(CFMetaData.BatchlogCf,
@@ -273,7 +274,7 @@ public final class KSMetaData
      */
     public static KSMetaData fromSchema(Row row, Iterable<CFMetaData> cfms, UTMetaData userTypes)
     {
-        UntypedResultSet.Row result = QueryProcessor.resultify("SELECT * FROM system.schema_keyspaces", row).one();
+        UntypedResultSet.Row result = QueryProcessor.instance.resultify("SELECT * FROM system.schema_keyspaces", row).one();
         try
         {
             return new KSMetaData(result.getString("keyspace_name"),
@@ -315,7 +316,7 @@ public final class KSMetaData
             return Collections.emptyMap();
 
         Map<String, CFMetaData> cfms = new HashMap<>();
-        UntypedResultSet results = QueryProcessor.resultify("SELECT * FROM system.schema_columnfamilies", row);
+        UntypedResultSet results = QueryProcessor.instance.resultify("SELECT * FROM system.schema_columnfamilies", row);
         for (UntypedResultSet.Row result : results)
         {
             CFMetaData cfm = CFMetaData.fromSchema(result);

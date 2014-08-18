@@ -243,7 +243,7 @@ public class CassandraAuthorizer implements IAuthorizer
         try
         {
             String query = String.format("SELECT permissions FROM %s.%s WHERE username = ? AND resource = ?", Auth.AUTH_KS, PERMISSIONS_CF);
-            authorizeStatement = (SelectStatement) QueryProcessor.parseStatement(query).prepare().statement;
+            authorizeStatement = (SelectStatement) QueryProcessor.instance.parseStatement(query).prepare().statement;
         }
         catch (RequestValidationException e)
         {
@@ -259,6 +259,6 @@ public class CassandraAuthorizer implements IAuthorizer
 
     private static UntypedResultSet process(String query) throws RequestExecutionException
     {
-        return QueryProcessor.process(query, ConsistencyLevel.ONE);
+        return QueryProcessor.instance.process(query, ConsistencyLevel.ONE);
     }
 }

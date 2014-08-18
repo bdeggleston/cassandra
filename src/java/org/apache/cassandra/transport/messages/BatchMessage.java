@@ -177,7 +177,7 @@ public class BatchMessage extends Message.Request
                 ParsedStatement.Prepared p;
                 if (query instanceof String)
                 {
-                    p = QueryProcessor.parseStatement((String)query, state);
+                    p = QueryProcessor.instance.parseStatement((String)query, state);
                 }
                 else
                 {

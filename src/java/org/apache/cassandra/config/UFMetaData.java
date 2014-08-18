@@ -248,7 +248,7 @@ public final class UFMetaData
 
     public static Map<String, UFMetaData> fromSchema(Row row)
     {
-        UntypedResultSet results = QueryProcessor.resultify("SELECT * FROM system." + SystemKeyspace.SCHEMA_FUNCTIONS_CF, row);
+        UntypedResultSet results = QueryProcessor.instance.resultify("SELECT * FROM system." + SystemKeyspace.SCHEMA_FUNCTIONS_CF, row);
         Map<String, UFMetaData> udfs = new HashMap<>(results.size());
         for (UntypedResultSet.Row result : results)
         {

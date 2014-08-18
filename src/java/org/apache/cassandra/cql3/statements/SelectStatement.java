@@ -342,7 +342,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         // However, IN + LIMIT is not a very sensible choice.
         for (ByteBuffer key : keys)
         {
-            QueryProcessor.validateKey(key);
+            QueryProcessor.instance.validateKey(key);
             // We should not share the slice filter amongst the commands (hence the cloneShallow), due to
             // SliceQueryFilter not being immutable due to its columnCounter used by the lastCounted() method
             // (this is fairly ugly and we should change that but that's probably not a tiny refactor to do that cleanly)
@@ -530,7 +530,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             SortedSet<CellName> cellNames = getRequestedColumns(options);
             if (cellNames == null) // in case of IN () for the last column of the key
                 return null;
-            QueryProcessor.validateCellNames(cellNames, cfm.comparator);
+            QueryProcessor.instance.validateCellNames(cellNames, cfm.comparator);
             return new NamesQueryFilter(cellNames, true);
         }
     }
