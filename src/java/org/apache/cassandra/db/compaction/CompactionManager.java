@@ -101,7 +101,6 @@ public class CompactionManager implements CompactionManagerMBean
 {
     public static final String MBEAN_OBJECT_NAME = "org.apache.cassandra.db:type=CompactionManager";
     private static final Logger logger = LoggerFactory.getLogger(CompactionManager.class);
-    public static final CompactionManager instance;
 
     public static final int NO_GC = Integer.MIN_VALUE;
     public static final int GC_ALL = Integer.MAX_VALUE;
@@ -117,13 +116,15 @@ public class CompactionManager implements CompactionManagerMBean
         }
     };
 
-    static
+    public static final CompactionManager instance = new CompactionManager();
+
+    public CompactionManager()
     {
-        instance = new CompactionManager();
+        // TODO: instance is escaping the constructor. This should be done where the CompactionManager is eventually instantiated
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
         {
-            mbs.registerMBean(instance, new ObjectName(MBEAN_OBJECT_NAME));
+            mbs.registerMBean(this, new ObjectName(MBEAN_OBJECT_NAME));
         }
         catch (Exception e)
         {
@@ -133,7 +134,7 @@ public class CompactionManager implements CompactionManagerMBean
 
     private final CompactionExecutor executor = new CompactionExecutor();
     private final CompactionExecutor validationExecutor = new ValidationExecutor();
-    private final static CompactionExecutor cacheCleanupExecutor = new CacheCleanupExecutor();
+    private final static CompactionExecutor cacheCleanupExecutor = new CacheCleanupExecutor(); // TODO: make non-static
 
     private final CompactionMetrics metrics = new CompactionMetrics(executor, validationExecutor);
     private final Multiset<ColumnFamilyStore> compactingCF = ConcurrentHashMultiset.create();
