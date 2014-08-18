@@ -115,12 +115,14 @@ public class DefsTables
 {
     private static final Logger logger = LoggerFactory.getLogger(DefsTables.class);
 
+    public static final DefsTables instance = new DefsTables();
+
     /**
      * Load keyspace definitions for the system keyspace (system.SCHEMA_KEYSPACES_CF)
      *
      * @return Collection of found keyspace definitions
      */
-    public static Collection<KSMetaData> loadFromKeyspace()
+    public Collection<KSMetaData> loadFromKeyspace()
     {
         List<Row> serializedSchema = SystemKeyspace.instance.serializedSchema(SystemKeyspace.SCHEMA_KEYSPACES_CF);
 
@@ -137,7 +139,7 @@ public class DefsTables
         return keyspaces;
     }
 
-    private static Row serializedColumnFamilies(DecoratedKey ksNameKey)
+    private Row serializedColumnFamilies(DecoratedKey ksNameKey)
     {
         ColumnFamilyStore cfsStore = SystemKeyspace.instance.schemaCFS(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF);
         return new Row(ksNameKey, cfsStore.getColumnFamily(QueryFilter.getIdentityFilter(ksNameKey,
@@ -145,7 +147,7 @@ public class DefsTables
                                                                                          System.currentTimeMillis())));
     }
 
-    private static Row serializedUserTypes(DecoratedKey ksNameKey)
+    private Row serializedUserTypes(DecoratedKey ksNameKey)
     {
         ColumnFamilyStore cfsStore = SystemKeyspace.instance.schemaCFS(SystemKeyspace.SCHEMA_USER_TYPES_CF);
         return new Row(ksNameKey, cfsStore.getColumnFamily(QueryFilter.getIdentityFilter(ksNameKey,
@@ -162,13 +164,13 @@ public class DefsTables
      * @throws ConfigurationException If one of metadata attributes has invalid value
      * @throws IOException If data was corrupted during transportation or failed to apply fs operations
      */
-    public static synchronized void mergeSchema(Collection<Mutation> mutations) throws ConfigurationException, IOException
+    public synchronized void mergeSchema(Collection<Mutation> mutations) throws ConfigurationException, IOException
     {
         mergeSchemaInternal(mutations, true);
         Schema.instance.updateVersionAndAnnounce();
     }
 
-    public static synchronized void mergeSchemaInternal(Collection<Mutation> mutations, boolean doFlush) throws ConfigurationException, IOException
+    public synchronized void mergeSchemaInternal(Collection<Mutation> mutations, boolean doFlush) throws ConfigurationException, IOException
     {
         // compare before/after schemas of the affected keyspaces only
         Set<String> keyspaces = new HashSet<>(mutations.size());
@@ -203,7 +205,7 @@ public class DefsTables
             dropKeyspace(keyspaceToDrop);
     }
 
-    private static Set<String> mergeKeyspaces(Map<DecoratedKey, ColumnFamily> old, Map<DecoratedKey, ColumnFamily> updated)
+    private Set<String> mergeKeyspaces(Map<DecoratedKey, ColumnFamily> old, Map<DecoratedKey, ColumnFamily> updated)
     {
         // calculate the difference between old and new states (note that entriesOnlyLeft() will be always empty)
         MapDifference<DecoratedKey, ColumnFamily> diff = Maps.difference(old, updated);
@@ -269,7 +271,7 @@ public class DefsTables
         return keyspacesToDrop;
     }
 
-    private static void mergeColumnFamilies(Map<DecoratedKey, ColumnFamily> old, Map<DecoratedKey, ColumnFamily> updated)
+    private void mergeColumnFamilies(Map<DecoratedKey, ColumnFamily> old, Map<DecoratedKey, ColumnFamily> updated)
     {
         // calculate the difference between old and new states (note that entriesOnlyLeft() will be always empty)
         MapDifference<DecoratedKey, ColumnFamily> diff = Maps.difference(old, updated);
@@ -334,7 +336,7 @@ public class DefsTables
         }
     }
 
-    private static void mergeTypes(Map<DecoratedKey, ColumnFamily> old, Map<DecoratedKey, ColumnFamily> updated)
+    private void mergeTypes(Map<DecoratedKey, ColumnFamily> old, Map<DecoratedKey, ColumnFamily> updated)
     {
         MapDifference<DecoratedKey, ColumnFamily> diff = Maps.difference(old, updated);
 
@@ -382,7 +384,7 @@ public class DefsTables
         }
     }
 
-    private static void mergeFunctions(Map<DecoratedKey, ColumnFamily> old, Map<DecoratedKey, ColumnFamily> updated)
+    private void mergeFunctions(Map<DecoratedKey, ColumnFamily> old, Map<DecoratedKey, ColumnFamily> updated)
     {
         MapDifference<DecoratedKey, ColumnFamily> diff = Maps.difference(old, updated);
 
@@ -430,7 +432,7 @@ public class DefsTables
         }
     }
 
-    private static void addKeyspace(KSMetaData ksm)
+    private void addKeyspace(KSMetaData ksm)
     {
         assert Schema.instance.getKSMetaData(ksm.name) == null;
         Schema.instance.load(ksm);
@@ -442,7 +444,7 @@ public class DefsTables
         }
     }
 
-    private static void addColumnFamily(CFMetaData cfm)
+    private void addColumnFamily(CFMetaData cfm)
     {
         assert Schema.instance.getCFMetaData(cfm.ksName, cfm.cfName) == null;
         KSMetaData ksm = Schema.instance.getKSMetaData(cfm.ksName);
@@ -465,7 +467,7 @@ public class DefsTables
         }
     }
 
-    private static void addType(UserType ut)
+    private void addType(UserType ut)
     {
         KSMetaData ksm = Schema.instance.getKSMetaData(ut.keyspace);
         assert ksm != null;
@@ -478,7 +480,7 @@ public class DefsTables
             MigrationManager.instance.notifyCreateUserType(ut);
     }
 
-    private static void addFunction(UFMetaData uf)
+    private void addFunction(UFMetaData uf)
     {
         logger.info("Loading {}", uf);
 
@@ -488,7 +490,7 @@ public class DefsTables
             MigrationManager.instance.notifyCreateFunction(uf);
     }
 
-    private static void updateKeyspace(KSMetaData newState)
+    private void updateKeyspace(KSMetaData newState)
     {
         KSMetaData oldKsm = Schema.instance.getKSMetaData(newState.name);
         assert oldKsm != null;
@@ -503,7 +505,7 @@ public class DefsTables
         }
     }
 
-    private static void updateColumnFamily(CFMetaData newState)
+    private void updateColumnFamily(CFMetaData newState)
     {
         CFMetaData cfm = Schema.instance.getCFMetaData(newState.ksName, newState.cfName);
         assert cfm != null;
@@ -517,7 +519,7 @@ public class DefsTables
         }
     }
 
-    private static void updateType(UserType ut)
+    private void updateType(UserType ut)
     {
         KSMetaData ksm = Schema.instance.getKSMetaData(ut.keyspace);
         assert ksm != null;
@@ -530,7 +532,7 @@ public class DefsTables
             MigrationManager.instance.notifyUpdateUserType(ut);
     }
 
-    private static void updateFunction(UFMetaData uf)
+    private void updateFunction(UFMetaData uf)
     {
         logger.info("Updating {}", uf);
 
@@ -540,7 +542,7 @@ public class DefsTables
             MigrationManager.instance.notifyUpdateFunction(uf);
     }
 
-    private static void dropKeyspace(String ksName)
+    private void dropKeyspace(String ksName)
     {
         KSMetaData ksm = Schema.instance.getKSMetaData(ksName);
         String snapshotName = Keyspace.getTimestampedSnapshotName(ksName);
@@ -582,7 +584,7 @@ public class DefsTables
         }
     }
 
-    private static void dropColumnFamily(String ksName, String cfName)
+    private void dropColumnFamily(String ksName, String cfName)
     {
         KSMetaData ksm = Schema.instance.getKSMetaData(ksName);
         assert ksm != null;
@@ -608,7 +610,7 @@ public class DefsTables
         }
     }
 
-    private static void dropType(UserType ut)
+    private void dropType(UserType ut)
     {
         KSMetaData ksm = Schema.instance.getKSMetaData(ut.keyspace);
         assert ksm != null;
@@ -619,7 +621,7 @@ public class DefsTables
             MigrationManager.instance.notifyDropUserType(ut);
     }
 
-    private static void dropFunction(UFMetaData uf)
+    private void dropFunction(UFMetaData uf)
     {
         logger.info("Drop {}", uf);
 
@@ -629,7 +631,7 @@ public class DefsTables
             MigrationManager.instance.notifyDropFunction(uf);
     }
 
-    private static KSMetaData makeNewKeyspaceDefinition(KSMetaData ksm, CFMetaData toExclude)
+    private KSMetaData makeNewKeyspaceDefinition(KSMetaData ksm, CFMetaData toExclude)
     {
         // clone ksm but do not include the new def
         List<CFMetaData> newCfs = new ArrayList<CFMetaData>(ksm.cfMetaData().values());
@@ -638,7 +640,7 @@ public class DefsTables
         return KSMetaData.cloneWith(ksm, newCfs);
     }
 
-    private static void flushSchemaCFs()
+    private void flushSchemaCFs()
     {
         for (String cf : SystemKeyspace.allSchemaCfs)
             SystemKeyspace.instance.forceBlockingFlush(cf);

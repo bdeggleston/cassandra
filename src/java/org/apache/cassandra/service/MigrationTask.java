@@ -63,7 +63,7 @@ class MigrationTask extends WrappedRunnable
             {
                 try
                 {
-                    DefsTables.mergeSchema(message.payload);
+                    DefsTables.instance.mergeSchema(message.payload);
                 }
                 catch (IOException e)
                 {

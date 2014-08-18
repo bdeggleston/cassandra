@@ -46,7 +46,7 @@ public class DefinitionsUpdateVerbHandler implements IVerbHandler<Collection<Mut
         {
             public void runMayThrow() throws Exception
             {
-                DefsTables.mergeSchema(message.payload);
+                DefsTables.instance.mergeSchema(message.payload);
             }
         });
     }
