@@ -1,34 +1,74 @@
 # *m = num methods, *p = num proxied calls
-DatabaseDescriptor [Schema, SystemKeyspace, DefsTable]
+
+# loadSchemas has most of the Schema, SystemKeyspace & DefsTables references, SystemKeyspace is also referenced in isReplacing
+# move loadSchemas to Schema or SystemKeyspace
+DatabaseDescriptor [Schema(?, 3m), SystemKeyspace(?, 2m), DefsTables(?, 1m)]  #seems to be logical initialization point
+    * move loadSchemas to SystemKeyspace
+    * pass SystemKeyspace into isReplacing
+
+
 SinkManager []
 StorageServiceTasks []
-Schema [SystemKeyspace, MigrationManager]
-SystemKeyspace [StorageService(weak, partitioner_only), Schema, QueryProcessor(strong), DatabaseDescriptor(strong)]
+StreamManager [DatabaseDescriptor]
+
+Schema [SystemKeyspace(?, 1m), MigrationManager(?, 1m)]
+    * pass SystemKeyspace into updateVersion method
+    * pass MigrationManager into updateVersionAndAnnounce (called by DefsTables, StorageService)
+
+
+SystemKeyspace [StorageService(weak, partitioner_only), Schema(weak, 1m finishStartup), QueryProcessor(strong), DatabaseDescriptor(strong)]
+    * replace StorageService.getPartitioner gets with DatabaseDescriptor.getPartitioner
+    * pass schema instance into finishStartup
+
+DefsTables [SystemKeyspace, Schema, StorageService(clientModeCheck), MigrationManager(med), CompactionManager(weak, 2), CommitLog(weak, 1)]
+    * can the StorageService client mode check use the DatabaseDescriptor
+
+StageManager [DatabaseDescriptor, MessagingService(weak, 1m, parameterize)]
+CacheService [DatabaseDescriptor, StageManager, Schema]
+
+MessagingService [StorageServiceTasks, StageManager(stronger, 2m), StorageProxy(weak, 1m), DatabaseDescriptor, SinkManager, Tracing]
+    * work out how to decouple the MessagingService and StageManager constructors
+        * could push incrementDroppedMessages from MessagingService to DatabaseDescriptor, but that's kinda messy
+        * could special case tracingexecutor to live in an atomic reference outside the enum map and expose a setter
+        * could push getStage up to DatabaseDescriptor, also ugly
+
+Gossiper [MessagingService, DatabaseDescriptor, FailureDetector(?), StorageService(?), StageManager]
+    * move failure detector registration out of constructor and into static factory
+    * DI other FailureDetector dependent methods (3)
+LoadBroadcaster [Gossiper]
+
+FailureDetector [Gossiper(strong), DatabaseDescriptor]
+
+MigrationManager [Schema(strong), Gossiper, StorageServiceTasks, StageManager, SystemKeyspace, DefsTables, MessagingService, StorageService]
+    * DI StorageService instance to passiveAnnounce method
+
+
+HintedHandOffManager [DatabaseDescriptor, StorageService(weak, partitioner and token data), Schema, StorageServiceTasks, CompactionManager(weak, 1), 
+                      Gossiper, FailureDetector, SystemKeyspace, MessagingService]
+    * DI CompactionManager into compact method
+
+CommitLog [DatabaseDescriptor, StorageService(weak, 1m)]
+
 StorageService [SystemKeyspace, Gossiper(strong), StreamManager(weak, move to create method), MessagingService(strong),
                 StageManager, DatabaseDescriptor, MessagingService, MigrationManager(3-4m), StorageServiceTasks(2, init/drain),
                 StorageProxy(3m), CommitLog(2, init/drain), Schema, LoadBroadcaster(3m), HintedHandOffManager(3m, 1p),
                 BatchlogManager(2m), PendingRangeCalculatorService, Auth(weak, 2m, init/start),
                 FailureDetector(5m), ActiveRepairService(1m, 1p)]
+    * DI StorageProxy into methods
+    * remove getPartitioner
+    * see if isClientMode can be moved up to DatabaseDescriptor
+
 StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 1p), StorageService(strong), MessagingService,
               FailureDetector(2m), SinkManager(2m), Gossiper(4m)] # Has a lot methods that just proxy calls to DatabaseDescriptor
-MigrationManager [Schema, Gossiper, StorageServiceTasks, StageManager, SystemKeyspace, DefsTables, MessagingService, StorageService]
-SystemKeyspace [StorageService, Schema, QueryProcessor, DatabaseDescriptor]
+
+CompactionManager [DatabaseDescriptor, StorageService, Schema, ActiveRepairService, SystemKeyspace]
 Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), CommitLog(weak, single method)]
 Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, StorageServiceTasks, Schema]
-QueryProcessor [-nothing-]
-CompactionManager [DatabaseDescriptor, StorageService, Schema, ActiveRepairService, SystemKeyspace]
+QueryProcessor [-nothing-]  #could possibly remain a singleton
 ColumnFamilyStore [DatabaseDescriptor, StorageServiceTasks, CacheService, SystemKeyspace, Schema(weak, 3), CommitLog(weaker),
                    CompactionManager, StorageService(weaker, 2)]
-DefsTables [SystemKeyspace, Schema, StorageService, MigrationManager, CompactionManager(weak, 2), CommitLog(weak, 1)]
-MessagingService [MigrationManager, StorageServiceTasks, StageManager, StorageProxy, DatabaseDescriptor, SinkManager, Tracing]
-StageManager [DatabaseDescriptor, MessagingService]
-Gossiper [MessagingService, DatabaseDescriptor, FailureDetector, StorageService, StageManager]
-StreamManager [DatabaseDescriptor]
-LoadBroadcaster [Gossiper]
 PendingRangeCalculatorService [Schema, StorageService]
-FailureDetector [Gossiper, DatabaseDescriptor]
 ActiveRepairService [Gossiper, FailureDetector, StorageService, MessagingService, CompactionManager]
 TriggerExecutor [QueryProcessor]
-CacheService [DatabaseDescriptor, StageManager, Schema]
 Tracing [StageManager, StorageProxy]
 

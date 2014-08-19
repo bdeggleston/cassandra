@@ -594,6 +594,7 @@ public class DatabaseDescriptor
             conf.server_encryption_options = conf.encryption_options;
         }
 
+        // FIXME: move to static factory, or to SystemKeyspace?
         // Hardcoded system keyspaces
         List<KSMetaData> systemKeyspaces = Arrays.asList(KSMetaData.systemKeyspace());
         assert systemKeyspaces.size() == Schema.systemKeyspaceNames.size();

@@ -303,15 +303,6 @@ public final class MessagingService implements MessagingServiceMBean
     // protocol versions of the other nodes in the cluster
     private final ConcurrentMap<InetAddress, Integer> versions = new NonBlockingHashMap<InetAddress, Integer>();
 
-//    private static class MSHandle
-//    {
-//        public static final MessagingService instance = new MessagingService();
-//    }
-//    public static MessagingService instance()
-//    {
-//        return MSHandle.instance;
-//    }
-
     public static final MessagingService instance = new MessagingService();
 
     private MessagingService()
