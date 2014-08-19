@@ -265,7 +265,7 @@ public abstract class AntiEntropyServiceTestAbstract
 
     void flushAES() throws Exception
     {
-        final ExecutorService stage = StageManager.getStage(Stage.ANTI_ENTROPY);
+        final ExecutorService stage = StageManager.instance.getStage(Stage.ANTI_ENTROPY);
         final Callable noop = new Callable<Object>()
         {
             public Boolean call()

@@ -94,7 +94,7 @@ public class TraceState
         final ByteBuffer eventId = ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes());
         final String threadName = Thread.currentThread().getName();
 
-        StageManager.getStage(Stage.TRACING).execute(new WrappedRunnable()
+        StageManager.instance.getStage(Stage.TRACING).execute(new WrappedRunnable()
         {
             public void runMayThrow()
             {

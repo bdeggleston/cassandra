@@ -343,7 +343,7 @@ public final class MessagingService implements MessagingServiceMBean
                 getConnectionPool(expiredCallbackInfo.target).incrementTimeout();
                 if (expiredCallbackInfo.isFailureCallback())
                 {
-                    StageManager.getStage(Stage.INTERNAL_RESPONSE).submit(new Runnable() {
+                    StageManager.instance.getStage(Stage.INTERNAL_RESPONSE).submit(new Runnable() {
                         @Override
                         public void run() {
                             ((IAsyncCallbackWithFailure)expiredCallbackInfo.callback).onFailure(expiredCallbackInfo.target);
@@ -707,7 +707,7 @@ public final class MessagingService implements MessagingServiceMBean
     {
         logger.info("Waiting for messaging service to quiesce");
         // We may need to schedule hints on the mutation stage, so it's erroneous to shut down the mutation stage first
-        assert !StageManager.getStage(Stage.MUTATION).isShutdown();
+        assert !StageManager.instance.getStage(Stage.MUTATION).isShutdown();
 
         // the important part
         callbacks.shutdownBlocking();
@@ -739,7 +739,7 @@ public final class MessagingService implements MessagingServiceMBean
         }
 
         Runnable runnable = new MessageDeliveryTask(message, id, timestamp);
-        TracingAwareExecutorService stage = StageManager.getStage(message.getMessageType());
+        TracingAwareExecutorService stage = StageManager.instance.getStage(message.getMessageType());
         assert stage != null : "No stage for message type " + message.verb;
 
         stage.execute(runnable, state);

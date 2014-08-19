@@ -44,7 +44,7 @@ public class AsyncRepairCallback implements IAsyncCallback<ReadResponse>
         repairResolver.preprocess(message);
         if (received.incrementAndGet() == blockfor)
         {
-            StageManager.getStage(Stage.READ_REPAIR).execute(new WrappedRunnable()
+            StageManager.instance.getStage(Stage.READ_REPAIR).execute(new WrappedRunnable()
             {
                 protected void runMayThrow() throws DigestMismatchException, IOException
                 {

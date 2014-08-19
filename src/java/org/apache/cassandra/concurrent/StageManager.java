@@ -39,11 +39,13 @@ public class StageManager
 {
     private static final Logger logger = LoggerFactory.getLogger(StageManager.class);
 
-    private static final EnumMap<Stage, TracingAwareExecutorService> stages = new EnumMap<Stage, TracingAwareExecutorService>(Stage.class);
-
     public static final long KEEPALIVE = 60; // seconds to keep "extra" threads alive for when idle
 
-    static
+    public static final StageManager instance = new StageManager();
+
+    private final EnumMap<Stage, TracingAwareExecutorService> stages = new EnumMap<Stage, TracingAwareExecutorService>(Stage.class);
+
+    private StageManager()
     {
         stages.put(Stage.MUTATION, multiThreadedLowSignalStage(Stage.MUTATION, DatabaseDescriptor.instance.getConcurrentWriters()));
         stages.put(Stage.COUNTER_MUTATION, multiThreadedLowSignalStage(Stage.COUNTER_MUTATION, DatabaseDescriptor.instance.getConcurrentCounterWriters()));
@@ -59,7 +61,7 @@ public class StageManager
         stages.put(Stage.TRACING, tracingExecutor());
     }
 
-    private static ExecuteOnlyExecutor tracingExecutor()
+    private ExecuteOnlyExecutor tracingExecutor()
     {
         RejectedExecutionHandler reh = new RejectedExecutionHandler()
         {
@@ -77,7 +79,7 @@ public class StageManager
                                        reh);
     }
 
-    private static JMXEnabledThreadPoolExecutor multiThreadedStage(Stage stage, int numThreads)
+    private JMXEnabledThreadPoolExecutor multiThreadedStage(Stage stage, int numThreads)
     {
         return new JMXEnabledThreadPoolExecutor(numThreads,
                                                 KEEPALIVE,
@@ -87,7 +89,7 @@ public class StageManager
                                                 stage.getJmxType());
     }
 
-    private static TracingAwareExecutorService multiThreadedLowSignalStage(Stage stage, int numThreads)
+    private TracingAwareExecutorService multiThreadedLowSignalStage(Stage stage, int numThreads)
     {
         return JMXEnabledSharedExecutorPool.SHARED.newExecutor(numThreads, Integer.MAX_VALUE, stage.getJmxName(), stage.getJmxType());
     }
@@ -96,7 +98,7 @@ public class StageManager
      * Retrieve a stage from the StageManager
      * @param stage name of the stage to be retrieved.
      */
-    public static TracingAwareExecutorService getStage(Stage stage)
+    public TracingAwareExecutorService getStage(Stage stage)
     {
         return stages.get(stage);
     }
@@ -104,11 +106,11 @@ public class StageManager
     /**
      * This method shuts down all registered stages.
      */
-    public static void shutdownNow()
+    public void shutdownNow()
     {
         for (Stage stage : Stage.values())
         {
-            StageManager.stages.get(stage).shutdownNow();
+            stages.get(stage).shutdownNow();
         }
     }
 
@@ -116,7 +118,7 @@ public class StageManager
      * A TPE that disallows submit so that we don't need to worry about unwrapping exceptions on the
      * tracing stage.  See CASSANDRA-1123 for background.
      */
-    private static class ExecuteOnlyExecutor extends ThreadPoolExecutor implements TracingAwareExecutorService
+    private class ExecuteOnlyExecutor extends ThreadPoolExecutor implements TracingAwareExecutorService
     {
         public ExecuteOnlyExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory, RejectedExecutionHandler handler)
         {

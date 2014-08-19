@@ -42,7 +42,7 @@ public class DefinitionsUpdateVerbHandler implements IVerbHandler<Collection<Mut
     {
         logger.debug("Received schema mutation push from {}", message.from);
 
-        StageManager.getStage(Stage.MIGRATION).submit(new WrappedRunnable()
+        StageManager.instance.getStage(Stage.MIGRATION).submit(new WrappedRunnable()
         {
             public void runMayThrow() throws Exception
             {

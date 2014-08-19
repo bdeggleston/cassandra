@@ -196,7 +196,7 @@ public class Validator implements Runnable
     {
         completeTree();
 
-        StageManager.getStage(Stage.ANTI_ENTROPY).execute(this);
+        StageManager.instance.getStage(Stage.ANTI_ENTROPY).execute(this);
 
         if (logger.isDebugEnabled())
         {

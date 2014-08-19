@@ -436,6 +436,7 @@
       	<dependency groupId="com.google.code.findbugs" artifactId="jsr305"/>
         <dependency groupId="org.antlr" artifactId="antlr"/>
         <dependency groupId="com.datastax.cassandra" artifactId="cassandra-driver-core"/>
+        <dependency groupId="com.google.inject" artifactId="guice" version="3.0" />
 	<dependency groupId="net.ju-n.compile-command-annotations" artifactId="compile-command-annotations"/>
       </artifact:pom>
 
