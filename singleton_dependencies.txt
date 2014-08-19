@@ -1,0 +1,34 @@
+# *m = num methods, *p = num proxied calls
+DatabaseDescriptor [Schema, SystemKeyspace, DefsTable]
+SinkManager []
+StorageServiceTasks []
+Schema [SystemKeyspace, MigrationManager]
+SystemKeyspace [StorageService(weak, partitioner_only), Schema, QueryProcessor(strong), DatabaseDescriptor(strong)]
+StorageService [SystemKeyspace, Gossiper(strong), StreamManager(weak, move to create method), MessagingService(strong),
+                StageManager, DatabaseDescriptor, MessagingService, MigrationManager(3-4m), StorageServiceTasks(2, init/drain),
+                StorageProxy(3m), CommitLog(2, init/drain), Schema, LoadBroadcaster(3m), HintedHandOffManager(3m, 1p),
+                BatchlogManager(2m), PendingRangeCalculatorService, Auth(weak, 2m, init/start),
+                FailureDetector(5m), ActiveRepairService(1m, 1p)]
+StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 1p), StorageService(strong), MessagingService,
+              FailureDetector(2m), SinkManager(2m), Gossiper(4m)] # Has a lot methods that just proxy calls to DatabaseDescriptor
+MigrationManager [Schema, Gossiper, StorageServiceTasks, StageManager, SystemKeyspace, DefsTables, MessagingService, StorageService]
+SystemKeyspace [StorageService, Schema, QueryProcessor, DatabaseDescriptor]
+Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), CommitLog(weak, single method)]
+Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, StorageServiceTasks, Schema]
+QueryProcessor [-nothing-]
+CompactionManager [DatabaseDescriptor, StorageService, Schema, ActiveRepairService, SystemKeyspace]
+ColumnFamilyStore [DatabaseDescriptor, StorageServiceTasks, CacheService, SystemKeyspace, Schema(weak, 3), CommitLog(weaker),
+                   CompactionManager, StorageService(weaker, 2)]
+DefsTables [SystemKeyspace, Schema, StorageService, MigrationManager, CompactionManager(weak, 2), CommitLog(weak, 1)]
+MessagingService [MigrationManager, StorageServiceTasks, StageManager, StorageProxy, DatabaseDescriptor, SinkManager, Tracing]
+StageManager [DatabaseDescriptor, MessagingService]
+Gossiper [MessagingService, DatabaseDescriptor, FailureDetector, StorageService, StageManager]
+StreamManager [DatabaseDescriptor]
+LoadBroadcaster [Gossiper]
+PendingRangeCalculatorService [Schema, StorageService]
+FailureDetector [Gossiper, DatabaseDescriptor]
+ActiveRepairService [Gossiper, FailureDetector, StorageService, MessagingService, CompactionManager]
+TriggerExecutor [QueryProcessor]
+CacheService [DatabaseDescriptor, StageManager, Schema]
+Tracing [StageManager, StorageProxy]
+
