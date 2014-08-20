@@ -182,7 +182,7 @@ public class Directories
     public Directories(CFMetaData metadata)
     {
         this.metadata = metadata;
-        if (StorageService.instance.isClientMode())
+        if (DatabaseDescriptor.instance.isClientMode())
         {
             dataPaths = null;
             return;

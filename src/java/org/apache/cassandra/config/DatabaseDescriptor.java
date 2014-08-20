@@ -84,6 +84,7 @@ public class DatabaseDescriptor
 
     public static final DatabaseDescriptor instance = new DatabaseDescriptor();
 
+    private final boolean clientMode;
     private IEndpointSnitch snitch;
     private InetAddress listenAddress; // leave null so we can fall through to getLocalHost
     private InetAddress broadcastAddress;
@@ -127,10 +128,12 @@ public class DatabaseDescriptor
                 conf = new Config();
                 // at least we have to set memoryAllocator to open SSTable in client mode
                 memoryAllocator = FBUtilities.newOffHeapAllocator(conf.memory_allocator);
+                clientMode = true;
             } else
             {
                 conf = loadConfig();
                 applyConfig(conf);
+                clientMode = false;
             }
         }
         catch (ConfigurationException e)
@@ -621,6 +624,12 @@ public class DatabaseDescriptor
         if (seedProvider.getSeeds().size() == 0)
             throw new ConfigurationException("The seed provider lists no seeds.");
     }
+
+    public boolean isClientMode()
+    {
+        return clientMode;
+    }
+
 
     private IEndpointSnitch createEndpointSnitch(String snitchClassName) throws ConfigurationException
     {

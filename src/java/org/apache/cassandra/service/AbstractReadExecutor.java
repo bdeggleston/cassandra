@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.Iterables;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,7 +160,7 @@ public abstract class AbstractReadExecutor
 
         // Fat client. Speculating read executors need access to cfs metrics and sampled latency, and fat clients
         // can't provide that. So, for now, fat clients will always use NeverSpeculatingReadExecutor.
-        if (StorageService.instance.isClientMode())
+        if (DatabaseDescriptor.instance.isClientMode())
             return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas);
 
         if (repairDecision != ReadRepairDecision.NONE)

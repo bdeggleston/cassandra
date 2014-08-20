@@ -68,7 +68,7 @@ public class Keyspace
     // proper directories here as well as in CassandraDaemon.
     static
     {
-        if (!StorageService.instance.isClientMode())
+        if (!DatabaseDescriptor.instance.isClientMode())
             DatabaseDescriptor.instance.createAllDirectories();
     }
 

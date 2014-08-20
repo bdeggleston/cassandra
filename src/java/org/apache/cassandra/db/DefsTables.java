@@ -41,7 +41,6 @@ import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.UserType;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.service.MigrationManager;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 /**
@@ -186,7 +185,7 @@ public class DefsTables
         for (Mutation mutation : mutations)
             mutation.apply();
 
-        if (doFlush && !StorageService.instance.isClientMode())
+        if (doFlush && !DatabaseDescriptor.instance.isClientMode())
             flushSchemaCFs();
 
         // with new data applied
@@ -437,7 +436,7 @@ public class DefsTables
         assert Schema.instance.getKSMetaData(ksm.name) == null;
         Schema.instance.load(ksm);
 
-        if (!StorageService.instance.isClientMode())
+        if (!DatabaseDescriptor.instance.isClientMode())
         {
             Keyspace.open(ksm.name);
             MigrationManager.instance.notifyCreateKeyspace(ksm);
@@ -460,7 +459,7 @@ public class DefsTables
 
         Schema.instance.setKeyspaceDefinition(ksm);
 
-        if (!StorageService.instance.isClientMode())
+        if (!DatabaseDescriptor.instance.isClientMode())
         {
             Keyspace.open(ksm.name).initCf(cfm.cfId, cfm.cfName, true);
             MigrationManager.instance.notifyCreateColumnFamily(cfm);
@@ -476,7 +475,7 @@ public class DefsTables
 
         ksm.userTypes.addType(ut);
 
-        if (!StorageService.instance.isClientMode())
+        if (!DatabaseDescriptor.instance.isClientMode())
             MigrationManager.instance.notifyCreateUserType(ut);
     }
 
@@ -486,7 +485,7 @@ public class DefsTables
 
         UDFRegistry.migrateAddFunction(uf);
 
-        if (!StorageService.instance.isClientMode())
+        if (!DatabaseDescriptor.instance.isClientMode())
             MigrationManager.instance.notifyCreateFunction(uf);
     }
 
@@ -498,7 +497,7 @@ public class DefsTables
 
         Schema.instance.setKeyspaceDefinition(newKsm);
 
-        if (!StorageService.instance.isClientMode())
+        if (!DatabaseDescriptor.instance.isClientMode())
         {
             Keyspace.open(newState.name).createReplicationStrategy(newKsm);
             MigrationManager.instance.notifyUpdateKeyspace(newKsm);
@@ -511,7 +510,7 @@ public class DefsTables
         assert cfm != null;
         cfm.reload();
 
-        if (!StorageService.instance.isClientMode())
+        if (!DatabaseDescriptor.instance.isClientMode())
         {
             Keyspace keyspace = Keyspace.open(cfm.ksName);
             keyspace.getColumnFamilyStore(cfm.cfName).reload();
@@ -528,7 +527,7 @@ public class DefsTables
 
         ksm.userTypes.addType(ut);
 
-        if (!StorageService.instance.isClientMode())
+        if (!DatabaseDescriptor.instance.isClientMode())
             MigrationManager.instance.notifyUpdateUserType(ut);
     }
 
@@ -538,7 +537,7 @@ public class DefsTables
 
         UDFRegistry.migrateUpdateFunction(uf);
 
-        if (!StorageService.instance.isClientMode())
+        if (!DatabaseDescriptor.instance.isClientMode())
             MigrationManager.instance.notifyUpdateFunction(uf);
     }
 
@@ -559,7 +558,7 @@ public class DefsTables
 
             Schema.instance.purge(cfm);
 
-            if (!StorageService.instance.isClientMode())
+            if (!DatabaseDescriptor.instance.isClientMode())
             {
                 if (DatabaseDescriptor.instance.isAutoSnapshot())
                     cfs.snapshot(snapshotName);
@@ -578,7 +577,7 @@ public class DefsTables
         // force a new segment in the CL
         CommitLog.instance.forceRecycleAllSegments(droppedCfs);
 
-        if (!StorageService.instance.isClientMode())
+        if (!DatabaseDescriptor.instance.isClientMode())
         {
             MigrationManager.instance.notifyDropKeyspace(ksm);
         }
@@ -599,7 +598,7 @@ public class DefsTables
 
         CompactionManager.instance.interruptCompactionFor(Arrays.asList(cfm), true);
 
-        if (!StorageService.instance.isClientMode())
+        if (!DatabaseDescriptor.instance.isClientMode())
         {
             if (DatabaseDescriptor.instance.isAutoSnapshot())
                 cfs.snapshot(Keyspace.getTimestampedSnapshotName(cfs.name));
@@ -617,7 +616,7 @@ public class DefsTables
 
         ksm.userTypes.removeType(ut);
 
-        if (!StorageService.instance.isClientMode())
+        if (!DatabaseDescriptor.instance.isClientMode())
             MigrationManager.instance.notifyDropUserType(ut);
     }
 
@@ -627,7 +626,7 @@ public class DefsTables
 
         UDFRegistry.migrateDropFunction(uf);
 
-        if (!StorageService.instance.isClientMode())
+        if (!DatabaseDescriptor.instance.isClientMode())
             MigrationManager.instance.notifyDropFunction(uf);
     }
 

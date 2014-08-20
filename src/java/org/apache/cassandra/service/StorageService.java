@@ -156,8 +156,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     /* we bootstrap but do NOT join the ring unless told to do so */
     private boolean isSurveyMode= Boolean.parseBoolean(System.getProperty("cassandra.write_survey", "false"));
 
-    /* when intialized as a client, we shouldn't write to the system keyspace. */
-    private boolean isClientMode;
     private boolean initialized;
     private volatile boolean joined = false;
 
@@ -469,12 +467,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         if (initialized)
         {
-            if (!isClientMode)
+            if (!DatabaseDescriptor.instance.isClientMode())
                 throw new UnsupportedOperationException("StorageService does not support switching modes.");
             return;
         }
         initialized = true;
-        isClientMode = true;
         logger.info("Starting up client gossip");
         setMode(Mode.CLIENT, false);
         Gossiper.instance.register(this);
@@ -499,12 +496,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         if (initialized)
         {
-            if (isClientMode)
+            if (DatabaseDescriptor.instance.isClientMode())
                 throw new UnsupportedOperationException("StorageService does not support switching modes.");
             return;
         }
         initialized = true;
-        isClientMode = false;
 
         try
         {
@@ -1550,20 +1546,20 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             {
                 logger.debug("New node {} at token {}", endpoint, token);
                 tokensToUpdateInMetadata.add(token);
-                if (!isClientMode)
+                if (!DatabaseDescriptor.instance.isClientMode())
                     tokensToUpdateInSystemKeyspace.add(token);
             }
             else if (endpoint.equals(currentOwner))
             {
                 // set state back to normal, since the node may have tried to leave, but failed and is now back up
                 tokensToUpdateInMetadata.add(token);
-                if (!isClientMode)
+                if (!DatabaseDescriptor.instance.isClientMode())
                     tokensToUpdateInSystemKeyspace.add(token);
             }
             else if (Gossiper.instance.compareEndpointStartup(endpoint, currentOwner) > 0)
             {
                 tokensToUpdateInMetadata.add(token);
-                if (!isClientMode)
+                if (!DatabaseDescriptor.instance.isClientMode())
                     tokensToUpdateInSystemKeyspace.add(token);
 
                 // currentOwner is no longer current, endpoint is.  Keep track of these moves, because when
@@ -1601,7 +1597,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             tokenMetadata.removeFromMoving(endpoint);
 
-            if (!isClientMode)
+            if (!DatabaseDescriptor.instance.isClientMode())
             {
                 for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
                     subscriber.onMove(endpoint);
@@ -1745,7 +1741,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         tokenMetadata.removeEndpoint(endpoint);
         tokenMetadata.removeBootstrapTokens(tokens);
 
-        if (!isClientMode)
+        if (!DatabaseDescriptor.instance.isClientMode())
         {
             for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
                 subscriber.onLeaveCluster(endpoint);
@@ -1763,7 +1759,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private void removeEndpoint(InetAddress endpoint)
     {
         Gossiper.instance.removeEndpoint(endpoint);
-        if (!isClientMode)
+        if (!DatabaseDescriptor.instance.isClientMode())
             SystemKeyspace.instance.removeEndpoint(endpoint);
     }
 
@@ -1959,7 +1955,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void onAlive(InetAddress endpoint, EndpointState state)
     {
-        if (isClientMode)
+        if (DatabaseDescriptor.instance.isClientMode())
             return;
 
         if (tokenMetadata.isMember(endpoint))
@@ -1985,7 +1981,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public void onDead(InetAddress endpoint, EndpointState state)
     {
         MessagingService.instance.convict(endpoint);
-        if (!isClientMode)
+        if (!DatabaseDescriptor.instance.isClientMode())
         {
             for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
                 subscriber.onDown(endpoint);
@@ -3400,11 +3396,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             logger.info("Received unexpected REPLICATION_FINISHED message from {}. Was this node recently a removal coordinator?", node);
         }
-    }
-
-    public boolean isClientMode()
-    {
-        return isClientMode;
     }
 
     public synchronized void requestGC()
