@@ -81,7 +81,7 @@ public class IndexSummaryManagerTest
     {
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL; // index interval of 8, no key caching
-        Keyspace keyspace = Keyspace.open(ksname);
+        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         originalMinIndexInterval = cfs.metadata.getMinIndexInterval();
         originalMaxIndexInterval = cfs.metadata.getMaxIndexInterval();
@@ -93,7 +93,7 @@ public class IndexSummaryManagerTest
     {
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL; // index interval of 8, no key caching
-        Keyspace keyspace = Keyspace.open(ksname);
+        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.metadata.minIndexInterval(originalMinIndexInterval);
         cfs.metadata.maxIndexInterval(originalMaxIndexInterval);
@@ -145,7 +145,7 @@ public class IndexSummaryManagerTest
 
     private void createSSTables(String ksname, String cfname, int numSSTables, int numRows)
     {
-        Keyspace keyspace = Keyspace.open(ksname);
+        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
@@ -186,7 +186,7 @@ public class IndexSummaryManagerTest
     {
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL; // index interval of 8, no key caching
-        Keyspace keyspace = Keyspace.open(ksname);
+        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         int numSSTables = 1;
         int numRows = 256;
@@ -258,7 +258,7 @@ public class IndexSummaryManagerTest
     {
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL; // index interval of 8, no key caching
-        Keyspace keyspace = Keyspace.open(ksname);
+        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         int numSSTables = 1;
         int numRows = 256;
@@ -298,7 +298,7 @@ public class IndexSummaryManagerTest
     {
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL; // index interval of 8, no key caching
-        Keyspace keyspace = Keyspace.open(ksname);
+        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         int numSSTables = 4;
         int numRows = 256;
@@ -419,7 +419,7 @@ public class IndexSummaryManagerTest
     {
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL;
-        Keyspace keyspace = Keyspace.open(ksname);
+        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
@@ -476,7 +476,7 @@ public class IndexSummaryManagerTest
 
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL; // index interval of 8, no key caching
-        Keyspace keyspace = Keyspace.open(ksname);
+        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();

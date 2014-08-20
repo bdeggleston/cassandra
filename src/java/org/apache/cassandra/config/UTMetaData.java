@@ -87,7 +87,7 @@ public final class UTMetaData
 
     public static Mutation toSchema(UserType newType, long timestamp)
     {
-        return toSchema(new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(newType.keyspace)), newType, timestamp);
+        return toSchema(new Mutation(KeyspaceManager.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(newType.keyspace)), newType, timestamp);
     }
 
     public static Mutation toSchema(Mutation mutation, UserType newType, long timestamp)
@@ -117,7 +117,7 @@ public final class UTMetaData
 
     public static Mutation dropFromSchema(UserType droppedType, long timestamp)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(droppedType.keyspace));
+        Mutation mutation = new Mutation(KeyspaceManager.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(droppedType.keyspace));
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_USER_TYPES_CF);
         int ldt = (int) (System.currentTimeMillis() / 1000);
 

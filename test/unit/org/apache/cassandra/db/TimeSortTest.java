@@ -56,7 +56,7 @@ public class TimeSortTest
     @Test
     public void testMixedSources()
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore(CF_STANDARD1);
         Mutation rm;
         DecoratedKey key = Util.dk("key0");
@@ -78,7 +78,7 @@ public class TimeSortTest
     @Test
     public void testTimeSort() throws IOException
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore(CF_STANDARD1);
 
         for (int i = 900; i < 1000; ++i)

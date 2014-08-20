@@ -24,6 +24,7 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.gms.EndpointState;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -150,7 +151,7 @@ public class RangeStreamer
 
     private boolean useStrictSourcesForRanges(String keyspaceName)
     {
-        AbstractReplicationStrategy strat = Keyspace.open(keyspaceName).getReplicationStrategy();
+        AbstractReplicationStrategy strat = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
         return !DatabaseDescriptor.instance.isReplacing()
                 && useStrictConsistency
                 && tokens != null
@@ -163,7 +164,7 @@ public class RangeStreamer
      */
     private Multimap<Range<Token>, InetAddress> getAllRangesWithSourcesFor(String keyspaceName, Collection<Range<Token>> desiredRanges)
     {
-        AbstractReplicationStrategy strat = Keyspace.open(keyspaceName).getReplicationStrategy();
+        AbstractReplicationStrategy strat = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
         Multimap<Range<Token>, InetAddress> rangeAddresses = strat.getRangeAddresses(metadata.cloneOnlyTokenMap());
 
         Multimap<Range<Token>, InetAddress> rangeSources = ArrayListMultimap.create();
@@ -195,7 +196,7 @@ public class RangeStreamer
     {
 
         assert tokens != null;
-        AbstractReplicationStrategy strat = Keyspace.open(table).getReplicationStrategy();
+        AbstractReplicationStrategy strat = KeyspaceManager.instance.open(table).getReplicationStrategy();
 
         //Active ranges
         TokenMetadata metadataClone = metadata.cloneOnlyTokenMap();

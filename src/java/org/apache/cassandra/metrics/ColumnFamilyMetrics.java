@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.utils.EstimatedHistogram;
@@ -258,7 +259,7 @@ public class ColumnFamilyMetrics
             {
                 double sum = 0;
                 int total = 0;
-                for (Keyspace keyspace : Keyspace.all())
+                for (Keyspace keyspace : KeyspaceManager.instance.all())
                 {
                     for (SSTableReader sstable : keyspace.getAllSSTables())
                     {
@@ -360,7 +361,7 @@ public class ColumnFamilyMetrics
             {
                 long sum = 0;
                 long count = 0;
-                for (Keyspace keyspace : Keyspace.all())
+                for (Keyspace keyspace : KeyspaceManager.instance.all())
                 {
                     for (SSTableReader sstable : keyspace.getAllSSTables())
                     {
@@ -413,7 +414,7 @@ public class ColumnFamilyMetrics
             {
                 long falseCount = 0L;
                 long trueCount = 0L;
-                for (Keyspace keyspace : Keyspace.all())
+                for (Keyspace keyspace : KeyspaceManager.instance.all())
                 {
                     for (SSTableReader sstable : keyspace.getAllSSTables())
                     {
@@ -447,7 +448,7 @@ public class ColumnFamilyMetrics
             {
                 long falseCount = 0L;
                 long trueCount = 0L;
-                for (Keyspace keyspace : Keyspace.all())
+                for (Keyspace keyspace : KeyspaceManager.instance.all())
                 {
                     for (SSTableReader sstable : keyspace.getAllSSTables())
                     {

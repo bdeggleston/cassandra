@@ -210,13 +210,13 @@ public class Mutation implements IMutation
      */
     public void apply()
     {
-        Keyspace ks = Keyspace.open(keyspaceName);
+        Keyspace ks = KeyspaceManager.instance.open(keyspaceName);
         ks.apply(this, ks.metadata.durableWrites);
     }
 
     public void applyUnsafe()
     {
-        Keyspace.open(keyspaceName).apply(this, false);
+        KeyspaceManager.instance.open(keyspaceName).apply(this, false);
     }
 
     public MessageOut<Mutation> createMessage()

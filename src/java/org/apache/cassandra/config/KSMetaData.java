@@ -107,7 +107,7 @@ public final class KSMetaData
                                                 CFMetaData.CompactionHistoryCf,
                                                 CFMetaData.PaxosCf,
                                                 CFMetaData.SSTableActivityCF);
-        return new KSMetaData(Keyspace.SYSTEM_KS, LocalStrategy.class, Collections.<String, String>emptyMap(), true, cfDefs);
+        return new KSMetaData(KeyspaceManager.SYSTEM_KS, LocalStrategy.class, Collections.<String, String>emptyMap(), true, cfDefs);
     }
 
     public static KSMetaData traceKeyspace()
@@ -236,7 +236,7 @@ public final class KSMetaData
 
     public Mutation dropFromSchema(long timestamp)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(name));
+        Mutation mutation = new Mutation(KeyspaceManager.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(name));
 
         mutation.delete(SystemKeyspace.SCHEMA_KEYSPACES_CF, timestamp);
         mutation.delete(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF, timestamp);
@@ -250,7 +250,7 @@ public final class KSMetaData
 
     public Mutation toSchema(long timestamp)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(name));
+        Mutation mutation = new Mutation(KeyspaceManager.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(name));
         ColumnFamily cf = mutation.addOrGet(CFMetaData.SchemaKeyspacesCf);
         CFRowAdder adder = new CFRowAdder(cf, CFMetaData.SchemaKeyspacesCf.comparator.builder().build(), timestamp);
 

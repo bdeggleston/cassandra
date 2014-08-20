@@ -25,6 +25,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.collect.*;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -263,12 +264,12 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         // if columnfamilies are not specified, we add all cf under the keyspace
         if (columnFamilies.isEmpty())
         {
-            stores.addAll(Keyspace.open(keyspace).getColumnFamilyStores());
+            stores.addAll(KeyspaceManager.instance.open(keyspace).getColumnFamilyStores());
         }
         else
         {
             for (String cf : columnFamilies)
-                stores.add(Keyspace.open(keyspace).getColumnFamilyStore(cf));
+                stores.add(KeyspaceManager.instance.open(keyspace).getColumnFamilyStore(cf));
         }
         return stores;
     }

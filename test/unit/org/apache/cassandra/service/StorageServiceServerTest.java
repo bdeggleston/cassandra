@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -56,7 +57,7 @@ public class StorageServiceServerTest
     {
         IEndpointSnitch snitch = new PropertyFileSnitch();
         DatabaseDescriptor.instance.setEndpointSnitch(snitch);
-        Keyspace.setInitialized();
+        KeyspaceManager.instance.setInitialized();
     }
 
     @Test
@@ -95,7 +96,7 @@ public class StorageServiceServerTest
     public void testColumnFamilySnapshot() throws IOException
     {
         // no need to insert extra data, even an "empty" database will have a little information in the system keyspace
-        StorageService.instance.takeColumnFamilySnapshot(Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_KEYSPACES_CF, "cf_snapshot");
+        StorageService.instance.takeColumnFamilySnapshot(KeyspaceManager.SYSTEM_KS, SystemKeyspace.SCHEMA_KEYSPACES_CF, "cf_snapshot");
     }
 
     @Test
@@ -114,7 +115,7 @@ public class StorageServiceServerTest
         configOptions.put("DC1", "1");
         configOptions.put("DC2", "1");
 
-        Keyspace.clear("Keyspace1");
+        KeyspaceManager.instance.clear("Keyspace1");
         KSMetaData meta = KSMetaData.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
@@ -150,7 +151,7 @@ public class StorageServiceServerTest
         Map<String, String> configOptions = new HashMap<String, String>();
         configOptions.put("DC2", "2");
 
-        Keyspace.clear("Keyspace1");
+        KeyspaceManager.instance.clear("Keyspace1");
         KSMetaData meta = KSMetaData.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
@@ -200,7 +201,7 @@ public class StorageServiceServerTest
         Map<String, String> configOptions = new HashMap<String, String>();
         configOptions.put("DC2", "2");
 
-        Keyspace.clear("Keyspace1");
+        KeyspaceManager.instance.clear("Keyspace1");
         KSMetaData meta = KSMetaData.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
@@ -248,7 +249,7 @@ public class StorageServiceServerTest
         Map<String, String> configOptions = new HashMap<String, String>();
         configOptions.put("replication_factor", "2");
 
-        Keyspace.clear("Keyspace1");
+        KeyspaceManager.instance.clear("Keyspace1");
         KSMetaData meta = KSMetaData.newKeyspace("Keyspace1", "SimpleStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 

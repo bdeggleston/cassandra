@@ -61,7 +61,7 @@ public class RecoveryManager2Test
     public void testWithFlush() throws Exception
     {
         // Flush everything that may be in the commit log now to start fresh
-        FBUtilities.waitOnFutures(Keyspace.open(Keyspace.SYSTEM_KS).flush());
+        FBUtilities.waitOnFutures(KeyspaceManager.instance.open(KeyspaceManager.SYSTEM_KS).flush());
 
         CompactionManager.instance.disableAutoCompaction();
 
@@ -74,7 +74,7 @@ public class RecoveryManager2Test
             insertRow("Standard1", key);
         }
 
-        Keyspace keyspace1 = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace1 = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace1.getColumnFamilyStore("Standard1");
         logger.debug("forcing flush");
         cfs.forceBlockingFlush();

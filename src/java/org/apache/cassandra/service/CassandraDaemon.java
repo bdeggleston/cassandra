@@ -220,7 +220,7 @@ public class CassandraDaemon
         // check the system keyspace to keep user from shooting self in foot by changing partitioner, cluster name, etc.
         // we do a one-off scrub of the system keyspace first; we can't load the list of the rest of the keyspaces,
         // until system keyspace is opened.
-        for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(Keyspace.SYSTEM_KS).values())
+        for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(KeyspaceManager.SYSTEM_KS).values())
             ColumnFamilyStoreManager.instance.scrubDataDirectories(cfm);
         try
         {
@@ -250,21 +250,21 @@ public class CassandraDaemon
         for (String keyspaceName : Schema.instance.getKeyspaces())
         {
             // Skip system as we've already cleaned it
-            if (keyspaceName.equals(Keyspace.SYSTEM_KS))
+            if (keyspaceName.equals(KeyspaceManager.SYSTEM_KS))
                 continue;
 
             for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(keyspaceName).values())
                 ColumnFamilyStoreManager.instance.scrubDataDirectories(cfm);
         }
 
-        Keyspace.setInitialized();
+        KeyspaceManager.instance.setInitialized();
         // initialize keyspaces
         for (String keyspaceName : Schema.instance.getKeyspaces())
         {
             if (logger.isDebugEnabled())
                 logger.debug("opening keyspace {}", keyspaceName);
             // disable auto compaction until commit log replay ends
-            for (ColumnFamilyStore cfs : Keyspace.open(keyspaceName).getColumnFamilyStores())
+            for (ColumnFamilyStore cfs : KeyspaceManager.instance.open(keyspaceName).getColumnFamilyStores())
             {
                 for (ColumnFamilyStore store : cfs.concatWithIndexes())
                 {
@@ -299,7 +299,7 @@ public class CassandraDaemon
         }
 
         // enable auto compaction
-        for (Keyspace keyspace : Keyspace.all())
+        for (Keyspace keyspace : KeyspaceManager.instance.all())
         {
             for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
             {
@@ -315,7 +315,7 @@ public class CassandraDaemon
         {
             public void run()
             {
-                for (Keyspace keyspaceName : Keyspace.all())
+                for (Keyspace keyspaceName : KeyspaceManager.instance.all())
                 {
                     for (ColumnFamilyStore cf : keyspaceName.getColumnFamilyStores())
                     {

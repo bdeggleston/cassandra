@@ -67,7 +67,7 @@ public class ColumnFamilyStoreManager
 
     public void rebuildSecondaryIndex(String ksName, String cfName, String... idxNames)
     {
-        ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(ksName).getColumnFamilyStore(cfName);
 
         Set<String> indexes = new HashSet<String>(Arrays.asList(idxNames));
 
@@ -89,7 +89,7 @@ public class ColumnFamilyStoreManager
     public Iterable<ColumnFamilyStore> all()
     {
         List<Iterable<ColumnFamilyStore>> stores = new ArrayList<Iterable<ColumnFamilyStore>>(schema.getKeyspaces().size());
-        for (Keyspace keyspace : Keyspace.all())
+        for (Keyspace keyspace : KeyspaceManager.instance.all())
         {
             stores.add(keyspace.getColumnFamilyStores());
         }

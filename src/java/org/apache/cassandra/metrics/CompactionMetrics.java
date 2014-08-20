@@ -29,6 +29,7 @@ import com.yammer.metrics.core.Meter;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.db.compaction.CompactionInfo;
 import org.apache.cassandra.db.compaction.CompactionManager;
 
@@ -60,7 +61,7 @@ public class CompactionMetrics implements CompactionManager.CompactionExecutorSt
                 int n = 0;
                 for (String keyspaceName : Schema.instance.getKeyspaces())
                 {
-                    for (ColumnFamilyStore cfs : Keyspace.open(keyspaceName).getColumnFamilyStores())
+                    for (ColumnFamilyStore cfs : KeyspaceManager.instance.open(keyspaceName).getColumnFamilyStores())
                         n += cfs.getCompactionStrategy().getEstimatedRemainingTasks();
                 }
                 for (ThreadPoolExecutor collector : collectors)

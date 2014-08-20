@@ -24,6 +24,7 @@ import java.util.*;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -144,7 +145,7 @@ public abstract class AbstractReplicationStrategy
     private Keyspace getKeyspace()
     {
         if (keyspace == null)
-            keyspace = Keyspace.open(keyspaceName);
+            keyspace = KeyspaceManager.instance.open(keyspaceName);
         return keyspace;
     }
 

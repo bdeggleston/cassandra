@@ -70,7 +70,7 @@ public class LeveledCompactionStrategyTest
     @Before
     public void enableCompaction()
     {
-        keyspace = Keyspace.open(KEYSPACE1);
+        keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         cfs = keyspace.getColumnFamilyStore(CF_STANDARDDLEVELED);
         cfs.enableAutoCompaction();
     }

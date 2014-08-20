@@ -75,7 +75,7 @@ public class NameSortTest
 
     private void testNameSort(int N) throws IOException
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
 
         for (int i = 0; i < N; ++i)
         {

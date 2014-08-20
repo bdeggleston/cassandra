@@ -203,7 +203,7 @@ public class DefsTest
         Mutation rm = new Mutation(ks, dk.getKey());
         rm.add(cf, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();
-        ColumnFamilyStore store = Keyspace.open(ks).getColumnFamilyStore(cf);
+        ColumnFamilyStore store = KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf);
         Assert.assertNotNull(store);
         store.forceBlockingFlush();
 
@@ -228,7 +228,7 @@ public class DefsTest
         for (int i = 0; i < 100; i++)
             rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.applyUnsafe();
-        ColumnFamilyStore store = Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
+        ColumnFamilyStore store = KeyspaceManager.instance.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
         Assert.assertNotNull(store);
         store.forceBlockingFlush();
         Assert.assertTrue(store.directories.sstableLister().list().size() > 0);
@@ -277,7 +277,7 @@ public class DefsTest
         Mutation rm = new Mutation(newCf.ksName, dk.getKey());
         rm.add(newCf.cfName, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();
-        ColumnFamilyStore store = Keyspace.open(newCf.ksName).getColumnFamilyStore(newCf.cfName);
+        ColumnFamilyStore store = KeyspaceManager.instance.open(newCf.ksName).getColumnFamilyStore(newCf.cfName);
         Assert.assertNotNull(store);
         store.forceBlockingFlush();
 
@@ -302,7 +302,7 @@ public class DefsTest
         for (int i = 0; i < 100; i++)
             rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.applyUnsafe();
-        ColumnFamilyStore store = Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
+        ColumnFamilyStore store = KeyspaceManager.instance.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
         Assert.assertNotNull(store);
         store.forceBlockingFlush();
         Assert.assertTrue(store.directories.sstableLister().list().size() > 0);
@@ -329,7 +329,7 @@ public class DefsTest
         boolean threw = false;
         try
         {
-            Keyspace.open(ks.name);
+            KeyspaceManager.instance.open(ks.name);
         }
         catch (Throwable th)
         {
@@ -386,7 +386,7 @@ public class DefsTest
         Mutation rm = new Mutation(newKs.name, dk.getKey());
         rm.add(newCf.cfName, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();
-        ColumnFamilyStore store = Keyspace.open(newKs.name).getColumnFamilyStore(newCf.cfName);
+        ColumnFamilyStore store = KeyspaceManager.instance.open(newKs.name).getColumnFamilyStore(newCf.cfName);
         Assert.assertNotNull(store);
         store.forceBlockingFlush();
 
@@ -529,7 +529,7 @@ public class DefsTest
     {
         // persist keyspace definition in the system keyspace
         Schema.instance.getKSMetaData(KEYSPACE6).toSchema(System.currentTimeMillis()).applyUnsafe();
-        ColumnFamilyStore cfs = Keyspace.open(KEYSPACE6).getColumnFamilyStore("Indexed1");
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE6).getColumnFamilyStore("Indexed1");
 
         // insert some data.  save the sstable descriptor so we can make sure it's marked for delete after the drop
         Mutation rm = new Mutation(KEYSPACE6, ByteBufferUtil.bytes("k1"));

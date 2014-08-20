@@ -27,6 +27,7 @@ import com.google.common.util.concurrent.Striped;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
@@ -115,7 +116,7 @@ public class PaxosState
         // erase the in-progress update.
         Tracing.instance.trace("Committing proposal {}", proposal);
         Mutation mutation = proposal.makeMutation();
-        Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
+        KeyspaceManager.instance.open(mutation.getKeyspaceName()).apply(mutation, true);
 
         // We don't need to lock, we're just blindly updating
         SystemKeyspace.instance.savePaxosCommit(proposal);

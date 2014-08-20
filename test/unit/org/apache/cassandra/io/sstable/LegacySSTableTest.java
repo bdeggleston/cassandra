@@ -26,17 +26,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.cassandra.db.*;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.KSMetaData;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.DeletionInfo;
-import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.columniterator.SSTableNamesIterator;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.dht.IPartitioner;
@@ -75,7 +71,7 @@ public class LegacySSTableTest
 
     public static void beforeClass()
     {
-        Keyspace.setInitialized();
+        KeyspaceManager.instance.setInitialized();
         String scp = System.getProperty(LEGACY_SSTABLE_PROP);
         assert scp != null;
         LEGACY_SSTABLE_ROOT = new File(scp).getAbsoluteFile();
@@ -137,7 +133,7 @@ public class LegacySSTableTest
         new StreamPlan("LegacyStreamingTest").transferFiles(FBUtilities.getBroadcastAddress(), details)
                                              .execute().get();
 
-        ColumnFamilyStore cfs = Keyspace.open(KSNAME).getColumnFamilyStore(CFNAME);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KSNAME).getColumnFamilyStore(CFNAME);
         assert cfs.getSSTables().size() == 1;
         sstable = cfs.getSSTables().iterator().next();
         CellNameType type = sstable.metadata.comparator;

@@ -98,7 +98,7 @@ public class BatchlogManager implements BatchlogManagerMBean
 
     public int countAllBatches()
     {
-        String query = String.format("SELECT count(*) FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.BATCHLOG_CF);
+        String query = String.format("SELECT count(*) FROM %s.%s", KeyspaceManager.SYSTEM_KS, SystemKeyspace.BATCHLOG_CF);
         return (int) QueryProcessor.instance.executeInternal(query).one().getLong("count");
     }
 
@@ -132,7 +132,7 @@ public class BatchlogManager implements BatchlogManagerMBean
         adder.add("data", serializeMutations(mutations, version))
              .add("written_at", new Date(now / 1000))
              .add("version", version);
-        return new Mutation(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(uuid), cf);
+        return new Mutation(KeyspaceManager.SYSTEM_KS, UUIDType.instance.decompose(uuid), cf);
     }
 
     private static ByteBuffer serializeMutations(Collection<Mutation> mutations, int version)
@@ -169,7 +169,7 @@ public class BatchlogManager implements BatchlogManagerMBean
         try
         {
             UntypedResultSet page = QueryProcessor.instance.executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s LIMIT %d",
-                                                                  Keyspace.SYSTEM_KS,
+                                                                  KeyspaceManager.SYSTEM_KS,
                                                                   SystemKeyspace.BATCHLOG_CF,
                                                                   PAGE_SIZE));
 
@@ -181,7 +181,7 @@ public class BatchlogManager implements BatchlogManagerMBean
                     break; // we've exhausted the batchlog, next query would be empty.
 
                 page = QueryProcessor.instance.executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s WHERE token(id) > token(?) LIMIT %d",
-                                                     Keyspace.SYSTEM_KS,
+                                                     KeyspaceManager.SYSTEM_KS,
                                                      SystemKeyspace.BATCHLOG_CF,
                                                      PAGE_SIZE), 
                                        id);
@@ -199,7 +199,7 @@ public class BatchlogManager implements BatchlogManagerMBean
 
     private void deleteBatch(UUID id)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(id));
+        Mutation mutation = new Mutation(KeyspaceManager.SYSTEM_KS, UUIDType.instance.decompose(id));
         mutation.delete(SystemKeyspace.BATCHLOG_CF, FBUtilities.timestampMicros());
         mutation.apply();
     }
@@ -443,7 +443,7 @@ public class BatchlogManager implements BatchlogManagerMBean
     // force flush + compaction to reclaim space from the replayed batches
     private void cleanup() throws ExecutionException, InterruptedException
     {
-        ColumnFamilyStore cfs = Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KeyspaceManager.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF);
         cfs.forceBlockingFlush();
         Collection<Descriptor> descriptors = new ArrayList<>();
         for (SSTableReader sstr : cfs.getSSTables())

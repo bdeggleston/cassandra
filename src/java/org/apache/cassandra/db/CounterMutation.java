@@ -109,7 +109,7 @@ public class CounterMutation implements IMutation
     public Mutation apply() throws WriteTimeoutException
     {
         Mutation result = new Mutation(getKeyspaceName(), key());
-        Keyspace keyspace = Keyspace.open(getKeyspaceName());
+        Keyspace keyspace = KeyspaceManager.instance.open(getKeyspaceName());
 
         int count = 0;
         for (ColumnFamily cf : getColumnFamilies())
@@ -178,7 +178,7 @@ public class CounterMutation implements IMutation
     // Replaces all the CounterUpdateCell-s with updated regular CounterCell-s
     private ColumnFamily processModifications(ColumnFamily changesCF)
     {
-        ColumnFamilyStore cfs = Keyspace.open(getKeyspaceName()).getColumnFamilyStore(changesCF.id());
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(getKeyspaceName()).getColumnFamilyStore(changesCF.id());
 
         ColumnFamily resultCF = changesCF.cloneMeShallow();
 

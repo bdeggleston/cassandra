@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.cassandra.db.KeyspaceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +50,7 @@ public class UDFRegistry
 
     static final String SELECT_CQL = "SELECT namespace, name, signature, deterministic, argument_names, argument_types, " +
                                      "return_type, language, body FROM " +
-                                     Keyspace.SYSTEM_KS + '.' + SystemKeyspace.SCHEMA_FUNCTIONS_CF;
+                                     KeyspaceManager.SYSTEM_KS + '.' + SystemKeyspace.SCHEMA_FUNCTIONS_CF;
 
     private static final Map<String, UDFFunctionOverloads> functions = new ConcurrentHashMap<>();
 

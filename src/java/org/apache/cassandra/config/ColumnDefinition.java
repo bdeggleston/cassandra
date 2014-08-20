@@ -366,7 +366,7 @@ public class ColumnDefinition extends ColumnSpecification
 
     public static UntypedResultSet resultify(Row serializedColumns)
     {
-        String query = String.format("SELECT * FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_COLUMNS_CF);
+        String query = String.format("SELECT * FROM %s.%s", KeyspaceManager.SYSTEM_KS, SystemKeyspace.SCHEMA_COLUMNS_CF);
         return QueryProcessor.instance.resultify(query, serializedColumns);
     }
 

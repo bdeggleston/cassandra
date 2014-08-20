@@ -59,7 +59,7 @@ public class RemoveSubCellTest
     @Test
     public void testRemoveSubColumn()
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Super1");
         Mutation rm;
         DecoratedKey dk = Util.dk("key1");
@@ -84,7 +84,7 @@ public class RemoveSubCellTest
     @Test
     public void testRemoveSubColumnAndContainer()
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Super1");
         Mutation rm;
         DecoratedKey dk = Util.dk("key2");

@@ -288,7 +288,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
 
     static List<Row> readLocally(String keyspaceName, List<ReadCommand> cmds)
     {
-        Keyspace keyspace = Keyspace.open(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         List<Row> rows = new ArrayList<Row>(cmds.size());
         for (ReadCommand cmd : cmds)
             rows.add(cmd.getRow(keyspace));
@@ -1085,7 +1085,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         
         if (usesSecondaryIndexing)
         {
-            ColumnFamilyStore cfs = Keyspace.open(keyspace()).getColumnFamilyStore(columnFamily());
+            ColumnFamilyStore cfs = KeyspaceManager.instance.open(keyspace()).getColumnFamilyStore(columnFamily());
             SecondaryIndexManager secondaryIndexManager = cfs.indexManager;
             secondaryIndexManager.validateIndexSearchersForQuery(expressions);
         }

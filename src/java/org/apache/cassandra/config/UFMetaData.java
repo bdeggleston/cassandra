@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.cassandra.db.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import org.antlr.runtime.ANTLRStringStream;
@@ -39,13 +40,6 @@ import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.cql3.udf.UDFFunctionOverloads;
 import org.apache.cassandra.cql3.udf.UDFRegistry;
-import org.apache.cassandra.db.CFRowAdder;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.Mutation;
-import org.apache.cassandra.db.RangeTombstone;
-import org.apache.cassandra.db.Row;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
@@ -186,7 +180,7 @@ public final class UFMetaData
         if (sigMap == null || sigMap.isEmpty())
             return null;
 
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, partKey.decompose(namespace, functionName));
+        Mutation mutation = new Mutation(KeyspaceManager.SYSTEM_KS, partKey.decompose(namespace, functionName));
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_FUNCTIONS_CF);
 
         int ldt = (int) (System.currentTimeMillis() / 1000);
@@ -210,7 +204,7 @@ public final class UFMetaData
     public static Mutation createOrReplaceFunction(long timestamp, UFMetaData f)
     throws ConfigurationException, SyntaxException
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, partKey.decompose(f.namespace, f.functionName));
+        Mutation mutation = new Mutation(KeyspaceManager.SYSTEM_KS, partKey.decompose(f.namespace, f.functionName));
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_FUNCTIONS_CF);
 
         Composite prefix = udfSignatureKey(f);

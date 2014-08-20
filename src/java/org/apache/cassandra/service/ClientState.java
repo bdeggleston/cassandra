@@ -26,6 +26,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +70,7 @@ public class ClientState
                                        SystemKeyspace.SCHEMA_COLUMNS_CF,
                                        SystemKeyspace.SCHEMA_USER_TYPES_CF};
         for (String cf : cfs)
-            READABLE_SYSTEM_RESOURCES.add(DataResource.columnFamily(Keyspace.SYSTEM_KS, cf));
+            READABLE_SYSTEM_RESOURCES.add(DataResource.columnFamily(KeyspaceManager.instance.SYSTEM_KS, cf));
 
         PROTECTED_AUTH_RESOURCES.addAll(DatabaseDescriptor.instance.getAuthenticator().protectedResources());
         PROTECTED_AUTH_RESOURCES.addAll(DatabaseDescriptor.instance.getAuthorizer().protectedResources());
@@ -236,7 +237,7 @@ public class ClientState
             return;
 
         // prevent system keyspace modification
-        if (Keyspace.SYSTEM_KS.equalsIgnoreCase(keyspace))
+        if (KeyspaceManager.SYSTEM_KS.equalsIgnoreCase(keyspace))
             throw new UnauthorizedException(keyspace + " keyspace is not user-modifiable.");
 
         // we want to allow altering AUTH_KS and TRACING_KS.

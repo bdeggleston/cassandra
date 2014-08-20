@@ -61,7 +61,7 @@ public class TriggerDefinition
     public static List<TriggerDefinition> fromSchema(Row serializedTriggers)
     {
         List<TriggerDefinition> triggers = new ArrayList<>();
-        String query = String.format("SELECT * FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_TRIGGERS_CF);
+        String query = String.format("SELECT * FROM %s.%s", KeyspaceManager.SYSTEM_KS, SystemKeyspace.SCHEMA_TRIGGERS_CF);
         for (UntypedResultSet.Row row : QueryProcessor.instance.resultify(query, serializedTriggers))
         {
             String name = row.getString(TRIGGER_NAME);

@@ -41,6 +41,7 @@ import io.airlift.command.*;
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutorMBean;
 import org.apache.cassandra.db.ColumnFamilyStoreMBean;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.db.compaction.CompactionManagerMBean;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.io.util.FileUtils;
@@ -907,7 +908,7 @@ public class NodeTool
 
             for (String keyspace : keyspaces)
             {
-                if (Keyspace.SYSTEM_KS.equals(keyspace))
+                if (KeyspaceManager.SYSTEM_KS.equals(keyspace))
                     continue;
 
                 try

@@ -26,6 +26,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Map;
 
+import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -52,7 +53,7 @@ public class GoogleCloudSnitchTest
     {
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();
-        Keyspace.setInitialized();
+        KeyspaceManager.instance.setInitialized();
         StorageService.instance.initServer(0);
     }
 

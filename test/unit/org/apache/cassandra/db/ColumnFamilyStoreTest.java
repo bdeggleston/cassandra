@@ -166,7 +166,7 @@ public class ColumnFamilyStoreTest
     // create two sstables, and verify that we only deserialize data from the most recent one
     public void testTimeSortedQuery()
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_STANDARD1);
         cfs.truncateBlocking();
 
@@ -189,7 +189,7 @@ public class ColumnFamilyStoreTest
     @Test
     public void testGetColumnWithWrongBF()
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_STANDARD1);
         cfs.truncateBlocking();
 
@@ -210,7 +210,7 @@ public class ColumnFamilyStoreTest
     @Test
     public void testEmptyRow() throws Exception
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         final ColumnFamilyStore store = keyspace.getColumnFamilyStore(CF_STANDARD2);
         Mutation rm;
 
@@ -254,7 +254,7 @@ public class ColumnFamilyStoreTest
     @Test
     public void testIndexScan()
     {
-        ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_INDEX1);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF_INDEX1);
         Mutation rm;
         CellName nobirthdate = cellname("notbirthdate");
         CellName birthdate = cellname("birthdate");
@@ -339,7 +339,7 @@ public class ColumnFamilyStoreTest
     public void testLargeScan()
     {
         Mutation rm;
-        ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_INDEX1);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF_INDEX1);
         for (int i = 0; i < 100; i++)
         {
             rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes("key" + i));
@@ -367,7 +367,7 @@ public class ColumnFamilyStoreTest
     @Test
     public void testIndexDeletions() throws IOException
     {
-        ColumnFamilyStore cfs = Keyspace.open(KEYSPACE3).getColumnFamilyStore(CF_INDEX1);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE3).getColumnFamilyStore(CF_INDEX1);
         Mutation rm;
 
         rm = new Mutation(KEYSPACE3, ByteBufferUtil.bytes("k1"));
@@ -461,7 +461,7 @@ public class ColumnFamilyStoreTest
     @Test
     public void testIndexUpdate() throws IOException
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE2);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE2);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_INDEX1);
         CellName birthdate = cellname("birthdate");
 
@@ -502,7 +502,7 @@ public class ColumnFamilyStoreTest
     public void testIndexUpdateOverwritingExpiringColumns() throws Exception
     {
         // see CASSANDRA-7268
-        Keyspace keyspace = Keyspace.open(KEYSPACE2);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE2);
 
         // create a row and update the birthdate value with an expiring column
         Mutation rm;
@@ -558,7 +558,7 @@ public class ColumnFamilyStoreTest
         String keySpace = KEYSPACE2;
         String cfName = CF_INDEX1;
 
-        Keyspace keyspace = Keyspace.open(keySpace);
+        Keyspace keyspace = KeyspaceManager.instance.open(keySpace);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         cfs.truncateBlocking();
 
@@ -621,7 +621,7 @@ public class ColumnFamilyStoreTest
         String keySpace = KEYSPACE2;
         String cfName = CF_INDEX2;
 
-        Keyspace keyspace = Keyspace.open(keySpace);
+        Keyspace keyspace = KeyspaceManager.instance.open(keySpace);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         cfs.truncateBlocking();
 
@@ -694,7 +694,7 @@ public class ColumnFamilyStoreTest
         String keySpace = KEYSPACE2;
         String cfName = CF_INDEX3; // has gcGrace 0
 
-        Keyspace keyspace = Keyspace.open(keySpace);
+        Keyspace keyspace = KeyspaceManager.instance.open(keySpace);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         cfs.truncateBlocking();
 
@@ -737,7 +737,7 @@ public class ColumnFamilyStoreTest
     @Test
     public void testIndexScanWithLimitOne()
     {
-        ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_INDEX1);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF_INDEX1);
         Mutation rm;
 
         CellName nobirthdate = cellname("notbirthdate");
@@ -778,7 +778,7 @@ public class ColumnFamilyStoreTest
     @Test
     public void testIndexCreate() throws IOException, InterruptedException, ExecutionException
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_INDEX2);
 
         // create a row and update the birthdate value, test that the index query fetches the new version
@@ -821,7 +821,7 @@ public class ColumnFamilyStoreTest
     public void testCassandra6778() throws CharacterCodingException
     {
         String cfname = CF_STANDARDINT;
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
 
         // insert two columns that represent the same integer but have different binary forms (the
@@ -880,7 +880,7 @@ public class ColumnFamilyStoreTest
         String keyspaceName = KEYSPACE1;
         String cfName= CF_SUPER1;
         ByteBuffer scfName = ByteBufferUtil.bytes("SuperDuper");
-        Keyspace keyspace = Keyspace.open(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         DecoratedKey key = Util.dk("flush-resurrection");
 
@@ -980,7 +980,7 @@ public class ColumnFamilyStoreTest
         // test to make sure flushing after a delete doesn't resurrect delted cols.
         String keyspaceName = KEYSPACE1;
         String cfName = CF_STANDARD1;
-        Keyspace keyspace = Keyspace.open(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         DecoratedKey key = Util.dk("f-flush-resurrection");
 
@@ -1033,7 +1033,7 @@ public class ColumnFamilyStoreTest
 
     private ColumnFamilyStore insertKey1Key2()
     {
-        ColumnFamilyStore cfs = Keyspace.open(KEYSPACE2).getColumnFamilyStore(CF_STANDARD1);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE2).getColumnFamilyStore(CF_STANDARD1);
         List<Mutation> rms = new LinkedList<>();
         Mutation rm;
         rm = new Mutation(KEYSPACE2, ByteBufferUtil.bytes("key1"));
@@ -1068,7 +1068,7 @@ public class ColumnFamilyStoreTest
         String keyspaceName = KEYSPACE1;
         String cfName = CF_SUPER6;
         ByteBuffer superColName = LexicalUUIDType.instance.fromString("a4ed3562-0e8e-4b41-bdfd-c45a2774682d");
-        Keyspace keyspace = Keyspace.open(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         DecoratedKey key = Util.dk("slice-get-uuid-type");
 
@@ -1100,7 +1100,7 @@ public class ColumnFamilyStoreTest
         String cfName= CF_STANDARD1;
         DecoratedKey key = Util.dk("slice-name-old-metadata");
         CellName cname = cellname("c1");
-        Keyspace keyspace = Keyspace.open(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         cfs.clearUnsafe();
 
@@ -1126,7 +1126,7 @@ public class ColumnFamilyStoreTest
         Cell cell = cf.getColumn(cname);
         assert cell.value().equals(ByteBufferUtil.bytes("a")) : "expecting a, got " + ByteBufferUtil.string(cell.value());
 
-        Keyspace.clear(KEYSPACE1); // CASSANDRA-7195
+        KeyspaceManager.instance.clear(KEYSPACE1); // CASSANDRA-7195
     }
 
     private static void assertTotalColCount(Collection<Row> rows, int expectedCount)
@@ -1145,7 +1145,7 @@ public class ColumnFamilyStoreTest
     {
         String keyspaceName = KEYSPACE1;
         String cfName = CF_STANDARD1;
-        Keyspace keyspace = Keyspace.open(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         cfs.clearUnsafe();
 
@@ -1261,7 +1261,7 @@ public class ColumnFamilyStoreTest
     {
         String keyspaceName = KEYSPACE1;
         String cfName = CF_STANDARD1;
-        Keyspace keyspace = Keyspace.open(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         cfs.clearUnsafe();
 
@@ -1397,7 +1397,7 @@ public class ColumnFamilyStoreTest
     {
         String keyspaceName = KEYSPACE1;
         String cfName = CF_STANDARD1;
-        Keyspace keyspace = Keyspace.open(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         cfs.clearUnsafe();
 
@@ -1449,7 +1449,7 @@ public class ColumnFamilyStoreTest
     public void testKeysSearcher() throws Exception
     {
         // Create secondary index and flush to disk
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(CF_INDEX1);
 
         store.truncateBlocking();
@@ -1493,7 +1493,7 @@ public class ColumnFamilyStoreTest
 
         String tableName = KEYSPACE1;
         String cfName = CF_STANDARD1;
-        Keyspace table = Keyspace.open(tableName);
+        Keyspace table = KeyspaceManager.instance.open(tableName);
         ColumnFamilyStore cfs = table.getColumnFamilyStore(cfName);
         cfs.clearUnsafe();
 
@@ -1542,7 +1542,7 @@ public class ColumnFamilyStoreTest
 
         String tableName = KEYSPACE1;
         String cfName = CF_STANDARD1;
-        Keyspace table = Keyspace.open(tableName);
+        Keyspace table = KeyspaceManager.instance.open(tableName);
         ColumnFamilyStore cfs = table.getColumnFamilyStore(cfName);
         cfs.clearUnsafe();
 
@@ -1591,7 +1591,7 @@ public class ColumnFamilyStoreTest
 
         String tableName = KEYSPACE1;
         String cfName = CF_STANDARD1;
-        Keyspace table = Keyspace.open(tableName);
+        Keyspace table = KeyspaceManager.instance.open(tableName);
         ColumnFamilyStore cfs = table.getColumnFamilyStore(cfName);
         cfs.clearUnsafe();
 
@@ -1641,7 +1641,7 @@ public class ColumnFamilyStoreTest
 
         String tableName = KEYSPACE1;
         String cfName = CF_STANDARD1;
-        Keyspace table = Keyspace.open(tableName);
+        Keyspace table = KeyspaceManager.instance.open(tableName);
         ColumnFamilyStore cfs = table.getColumnFamilyStore(cfName);
         cfs.clearUnsafe();
 
@@ -1689,7 +1689,7 @@ public class ColumnFamilyStoreTest
 
         String keyspaceName = KEYSPACE1;
         String cfName = CF_STANDARD1;
-        Keyspace keyspace = Keyspace.open(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         cfs.clearUnsafe();
 
@@ -1798,7 +1798,7 @@ public class ColumnFamilyStoreTest
         assertEquals(2, sstables.size());
 
         UUID compactionTaskID = SystemKeyspace.instance.startCompaction(
-                Keyspace.open(ks).getColumnFamilyStore(cf),
+                KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf),
                 Collections.singleton(SSTableReader.open(sstable1.descriptor)));
 
         Map<Integer, UUID> unfinishedCompaction = new HashMap<>();
@@ -1874,7 +1874,7 @@ public class ColumnFamilyStoreTest
     {
         String ks = KEYSPACE1;
         String cf = CF_STANDARD1;
-        ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cf);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf);
         cfs.truncateBlocking();
         SSTableDeletingTask.waitForDeletions();
 
@@ -1950,7 +1950,7 @@ public class ColumnFamilyStoreTest
     {
         String keyspaceName = KEYSPACE1;
         String cfName = CF_STANDARD1;
-        Keyspace keyspace = Keyspace.open(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         cfs.clearUnsafe();
 

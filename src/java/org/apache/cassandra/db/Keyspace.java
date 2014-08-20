@@ -30,8 +30,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Iterables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +55,6 @@ import org.apache.cassandra.metrics.KeyspaceMetrics;
  */
 public class Keyspace
 {
-    public static final String SYSTEM_KS = "system";
     private static final int DEFAULT_PAGE_SIZE = 10000;
 
     private static final Logger logger = LoggerFactory.getLogger(Keyspace.class);
@@ -79,99 +76,6 @@ public class Keyspace
     private final ConcurrentMap<UUID, ColumnFamilyStore> columnFamilyStores = new ConcurrentHashMap<UUID, ColumnFamilyStore>();
     private volatile AbstractReplicationStrategy replicationStrategy;
 
-    public static final Function<String,Keyspace> keyspaceTransformer = new Function<String, Keyspace>()
-    {
-        public Keyspace apply(String keyspaceName)
-        {
-            return Keyspace.open(keyspaceName);
-        }
-    };
-
-    // TODO: move into schema
-    private static volatile boolean initialized = false;
-    public static void setInitialized()
-    {
-        initialized = true;
-    }
-
-    public static Keyspace open(String keyspaceName)
-    {
-        assert initialized || keyspaceName.equals(SYSTEM_KS);
-        return open(keyspaceName, Schema.instance, true);
-    }
-
-    // to only be used by org.apache.cassandra.tools.Standalone* classes
-    public static Keyspace openWithoutSSTables(String keyspaceName)
-    {
-        return open(keyspaceName, Schema.instance, false);
-    }
-
-    public static Keyspace open(String keyspaceName, Schema schema)
-    {
-        return Keyspace.open(keyspaceName, schema, true);
-    }
-
-    private static Keyspace open(String keyspaceName, Schema schema, boolean loadSSTables)
-    {
-        Keyspace keyspaceInstance = schema.getKeyspaceInstance(keyspaceName);
-
-        if (keyspaceInstance == null)
-        {
-            // instantiate the Keyspace.  we could use putIfAbsent but it's important to making sure it is only done once
-            // per keyspace, so we synchronize and re-check before doing it.
-            synchronized (Keyspace.class)
-            {
-                keyspaceInstance = schema.getKeyspaceInstance(keyspaceName);
-                if (keyspaceInstance == null)
-                {
-                    // open and store the keyspace
-                    keyspaceInstance = new Keyspace(keyspaceName, loadSSTables);
-                    schema.storeKeyspaceInstance(keyspaceInstance);
-
-                    // keyspace has to be constructed and in the cache before cacheRow can be called
-                    for (ColumnFamilyStore cfs : keyspaceInstance.getColumnFamilyStores())
-                        cfs.initRowCache();
-                }
-            }
-        }
-        return keyspaceInstance;
-    }
-
-    public static Keyspace clear(String keyspaceName)
-    {
-        return clear(keyspaceName, Schema.instance);
-    }
-
-    public static Keyspace clear(String keyspaceName, Schema schema)
-    {
-        synchronized (Keyspace.class)
-        {
-            Keyspace t = schema.removeKeyspaceInstance(keyspaceName);
-            if (t != null)
-            {
-                for (ColumnFamilyStore cfs : t.getColumnFamilyStores())
-                    t.unloadCf(cfs);
-                t.metric.release();
-            }
-            return t;
-        }
-    }
-
-    /**
-     * Removes every SSTable in the directory from the appropriate DataTracker's view.
-     * @param directory the unreadable directory, possibly with SSTables in it, but not necessarily.
-     */
-    public static void removeUnreadableSSTables(File directory)
-    {
-        for (Keyspace keyspace : Keyspace.all())
-        {
-            for (ColumnFamilyStore baseCfs : keyspace.getColumnFamilyStores())
-            {
-                for (ColumnFamilyStore cfs : baseCfs.concatWithIndexes())
-                    cfs.maybeRemoveUnreadableSSTables(directory);
-            }
-        }
-    }
 
     public Collection<ColumnFamilyStore> getColumnFamilyStores()
     {
@@ -273,7 +177,7 @@ public class Keyspace
         return list;
     }
 
-    private Keyspace(String keyspaceName, boolean loadSSTables)
+    Keyspace(String keyspaceName, boolean loadSSTables)
     {
         metadata = Schema.instance.getKSMetaData(keyspaceName);
         assert metadata != null : "Unknown keyspace " + keyspaceName;
@@ -438,21 +342,6 @@ public class Keyspace
         return futures;
     }
 
-    public static Iterable<Keyspace> all()
-    {
-        return Iterables.transform(Schema.instance.getKeyspaces(), keyspaceTransformer);
-    }
-
-    public static Iterable<Keyspace> nonSystem()
-    {
-        return Iterables.transform(Schema.instance.getNonSystemKeyspaces(), keyspaceTransformer);
-    }
-
-    public static Iterable<Keyspace> system()
-    {
-        return Iterables.transform(Schema.systemKeyspaceNames, keyspaceTransformer);
-    }
-
     @Override
     public String toString()
     {
@@ -462,5 +351,12 @@ public class Keyspace
     public String getName()
     {
         return metadata.name;
+    }
+
+    public void clear()
+    {
+        for (ColumnFamilyStore cfs : getColumnFamilyStores())
+            unloadCf(cfs);
+        metric.release();
     }
 }

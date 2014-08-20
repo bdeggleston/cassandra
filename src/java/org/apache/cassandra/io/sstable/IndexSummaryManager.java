@@ -37,6 +37,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -195,7 +196,7 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
     private List<SSTableReader> getAllSSTables()
     {
         List<SSTableReader> result = new ArrayList<>();
-        for (Keyspace ks : Keyspace.all())
+        for (Keyspace ks : KeyspaceManager.instance.all())
         {
             for (ColumnFamilyStore cfStore: ks.getColumnFamilyStores())
                 result.addAll(cfStore.getSSTables());
@@ -212,7 +213,7 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
     {
         List<SSTableReader> allCompacting = new ArrayList<>();
         Multimap<DataTracker, SSTableReader> allNonCompacting = HashMultimap.create();
-        for (Keyspace ks : Keyspace.all())
+        for (Keyspace ks : KeyspaceManager.instance.all())
         {
             for (ColumnFamilyStore cfStore: ks.getColumnFamilyStores())
             {
@@ -416,7 +417,7 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
             logger.debug("Re-sampling index summary for {} from {}/{} to {}/{} of the original number of entries",
                          sstable, sstable.getIndexSummarySamplingLevel(), Downsampling.BASE_SAMPLING_LEVEL,
                          entry.newSamplingLevel, Downsampling.BASE_SAMPLING_LEVEL);
-            ColumnFamilyStore cfs = Keyspace.open(sstable.getKeyspaceName()).getColumnFamilyStore(sstable.getColumnFamilyName());
+            ColumnFamilyStore cfs = KeyspaceManager.instance.open(sstable.getKeyspaceName()).getColumnFamilyStore(sstable.getColumnFamilyName());
             SSTableReader replacement = sstable.cloneWithNewSummarySamplingLevel(cfs, entry.newSamplingLevel);
             DataTracker tracker = cfs.getDataTracker();
 

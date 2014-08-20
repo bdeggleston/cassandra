@@ -2,7 +2,7 @@
 
 # loadSchemas has most of the Schema, SystemKeyspace & DefsTables references, SystemKeyspace is also referenced in isReplacing
 # move loadSchemas to Schema or SystemKeyspace
-DatabaseDescriptor [Schema(?, 3m), SystemKeyspace(?, 2m), DefsTables(?, 1m)]  #seems to be logical initialization point
+DatabaseDescriptor [Schema(?, 3m), SystemKeyspace(?, 2m), DefsTables(?, 1m), KeyspaceManager]  #seems to be logical initialization point
     * move loadSchemas to SystemKeyspace
     * pass SystemKeyspace into isReplacing
 
@@ -61,6 +61,16 @@ StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 
 
 CompactionManager [DatabaseDescriptor, StorageService, Schema, ActiveRepairService, SystemKeyspace]
 Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), CommitLog(weak, single method), ColumnFamilyStoreManager]
+    * make KeyspaceManager class
+        * move static construction methods and members to it
+        * remove DatabaseDescriptor dependency on KeyspaceManager
+    * remove static Keyspace.open(keyspaceName) method, all open methods should take a Schema instance
+    * move Schema dependency up to KeyspaceManager
+    * remove dependency on DatabaseDescriptor
+        * move isClientMode to StorageService
+        * move createAllDirectories to StorageService
+        * move getEndpointSnitch to StorageService
+
 Updated --> Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, StorageServiceTasks, Schema]
 
 Updated --> CacheService [DatabaseDescriptor, StageManager, Schema]

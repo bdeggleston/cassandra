@@ -357,7 +357,7 @@ public enum ConsistencyLevel
 
     private void requireNetworkTopologyStrategy(String keyspaceName) throws InvalidRequestException
     {
-        AbstractReplicationStrategy strategy = Keyspace.open(keyspaceName).getReplicationStrategy();
+        AbstractReplicationStrategy strategy = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
         if (!(strategy instanceof NetworkTopologyStrategy))
             throw new InvalidRequestException(String.format("consistency level %s not compatible with replication strategy (%s)", this, strategy.getClass().getName()));
     }

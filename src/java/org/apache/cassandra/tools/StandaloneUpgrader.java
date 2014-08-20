@@ -20,6 +20,7 @@ package org.apache.cassandra.tools;
 import java.io.IOException;
 import java.util.*;
 
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -52,7 +53,7 @@ public class StandaloneUpgrader
                                                                  options.keyspace,
                                                                  options.cf));
 
-            Keyspace keyspace = Keyspace.openWithoutSSTables(options.keyspace);
+            Keyspace keyspace = KeyspaceManager.instance.openWithoutSSTables(options.keyspace);
             ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(options.cf);
 
             OutputHandler handler = new OutputHandler.SystemOutput(false, options.debug);

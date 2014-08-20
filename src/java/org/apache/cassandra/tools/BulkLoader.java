@@ -26,6 +26,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.commons.cli.*;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -308,7 +309,7 @@ public class BulkLoader
                     }
 
                     String cfQuery = String.format("SELECT * FROM %s.%s WHERE keyspace_name = '%s'",
-                                                 Keyspace.SYSTEM_KS,
+                                                 KeyspaceManager.SYSTEM_KS,
                                                  SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF,
                                                  keyspace);
                     CqlResult cfRes = client.execute_cql3_query(ByteBufferUtil.bytes(cfQuery), Compression.NONE, ConsistencyLevel.ONE);
@@ -318,7 +319,7 @@ public class BulkLoader
                     {
                         String columnFamily = UTF8Type.instance.getString(row.columns.get(1).bufferForName());
                         String columnsQuery = String.format("SELECT * FROM %s.%s WHERE keyspace_name = '%s' AND columnfamily_name = '%s'",
-                                                            Keyspace.SYSTEM_KS,
+                                                            KeyspaceManager.SYSTEM_KS,
                                                             SystemKeyspace.SCHEMA_COLUMNS_CF,
                                                             keyspace,
                                                             columnFamily);

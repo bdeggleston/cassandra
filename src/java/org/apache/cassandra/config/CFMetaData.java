@@ -529,7 +529,7 @@ public final class CFMetaData
 
     private static CFMetaData compile(String cql)
     {
-        return compile(cql, Keyspace.SYSTEM_KS);
+        return compile(cql, KeyspaceManager.instance.SYSTEM_KS);
     }
 
     @VisibleForTesting
@@ -1559,7 +1559,7 @@ public final class CFMetaData
      */
     public Mutation toSchemaUpdate(CFMetaData newState, long modificationTimestamp, boolean fromThrift)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(ksName));
+        Mutation mutation = new Mutation(KeyspaceManager.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(ksName));
 
         newState.toSchemaNoColumnsNoTriggers(mutation, modificationTimestamp);
 
@@ -1609,7 +1609,7 @@ public final class CFMetaData
      */
     public Mutation dropFromSchema(long timestamp)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(ksName));
+        Mutation mutation = new Mutation(KeyspaceManager.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(ksName));
         ColumnFamily cf = mutation.addOrGet(SchemaColumnFamiliesCf);
         int ldt = (int) (System.currentTimeMillis() / 1000);
 
@@ -1622,7 +1622,7 @@ public final class CFMetaData
         for (TriggerDefinition td : triggers.values())
             td.deleteFromSchema(mutation, cfName, timestamp);
 
-        for (String indexName : Keyspace.open(this.ksName).getColumnFamilyStore(this.cfName).getBuiltIndexes())
+        for (String indexName : KeyspaceManager.instance.open(this.ksName).getColumnFamilyStore(this.cfName).getBuiltIndexes())
         {
             ColumnFamily indexCf = mutation.addOrGet(IndexCf);
             indexCf.addTombstone(indexCf.getComparator().makeCellName(indexName), ldt, timestamp);
@@ -1877,7 +1877,7 @@ public final class CFMetaData
      */
     public Mutation toSchema(long timestamp) throws ConfigurationException
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(ksName));
+        Mutation mutation = new Mutation(KeyspaceManager.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(ksName));
         toSchema(mutation, timestamp);
         return mutation;
     }

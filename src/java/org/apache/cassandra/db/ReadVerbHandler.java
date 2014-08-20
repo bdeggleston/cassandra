@@ -40,7 +40,7 @@ public class ReadVerbHandler implements IVerbHandler<ReadCommand>
         }
 
         ReadCommand command = message.payload;
-        Keyspace keyspace = Keyspace.open(command.ksName);
+        Keyspace keyspace = KeyspaceManager.instance.open(command.ksName);
         Row row;
         try
         {

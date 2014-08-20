@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -105,7 +106,7 @@ public class StandaloneSplitter
             }
 
             // Do not load sstables since they might be broken
-            Keyspace keyspace = Keyspace.openWithoutSSTables(ksName);
+            Keyspace keyspace = KeyspaceManager.instance.openWithoutSSTables(ksName);
             ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
 
             String snapshotName = "pre-split-" + System.currentTimeMillis();

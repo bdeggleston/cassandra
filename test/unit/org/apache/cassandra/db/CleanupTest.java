@@ -77,7 +77,7 @@ public class CleanupTest
     {
         StorageService.instance.getTokenMetadata().clearUnsafe();
 
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF2);
 
         List<Row> rows;
@@ -105,7 +105,7 @@ public class CleanupTest
     @Test
     public void testCleanupWithIndexes() throws IOException, ExecutionException, InterruptedException
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF1);
 
         List<Row> rows;
@@ -156,7 +156,7 @@ public class CleanupTest
     {
         StorageService.instance.getTokenMetadata().clearUnsafe();
 
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF2);
 
         List<Row> rows;

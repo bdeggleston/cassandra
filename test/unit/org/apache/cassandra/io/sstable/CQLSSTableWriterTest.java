@@ -22,6 +22,7 @@ import java.util.Iterator;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -44,7 +45,7 @@ public class CQLSSTableWriterTest
     @BeforeClass
     public static void setup() throws Exception
     {
-        Keyspace.setInitialized();
+        KeyspaceManager.instance.setInitialized();
         StorageService.instance.initServer();
     }
 

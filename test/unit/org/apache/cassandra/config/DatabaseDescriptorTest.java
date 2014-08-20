@@ -18,6 +18,7 @@
 */
 package org.apache.cassandra.config;
 
+import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -73,7 +74,7 @@ public class DatabaseDescriptorTest
         assertEquals(0, Schema.instance.getNonSystemKeyspaces().size());
 
         Gossiper.instance.start((int)(System.currentTimeMillis() / 1000));
-        Keyspace.setInitialized();
+        KeyspaceManager.instance.setInitialized();
 
         try
         {
@@ -107,7 +108,7 @@ public class DatabaseDescriptorTest
         // By default, we should load from the yaml
         Config config = DatabaseDescriptor.instance.loadConfig();
         assertEquals("Test Cluster", config.cluster_name);
-        Keyspace.setInitialized();
+        KeyspaceManager.instance.setInitialized();
 
         // Now try custom loader
         ConfigurationLoader testLoader = new TestLoader();

@@ -24,6 +24,7 @@ import java.util.UUID;
 import java.util.concurrent.Future;
 
 import com.google.common.base.Predicate;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +65,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 for (UUID cfId : prepareMessage.cfIds)
                 {
                     Pair<String, String> kscf = Schema.instance.getCF(cfId);
-                    ColumnFamilyStore columnFamilyStore = Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
+                    ColumnFamilyStore columnFamilyStore = KeyspaceManager.instance.open(kscf.left).getColumnFamilyStore(kscf.right);
                     columnFamilyStores.add(columnFamilyStore);
                 }
                 ActiveRepairService.instance.registerParentRepairSession(prepareMessage.parentRepairSession,
@@ -74,7 +75,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 break;
 
             case SNAPSHOT:
-                ColumnFamilyStore cfs = Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
+                ColumnFamilyStore cfs = KeyspaceManager.instance.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
                 final Range<Token> repairingRange = desc.range;
                 cfs.snapshot(desc.sessionId.toString(), new Predicate<SSTableReader>()
                 {
@@ -91,7 +92,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
             case VALIDATION_REQUEST:
                 ValidationRequest validationRequest = (ValidationRequest) message.payload;
                 // trigger read-only compaction
-                ColumnFamilyStore store = Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
+                ColumnFamilyStore store = KeyspaceManager.instance.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
 
                 Validator validator = new Validator(desc, message.from, validationRequest.gcBefore);
                 CompactionManager.instance.submitValidation(store, validator);

@@ -206,7 +206,7 @@ public class SystemKeyspace
      */
     public UUID startCompaction(ColumnFamilyStore cfs, Iterable<SSTableReader> toCompact)
     {
-        if (Keyspace.SYSTEM_KS.equals(cfs.keyspace.getName()))
+        if (KeyspaceManager.SYSTEM_KS.equals(cfs.keyspace.getName()))
             return null;
 
         UUID compactionId = UUIDGen.getTimeUUID();
@@ -268,7 +268,7 @@ public class SystemKeyspace
 
     public void discardCompactionsInProgress()
     {
-        ColumnFamilyStore compactionLog = Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(COMPACTION_LOG);
+        ColumnFamilyStore compactionLog = KeyspaceManager.instance.open(KeyspaceManager.SYSTEM_KS).getColumnFamilyStore(COMPACTION_LOG);
         compactionLog.truncateBlocking();
     }
 
@@ -475,7 +475,7 @@ public class SystemKeyspace
     public void forceBlockingFlush(String cfname)
     {
         if (!Boolean.getBoolean("cassandra.unsafesystem"))
-            FBUtilities.waitOnFuture(Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(cfname).forceFlush());
+            FBUtilities.waitOnFuture(KeyspaceManager.instance.open(KeyspaceManager.SYSTEM_KS).getColumnFamilyStore(cfname).forceFlush());
     }
 
     /**
@@ -554,7 +554,7 @@ public class SystemKeyspace
         Keyspace keyspace;
         try
         {
-            keyspace = Keyspace.open(Keyspace.SYSTEM_KS);
+            keyspace = KeyspaceManager.instance.open(KeyspaceManager.SYSTEM_KS);
         }
         catch (AssertionError err)
         {
@@ -661,7 +661,7 @@ public class SystemKeyspace
 
     public boolean isIndexBuilt(String keyspaceName, String indexName)
     {
-        ColumnFamilyStore cfs = Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(INDEX_CF);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KeyspaceManager.SYSTEM_KS).getColumnFamilyStore(INDEX_CF);
         QueryFilter filter = QueryFilter.getNamesFilter(decorate(ByteBufferUtil.bytes(keyspaceName)),
                                                         INDEX_CF,
                                                         FBUtilities.singleton(cfs.getComparator().makeCellName(indexName), cfs.getComparator()),
@@ -671,14 +671,14 @@ public class SystemKeyspace
 
     public void setIndexBuilt(String keyspaceName, String indexName)
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(Keyspace.SYSTEM_KS, INDEX_CF);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KeyspaceManager.SYSTEM_KS, INDEX_CF);
         cf.addColumn(new BufferCell(cf.getComparator().makeCellName(indexName), ByteBufferUtil.EMPTY_BYTE_BUFFER, FBUtilities.timestampMicros()));
-        new Mutation(Keyspace.SYSTEM_KS, ByteBufferUtil.bytes(keyspaceName), cf).apply();
+        new Mutation(KeyspaceManager.SYSTEM_KS, ByteBufferUtil.bytes(keyspaceName), cf).apply();
     }
 
     public void setIndexRemoved(String keyspaceName, String indexName)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, ByteBufferUtil.bytes(keyspaceName));
+        Mutation mutation = new Mutation(KeyspaceManager.SYSTEM_KS, ByteBufferUtil.bytes(keyspaceName));
         mutation.delete(INDEX_CF, CFMetaData.IndexCf.comparator.makeCellName(indexName), FBUtilities.timestampMicros());
         mutation.apply();
     }
@@ -718,7 +718,7 @@ public class SystemKeyspace
      */
     public ColumnFamilyStore schemaCFS(String cfName)
     {
-        return Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(cfName);
+        return KeyspaceManager.instance.open(KeyspaceManager.SYSTEM_KS).getColumnFamilyStore(cfName);
     }
 
     public List<Row> serializedSchema()
@@ -766,7 +766,7 @@ public class SystemKeyspace
             Mutation mutation = mutationMap.get(schemaRow.key);
             if (mutation == null)
             {
-                mutation = new Mutation(Keyspace.SYSTEM_KS, schemaRow.key.getKey());
+                mutation = new Mutation(KeyspaceManager.SYSTEM_KS, schemaRow.key.getKey());
                 mutationMap.put(schemaRow.key, mutation);
             }
 

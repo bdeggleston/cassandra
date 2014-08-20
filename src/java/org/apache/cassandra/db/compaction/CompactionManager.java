@@ -465,7 +465,7 @@ public class CompactionManager implements CompactionManagerMBean
                 continue;
             }
             // group by keyspace/columnfamily
-            ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
+            ColumnFamilyStore cfs = KeyspaceManager.instance.open(desc.ksname).getColumnFamilyStore(desc.cfname);
             descriptors.put(cfs, cfs.directories.find(new File(filename.trim()).getName()));
         }
 
@@ -555,7 +555,7 @@ public class CompactionManager implements CompactionManagerMBean
     {
         for (String ksname : Schema.instance.getNonSystemKeyspaces())
         {
-            for (ColumnFamilyStore cfs : Keyspace.open(ksname).getColumnFamilyStores())
+            for (ColumnFamilyStore cfs : KeyspaceManager.instance.open(ksname).getColumnFamilyStores())
                 cfs.disableAutoCompaction();
         }
     }
