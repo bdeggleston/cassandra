@@ -38,9 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.cache.*;
-import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
-import org.apache.cassandra.concurrent.NamedThreadFactory;
-import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.config.CFMetaData.SpeculativeRetry;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
@@ -72,28 +69,6 @@ import org.apache.cassandra.utils.memory.MemtableAllocator;
 public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 {
     private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStore.class);
-
-    // TODO: move to ColumnFamilyStoreManager
-    private static final ExecutorService flushExecutor = new JMXEnabledThreadPoolExecutor(StorageService.instance.getFlushWriters(),
-                                                                                          StageManager.KEEPALIVE,
-                                                                                          TimeUnit.SECONDS,
-                                                                                          new LinkedBlockingQueue<Runnable>(),
-                                                                                          new NamedThreadFactory("MemtableFlushWriter"),
-                                                                                          "internal");
-    // TODO: move to ColumnFamilyStoreManager
-    // post-flush executor is single threaded to provide guarantee that any flush Future on a CF will never return until prior flushes have completed
-    public static final ExecutorService postFlushExecutor = new JMXEnabledThreadPoolExecutor(1,
-                                                                                             StageManager.KEEPALIVE,
-                                                                                             TimeUnit.SECONDS,
-                                                                                             new LinkedBlockingQueue<Runnable>(),
-                                                                                             new NamedThreadFactory("MemtablePostFlush"),
-                                                                                             "internal");
-    // TODO: move to ColumnFamilyStoreManager
-    public static final ExecutorService reclaimExecutor = new JMXEnabledThreadPoolExecutor(1, StageManager.KEEPALIVE,
-                                                                                           TimeUnit.SECONDS,
-                                                                                           new LinkedBlockingQueue<Runnable>(),
-                                                                                           new NamedThreadFactory("MemtableReclaimMemory"),
-                                                                                           "internal");
 
     public final Keyspace keyspace;
     public final String name;
@@ -258,8 +233,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     private final SystemKeyspace systemKeyspace;
     private final CompactionManager compactionManager;
     private final CacheService cacheService;
+    private final ColumnFamilyStoreManager.TaskExecutors taskExecutors;
 
-    // TODO: maybe make builder
+    // TODO: this is getting out of hand
     ColumnFamilyStore(Keyspace keyspace,
                       String columnFamilyName,
                       IPartitioner partitioner,
@@ -271,7 +247,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                       StorageService storageService,
                       SystemKeyspace systemKeyspace,
                       CompactionManager compactionManager,
-                      CacheService cacheService)
+                      CacheService cacheService,
+                      ColumnFamilyStoreManager.TaskExecutors taskExecutors)
     {
         assert metadata != null : "null metadata for " + keyspace + ":" + columnFamilyName;
 
@@ -279,11 +256,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         assert systemKeyspace != null;
         assert compactionManager != null;
         assert cacheService != null;
+        assert taskExecutors != null;
 
         this.storageService = storageService;
         this.systemKeyspace = systemKeyspace;
         this.compactionManager = compactionManager;
         this.cacheService = cacheService;
+        this.taskExecutors = taskExecutors;
 
         this.keyspace = keyspace;
         name = columnFamilyName;
@@ -621,9 +600,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         {
             logFlush();
             Flush flush = new Flush(false);
-            flushExecutor.execute(flush);
+            taskExecutors.flushExecutor.execute(flush);
             ListenableFutureTask<?> task = ListenableFutureTask.create(flush.postFlush, null);
-            postFlushExecutor.submit(task);
+            taskExecutors.postFlushExecutor.submit(task);
             return task;
         }
     }
@@ -694,7 +673,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                         logger.debug("forceFlush requested but everything is clean in {}", name);
                     }
                 }, null);
-                postFlushExecutor.execute(task);
+                taskExecutors.postFlushExecutor.execute(task);
                 return task;
             }
 
@@ -854,7 +833,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 // issue a read barrier for reclaiming the memory, and offload the wait to another thread
                 final OpOrder.Barrier readBarrier = readOrdering.newBarrier();
                 readBarrier.issue();
-                reclaimExecutor.execute(new WrappedRunnable()
+                taskExecutors.reclaimExecutor.execute(new WrappedRunnable()
                 {
                     public void runMayThrow() throws InterruptedException, ExecutionException
                     {
@@ -2219,8 +2198,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             synchronized (data)
             {
                 final Flush flush = new Flush(true);
-                flushExecutor.execute(flush);
-                postFlushExecutor.submit(flush.postFlush);
+                taskExecutors.flushExecutor.execute(flush);
+                taskExecutors.postFlushExecutor.submit(flush.postFlush);
             }
         }
 

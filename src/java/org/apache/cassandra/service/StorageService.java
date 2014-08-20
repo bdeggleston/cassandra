@@ -3486,8 +3486,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // there are no segments to replay, so we force the recycling of any remaining (should be at most one)
         CommitLog.instance.forceRecycleAllSegments();
 
-        ColumnFamilyStore.postFlushExecutor.shutdown();
-        ColumnFamilyStore.postFlushExecutor.awaitTermination(60, TimeUnit.SECONDS);
+        ColumnFamilyStoreManager.instance.taskExecutors.postFlushExecutor.shutdown();
+        ColumnFamilyStoreManager.instance.taskExecutors.postFlushExecutor.awaitTermination(60, TimeUnit.SECONDS);
 
         CommitLog.instance.shutdownBlocking();
 

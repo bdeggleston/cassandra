@@ -1,6 +1,9 @@
 package org.apache.cassandra.db;
 
 import com.google.common.collect.Iterables;
+import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
+import org.apache.cassandra.concurrent.NamedThreadFactory;
+import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.Schema;
@@ -22,6 +25,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileFilter;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class ColumnFamilyStoreManager
@@ -41,6 +47,7 @@ public class ColumnFamilyStoreManager
     private final SystemKeyspace systemKeyspace;
     private final CompactionManager compactionManager;
     private final CacheService cacheService;
+    public final TaskExecutors taskExecutors;
 
     public ColumnFamilyStoreManager(Schema schema, StorageService storageService, SystemKeyspace systemKeyspace, CompactionManager compactionManager, CacheService cacheService)
     {
@@ -55,6 +62,7 @@ public class ColumnFamilyStoreManager
         this.systemKeyspace = systemKeyspace;
         this.compactionManager = compactionManager;
         this.cacheService = cacheService;
+        this.taskExecutors = new TaskExecutors();
     }
 
     public void rebuildSecondaryIndex(String ksName, String cfName, String... idxNames)
@@ -131,7 +139,8 @@ public class ColumnFamilyStoreManager
                                      storageService,
                                      systemKeyspace,
                                      compactionManager,
-                                     cacheService);
+                                     cacheService,
+                                     taskExecutors);
     }
 
     /**
@@ -218,6 +227,31 @@ public class ColumnFamilyStoreManager
                 }
             }
         }
+    }
+
+    public class TaskExecutors
+    {
+        public final ExecutorService flushExecutor = new JMXEnabledThreadPoolExecutor(StorageService.instance.getFlushWriters(),
+                                                                                       StageManager.KEEPALIVE,
+                                                                                       TimeUnit.SECONDS,
+                                                                                       new LinkedBlockingQueue<Runnable>(),
+                                                                                       new NamedThreadFactory("MemtableFlushWriter"),
+                                                                                       "internal");
+
+        // post-flush executor is single threaded to provide guarantee that any flush Future on a CF will never return until prior flushes have completed
+        public final ExecutorService postFlushExecutor = new JMXEnabledThreadPoolExecutor(1,
+                                                                                          StageManager.KEEPALIVE,
+                                                                                          TimeUnit.SECONDS,
+                                                                                          new LinkedBlockingQueue<Runnable>(),
+                                                                                          new NamedThreadFactory("MemtablePostFlush"),
+                                                                                          "internal");
+
+        public final ExecutorService reclaimExecutor = new JMXEnabledThreadPoolExecutor(1,
+                                                                                        StageManager.KEEPALIVE,
+                                                                                        TimeUnit.SECONDS,
+                                                                                        new LinkedBlockingQueue<Runnable>(),
+                                                                                        new NamedThreadFactory("MemtableReclaimMemory"),
+                                                                                        "internal");
     }
 
 }
