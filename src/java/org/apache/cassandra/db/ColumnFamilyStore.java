@@ -34,7 +34,6 @@ import com.google.common.util.concurrent.*;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.cassandra.io.FSWriteError;
-import org.apache.cassandra.service.StorageServiceTasks;
 import org.json.simple.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -201,7 +200,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                     }
                 }
             };
-            StorageServiceTasks.instance.scheduledTasks.schedule(runnable, period, TimeUnit.MILLISECONDS);
+            StorageService.instance.getScheduledTasksExecutor().schedule(runnable, period, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -324,7 +323,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             throw new RuntimeException(e);
         }
         logger.debug("retryPolicy for {} is {}", name, this.metadata.getSpeculativeRetry());
-        StorageServiceTasks.instance.optionalTasks.scheduleWithFixedDelay(new Runnable()
+        StorageService.instance.getOptionalTasksExecutor().scheduleWithFixedDelay(new Runnable()
         {
             public void run()
             {

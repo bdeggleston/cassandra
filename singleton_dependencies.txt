@@ -23,7 +23,6 @@ SystemKeyspace [StorageService(weak, partitioner_only), Schema(weak, 1m finishSt
 DefsTables [SystemKeyspace, Schema, MigrationManager(med), CompactionManager(weak, 2), CommitLog(weak, 1)]
 
 StageManager [DatabaseDescriptor, MessagingService(weak, 1m, parameterize)]
-CacheService [DatabaseDescriptor, StageManager, Schema]
 
 MessagingService [StorageServiceTasks, StageManager(stronger, 2m), StorageProxy(weak, 1m), DatabaseDescriptor, SinkManager, Tracing]
     * work out how to decouple the MessagingService and StageManager constructors
@@ -64,17 +63,13 @@ CompactionManager [DatabaseDescriptor, StorageService, Schema, ActiveRepairServi
 Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), CommitLog(weak, single method)]
 Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, StorageServiceTasks, Schema]
 
-ColumnFamilyStore [StorageServiceTasks, CacheService, SystemKeyspace, Schema(weak, 3), 
-                   CompactionManager(strong), StorageService(weaker, 2)]
+CacheService [DatabaseDescriptor, StageManager, Schema]
+ColumnFamilyStore [CacheService, SystemKeyspace, Schema(weak, 3), CompactionManager(strong), StorageService(weaker, 2)]
     # instantiated from Keyspace and AbstractSimplePerColumnSecondaryIndex
     * Create ColumnFamilyStoreManager class to instantiate and manage 'Global' members
-    * access Schema through StorageService
-    * access StorageServiceTasks through StorageService, or submit tasks through StorageService
-    * maybe remove CompactionManager dependency
-        * move removeUnfinishedCompactionLeftovers to CompactionManager
-    * maybe remove SystemKeyspace dependency
-        * move truncateBlocking, or have it return a runnable which the SystemKeyspace stuff can piggyback on
-        * find a new home for invalidate
+    * remove dependency on Schema
+        * move static methods into ColumnFamilyStoreManager
+        * defer invalidateCachedRow to CacheService
 
 QueryProcessor [-nothing-]  #could possibly remain a singleton
 TriggerExecutor [QueryProcessor]  <-- should QueryProcessor be static?
