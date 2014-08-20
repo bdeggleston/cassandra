@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PendingRangeCalculatorService
 {
-    public static final PendingRangeCalculatorService instance = new PendingRangeCalculatorService();
+    public static final PendingRangeCalculatorService instance = new PendingRangeCalculatorService(Schema.instance, StorageService.instance);
 
     private static Logger logger = LoggerFactory.getLogger(PendingRangeCalculatorService.class);
     private final JMXEnabledThreadPoolExecutor executor = new JMXEnabledThreadPoolExecutor(1, Integer.MAX_VALUE, TimeUnit.SECONDS,
@@ -39,13 +39,22 @@ public class PendingRangeCalculatorService
 
     private AtomicInteger updateJobs = new AtomicInteger(0);
 
-    public PendingRangeCalculatorService()
+    private final Schema schema;
+    private final StorageService storageService;
+
+    public PendingRangeCalculatorService(Schema schema, StorageService storageService)
     {
+        assert schema != null;
+        assert storageService != null;
+
+        this.schema = schema;
+        this.storageService = storageService;
+
         executor.setRejectedExecutionHandler(new RejectedExecutionHandler()
         {
             public void rejectedExecution(Runnable r, ThreadPoolExecutor e)
             {
-                PendingRangeCalculatorService.instance.finishUpdate();
+                finishUpdate();
             }
         }
         );
@@ -53,15 +62,28 @@ public class PendingRangeCalculatorService
 
     private static class PendingRangeTask implements Runnable
     {
+
+        private final PendingRangeCalculatorService service;
+        private final Schema schema;
+
+        private PendingRangeTask(PendingRangeCalculatorService service, Schema schema)
+        {
+            assert service != null;
+            assert schema != null;
+
+            this.service = service;
+            this.schema = schema;
+        }
+
         public void run()
         {
             long start = System.currentTimeMillis();
-            for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+            for (String keyspaceName : schema.getNonSystemKeyspaces())
             {
-                calculatePendingRanges(Keyspace.open(keyspaceName).getReplicationStrategy(), keyspaceName);
+                service.calculatePendingRanges(Keyspace.open(keyspaceName, schema).getReplicationStrategy(), keyspaceName);
             }
-            PendingRangeCalculatorService.instance.finishUpdate();
-            logger.debug("finished calculation for {} keyspaces in {}ms", Schema.instance.getNonSystemKeyspaces().size(), System.currentTimeMillis() - start);
+            service.finishUpdate();
+            logger.debug("finished calculation for {} keyspaces in {}ms", schema.getNonSystemKeyspaces().size(), System.currentTimeMillis() - start);
         }
     }
 
@@ -73,7 +95,7 @@ public class PendingRangeCalculatorService
     public void update()
     {
         updateJobs.incrementAndGet();
-        executor.submit(new PendingRangeTask());
+        executor.submit(new PendingRangeTask(this, schema));
     }
 
     public void blockUntilFinished()
@@ -94,8 +116,8 @@ public class PendingRangeCalculatorService
 
 
     // public & static for testing purposes
-    public static void calculatePendingRanges(AbstractReplicationStrategy strategy, String keyspaceName)
+    public void calculatePendingRanges(AbstractReplicationStrategy strategy, String keyspaceName)
     {
-        StorageService.instance.getTokenMetadata().calculatePendingRanges(strategy, keyspaceName);
+        storageService.getTokenMetadata().calculatePendingRanges(strategy, keyspaceName);
     }
 }

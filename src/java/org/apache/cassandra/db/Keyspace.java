@@ -87,6 +87,7 @@ public class Keyspace
         }
     };
 
+    // TODO: move into schema
     private static volatile boolean initialized = false;
     public static void setInitialized()
     {
@@ -103,6 +104,11 @@ public class Keyspace
     public static Keyspace openWithoutSSTables(String keyspaceName)
     {
         return open(keyspaceName, Schema.instance, false);
+    }
+
+    public static Keyspace open(String keyspaceName, Schema schema)
+    {
+        return Keyspace.open(keyspaceName, schema, true);
     }
 
     private static Keyspace open(String keyspaceName, Schema schema, boolean loadSSTables)
