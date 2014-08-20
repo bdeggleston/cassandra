@@ -63,14 +63,29 @@ StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 
 CompactionManager [DatabaseDescriptor, StorageService, Schema, ActiveRepairService, SystemKeyspace]
 Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), CommitLog(weak, single method)]
 Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, StorageServiceTasks, Schema]
+
 ColumnFamilyStore [DatabaseDescriptor, StorageServiceTasks, CacheService, SystemKeyspace, Schema(weak, 3), CommitLog(weaker),
                    CompactionManager, StorageService(weaker, 2)]
+    # instantiated from Keyspace and AbstractSimplePerColumnSecondaryIndex
+    * Create ColumnFamilyStoreManager class to instantiate and manage 'Global' members
+    * remove DatabaseDescriptor dependency
+        * Move getReadRpcTimeout into StorageService
+        * Move isAutoSnapshot into StorageService
+        * Move getFlushWriters into StorageService
+        * Move getSavedCachesLocation into CacheService
+    * access Schema through StorageService
+    * access CommitLog through StorageService
+    * access StorageServiceTasks through StorageService, or submit tasks through StorageService
+    * maybe remove CompactionManager dependency
+        * move removeUnfinishedCompactionLeftovers to CompactionManager
+    * maybe remove SystemKeyspace dependency
+        * move truncateBlocking, or have it return a runnable which the SystemKeyspace stuff can piggyback on
+        * find a new home for invalidate
 
 QueryProcessor [-nothing-]  #could possibly remain a singleton
 TriggerExecutor [QueryProcessor]  <-- should QueryProcessor be static?
 
----- Updated ----
-PendingRangeCalculatorService [Schema, StorageService]
-ActiveRepairService [Gossiper, FailureDetector, StorageService, MessagingService, CompactionManager]
-Tracing [StageManager, StorageProxy]
+Updated --> PendingRangeCalculatorService [Schema, StorageService]
+Updated --> ActiveRepairService [Gossiper, FailureDetector, StorageService, MessagingService, CompactionManager]
+Updated --> Tracing [StageManager, StorageProxy]
 
