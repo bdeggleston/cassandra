@@ -28,12 +28,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
+import org.apache.cassandra.gms.IFailureDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.concurrent.JMXConfigurableThreadPoolExecutor;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.dht.Bounds;
@@ -75,7 +75,13 @@ public class ActiveRepairService
 {
     private static final Logger logger = LoggerFactory.getLogger(ActiveRepairService.class);
     // singleton enforcement
-    public static final ActiveRepairService instance = new ActiveRepairService();
+    public static final ActiveRepairService instance = new ActiveRepairService(
+            Gossiper.instance,
+            FailureDetector.instance,
+            StorageService.instance,
+            MessagingService.instance,
+            CompactionManager.instance
+    );
 
     public static final long UNREPAIRED_SSTABLE = 0;
 
@@ -95,6 +101,12 @@ public class ActiveRepairService
         STARTED, SESSION_SUCCESS, SESSION_FAILED, FINISHED
     }
 
+    private final Gossiper gossiper;
+    private final IFailureDetector failureDetector;
+    private final StorageService storageService;
+    private final MessagingService messagingService;
+    private final CompactionManager compactionManager;
+
     /**
      * A map of active coordinator session.
      */
@@ -105,8 +117,20 @@ public class ActiveRepairService
     /**
      * Protected constructor. Use ActiveRepairService.instance.
      */
-    protected ActiveRepairService()
+    protected ActiveRepairService(Gossiper gossiper, IFailureDetector failureDetector, StorageService storageService, MessagingService messagingService, CompactionManager compactionManager)
     {
+        assert gossiper != null;
+        assert failureDetector != null;
+        assert storageService != null;
+        assert messagingService != null;
+        assert compactionManager != null;
+
+        this.gossiper = gossiper;
+        this.failureDetector = failureDetector;
+        this.storageService = storageService;
+        this.messagingService = messagingService;
+        this.compactionManager = compactionManager;
+
         sessions = new ConcurrentHashMap<>();
         parentRepairSessions = new ConcurrentHashMap<>();
     }
@@ -129,13 +153,13 @@ public class ActiveRepairService
     public void addToActiveSessions(RepairSession session)
     {
         sessions.put(session.getId(), session);
-        Gossiper.instance.register(session);
-        FailureDetector.instance.registerFailureDetectionEventListener(session);
+        gossiper.register(session);
+        failureDetector.registerFailureDetectionEventListener(session);
     }
 
     public void removeFromActiveSessions(RepairSession session)
     {
-        Gossiper.instance.unregister(session);
+        gossiper.unregister(session);
         sessions.remove(session.getId());
     }
 
@@ -153,7 +177,7 @@ public class ActiveRepairService
     RepairFuture submitArtificialRepairSession(RepairJobDesc desc)
     {
         Set<InetAddress> neighbours = new HashSet<>();
-        neighbours.addAll(ActiveRepairService.getNeighbors(desc.keyspace, desc.range, null, null));
+        neighbours.addAll(getNeighbors(desc.keyspace, desc.range, null, null));
         RepairSession session = new RepairSession(desc.parentSessionId, desc.sessionId, desc.range, desc.keyspace, false, neighbours, new String[]{desc.columnFamily});
         sessions.put(session.getId(), session);
         RepairFuture futureTask = new RepairFuture(session);
@@ -170,9 +194,9 @@ public class ActiveRepairService
      *
      * @return neighbors with whom we share the provided range
      */
-    public static Set<InetAddress> getNeighbors(String keyspaceName, Range<Token> toRepair, Collection<String> dataCenters, Collection<String> hosts)
+    public Set<InetAddress> getNeighbors(String keyspaceName, Range<Token> toRepair, Collection<String> dataCenters, Collection<String> hosts)
     {
-        StorageService ss = StorageService.instance;
+        StorageService ss = storageService;
         Map<Range<Token>, List<InetAddress>> replicaSets = ss.getRangeToAddressMap(keyspaceName);
         Range<Token> rangeSuperSet = null;
         for (Range<Token> range : ss.getLocalRanges(keyspaceName))
@@ -274,7 +298,7 @@ public class ActiveRepairService
         {
             PrepareMessage message = new PrepareMessage(parentRepairSession, cfIds, ranges);
             MessageOut<RepairMessage> msg = message.createMessage();
-            MessagingService.instance.sendRRWithFailure(msg, neighbour, callback);
+            messagingService.sendRRWithFailure(msg, neighbour, callback);
         }
         try
         {
@@ -326,7 +350,7 @@ public class ActiveRepairService
                 {
                     AnticompactionRequest acr = new AnticompactionRequest(parentSession);
                     MessageOut<RepairMessage> req = acr.createMessage();
-                    MessagingService.instance.sendOneWay(req, neighbor);
+                    messagingService.sendOneWay(req, neighbor);
                 }
                 List<Future<?>> futures = doAntiCompaction(parentSession);
                 FBUtilities.waitOnFutures(futures);
@@ -365,7 +389,7 @@ public class ActiveRepairService
                 success = sstables.isEmpty() || cfs.getDataTracker().markCompacting(sstables);
             }
 
-            futures.add(CompactionManager.instance.submitAntiCompaction(cfs, prs.ranges, sstables, prs.repairedAt));
+            futures.add(compactionManager.submitAntiCompaction(cfs, prs.ranges, sstables, prs.repairedAt));
         }
 
         return futures;

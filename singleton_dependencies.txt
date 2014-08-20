@@ -68,7 +68,8 @@ ColumnFamilyStore [DatabaseDescriptor, StorageServiceTasks, CacheService, System
                    CompactionManager, StorageService(weaker, 2)]
 PendingRangeCalculatorService [Schema, StorageService]
 ActiveRepairService [Gossiper, FailureDetector, StorageService, MessagingService, CompactionManager]
-TriggerExecutor [QueryProcessor]
+
+TriggerExecutor [QueryProcessor]  <-- should QueryProcessor be static?
 
 ---- Updated ----
 Tracing [StageManager, StorageProxy]
