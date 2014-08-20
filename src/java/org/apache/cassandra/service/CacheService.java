@@ -79,14 +79,28 @@ public class CacheService implements CacheServiceMBean
         }
     }
 
-    public final static CacheService instance = new CacheService();
+    public final static CacheService instance = new CacheService(
+            DatabaseDescriptor.instance, StageManager.instance, Schema.instance
+    );
 
     public final AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache;
     public final AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache;
     public final AutoSavingCache<CounterCacheKey, ClockAndCount> counterCache;
 
-    private CacheService()
+    private final DatabaseDescriptor databaseDescriptor;
+    private final StageManager stageManager;
+    private final Schema schema;
+
+    public CacheService(DatabaseDescriptor databaseDescriptor, StageManager stageManager, Schema schema)
     {
+        assert databaseDescriptor != null;
+        assert stageManager != null;
+        assert schema != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.stageManager = stageManager;
+        this.schema = schema;
+
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 
         try
@@ -108,9 +122,9 @@ public class CacheService implements CacheServiceMBean
      */
     private AutoSavingCache<KeyCacheKey, RowIndexEntry> initKeyCache()
     {
-        logger.info("Initializing key cache with capacity of {} MBs.", DatabaseDescriptor.instance.getKeyCacheSizeInMB());
+        logger.info("Initializing key cache with capacity of {} MBs.", databaseDescriptor.getKeyCacheSizeInMB());
 
-        long keyCacheInMemoryCapacity = DatabaseDescriptor.instance.getKeyCacheSizeInMB() * 1024 * 1024;
+        long keyCacheInMemoryCapacity = databaseDescriptor.getKeyCacheSizeInMB() * 1024 * 1024;
 
         // as values are constant size we can use singleton weigher
         // where 48 = 40 bytes (average size of the key) + 8 bytes (size of value)
@@ -118,9 +132,9 @@ public class CacheService implements CacheServiceMBean
         kc = ConcurrentLinkedHashCache.create(keyCacheInMemoryCapacity);
         AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = new AutoSavingCache<>(kc, CacheType.KEY_CACHE, new KeyCacheSerializer());
 
-        int keyCacheKeysToSave = DatabaseDescriptor.instance.getKeyCacheKeysToSave();
+        int keyCacheKeysToSave = databaseDescriptor.getKeyCacheKeysToSave();
 
-        keyCache.scheduleSaving(DatabaseDescriptor.instance.getKeyCacheSavePeriod(), keyCacheKeysToSave);
+        keyCache.scheduleSaving(databaseDescriptor.getKeyCacheSavePeriod(), keyCacheKeysToSave);
 
         return keyCache;
     }
@@ -130,39 +144,39 @@ public class CacheService implements CacheServiceMBean
      */
     private AutoSavingCache<RowCacheKey, IRowCacheEntry> initRowCache()
     {
-        logger.info("Initializing row cache with capacity of {} MBs", DatabaseDescriptor.instance.getRowCacheSizeInMB());
+        logger.info("Initializing row cache with capacity of {} MBs", databaseDescriptor.getRowCacheSizeInMB());
 
-        long rowCacheInMemoryCapacity = DatabaseDescriptor.instance.getRowCacheSizeInMB() * 1024 * 1024;
+        long rowCacheInMemoryCapacity = databaseDescriptor.getRowCacheSizeInMB() * 1024 * 1024;
 
         // cache object
         ICache<RowCacheKey, IRowCacheEntry> rc = new SerializingCacheProvider().create(rowCacheInMemoryCapacity);
         AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache = new AutoSavingCache<>(rc, CacheType.ROW_CACHE, new RowCacheSerializer());
 
-        int rowCacheKeysToSave = DatabaseDescriptor.instance.getRowCacheKeysToSave();
+        int rowCacheKeysToSave = databaseDescriptor.getRowCacheKeysToSave();
 
-        rowCache.scheduleSaving(DatabaseDescriptor.instance.getRowCacheSavePeriod(), rowCacheKeysToSave);
+        rowCache.scheduleSaving(databaseDescriptor.getRowCacheSavePeriod(), rowCacheKeysToSave);
 
         return rowCache;
     }
 
     private AutoSavingCache<CounterCacheKey, ClockAndCount> initCounterCache()
     {
-        logger.info("Initializing counter cache with capacity of {} MBs", DatabaseDescriptor.instance.getCounterCacheSizeInMB());
+        logger.info("Initializing counter cache with capacity of {} MBs", databaseDescriptor.getCounterCacheSizeInMB());
 
-        long capacity = DatabaseDescriptor.instance.getCounterCacheSizeInMB() * 1024 * 1024;
+        long capacity = databaseDescriptor.getCounterCacheSizeInMB() * 1024 * 1024;
 
         AutoSavingCache<CounterCacheKey, ClockAndCount> cache =
             new AutoSavingCache<>(ConcurrentLinkedHashCache.<CounterCacheKey, ClockAndCount>create(capacity),
                                   CacheType.COUNTER_CACHE,
                                   new CounterCacheSerializer());
 
-        int keysToSave = DatabaseDescriptor.instance.getCounterCacheKeysToSave();
+        int keysToSave = databaseDescriptor.getCounterCacheKeysToSave();
 
         logger.info("Scheduling counter cache save to every {} seconds (going to save {} keys).",
-                    DatabaseDescriptor.instance.getCounterCacheSavePeriod(),
+                    databaseDescriptor.getCounterCacheSavePeriod(),
                     keysToSave == Integer.MAX_VALUE ? "all" : keysToSave);
 
-        cache.scheduleSaving(DatabaseDescriptor.instance.getCounterCacheSavePeriod(), keysToSave);
+        cache.scheduleSaving(databaseDescriptor.getCounterCacheSavePeriod(), keysToSave);
 
         return cache;
     }
@@ -199,7 +213,7 @@ public class CacheService implements CacheServiceMBean
 
     public int getRowCacheSavePeriodInSeconds()
     {
-        return DatabaseDescriptor.instance.getRowCacheSavePeriod();
+        return databaseDescriptor.getRowCacheSavePeriod();
     }
 
     public void setRowCacheSavePeriodInSeconds(int seconds)
@@ -207,13 +221,13 @@ public class CacheService implements CacheServiceMBean
         if (seconds < 0)
             throw new RuntimeException("RowCacheSavePeriodInSeconds must be non-negative.");
 
-        DatabaseDescriptor.instance.setRowCacheSavePeriod(seconds);
-        rowCache.scheduleSaving(seconds, DatabaseDescriptor.instance.getRowCacheKeysToSave());
+        databaseDescriptor.setRowCacheSavePeriod(seconds);
+        rowCache.scheduleSaving(seconds, databaseDescriptor.getRowCacheKeysToSave());
     }
 
     public int getKeyCacheSavePeriodInSeconds()
     {
-        return DatabaseDescriptor.instance.getKeyCacheSavePeriod();
+        return databaseDescriptor.getKeyCacheSavePeriod();
     }
 
     public void setKeyCacheSavePeriodInSeconds(int seconds)
@@ -221,13 +235,13 @@ public class CacheService implements CacheServiceMBean
         if (seconds < 0)
             throw new RuntimeException("KeyCacheSavePeriodInSeconds must be non-negative.");
 
-        DatabaseDescriptor.instance.setKeyCacheSavePeriod(seconds);
-        keyCache.scheduleSaving(seconds, DatabaseDescriptor.instance.getKeyCacheKeysToSave());
+        databaseDescriptor.setKeyCacheSavePeriod(seconds);
+        keyCache.scheduleSaving(seconds, databaseDescriptor.getKeyCacheKeysToSave());
     }
 
     public int getCounterCacheSavePeriodInSeconds()
     {
-        return DatabaseDescriptor.instance.getCounterCacheSavePeriod();
+        return databaseDescriptor.getCounterCacheSavePeriod();
     }
 
     public void setCounterCacheSavePeriodInSeconds(int seconds)
@@ -235,46 +249,46 @@ public class CacheService implements CacheServiceMBean
         if (seconds < 0)
             throw new RuntimeException("CounterCacheSavePeriodInSeconds must be non-negative.");
 
-        DatabaseDescriptor.instance.setCounterCacheSavePeriod(seconds);
-        counterCache.scheduleSaving(seconds, DatabaseDescriptor.instance.getCounterCacheKeysToSave());
+        databaseDescriptor.setCounterCacheSavePeriod(seconds);
+        counterCache.scheduleSaving(seconds, databaseDescriptor.getCounterCacheKeysToSave());
     }
 
     public int getRowCacheKeysToSave()
     {
-        return DatabaseDescriptor.instance.getRowCacheKeysToSave();
+        return databaseDescriptor.getRowCacheKeysToSave();
     }
 
     public void setRowCacheKeysToSave(int count)
     {
         if (count < 0)
             throw new RuntimeException("RowCacheKeysToSave must be non-negative.");
-        DatabaseDescriptor.instance.setRowCacheKeysToSave(count);
+        databaseDescriptor.setRowCacheKeysToSave(count);
         rowCache.scheduleSaving(getRowCacheSavePeriodInSeconds(), count);
     }
 
     public int getKeyCacheKeysToSave()
     {
-        return DatabaseDescriptor.instance.getKeyCacheKeysToSave();
+        return databaseDescriptor.getKeyCacheKeysToSave();
     }
 
     public void setKeyCacheKeysToSave(int count)
     {
         if (count < 0)
             throw new RuntimeException("KeyCacheKeysToSave must be non-negative.");
-        DatabaseDescriptor.instance.setKeyCacheKeysToSave(count);
+        databaseDescriptor.setKeyCacheKeysToSave(count);
         keyCache.scheduleSaving(getKeyCacheSavePeriodInSeconds(), count);
     }
 
     public int getCounterCacheKeysToSave()
     {
-        return DatabaseDescriptor.instance.getCounterCacheKeysToSave();
+        return databaseDescriptor.getCounterCacheKeysToSave();
     }
 
     public void setCounterCacheKeysToSave(int count)
     {
         if (count < 0)
             throw new RuntimeException("CounterCacheKeysToSave must be non-negative.");
-        DatabaseDescriptor.instance.setCounterCacheKeysToSave(count);
+        databaseDescriptor.setCounterCacheKeysToSave(count);
         counterCache.scheduleSaving(getCounterCacheSavePeriodInSeconds(), count);
     }
 
@@ -395,15 +409,15 @@ public class CacheService implements CacheServiceMBean
         List<Future<?>> futures = new ArrayList<>(3);
         logger.debug("submitting cache saves");
 
-        futures.add(keyCache.submitWrite(DatabaseDescriptor.instance.getKeyCacheKeysToSave()));
-        futures.add(rowCache.submitWrite(DatabaseDescriptor.instance.getRowCacheKeysToSave()));
-        futures.add(counterCache.submitWrite(DatabaseDescriptor.instance.getCounterCacheKeysToSave()));
+        futures.add(keyCache.submitWrite(databaseDescriptor.getKeyCacheKeysToSave()));
+        futures.add(rowCache.submitWrite(databaseDescriptor.getRowCacheKeysToSave()));
+        futures.add(counterCache.submitWrite(databaseDescriptor.getCounterCacheKeysToSave()));
 
         FBUtilities.waitOnFutures(futures);
         logger.debug("cache saves completed");
     }
 
-    public static class CounterCacheSerializer implements CacheSerializer<CounterCacheKey, ClockAndCount>
+    private class CounterCacheSerializer implements CacheSerializer<CounterCacheKey, ClockAndCount>
     {
         public void serialize(CounterCacheKey key, DataOutputPlus out) throws IOException
         {
@@ -415,7 +429,7 @@ public class CacheService implements CacheServiceMBean
         {
             final ByteBuffer partitionKey = ByteBufferUtil.readWithLength(in);
             final CellName cellName = cfs.metadata.comparator.cellFromByteBuffer(ByteBufferUtil.readWithLength(in));
-            return StageManager.instance.getStage(Stage.READ).submit(new Callable<Pair<CounterCacheKey, ClockAndCount>>()
+            return stageManager.getStage(Stage.READ).submit(new Callable<Pair<CounterCacheKey, ClockAndCount>>()
             {
                 public Pair<CounterCacheKey, ClockAndCount> call() throws Exception
                 {
@@ -437,7 +451,7 @@ public class CacheService implements CacheServiceMBean
         }
     }
 
-    public static class RowCacheSerializer implements CacheSerializer<RowCacheKey, IRowCacheEntry>
+    private static class RowCacheSerializer implements CacheSerializer<RowCacheKey, IRowCacheEntry>
     {
         public void serialize(RowCacheKey key, DataOutputPlus out) throws IOException
         {
@@ -460,7 +474,7 @@ public class CacheService implements CacheServiceMBean
         }
     }
 
-    public static class KeyCacheSerializer implements CacheSerializer<KeyCacheKey, RowIndexEntry>
+    private class KeyCacheSerializer implements CacheSerializer<KeyCacheKey, RowIndexEntry>
     {
         public void serialize(KeyCacheKey key, DataOutputPlus out) throws IOException
         {
@@ -471,7 +485,7 @@ public class CacheService implements CacheServiceMBean
             Descriptor desc = key.desc;
             out.writeInt(desc.generation);
             out.writeBoolean(true);
-            CFMetaData cfm = Schema.instance.getCFMetaData(key.desc.ksname, key.desc.cfname);
+            CFMetaData cfm = schema.getCFMetaData(key.desc.ksname, key.desc.cfname);
             cfm.comparator.rowIndexEntrySerializer().serialize(entry, out);
         }
 

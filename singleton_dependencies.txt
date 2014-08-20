@@ -63,7 +63,7 @@ CompactionManager [DatabaseDescriptor, StorageService, Schema, ActiveRepairServi
 Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), CommitLog(weak, single method), ColumnFamilyStoreManager]
 Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, StorageServiceTasks, Schema]
 
-CacheService [DatabaseDescriptor, StageManager, Schema]
+Updated --> CacheService [DatabaseDescriptor, StageManager, Schema]
 Updated --> ColumnFamilyStoreManager [Schema, StorageService, SystemKeyspace, CompactionManager, CacheService]
 Updated --> ColumnFamilyStore [CacheService, SystemKeyspace, CompactionManager(strong), StorageService(weaker, 2)]
 
