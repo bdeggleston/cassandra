@@ -57,7 +57,6 @@ import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.compaction.CompactionInfo.Holder;
 import org.apache.cassandra.db.index.SecondaryIndexBuilder;
@@ -104,18 +103,25 @@ public class CompactionManager implements CompactionManagerMBean
 
     public static final CompactionManager instance = new CompactionManager();
 
-    public CompactionManager()
+
+    public static CompactionManager create()
     {
-        // TODO: instance is escaping the constructor. This should be done where the CompactionManager is eventually instantiated
+        CompactionManager cm = new CompactionManager();
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
         {
-            mbs.registerMBean(this, new ObjectName(MBEAN_OBJECT_NAME));
+            mbs.registerMBean(cm, new ObjectName(MBEAN_OBJECT_NAME));
         }
         catch (Exception e)
         {
             throw new RuntimeException(e);
         }
+        return cm;
+    }
+
+    public CompactionManager()
+    {
+
     }
 
     private final CompactionExecutor executor = new CompactionExecutor();
@@ -136,7 +142,7 @@ public class CompactionManager implements CompactionManagerMBean
      */
     public RateLimiter getRateLimiter()
     {
-        double currentThroughput = DatabaseDescriptor.instance.getCompactionThroughputMbPerSec() * 1024.0 * 1024.0;
+        double currentThroughput = StorageService.instance.getCompactionThroughputMbPerSec() * 1024.0 * 1024.0;
         // if throughput is set to 0, throttling is disabled
         if (currentThroughput == 0 || StorageService.instance.isBootstrapMode())
             currentThroughput = Double.MAX_VALUE;
@@ -1145,7 +1151,7 @@ public class CompactionManager implements CompactionManagerMBean
 
         public CompactionExecutor()
         {
-            this(Math.max(1, DatabaseDescriptor.instance.getConcurrentCompactors()), "CompactionExecutor");
+            this(Math.max(1, StorageService.instance.getConcurrentCompactors()), "CompactionExecutor");
         }
 
         protected void beforeExecute(Thread t, Runnable r)

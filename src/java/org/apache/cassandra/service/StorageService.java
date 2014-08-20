@@ -923,6 +923,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         return DatabaseDescriptor.instance.getCompactionThroughputMbPerSec();
     }
 
+    public int getConcurrentCompactors()
+    {
+        return DatabaseDescriptor.instance.getConcurrentCompactors();
+    }
+
     public void setCompactionThroughputMbPerSec(int value)
     {
         DatabaseDescriptor.instance.setCompactionThroughputMbPerSec(value);
