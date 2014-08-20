@@ -64,7 +64,30 @@ public class Auth
                                                                 USERS_CF,
                                                                 90 * 24 * 60 * 60); // 3 months.
 
-    public static final Auth instance = new Auth();
+    public static final Auth instance = new Auth(
+            DatabaseDescriptor.instance, Schema.instance, MigrationManager.instance, StorageService.instance, QueryProcessor.instance
+    );
+
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+    private final MigrationManager migrationManager;
+    private final StorageService storageService;
+    private final QueryProcessor queryProcessor;
+
+    public Auth(DatabaseDescriptor databaseDescriptor, Schema schema, MigrationManager migrationManager, StorageService storageService, QueryProcessor queryProcessor)
+    {
+        assert databaseDescriptor != null;
+        assert schema != null;
+        assert migrationManager != null;
+        assert storageService != null;
+        assert queryProcessor != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.migrationManager = migrationManager;
+        this.storageService = storageService;
+        this.queryProcessor = queryProcessor;
+    }
 
     private SelectStatement selectUserStatement;
 
@@ -100,7 +123,7 @@ public class Auth
      */
     public void insertUser(String username, boolean isSuper) throws RequestExecutionException
     {
-        QueryProcessor.instance.process(String.format("INSERT INTO %s.%s (name, super) VALUES ('%s', %s)",
+        queryProcessor.process(String.format("INSERT INTO %s.%s (name, super) VALUES ('%s', %s)",
                                              AUTH_KS,
                                              USERS_CF,
                                              escape(username),
@@ -116,7 +139,7 @@ public class Auth
      */
     public void deleteUser(String username) throws RequestExecutionException
     {
-        QueryProcessor.instance.process(String.format("DELETE FROM %s.%s WHERE name = '%s'",
+        queryProcessor.process(String.format("DELETE FROM %s.%s WHERE name = '%s'",
                                              AUTH_KS,
                                              USERS_CF,
                                              escape(username)),
@@ -128,24 +151,24 @@ public class Auth
      */
     public void setup()
     {
-        if (DatabaseDescriptor.instance.getAuthenticator() instanceof AllowAllAuthenticator)
+        if (databaseDescriptor.getAuthenticator() instanceof AllowAllAuthenticator)
             return;
 
         setupAuthKeyspace();
         setupTable(USERS_CF, USERS_CF_SCHEMA);
 
-        DatabaseDescriptor.instance.getAuthenticator().setup();
-        DatabaseDescriptor.instance.getAuthorizer().setup();
+        databaseDescriptor.getAuthenticator().setup();
+        databaseDescriptor.getAuthorizer().setup();
 
         // register a custom MigrationListener for permissions cleanup after dropped keyspaces/cfs.
-        MigrationManager.instance.register(new MigrationListener());
+        migrationManager.register(new MigrationListener());
 
         // the delay is here to give the node some time to see its peers - to reduce
         // "Skipped default superuser setup: some nodes were not ready" log spam.
         // It's the only reason for the delay.
-        if (DatabaseDescriptor.instance.getSeeds().contains(FBUtilities.getBroadcastAddress()) || !DatabaseDescriptor.instance.isAutoBootstrap())
+        if (databaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress()) || !databaseDescriptor.isAutoBootstrap())
         {
-            StorageServiceTasks.instance.tasks.schedule(new Runnable()
+            storageService.getTasksExecutor().schedule(new Runnable()
                                           {
                                               public void run()
                                               {
@@ -159,7 +182,7 @@ public class Auth
         try
         {
             String query = String.format("SELECT * FROM %s.%s WHERE name = ?", AUTH_KS, USERS_CF);
-            selectUserStatement = (SelectStatement) QueryProcessor.instance.parseStatement(query).prepare().statement;
+            selectUserStatement = (SelectStatement) queryProcessor.parseStatement(query).prepare().statement;
         }
         catch (RequestValidationException e)
         {
@@ -178,12 +201,12 @@ public class Auth
 
     private void setupAuthKeyspace()
     {
-        if (Schema.instance.getKSMetaData(AUTH_KS) == null)
+        if (schema.getKSMetaData(AUTH_KS) == null)
         {
             try
             {
                 KSMetaData ksm = KSMetaData.newKeyspace(AUTH_KS, SimpleStrategy.class.getName(), ImmutableMap.of("replication_factor", "1"), true);
-                MigrationManager.instance.announceNewKeyspace(ksm, 0, false);
+                migrationManager.announceNewKeyspace(ksm, 0, false);
             }
             catch (Exception e)
             {
@@ -200,16 +223,16 @@ public class Auth
      */
     public void setupTable(String name, String cql)
     {
-        if (Schema.instance.getCFMetaData(AUTH_KS, name) == null)
+        if (schema.getCFMetaData(AUTH_KS, name) == null)
         {
             try
             {
-                CFStatement parsed = (CFStatement)QueryProcessor.instance.parseStatement(cql);
+                CFStatement parsed = (CFStatement)queryProcessor.parseStatement(cql);
                 parsed.prepareKeyspace(AUTH_KS);
                 CreateTableStatement statement = (CreateTableStatement) parsed.prepare().statement;
                 CFMetaData cfm = statement.getCFMetaData().copy(CFMetaData.generateLegacyCfId(AUTH_KS, name));
                 assert cfm.cfName.equals(name);
-                MigrationManager.instance.announceNewColumnFamily(cfm);
+                migrationManager.announceNewColumnFamily(cfm);
             }
             catch (Exception e)
             {
@@ -225,7 +248,7 @@ public class Auth
             // insert a default superuser if AUTH_KS.USERS_CF is empty.
             if (!hasExistingUsers())
             {
-                QueryProcessor.instance.process(String.format("INSERT INTO %s.%s (name, super) VALUES ('%s', %s) USING TIMESTAMP 0",
+                queryProcessor.process(String.format("INSERT INTO %s.%s (name, super) VALUES ('%s', %s) USING TIMESTAMP 0",
                                                      AUTH_KS,
                                                      USERS_CF,
                                                      DEFAULT_SUPERUSER_NAME,
@@ -245,8 +268,8 @@ public class Auth
         // Try looking up the 'cassandra' default super user first, to avoid the range query if possible.
         String defaultSUQuery = String.format("SELECT * FROM %s.%s WHERE name = '%s'", AUTH_KS, USERS_CF, DEFAULT_SUPERUSER_NAME);
         String allUsersQuery = String.format("SELECT * FROM %s.%s LIMIT 1", AUTH_KS, USERS_CF);
-        return !QueryProcessor.instance.process(defaultSUQuery, ConsistencyLevel.QUORUM).isEmpty()
-            || !QueryProcessor.instance.process(allUsersQuery, ConsistencyLevel.QUORUM).isEmpty();
+        return !queryProcessor.process(defaultSUQuery, ConsistencyLevel.QUORUM).isEmpty()
+            || !queryProcessor.process(allUsersQuery, ConsistencyLevel.QUORUM).isEmpty();
     }
 
     // we only worry about one character ('). Make sure it's properly escaped.
@@ -281,12 +304,12 @@ public class Auth
     {
         public void onDropKeyspace(String ksName)
         {
-            DatabaseDescriptor.instance.getAuthorizer().revokeAll(DataResource.keyspace(ksName));
+            databaseDescriptor.getAuthorizer().revokeAll(DataResource.keyspace(ksName));
         }
 
         public void onDropColumnFamily(String ksName, String cfName)
         {
-            DatabaseDescriptor.instance.getAuthorizer().revokeAll(DataResource.columnFamily(ksName, cfName));
+            databaseDescriptor.getAuthorizer().revokeAll(DataResource.columnFamily(ksName, cfName));
         }
 
         public void onDropUserType(String ksName, String userType)
