@@ -23,7 +23,6 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Pattern;
 import javax.management.*;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -62,11 +61,9 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.compress.CompressionParameters;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.io.sstable.Descriptor;
-import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.metrics.ColumnFamilyMetrics;
 import org.apache.cassandra.service.CacheService;
 import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.streaming.StreamLockfile;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.concurrent.OpOrder;
@@ -103,6 +100,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public final CFMetaData metadata;
     public final IPartitioner partitioner;
     private final String mbeanName;
+    private final UUID columnFamilyId;
     private volatile boolean valid = true;
 
     /**
@@ -263,7 +261,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                       int generation,
                       CFMetaData metadata,
                       Directories directories,
-                      boolean loadSSTables)
+                      boolean loadSSTables,
+                      UUID columnFamilyId)
     {
         assert metadata != null : "null metadata for " + keyspace + ":" + columnFamilyName;
 
@@ -292,6 +291,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             Collection<SSTableReader> sstables = SSTableReader.openAll(sstableFiles.list().entrySet(), metadata, this.partitioner);
             data.addInitialSSTables(sstables);
         }
+
+        this.columnFamilyId = columnFamilyId;
 
         if (caching.keyCache.isEnabled())
             CacheService.instance.keyCache.loadSaved(this);
@@ -2085,11 +2086,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     public void invalidateCachedRow(DecoratedKey key)
     {
-        UUID cfId = Schema.instance.getId(keyspace.getName(), this.name);
-        if (cfId == null)
+        if (columnFamilyId == null)
             return; // secondary index
 
-        invalidateCachedRow(new RowCacheKey(cfId, key));
+        invalidateCachedRow(new RowCacheKey(columnFamilyId, key));
     }
 
     public ClockAndCount getCachedCounter(ByteBuffer partitionKey, CellName cellName)

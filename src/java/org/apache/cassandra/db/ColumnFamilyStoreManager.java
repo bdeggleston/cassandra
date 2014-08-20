@@ -119,7 +119,8 @@ public class ColumnFamilyStoreManager
         Collections.sort(generations);
         int value = (generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
 
-        return new ColumnFamilyStore(keyspace, columnFamily, partitioner, value, metadata, directories, loadSSTables);
+        UUID cfId = schema.getId(keyspace.getName(), columnFamily);
+        return new ColumnFamilyStore(keyspace, columnFamily, partitioner, value, metadata, directories, loadSSTables, cfId);
     }
 
     /**
