@@ -64,15 +64,10 @@ CompactionManager [DatabaseDescriptor, StorageService, Schema, ActiveRepairServi
 Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), CommitLog(weak, single method)]
 Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, StorageServiceTasks, Schema]
 
-ColumnFamilyStore [DatabaseDescriptor, StorageServiceTasks, CacheService, SystemKeyspace, Schema(weak, 3), CommitLog(weaker),
+ColumnFamilyStore [StorageServiceTasks, CacheService, SystemKeyspace, Schema(weak, 3), CommitLog(weaker),
                    CompactionManager, StorageService(weaker, 2)]
     # instantiated from Keyspace and AbstractSimplePerColumnSecondaryIndex
     * Create ColumnFamilyStoreManager class to instantiate and manage 'Global' members
-    * remove DatabaseDescriptor dependency
-        * Move getReadRpcTimeout into StorageService
-        * Move isAutoSnapshot into StorageService
-        * Move getFlushWriters into StorageService
-        * Move getSavedCachesLocation into CacheService
     * access Schema through StorageService
     * access CommitLog through StorageService
     * access StorageServiceTasks through StorageService, or submit tasks through StorageService

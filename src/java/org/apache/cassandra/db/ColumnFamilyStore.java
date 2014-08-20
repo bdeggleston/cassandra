@@ -78,7 +78,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 {
     private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStore.class);
 
-    private static final ExecutorService flushExecutor = new JMXEnabledThreadPoolExecutor(DatabaseDescriptor.instance.getFlushWriters(),
+    private static final ExecutorService flushExecutor = new JMXEnabledThreadPoolExecutor(StorageService.instance.getFlushWriters(),
                                                                                           StageManager.KEEPALIVE,
                                                                                           TimeUnit.SECONDS,
                                                                                           new LinkedBlockingQueue<Runnable>(),
@@ -275,7 +275,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         this.indexManager = new SecondaryIndexManager(this);
         this.metric = new ColumnFamilyMetrics(this);
         fileIndexGenerator.set(generation);
-        sampleLatencyNanos = DatabaseDescriptor.instance.getReadRpcTimeout() / 2;
+        sampleLatencyNanos = StorageService.instance.getReadRpcTimeout() / 2;
 
         CachingOptions caching = metadata.getCaching();
 
@@ -346,7 +346,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                         break;
                 }
             }
-        }, DatabaseDescriptor.instance.getReadRpcTimeout(), DatabaseDescriptor.instance.getReadRpcTimeout(), TimeUnit.MILLISECONDS);
+        }, StorageService.instance.getReadRpcTimeout(), StorageService.instance.getReadRpcTimeout(), TimeUnit.MILLISECONDS);
     }
 
     /** call when dropping or renaming a CF. Performs mbean housekeeping and invalidates CFS to other operations */
@@ -507,7 +507,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
         // cleanup incomplete saved caches
         Pattern tmpCacheFilePattern = Pattern.compile(metadata.ksName + "-" + metadata.cfName + "-(Key|Row)Cache.*\\.tmp$");
-        File dir = new File(DatabaseDescriptor.instance.getSavedCachesLocation());
+        File dir = new File(StorageService.instance.getSavedCachesLocation());
 
         if (dir.exists())
         {
@@ -2334,7 +2334,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         // position in the System keyspace.
         logger.debug("truncating {}", name);
 
-        if (keyspace.metadata.durableWrites || DatabaseDescriptor.instance.isAutoSnapshot())
+        if (keyspace.metadata.durableWrites || StorageService.instance.isAutoSnapshot())
         {
             // flush the CF being truncated before forcing the new segment
             forceBlockingFlush();
@@ -2361,7 +2361,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 logger.debug("Discarding sstable data for truncated CF + indexes");
 
                 final long truncatedAt = System.currentTimeMillis();
-                if (DatabaseDescriptor.instance.isAutoSnapshot())
+                if (StorageService.instance.isAutoSnapshot())
                     snapshot(Keyspace.getTimestampedSnapshotName(name));
 
                 ReplayPosition replayAfter = discardSSTables(truncatedAt);

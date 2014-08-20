@@ -3932,4 +3932,19 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         DatabaseDescriptor.instance.setHintedHandoffThrottleInKB(throttleInKB);
         logger.info(String.format("Updated hinted_handoff_throttle_in_kb to %d", throttleInKB));
     }
+
+    public long getReadRpcTimeout()
+    {
+        return DatabaseDescriptor.instance.getReadRpcTimeout();
+    }
+
+    public int getFlushWriters()
+    {
+        return DatabaseDescriptor.instance.getFlushWriters();
+    }
+
+    public boolean isAutoSnapshot()
+    {
+        return DatabaseDescriptor.instance.isAutoSnapshot();
+    }
 }
