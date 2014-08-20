@@ -201,7 +201,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                     }
                 }
             };
-            StorageService.instance.getScheduledTasksExecutor().schedule(runnable, period, TimeUnit.MILLISECONDS);
+            storageService.getScheduledTasksExecutor().schedule(runnable, period, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -254,6 +254,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         }
     }
 
+    private final StorageService storageService;
+    private final SystemKeyspace systemKeyspace;
+    private final CompactionManager compactionManager;
+    private final CacheService cacheService;
+
     // TODO: maybe make builder
     ColumnFamilyStore(Keyspace keyspace,
                       String columnFamilyName,
@@ -262,9 +267,23 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                       CFMetaData metadata,
                       Directories directories,
                       boolean loadSSTables,
-                      UUID columnFamilyId)
+                      UUID columnFamilyId,
+                      StorageService storageService,
+                      SystemKeyspace systemKeyspace,
+                      CompactionManager compactionManager,
+                      CacheService cacheService)
     {
         assert metadata != null : "null metadata for " + keyspace + ":" + columnFamilyName;
+
+        assert storageService != null;
+        assert systemKeyspace != null;
+        assert compactionManager != null;
+        assert cacheService != null;
+
+        this.storageService = storageService;
+        this.systemKeyspace = systemKeyspace;
+        this.compactionManager = compactionManager;
+        this.cacheService = cacheService;
 
         this.keyspace = keyspace;
         name = columnFamilyName;
@@ -276,7 +295,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         this.indexManager = new SecondaryIndexManager(this);
         this.metric = new ColumnFamilyMetrics(this);
         fileIndexGenerator.set(generation);
-        sampleLatencyNanos = StorageService.instance.getReadRpcTimeout() / 2;
+        sampleLatencyNanos = this.storageService.getReadRpcTimeout() / 2;
 
         CachingOptions caching = metadata.getCaching();
 
@@ -295,7 +314,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         this.columnFamilyId = columnFamilyId;
 
         if (caching.keyCache.isEnabled())
-            CacheService.instance.keyCache.loadSaved(this);
+            this.cacheService.keyCache.loadSaved(this);
 
         // compaction strategy should be created after the CFS has been prepared
         this.compactionStrategy = metadata.createCompactionStrategyInstance(this);
@@ -328,7 +347,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             throw new RuntimeException(e);
         }
         logger.debug("retryPolicy for {} is {}", name, this.metadata.getSpeculativeRetry());
-        StorageService.instance.getOptionalTasksExecutor().scheduleWithFixedDelay(new Runnable()
+        storageService.getOptionalTasksExecutor().scheduleWithFixedDelay(new Runnable()
         {
             public void run()
             {
@@ -349,7 +368,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                         break;
                 }
             }
-        }, StorageService.instance.getReadRpcTimeout(), StorageService.instance.getReadRpcTimeout(), TimeUnit.MILLISECONDS);
+        }, storageService.getReadRpcTimeout(), storageService.getReadRpcTimeout(), TimeUnit.MILLISECONDS);
     }
 
     /** call when dropping or renaming a CF. Performs mbean housekeeping and invalidates CFS to other operations */
@@ -369,7 +388,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
         compactionStrategy.shutdown();
 
-        SystemKeyspace.instance.removeTruncationRecord(metadata.cfId);
+        systemKeyspace.removeTruncationRecord(metadata.cfId);
         data.unreferenceSSTables();
         indexManager.invalidate();
 
@@ -425,7 +444,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
         long start = System.nanoTime();
 
-        int cachedRowsRead = CacheService.instance.rowCache.loadSaved(this);
+        int cachedRowsRead = cacheService.rowCache.loadSaved(this);
         if (cachedRowsRead > 0)
             logger.info("Completed loading ({} ms; {} keys) row cache for {}.{}",
                         TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),
@@ -436,12 +455,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     public void initCounterCache()
     {
-        if (!metadata.isCounter() || CacheService.instance.counterCache.getCapacity() == 0)
+        if (!metadata.isCounter() || cacheService.counterCache.getCapacity() == 0)
             return;
 
         long start = System.nanoTime();
 
-        int cachedShardsRead = CacheService.instance.counterCache.loadSaved(this);
+        int cachedShardsRead = cacheService.counterCache.loadSaved(this);
         if (cachedShardsRead > 0)
             logger.info("Completed loading ({} ms; {} shards) counter cache for {}.{}",
                         TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),
@@ -741,7 +760,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             // and so not set a lastReplayPosition
             if (lastReplayPosition != null)
             {
-                StorageService.instance.getCommitLog().discardCompletedSegments(metadata.cfId, lastReplayPosition);
+                storageService.getCommitLog().discardCompletedSegments(metadata.cfId, lastReplayPosition);
             }
 
             metric.pendingFlushes.dec();
@@ -782,7 +801,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             memtables = new ArrayList<>();
 
             // submit flushes for the memtable for any indexed sub-cfses, and our own
-            final ReplayPosition minReplayPosition = StorageService.instance.getCommitLog().getContext();
+            final ReplayPosition minReplayPosition = storageService.getCommitLog().getContext();
             for (ColumnFamilyStore cfs : concatWithIndexes())
             {
                 // switch all memtables, regardless of their dirty status, setting the barrier
@@ -1068,7 +1087,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public void addSSTables(Collection<SSTableReader> sstables)
     {
         data.addSSTables(sstables);
-        CompactionManager.instance.submitBackground(this);
+        compactionManager.submitBackground(this);
     }
 
     /**
@@ -1093,7 +1112,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
         // cleanup size estimation only counts bytes for keys local to this node
         long expectedFileSize = 0;
-        Collection<Range<Token>> ranges = StorageService.instance.getLocalRanges(keyspace.getName());
+        Collection<Range<Token>> ranges = storageService.getLocalRanges(keyspace.getName());
         for (SSTableReader sstable : sstables)
         {
             List<Pair<Long, Long>> positions = sstable.getPositionsForRanges(ranges);
@@ -1123,7 +1142,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     public CompactionManager.AllSSTableOpStatus forceCleanup() throws ExecutionException, InterruptedException
     {
-        return CompactionManager.instance.performCleanup(ColumnFamilyStore.this);
+        return compactionManager.performCleanup(ColumnFamilyStore.this);
     }
 
     public CompactionManager.AllSSTableOpStatus scrub(boolean disableSnapshot, boolean skipCorrupted) throws ExecutionException, InterruptedException
@@ -1131,12 +1150,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         // skip snapshot creation during scrub, SEE JIRA 5891
         if(!disableSnapshot)
             snapshotWithoutFlush("pre-scrub-" + System.currentTimeMillis());
-        return CompactionManager.instance.performScrub(ColumnFamilyStore.this, skipCorrupted);
+        return compactionManager.performScrub(ColumnFamilyStore.this, skipCorrupted);
     }
 
     public CompactionManager.AllSSTableOpStatus sstablesRewrite(boolean excludeCurrentVersion) throws ExecutionException, InterruptedException
     {
-        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, excludeCurrentVersion);
+        return compactionManager.performSSTableRewrite(ColumnFamilyStore.this, excludeCurrentVersion);
     }
 
     public void markObsolete(Collection<SSTableReader> sstables, OperationType compactionType)
@@ -1285,7 +1304,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         // attempt a sentinel-read-cache sequence.  if a write invalidates our sentinel, we'll return our
         // (now potentially obsolete) data, but won't cache it. see CASSANDRA-3862
         // TODO: don't evict entire rows on writes (#2864)
-        IRowCacheEntry cached = CacheService.instance.rowCache.get(key);
+        IRowCacheEntry cached = cacheService.rowCache.get(key);
         if (cached != null)
         {
             if (cached instanceof RowCacheSentinel)
@@ -1312,7 +1331,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         metric.rowCacheMiss.inc();
         Tracing.instance.trace("Row cache miss");
         RowCacheSentinel sentinel = new RowCacheSentinel();
-        boolean sentinelSuccess = CacheService.instance.rowCache.putIfAbsent(key, sentinel);
+        boolean sentinelSuccess = cacheService.rowCache.putIfAbsent(key, sentinel);
         ColumnFamily data = null;
         ColumnFamily toCache = null;
         try
@@ -1324,7 +1343,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 toCache = data;
                 Tracing.instance.trace("Populating row cache with the whole partition");
                 if (sentinelSuccess && toCache != null)
-                    CacheService.instance.rowCache.replace(key, sentinel, toCache);
+                    cacheService.rowCache.replace(key, sentinel, toCache);
                 return filterColumnFamily(data, filter);
             }
 
@@ -1379,7 +1398,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 }
 
                 if (sentinelSuccess && toCache != null)
-                    CacheService.instance.rowCache.replace(key, sentinel, toCache);
+                    cacheService.rowCache.replace(key, sentinel, toCache);
                 return data;
             }
             else
@@ -1657,9 +1676,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     public void cleanupCache()
     {
-        Collection<Range<Token>> ranges = StorageService.instance.getLocalRanges(keyspace.getName());
+        Collection<Range<Token>> ranges = storageService.getLocalRanges(keyspace.getName());
 
-        for (RowCacheKey key : CacheService.instance.rowCache.getKeySet())
+        for (RowCacheKey key : cacheService.rowCache.getKeySet())
         {
             DecoratedKey dk = partitioner.decorateKey(ByteBuffer.wrap(key.key));
             if (key.cfId == metadata.cfId && !Range.isInRanges(dk.getToken(), ranges))
@@ -1668,11 +1687,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
         if (metadata.isCounter())
         {
-            for (CounterCacheKey key : CacheService.instance.counterCache.getKeySet())
+            for (CounterCacheKey key : cacheService.counterCache.getKeySet())
             {
                 DecoratedKey dk = partitioner.decorateKey(ByteBuffer.wrap(key.partitionKey));
                 if (key.cfId == metadata.cfId && !Range.isInRanges(dk.getToken(), ranges))
-                    CacheService.instance.counterCache.remove(key);
+                    cacheService.counterCache.remove(key);
             }
         }
     }
@@ -2059,16 +2078,16 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         if (!isRowCacheEnabled())
             return null;
 
-        IRowCacheEntry cached = CacheService.instance.rowCache.getInternal(new RowCacheKey(metadata.cfId, key));
+        IRowCacheEntry cached = cacheService.rowCache.getInternal(new RowCacheKey(metadata.cfId, key));
         return cached == null || cached instanceof RowCacheSentinel ? null : (ColumnFamily)cached;
     }
 
     private void invalidateCaches()
     {
-        CacheService.instance.invalidateKeyCacheForCf(metadata.cfId);
-        CacheService.instance.invalidateRowCacheForCf(metadata.cfId);
+        cacheService.invalidateKeyCacheForCf(metadata.cfId);
+        cacheService.invalidateRowCacheForCf(metadata.cfId);
         if (metadata.isCounter())
-            CacheService.instance.invalidateCounterCacheForCf(metadata.cfId);
+            cacheService.invalidateCounterCacheForCf(metadata.cfId);
     }
 
     /**
@@ -2076,12 +2095,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
      */
     public boolean containsCachedRow(DecoratedKey key)
     {
-        return CacheService.instance.rowCache.getCapacity() != 0 && CacheService.instance.rowCache.containsKey(new RowCacheKey(metadata.cfId, key));
+        return cacheService.rowCache.getCapacity() != 0 && cacheService.rowCache.containsKey(new RowCacheKey(metadata.cfId, key));
     }
 
     public void invalidateCachedRow(RowCacheKey key)
     {
-        CacheService.instance.rowCache.remove(key);
+        cacheService.rowCache.remove(key);
     }
 
     public void invalidateCachedRow(DecoratedKey key)
@@ -2094,21 +2113,21 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     public ClockAndCount getCachedCounter(ByteBuffer partitionKey, CellName cellName)
     {
-        if (CacheService.instance.counterCache.getCapacity() == 0L) // counter cache disabled.
+        if (cacheService.counterCache.getCapacity() == 0L) // counter cache disabled.
             return null;
-        return CacheService.instance.counterCache.get(CounterCacheKey.create(metadata.cfId, partitionKey, cellName));
+        return cacheService.counterCache.get(CounterCacheKey.create(metadata.cfId, partitionKey, cellName));
     }
 
     public void putCachedCounter(ByteBuffer partitionKey, CellName cellName, ClockAndCount clockAndCount)
     {
-        if (CacheService.instance.counterCache.getCapacity() == 0L) // counter cache disabled.
+        if (cacheService.counterCache.getCapacity() == 0L) // counter cache disabled.
             return;
-        CacheService.instance.counterCache.put(CounterCacheKey.create(metadata.cfId, partitionKey, cellName), clockAndCount);
+        cacheService.counterCache.put(CounterCacheKey.create(metadata.cfId, partitionKey, cellName), clockAndCount);
     }
 
     public void forceMajorCompaction() throws InterruptedException, ExecutionException
     {
-        CompactionManager.instance.performMaximal(this);
+        compactionManager.performMaximal(this);
     }
 
     public Iterable<DecoratedKey> keySamples(Range<Token> range)
@@ -2185,7 +2204,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         // position in the System keyspace.
         logger.debug("truncating {}", name);
 
-        if (keyspace.metadata.durableWrites || StorageService.instance.isAutoSnapshot())
+        if (keyspace.metadata.durableWrites || storageService.isAutoSnapshot())
         {
             // flush the CF being truncated before forcing the new segment
             forceBlockingFlush();
@@ -2212,7 +2231,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 logger.debug("Discarding sstable data for truncated CF + indexes");
 
                 final long truncatedAt = System.currentTimeMillis();
-                if (StorageService.instance.isAutoSnapshot())
+                if (storageService.isAutoSnapshot())
                     snapshot(Keyspace.getTimestampedSnapshotName(name));
 
                 ReplayPosition replayAfter = discardSSTables(truncatedAt);
@@ -2220,7 +2239,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 for (SecondaryIndex index : indexManager.getIndexes())
                     index.truncateBlocking(truncatedAt);
 
-                SystemKeyspace.instance.saveTruncationRecord(ColumnFamilyStore.this, truncatedAt, replayAfter);
+                systemKeyspace.saveTruncationRecord(ColumnFamilyStore.this, truncatedAt, replayAfter);
                 logger.debug("cleaning out row cache");
                 invalidateCaches();
             }
@@ -2252,14 +2271,14 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                     }
                 };
                 Iterable<CFMetaData> allMetadata = Iterables.transform(selfWithIndexes, f);
-                CompactionManager.instance.interruptCompactionFor(allMetadata, interruptValidation);
+                compactionManager.interruptCompactionFor(allMetadata, interruptValidation);
 
                 // wait for the interruption to be recognized
                 long start = System.nanoTime();
                 long delay = TimeUnit.MINUTES.toNanos(1);
                 while (System.nanoTime() - start < delay)
                 {
-                    if (CompactionManager.instance.isCompacting(selfWithIndexes))
+                    if (compactionManager.isCompacting(selfWithIndexes))
                         Uninterruptibles.sleepUninterruptibly(100, TimeUnit.MILLISECONDS);
                     else
                         break;
@@ -2367,7 +2386,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public void enableAutoCompaction(boolean waitForFutures)
     {
         this.compactionStrategy.enable();
-        List<Future<?>> futures = CompactionManager.instance.submitBackground(this);
+        List<Future<?>> futures = compactionManager.submitBackground(this);
         if (waitForFutures)
             FBUtilities.waitOnFutures(futures);
     }
@@ -2401,7 +2420,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
         // this is called as part of CompactionStrategy constructor; avoid circular dependency by checking for null
         if (compactionStrategy != null)
-            CompactionManager.instance.submitBackground(this);
+            compactionManager.submitBackground(this);
     }
 
     public int getMinimumCompactionThreshold()
@@ -2529,7 +2548,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     private boolean isRowCacheEnabled()
     {
-        return metadata.getCaching().rowCache.isEnabled() && CacheService.instance.rowCache.getCapacity() > 0;
+        return metadata.getCaching().rowCache.isEnabled() && cacheService.rowCache.getCapacity() > 0;
     }
 
     /**
