@@ -24,19 +24,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Stopwatch;
-import org.apache.cassandra.service.StorageProxy;
 import org.slf4j.helpers.MessageFormatter;
 
-import org.apache.cassandra.concurrent.Stage;
-import org.apache.cassandra.concurrent.StageManager;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.db.ArrayBackedSortedColumns;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.FBUtilities;
-import org.apache.cassandra.utils.UUIDGen;
-import org.apache.cassandra.utils.WrappedRunnable;
 
 /**
  * ThreadLocal state for a tracing session. The presence of an instance of this class as a ThreadLocal denotes that an
@@ -53,13 +43,17 @@ public class TraceState
     // See CASSANDRA-7626 for more details.
     private final AtomicInteger references = new AtomicInteger(1);
 
-    public TraceState(InetAddress coordinator, UUID sessionId)
+    private final Tracing tracing;
+
+    public TraceState(InetAddress coordinator, UUID sessionId, Tracing tracing)
     {
         assert coordinator != null;
         assert sessionId != null;
+        assert tracing != null;
 
         this.coordinator = coordinator;
         this.sessionId = sessionId;
+        this.tracing = tracing;
         sessionIdBytes = ByteBufferUtil.bytes(sessionId);
         watch = Stopwatch.createStarted();
     }
@@ -87,31 +81,10 @@ public class TraceState
 
     public void trace(String message)
     {
-        TraceState.trace(sessionIdBytes, message, elapsed());
+        tracing.trace(sessionIdBytes, message, elapsed());
     }
 
     // FIXME: maybe move to Tracing?
-    public static void trace(final ByteBuffer sessionIdBytes, final String message, final int elapsed)
-    {
-        final ByteBuffer eventId = ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes());
-        final String threadName = Thread.currentThread().getName();
-
-        StageManager.instance.getStage(Stage.TRACING).execute(new WrappedRunnable()
-        {
-            public void runMayThrow()
-            {
-                CFMetaData cfMeta = CFMetaData.TraceEventsCf;
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta);
-                Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("activity")), message);
-                Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("source")), FBUtilities.getBroadcastAddress());
-                if (elapsed >= 0)
-                    Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("source_elapsed")), elapsed);
-                Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("thread")), threadName);
-                Tracing.mutateWithCatch(new Mutation(Tracing.TRACE_KS, sessionIdBytes, cf), StorageProxy.instance);
-            }
-        });
-    }
-
     public boolean acquireReference()
     {
         while (true)

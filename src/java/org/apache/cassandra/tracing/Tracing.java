@@ -27,6 +27,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.cassandra.utils.WrappedRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,6 +77,9 @@ public class Tracing
 
     public Tracing(StageManager stageManager, StorageProxy storageProxy)
     {
+        assert stageManager != null;
+        assert storageProxy != null;
+
         this.stageManager = stageManager;
         this.storageProxy = storageProxy;
     }
@@ -142,7 +146,7 @@ public class Tracing
     {
         assert state.get() == null;
 
-        TraceState ts = new TraceState(localAddress, sessionId);
+        TraceState ts = new TraceState(localAddress, sessionId, this);
         state.set(ts);
         sessions.put(sessionId, ts);
 
@@ -177,7 +181,7 @@ public class Tracing
                     CFMetaData cfMeta = CFMetaData.TraceSessionsCf;
                     ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta);
                     addColumn(cf, buildName(cfMeta, "duration"), elapsed);
-                    mutateWithCatch(new Mutation(TRACE_KS, sessionIdBytes, cf), storageProxy);
+                    mutateWithCatch(new Mutation(TRACE_KS, sessionIdBytes, cf));
                 }
             });
 
@@ -219,7 +223,7 @@ public class Tracing
                 addColumn(cf, buildName(cfMeta, bytes("request")), request);
                 addColumn(cf, buildName(cfMeta, bytes("started_at")), started_at);
                 addParameterColumns(cf, parameters);
-                mutateWithCatch(new Mutation(TRACE_KS, sessionIdBytes, cf), storageProxy);
+                mutateWithCatch(new Mutation(TRACE_KS, sessionIdBytes, cf));
             }
         });
     }
@@ -245,17 +249,17 @@ public class Tracing
         if (message.verb == MessagingService.Verb.REQUEST_RESPONSE)
         {
             // received a message for a session we've already closed out.  see CASSANDRA-5668
-            return new ExpiredTraceState(sessionId);
+            return new ExpiredTraceState(sessionId, this);
         }
         else
         {
-            ts = new TraceState(message.from, sessionId);
+            ts = new TraceState(message.from, sessionId, this);
             sessions.put(sessionId, ts);
             return ts;
         }
     }
 
-    public static void trace(String message)
+    public void trace(String message)
     {
         final TraceState state = instance.get();
         if (state == null) // inline isTracing to avoid implicit two calls to state.get()
@@ -264,7 +268,7 @@ public class Tracing
         state.trace(message);
     }
 
-    public static void trace(String format, Object arg)
+    public void trace(String format, Object arg)
     {
         final TraceState state = instance.get();
         if (state == null) // inline isTracing to avoid implicit two calls to state.get()
@@ -273,7 +277,7 @@ public class Tracing
         state.trace(format, arg);
     }
 
-    public static void trace(String format, Object arg1, Object arg2)
+    public void trace(String format, Object arg1, Object arg2)
     {
         final TraceState state = instance.get();
         if (state == null) // inline isTracing to avoid implicit two calls to state.get()
@@ -282,7 +286,7 @@ public class Tracing
         state.trace(format, arg1, arg2);
     }
 
-    public static void trace(String format, Object[] args)
+    public void trace(String format, Object[] args)
     {
         final TraceState state = instance.get();
         if (state == null) // inline isTracing to avoid implicit two calls to state.get()
@@ -291,7 +295,29 @@ public class Tracing
         state.trace(format, args);
     }
 
-    static void mutateWithCatch(Mutation mutation, StorageProxy storageProxy)
+    public void trace(final ByteBuffer sessionIdBytes, final String message, final int elapsed)
+    {
+        final ByteBuffer eventId = ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes());
+        final String threadName = Thread.currentThread().getName();
+
+        stageManager.getStage(Stage.TRACING).execute(new WrappedRunnable()
+        {
+            public void runMayThrow()
+            {
+                CFMetaData cfMeta = CFMetaData.TraceEventsCf;
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta);
+                addColumn(cf, buildName(cfMeta, eventId, ByteBufferUtil.bytes("activity")), message);
+                addColumn(cf, buildName(cfMeta, eventId, ByteBufferUtil.bytes("source")), FBUtilities.getBroadcastAddress());
+                if (elapsed >= 0)
+                    addColumn(cf, buildName(cfMeta, eventId, ByteBufferUtil.bytes("source_elapsed")), elapsed);
+                addColumn(cf, buildName(cfMeta, eventId, ByteBufferUtil.bytes("thread")), threadName);
+                mutateWithCatch(new Mutation(TRACE_KS, sessionIdBytes, cf));
+            }
+        });
+    }
+
+
+    void mutateWithCatch(Mutation mutation)
     {
         try
         {

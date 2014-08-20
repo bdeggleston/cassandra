@@ -20,8 +20,7 @@ SystemKeyspace [StorageService(weak, partitioner_only), Schema(weak, 1m finishSt
     * replace StorageService.getPartitioner gets with DatabaseDescriptor.getPartitioner
     * pass schema instance into finishStartup
 
-DefsTables [SystemKeyspace, Schema, StorageService(clientModeCheck), MigrationManager(med), CompactionManager(weak, 2), CommitLog(weak, 1)]
-    * can the StorageService client mode check use the DatabaseDescriptor
+DefsTables [SystemKeyspace, Schema, MigrationManager(med), CompactionManager(weak, 2), CommitLog(weak, 1)]
 
 StageManager [DatabaseDescriptor, MessagingService(weak, 1m, parameterize)]
 CacheService [DatabaseDescriptor, StageManager, Schema]
@@ -31,6 +30,7 @@ MessagingService [StorageServiceTasks, StageManager(stronger, 2m), StorageProxy(
         * could push incrementDroppedMessages from MessagingService to DatabaseDescriptor, but that's kinda messy
         * could special case tracingexecutor to live in an atomic reference outside the enum map and expose a setter
         * could push getStage up to DatabaseDescriptor, also ugly
+        * could use a wrapper class for the timeoutReporter, which references a volatile member
 
 Gossiper [MessagingService, DatabaseDescriptor, FailureDetector(?), StorageService(?), StageManager]
     * move failure detector registration out of constructor and into static factory
@@ -56,7 +56,6 @@ StorageService [SystemKeyspace, Gossiper(strong), StreamManager(weak, move to cr
                 FailureDetector(5m), ActiveRepairService(1m, 1p)]
     * DI StorageProxy into methods
     * remove getPartitioner
-    * see if isClientMode can be moved up to DatabaseDescriptor
 
 StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 1p), StorageService(strong), MessagingService,
               FailureDetector(2m), SinkManager(2m), Gossiper(4m)] # Has a lot methods that just proxy calls to DatabaseDescriptor
@@ -70,5 +69,7 @@ ColumnFamilyStore [DatabaseDescriptor, StorageServiceTasks, CacheService, System
 PendingRangeCalculatorService [Schema, StorageService]
 ActiveRepairService [Gossiper, FailureDetector, StorageService, MessagingService, CompactionManager]
 TriggerExecutor [QueryProcessor]
+
+---- Updated ----
 Tracing [StageManager, StorageProxy]
 

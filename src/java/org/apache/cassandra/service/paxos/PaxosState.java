@@ -64,13 +64,13 @@ public class PaxosState
             PaxosState state = SystemKeyspace.instance.loadPaxosState(toPrepare.key, toPrepare.update.metadata());
             if (toPrepare.isAfter(state.promised))
             {
-                Tracing.trace("Promising ballot {}", toPrepare.ballot);
+                Tracing.instance.trace("Promising ballot {}", toPrepare.ballot);
                 SystemKeyspace.instance.savePaxosPromise(toPrepare);
                 return new PrepareResponse(true, state.accepted, state.mostRecentCommit);
             }
             else
             {
-                Tracing.trace("Promise rejected; {} is not sufficiently newer than {}", toPrepare, state.promised);
+                Tracing.instance.trace("Promise rejected; {} is not sufficiently newer than {}", toPrepare, state.promised);
                 // return the currently promised ballot (not the last accepted one) so the coordinator can make sure it uses newer ballot next time (#5667)
                 return new PrepareResponse(false, state.promised, state.mostRecentCommit);
             }
@@ -90,13 +90,13 @@ public class PaxosState
             PaxosState state = SystemKeyspace.instance.loadPaxosState(proposal.key, proposal.update.metadata());
             if (proposal.hasBallot(state.promised.ballot) || proposal.isAfter(state.promised))
             {
-                Tracing.trace("Accepting proposal {}", proposal);
+                Tracing.instance.trace("Accepting proposal {}", proposal);
                 SystemKeyspace.instance.savePaxosProposal(proposal);
                 return true;
             }
             else
             {
-                Tracing.trace("Rejecting proposal for {} because inProgress is now {}", proposal, state.promised);
+                Tracing.instance.trace("Rejecting proposal for {} because inProgress is now {}", proposal, state.promised);
                 return false;
             }
         }
@@ -113,7 +113,7 @@ public class PaxosState
         // Committing it is however always safe due to column timestamps, so always do it. However,
         // if our current in-progress ballot is strictly greater than the proposal one, we shouldn't
         // erase the in-progress update.
-        Tracing.trace("Committing proposal {}", proposal);
+        Tracing.instance.trace("Committing proposal {}", proposal);
         Mutation mutation = proposal.makeMutation();
         Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
 

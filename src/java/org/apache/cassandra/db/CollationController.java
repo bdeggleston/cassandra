@@ -75,12 +75,12 @@ public class CollationController
         final ColumnFamily container = ArrayBackedSortedColumns.factory.create(cfs.metadata, filter.filter.isReversed());
         List<OnDiskAtomIterator> iterators = new ArrayList<>();
         boolean isEmpty = true;
-        Tracing.trace("Acquiring sstable references");
+        Tracing.instance.trace("Acquiring sstable references");
         ColumnFamilyStore.ViewFragment view = cfs.select(cfs.viewFilter(filter.key));
 
         try
         {
-            Tracing.trace("Merging memtable contents");
+            Tracing.instance.trace("Merging memtable contents");
             long mostRecentRowTombstone = Long.MIN_VALUE;
             for (Memtable memtable : view.memtables)
             {
@@ -124,7 +124,7 @@ public class CollationController
                 if (((NamesQueryFilter) reducedFilter.filter).columns.isEmpty())
                     break;
 
-                Tracing.trace("Merging data from sstable {}", sstable.descriptor.generation);
+                Tracing.instance.trace("Merging data from sstable {}", sstable.descriptor.generation);
                 OnDiskAtomIterator iter = reducedFilter.getSSTableColumnIterator(sstable);
                 iterators.add(iter);
                 isEmpty = false;
@@ -145,7 +145,7 @@ public class CollationController
 
             // do a final collate.  toCollate is boilerplate required to provide a CloseableIterator
             ColumnFamily returnCF = container.cloneMeShallow();
-            Tracing.trace("Collating all results");
+            Tracing.instance.trace("Collating all results");
             filter.collateOnDiskAtom(returnCF, container.iterator(), gcBefore);
 
             // "hoist up" the requested data into a more recent sstable
@@ -153,7 +153,7 @@ public class CollationController
                 && !cfs.isAutoCompactionDisabled()
                 && cfs.getCompactionStrategy() instanceof SizeTieredCompactionStrategy)
             {
-                Tracing.trace("Defragmenting requested data");
+                Tracing.instance.trace("Defragmenting requested data");
                 Mutation mutation = new Mutation(cfs.keyspace.getName(), filter.key.getKey(), returnCF.cloneMe());
                 // skipping commitlog and index updates is fine since we're just de-fragmenting existing data
                 Keyspace.open(mutation.getKeyspaceName()).apply(mutation, false, false);
@@ -193,14 +193,14 @@ public class CollationController
      */
     private ColumnFamily collectAllData(boolean copyOnHeap)
     {
-        Tracing.trace("Acquiring sstable references");
+        Tracing.instance.trace("Acquiring sstable references");
         ColumnFamilyStore.ViewFragment view = cfs.select(cfs.viewFilter(filter.key));
         List<Iterator<? extends OnDiskAtom>> iterators = new ArrayList<>(Iterables.size(view.memtables) + view.sstables.size());
         ColumnFamily returnCF = ArrayBackedSortedColumns.factory.create(cfs.metadata, filter.filter.isReversed());
         DeletionInfo returnDeletionInfo = returnCF.deletionInfo();
         try
         {
-            Tracing.trace("Merging memtable tombstones");
+            Tracing.instance.trace("Merging memtable tombstones");
             for (Memtable memtable : view.memtables)
             {
                 final ColumnFamily cf = memtable.getColumnFamily(filter.key);
@@ -302,13 +302,13 @@ public class CollationController
                 }
             }
             if (Tracing.isTracing())
-                Tracing.trace("Skipped {}/{} non-slice-intersecting sstables, included {} due to tombstones", new Object[] {nonIntersectingSSTables, view.sstables.size(), includedDueToTombstones});
+                Tracing.instance.trace("Skipped {}/{} non-slice-intersecting sstables, included {} due to tombstones", new Object[] {nonIntersectingSSTables, view.sstables.size(), includedDueToTombstones});
             // we need to distinguish between "there is no data at all for this row" (BF will let us rebuild that efficiently)
             // and "there used to be data, but it's gone now" (we should cache the empty CF so we don't need to rebuild that slower)
             if (iterators.isEmpty())
                 return null;
 
-            Tracing.trace("Merging data from memtables and {} sstables", sstablesIterated);
+            Tracing.instance.trace("Merging data from memtables and {} sstables", sstablesIterated);
             filter.collateOnDiskAtom(returnCF, iterators, gcBefore);
 
             // Caller is responsible for final removeDeletedCF.  This is important for cacheRow to work correctly:

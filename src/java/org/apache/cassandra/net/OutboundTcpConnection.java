@@ -213,7 +213,7 @@ public class OutboundTcpConnection extends Thread
                 // session may have already finished; see CASSANDRA-5668
                 if (state == null)
                 {
-                    TraceState.trace(ByteBuffer.wrap(sessionBytes), message, -1);
+                    Tracing.instance.trace(ByteBuffer.wrap(sessionBytes), message, -1);
                 }
                 else
                 {

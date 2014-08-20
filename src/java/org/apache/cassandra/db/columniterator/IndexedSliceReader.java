@@ -66,7 +66,7 @@ class IndexedSliceReader extends AbstractIterator<OnDiskAtom> implements OnDiskA
      */
     public IndexedSliceReader(SSTableReader sstable, RowIndexEntry indexEntry, FileDataInput input, ColumnSlice[] slices, boolean reversed)
     {
-        Tracing.trace("Seeking to partition indexed section in data file");
+        Tracing.instance.trace("Seeking to partition indexed section in data file");
         this.sstable = sstable;
         this.originalInput = input;
         this.reversed = reversed;

@@ -367,7 +367,7 @@ public class Keyspace
             ReplayPosition replayPosition = null;
             if (writeCommitLog)
             {
-                Tracing.trace("Appending to commitlog");
+                Tracing.instance.trace("Appending to commitlog");
                 replayPosition = CommitLog.instance.add(mutation);
             }
 
@@ -381,7 +381,7 @@ public class Keyspace
                     continue;
                 }
 
-                Tracing.trace("Adding to {} memtable", cf.metadata().cfName);
+                Tracing.instance.trace("Adding to {} memtable", cf.metadata().cfName);
                 SecondaryIndexManager.Updater updater = updateIndexes
                                                       ? cfs.indexManager.updaterFor(key, cf, opGroup)
                                                       : SecondaryIndexManager.nullUpdater;

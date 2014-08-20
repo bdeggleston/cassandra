@@ -225,14 +225,14 @@ public class StorageProxy implements StorageProxyMBean
             UUID ballot = beginAndRepairPaxos(start, key, metadata, liveEndpoints, requiredParticipants, consistencyForPaxos, consistencyForCommit);
 
             // read the current values and check they validate the conditions
-            Tracing.trace("Reading existing values for CAS precondition");
+            Tracing.instance.trace("Reading existing values for CAS precondition");
             long timestamp = System.currentTimeMillis();
             ReadCommand readCommand = ReadCommand.create(keyspaceName, key, cfName, timestamp, conditions.readFilter());
             List<Row> rows = read(Arrays.asList(readCommand), consistencyForPaxos == ConsistencyLevel.LOCAL_SERIAL? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM);
             ColumnFamily current = rows.get(0).cf;
             if (!conditions.appliesTo(current))
             {
-                Tracing.trace("CAS precondition {} does not match current values {}", conditions, current);
+                Tracing.instance.trace("CAS precondition {} does not match current values {}", conditions, current);
                 // We should not return null as this means success
                 return current == null ? ArrayBackedSortedColumns.factory.create(metadata) : current;
             }
@@ -250,18 +250,18 @@ public class StorageProxy implements StorageProxyMBean
             updates = TriggerExecutor.instance.execute(key, updates);
 
             Commit proposal = Commit.newProposal(key, ballot, updates);
-            Tracing.trace("CAS precondition is met; proposing client-requested updates for {}", ballot);
+            Tracing.instance.trace("CAS precondition is met; proposing client-requested updates for {}", ballot);
             if (proposePaxos(proposal, liveEndpoints, requiredParticipants, true, consistencyForPaxos))
             {
                 if (consistencyForCommit == ConsistencyLevel.ANY)
                     sendCommit(proposal, liveEndpoints);
                 else
                     commitPaxos(proposal, consistencyForCommit);
-                Tracing.trace("CAS successful");
+                Tracing.instance.trace("CAS successful");
                 return null;
             }
 
-            Tracing.trace("Paxos proposal not accepted (pre-empted by a higher ballot)");
+            Tracing.instance.trace("Paxos proposal not accepted (pre-empted by a higher ballot)");
             Uninterruptibles.sleepUninterruptibly(FBUtilities.threadLocalRandom().nextInt(100), TimeUnit.MILLISECONDS);
             // continue to retry
         }
@@ -321,12 +321,12 @@ public class StorageProxy implements StorageProxyMBean
             UUID ballot = UUIDGen.getTimeUUID(ballotMillis);
 
             // prepare
-            Tracing.trace("Preparing {}", ballot);
+            Tracing.instance.trace("Preparing {}", ballot);
             Commit toPrepare = Commit.newPrepare(key, metadata, ballot);
             summary = preparePaxos(toPrepare, liveEndpoints, requiredParticipants, consistencyForPaxos);
             if (!summary.promised)
             {
-                Tracing.trace("Some replicas have already promised a higher ballot than ours; aborting");
+                Tracing.instance.trace("Some replicas have already promised a higher ballot than ours; aborting");
                 // sleep a random amount to give the other proposer a chance to finish
                 Uninterruptibles.sleepUninterruptibly(FBUtilities.threadLocalRandom().nextInt(100), TimeUnit.MILLISECONDS);
                 continue;
@@ -339,7 +339,7 @@ public class StorageProxy implements StorageProxyMBean
             // needs to be completed, so do it.
             if (!inProgress.update.isEmpty() && inProgress.isAfter(mostRecent))
             {
-                Tracing.trace("Finishing incomplete paxos round {}", inProgress);
+                Tracing.instance.trace("Finishing incomplete paxos round {}", inProgress);
                 Commit refreshedInProgress = Commit.newProposal(inProgress.key, ballot, inProgress.update);
                 if (proposePaxos(refreshedInProgress, liveEndpoints, requiredParticipants, false, consistencyForPaxos))
                 {
@@ -347,7 +347,7 @@ public class StorageProxy implements StorageProxyMBean
                 }
                 else
                 {
-                    Tracing.trace("Some replicas have already promised a higher ballot than ours; aborting");
+                    Tracing.instance.trace("Some replicas have already promised a higher ballot than ours; aborting");
                     // sleep a random amount to give the other proposer a chance to finish
                     Uninterruptibles.sleepUninterruptibly(FBUtilities.threadLocalRandom().nextInt(100), TimeUnit.MILLISECONDS);
                 }
@@ -361,7 +361,7 @@ public class StorageProxy implements StorageProxyMBean
             Iterable<InetAddress> missingMRC = summary.replicasMissingMostRecentCommit();
             if (Iterables.size(missingMRC) > 0)
             {
-                Tracing.trace("Repairing replicas that missed the most recent commit");
+                Tracing.instance.trace("Repairing replicas that missed the most recent commit");
                 sendCommit(mostRecent, missingMRC);
                 // TODO: provided commits don't invalid the prepare we just did above (which they don't), we could just wait
                 // for all the missingMRC to acknowledge this commit and then move on with proposing our value. But that means
@@ -449,7 +449,7 @@ public class StorageProxy implements StorageProxyMBean
     public void mutate(Collection<? extends IMutation> mutations, ConsistencyLevel consistency_level)
     throws UnavailableException, OverloadedException, WriteTimeoutException
     {
-        Tracing.trace("Determining replicas for mutation");
+        Tracing.instance.trace("Determining replicas for mutation");
         final String localDataCenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
 
         long startTime = System.nanoTime();
@@ -499,13 +499,13 @@ public class StorageProxy implements StorageProxyMBean
                             submitHint((Mutation) mutation, target, null);
                     }
                 }
-                Tracing.trace("Wrote hint to satisfy CL.ANY after no replicas acknowledged the write");
+                Tracing.instance.trace("Wrote hint to satisfy CL.ANY after no replicas acknowledged the write");
             }
             else
             {
                 writeMetrics.timeouts.mark();
                 ClientRequestMetrics.writeTimeouts.inc();
-                Tracing.trace("Write timeout; received {} of {} required replies", ex.received, ex.blockFor);
+                Tracing.instance.trace("Write timeout; received {} of {} required replies", ex.received, ex.blockFor);
                 throw ex;
             }
         }
@@ -513,13 +513,13 @@ public class StorageProxy implements StorageProxyMBean
         {
             writeMetrics.unavailables.mark();
             ClientRequestMetrics.writeUnavailables.inc();
-            Tracing.trace("Unavailable");
+            Tracing.instance.trace("Unavailable");
             throw e;
         }
         catch (OverloadedException e)
         {
             ClientRequestMetrics.writeUnavailables.inc();
-            Tracing.trace("Overloaded");
+            Tracing.instance.trace("Overloaded");
             throw e;
         }
         finally
@@ -556,7 +556,7 @@ public class StorageProxy implements StorageProxyMBean
     public void mutateAtomically(Collection<Mutation> mutations, ConsistencyLevel consistency_level)
     throws UnavailableException, OverloadedException, WriteTimeoutException
     {
-        Tracing.trace("Determining replicas for atomic batch");
+        Tracing.instance.trace("Determining replicas for atomic batch");
         long startTime = System.nanoTime();
 
         List<WriteResponseHandlerWrapper> wrappers = new ArrayList<WriteResponseHandlerWrapper>(mutations.size());
@@ -588,14 +588,14 @@ public class StorageProxy implements StorageProxyMBean
         {
             writeMetrics.unavailables.mark();
             ClientRequestMetrics.writeUnavailables.inc();
-            Tracing.trace("Unavailable");
+            Tracing.instance.trace("Unavailable");
             throw e;
         }
         catch (WriteTimeoutException e)
         {
             writeMetrics.timeouts.mark();
             ClientRequestMetrics.writeTimeouts.inc();
-            Tracing.trace("Write timeout; received {} of {} required replies", e.received, e.blockFor);
+            Tracing.instance.trace("Write timeout; received {} of {} required replies", e.received, e.blockFor);
             throw e;
         }
         finally
@@ -1004,7 +1004,7 @@ public class StorageProxy implements StorageProxyMBean
             // Forward the actual update to the chosen leader replica
             AbstractWriteResponseHandler responseHandler = new WriteResponseHandler(endpoint, WriteType.COUNTER);
 
-            Tracing.trace("Enqueuing counter update to {}", endpoint);
+            Tracing.instance.trace("Enqueuing counter update to {}", endpoint);
             MessagingService.instance.sendRR(cm.makeMutationMessage(), endpoint, responseHandler, false);
             return responseHandler;
         }
@@ -1196,7 +1196,7 @@ public class StorageProxy implements StorageProxyMBean
             AbstractReadExecutor[] readExecutors = new AbstractReadExecutor[commands.size()];
 
             if (!commandsToRetry.isEmpty())
-                Tracing.trace("Retrying {} commands", commandsToRetry.size());
+                Tracing.instance.trace("Retrying {} commands", commandsToRetry.size());
 
             // send out read requests
             for (int i = 0; i < commands.size(); i++)
@@ -1239,7 +1239,7 @@ public class StorageProxy implements StorageProxyMBean
 
                     if (Tracing.isTracing())
                     {
-                        Tracing.trace("Timed out; received {} of {} responses{}",
+                        Tracing.instance.trace("Timed out; received {} of {} responses{}",
                                       new Object[]{ responseCount, blockFor, gotData });
                     }
                     else if (logger.isDebugEnabled())
@@ -1250,7 +1250,7 @@ public class StorageProxy implements StorageProxyMBean
                 }
                 catch (DigestMismatchException ex)
                 {
-                    Tracing.trace("Digest mismatch: {}", ex);
+                    Tracing.instance.trace("Digest mismatch: {}", ex);
 
                     ReadRepairMetrics.repairedBlocking.mark();
 
@@ -1274,7 +1274,7 @@ public class StorageProxy implements StorageProxyMBean
                     MessageOut<ReadCommand> message = exec.command.createMessage();
                     for (InetAddress endpoint : exec.getContactedReplicas())
                     {
-                        Tracing.trace("Enqueuing full data read to {}", endpoint);
+                        Tracing.instance.trace("Enqueuing full data read to {}", endpoint);
                         MessagingService.instance.sendRR(message, endpoint, repairHandler);
                     }
                 }
@@ -1309,7 +1309,7 @@ public class StorageProxy implements StorageProxyMBean
                     }
                     catch (TimeoutException e)
                     {
-                        Tracing.trace("Timed out on digest mismatch retries");
+                        Tracing.instance.trace("Timed out on digest mismatch retries");
                         int blockFor = consistencyLevel.blockFor(Keyspace.open(command.getKeyspace()));
                         throw new ReadTimeoutException(consistencyLevel, blockFor-1, blockFor, true);
                     }
@@ -1318,7 +1318,7 @@ public class StorageProxy implements StorageProxyMBean
                     ReadCommand retryCommand = command.maybeGenerateRetryCommand(resolver, row);
                     if (retryCommand != null)
                     {
-                        Tracing.trace("Issuing retry for read command");
+                        Tracing.instance.trace("Issuing retry for read command");
                         if (commandsToRetry == Collections.EMPTY_LIST)
                             commandsToRetry = new ArrayList<>();
                         commandsToRetry.add(retryCommand);
@@ -1463,7 +1463,7 @@ public class StorageProxy implements StorageProxyMBean
     public List<Row> getRangeSlice(AbstractRangeCommand command, ConsistencyLevel consistency_level)
     throws UnavailableException, ReadTimeoutException
     {
-        Tracing.trace("Computing ranges to query");
+        Tracing.instance.trace("Computing ranges to query");
         long startTime = System.nanoTime();
 
         Keyspace keyspace = Keyspace.open(command.keyspace);
@@ -1492,7 +1492,7 @@ public class StorageProxy implements StorageProxyMBean
                                   : Math.max(1, Math.min(ranges.size(), (int) Math.ceil(command.limit() / resultRowsPerRange)));
             logger.debug("Estimated result rows per range: {}; requested rows: {}, ranges.size(): {}; concurrent range requests: {}",
                          resultRowsPerRange, command.limit(), ranges.size(), concurrencyFactor);
-            Tracing.trace("Submitting range requests on {} ranges with a concurrency of {} ({} rows per range expected)", new Object[]{ ranges.size(), concurrencyFactor, resultRowsPerRange});
+            Tracing.instance.trace("Submitting range requests on {} ranges with a concurrency of {} ({} rows per range expected)", new Object[]{ ranges.size(), concurrencyFactor, resultRowsPerRange});
 
             boolean haveSufficientRows = false;
             int i = 0;
@@ -1573,13 +1573,13 @@ public class StorageProxy implements StorageProxyMBean
                         MessageOut<? extends AbstractRangeCommand> message = nodeCmd.createMessage();
                         for (InetAddress endpoint : filteredEndpoints)
                         {
-                            Tracing.trace("Enqueuing request to {}", endpoint);
+                            Tracing.instance.trace("Enqueuing request to {}", endpoint);
                             MessagingService.instance.sendRR(message, endpoint, handler);
                         }
                     }
                     scanHandlers.add(Pair.create(nodeCmd, handler));
                 }
-                Tracing.trace("Submitted {} concurrent range requests covering {} ranges", concurrentRequests, i - concurrentFetchStartingIndex);
+                Tracing.instance.trace("Submitted {} concurrent range requests covering {} ranges", concurrentRequests, i - concurrentFetchStartingIndex);
 
                 List<AsyncOneResponse> repairResponses = new ArrayList<>();
                 for (Pair<AbstractRangeCommand, ReadCallback<RangeSliceReply, Iterable<Row>>> cmdPairHandler : scanHandlers)
@@ -1609,7 +1609,7 @@ public class StorageProxy implements StorageProxyMBean
 
                         if (Tracing.isTracing())
                         {
-                            Tracing.trace("Timed out; received {} of {} responses{} for range {} of {}",
+                            Tracing.instance.trace("Timed out; received {} of {} responses{} for range {} of {}",
                                           new Object[]{ responseCount, blockFor, gotData, i, ranges.size() });
                         }
                         else if (logger.isDebugEnabled())
@@ -1642,7 +1642,7 @@ public class StorageProxy implements StorageProxyMBean
                     // We got all responses, but timed out while repairing
                     int blockFor = consistency_level.blockFor(keyspace);
                     if (Tracing.isTracing())
-                        Tracing.trace("Timed out while read-repairing after receiving all {} data and digest responses", blockFor);
+                        Tracing.instance.trace("Timed out while read-repairing after receiving all {} data and digest responses", blockFor);
                     else
                         logger.debug("Range slice timeout while read-repairing after receiving all {} data and digest responses", blockFor);
                     throw new ReadTimeoutException(consistency_level, blockFor-1, blockFor, true);
@@ -1945,7 +1945,7 @@ public class StorageProxy implements StorageProxyMBean
         if (hintWindowExpired)
         {
             HintedHandOffManager.instance.metrics.incrPastWindow(ep);
-            Tracing.trace("Not hinting {} which has been down {}ms", ep, Gossiper.instance.getEndpointDowntime(ep));
+            Tracing.instance.trace("Not hinting {} which has been down {}ms", ep, Gossiper.instance.getEndpointDowntime(ep));
         }
         return !hintWindowExpired;
     }
@@ -1978,7 +1978,7 @@ public class StorageProxy implements StorageProxyMBean
         final TruncateResponseHandler responseHandler = new TruncateResponseHandler(blockFor);
 
         // Send out the truncate calls and track the responses with the callbacks.
-        Tracing.trace("Enqueuing truncate messages to hosts {}", allEndpoints);
+        Tracing.instance.trace("Enqueuing truncate messages to hosts {}", allEndpoints);
         final Truncation truncation = new Truncation(keyspace, cfname);
         MessageOut<Truncation> message = truncation.createMessage();
         for (InetAddress endpoint : allEndpoints)
@@ -1991,7 +1991,7 @@ public class StorageProxy implements StorageProxyMBean
         }
         catch (TimeoutException e)
         {
-            Tracing.trace("Timed out");
+            Tracing.instance.trace("Timed out");
             throw e;
         }
     }
