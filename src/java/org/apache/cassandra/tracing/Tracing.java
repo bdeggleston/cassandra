@@ -69,7 +69,16 @@ public class Tracing
 
     private final ConcurrentMap<UUID, TraceState> sessions = new ConcurrentHashMap<UUID, TraceState>();
 
-    public static final Tracing instance = new Tracing();
+    public static final Tracing instance = new Tracing(StageManager.instance, StorageProxy.instance);
+
+    private final StageManager stageManager;
+    private final StorageProxy storageProxy;
+
+    public Tracing(StageManager stageManager, StorageProxy storageProxy)
+    {
+        this.stageManager = stageManager;
+        this.storageProxy = storageProxy;
+    }
 
     public static void addColumn(ColumnFamily cf, CellName name, InetAddress address)
     {
@@ -161,14 +170,14 @@ public class Tracing
             final int elapsed = state.elapsed();
             final ByteBuffer sessionIdBytes = state.sessionIdBytes;
 
-            StageManager.instance.getStage(Stage.TRACING).execute(new Runnable()
+            stageManager.getStage(Stage.TRACING).execute(new Runnable()
             {
                 public void run()
                 {
                     CFMetaData cfMeta = CFMetaData.TraceSessionsCf;
                     ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta);
                     addColumn(cf, buildName(cfMeta, "duration"), elapsed);
-                    mutateWithCatch(new Mutation(TRACE_KS, sessionIdBytes, cf));
+                    mutateWithCatch(new Mutation(TRACE_KS, sessionIdBytes, cf), storageProxy);
                 }
             });
 
@@ -199,7 +208,7 @@ public class Tracing
         final long started_at = System.currentTimeMillis();
         final ByteBuffer sessionIdBytes = state.get().sessionIdBytes;
 
-        StageManager.instance.getStage(Stage.TRACING).execute(new Runnable()
+        stageManager.getStage(Stage.TRACING).execute(new Runnable()
         {
             public void run()
             {
@@ -210,7 +219,7 @@ public class Tracing
                 addColumn(cf, buildName(cfMeta, bytes("request")), request);
                 addColumn(cf, buildName(cfMeta, bytes("started_at")), started_at);
                 addParameterColumns(cf, parameters);
-                mutateWithCatch(new Mutation(TRACE_KS, sessionIdBytes, cf));
+                mutateWithCatch(new Mutation(TRACE_KS, sessionIdBytes, cf), storageProxy);
             }
         });
     }
@@ -282,11 +291,11 @@ public class Tracing
         state.trace(format, args);
     }
 
-    static void mutateWithCatch(Mutation mutation)
+    static void mutateWithCatch(Mutation mutation, StorageProxy storageProxy)
     {
         try
         {
-            StorageProxy.instance.mutate(Arrays.asList(mutation), ConsistencyLevel.ANY);
+            storageProxy.mutate(Arrays.asList(mutation), ConsistencyLevel.ANY);
         }
         catch (UnavailableException | WriteTimeoutException e)
         {
