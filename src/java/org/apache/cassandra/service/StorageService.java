@@ -3947,4 +3947,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         return DatabaseDescriptor.instance.isAutoSnapshot();
     }
+
+    public CommitLog getCommitLog()
+    {
+        return CommitLog.instance;
+    }
 }

@@ -64,12 +64,11 @@ CompactionManager [DatabaseDescriptor, StorageService, Schema, ActiveRepairServi
 Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), CommitLog(weak, single method)]
 Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, StorageServiceTasks, Schema]
 
-ColumnFamilyStore [StorageServiceTasks, CacheService, SystemKeyspace, Schema(weak, 3), CommitLog(weaker),
-                   CompactionManager, StorageService(weaker, 2)]
+ColumnFamilyStore [StorageServiceTasks, CacheService, SystemKeyspace, Schema(weak, 3), 
+                   CompactionManager(strong), StorageService(weaker, 2)]
     # instantiated from Keyspace and AbstractSimplePerColumnSecondaryIndex
     * Create ColumnFamilyStoreManager class to instantiate and manage 'Global' members
     * access Schema through StorageService
-    * access CommitLog through StorageService
     * access StorageServiceTasks through StorageService, or submit tasks through StorageService
     * maybe remove CompactionManager dependency
         * move removeUnfinishedCompactionLeftovers to CompactionManager

@@ -45,7 +45,6 @@ import org.apache.cassandra.concurrent.NamedThreadFactory;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.config.CFMetaData.SpeculativeRetry;
-import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.db.compaction.*;
 import org.apache.cassandra.db.composites.CellName;
@@ -879,7 +878,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             // and so not set a lastReplayPosition
             if (lastReplayPosition != null)
             {
-                CommitLog.instance.discardCompletedSegments(metadata.cfId, lastReplayPosition);
+                StorageService.instance.getCommitLog().discardCompletedSegments(metadata.cfId, lastReplayPosition);
             }
 
             metric.pendingFlushes.dec();
@@ -920,7 +919,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             memtables = new ArrayList<>();
 
             // submit flushes for the memtable for any indexed sub-cfses, and our own
-            final ReplayPosition minReplayPosition = CommitLog.instance.getContext();
+            final ReplayPosition minReplayPosition = StorageService.instance.getCommitLog().getContext();
             for (ColumnFamilyStore cfs : concatWithIndexes())
             {
                 // switch all memtables, regardless of their dirty status, setting the barrier
