@@ -83,7 +83,7 @@ public class DatabaseDescriptor
      */
     private static final int MAX_NUM_TOKENS = 1536;
 
-    public static final DatabaseDescriptor instance = new DatabaseDescriptor();
+    public static final DatabaseDescriptor instance = create();
 
     private final boolean clientMode;
     private IEndpointSnitch snitch;
@@ -117,24 +117,36 @@ public class DatabaseDescriptor
     private String localDC;
     private Comparator<InetAddress> localComparator;
 
-    private DatabaseDescriptor()
+    @Deprecated
+    public static DatabaseDescriptor create()
+    {
+        return create(Config.isClientMode());
+    }
+
+    public static DatabaseDescriptor create(boolean clientMode)
+    {
+        DatabaseDescriptor dd = new DatabaseDescriptor(clientMode);
+
+        return dd;
+    }
+
+    private DatabaseDescriptor(boolean clientMode)
     {
         // In client mode, we use a default configuration. Note that the fields of this class will be
         // left unconfigured however (the partitioner or localDC will be null for instance) so this
         // should be used with care.
         try
         {
-            if (Config.isClientMode())
+            this.clientMode = clientMode;
+            if (this.clientMode)
             {
                 conf = new Config();
                 // at least we have to set memoryAllocator to open SSTable in client mode
                 memoryAllocator = FBUtilities.newOffHeapAllocator(conf.memory_allocator);
-                clientMode = true;
             } else
             {
                 conf = loadConfig();
                 applyConfig(conf);
-                clientMode = false;
             }
         }
         catch (ConfigurationException e)
@@ -597,13 +609,6 @@ public class DatabaseDescriptor
             //operate under the assumption that server_encryption_options is not set in yaml rather than both
             conf.server_encryption_options = conf.encryption_options;
         }
-
-        // FIXME: move to static factory, or to SystemKeyspace?
-        // Hardcoded system keyspaces
-        List<KSMetaData> systemKeyspaces = Arrays.asList(KSMetaData.systemKeyspace());
-        assert systemKeyspaces.size() == Schema.systemKeyspaceNames.size();
-        for (KSMetaData ksmd : systemKeyspaces)
-            Schema.instance.load(ksmd);
 
         /* Load the seeds for node contact points */
         if (conf.seed_provider == null)

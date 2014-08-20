@@ -529,7 +529,7 @@ public final class CFMetaData
 
     private static CFMetaData compile(String cql)
     {
-        return compile(cql, KeyspaceManager.instance.SYSTEM_KS);
+        return compile(cql, KeyspaceManager.SYSTEM_KS);
     }
 
     @VisibleForTesting

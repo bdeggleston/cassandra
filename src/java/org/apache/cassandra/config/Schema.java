@@ -42,7 +42,7 @@ public class Schema
 {
     private static final Logger logger = LoggerFactory.getLogger(Schema.class);
 
-    public static final Schema instance = new Schema();
+    public static final Schema instance;
 
     /**
      * longest permissible KS or CF name.  Our main concern is that filename not be more than 255 characters;
@@ -78,6 +78,14 @@ public class Schema
             throw new AssertionError();
         }
     }
+
+    // FIXME: move into static factory
+    static
+    {
+        instance = new Schema();
+        KeyspaceManager km = KeyspaceManager.instance;
+    }
+
 
     /**
      * Initialize empty schema object

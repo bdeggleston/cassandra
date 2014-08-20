@@ -2,22 +2,40 @@ package org.apache.cassandra.db;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
+import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.event.KeyListener;
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 
 public class KeyspaceManager
 {
     private static final Logger logger = LoggerFactory.getLogger(Keyspace.class);
 
     public static final String SYSTEM_KS = "system";
-    public static final KeyspaceManager instance = new KeyspaceManager(
-            Schema.instance, StorageService.instance, CommitLog.instance, ColumnFamilyStoreManager.instance
-    );
+
+    public static final KeyspaceManager instance;
+
+    // TODO: this needs to become part of whichever static factory creates this and the other dependent singletons
+    static
+    {
+        // FIXME: forcing CFMetaData to initialize before KeyspaceManager. Maybe make part of KeyspaceManager
+        // Hardcoded system keyspaces
+        List<KSMetaData> systemKeyspaces = Arrays.asList(KSMetaData.systemKeyspace());
+        instance = new KeyspaceManager(Schema.instance, StorageService.instance, CommitLog.instance, ColumnFamilyStoreManager.instance);
+
+        // FIXME: move to static factory, or to SystemKeyspace?
+        assert systemKeyspaces.size() == Schema.systemKeyspaceNames.size();
+        for (KSMetaData ksmd : systemKeyspaces)
+            Schema.instance.load(ksmd);
+    }
 
     private final Schema schema;
     private final StorageService storageService;
@@ -47,7 +65,6 @@ public class KeyspaceManager
         }
     };
 
-    @Deprecated
     public Keyspace open(String keyspaceName)
     {
         assert initialized || keyspaceName.equals(SYSTEM_KS);

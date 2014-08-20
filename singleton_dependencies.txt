@@ -14,6 +14,7 @@ StreamManager [DatabaseDescriptor]
 Schema [SystemKeyspace(?, 1m), MigrationManager(?, 1m)]
     * pass SystemKeyspace into updateVersion method
     * pass MigrationManager into updateVersionAndAnnounce (called by DefsTables, StorageService)
+    * move static initialization stuff into static factory method
 
 
 SystemKeyspace [StorageService(weak, partitioner_only), Schema(weak, 1m finishStartup), QueryProcessor(strong), DatabaseDescriptor(strong)]
@@ -42,8 +43,8 @@ MigrationManager [Schema(strong), Gossiper, StorageServiceTasks, StageManager, S
     * DI StorageService instance to passiveAnnounce method
 
 
-HintedHandOffManager [DatabaseDescriptor, StorageService(weak, partitioner and token data), Schema, StorageServiceTasks, CompactionManager(weak, 1), 
-                      Gossiper, FailureDetector, SystemKeyspace, MessagingService]
+HintedHandOffManager [DatabaseDescriptor, StorageService(weak, partitioner and token data), Schema, StorageServiceTasks, 
+                      CompactionManager(weak, 1), Gossiper, FailureDetector, SystemKeyspace, MessagingService]
     * DI CompactionManager into compact method
 
 CommitLog [DatabaseDescriptor, StorageService(weak, 1m)]
@@ -60,16 +61,13 @@ StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 
               FailureDetector(2m), SinkManager(2m), Gossiper(4m)] # Has a lot methods that just proxy calls to DatabaseDescriptor
 
 CompactionManager [DatabaseDescriptor, StorageService, Schema, ActiveRepairService, SystemKeyspace]
-Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), CommitLog(weak, single method), ColumnFamilyStoreManager]
-    * make KeyspaceManager class
-        * move static construction methods and members to it
-        * remove DatabaseDescriptor dependency on KeyspaceManager
-    * remove static Keyspace.open(keyspaceName) method, all open methods should take a Schema instance
-    * move Schema dependency up to KeyspaceManager
-    * remove dependency on DatabaseDescriptor
-        * move isClientMode to StorageService
-        * move createAllDirectories to StorageService
-        * move getEndpointSnitch to StorageService
+
+*Updated --> Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), 
+                       CommitLog(weak, single method), ColumnFamilyStoreManager, KSMetaData]
+    * move static initialization methods into static factory
+
+KSMetaData [StorageService, DatabaseDescriptor, SystemKeyspace, QueryProcessor]
+CFMetaData [QueryProcessor, Schema, SystemKeyspace, ColumnFamilyStoreManager, KeyspaceManager]
 
 Updated --> Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, StorageServiceTasks, Schema]
 
