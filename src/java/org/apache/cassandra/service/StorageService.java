@@ -598,7 +598,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         prepareToJoin();
 
         // Has to be called after the host id has potentially changed in prepareToJoin().
-        for (ColumnFamilyStore cfs : ColumnFamilyStore.all())
+        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
             if (cfs.metadata.isCounter())
                 cfs.initCounterCache();
 
@@ -3399,7 +3399,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private boolean hasUnreclaimedSpace()
     {
-        for (ColumnFamilyStore cfs : ColumnFamilyStore.all())
+        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
         {
             if (cfs.hasUnreclaimedSpace())
                 return true;
@@ -3850,7 +3850,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void rebuildSecondaryIndex(String ksName, String cfName, String... idxNames)
     {
-        ColumnFamilyStore.rebuildSecondaryIndex(ksName, cfName, idxNames);
+        ColumnFamilyStoreManager.instance.rebuildSecondaryIndex(ksName, cfName, idxNames);
     }
 
     public void resetLocalSchema() throws IOException

@@ -28,6 +28,7 @@ import com.google.common.collect.Iterables;
 
 import org.apache.cassandra.cache.*;
 
+import org.apache.cassandra.db.ColumnFamilyStoreManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,7 +111,7 @@ public class StatusLogger
 
         // per-CF stats
         logger.info(String.format("%-25s%20s", "Table", "Memtable ops,data"));
-        for (ColumnFamilyStore cfs : ColumnFamilyStore.all())
+        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
         {
             logger.info(String.format("%-25s%20s",
                                       cfs.keyspace.getName() + "." + cfs.name,

@@ -76,12 +76,14 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 {
     private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStore.class);
 
+    // TODO: move to ColumnFamilyStoreManager
     private static final ExecutorService flushExecutor = new JMXEnabledThreadPoolExecutor(StorageService.instance.getFlushWriters(),
                                                                                           StageManager.KEEPALIVE,
                                                                                           TimeUnit.SECONDS,
                                                                                           new LinkedBlockingQueue<Runnable>(),
                                                                                           new NamedThreadFactory("MemtableFlushWriter"),
                                                                                           "internal");
+    // TODO: move to ColumnFamilyStoreManager
     // post-flush executor is single threaded to provide guarantee that any flush Future on a CF will never return until prior flushes have completed
     public static final ExecutorService postFlushExecutor = new JMXEnabledThreadPoolExecutor(1,
                                                                                              StageManager.KEEPALIVE,
@@ -89,6 +91,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                                                                                              new LinkedBlockingQueue<Runnable>(),
                                                                                              new NamedThreadFactory("MemtablePostFlush"),
                                                                                              "internal");
+    // TODO: move to ColumnFamilyStoreManager
     public static final ExecutorService reclaimExecutor = new JMXEnabledThreadPoolExecutor(1, StageManager.KEEPALIVE,
                                                                                            TimeUnit.SECONDS,
                                                                                            new LinkedBlockingQueue<Runnable>(),
@@ -253,13 +256,14 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         }
     }
 
-    private ColumnFamilyStore(Keyspace keyspace,
-                              String columnFamilyName,
-                              IPartitioner partitioner,
-                              int generation,
-                              CFMetaData metadata,
-                              Directories directories,
-                              boolean loadSSTables)
+    // TODO: maybe make builder
+    ColumnFamilyStore(Keyspace keyspace,
+                      String columnFamilyName,
+                      IPartitioner partitioner,
+                      int generation,
+                      CFMetaData metadata,
+                      Directories directories,
+                      boolean loadSSTables)
     {
         assert metadata != null : "null metadata for " + keyspace + ":" + columnFamilyName;
 
@@ -411,126 +415,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         return data.getMeanColumns();
     }
 
-    public static ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace, String columnFamily, boolean loadSSTables)
-    {
-        return createColumnFamilyStore(keyspace, columnFamily, StorageService.instance.getPartitioner(), Schema.instance.getCFMetaData(keyspace.getName(), columnFamily), loadSSTables);
-    }
-
-    public static ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace, String columnFamily, IPartitioner partitioner, CFMetaData metadata)
-    {
-        return createColumnFamilyStore(keyspace, columnFamily, partitioner, metadata, true);
-    }
-
-    private static synchronized ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace,
-                                                                         String columnFamily,
-                                                                         IPartitioner partitioner,
-                                                                         CFMetaData metadata,
-                                                                         boolean loadSSTables)
-    {
-        // get the max generation number, to prevent generation conflicts
-        Directories directories = new Directories(metadata);
-        Directories.SSTableLister lister = directories.sstableLister().includeBackups(true);
-        List<Integer> generations = new ArrayList<Integer>();
-        for (Map.Entry<Descriptor, Set<Component>> entry : lister.list().entrySet())
-        {
-            Descriptor desc = entry.getKey();
-            generations.add(desc.generation);
-            if (!desc.isCompatible())
-                throw new RuntimeException(String.format("Incompatible SSTable found. Current version %s is unable to read file: %s. Please run upgradesstables.",
-                                                          Descriptor.Version.CURRENT, desc));
-        }
-        Collections.sort(generations);
-        int value = (generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
-
-        return new ColumnFamilyStore(keyspace, columnFamily, partitioner, value, metadata, directories, loadSSTables);
-    }
-
-    /**
-     * Removes unnecessary files from the cf directory at startup: these include temp files, orphans, zero-length files
-     * and compacted sstables. Files that cannot be recognized will be ignored.
-     */
-    public static void scrubDataDirectories(CFMetaData metadata)
-    {
-        Directories directories = new Directories(metadata);
-
-        // remove any left-behind SSTables from failed/stalled streaming
-        FileFilter filter = new FileFilter()
-        {
-            public boolean accept(File pathname)
-            {
-                return pathname.getPath().endsWith(StreamLockfile.FILE_EXT);
-            }
-        };
-        for (File dir : directories.getCFDirectories())
-        {
-            File[] lockfiles = dir.listFiles(filter);
-            // lock files can be null if I/O error happens
-            if (lockfiles == null || lockfiles.length == 0)
-                continue;
-            logger.info("Removing SSTables from failed streaming session. Found {} files to cleanup.", lockfiles.length);
-
-            for (File lockfile : lockfiles)
-            {
-                StreamLockfile streamLockfile = new StreamLockfile(lockfile);
-                streamLockfile.cleanup();
-                streamLockfile.delete();
-            }
-        }
-
-        logger.debug("Removing compacted SSTable files from {} (see http://wiki.apache.org/cassandra/MemtableSSTable)", metadata.cfName);
-
-        for (Map.Entry<Descriptor,Set<Component>> sstableFiles : directories.sstableLister().list().entrySet())
-        {
-            Descriptor desc = sstableFiles.getKey();
-            Set<Component> components = sstableFiles.getValue();
-
-            if (desc.type.isTemporary)
-            {
-                SSTable.delete(desc, components);
-                continue;
-            }
-
-            File dataFile = new File(desc.filenameFor(Component.DATA));
-            if (components.contains(Component.DATA) && dataFile.length() > 0)
-                // everything appears to be in order... moving on.
-                continue;
-
-            // missing the DATA file! all components are orphaned
-            logger.warn("Removing orphans for {}: {}", desc, components);
-            for (Component component : components)
-            {
-                FileUtils.deleteWithConfirm(desc.filenameFor(component));
-            }
-        }
-
-        // cleanup incomplete saved caches
-        Pattern tmpCacheFilePattern = Pattern.compile(metadata.ksName + "-" + metadata.cfName + "-(Key|Row)Cache.*\\.tmp$");
-        File dir = new File(StorageService.instance.getSavedCachesLocation());
-
-        if (dir.exists())
-        {
-            assert dir.isDirectory();
-            for (File file : dir.listFiles())
-                if (tmpCacheFilePattern.matcher(file.getName()).matches())
-                    if (!file.delete())
-                        logger.warn("could not delete {}", file.getAbsolutePath());
-        }
-
-        // also clean out any index leftovers.
-        for (ColumnDefinition def : metadata.allColumns())
-        {
-            if (def.isIndexed())
-            {
-                CellNameType indexComparator = SecondaryIndex.getIndexComparator(metadata, def);
-                if (indexComparator != null)
-                {
-                    CFMetaData indexMetadata = CFMetaData.newIndexMetadata(metadata, def, indexComparator);
-                    scrubDataDirectories(indexMetadata);
-                }
-            }
-        }
-    }
-
 
     // must be called after all sstables are loaded since row cache merges all row versions
     public void initRowCache()
@@ -666,27 +550,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         }
 
         logger.info("Done loading load new SSTables for {}/{}", keyspace.getName(), name);
-    }
-
-    public static void rebuildSecondaryIndex(String ksName, String cfName, String... idxNames)
-    {
-        ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName);
-
-        Set<String> indexes = new HashSet<String>(Arrays.asList(idxNames));
-
-        Collection<SSTableReader> sstables = cfs.getSSTables();
-        try
-        {
-            cfs.indexManager.setIndexRemoved(indexes);
-            SSTableReader.acquireReferences(sstables);
-            logger.info(String.format("User Requested secondary index re-build for %s/%s indexes", ksName, cfName));
-            cfs.indexManager.maybeBuildSecondaryIndexes(sstables, indexes);
-            cfs.indexManager.setIndexBuilt(indexes);
-        }
-        finally
-        {
-            SSTableReader.releaseReferences(sstables);
-        }
     }
 
     public String getColumnFamilyName()
@@ -997,7 +860,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         {
             float largestRatio = 0f;
             Memtable largest = null;
-            for (ColumnFamilyStore cfs : ColumnFamilyStore.all())
+            for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
             {
                 // we take a reference to the current main memtable for the CF prior to snapping its ownership ratios
                 // to ensure we have some ordering guarantee for performing the switchMemtableIf(), i.e. we will only
@@ -2246,16 +2109,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public void forceMajorCompaction() throws InterruptedException, ExecutionException
     {
         CompactionManager.instance.performMaximal(this);
-    }
-
-    public static Iterable<ColumnFamilyStore> all()
-    {
-        List<Iterable<ColumnFamilyStore>> stores = new ArrayList<Iterable<ColumnFamilyStore>>(Schema.instance.getKeyspaces().size());
-        for (Keyspace keyspace : Keyspace.all())
-        {
-            stores.add(keyspace.getColumnFamilyStores());
-        }
-        return Iterables.concat(stores);
     }
 
     public Iterable<DecoratedKey> keySamples(Range<Token> range)
