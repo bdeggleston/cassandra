@@ -245,7 +245,7 @@ public class CassandraDaemon
             CFMetaData cfm = Schema.instance.getCFMetaData(kscf.left, kscf.right);
             // CFMetaData can be null if CF is already dropped
             if (cfm != null)
-                ColumnFamilyStore.removeUnfinishedCompactionLeftovers(cfm, unfinishedCompactions.get(kscf));
+                CompactionManager.instance.removeUnfinishedCompactionLeftovers(cfm, unfinishedCompactions.get(kscf));
         }
         SystemKeyspace.instance.discardCompactionsInProgress();
 
