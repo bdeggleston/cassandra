@@ -56,8 +56,8 @@ ClusterState [DatabaseDescriptor, Schema, KeyspaceManager]
     * move valueManager from StorageService
     * move bootstrap state from StorageService
 
+Updated --> ActiveRepairService [Gossiper, FailureDetector, MessagingService]
 Updated --> CompactionManager [Schema, ActiveRepairService, SystemKeyspace]
-ActiveRepairService [Gossiper, FailureDetector, MessagingService, CompactionManager]
 
 * Create ClusterState class
     * kind of weird

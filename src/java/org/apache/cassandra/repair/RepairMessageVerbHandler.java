@@ -111,7 +111,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 AnticompactionRequest anticompactionRequest = (AnticompactionRequest) message.payload;
                 try
                 {
-                    List<Future<?>> futures = ActiveRepairService.instance.doAntiCompaction(anticompactionRequest.parentRepairSession);
+                    List<Future<?>> futures = ActiveRepairService.instance.doAntiCompaction(anticompactionRequest.parentRepairSession, CompactionManager.instance);
                     FBUtilities.waitOnFutures(futures);
                 }
                 catch (Exception e)

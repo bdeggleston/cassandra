@@ -79,8 +79,7 @@ public class ActiveRepairService
             Gossiper.instance,
             FailureDetector.instance,
             ClusterState.instance,
-            MessagingService.instance,
-            CompactionManager.instance
+            MessagingService.instance
     );
 
     public static final long UNREPAIRED_SSTABLE = 0;
@@ -105,7 +104,6 @@ public class ActiveRepairService
     private final IFailureDetector failureDetector;
     private final ClusterState clusterState;
     private final MessagingService messagingService;
-    private final CompactionManager compactionManager;
 
     /**
      * A map of active coordinator session.
@@ -117,19 +115,17 @@ public class ActiveRepairService
     /**
      * Protected constructor. Use ActiveRepairService.instance.
      */
-    protected ActiveRepairService(Gossiper gossiper, IFailureDetector failureDetector, ClusterState clusterState, MessagingService messagingService, CompactionManager compactionManager)
+    protected ActiveRepairService(Gossiper gossiper, IFailureDetector failureDetector, ClusterState clusterState, MessagingService messagingService)
     {
         assert gossiper != null;
         assert failureDetector != null;
         assert clusterState != null;
         assert messagingService != null;
-        assert compactionManager != null;
 
         this.gossiper = gossiper;
         this.failureDetector = failureDetector;
         this.clusterState = clusterState;
         this.messagingService = messagingService;
-        this.compactionManager = compactionManager;
 
         sessions = new ConcurrentHashMap<>();
         parentRepairSessions = new ConcurrentHashMap<>();
@@ -340,7 +336,7 @@ public class ActiveRepairService
         parentRepairSessions.put(parentRepairSession, new ParentRepairSession(columnFamilyStores, ranges, sstablesToRepair, System.currentTimeMillis()));
     }
 
-    public void finishParentSession(UUID parentSession, Set<InetAddress> neighbors, boolean doAntiCompaction) throws InterruptedException, ExecutionException, IOException
+    public void finishParentSession(UUID parentSession, Set<InetAddress> neighbors, boolean doAntiCompaction, CompactionManager compactionManager) throws InterruptedException, ExecutionException, IOException
     {
         try
         {
@@ -352,7 +348,7 @@ public class ActiveRepairService
                     MessageOut<RepairMessage> req = acr.createMessage();
                     messagingService.sendOneWay(req, neighbor);
                 }
-                List<Future<?>> futures = doAntiCompaction(parentSession);
+                List<Future<?>> futures = doAntiCompaction(parentSession, compactionManager);
                 FBUtilities.waitOnFutures(futures);
             }
         }
@@ -367,7 +363,7 @@ public class ActiveRepairService
         return parentRepairSessions.get(parentSessionId);
     }
 
-    public List<Future<?>> doAntiCompaction(UUID parentRepairSession) throws InterruptedException, ExecutionException, IOException
+    public List<Future<?>> doAntiCompaction(UUID parentRepairSession, CompactionManager compactionManager) throws InterruptedException, ExecutionException, IOException
     {
         assert parentRepairSession != null;
         ParentRepairSession prs = getParentRepairSession(parentRepairSession);
