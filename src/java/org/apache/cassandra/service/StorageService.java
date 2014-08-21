@@ -43,14 +43,12 @@ import ch.qos.logback.classic.jmx.JMXConfiguratorMBean;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
 import com.google.common.collect.*;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.Uninterruptibles;
 
-import org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.apache.commons.lang3.StringUtils;
 
 import org.slf4j.Logger;
@@ -125,16 +123,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public volatile VersionedValue.VersionedValueFactory valueFactory;
 
     public static final StorageService instance = new StorageService();
-
-    public Collection<Range<Token>> getLocalRanges(String keyspaceName)
-    {
-        return getRangesForEndpoint(keyspaceName, FBUtilities.getBroadcastAddress());
-    }
-
-    public Collection<Range<Token>> getLocalPrimaryRanges(String keyspace)
-    {
-        return getPrimaryRangesForEndpoint(keyspace, FBUtilities.getBroadcastAddress());
-    }
 
     private final Set<InetAddress> replicatingNodes = Collections.synchronizedSet(new HashSet<InetAddress>());
     private CassandraDaemon daemon;
@@ -884,7 +872,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             streamer.addSourceFilter(new RangeStreamer.SingleDatacenterFilter(DatabaseDescriptor.instance.getEndpointSnitch(), sourceDc));
 
         for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
-            streamer.addRanges(keyspaceName, getLocalRanges(keyspaceName));
+            streamer.addRanges(keyspaceName, clusterState.getLocalRanges(keyspaceName));
 
         try
         {
@@ -1885,7 +1873,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private Multimap<Range<Token>, InetAddress> getChangedRangesForLeaving(String keyspaceName, InetAddress endpoint)
     {
         // First get all ranges the leaving endpoint is responsible for
-        Collection<Range<Token>> ranges = getRangesForEndpoint(keyspaceName, endpoint);
+        Collection<Range<Token>> ranges = clusterState.getRangesForEndpoint(keyspaceName, endpoint);
 
         if (logger.isDebugEnabled())
             logger.debug("Node {} ranges [{}]", endpoint, StringUtils.join(ranges, ", "));
@@ -2424,7 +2412,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             throw new IllegalArgumentException("You need to run primary range repair on all nodes in the cluster.");
         }
-        Collection<Range<Token>> ranges = primaryRange ? getLocalPrimaryRanges(keyspace) : getLocalRanges(keyspace);
+        Collection<Range<Token>> ranges = primaryRange ? clusterState.getLocalPrimaryRanges(keyspace) : clusterState.getLocalRanges(keyspace);
 
         return forceRepairAsync(keyspace, isSequential, dataCenters, hosts, ranges, fullRepair, columnFamilies);
     }
@@ -2454,7 +2442,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             throw new IllegalArgumentException("You need to run primary range repair on all nodes in the cluster.");
         }
-        Collection<Range<Token>> ranges = primaryRange ? getLocalPrimaryRanges(keyspace) : getLocalRanges(keyspace);
+        Collection<Range<Token>> ranges = primaryRange ? clusterState.getLocalPrimaryRanges(keyspace) : clusterState.getLocalRanges(keyspace);
         return forceRepairAsync(keyspace, isSequential, isLocal, ranges, fullRepair, columnFamilies);
     }
 
@@ -2669,58 +2657,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     }
 
     /* End of MBean interface methods */
-
-    /**
-     * Get the "primary ranges" for the specified keyspace and endpoint.
-     * "Primary ranges" are the ranges that the node is responsible for storing replica primarily.
-     * The node that stores replica primarily is defined as the first node returned
-     * by {@link AbstractReplicationStrategy#calculateNaturalEndpoints}.
-     *
-     * @param keyspace
-     * @param ep       endpoint we are interested in.
-     * @return primary ranges for the specified endpoint.
-     */
-    public Collection<Range<Token>> getPrimaryRangesForEndpoint(String keyspace, InetAddress ep)
-    {
-        AbstractReplicationStrategy strategy = KeyspaceManager.instance.open(keyspace).getReplicationStrategy();
-        Collection<Range<Token>> primaryRanges = new HashSet<>();
-        TokenMetadata metadata = clusterState.getTokenMetadata().cloneOnlyTokenMap();
-        for (Token token : metadata.sortedTokens())
-        {
-            List<InetAddress> endpoints = strategy.calculateNaturalEndpoints(token, metadata);
-            if (endpoints.size() > 0 && endpoints.get(0).equals(ep))
-                primaryRanges.add(new Range<>(metadata.getPredecessor(token), token));
-        }
-        return primaryRanges;
-    }
-
-    /**
-     * Previously, primary range is the range that the node is responsible for and calculated
-     * only from the token assigned to the node.
-     * But this does not take replication strategy into account, and therefore returns insufficient
-     * range especially using NTS with replication only to certain DC(see CASSANDRA-5424).
-     *
-     * @param ep endpoint we are interested in.
-     * @return range for the specified endpoint.
-     * @deprecated
-     */
-    @Deprecated
-    @VisibleForTesting
-    public Range<Token> getPrimaryRangeForEndpoint(InetAddress ep)
-    {
-        return clusterState.getTokenMetadata().getPrimaryRangeFor(clusterState.getTokenMetadata().getToken(ep));
-    }
-
-    /**
-     * Get all ranges an endpoint is responsible for (by keyspace)
-     *
-     * @param ep endpoint we are interested in.
-     * @return ranges for the specified endpoint.
-     */
-    Collection<Range<Token>> getRangesForEndpoint(String keyspaceName, InetAddress ep)
-    {
-        return KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getAddressRanges().get(ep);
-    }
 
     /**
      * Get all ranges that span the ring given a set
@@ -3105,7 +3041,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     AbstractReplicationStrategy strategy = KeyspaceManager.instance.open(keyspace).getReplicationStrategy();
 
                     // getting collection of the currently used ranges by this keyspace
-                    Collection<Range<Token>> currentRanges = getRangesForEndpoint(keyspace, localAddress);
+                    Collection<Range<Token>> currentRanges = clusterState.getRangesForEndpoint(keyspace, localAddress);
                     // collection of ranges which this node will serve after move to the new token
                     Collection<Range<Token>> updatedRanges = strategy.getPendingAddressRanges(tokenMetaClone, newToken, localAddress);
 
@@ -3540,7 +3476,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             for (InetAddress endpoint : endpoints)
             {
                 float ownership = 0.0f;
-                for (Range<Token> range : getRangesForEndpoint(keyspace, endpoint))
+                for (Range<Token> range : clusterState.getRangesForEndpoint(keyspace, endpoint))
                 {
                     if (tokenOwnership.containsKey(range.right))
                         ownership += tokenOwnership.get(range.right);
@@ -3795,7 +3731,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         List<DecoratedKey> keys = new ArrayList<>();
         for (Keyspace keyspace : KeyspaceManager.instance.nonSystem())
         {
-            for (Range<Token> range : getPrimaryRangesForEndpoint(keyspace.getName(), FBUtilities.getBroadcastAddress()))
+            for (Range<Token> range : clusterState.getPrimaryRangesForEndpoint(keyspace.getName(), FBUtilities.getBroadcastAddress()))
                 keys.addAll(keySamples(keyspace.getColumnFamilyStores(), range));
         }
 
@@ -3883,38 +3819,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         logger.info(String.format("Updated hinted_handoff_throttle_in_kb to %d", throttleInKB));
     }
 
-    public long getReadRpcTimeout()
-    {
-        return DatabaseDescriptor.instance.getReadRpcTimeout();
-    }
-
-    public int getFlushWriters()
-    {
-        return DatabaseDescriptor.instance.getFlushWriters();
-    }
-
-    public boolean isAutoSnapshot()
-    {
-        return DatabaseDescriptor.instance.isAutoSnapshot();
-    }
-
     public CommitLog getCommitLog()
     {
         return CommitLog.instance;
-    }
-
-    public DebuggableScheduledThreadPoolExecutor getScheduledTasksExecutor()
-    {
-        return StorageServiceTasks.instance.scheduledTasks;
-    }
-
-    public DebuggableScheduledThreadPoolExecutor getTasksExecutor()
-    {
-        return StorageServiceTasks.instance.tasks;
-    }
-
-    public DebuggableScheduledThreadPoolExecutor getOptionalTasksExecutor()
-    {
-        return StorageServiceTasks.instance.optionalTasks;
     }
 }

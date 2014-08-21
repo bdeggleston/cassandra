@@ -121,7 +121,7 @@ public abstract class AntiEntropyServiceTestAbstract
         MessagingService.instance.setVersion(REMOTE, MessagingService.current_version);
         Gossiper.instance.initializeNodeUnsafe(REMOTE, UUID.randomUUID(), 1);
 
-        local_range = StorageService.instance.getPrimaryRangesForEndpoint(keyspaceName, LOCAL).iterator().next();
+        local_range = ClusterState.instance.getPrimaryRangesForEndpoint(keyspaceName, LOCAL).iterator().next();
 
         desc = new RepairJobDesc(UUID.randomUUID(), UUID.randomUUID(), keyspaceName, cfname, local_range);
         // Set a fake session corresponding to this fake request
@@ -140,7 +140,7 @@ public abstract class AntiEntropyServiceTestAbstract
         // generate rf+1 nodes, and ensure that all nodes are returned
         Set<InetAddress> expected = addTokens(1 + KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor());
         expected.remove(FBUtilities.getBroadcastAddress());
-        Collection<Range<Token>> ranges = StorageService.instance.getLocalRanges(keyspaceName);
+        Collection<Range<Token>> ranges = ClusterState.instance.getLocalRanges(keyspaceName);
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
@@ -163,7 +163,7 @@ public abstract class AntiEntropyServiceTestAbstract
             expected.addAll(ars.getRangeAddresses(tmd.cloneOnlyTokenMap()).get(replicaRange));
         }
         expected.remove(FBUtilities.getBroadcastAddress());
-        Collection<Range<Token>> ranges = StorageService.instance.getLocalRanges(keyspaceName);
+        Collection<Range<Token>> ranges = ClusterState.instance.getLocalRanges(keyspaceName);
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
@@ -185,7 +185,7 @@ public abstract class AntiEntropyServiceTestAbstract
         HashSet<InetAddress> localEndpoints = Sets.newHashSet(topology.getDatacenterEndpoints().get(DatabaseDescriptor.instance.getLocalDataCenter()));
         expected = Sets.intersection(expected, localEndpoints);
 
-        Collection<Range<Token>> ranges = StorageService.instance.getLocalRanges(keyspaceName);
+        Collection<Range<Token>> ranges = ClusterState.instance.getLocalRanges(keyspaceName);
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
@@ -213,7 +213,7 @@ public abstract class AntiEntropyServiceTestAbstract
         HashSet<InetAddress> localEndpoints = Sets.newHashSet(topology.getDatacenterEndpoints().get(DatabaseDescriptor.instance.getLocalDataCenter()));
         expected = Sets.intersection(expected, localEndpoints);
         
-        Collection<Range<Token>> ranges = StorageService.instance.getLocalRanges(keyspaceName);
+        Collection<Range<Token>> ranges = ClusterState.instance.getLocalRanges(keyspaceName);
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
@@ -239,7 +239,7 @@ public abstract class AntiEntropyServiceTestAbstract
         expected.remove(FBUtilities.getBroadcastAddress());
         Collection<String> hosts = Arrays.asList(FBUtilities.getBroadcastAddress().getCanonicalHostName(),expected.get(0).getCanonicalHostName());
 
-       assertEquals(expected.get(0), ActiveRepairService.instance.getNeighbors(keyspaceName, StorageService.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts, StorageService.instance).iterator().next());
+       assertEquals(expected.get(0), ActiveRepairService.instance.getNeighbors(keyspaceName, ClusterState.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts, StorageService.instance).iterator().next());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -248,7 +248,7 @@ public abstract class AntiEntropyServiceTestAbstract
         addTokens(2 * KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor());
         //Dont give local endpoint
         Collection<String> hosts = Arrays.asList("127.0.0.3");
-        ActiveRepairService.instance.getNeighbors(keyspaceName, StorageService.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts, StorageService.instance);
+        ActiveRepairService.instance.getNeighbors(keyspaceName, ClusterState.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts, StorageService.instance);
     }
 
     Set<InetAddress> addTokens(int max) throws Throwable

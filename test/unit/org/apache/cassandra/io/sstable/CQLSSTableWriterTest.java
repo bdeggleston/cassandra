@@ -82,7 +82,7 @@ public class CQLSSTableWriterTest
         {
             public void init(String keyspace)
             {
-                for (Range<Token> range : StorageService.instance.getLocalRanges("cql_keyspace"))
+                for (Range<Token> range : ClusterState.instance.getLocalRanges("cql_keyspace"))
                     addRangeForEndpoint(range, FBUtilities.getBroadcastAddress());
                 setPartitioner(ClusterState.instance.getPartitioner());
             }

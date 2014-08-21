@@ -85,7 +85,7 @@ public class SSTableLoaderTest
         {
             public void init(String keyspace)
             {
-                for (Range<Token> range : StorageService.instance.getLocalRanges(KEYSPACE1))
+                for (Range<Token> range : ClusterState.instance.getLocalRanges(KEYSPACE1))
                     addRangeForEndpoint(range, FBUtilities.getBroadcastAddress());
                 setPartitioner(ClusterState.instance.getPartitioner());
             }

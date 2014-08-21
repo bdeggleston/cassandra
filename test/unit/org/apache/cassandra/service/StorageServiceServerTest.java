@@ -118,19 +118,19 @@ public class StorageServiceServerTest
         KSMetaData meta = KSMetaData.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
-        Collection<Range<Token>> primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
+        Collection<Range<Token>> primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
         assert primaryRanges.size() == 1;
         assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("A")));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
+        primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
         assert primaryRanges.size() == 1;
         assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C")));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
+        primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
         assert primaryRanges.size() == 1;
         assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B")));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
+        primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
         assert primaryRanges.size() == 1;
         assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D")));
     }
@@ -155,19 +155,19 @@ public class StorageServiceServerTest
         Schema.instance.setKeyspaceDefinition(meta);
 
         // endpoints in DC1 should not have primary range
-        Collection<Range<Token>> primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
+        Collection<Range<Token>> primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
         assert primaryRanges.isEmpty();
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
+        primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
         assert primaryRanges.isEmpty();
 
         // endpoints in DC2 should have primary ranges which also cover DC1
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
+        primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
         assert primaryRanges.size() == 2;
         assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("A")));
         assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B")));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
+        primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
         assert primaryRanges.size() == 2;
         assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D")));
         assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C")));
@@ -205,14 +205,14 @@ public class StorageServiceServerTest
         Schema.instance.setKeyspaceDefinition(meta);
 
         // endpoints in DC1 should not have primary range
-        Collection<Range<Token>> primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
+        Collection<Range<Token>> primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
         assert primaryRanges.isEmpty();
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
+        primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
         assert primaryRanges.isEmpty();
 
         // endpoints in DC2 should have primary ranges which also cover DC1
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
+        primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
         assert primaryRanges.size() == 4;
         assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B")));
         assert primaryRanges.contains(new Range<Token>(new StringToken("F"), new StringToken("G")));
@@ -221,7 +221,7 @@ public class StorageServiceServerTest
         // the node covers range (L, A]
         assert primaryRanges.contains(new Range<Token>(new StringToken("L"), new StringToken("A")));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
+        primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
         assert primaryRanges.size() == 8;
         assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D")));
         assert primaryRanges.contains(new Range<Token>(new StringToken("E"), new StringToken("F")));
@@ -252,15 +252,15 @@ public class StorageServiceServerTest
         KSMetaData meta = KSMetaData.newKeyspace("Keyspace1", "SimpleStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
-        Collection<Range<Token>> primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
+        Collection<Range<Token>> primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
         assert primaryRanges.size() == 1;
         assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("A")));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
+        primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
         assert primaryRanges.size() == 1;
         assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B")));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.3"));
+        primaryRanges = ClusterState.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.3"));
         assert primaryRanges.size() == 1;
         assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C")));
     }
