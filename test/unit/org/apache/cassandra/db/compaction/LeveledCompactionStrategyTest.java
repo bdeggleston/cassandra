@@ -20,6 +20,7 @@ package org.apache.cassandra.db.compaction;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.service.StorageService;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -121,7 +122,7 @@ public class LeveledCompactionStrategyTest
         ActiveRepairService.instance.registerParentRepairSession(parentRepSession, Arrays.asList(cfs), Arrays.asList(range));
         RepairJobDesc desc = new RepairJobDesc(parentRepSession, UUID.randomUUID(), KEYSPACE1, CF_STANDARDDLEVELED, range);
         Validator validator = new Validator(desc, FBUtilities.getBroadcastAddress(), gcBefore);
-        CompactionManager.instance.submitValidation(cfs, validator).get();
+        CompactionManager.instance.submitValidation(cfs, validator, StorageService.instance).get();
     }
 
     /**

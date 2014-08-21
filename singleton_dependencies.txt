@@ -51,6 +51,10 @@ HintedHandOffManager [DatabaseDescriptor, Schema, StorageServiceTasks,
 
 CommitLog [DatabaseDescriptor, StorageService(weak, 1m)]
 
+ClusterState [DatabaseDescriptor, Schema, KeyspaceManager]
+    * move valueManager from StorageService
+    * move bootstrap state from StorageService
+
 CompactionManager [StorageService, Schema, ActiveRepairService, SystemKeyspace]
     * resolve the love triangle between CompactionManager, ActiveRepairService, and RepairMessageVerbHandler
         * remove StorageService dependency
@@ -68,10 +72,6 @@ ActiveRepairService [Gossiper, FailureDetector, MessagingService, CompactionMana
     * handle getEndpoints, getLocalRanges
     * need unsafe set for partitioner and TokenMetadata for testing
     * would be nice to encapsulate TokenMetadata mutations
-
-ClusterState [DatabaseDescriptor, Schema, KeyspaceManager]
-    * move valueManager from StorageService
-    * move bootstrap state from StorageService
 
 BatchlogManager [QueryProcessor, DatabaseDescriptor, ClusterState, KeyspaceManager, SystemKeyspace, StorageProxy, FailureDetector, 
                  MessagingService, CompactionManager]
@@ -93,7 +93,7 @@ StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 
     * move isBootstrapMode to ClusterState to remove dependency on StorageService
 
 ColumnFamilyStoreManager [Schema, ClusterState, SystemKeyspace, CompactionManager, CacheService]
-ColumnFamilyStore [Schema, ClusterState, SystemKeyspace, CompactionManager, CacheService]
+ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService]
 
 *Updated --> KeyspaceManager [Schema, StorageService, CommitLog, ColumnFamilyStoreManager]
     * remove StorageService dependency from Keyspace

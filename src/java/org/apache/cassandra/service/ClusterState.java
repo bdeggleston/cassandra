@@ -35,6 +35,9 @@ public class ClusterState
     /* This abstraction maintains the token/endpoint metadata information */
     private TokenMetadata tokenMetadata = new TokenMetadata();
 
+    /* Are we starting this node in bootstrap mode? */
+    private boolean isBootstrapMode;
+
     public ClusterState()
     {
     }
@@ -182,6 +185,22 @@ public class ClusterState
         return liveEps;
     }
 
+    public boolean isBootstrapMode()
+    {
+        return isBootstrapMode;
+    }
+
+    public void setBootstrapMode()
+    {
+        isBootstrapMode = true;
+    }
+
+    public void finishBootstrapping()
+    {
+        isBootstrapMode = false;
+    }
+
+
     public CommitLog getCommitLog()
     {
         return CommitLog.instance;
@@ -205,6 +224,16 @@ public class ClusterState
     public String getSavedCachesLocation()
     {
         return DatabaseDescriptor.instance.getSavedCachesLocation();
+    }
+
+    public int getCompactionThroughputMbPerSec()
+    {
+        return DatabaseDescriptor.instance.getCompactionThroughputMbPerSec();
+    }
+
+    public int getConcurrentCompactors()
+    {
+        return DatabaseDescriptor.instance.getConcurrentCompactors();
     }
 
     public DebuggableScheduledThreadPoolExecutor getScheduledTasksExecutor()

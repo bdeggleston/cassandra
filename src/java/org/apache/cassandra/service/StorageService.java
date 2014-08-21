@@ -129,9 +129,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private InetAddress removingNode;
 
-    /* Are we starting this node in bootstrap mode? */
-    private boolean isBootstrapMode;
-
     private final ClusterState clusterState;
     /* we bootstrap but do NOT join the ring unless told to do so */
     private boolean isSurveyMode = Boolean.parseBoolean(System.getProperty("cassandra.write_survey", "false"));
@@ -161,11 +158,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private final ObjectName jmxObjectName;
 
     private Collection<Token> bootstrapTokens = null;
-
-    public void finishBootstrapping()
-    {
-        isBootstrapMode = false;
-    }
 
     /**
      * This method updates the local token on disk
@@ -768,7 +760,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
 
             bootstrap(bootstrapTokens);
-            assert !isBootstrapMode; // bootstrap will block until finished
+            assert !ClusterState.instance.isBootstrapMode(); // bootstrap will block until finished
         } else
         {
             bootstrapTokens = SystemKeyspace.instance.getSavedTokens();
@@ -903,12 +895,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public int getCompactionThroughputMbPerSec()
     {
-        return DatabaseDescriptor.instance.getCompactionThroughputMbPerSec();
-    }
-
-    public int getConcurrentCompactors()
-    {
-        return DatabaseDescriptor.instance.getConcurrentCompactors();
+        return ClusterState.instance.getCompactionThroughputMbPerSec();
     }
 
     public void setCompactionThroughputMbPerSec(int value)
@@ -943,7 +930,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private void bootstrap(Collection<Token> tokens)
     {
-        isBootstrapMode = true;
+        ClusterState.instance.setBootstrapMode();
         SystemKeyspace.instance.updateTokens(tokens); // DON'T use setToken, that makes us part of the ring locally which is incorrect until we are done bootstrapping
         if (!DatabaseDescriptor.instance.isReplacing())
         {
@@ -965,11 +952,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         setMode(Mode.JOINING, "Starting to bootstrap...", true);
         new BootStrapper(FBUtilities.getBroadcastAddress(), tokens, clusterState.getTokenMetadata()).bootstrap(); // handles token update
         logger.info("Bootstrap completed! for the tokens {}", tokens);
-    }
-
-    public boolean isBootstrapMode()
-    {
-        return isBootstrapMode;
     }
 
     /**

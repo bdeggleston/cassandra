@@ -25,6 +25,7 @@ import java.util.concurrent.Future;
 
 import com.google.common.base.Predicate;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,7 +96,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 ColumnFamilyStore store = KeyspaceManager.instance.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
 
                 Validator validator = new Validator(desc, message.from, validationRequest.gcBefore);
-                CompactionManager.instance.submitValidation(store, validator);
+                CompactionManager.instance.submitValidation(store, validator, StorageService.instance);
                 break;
 
             case SYNC_REQUEST:

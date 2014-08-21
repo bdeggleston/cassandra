@@ -31,7 +31,7 @@ public class RangeSliceVerbHandler implements IVerbHandler<AbstractRangeCommand>
     {
         try
         {
-            if (StorageService.instance.isBootstrapMode())
+            if (ClusterState.instance.isBootstrapMode())
             {
                 /* Don't service reads! */
                 throw new RuntimeException("Cannot service reads while bootstrapping!");

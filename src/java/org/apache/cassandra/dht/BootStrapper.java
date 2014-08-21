@@ -77,7 +77,7 @@ public class BootStrapper
         try
         {
             streamer.fetchAsync().get();
-            StorageService.instance.finishBootstrapping();
+            ClusterState.instance.finishBootstrapping();
         }
         catch (InterruptedException e)
         {
