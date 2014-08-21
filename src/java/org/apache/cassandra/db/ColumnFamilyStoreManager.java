@@ -17,7 +17,7 @@ import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.service.CacheService;
-import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.streaming.StreamLockfile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,29 +36,29 @@ public class ColumnFamilyStoreManager
 
     public static final ColumnFamilyStoreManager instance = new ColumnFamilyStoreManager(
             Schema.instance,
-            StorageService.instance,
+            ClusterState.instance,
             SystemKeyspace.instance,
             CompactionManager.instance,
             CacheService.instance
     );
 
     private final Schema schema;
-    private final StorageService storageService;
+    private final ClusterState clusterState;
     private final SystemKeyspace systemKeyspace;
     private final CompactionManager compactionManager;
     private final CacheService cacheService;
     public final TaskExecutors taskExecutors;
 
-    public ColumnFamilyStoreManager(Schema schema, StorageService storageService, SystemKeyspace systemKeyspace, CompactionManager compactionManager, CacheService cacheService)
+    public ColumnFamilyStoreManager(Schema schema, ClusterState clusterState, SystemKeyspace systemKeyspace, CompactionManager compactionManager, CacheService cacheService)
     {
         assert schema != null;
-        assert storageService != null;
+        assert clusterState != null;
         assert systemKeyspace != null;
         assert compactionManager != null;
         assert cacheService != null;
 
         this.schema = schema;
-        this.storageService = storageService;
+        this.clusterState = clusterState;
         this.systemKeyspace = systemKeyspace;
         this.compactionManager = compactionManager;
         this.cacheService = cacheService;
@@ -98,7 +98,7 @@ public class ColumnFamilyStoreManager
 
     public ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace, String columnFamily, boolean loadSSTables)
     {
-        return createColumnFamilyStore(keyspace, columnFamily, storageService.getPartitioner(), schema.getCFMetaData(keyspace.getName(), columnFamily), loadSSTables);
+        return createColumnFamilyStore(keyspace, columnFamily, clusterState.getPartitioner(), schema.getCFMetaData(keyspace.getName(), columnFamily), loadSSTables);
     }
 
     public ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace, String columnFamily, IPartitioner partitioner, CFMetaData metadata)
@@ -136,7 +136,7 @@ public class ColumnFamilyStoreManager
                                      directories,
                                      loadSSTables,
                                      cfId,
-                                     storageService,
+                                     clusterState,
                                      systemKeyspace,
                                      compactionManager,
                                      cacheService,
@@ -203,7 +203,7 @@ public class ColumnFamilyStoreManager
 
         // cleanup incomplete saved caches
         Pattern tmpCacheFilePattern = Pattern.compile(metadata.ksName + "-" + metadata.cfName + "-(Key|Row)Cache.*\\.tmp$");
-        File dir = new File(storageService.getSavedCachesLocation());
+        File dir = new File(clusterState.getSavedCachesLocation());
 
         if (dir.exists())
         {
@@ -231,7 +231,7 @@ public class ColumnFamilyStoreManager
 
     public class TaskExecutors
     {
-        public final ExecutorService flushExecutor = new JMXEnabledThreadPoolExecutor(StorageService.instance.getFlushWriters(),
+        public final ExecutorService flushExecutor = new JMXEnabledThreadPoolExecutor(ClusterState.instance.getFlushWriters(),
                                                                                        StageManager.KEEPALIVE,
                                                                                        TimeUnit.SECONDS,
                                                                                        new LinkedBlockingQueue<Runnable>(),

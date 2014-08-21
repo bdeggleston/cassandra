@@ -92,7 +92,8 @@ StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 
     * maybe remove dependency on StorageService(getPartitioner, TokenMetadata, getNaturalEndpoints, getLiveNaturalEndpoints)
     * move isBootstrapMode to ClusterState to remove dependency on StorageService
 
-ColumnFamilyStoreManager [Schema, StorageService, SystemKeyspace, CompactionManager, CacheService]
+ColumnFamilyStoreManager [Schema, ClusterState, SystemKeyspace, CompactionManager, CacheService]
+ColumnFamilyStore [Schema, ClusterState, SystemKeyspace, CompactionManager, CacheService]
 
 *Updated --> KeyspaceManager [Schema, StorageService, CommitLog, ColumnFamilyStoreManager]
     * remove StorageService dependency from Keyspace

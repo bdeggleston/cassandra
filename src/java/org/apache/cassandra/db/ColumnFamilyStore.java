@@ -33,6 +33,7 @@ import com.google.common.util.concurrent.*;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.cassandra.io.FSWriteError;
+import org.apache.cassandra.service.ClusterState;
 import org.json.simple.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +61,6 @@ import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.metrics.ColumnFamilyMetrics;
 import org.apache.cassandra.service.CacheService;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.concurrent.OpOrder;
@@ -176,7 +176,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                     }
                 }
             };
-            storageService.getScheduledTasksExecutor().schedule(runnable, period, TimeUnit.MILLISECONDS);
+            clusterState.getScheduledTasksExecutor().schedule(runnable, period, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -229,7 +229,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         }
     }
 
-    private final StorageService storageService;
+    private final ClusterState clusterState;
     private final SystemKeyspace systemKeyspace;
     private final CompactionManager compactionManager;
     private final CacheService cacheService;
@@ -244,7 +244,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                       Directories directories,
                       boolean loadSSTables,
                       UUID columnFamilyId,
-                      StorageService storageService,
+                      ClusterState clusterState,
                       SystemKeyspace systemKeyspace,
                       CompactionManager compactionManager,
                       CacheService cacheService,
@@ -252,13 +252,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     {
         assert metadata != null : "null metadata for " + keyspace + ":" + columnFamilyName;
 
-        assert storageService != null;
+        assert clusterState != null;
         assert systemKeyspace != null;
         assert compactionManager != null;
         assert cacheService != null;
         assert taskExecutors != null;
 
-        this.storageService = storageService;
+        this.clusterState = clusterState;
         this.systemKeyspace = systemKeyspace;
         this.compactionManager = compactionManager;
         this.cacheService = cacheService;
@@ -274,7 +274,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         this.indexManager = new SecondaryIndexManager(this);
         this.metric = new ColumnFamilyMetrics(this);
         fileIndexGenerator.set(generation);
-        sampleLatencyNanos = this.storageService.getReadRpcTimeout() / 2;
+        sampleLatencyNanos = this.clusterState.getReadRpcTimeout() / 2;
 
         CachingOptions caching = metadata.getCaching();
 
@@ -326,7 +326,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             throw new RuntimeException(e);
         }
         logger.debug("retryPolicy for {} is {}", name, this.metadata.getSpeculativeRetry());
-        storageService.getOptionalTasksExecutor().scheduleWithFixedDelay(new Runnable()
+        clusterState.getOptionalTasksExecutor().scheduleWithFixedDelay(new Runnable()
         {
             public void run()
             {
@@ -347,7 +347,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                         break;
                 }
             }
-        }, storageService.getReadRpcTimeout(), storageService.getReadRpcTimeout(), TimeUnit.MILLISECONDS);
+        }, clusterState.getReadRpcTimeout(), clusterState.getReadRpcTimeout(), TimeUnit.MILLISECONDS);
     }
 
     /** call when dropping or renaming a CF. Performs mbean housekeeping and invalidates CFS to other operations */
@@ -739,7 +739,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             // and so not set a lastReplayPosition
             if (lastReplayPosition != null)
             {
-                storageService.getCommitLog().discardCompletedSegments(metadata.cfId, lastReplayPosition);
+                clusterState.getCommitLog().discardCompletedSegments(metadata.cfId, lastReplayPosition);
             }
 
             metric.pendingFlushes.dec();
@@ -780,7 +780,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             memtables = new ArrayList<>();
 
             // submit flushes for the memtable for any indexed sub-cfses, and our own
-            final ReplayPosition minReplayPosition = storageService.getCommitLog().getContext();
+            final ReplayPosition minReplayPosition = clusterState.getCommitLog().getContext();
             for (ColumnFamilyStore cfs : concatWithIndexes())
             {
                 // switch all memtables, regardless of their dirty status, setting the barrier
@@ -1091,7 +1091,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
         // cleanup size estimation only counts bytes for keys local to this node
         long expectedFileSize = 0;
-        Collection<Range<Token>> ranges = storageService.getLocalRanges(keyspace.getName());
+        Collection<Range<Token>> ranges = clusterState.getLocalRanges(keyspace.getName());
         for (SSTableReader sstable : sstables)
         {
             List<Pair<Long, Long>> positions = sstable.getPositionsForRanges(ranges);
@@ -1655,7 +1655,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     public void cleanupCache()
     {
-        Collection<Range<Token>> ranges = storageService.getLocalRanges(keyspace.getName());
+        Collection<Range<Token>> ranges = clusterState.getLocalRanges(keyspace.getName());
 
         for (RowCacheKey key : cacheService.rowCache.getKeySet())
         {
@@ -2183,7 +2183,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         // position in the System keyspace.
         logger.debug("truncating {}", name);
 
-        if (keyspace.metadata.durableWrites || storageService.isAutoSnapshot())
+        if (keyspace.metadata.durableWrites || clusterState.isAutoSnapshot())
         {
             // flush the CF being truncated before forcing the new segment
             forceBlockingFlush();
@@ -2210,7 +2210,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 logger.debug("Discarding sstable data for truncated CF + indexes");
 
                 final long truncatedAt = System.currentTimeMillis();
-                if (storageService.isAutoSnapshot())
+                if (clusterState.isAutoSnapshot())
                     snapshot(Keyspace.getTimestampedSnapshotName(name));
 
                 ReplayPosition replayAfter = discardSSTables(truncatedAt);
