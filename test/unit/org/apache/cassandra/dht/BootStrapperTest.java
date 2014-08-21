@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.Map;
 
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.service.ClusterState;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -71,10 +72,10 @@ public class BootStrapperTest
         StorageService ss = StorageService.instance;
 
         generateFakeEndpoints(numOldNodes);
-        Token myToken = StorageService.instance.getPartitioner().getRandomToken();
+        Token myToken = ClusterState.instance.getPartitioner().getRandomToken();
         InetAddress myEndpoint = InetAddress.getByName("127.0.0.1");
 
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         assertEquals(numOldNodes, tmd.sortedTokens().size());
         RangeStreamer s = new RangeStreamer(tmd, myEndpoint, "Bootstrap");
         IFailureDetector mockFailureDetector = new IFailureDetector()
@@ -112,9 +113,9 @@ public class BootStrapperTest
 
     private void generateFakeEndpoints(int numOldNodes) throws UnknownHostException
     {
-        TokenMetadata tmd = StorageService.instance.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         tmd.clearUnsafe();
-        IPartitioner<?> p = StorageService.instance.getPartitioner();
+        IPartitioner<?> p = ClusterState.instance.getPartitioner();
 
         for (int i = 1; i <= numOldNodes; i++)
         {

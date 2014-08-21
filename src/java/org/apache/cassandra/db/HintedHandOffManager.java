@@ -124,7 +124,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
     {
         assert ttl > 0;
 
-        InetAddress endpoint = StorageService.instance.getTokenMetadata().getEndpointForHostId(targetId);
+        InetAddress endpoint = ClusterState.instance.getTokenMetadata().getEndpointForHostId(targetId);
         // during tests we may not have a matching endpoint, but this would be unexpected in real clusters
         if (endpoint != null)
             metrics.incrCreatedHints(endpoint);
@@ -201,9 +201,9 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     public void deleteHintsForEndpoint(final InetAddress endpoint)
     {
-        if (!StorageService.instance.getTokenMetadata().isMember(endpoint))
+        if (!ClusterState.instance.getTokenMetadata().isMember(endpoint))
             return;
-        UUID hostId = StorageService.instance.getTokenMetadata().getHostId(endpoint);
+        UUID hostId = ClusterState.instance.getTokenMetadata().getHostId(endpoint);
         ByteBuffer hostIdBytes = ByteBuffer.wrap(UUIDGen.decompose(hostId));
         final Mutation mutation = new Mutation(KeyspaceManager.SYSTEM_KS, hostIdBytes);
         mutation.delete(SystemKeyspace.HINTS_CF, System.currentTimeMillis());
@@ -344,7 +344,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         UUID hostId = Gossiper.instance.getHostId(endpoint);
         logger.info("Started hinted handoff for host: {} with IP: {}", hostId, endpoint);
         final ByteBuffer hostIdBytes = ByteBuffer.wrap(UUIDGen.decompose(hostId));
-        DecoratedKey epkey =  StorageService.instance.getPartitioner().decorateKey(hostIdBytes);
+        DecoratedKey epkey =  ClusterState.instance.getPartitioner().decorateKey(hostIdBytes);
 
         final AtomicInteger rowsReplayed = new AtomicInteger(0);
         Composite startColumn = Composites.EMPTY;
@@ -355,7 +355,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         // rate limit is in bytes per second. Uses Double.MAX_VALUE if disabled (set to 0 in cassandra.yaml).
         // max rate is scaled by the number of nodes in the cluster (CASSANDRA-5272).
         int throttleInKB = DatabaseDescriptor.instance.getHintedHandoffThrottleInKB()
-                           / (StorageService.instance.getTokenMetadata().getAllEndpoints().size() - 1);
+                           / (ClusterState.instance.getTokenMetadata().getAllEndpoints().size() - 1);
         RateLimiter rateLimiter = RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
 
         boolean finished = false;
@@ -506,7 +506,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         if (logger.isDebugEnabled())
           logger.debug("Started scheduleAllDeliveries");
 
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = ClusterState.instance.getPartitioner();
         RowPosition minPos = p.getMinimumToken().minKeyBound();
         Range<RowPosition> range = new Range<RowPosition>(minPos, minPos, p);
         IDiskAtomFilter filter = new NamesQueryFilter(ImmutableSortedSet.<CellName>of());
@@ -514,7 +514,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         for (Row row : rows)
         {
             UUID hostId = UUIDGen.getUUID(row.key.getKey());
-            InetAddress target = StorageService.instance.getTokenMetadata().getEndpointForHostId(hostId);
+            InetAddress target = ClusterState.instance.getTokenMetadata().getEndpointForHostId(hostId);
             // token may have since been removed (in which case we have just read back a tombstone)
             if (target != null)
                 scheduleHintDelivery(target);
@@ -565,7 +565,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     public List<String> listEndpointsPendingHints()
     {
-        Token.TokenFactory tokenFactory = StorageService.instance.getPartitioner().getTokenFactory();
+        Token.TokenFactory tokenFactory = ClusterState.instance.getPartitioner().getTokenFactory();
 
         // Extract the keys as strings to be reported.
         LinkedList<String> result = new LinkedList<String>();
@@ -585,7 +585,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                           columnCount);
 
         // From keys "" to ""...
-        IPartitioner<?> partitioner = StorageService.instance.getPartitioner();
+        IPartitioner<?> partitioner = ClusterState.instance.getPartitioner();
         RowPosition minPos = partitioner.getMinimumToken().minKeyBound();
         Range<RowPosition> range = new Range<RowPosition>(minPos, minPos);
 

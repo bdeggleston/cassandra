@@ -25,6 +25,7 @@ import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.exceptions.RequestExecutionException;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.StorageService;
 
@@ -54,7 +55,7 @@ public class RangeSliceQueryPager extends AbstractQueryPager
 
         if (state != null)
         {
-            lastReturnedKey = StorageService.instance.getPartitioner().decorateKey(state.partitionKey);
+            lastReturnedKey = ClusterState.instance.getPartitioner().decorateKey(state.partitionKey);
             lastReturnedName = cfm.comparator.cellFromByteBuffer(state.cellName);
             restoreState(state.remaining, true);
         }

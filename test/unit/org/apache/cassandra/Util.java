@@ -51,6 +51,7 @@ import org.apache.cassandra.gms.VersionedValue;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.DataOutputBuffer;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CounterId;
@@ -63,22 +64,22 @@ public class Util
 
     public static DecoratedKey dk(String key)
     {
-        return StorageService.instance.getPartitioner().decorateKey(ByteBufferUtil.bytes(key));
+        return ClusterState.instance.getPartitioner().decorateKey(ByteBufferUtil.bytes(key));
     }
 
     public static DecoratedKey dk(String key, AbstractType type)
     {
-        return StorageService.instance.getPartitioner().decorateKey(type.fromString(key));
+        return ClusterState.instance.getPartitioner().decorateKey(type.fromString(key));
     }
 
     public static DecoratedKey dk(ByteBuffer key)
     {
-        return StorageService.instance.getPartitioner().decorateKey(key);
+        return ClusterState.instance.getPartitioner().decorateKey(key);
     }
 
     public static RowPosition rp(String key)
     {
-        return rp(key, StorageService.instance.getPartitioner());
+        return rp(key, ClusterState.instance.getPartitioner());
     }
 
     public static RowPosition rp(String key, IPartitioner partitioner)
@@ -124,7 +125,7 @@ public class Util
 
     public static Token token(String key)
     {
-        return StorageService.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key));
+        return ClusterState.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key));
     }
 
     public static Range<RowPosition> range(String left, String right)
@@ -179,7 +180,7 @@ public class Util
                                ? new IdentityQueryFilter()
                                : new SliceQueryFilter(SuperColumns.startOf(superColumn), SuperColumns.endOf(superColumn), false, Integer.MAX_VALUE);
 
-        Token min = StorageService.instance.getPartitioner().getMinimumToken();
+        Token min = ClusterState.instance.getPartitioner().getMinimumToken();
         return cfs.getRangeSlice(new Bounds<Token>(min, min).toRowBounds(), null, filter, 10000);
     }
 

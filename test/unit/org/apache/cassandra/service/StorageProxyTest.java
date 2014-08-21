@@ -62,12 +62,12 @@ public class StorageProxyTest
 
     private static RowPosition startOf(String key)
     {
-        return StorageService.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key)).minKeyBound();
+        return ClusterState.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key)).minKeyBound();
     }
 
     private static RowPosition endOf(String key)
     {
-        return StorageService.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key)).maxKeyBound();
+        return ClusterState.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key)).maxKeyBound();
     }
 
     private static Range<Token> tokenRange(String left, String right)
@@ -83,7 +83,7 @@ public class StorageProxyTest
     @BeforeClass
     public static void beforeClass() throws Throwable
     {
-        TokenMetadata tmd = StorageService.instance.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         tmd.updateNormalToken(token("1"), InetAddress.getByName("127.0.0.1"));
         tmd.updateNormalToken(token("6"), InetAddress.getByName("127.0.0.6"));
     }

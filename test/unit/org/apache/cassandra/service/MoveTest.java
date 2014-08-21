@@ -78,7 +78,7 @@ public class MoveTest
     public void clearTokenMetadata()
     {
         PendingRangeCalculatorService.instance.blockUntilFinished();
-        StorageService.instance.getTokenMetadata().clearUnsafe();
+        ClusterState.instance.getTokenMetadata().clearUnsafe();
     }
 
     /*
@@ -92,7 +92,7 @@ public class MoveTest
         final int RING_SIZE = 10;
         final int MOVING_NODE = 3; // index of the moving node
 
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
 
         ArrayList<Token> endpointTokens = new ArrayList<Token>();
@@ -163,7 +163,7 @@ public class MoveTest
     {
         StorageService ss = StorageService.instance;
         final int RING_SIZE = 10;
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
 
@@ -505,7 +505,7 @@ public class MoveTest
     public void testStateJumpToNormal() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
 

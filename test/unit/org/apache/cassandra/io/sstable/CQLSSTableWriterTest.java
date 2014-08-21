@@ -23,6 +23,7 @@ import java.util.Iterator;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.service.ClusterState;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -68,7 +69,7 @@ public class CQLSSTableWriterTest
         CQLSSTableWriter writer = CQLSSTableWriter.builder()
                                                   .inDirectory(dataDir)
                                                   .forTable(schema)
-                                                  .withPartitioner(StorageService.instance.getPartitioner())
+                                                  .withPartitioner(ClusterState.instance.getPartitioner())
                                                   .using(insert).build();
 
         writer.addRow(0, "test1", 24);
@@ -83,7 +84,7 @@ public class CQLSSTableWriterTest
             {
                 for (Range<Token> range : StorageService.instance.getLocalRanges("cql_keyspace"))
                     addRangeForEndpoint(range, FBUtilities.getBroadcastAddress());
-                setPartitioner(StorageService.instance.getPartitioner());
+                setPartitioner(ClusterState.instance.getPartitioner());
             }
 
             public CFMetaData getCFMetaData(String keyspace, String cfName)

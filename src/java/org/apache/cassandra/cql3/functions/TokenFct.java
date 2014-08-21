@@ -27,12 +27,13 @@ import org.apache.cassandra.db.composites.CBuilder;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.service.StorageService;
 
 public class TokenFct extends AbstractFunction
 {
     // The actual token function depends on the partitioner used
-    private static final IPartitioner partitioner = StorageService.instance.getPartitioner();
+    private static final IPartitioner partitioner = ClusterState.instance.getPartitioner();
 
     public static final Function.Factory factory = new Function.Factory()
     {

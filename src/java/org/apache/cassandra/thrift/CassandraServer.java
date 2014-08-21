@@ -36,6 +36,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Longs;
+import org.apache.cassandra.service.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,11 +62,6 @@ import org.apache.cassandra.locator.DynamicEndpointSnitch;
 import org.apache.cassandra.metrics.ClientMetrics;
 import org.apache.cassandra.scheduler.IRequestScheduler;
 import org.apache.cassandra.serializers.MarshalException;
-import org.apache.cassandra.service.CASConditions;
-import org.apache.cassandra.service.ClientState;
-import org.apache.cassandra.service.MigrationManager;
-import org.apache.cassandra.service.StorageProxy;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.pager.QueryPagers;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -270,7 +266,7 @@ public class CassandraServer implements Cassandra.Iface
         Map<ByteBuffer, List<ColumnOrSuperColumn>> columnFamiliesMap = new HashMap<ByteBuffer, List<ColumnOrSuperColumn>>();
         for (ReadCommand command: commands)
         {
-            ColumnFamily cf = columnFamilies.get(StorageService.instance.getPartitioner().decorateKey(command.key));
+            ColumnFamily cf = columnFamilies.get(ClusterState.instance.getPartitioner().decorateKey(command.key));
             boolean reverseOrder = command instanceof SliceFromReadCommand && ((SliceFromReadCommand)command).filter.reversed;
             List<ColumnOrSuperColumn> thriftifiedColumns = thriftifyColumnFamily(cf, subColumnsOnly, reverseOrder, command.timestamp);
             columnFamiliesMap.put(command.key, thriftifiedColumns);
@@ -497,7 +493,7 @@ public class CassandraServer implements Cassandra.Iface
 
             Map<DecoratedKey, ColumnFamily> cfamilies = readColumnFamily(Arrays.asList(command), consistencyLevel);
 
-            ColumnFamily cf = cfamilies.get(StorageService.instance.getPartitioner().decorateKey(command.key));
+            ColumnFamily cf = cfamilies.get(ClusterState.instance.getPartitioner().decorateKey(command.key));
 
             if (cf == null)
                 throw new NotFoundException();
@@ -1156,7 +1152,7 @@ public class CassandraServer implements Cassandra.Iface
 
             List<Row> rows = null;
 
-            IPartitioner<?> p = StorageService.instance.getPartitioner();
+            IPartitioner<?> p = ClusterState.instance.getPartitioner();
             AbstractBounds<RowPosition> bounds;
             if (range.start_key == null)
             {
@@ -1243,7 +1239,7 @@ public class CassandraServer implements Cassandra.Iface
 
             SlicePredicate predicate = new SlicePredicate().setSlice_range(new SliceRange(start_column, ByteBufferUtil.EMPTY_BYTE_BUFFER, false, -1));
 
-            IPartitioner p = StorageService.instance.getPartitioner();
+            IPartitioner p = ClusterState.instance.getPartitioner();
             AbstractBounds<RowPosition> bounds;
             if (range.start_key == null)
             {
@@ -1339,7 +1335,7 @@ public class CassandraServer implements Cassandra.Iface
             org.apache.cassandra.db.ConsistencyLevel consistencyLevel = ThriftConversion.fromThrift(consistency_level);
             consistencyLevel.validateForRead(keyspace);
 
-            IPartitioner p = StorageService.instance.getPartitioner();
+            IPartitioner p = ClusterState.instance.getPartitioner();
             AbstractBounds<RowPosition> bounds = new Bounds<RowPosition>(RowPosition.ForKey.get(index_clause.start_key, p),
                                                                          p.getMinimumToken().minKeyBound());
 
@@ -1436,7 +1432,7 @@ public class CassandraServer implements Cassandra.Iface
 
     public String describe_partitioner() throws TException
     {
-        return StorageService.instance.getPartitioner().getClass().getName();
+        return ClusterState.instance.getPartitioner().getClass().getName();
     }
 
     public String describe_snitch() throws TException
@@ -1465,7 +1461,7 @@ public class CassandraServer implements Cassandra.Iface
     {
         try
         {
-            Token.TokenFactory tf = StorageService.instance.getPartitioner().getTokenFactory();
+            Token.TokenFactory tf = ClusterState.instance.getPartitioner().getTokenFactory();
             Range<Token> tr = new Range<Token>(tf.fromString(start_token), tf.fromString(end_token));
             List<Pair<Range<Token>, Long>> splits =
                     StorageService.instance.getSplits(state().getKeyspace(), cfName, tr, keys_per_split);

@@ -38,6 +38,7 @@ import org.apache.cassandra.cache.CachingOptions;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.locator.SimpleStrategy;
+import org.apache.cassandra.service.ClusterState;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -79,7 +80,7 @@ public class SSTableReaderTest
 
     static Token t(int i)
     {
-        return StorageService.instance.getPartitioner().getToken(ByteBufferUtil.bytes(String.valueOf(i)));
+        return ClusterState.instance.getPartitioner().getToken(ByteBufferUtil.bytes(String.valueOf(i)));
     }
 
     @BeforeClass
@@ -122,7 +123,7 @@ public class SSTableReaderTest
         // 2 keys
         ranges.add(new Range<Token>(t(2), t(4)));
         // wrapping range from key to end
-        ranges.add(new Range<Token>(t(6), StorageService.instance.getPartitioner().getMinimumToken()));
+        ranges.add(new Range<Token>(t(6), ClusterState.instance.getPartitioner().getMinimumToken()));
         // empty range (should be ignored)
         ranges.add(new Range<Token>(t(9), t(91)));
 

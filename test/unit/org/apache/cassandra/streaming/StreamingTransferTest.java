@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
+import org.apache.cassandra.service.ClusterState;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -131,7 +132,7 @@ public class StreamingTransferTest
     public void testRequestEmpty() throws Exception
     {
         // requesting empty data should succeed
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = ClusterState.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
         ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1"))));
         ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken()));
@@ -216,7 +217,7 @@ public class StreamingTransferTest
 
     private void transferSSTables(SSTableReader sstable) throws Exception
     {
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = ClusterState.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
         ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1"))));
         ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken()));
@@ -225,7 +226,7 @@ public class StreamingTransferTest
 
     private void transferRanges(ColumnFamilyStore cfs) throws Exception
     {
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = ClusterState.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
         // wrapped range
         ranges.add(new Range<Token>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key0"))));
@@ -401,7 +402,7 @@ public class StreamingTransferTest
         SSTableReader sstable2 = SSTableUtils.prepare().write(content);
 
         // transfer the first and last key
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = ClusterState.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
         ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("test"))));
         ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("transfer2")), p.getMinimumToken()));
@@ -430,7 +431,7 @@ public class StreamingTransferTest
     public void testTransferOfMultipleColumnFamilies() throws Exception
     {
         String keyspace = KEYSPACE_CACHEKEY;
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = ClusterState.instance.getPartitioner();
         String[] columnFamilies = new String[] { "Standard1", "Standard2", "Standard3" };
         List<SSTableReader> ssTableReaders = new ArrayList<>();
 
@@ -499,7 +500,7 @@ public class StreamingTransferTest
         SSTableReader sstable = cfs.getSSTables().iterator().next();
         cfs.clearUnsafe();
 
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = ClusterState.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
         ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key1000"))));
         ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key5")), p.getToken(ByteBufferUtil.bytes("key500"))));

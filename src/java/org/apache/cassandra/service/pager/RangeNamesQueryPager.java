@@ -23,6 +23,7 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.NamesQueryFilter;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.exceptions.RequestExecutionException;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.StorageService;
 
@@ -54,7 +55,7 @@ public class RangeNamesQueryPager extends AbstractQueryPager
 
         if (state != null)
         {
-            lastReturnedKey = StorageService.instance.getPartitioner().decorateKey(state.partitionKey);
+            lastReturnedKey = ClusterState.instance.getPartitioner().decorateKey(state.partitionKey);
             restoreState(state.remaining, true);
         }
     }

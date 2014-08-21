@@ -20,6 +20,7 @@ package org.apache.cassandra.dht;
 import java.io.Serializable;
 import java.util.*;
 
+import org.apache.cassandra.service.ClusterState;
 import org.apache.commons.lang3.ObjectUtils;
 
 import org.apache.cassandra.db.RowPosition;
@@ -39,7 +40,7 @@ public class Range<T extends RingPosition> extends AbstractBounds<T> implements 
 
     public Range(T left, T right)
     {
-        this(left, right, StorageService.instance.getPartitioner());
+        this(left, right, ClusterState.instance.getPartitioner());
     }
 
     public Range(T left, T right, IPartitioner partitioner)

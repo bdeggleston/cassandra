@@ -49,7 +49,7 @@ public class RemoveTest
 {
     static final IPartitioner partitioner = new RandomPartitioner();
     StorageService ss = StorageService.instance;
-    TokenMetadata tmd = ss.getTokenMetadata();
+    TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
     static IPartitioner oldPartitioner;
     ArrayList<Token> endpointTokens = new ArrayList<Token>();
     ArrayList<Token> keyTokens = new ArrayList<Token>();

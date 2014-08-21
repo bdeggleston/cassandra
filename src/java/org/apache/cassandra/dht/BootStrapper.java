@@ -24,6 +24,7 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.service.ClusterState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,7 +104,7 @@ public class BootStrapper
             List<Token> tokens = new ArrayList<Token>(initialTokens.size());
             for (String tokenString : initialTokens)
             {
-                Token token = StorageService.instance.getPartitioner().getTokenFactory().fromString(tokenString);
+                Token token = ClusterState.instance.getPartitioner().getTokenFactory().fromString(tokenString);
                 if (metadata.getEndpoint(token) != null)
                     throw new ConfigurationException("Bootstrapping to existing token " + tokenString + " is not allowed (decommission/removenode the old node first).");
                 tokens.add(token);
@@ -126,7 +127,7 @@ public class BootStrapper
         Set<Token> tokens = new HashSet<Token>(numTokens);
         while (tokens.size() < numTokens)
         {
-            Token token = StorageService.instance.getPartitioner().getRandomToken();
+            Token token = ClusterState.instance.getPartitioner().getRandomToken();
             if (metadata.getEndpoint(token) == null)
                 tokens.add(token);
         }

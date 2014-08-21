@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import com.google.common.base.Throwables;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.service.ClusterState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -144,7 +145,7 @@ public class StreamReader
 
     protected void writeRow(SSTableWriter writer, DataInput in, ColumnFamilyStore cfs) throws IOException
     {
-        DecoratedKey key = StorageService.instance.getPartitioner().decorateKey(ByteBufferUtil.readWithShortLength(in));
+        DecoratedKey key = ClusterState.instance.getPartitioner().decorateKey(ByteBufferUtil.readWithShortLength(in));
         writer.appendFromStream(key, cfs.metadata, in, inputVersion);
         cfs.invalidateCachedRow(key);
     }

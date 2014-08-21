@@ -77,7 +77,7 @@ public class LeaveAndBootstrapTest
         final int RING_SIZE = 6;
         final int LEAVING_NODE = 3;
 
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
@@ -148,7 +148,7 @@ public class LeaveAndBootstrapTest
     {
         StorageService ss = StorageService.instance;
         final int RING_SIZE = 10;
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
@@ -448,7 +448,7 @@ public class LeaveAndBootstrapTest
     public void testStateJumpToBootstrap() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
@@ -525,7 +525,7 @@ public class LeaveAndBootstrapTest
     public void testStateJumpToNormal() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
@@ -567,7 +567,7 @@ public class LeaveAndBootstrapTest
     public void testStateJumpToLeaving() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
@@ -617,7 +617,7 @@ public class LeaveAndBootstrapTest
     public void testStateJumpToLeft() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);

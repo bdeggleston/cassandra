@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.service.ClusterState;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -122,7 +123,7 @@ public class LegacySSTableTest
     private void testStreaming(String version) throws Exception
     {
         SSTableReader sstable = SSTableReader.open(getDescriptor(version));
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = ClusterState.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
         ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("100"))));
         ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("100")), p.getMinimumToken()));

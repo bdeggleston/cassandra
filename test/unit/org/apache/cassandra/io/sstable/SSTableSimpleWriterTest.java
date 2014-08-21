@@ -20,6 +20,7 @@ package org.apache.cassandra.io.sstable;
 
 import java.io.File;
 
+import org.apache.cassandra.service.ClusterState;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -63,7 +64,7 @@ public class SSTableSimpleWriterTest
         File dir = new Directories(Schema.instance.getCFMetaData(keyspaceName, cfname)).getDirectoryForNewSSTables();
         assert dir.exists();
 
-        IPartitioner partitioner = StorageService.instance.getPartitioner();
+        IPartitioner partitioner = ClusterState.instance.getPartitioner();
         SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(dir, partitioner, keyspaceName, cfname, IntegerType.instance, null, 16);
 
         int k = 0;

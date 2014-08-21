@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.Map;
 
+import org.apache.cassandra.service.ClusterState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,7 +184,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
             reloadGossiperState();
 
             if (StorageService.instance != null)
-                StorageService.instance.getTokenMetadata().invalidateCachedRings();
+                ClusterState.instance.getTokenMetadata().invalidateCachedRings();
 
             if (gossipStarted)
                 StorageService.instance.gossipSnitchInfo();

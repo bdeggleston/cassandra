@@ -29,6 +29,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.service.ClusterState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,15 +53,11 @@ import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.metrics.RestorableMeter;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.paxos.Commit;
 import org.apache.cassandra.service.paxos.PaxosState;
 import org.apache.cassandra.thrift.cassandraConstants;
 import org.apache.cassandra.transport.Server;
 import org.apache.cassandra.utils.*;
-
-import org.apache.cassandra.cql3.QueryProcessor;
-import org.apache.cassandra.cql3.QueryProcessor;
 
 public class SystemKeyspace
 {
@@ -109,7 +106,7 @@ public class SystemKeyspace
     // TODO: use storage service if this causes circular references
     private DecoratedKey decorate(ByteBuffer key)
     {
-        return StorageService.instance.getPartitioner().decorateKey(key);
+        return ClusterState.instance.getPartitioner().decorateKey(key);
     }
 
     public void finishStartup()
@@ -420,7 +417,7 @@ public class SystemKeyspace
 
     private Set<String> tokensAsSet(Collection<Token> tokens)
     {
-        Token.TokenFactory factory = StorageService.instance.getPartitioner().getTokenFactory();
+        Token.TokenFactory factory = ClusterState.instance.getPartitioner().getTokenFactory();
         Set<String> s = new HashSet<>(tokens.size());
         for (Token tk : tokens)
             s.add(factory.toString(tk));
@@ -429,7 +426,7 @@ public class SystemKeyspace
 
     private Collection<Token> deserializeTokens(Collection<String> tokensStrings)
     {
-        Token.TokenFactory factory = StorageService.instance.getPartitioner().getTokenFactory();
+        Token.TokenFactory factory = ClusterState.instance.getPartitioner().getTokenFactory();
         List<Token> tokens = new ArrayList<Token>(tokensStrings.size());
         for (String tk : tokensStrings)
             tokens.add(factory.fromString(tk));
@@ -737,7 +734,7 @@ public class SystemKeyspace
      */
     public List<Row> serializedSchema(String schemaCfName)
     {
-        Token minToken = StorageService.instance.getPartitioner().getMinimumToken();
+        Token minToken = ClusterState.instance.getPartitioner().getMinimumToken();
 
         return schemaCFS(schemaCfName).getRangeSlice(new Range<RowPosition>(minToken.minKeyBound(), minToken.maxKeyBound()),
                                                      null,
@@ -812,7 +809,7 @@ public class SystemKeyspace
      */
     public Row readSchemaRow(String schemaCfName, String ksName)
     {
-        DecoratedKey key = StorageService.instance.getPartitioner().decorateKey(getSchemaKSKey(ksName));
+        DecoratedKey key = ClusterState.instance.getPartitioner().decorateKey(getSchemaKSKey(ksName));
 
         ColumnFamilyStore schemaCFS = schemaCFS(schemaCfName);
         ColumnFamily result = schemaCFS.getColumnFamily(QueryFilter.getIdentityFilter(key, schemaCfName, System.currentTimeMillis()));
@@ -830,7 +827,7 @@ public class SystemKeyspace
      */
     public Row readSchemaRow(String schemaCfName, String ksName, String cfName)
     {
-        DecoratedKey key = StorageService.instance.getPartitioner().decorateKey(getSchemaKSKey(ksName));
+        DecoratedKey key = ClusterState.instance.getPartitioner().decorateKey(getSchemaKSKey(ksName));
         ColumnFamilyStore schemaCFS = schemaCFS(schemaCfName);
         Composite prefix = schemaCFS.getComparator().make(cfName);
         ColumnFamily cf = schemaCFS.getColumnFamily(key,

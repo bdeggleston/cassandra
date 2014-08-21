@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.apache.cassandra.db.RowPosition;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.Pair;
 
@@ -31,7 +32,7 @@ public class Bounds<T extends RingPosition> extends AbstractBounds<T>
 {
     public Bounds(T left, T right)
     {
-        this(left, right, StorageService.instance.getPartitioner());
+        this(left, right, ClusterState.instance.getPartitioner());
     }
 
     public Bounds(T left, T right, IPartitioner partitioner)

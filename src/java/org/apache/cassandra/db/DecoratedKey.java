@@ -23,6 +23,7 @@ import java.util.Comparator;
 import net.nicoulaj.compilecommand.annotations.Inline;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FastByteOperations;
@@ -106,7 +107,7 @@ public abstract class DecoratedKey implements RowPosition
 
     public boolean isMinimum()
     {
-        return isMinimum(StorageService.instance.getPartitioner());
+        return isMinimum(ClusterState.instance.getPartitioner());
     }
 
     public RowPosition.Kind kind()

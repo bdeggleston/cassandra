@@ -112,10 +112,10 @@ public abstract class AntiEntropyServiceTestAbstract
         }
 
         aes = ActiveRepairService.instance;
-        TokenMetadata tmd = StorageService.instance.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         tmd.clearUnsafe();
-        StorageService.instance.setTokens(Collections.singleton(StorageService.instance.getPartitioner().getRandomToken()));
-        tmd.updateNormalToken(StorageService.instance.getPartitioner().getMinimumToken(), REMOTE);
+        StorageService.instance.setTokens(Collections.singleton(ClusterState.instance.getPartitioner().getRandomToken()));
+        tmd.updateNormalToken(ClusterState.instance.getPartitioner().getMinimumToken(), REMOTE);
         assert tmd.isMember(REMOTE);
 
         MessagingService.instance.setVersion(REMOTE, MessagingService.current_version);
@@ -152,7 +152,7 @@ public abstract class AntiEntropyServiceTestAbstract
     @Test
     public void testGetNeighborsTimesTwo() throws Throwable
     {
-        TokenMetadata tmd = StorageService.instance.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
 
         // generate rf*2 nodes, and ensure that only neighbors specified by the ARS are returned
         addTokens(2 * KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor());
@@ -175,7 +175,7 @@ public abstract class AntiEntropyServiceTestAbstract
     @Test
     public void testGetNeighborsPlusOneInLocalDC() throws Throwable
     {
-        TokenMetadata tmd = StorageService.instance.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         
         // generate rf+1 nodes, and ensure that all nodes are returned
         Set<InetAddress> expected = addTokens(1 + KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor());
@@ -197,7 +197,7 @@ public abstract class AntiEntropyServiceTestAbstract
     @Test
     public void testGetNeighborsTimesTwoInLocalDC() throws Throwable
     {
-        TokenMetadata tmd = StorageService.instance.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
 
         // generate rf*2 nodes, and ensure that only neighbors specified by the ARS are returned
         addTokens(2 * KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor());
@@ -225,7 +225,7 @@ public abstract class AntiEntropyServiceTestAbstract
     @Test
     public void testGetNeighborsTimesTwoInSpecifiedHosts() throws Throwable
     {
-        TokenMetadata tmd = StorageService.instance.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
 
         // generate rf*2 nodes, and ensure that only neighbors specified by the hosts are returned
         addTokens(2 * KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor());
@@ -253,12 +253,12 @@ public abstract class AntiEntropyServiceTestAbstract
 
     Set<InetAddress> addTokens(int max) throws Throwable
     {
-        TokenMetadata tmd = StorageService.instance.getTokenMetadata();
+        TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
         Set<InetAddress> endpoints = new HashSet<InetAddress>();
         for (int i = 1; i <= max; i++)
         {
             InetAddress endpoint = InetAddress.getByName("127.0.0." + i);
-            tmd.updateNormalToken(StorageService.instance.getPartitioner().getRandomToken(), endpoint);
+            tmd.updateNormalToken(ClusterState.instance.getPartitioner().getRandomToken(), endpoint);
             endpoints.add(endpoint);
         }
         return endpoints;

@@ -47,6 +47,7 @@ import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
 import org.apache.cassandra.locator.SimpleStrategy;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
@@ -410,7 +411,7 @@ public class CompactionsTest
                                                  0,
                                                  0,
                                                  cfs.metadata,
-                                                 StorageService.instance.getPartitioner(),
+                                                 ClusterState.instance.getPartitioner(),
                                                  new MetadataCollector(cfs.metadata.comparator));
 
 
@@ -423,7 +424,7 @@ public class CompactionsTest
                                    0,
                                    0,
                                    cfs.metadata,
-                                   StorageService.instance.getPartitioner(),
+                                   ClusterState.instance.getPartitioner(),
                                    new MetadataCollector(cfs.metadata.comparator));
 
         writer.append(Util.dk("0"), cf);

@@ -17,7 +17,7 @@ Schema [SystemKeyspace(?, 1m), MigrationManager(?, 1m)]
     * move static initialization stuff into static factory method
 
 
-SystemKeyspace [StorageService(weak, partitioner_only), Schema(weak, 1m finishStartup), QueryProcessor(strong), DatabaseDescriptor(strong)]
+SystemKeyspace [ClusterState, Schema(weak, 1m finishStartup), QueryProcessor(strong), DatabaseDescriptor(strong)]
     * replace StorageService.getPartitioner gets with DatabaseDescriptor.getPartitioner
     * pass schema instance into finishStartup
 
@@ -35,6 +35,8 @@ MessagingService [StorageServiceTasks, StageManager(stronger, 2m), StorageProxy(
 Gossiper [MessagingService, DatabaseDescriptor, FailureDetector(?), StorageService(?), StageManager]
     * move failure detector registration out of constructor and into static factory
     * DI other FailureDetector dependent methods (3)
+    * move valueFactory from StorageService to ClusterState to remove dependency
+
 LoadBroadcaster [Gossiper]
 
 FailureDetector [Gossiper(strong), DatabaseDescriptor]
@@ -43,8 +45,8 @@ MigrationManager [Schema(strong), Gossiper, StorageServiceTasks, StageManager, S
     * DI StorageService instance to passiveAnnounce method
 
 
-HintedHandOffManager [DatabaseDescriptor, StorageService(weak, partitioner and token data), Schema, StorageServiceTasks, 
-                      CompactionManager(weak, 1), Gossiper, FailureDetector, SystemKeyspace, MessagingService]
+HintedHandOffManager [DatabaseDescriptor, Schema, StorageServiceTasks, 
+                      CompactionManager(weak, 1), Gossiper, FailureDetector, SystemKeyspace, MessagingService, ClusterState]
     * DI CompactionManager into compact method
 
 CommitLog [DatabaseDescriptor, StorageService(weak, 1m)]
@@ -58,9 +60,21 @@ CompactionManager [StorageService, Schema, ActiveRepairService, SystemKeyspace]
 ActiveRepairService [Gossiper, FailureDetector, MessagingService, CompactionManager]
 
 * Create ClusterState class
+    * kind of weird
+        * but cluster state needs to be read independently of StorageService
+        * ClusterState holds state, StorageService mutates it
     * handle TokenMetadata
     * handle getPartitioner
     * handle getEndpoints, getLocalRanges
+    * need unsafe set for partitioner and TokenMetadata for testing
+    * would be nice to encapsulate TokenMetadata mutations
+
+ClusterState [DatabaseDescriptor, Schema, KeyspaceManager]
+    * move valueManager from StorageService
+    * move bootstrap state from StorageService
+
+BatchlogManager [QueryProcessor, DatabaseDescriptor, ClusterState, KeyspaceManager, SystemKeyspace, StorageProxy, FailureDetector, 
+                 MessagingService, CompactionManager]
 
 StorageService [SystemKeyspace, Gossiper(strong), StreamManager(weak, move to create method), MessagingService(strong),
                 StageManager, DatabaseDescriptor, MessagingService, MigrationManager(3-4m), StorageServiceTasks(2, init/drain),
@@ -85,12 +99,12 @@ ColumnFamilyStoreManager [Schema, StorageService, SystemKeyspace, CompactionMana
 RepairMessageVerbHandler [CompactionManager, Schema, KeyspaceManager, ActiveRepairService, MessagingService]
     # instantiated by StorageService
 
-Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), 
+Keyspace [Schema, ClusterState, DatabaseDescriptor(weak), 
                        CommitLog(weak, single method), ColumnFamilyStoreManager, KSMetaData]
     * move static initialization methods into static factory
     * remove StorageService dependency (TokenMetadata)
 
-KSMetaData [StorageService, DatabaseDescriptor, SystemKeyspace, QueryProcessor]
+KSMetaData [ClusterState, DatabaseDescriptor, SystemKeyspace, QueryProcessor]
 CFMetaData [QueryProcessor, Schema, SystemKeyspace, ColumnFamilyStoreManager, KeyspaceManager]
 
 Updated --> Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, StorageServiceTasks, Schema]
@@ -103,6 +117,7 @@ StatusLogger [DatabaseDescriptor, ColumnFamilyStoreManager]
 
 QueryProcessor [-nothing-]  # maintains prepared statements, but has no dependencies
 TriggerExecutor [QueryProcessor]
+
 
 Updated --> PendingRangeCalculatorService [Schema, StorageService]
 Updated --> Tracing [StageManager, StorageProxy]

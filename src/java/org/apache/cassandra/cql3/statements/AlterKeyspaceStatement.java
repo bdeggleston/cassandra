@@ -26,6 +26,7 @@ import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.service.MigrationManager;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.transport.Event;
@@ -74,7 +75,7 @@ public class AlterKeyspaceStatement extends SchemaAlteringStatement
             // so doing proper validation here.
             AbstractReplicationStrategy.validateReplicationStrategy(name,
                                                                     AbstractReplicationStrategy.getClass(attrs.getReplicationStrategyClass()),
-                                                                    StorageService.instance.getTokenMetadata(),
+                                                                    ClusterState.instance.getTokenMetadata(),
                                                                     DatabaseDescriptor.instance.getEndpointSnitch(),
                                                                     attrs.getReplicationOptions());
         }

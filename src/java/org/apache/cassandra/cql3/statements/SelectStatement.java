@@ -26,6 +26,7 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 
+import org.apache.cassandra.service.*;
 import org.github.jamm.MemoryMeter;
 
 import org.apache.cassandra.auth.Permission;
@@ -40,10 +41,6 @@ import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.exceptions.*;
-import org.apache.cassandra.service.ClientState;
-import org.apache.cassandra.service.QueryState;
-import org.apache.cassandra.service.StorageProxy;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.pager.*;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.thrift.ThriftValidation;
@@ -369,7 +366,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
 
     private AbstractBounds<RowPosition> getKeyBounds(QueryOptions options) throws InvalidRequestException
     {
-        IPartitioner<?> p = StorageService.instance.getPartitioner();
+        IPartitioner<?> p = ClusterState.instance.getPartitioner();
 
         if (onToken)
         {
@@ -1642,7 +1639,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                 receiver = new ColumnSpecification(def.ksName,
                                                    def.cfName,
                                                    new ColumnIdentifier("partition key token", true),
-                                                   StorageService.instance.getPartitioner().getTokenValidator());
+                                                   ClusterState.instance.getPartitioner().getTokenValidator());
             }
 
             switch (newRel.operator())

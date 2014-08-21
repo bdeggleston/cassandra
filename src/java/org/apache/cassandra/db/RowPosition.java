@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
@@ -85,7 +86,7 @@ public interface RowPosition extends RingPosition<RowPosition>
             if (kind == Kind.ROW_KEY)
             {
                 ByteBuffer k = ByteBufferUtil.readWithShortLength(in);
-                return StorageService.instance.getPartitioner().decorateKey(k);
+                return ClusterState.instance.getPartitioner().decorateKey(k);
             }
             else
             {

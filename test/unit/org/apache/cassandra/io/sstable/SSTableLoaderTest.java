@@ -22,6 +22,7 @@ import java.util.List;
 
 import com.google.common.io.Files;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.service.ClusterState;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -73,7 +74,7 @@ public class SSTableLoaderTest
         CFMetaData cfmeta = Schema.instance.getCFMetaData(KEYSPACE1, CF_STANDARD);
         SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(dataDir,
                                                                              cfmeta,
-                                                                             StorageService.instance.getPartitioner(),
+                                                                             ClusterState.instance.getPartitioner(),
                                                                              1);
         DecoratedKey key = Util.dk("key1");
         writer.newRow(key.getKey());
@@ -86,7 +87,7 @@ public class SSTableLoaderTest
             {
                 for (Range<Token> range : StorageService.instance.getLocalRanges(KEYSPACE1))
                     addRangeForEndpoint(range, FBUtilities.getBroadcastAddress());
-                setPartitioner(StorageService.instance.getPartitioner());
+                setPartitioner(ClusterState.instance.getPartitioner());
             }
 
             public CFMetaData getCFMetaData(String keyspace, String cfName)

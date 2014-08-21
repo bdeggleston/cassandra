@@ -38,6 +38,7 @@ import org.apache.cassandra.net.CallbackInfo;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
@@ -76,7 +77,7 @@ public class SerializationsTest extends AbstractSerializationsTester
 
     private void testRangeSliceCommandWrite() throws IOException
     {
-        IPartitioner part = StorageService.instance.getPartitioner();
+        IPartitioner part = ClusterState.instance.getPartitioner();
         AbstractBounds<RowPosition> bounds = new Range<Token>(part.getRandomToken(), part.getRandomToken()).toRowBounds();
 
         RangeSliceCommand namesCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, namesPred, bounds, 100);

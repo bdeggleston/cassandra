@@ -20,6 +20,7 @@ package org.apache.cassandra.thrift;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.service.ClusterState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -516,7 +517,7 @@ public class ThriftValidation
         if (range.start_token != null && range.end_key != null)
             throw new org.apache.cassandra.exceptions.InvalidRequestException("start token + end key is not a supported key range");
 
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = ClusterState.instance.getPartitioner();
 
         if (range.start_key != null && range.end_key != null)
         {

@@ -34,7 +34,6 @@ import org.junit.runner.RunWith;
 import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.StringToken;
@@ -102,7 +101,7 @@ public class StorageServiceServerTest
     @Test
     public void testPrimaryRangesWithNetworkTopologyStrategy() throws Exception
     {
-        TokenMetadata metadata = StorageService.instance.getTokenMetadata();
+        TokenMetadata metadata = ClusterState.instance.getTokenMetadata();
         metadata.clearUnsafe();
         // DC1
         metadata.updateNormalToken(new StringToken("A"), InetAddress.getByName("127.0.0.1"));
@@ -139,7 +138,7 @@ public class StorageServiceServerTest
     @Test
     public void testPrimaryRangesWithNetworkTopologyStrategyOneDCOnly() throws Exception
     {
-        TokenMetadata metadata = StorageService.instance.getTokenMetadata();
+        TokenMetadata metadata = ClusterState.instance.getTokenMetadata();
         metadata.clearUnsafe();
         // DC1
         metadata.updateNormalToken(new StringToken("A"), InetAddress.getByName("127.0.0.1"));
@@ -177,7 +176,7 @@ public class StorageServiceServerTest
     @Test
     public void testPrimaryRangesWithVnodes() throws Exception
     {
-        TokenMetadata metadata = StorageService.instance.getTokenMetadata();
+        TokenMetadata metadata = ClusterState.instance.getTokenMetadata();
         metadata.clearUnsafe();
         // DC1
         Multimap<InetAddress, Token> dc1 = HashMultimap.create();
@@ -239,7 +238,7 @@ public class StorageServiceServerTest
     @Test
     public void testPrimaryRangesWithSimpleStrategy() throws Exception
     {
-        TokenMetadata metadata = StorageService.instance.getTokenMetadata();
+        TokenMetadata metadata = ClusterState.instance.getTokenMetadata();
         metadata.clearUnsafe();
 
         metadata.updateNormalToken(new StringToken("A"), InetAddress.getByName("127.0.0.1"));

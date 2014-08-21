@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import com.google.common.collect.Lists;
+import org.apache.cassandra.service.ClusterState;
 import org.junit.BeforeClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -69,7 +70,7 @@ public class BatchlogManagerTest
     @Before
     public void setUp() throws Exception
     {
-        TokenMetadata metadata = StorageService.instance.getTokenMetadata();
+        TokenMetadata metadata = ClusterState.instance.getTokenMetadata();
         InetAddress localhost = InetAddress.getByName("127.0.0.1");
         metadata.updateNormalToken(Util.token("A"), localhost);
         metadata.updateHostId(UUIDGen.getTimeUUID(), localhost);
