@@ -21,7 +21,6 @@ package org.apache.cassandra.service;
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.slf4j.Logger;
@@ -32,7 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PendingRangeCalculatorService
 {
-    public static final PendingRangeCalculatorService instance = new PendingRangeCalculatorService(Schema.instance, StorageService.instance);
+    public static final PendingRangeCalculatorService instance = new PendingRangeCalculatorService(Schema.instance, ClusterState.instance);
 
     private static Logger logger = LoggerFactory.getLogger(PendingRangeCalculatorService.class);
     private final JMXEnabledThreadPoolExecutor executor = new JMXEnabledThreadPoolExecutor(1, Integer.MAX_VALUE, TimeUnit.SECONDS,
@@ -41,15 +40,15 @@ public class PendingRangeCalculatorService
     private AtomicInteger updateJobs = new AtomicInteger(0);
 
     private final Schema schema;
-    private final StorageService storageService;
+    private final ClusterState clusterState;
 
-    public PendingRangeCalculatorService(Schema schema, StorageService storageService)
+    public PendingRangeCalculatorService(Schema schema, ClusterState clusterState)
     {
         assert schema != null;
-        assert storageService != null;
+        assert clusterState != null;
 
         this.schema = schema;
-        this.storageService = storageService;
+        this.clusterState = clusterState;
 
         executor.setRejectedExecutionHandler(new RejectedExecutionHandler()
         {
@@ -119,6 +118,6 @@ public class PendingRangeCalculatorService
     // public & static for testing purposes
     public void calculatePendingRanges(AbstractReplicationStrategy strategy, String keyspaceName)
     {
-        storageService.getTokenMetadata().calculatePendingRanges(strategy, keyspaceName);
+        clusterState.getTokenMetadata().calculatePendingRanges(strategy, keyspaceName);
     }
 }
