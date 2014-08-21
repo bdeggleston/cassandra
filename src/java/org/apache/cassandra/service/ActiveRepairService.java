@@ -78,6 +78,7 @@ public class ActiveRepairService
     public static final ActiveRepairService instance = new ActiveRepairService(
             Gossiper.instance,
             FailureDetector.instance,
+            ClusterState.instance,
             MessagingService.instance,
             CompactionManager.instance
     );
@@ -102,6 +103,7 @@ public class ActiveRepairService
 
     private final Gossiper gossiper;
     private final IFailureDetector failureDetector;
+    private final ClusterState clusterState;
     private final MessagingService messagingService;
     private final CompactionManager compactionManager;
 
@@ -115,15 +117,17 @@ public class ActiveRepairService
     /**
      * Protected constructor. Use ActiveRepairService.instance.
      */
-    protected ActiveRepairService(Gossiper gossiper, IFailureDetector failureDetector, MessagingService messagingService, CompactionManager compactionManager)
+    protected ActiveRepairService(Gossiper gossiper, IFailureDetector failureDetector, ClusterState clusterState, MessagingService messagingService, CompactionManager compactionManager)
     {
         assert gossiper != null;
         assert failureDetector != null;
+        assert clusterState != null;
         assert messagingService != null;
         assert compactionManager != null;
 
         this.gossiper = gossiper;
         this.failureDetector = failureDetector;
+        this.clusterState = clusterState;
         this.messagingService = messagingService;
         this.compactionManager = compactionManager;
 
@@ -195,7 +199,7 @@ public class ActiveRepairService
         StorageService ss = storageService;
         Map<Range<Token>, List<InetAddress>> replicaSets = ss.getRangeToAddressMap(keyspaceName);
         Range<Token> rangeSuperSet = null;
-        for (Range<Token> range : ss.getLocalRanges(keyspaceName))
+        for (Range<Token> range : clusterState.getLocalRanges(keyspaceName))
         {
             if (range.contains(toRepair))
             {
@@ -215,7 +219,7 @@ public class ActiveRepairService
 
         if (dataCenters != null)
         {
-            TokenMetadata.Topology topology = ss.getTokenMetadata().cloneOnlyTokenMap().getTopology();
+            TokenMetadata.Topology topology = clusterState.getTokenMetadata().cloneOnlyTokenMap().getTopology();
             Set<InetAddress> dcEndpoints = Sets.newHashSet();
             Multimap<String,InetAddress> dcEndpointsMap = topology.getDatacenterEndpoints();
             for (String dc : dataCenters)
