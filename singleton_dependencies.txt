@@ -6,6 +6,7 @@ DatabaseDescriptor [Schema(?, 3m), SystemKeyspace(?, 2m), DefsTables(?, 1m), Key
     * move loadSchemas to SystemKeyspace
     * pass SystemKeyspace into isReplacing
 
+QueryProcessor []  # maintains prepared statements, but has no dependencies
 
 SinkManager []
 StorageServiceTasks []
@@ -68,6 +69,8 @@ ActiveRepairService [Gossiper, FailureDetector, MessagingService, CompactionMana
     * need unsafe set for partitioner and TokenMetadata for testing
     * would be nice to encapsulate TokenMetadata mutations
 
+Updated --> Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, ClusterState, Schema]
+
 BatchlogManager [QueryProcessor, DatabaseDescriptor, ClusterState, KeyspaceManager, SystemKeyspace, StorageProxy, FailureDetector, 
                  MessagingService, CompactionManager]
 
@@ -104,7 +107,6 @@ Keyspace [Schema, ClusterState, DatabaseDescriptor(weak),
 KSMetaData [ClusterState, DatabaseDescriptor, SystemKeyspace, QueryProcessor]
 CFMetaData [QueryProcessor, Schema, SystemKeyspace, ColumnFamilyStoreManager, KeyspaceManager]
 
-Updated --> Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, StorageServiceTasks, Schema]
 
 Updated --> CacheService [DatabaseDescriptor, StageManager, Schema]
 Updated --> ColumnFamilyStoreManager [Schema, StorageService, SystemKeyspace, CompactionManager, CacheService]
@@ -112,7 +114,6 @@ Updated --> ColumnFamilyStore [CacheService, SystemKeyspace, CompactionManager(s
 
 StatusLogger [DatabaseDescriptor, ColumnFamilyStoreManager]
 
-QueryProcessor [-nothing-]  # maintains prepared statements, but has no dependencies
 TriggerExecutor [QueryProcessor]
 
 

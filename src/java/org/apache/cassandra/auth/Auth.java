@@ -65,27 +65,27 @@ public class Auth
                                                                 90 * 24 * 60 * 60); // 3 months.
 
     public static final Auth instance = new Auth(
-            DatabaseDescriptor.instance, Schema.instance, MigrationManager.instance, StorageService.instance, QueryProcessor.instance
+            DatabaseDescriptor.instance, Schema.instance, MigrationManager.instance, ClusterState.instance, QueryProcessor.instance
     );
 
     private final DatabaseDescriptor databaseDescriptor;
     private final Schema schema;
     private final MigrationManager migrationManager;
-    private final StorageService storageService;
+    private final ClusterState clusterState;
     private final QueryProcessor queryProcessor;
 
-    public Auth(DatabaseDescriptor databaseDescriptor, Schema schema, MigrationManager migrationManager, StorageService storageService, QueryProcessor queryProcessor)
+    public Auth(DatabaseDescriptor databaseDescriptor, Schema schema, MigrationManager migrationManager, ClusterState clusterState, QueryProcessor queryProcessor)
     {
         assert databaseDescriptor != null;
         assert schema != null;
         assert migrationManager != null;
-        assert storageService != null;
+        assert clusterState != null;
         assert queryProcessor != null;
 
         this.databaseDescriptor = databaseDescriptor;
         this.schema = schema;
         this.migrationManager = migrationManager;
-        this.storageService = storageService;
+        this.clusterState = clusterState;
         this.queryProcessor = queryProcessor;
     }
 
@@ -168,7 +168,7 @@ public class Auth
         // It's the only reason for the delay.
         if (databaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress()) || !databaseDescriptor.isAutoBootstrap())
         {
-            storageService.getTasksExecutor().schedule(new Runnable()
+            clusterState.getTasksExecutor().schedule(new Runnable()
                                           {
                                               public void run()
                                               {
