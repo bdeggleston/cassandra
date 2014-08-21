@@ -55,12 +55,7 @@ ClusterState [DatabaseDescriptor, Schema, KeyspaceManager]
     * move valueManager from StorageService
     * move bootstrap state from StorageService
 
-CompactionManager [StorageService, Schema, ActiveRepairService, SystemKeyspace]
-    * resolve the love triangle between CompactionManager, ActiveRepairService, and RepairMessageVerbHandler
-        * remove StorageService dependency
-            forceKeyspaceFlush
-            isBootstrapMode
-
+Updated --> CompactionManager [Schema, ActiveRepairService, SystemKeyspace]
 ActiveRepairService [Gossiper, FailureDetector, MessagingService, CompactionManager]
 
 * Create ClusterState class
@@ -98,7 +93,7 @@ ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService
 *Updated --> KeyspaceManager [Schema, StorageService, CommitLog, ColumnFamilyStoreManager]
     * remove StorageService dependency from Keyspace
 
-RepairMessageVerbHandler [CompactionManager, Schema, KeyspaceManager, ActiveRepairService, MessagingService]
+RepairMessageVerbHandler [CompactionManager, Schema, KeyspaceManager, ActiveRepairService, MessagingService, StorageService]
     # instantiated by StorageService
 
 Keyspace [Schema, ClusterState, DatabaseDescriptor(weak), 

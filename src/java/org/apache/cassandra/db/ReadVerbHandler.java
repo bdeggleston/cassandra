@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.db;
 
+import org.apache.cassandra.service.ClusterState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +35,7 @@ public class ReadVerbHandler implements IVerbHandler<ReadCommand>
 
     public void doVerb(MessageIn<ReadCommand> message, int id)
     {
-        if (StorageService.instance.isBootstrapMode())
+        if (ClusterState.instance.isBootstrapMode())
         {
             throw new RuntimeException("Cannot service reads while bootstrapping!");
         }

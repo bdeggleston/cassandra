@@ -49,6 +49,8 @@ import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.io.sstable.metadata.CompactionMetadata;
 import org.apache.cassandra.io.sstable.metadata.MetadataType;
+import org.apache.cassandra.service.ClusterState;
+import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +70,6 @@ import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.metrics.CompactionMetrics;
 import org.apache.cassandra.repair.Validator;
 import org.apache.cassandra.service.ActiveRepairService;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MerkleTree;
@@ -106,10 +107,10 @@ public class CompactionManager implements CompactionManagerMBean
     @Deprecated
     public static CompactionManager create()
     {
-        return create(Schema.instance, SystemKeyspace.instance, StorageService.instance, ActiveRepairService.instance);
+        return create(Schema.instance, SystemKeyspace.instance, ClusterState.instance, ActiveRepairService.instance);
     }
 
-    public static CompactionManager create(Schema schema, SystemKeyspace systemKeyspace, StorageService storageService, ActiveRepairService activeRepairService)
+    public static CompactionManager create(Schema schema, SystemKeyspace systemKeyspace, ClusterState storageService, ActiveRepairService activeRepairService)
     {
         CompactionManager cm = new CompactionManager(schema, systemKeyspace, storageService, activeRepairService);
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
@@ -126,7 +127,7 @@ public class CompactionManager implements CompactionManagerMBean
 
     private final Schema schema;
     private final SystemKeyspace systemKeyspace;
-    private final StorageService storageService;
+    private final ClusterState clusterState;
     private final ActiveRepairService activeRepairService;
 
     private final CompactionExecutor executor;
@@ -140,19 +141,19 @@ public class CompactionManager implements CompactionManagerMBean
     private final RateLimiter compactionRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
 
-    public CompactionManager(Schema schema, SystemKeyspace systemKeyspace, StorageService storageService, ActiveRepairService activeRepairService)
+    public CompactionManager(Schema schema, SystemKeyspace systemKeyspace, ClusterState clusterState, ActiveRepairService activeRepairService)
     {
         assert schema != null;
         assert systemKeyspace != null;
-        assert storageService != null;
+        assert clusterState != null;
         assert activeRepairService != null;
 
         this.schema = schema;
         this.systemKeyspace = systemKeyspace;
-        this.storageService = storageService;
+        this.clusterState = clusterState;
         this.activeRepairService = activeRepairService;
 
-        executor = new CompactionExecutor(this.storageService);
+        executor = new CompactionExecutor(this.clusterState);
         metrics = new CompactionMetrics(executor, validationExecutor);
     }
 
@@ -165,9 +166,9 @@ public class CompactionManager implements CompactionManagerMBean
      */
     public RateLimiter getRateLimiter()
     {
-        double currentThroughput = storageService.getCompactionThroughputMbPerSec() * 1024.0 * 1024.0;
+        double currentThroughput = clusterState.getCompactionThroughputMbPerSec() * 1024.0 * 1024.0;
         // if throughput is set to 0, throttling is disabled
-        if (currentThroughput == 0 || storageService.isBootstrapMode())
+        if (currentThroughput == 0 || clusterState.isBootstrapMode())
             currentThroughput = Double.MAX_VALUE;
         if (compactionRateLimiter.getRate() != currentThroughput)
             compactionRateLimiter.setRate(currentThroughput);
@@ -358,7 +359,7 @@ public class CompactionManager implements CompactionManagerMBean
     {
         assert !cfStore.isIndex();
         Keyspace keyspace = cfStore.keyspace;
-        final Collection<Range<Token>> ranges = storageService.getLocalRanges(keyspace.getName());
+        final Collection<Range<Token>> ranges = clusterState.getLocalRanges(keyspace.getName());
         if (ranges.isEmpty())
         {
             logger.info("Cleanup cannot run before a node has joined the ring");
@@ -557,7 +558,7 @@ public class CompactionManager implements CompactionManagerMBean
     /**
      * Does not mutate data, so is not scheduled.
      */
-    public Future<Object> submitValidation(final ColumnFamilyStore cfStore, final Validator validator)
+    public Future<Object> submitValidation(final ColumnFamilyStore cfStore, final Validator validator, final StorageService storageService)
     {
         Callable<Object> callable = new Callable<Object>()
         {
@@ -565,7 +566,7 @@ public class CompactionManager implements CompactionManagerMBean
             {
                 try
                 {
-                    doValidationCompaction(cfStore, validator);
+                    doValidationCompaction(cfStore, validator, storageService);
                 }
                 catch (Throwable e)
                 {
@@ -867,7 +868,7 @@ public class CompactionManager implements CompactionManagerMBean
      * Performs a readonly "compaction" of all sstables in order to validate complete rows,
      * but without writing the merge result
      */
-    private void doValidationCompaction(ColumnFamilyStore cfs, Validator validator) throws IOException
+    private void doValidationCompaction(ColumnFamilyStore cfs, Validator validator, StorageService storageService) throws IOException
     {
         // this isn't meant to be race-proof, because it's not -- it won't cause bugs for a CFS to be dropped
         // mid-validation, or to attempt to validate a droped CFS.  this is just a best effort to avoid useless work,
@@ -1172,7 +1173,7 @@ public class CompactionManager implements CompactionManagerMBean
             this(threadCount, threadCount, name, new LinkedBlockingQueue<Runnable>());
         }
 
-        public CompactionExecutor(StorageService storageService)
+        public CompactionExecutor(ClusterState storageService)
         {
             this(Math.max(1, storageService.getConcurrentCompactors()), "CompactionExecutor");
         }
