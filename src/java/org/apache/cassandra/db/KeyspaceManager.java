@@ -2,15 +2,13 @@ package org.apache.cassandra.db;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
-import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.commitlog.CommitLog;
-import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.ClusterState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.event.KeyListener;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
@@ -29,7 +27,7 @@ public class KeyspaceManager
         // FIXME: forcing CFMetaData to initialize before KeyspaceManager. Maybe make part of KeyspaceManager
         // Hardcoded system keyspaces
         List<KSMetaData> systemKeyspaces = Arrays.asList(KSMetaData.systemKeyspace());
-        instance = new KeyspaceManager(Schema.instance, StorageService.instance, CommitLog.instance, ColumnFamilyStoreManager.instance);
+        instance = new KeyspaceManager(Schema.instance, ClusterState.instance, CommitLog.instance, ColumnFamilyStoreManager.instance);
 
         // FIXME: move to static factory, or to SystemKeyspace?
         assert systemKeyspaces.size() == Schema.systemKeyspaceNames.size();
@@ -38,21 +36,21 @@ public class KeyspaceManager
     }
 
     private final Schema schema;
-    private final StorageService storageService;
+    private final ClusterState clusterState;
     private final CommitLog commitLog;
     private final ColumnFamilyStoreManager columnFamilyStoreManager;
 
     private volatile boolean initialized = false;
 
-    public KeyspaceManager(Schema schema, StorageService storageService, CommitLog commitLog, ColumnFamilyStoreManager columnFamilyStoreManager)
+    public KeyspaceManager(Schema schema, ClusterState clusterState, CommitLog commitLog, ColumnFamilyStoreManager columnFamilyStoreManager)
     {
         assert schema != null;
-        assert storageService != null;
+        assert clusterState != null;
         assert commitLog != null;
         assert columnFamilyStoreManager != null;
 
         this.schema = schema;
-        this.storageService = storageService;
+        this.clusterState = clusterState;
         this.commitLog = commitLog;
         this.columnFamilyStoreManager = columnFamilyStoreManager;
     }

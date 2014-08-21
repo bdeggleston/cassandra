@@ -52,22 +52,22 @@ HintedHandOffManager [DatabaseDescriptor, Schema, StorageServiceTasks,
 
 CommitLog [DatabaseDescriptor, StorageService(weak, 1m)]
 
-ClusterState [DatabaseDescriptor, Schema, KeyspaceManager]
-    * move valueManager from StorageService
-    * move bootstrap state from StorageService
+ColumnFamilyStoreManager [Schema, ClusterState, SystemKeyspace, CompactionManager, CacheService]
+ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService, ColumnFamilyStoreManager.TaskExecutors]
+    * pass CompactionManager from StorageService
+    * remove ClusterState dependency
+
+*Updated --> KeyspaceManager [Schema, ClusterState, CommitLog, ColumnFamilyStoreManager]
+Keyspace [Schema, ClusterState, CommitLog(weak, single method), ColumnFamilyStoreManager]
+    * move static initialization methods into static factory
+    * remove ClusterState dependency
+
+ClusterState [DatabaseDescriptor, Schema, KeyspaceManager, FailureDetector, CommitLog, StorageServiceTasks]
+    * resokve circular instantiation between ClusterState and KeyspaceManager
 
 Updated --> ActiveRepairService [Gossiper, FailureDetector, MessagingService]
 Updated --> CompactionManager [Schema, ActiveRepairService, SystemKeyspace]
 
-* Create ClusterState class
-    * kind of weird
-        * but cluster state needs to be read independently of StorageService
-        * ClusterState holds state, StorageService mutates it
-    * handle TokenMetadata
-    * handle getPartitioner
-    * handle getEndpoints, getLocalRanges
-    * need unsafe set for partitioner and TokenMetadata for testing
-    * would be nice to encapsulate TokenMetadata mutations
 
 Updated --> Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, ClusterState, Schema]
 
@@ -90,19 +90,10 @@ StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 
     * maybe remove dependency on StorageService(getPartitioner, TokenMetadata, getNaturalEndpoints, getLiveNaturalEndpoints)
     * move isBootstrapMode to ClusterState to remove dependency on StorageService
 
-ColumnFamilyStoreManager [Schema, ClusterState, SystemKeyspace, CompactionManager, CacheService]
 ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService]
-
-*Updated --> KeyspaceManager [Schema, StorageService, CommitLog, ColumnFamilyStoreManager]
-    * remove StorageService dependency from Keyspace
 
 RepairMessageVerbHandler [CompactionManager, Schema, KeyspaceManager, ActiveRepairService, MessagingService, StorageService]
     # instantiated by StorageService
-
-Keyspace [Schema, ClusterState, DatabaseDescriptor(weak), 
-                       CommitLog(weak, single method), ColumnFamilyStoreManager, KSMetaData]
-    * move static initialization methods into static factory
-    * remove StorageService dependency (TokenMetadata)
 
 KSMetaData [ClusterState, DatabaseDescriptor, SystemKeyspace, QueryProcessor]
 CFMetaData [QueryProcessor, Schema, SystemKeyspace, ColumnFamilyStoreManager, KeyspaceManager]
