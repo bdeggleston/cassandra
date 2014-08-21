@@ -49,26 +49,46 @@ HintedHandOffManager [DatabaseDescriptor, StorageService(weak, partitioner and t
 
 CommitLog [DatabaseDescriptor, StorageService(weak, 1m)]
 
+CompactionManager [StorageService, Schema, ActiveRepairService, SystemKeyspace]
+    * resolve the love triangle between CompactionManager, ActiveRepairService, and RepairMessageVerbHandler
+        * remove StorageService dependency
+            forceKeyspaceFlush
+            isBootstrapMode
+
+ActiveRepairService [Gossiper, FailureDetector, MessagingService, CompactionManager]
+
+* Create ClusterState class
+    * handle TokenMetadata
+    * handle getPartitioner
+    * handle getEndpoints, getLocalRanges
+
 StorageService [SystemKeyspace, Gossiper(strong), StreamManager(weak, move to create method), MessagingService(strong),
                 StageManager, DatabaseDescriptor, MessagingService, MigrationManager(3-4m), StorageServiceTasks(2, init/drain),
                 StorageProxy(3m), CommitLog(2, init/drain), Schema, LoadBroadcaster(3m), HintedHandOffManager(3m, 1p),
                 BatchlogManager(2m), PendingRangeCalculatorService, Auth(weak, 2m, init/start),
-                FailureDetector(5m), ActiveRepairService(1m, 1p), ColumnFamilyStoreManager(create)]
+                FailureDetector(5m), ActiveRepairService(very strong), ColumnFamilyStoreManager(create), KeyspaceManager]
     * DI StorageProxy into methods
-    * remove getPartitioner
+    * resolve dependency on KeyspaceManager
+    * split out TokenMetadata management
+    * split out bootstrap state
+    * split out getValidColumnFamilies, forceKeyspaceFlush
 
 StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 1p), StorageService(strong), MessagingService,
               FailureDetector(2m), SinkManager(2m), Gossiper(4m)] # Has a lot methods that just proxy calls to DatabaseDescriptor
+    * maybe remove dependency on StorageService(getPartitioner, TokenMetadata, getNaturalEndpoints, getLiveNaturalEndpoints)
 
-CompactionManager [StorageService, Schema, ActiveRepairService, SystemKeyspace]
-    * resolve the love triangle between CompactionManager, ActiveRepairService, and RepairMessageVerbHandler
-Updated --> ActiveRepairService [Gossiper, FailureDetector, StorageService, MessagingService, CompactionManager]
+ColumnFamilyStoreManager [Schema, StorageService, SystemKeyspace, CompactionManager, CacheService]
+
+*Updated --> KeyspaceManager [Schema, StorageService, CommitLog, ColumnFamilyStoreManager]
+    * remove StorageService dependency from Keyspace
+
 RepairMessageVerbHandler [CompactionManager, Schema, KeyspaceManager, ActiveRepairService, MessagingService]
     # instantiated by StorageService
 
-*Updated --> Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), 
+Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), 
                        CommitLog(weak, single method), ColumnFamilyStoreManager, KSMetaData]
     * move static initialization methods into static factory
+    * remove StorageService dependency (TokenMetadata)
 
 KSMetaData [StorageService, DatabaseDescriptor, SystemKeyspace, QueryProcessor]
 CFMetaData [QueryProcessor, Schema, SystemKeyspace, ColumnFamilyStoreManager, KeyspaceManager]

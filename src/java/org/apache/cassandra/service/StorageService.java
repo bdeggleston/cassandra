@@ -2554,6 +2554,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             throw new IllegalArgumentException("the local data center must be part of the repair");
         }
 
+        final StorageService outerThis = this;
+
         return new FutureTask<>(new WrappedRunnable()
         {
             protected void runMayThrow() throws Exception
@@ -2576,7 +2578,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 {
                     try
                     {
-                        Set<InetAddress> neighbors = ActiveRepairService.instance.getNeighbors(keyspace, range, dataCenters, hosts);
+                        Set<InetAddress> neighbors = ActiveRepairService.instance.getNeighbors(keyspace, range, dataCenters, hosts, outerThis);
                         rangeToNeighbors.put(range, neighbors);
                         allNeighbors.addAll(neighbors);
                     }

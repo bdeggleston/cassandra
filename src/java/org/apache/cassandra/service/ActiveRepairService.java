@@ -78,7 +78,6 @@ public class ActiveRepairService
     public static final ActiveRepairService instance = new ActiveRepairService(
             Gossiper.instance,
             FailureDetector.instance,
-            StorageService.instance,
             MessagingService.instance,
             CompactionManager.instance
     );
@@ -103,7 +102,6 @@ public class ActiveRepairService
 
     private final Gossiper gossiper;
     private final IFailureDetector failureDetector;
-    private final StorageService storageService;
     private final MessagingService messagingService;
     private final CompactionManager compactionManager;
 
@@ -117,17 +115,15 @@ public class ActiveRepairService
     /**
      * Protected constructor. Use ActiveRepairService.instance.
      */
-    protected ActiveRepairService(Gossiper gossiper, IFailureDetector failureDetector, StorageService storageService, MessagingService messagingService, CompactionManager compactionManager)
+    protected ActiveRepairService(Gossiper gossiper, IFailureDetector failureDetector, MessagingService messagingService, CompactionManager compactionManager)
     {
         assert gossiper != null;
         assert failureDetector != null;
-        assert storageService != null;
         assert messagingService != null;
         assert compactionManager != null;
 
         this.gossiper = gossiper;
         this.failureDetector = failureDetector;
-        this.storageService = storageService;
         this.messagingService = messagingService;
         this.compactionManager = compactionManager;
 
@@ -174,10 +170,10 @@ public class ActiveRepairService
 
     // for testing only. Create a session corresponding to a fake request and
     // add it to the sessions (avoid NPE in tests)
-    RepairFuture submitArtificialRepairSession(RepairJobDesc desc)
+    RepairFuture submitArtificialRepairSession(RepairJobDesc desc, StorageService storageService)
     {
         Set<InetAddress> neighbours = new HashSet<>();
-        neighbours.addAll(getNeighbors(desc.keyspace, desc.range, null, null));
+        neighbours.addAll(getNeighbors(desc.keyspace, desc.range, null, null, storageService));
         RepairSession session = new RepairSession(desc.parentSessionId, desc.sessionId, desc.range, desc.keyspace, false, neighbours, new String[]{desc.columnFamily});
         sessions.put(session.getId(), session);
         RepairFuture futureTask = new RepairFuture(session);
@@ -194,7 +190,7 @@ public class ActiveRepairService
      *
      * @return neighbors with whom we share the provided range
      */
-    public Set<InetAddress> getNeighbors(String keyspaceName, Range<Token> toRepair, Collection<String> dataCenters, Collection<String> hosts)
+    public Set<InetAddress> getNeighbors(String keyspaceName, Range<Token> toRepair, Collection<String> dataCenters, Collection<String> hosts, StorageService storageService)
     {
         StorageService ss = storageService;
         Map<Range<Token>, List<InetAddress>> replicaSets = ss.getRangeToAddressMap(keyspaceName);

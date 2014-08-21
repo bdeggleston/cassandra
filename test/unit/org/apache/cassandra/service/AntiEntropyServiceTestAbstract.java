@@ -125,7 +125,7 @@ public abstract class AntiEntropyServiceTestAbstract
 
         desc = new RepairJobDesc(UUID.randomUUID(), UUID.randomUUID(), keyspaceName, cfname, local_range);
         // Set a fake session corresponding to this fake request
-        ActiveRepairService.instance.submitArtificialRepairSession(desc);
+        ActiveRepairService.instance.submitArtificialRepairSession(desc, StorageService.instance);
     }
 
     @After
@@ -144,7 +144,7 @@ public abstract class AntiEntropyServiceTestAbstract
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
-            neighbors.addAll(ActiveRepairService.instance.getNeighbors(keyspaceName, range, null, null));
+            neighbors.addAll(ActiveRepairService.instance.getNeighbors(keyspaceName, range, null, null, StorageService.instance));
         }
         assertEquals(expected, neighbors);
     }
@@ -167,7 +167,7 @@ public abstract class AntiEntropyServiceTestAbstract
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
-            neighbors.addAll(ActiveRepairService.instance.getNeighbors(keyspaceName, range, null, null));
+            neighbors.addAll(ActiveRepairService.instance.getNeighbors(keyspaceName, range, null, null, StorageService.instance));
         }
         assertEquals(expected, neighbors);
     }
@@ -189,7 +189,7 @@ public abstract class AntiEntropyServiceTestAbstract
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
-            neighbors.addAll(ActiveRepairService.instance.getNeighbors(keyspaceName, range, Arrays.asList(DatabaseDescriptor.instance.getLocalDataCenter()), null));
+            neighbors.addAll(ActiveRepairService.instance.getNeighbors(keyspaceName, range, Arrays.asList(DatabaseDescriptor.instance.getLocalDataCenter()), null, StorageService.instance));
         }
         assertEquals(expected, neighbors);
     }
@@ -217,7 +217,7 @@ public abstract class AntiEntropyServiceTestAbstract
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
-            neighbors.addAll(ActiveRepairService.instance.getNeighbors(keyspaceName, range, Arrays.asList(DatabaseDescriptor.instance.getLocalDataCenter()), null));
+            neighbors.addAll(ActiveRepairService.instance.getNeighbors(keyspaceName, range, Arrays.asList(DatabaseDescriptor.instance.getLocalDataCenter()), null, StorageService.instance));
         }
         assertEquals(expected, neighbors);
     }
@@ -239,7 +239,7 @@ public abstract class AntiEntropyServiceTestAbstract
         expected.remove(FBUtilities.getBroadcastAddress());
         Collection<String> hosts = Arrays.asList(FBUtilities.getBroadcastAddress().getCanonicalHostName(),expected.get(0).getCanonicalHostName());
 
-       assertEquals(expected.get(0), ActiveRepairService.instance.getNeighbors(keyspaceName, StorageService.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts).iterator().next());
+       assertEquals(expected.get(0), ActiveRepairService.instance.getNeighbors(keyspaceName, StorageService.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts, StorageService.instance).iterator().next());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -248,7 +248,7 @@ public abstract class AntiEntropyServiceTestAbstract
         addTokens(2 * KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor());
         //Dont give local endpoint
         Collection<String> hosts = Arrays.asList("127.0.0.3");
-        ActiveRepairService.instance.getNeighbors(keyspaceName, StorageService.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts);
+        ActiveRepairService.instance.getNeighbors(keyspaceName, StorageService.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts, StorageService.instance);
     }
 
     Set<InetAddress> addTokens(int max) throws Throwable
