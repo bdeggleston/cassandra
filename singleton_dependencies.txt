@@ -61,6 +61,10 @@ StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 
               FailureDetector(2m), SinkManager(2m), Gossiper(4m)] # Has a lot methods that just proxy calls to DatabaseDescriptor
 
 CompactionManager [StorageService, Schema, ActiveRepairService, SystemKeyspace]
+    * resolve the love triangle between CompactionManager, ActiveRepairService, and RepairMessageVerbHandler
+Updated --> ActiveRepairService [Gossiper, FailureDetector, StorageService, MessagingService, CompactionManager]
+RepairMessageVerbHandler [CompactionManager, Schema, KeyspaceManager, ActiveRepairService, MessagingService]
+    # instantiated by StorageService
 
 *Updated --> Keyspace [Schema, StorageService(weak, partitioner & single method), DatabaseDescriptor(weak), 
                        CommitLog(weak, single method), ColumnFamilyStoreManager, KSMetaData]
@@ -81,6 +85,5 @@ QueryProcessor [-nothing-]  # maintains prepared statements, but has no dependen
 TriggerExecutor [QueryProcessor]
 
 Updated --> PendingRangeCalculatorService [Schema, StorageService]
-Updated --> ActiveRepairService [Gossiper, FailureDetector, StorageService, MessagingService, CompactionManager]
 Updated --> Tracing [StageManager, StorageProxy]
 

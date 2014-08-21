@@ -101,12 +101,17 @@ public class CompactionManager implements CompactionManagerMBean
         }
     };
 
-    public static final CompactionManager instance = new CompactionManager();
+    public static final CompactionManager instance = create();
 
-
+    @Deprecated
     public static CompactionManager create()
     {
-        CompactionManager cm = new CompactionManager();
+        return create(Schema.instance, SystemKeyspace.instance, StorageService.instance, ActiveRepairService.instance);
+    }
+
+    public static CompactionManager create(Schema schema, SystemKeyspace systemKeyspace, StorageService storageService, ActiveRepairService activeRepairService)
+    {
+        CompactionManager cm = new CompactionManager(schema, systemKeyspace, storageService, activeRepairService);
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
         {
@@ -119,19 +124,37 @@ public class CompactionManager implements CompactionManagerMBean
         return cm;
     }
 
-    public CompactionManager()
-    {
+    private final Schema schema;
+    private final SystemKeyspace systemKeyspace;
+    private final StorageService storageService;
+    private final ActiveRepairService activeRepairService;
 
-    }
+    private final CompactionExecutor executor;
 
-    private final CompactionExecutor executor = new CompactionExecutor();
     private final CompactionExecutor validationExecutor = new ValidationExecutor();
-    private final static CompactionExecutor cacheCleanupExecutor = new CacheCleanupExecutor(); // TODO: make non-static
+    private final CompactionExecutor cacheCleanupExecutor = new CacheCleanupExecutor();
 
-    private final CompactionMetrics metrics = new CompactionMetrics(executor, validationExecutor);
+    private final CompactionMetrics metrics;
     private final Multiset<ColumnFamilyStore> compactingCF = ConcurrentHashMultiset.create();
 
     private final RateLimiter compactionRateLimiter = RateLimiter.create(Double.MAX_VALUE);
+
+
+    public CompactionManager(Schema schema, SystemKeyspace systemKeyspace, StorageService storageService, ActiveRepairService activeRepairService)
+    {
+        assert schema != null;
+        assert systemKeyspace != null;
+        assert storageService != null;
+        assert activeRepairService != null;
+
+        this.schema = schema;
+        this.systemKeyspace = systemKeyspace;
+        this.storageService = storageService;
+        this.activeRepairService = activeRepairService;
+
+        executor = new CompactionExecutor(this.storageService);
+        metrics = new CompactionMetrics(executor, validationExecutor);
+    }
 
     /**
      * Gets compaction rate limiter. When compaction_throughput_mb_per_sec is 0 or node is bootstrapping,
@@ -142,9 +165,9 @@ public class CompactionManager implements CompactionManagerMBean
      */
     public RateLimiter getRateLimiter()
     {
-        double currentThroughput = StorageService.instance.getCompactionThroughputMbPerSec() * 1024.0 * 1024.0;
+        double currentThroughput = storageService.getCompactionThroughputMbPerSec() * 1024.0 * 1024.0;
         // if throughput is set to 0, throttling is disabled
-        if (currentThroughput == 0 || StorageService.instance.isBootstrapMode())
+        if (currentThroughput == 0 || storageService.isBootstrapMode())
             currentThroughput = Double.MAX_VALUE;
         if (compactionRateLimiter.getRate() != currentThroughput)
             compactionRateLimiter.setRate(currentThroughput);
@@ -335,14 +358,14 @@ public class CompactionManager implements CompactionManagerMBean
     {
         assert !cfStore.isIndex();
         Keyspace keyspace = cfStore.keyspace;
-        final Collection<Range<Token>> ranges = StorageService.instance.getLocalRanges(keyspace.getName());
+        final Collection<Range<Token>> ranges = storageService.getLocalRanges(keyspace.getName());
         if (ranges.isEmpty())
         {
             logger.info("Cleanup cannot run before a node has joined the ring");
             return AllSSTableOpStatus.ABORTED;
         }
         final boolean hasIndexes = cfStore.indexManager.hasIndexes();
-        final CleanupStrategy cleanupStrategy = CleanupStrategy.get(cfStore, ranges);
+        final CleanupStrategy cleanupStrategy = CleanupStrategy.get(cfStore, ranges, cacheCleanupExecutor);
         return parallelAllSSTableOperation(cfStore, new OneSSTableOperation()
         {
             @Override
@@ -465,7 +488,7 @@ public class CompactionManager implements CompactionManagerMBean
         {
             // extract keyspace and columnfamily name from filename
             Descriptor desc = Descriptor.fromFilename(filename.trim());
-            if (Schema.instance.getCFMetaData(desc) == null)
+            if (schema.getCFMetaData(desc) == null)
             {
                 logger.warn("Schema does not exist for file {}. Skipping.", filename);
                 continue;
@@ -559,7 +582,7 @@ public class CompactionManager implements CompactionManagerMBean
     /* Used in tests. */
     public void disableAutoCompaction()
     {
-        for (String ksname : Schema.instance.getNonSystemKeyspaces())
+        for (String ksname : schema.getNonSystemKeyspaces())
         {
             for (ColumnFamilyStore cfs : KeyspaceManager.instance.open(ksname).getColumnFamilyStores())
                 cfs.disableAutoCompaction();
@@ -729,11 +752,11 @@ public class CompactionManager implements CompactionManagerMBean
 
     private static abstract class CleanupStrategy
     {
-        public static CleanupStrategy get(ColumnFamilyStore cfs, Collection<Range<Token>> ranges)
+        public static CleanupStrategy get(ColumnFamilyStore cfs, Collection<Range<Token>> ranges, CompactionExecutor cacheCleanupExecutor)
         {
             return cfs.indexManager.hasIndexes()
                  ? new Full(cfs, ranges)
-                 : new Bounded(cfs, ranges);
+                 : new Bounded(cfs, ranges, cacheCleanupExecutor);
         }
 
         public abstract ICompactionScanner getScanner(SSTableReader sstable, RateLimiter limiter);
@@ -743,7 +766,7 @@ public class CompactionManager implements CompactionManagerMBean
         {
             private final Collection<Range<Token>> ranges;
 
-            public Bounded(final ColumnFamilyStore cfs, Collection<Range<Token>> ranges)
+            public Bounded(final ColumnFamilyStore cfs, Collection<Range<Token>> ranges, CompactionExecutor cacheCleanupExecutor)
             {
                 this.ranges = ranges;
                 cacheCleanupExecutor.submit(new Runnable()
@@ -872,13 +895,13 @@ public class CompactionManager implements CompactionManagerMBean
         else
         {
             // flush first so everyone is validating data that is as similar as possible
-            StorageService.instance.forceKeyspaceFlush(cfs.keyspace.getName(), cfs.name);
+            storageService.forceKeyspaceFlush(cfs.keyspace.getName(), cfs.name);
             // we don't mark validating sstables as compacting in DataTracker, so we have to mark them referenced
             // instead so they won't be cleaned up if they do get compacted during the validation
-            if (validator.desc.parentSessionId == null || ActiveRepairService.instance.getParentRepairSession(validator.desc.parentSessionId) == null)
+            if (validator.desc.parentSessionId == null || activeRepairService.getParentRepairSession(validator.desc.parentSessionId) == null)
                 sstables = cfs.markCurrentSSTablesReferenced();
             else
-                sstables = ActiveRepairService.instance.getParentRepairSession(validator.desc.parentSessionId).getAndReferenceSSTables(cfs.metadata.cfId);
+                sstables = activeRepairService.getParentRepairSession(validator.desc.parentSessionId).getAndReferenceSSTables(cfs.metadata.cfId);
 
             if (validator.gcBefore > 0)
                 gcBefore = validator.gcBefore;
@@ -1149,9 +1172,9 @@ public class CompactionManager implements CompactionManagerMBean
             this(threadCount, threadCount, name, new LinkedBlockingQueue<Runnable>());
         }
 
-        public CompactionExecutor()
+        public CompactionExecutor(StorageService storageService)
         {
-            this(Math.max(1, StorageService.instance.getConcurrentCompactors()), "CompactionExecutor");
+            this(Math.max(1, storageService.getConcurrentCompactors()), "CompactionExecutor");
         }
 
         protected void beforeExecute(Thread t, Runnable r)
@@ -1230,7 +1253,7 @@ public class CompactionManager implements CompactionManagerMBean
     {
         try
         {
-            return SystemKeyspace.instance.getCompactionHistory();
+            return systemKeyspace.getCompactionHistory();
         }
         catch (OpenDataException e)
         {
@@ -1418,7 +1441,7 @@ public class CompactionManager implements CompactionManagerMBean
                 assert compactionTaskID != null;
                 logger.debug("Going to delete unfinished compaction product {}", desc);
                 SSTable.delete(desc, sstableFiles.getValue());
-                SystemKeyspace.instance.finishCompaction(compactionTaskID);
+                systemKeyspace.finishCompaction(compactionTaskID);
             }
             else
             {
@@ -1437,7 +1460,7 @@ public class CompactionManager implements CompactionManagerMBean
                 SSTable.delete(desc, sstableFiles.getValue());
                 UUID compactionTaskID = unfinishedCompactions.get(desc.generation);
                 if (compactionTaskID != null)
-                    SystemKeyspace.instance.finishCompaction(unfinishedCompactions.get(desc.generation));
+                    systemKeyspace.finishCompaction(unfinishedCompactions.get(desc.generation));
             }
         }
     }
