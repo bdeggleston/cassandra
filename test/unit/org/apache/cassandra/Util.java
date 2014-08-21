@@ -245,7 +245,7 @@ public class Util
     /**
      * Creates initial set of nodes and tokens. Nodes are added to StorageService as 'normal'
      */
-    public static void createInitialRing(StorageService ss, IPartitioner partitioner, List<Token> endpointTokens,
+    public static void createInitialRing(StorageService ss, ClusterState cs, IPartitioner partitioner, List<Token> endpointTokens,
                                    List<Token> keyTokens, List<InetAddress> hosts, List<UUID> hostIds, int howMany)
         throws UnknownHostException
     {
@@ -273,7 +273,7 @@ public class Util
 
         // check that all nodes are in token metadata
         for (int i=0; i<endpointTokens.size(); ++i)
-            assertTrue(ss.getTokenMetadata().isMember(hosts.get(i)));
+            assertTrue(cs.getTokenMetadata().isMember(hosts.get(i)));
     }
 
     public static Future<?> compactAll(ColumnFamilyStore cfs, int gcBefore)

@@ -87,7 +87,7 @@ public class LeaveAndBootstrapTest
         List<InetAddress> hosts = new ArrayList<InetAddress>();
         List<UUID> hostIds = new ArrayList<UUID>();
 
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE);
+        Util.createInitialRing(ss, ClusterState.instance, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE);
 
         Map<Token, List<InetAddress>> expectedEndpoints = new HashMap<Token, List<InetAddress>>();
         for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
@@ -159,7 +159,7 @@ public class LeaveAndBootstrapTest
         List<UUID> hostIds = new ArrayList<UUID>();
 
         // create a ring or 10 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE);
+        Util.createInitialRing(ss, ClusterState.instance, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE);
 
         // nodes 6, 8 and 9 leave
         final int[] LEAVING = new int[] {6, 8, 9};
@@ -459,7 +459,7 @@ public class LeaveAndBootstrapTest
         List<UUID> hostIds = new ArrayList<UUID>();
 
         // create a ring or 5 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 7);
+        Util.createInitialRing(ss, ClusterState.instance, partitioner, endpointTokens, keyTokens, hosts, hostIds, 7);
 
         // node 2 leaves
         ss.onChange(hosts.get(2),
@@ -536,7 +536,7 @@ public class LeaveAndBootstrapTest
         List<UUID> hostIds = new ArrayList<UUID>();
 
         // create a ring or 5 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6);
+        Util.createInitialRing(ss, ClusterState.instance, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6);
 
         // node 2 leaves
         ss.onChange(hosts.get(2), ApplicationState.STATUS, valueFactory.leaving(Collections.singleton(endpointTokens.get(2))));
@@ -578,7 +578,7 @@ public class LeaveAndBootstrapTest
         List<UUID> hostIds = new ArrayList<UUID>();
 
         // create a ring or 5 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6);
+        Util.createInitialRing(ss, ClusterState.instance, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6);
 
         // node 2 leaves with _different_ token
         Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(0))));
@@ -628,7 +628,7 @@ public class LeaveAndBootstrapTest
         List<UUID> hostIds = new ArrayList<UUID>();
 
         // create a ring of 6 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 7);
+        Util.createInitialRing(ss, ClusterState.instance, partitioner, endpointTokens, keyTokens, hosts, hostIds, 7);
 
         // node hosts.get(2) goes jumps to left
         ss.onChange(hosts.get(2), ApplicationState.STATUS,
@@ -666,7 +666,7 @@ public class LeaveAndBootstrapTest
         // create a ring of 2 nodes
         ArrayList<Token> endpointTokens = new ArrayList<>();
         List<InetAddress> hosts = new ArrayList<>();
-        Util.createInitialRing(ss, partitioner, endpointTokens, new ArrayList<Token>(), hosts, new ArrayList<UUID>(), 2);
+        Util.createInitialRing(ss, ClusterState.instance, partitioner, endpointTokens, new ArrayList<Token>(), hosts, new ArrayList<UUID>(), 2);
 
         InetAddress toRemove = hosts.get(1);
         SystemKeyspace.instance.updatePeerInfo(toRemove, "data_center", "dc42");
@@ -690,7 +690,7 @@ public class LeaveAndBootstrapTest
         // create a ring of 1 node
         StorageService ss = StorageService.instance;
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
-        Util.createInitialRing(ss, partitioner, new ArrayList<Token>(), new ArrayList<Token>(),  new ArrayList<InetAddress>(), new ArrayList<UUID>(), 1);
+        Util.createInitialRing(ss, ClusterState.instance, partitioner, new ArrayList<Token>(), new ArrayList<Token>(),  new ArrayList<InetAddress>(), new ArrayList<UUID>(), 1);
 
         // make a REMOVING state change on a non-member endpoint; without the CASSANDRA-6564 fix, this
         // would result in an ArrayIndexOutOfBoundsException

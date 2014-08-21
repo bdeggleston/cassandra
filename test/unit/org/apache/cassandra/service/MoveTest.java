@@ -100,7 +100,7 @@ public class MoveTest
         List<InetAddress> hosts = new ArrayList<InetAddress>();
         List<UUID> hostIds = new ArrayList<UUID>();
 
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE);
+        Util.createInitialRing(ss, ClusterState.instance, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE);
 
         Map<Token, List<InetAddress>> expectedEndpoints = new HashMap<Token, List<InetAddress>>();
         for (Token token : keyTokens)
@@ -173,7 +173,7 @@ public class MoveTest
         List<UUID> hostIds = new ArrayList<UUID>();
 
         // create a ring or 10 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE);
+        Util.createInitialRing(ss, ClusterState.instance, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE);
 
         // nodes 6, 8 and 9 leave
         final int[] MOVING = new int[] {6, 8, 9};
@@ -515,7 +515,7 @@ public class MoveTest
         List<UUID> hostIds = new ArrayList<UUID>();
 
         // create a ring or 6 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6);
+        Util.createInitialRing(ss, ClusterState.instance, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6);
 
         // node 2 leaves
         Token newToken = positionToken(7);

@@ -77,7 +77,7 @@ public class RemoveTest
         tmd.clearUnsafe();
 
         // create a ring of 5 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6);
+        Util.createInitialRing(ss, ClusterState.instance, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6);
 
         MessagingService.instance.listen(FBUtilities.getBroadcastAddress());
         Gossiper.instance.start(1);
