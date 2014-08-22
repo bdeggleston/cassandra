@@ -61,6 +61,7 @@ public class SchemaLoader
 
     public static void prepareServer()
     {
+        DatabaseDescriptor.init();
         // Cleanup first
         cleanupAndLeaveDirs();
 

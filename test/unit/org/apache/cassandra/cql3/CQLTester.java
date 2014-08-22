@@ -57,7 +57,6 @@ public abstract class CQLTester
     static
     {
         // Once per-JVM is enough
-        SchemaLoader.prepareServer();
     }
 
     private String currentTable;
@@ -66,6 +65,7 @@ public abstract class CQLTester
     @BeforeClass
     public static void setUpClass() throws Throwable
     {
+        SchemaLoader.prepareServer();
         schemaChange(String.format("CREATE KEYSPACE IF NOT EXISTS %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}", KEYSPACE));
     }
 
