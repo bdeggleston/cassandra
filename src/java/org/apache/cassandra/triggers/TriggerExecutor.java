@@ -36,14 +36,19 @@ import org.apache.cassandra.utils.Pair;
 
 public class TriggerExecutor
 {
-    public static final TriggerExecutor instance = new TriggerExecutor();
+    public static final TriggerExecutor instance = new TriggerExecutor(QueryProcessor.instance);
 
     private final Map<String, ITrigger> cachedTriggers = Maps.newConcurrentMap();
     private final ClassLoader parent = Thread.currentThread().getContextClassLoader();
     private volatile ClassLoader customClassLoader;
 
-    private TriggerExecutor()
+    private final QueryProcessor queryProcessor;
+
+    private TriggerExecutor(QueryProcessor queryProcessor)
     {
+        assert queryProcessor != null;
+        this.queryProcessor = queryProcessor;
+
         reloadClasses();
     }
 
@@ -160,7 +165,7 @@ public class TriggerExecutor
     {
         for (Mutation mutation : tmutations)
         {
-            QueryProcessor.instance.validateKey(mutation.key());
+            queryProcessor.validateKey(mutation.key());
             for (ColumnFamily tcf : mutation.getColumnFamilies())
                 for (Cell cell : tcf)
                     cell.validateFields(tcf.metadata());

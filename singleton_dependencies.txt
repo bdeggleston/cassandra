@@ -2,6 +2,7 @@
 
 # loadSchemas has most of the Schema, SystemKeyspace & DefsTables references, SystemKeyspace is also referenced in isReplacing
 # move loadSchemas to Schema or SystemKeyspace
+
 DatabaseDescriptor [Schema(?, 3m), SystemKeyspace(?, 2m), DefsTables(?, 1m), KeyspaceManager]  #seems to be logical initialization point
     * move loadSchemas to SystemKeyspace
     * pass SystemKeyspace into isReplacing
@@ -80,8 +81,6 @@ StorageService [SystemKeyspace, Gossiper(strong), StreamManager(weak, move to cr
                 FailureDetector(5m), ActiveRepairService(very strong), ColumnFamilyStoreManager(create), KeyspaceManager]
     * DI StorageProxy into methods
     * resolve dependency on KeyspaceManager
-    * split out TokenMetadata management
-    * split out bootstrap state
     * split out getValidColumnFamilies, forceKeyspaceFlush
 
 StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 1p), StorageService(strong), MessagingService,
@@ -104,13 +103,10 @@ Updated --> ColumnFamilyStore [CacheService, SystemKeyspace, CompactionManager(s
 
 StatusLogger [DatabaseDescriptor, ColumnFamilyStoreManager]
 
-TriggerExecutor [QueryProcessor]
+Updated --> TriggerExecutor [QueryProcessor]
 
 
 Updated --> PendingRangeCalculatorService [Schema, ClusterState]
 Updated --> Tracing [StageManager, StorageProxy]
 
----- other ----
-
-initialize CommitLogSegment in CommitLogSegmentManager before starting the managementThread
 

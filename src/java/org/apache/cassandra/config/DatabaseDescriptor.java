@@ -50,6 +50,7 @@ import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.service.*;
 import org.apache.cassandra.sink.SinkManager;
 import org.apache.cassandra.streaming.StreamManager;
+import org.apache.cassandra.triggers.TriggerExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.cassandra.config.Config.RequestSchedulerId;
@@ -119,6 +120,8 @@ public class DatabaseDescriptor
         BatchlogManager batchlogManager = BatchlogManager.instance;
         StorageService storageService = StorageService.instance;
         commitLog.setStorageService(storageService);
+
+        TriggerExecutor triggerExecutor = TriggerExecutor.instance;
 
         instance.loadSnitch();
     }
