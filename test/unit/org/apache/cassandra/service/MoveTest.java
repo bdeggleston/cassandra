@@ -27,6 +27,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import static org.junit.Assert.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.gms.Gossiper;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -63,6 +64,7 @@ public class MoveTest
     @BeforeClass
     public static void setup() throws ConfigurationException
     {
+        DatabaseDescriptor.init();
         oldPartitioner = StorageService.instance.setPartitionerUnsafe(partitioner);
         SchemaLoader.loadSchema();
         SchemaLoader.schemaDefinition("MoveTest");

@@ -68,7 +68,7 @@ public class StreamingTransferTest
 {
     private static final Logger logger = LoggerFactory.getLogger(StreamingTransferTest.class);
 
-    public static final InetAddress LOCAL = FBUtilities.getBroadcastAddress();
+    public static volatile InetAddress LOCAL;
     public static final String KEYSPACE1 = "StreamingTransferTest1";
     public static final String CF_STANDARD = "Standard1";
     public static final String CF_COUNTER = "Counter1";
@@ -82,8 +82,10 @@ public class StreamingTransferTest
     @BeforeClass
     public static void defineSchema() throws Exception
     {
+        DatabaseDescriptor.init();
         SchemaLoader.prepareServer();
         StorageService.instance.initServer();
+        LOCAL = FBUtilities.getBroadcastAddress();
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),

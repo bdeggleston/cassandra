@@ -21,7 +21,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.utils.FBUtilities;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
@@ -29,6 +31,13 @@ import org.junit.Test;
  */
 public class GossipingPropertyFileSnitchTest
 {
+
+    @BeforeClass
+    public static void setupClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     @Test
     public void testAutoReloadConfig() throws Exception
     {

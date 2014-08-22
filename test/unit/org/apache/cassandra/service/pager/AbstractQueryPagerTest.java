@@ -20,6 +20,7 @@ package org.apache.cassandra.service.pager;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -33,6 +34,13 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class AbstractQueryPagerTest
 {
+
+    @BeforeClass
+    public static void setupClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     @Test
     public void discardFirstTest()
     {

@@ -21,6 +21,8 @@ package org.apache.cassandra.db;
 import java.nio.ByteBuffer;
 import java.util.Set;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.db.composites.CellName;
@@ -38,6 +40,13 @@ import static org.junit.Assert.assertTrue;
 
 public class SecondaryIndexCellSizeTest
 {
+
+    @BeforeClass
+    public static void setupClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     @Test
     public void test64kColumn()
     {

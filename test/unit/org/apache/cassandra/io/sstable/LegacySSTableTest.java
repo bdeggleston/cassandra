@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.service.ClusterState;
 import org.junit.BeforeClass;
@@ -62,6 +63,7 @@ public class LegacySSTableTest
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
+        DatabaseDescriptor.init();
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KSNAME,
                                     SimpleStrategy.class,

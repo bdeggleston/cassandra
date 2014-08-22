@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -48,6 +49,7 @@ public class SimpleStrategyTest
     @BeforeClass
     public static void defineSchema() throws Exception
     {
+        DatabaseDescriptor.init();
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     SimpleStrategy.class,

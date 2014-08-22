@@ -25,6 +25,8 @@ import java.net.InetAddress;
 import java.util.Collections;
 import java.util.UUID;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.AbstractSerializationsTester;
@@ -50,8 +52,16 @@ public class SerializationsTest extends AbstractSerializationsTester
     }
 
     private static final UUID RANDOM_UUID = UUID.fromString("b5c3d033-75aa-4c2f-a819-947aac7a0c54");
-    private static final Range<Token> FULL_RANGE = new Range<>(ClusterState.instance.getPartitioner().getMinimumToken(), ClusterState.instance.getPartitioner().getMinimumToken());
-    private static final RepairJobDesc DESC = new RepairJobDesc(getVersion() < MessagingService.VERSION_21 ? null : RANDOM_UUID, RANDOM_UUID, "Keyspace1", "Standard1", FULL_RANGE);
+    private static volatile Range<Token> FULL_RANGE;
+    private static volatile RepairJobDesc DESC;
+
+    @BeforeClass
+    public static void setupClass()
+    {
+        DatabaseDescriptor.init();
+        FULL_RANGE = new Range<>(ClusterState.instance.getPartitioner().getMinimumToken(), ClusterState.instance.getPartitioner().getMinimumToken());
+        DESC = new RepairJobDesc(getVersion() < MessagingService.VERSION_21 ? null : RANDOM_UUID, RANDOM_UUID, "Keyspace1", "Standard1", FULL_RANGE);
+    }
 
     private void testRepairMessageWrite(String fileName, RepairMessage... messages) throws IOException
     {

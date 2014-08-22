@@ -22,6 +22,7 @@ import java.util.Iterator;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.service.ClusterState;
 import org.junit.BeforeClass;
@@ -46,6 +47,7 @@ public class CQLSSTableWriterTest
     @BeforeClass
     public static void setup() throws Exception
     {
+        DatabaseDescriptor.init();
         KeyspaceManager.instance.setInitialized();
         StorageService.instance.initServer();
     }

@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.*;
 
 import org.apache.cassandra.SchemaLoader;
@@ -47,7 +48,7 @@ import static org.junit.Assert.assertTrue;
 
 public class RemoveTest
 {
-    static final IPartitioner partitioner = new RandomPartitioner();
+    static  IPartitioner partitioner = new RandomPartitioner();
     StorageService ss = StorageService.instance;
     TokenMetadata tmd = ClusterState.instance.getTokenMetadata();
     static IPartitioner oldPartitioner;
@@ -61,6 +62,7 @@ public class RemoveTest
     @BeforeClass
     public static void setupClass() throws ConfigurationException
     {
+        DatabaseDescriptor.init();
         oldPartitioner = StorageService.instance.setPartitionerUnsafe(partitioner);
         SchemaLoader.loadSchema();
     }
@@ -112,6 +114,7 @@ public class RemoveTest
     @Test
     public void testRemoveHostId() throws InterruptedException
     {
+        DatabaseDescriptor.init();
         // start removal in background and send replication confirmations
         final AtomicBoolean success = new AtomicBoolean(false);
         Thread remover = new Thread()

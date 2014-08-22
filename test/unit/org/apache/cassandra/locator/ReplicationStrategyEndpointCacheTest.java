@@ -22,6 +22,7 @@ package org.apache.cassandra.locator;
 import java.net.InetAddress;
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.BeforeClass;
@@ -36,6 +37,13 @@ import org.apache.cassandra.dht.Token;
 
 public class ReplicationStrategyEndpointCacheTest
 {
+
+    @BeforeClass
+    public static void setupClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     private TokenMetadata tmd;
     private Token searchToken;
     private AbstractReplicationStrategy strategy;
