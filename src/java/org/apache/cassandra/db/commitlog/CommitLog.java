@@ -56,6 +56,7 @@ public class CommitLog implements CommitLogMBean
 
     public final CommitLogSegmentManager allocator;
     public final CommitLogArchiver archiver = new CommitLogArchiver();
+    private volatile StorageService storageService = null;
     final CommitLogMetrics metrics;
     final AbstractCommitLogService executor;
 
@@ -81,6 +82,13 @@ public class CommitLog implements CommitLogMBean
 
         // register metrics
         metrics = new CommitLogMetrics(executor, allocator);
+    }
+
+    public void setStorageService(StorageService storageService)
+    {
+        assert this.storageService == null;
+        assert storageService != null;
+        this.storageService = storageService;
     }
 
     /**
@@ -340,12 +348,12 @@ public class CommitLog implements CommitLogMBean
         return allocator.getActiveSegments().size();
     }
 
-    static boolean handleCommitError(String message, Throwable t)
+    boolean handleCommitError(String message, Throwable t)
     {
         switch (DatabaseDescriptor.instance.getCommitFailurePolicy())
         {
             case stop:
-                StorageService.instance.stopTransports();
+                storageService.stopTransports();
             case stop_commit:
                 logger.error(String.format("%s. Commit disk failure policy is %s; terminating thread", message, DatabaseDescriptor.instance.getCommitFailurePolicy()), t);
                 return false;
