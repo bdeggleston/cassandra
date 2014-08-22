@@ -417,6 +417,8 @@ public class SchemaLoader
 
     public static void cleanupAndLeaveDirs()
     {
+        DatabaseDescriptor.init();
+        CommitLog.instance.resetUnsafe(); // calling cleanup with active tasks causes pain
         mkdirs();
         cleanup();
         mkdirs();
