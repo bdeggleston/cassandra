@@ -13,6 +13,7 @@ import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.RingPosition;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.gms.FailureDetector;
+import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.utils.FBUtilities;
@@ -28,18 +29,51 @@ import java.util.*;
  */
 public class ClusterState
 {
-    private static final Logger logger = LoggerFactory.getLogger(StorageService.class);
+    private static final Logger logger = LoggerFactory.getLogger(ClusterState.class);
 
-    public static final ClusterState instance = new ClusterState();
+    public static final ClusterState instance = new ClusterState(DatabaseDescriptor.instance, Schema.instance, FailureDetector.instance, CommitLog.instance, StorageServiceTasks.instance);
+
+//    static
+//    {
+//        instance = new ClusterState(DatabaseDescriptor.instance, Schema.instance, FailureDetector.instance, CommitLog.instance, StorageServiceTasks.instance);
+//
+////        // FIXME: forcing KeyspaceManager to initialize before ClusterState does anything
+////        KeyspaceManager keyspaceManager = KeyspaceManager.instance;
+//    }
 
     /* This abstraction maintains the token/endpoint metadata information */
     private TokenMetadata tokenMetadata = new TokenMetadata();
 
     /* Are we starting this node in bootstrap mode? */
     private boolean isBootstrapMode;
+    private volatile KeyspaceManager keyspaceManager = null;  // not the best
 
-    public ClusterState()
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+    private final IFailureDetector failureDetector;
+    private final CommitLog commitLog;
+    private final StorageServiceTasks storageServiceTasks;
+
+    public ClusterState(DatabaseDescriptor databaseDescriptor, Schema schema, IFailureDetector failureDetector, CommitLog commitLog, StorageServiceTasks storageServiceTasks)
     {
+        assert databaseDescriptor != null;
+        assert schema != null;
+        assert failureDetector != null;
+        assert commitLog != null;
+        assert storageServiceTasks != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.failureDetector = failureDetector;
+        this.commitLog = commitLog;
+        this.storageServiceTasks = storageServiceTasks;
+    }
+
+    public void setKeyspaceManager(KeyspaceManager keyspaceManager)
+    {
+        assert keyspaceManager != null;
+        assert this.keyspaceManager == null;
+        this.keyspaceManager = keyspaceManager;
     }
 
     public TokenMetadata getTokenMetadata()
@@ -84,7 +118,8 @@ public class ClusterState
      */
     public Collection<Range<Token>> getPrimaryRangesForEndpoint(String keyspace, InetAddress ep)
     {
-        AbstractReplicationStrategy strategy = KeyspaceManager.instance.open(keyspace).getReplicationStrategy();
+        assert keyspaceManager != null;
+        AbstractReplicationStrategy strategy = keyspaceManager.open(keyspace).getReplicationStrategy();
         Collection<Range<Token>> primaryRanges = new HashSet<>();
         TokenMetadata metadata = tokenMetadata.cloneOnlyTokenMap();
         for (Token token : metadata.sortedTokens())
@@ -105,7 +140,8 @@ public class ClusterState
      */
     Collection<Range<Token>> getRangesForEndpoint(String keyspaceName, InetAddress ep)
     {
-        return KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getAddressRanges().get(ep);
+        assert keyspaceManager != null;
+        return keyspaceManager.open(keyspaceName).getReplicationStrategy().getAddressRanges().get(ep);
     }
 
 
@@ -122,7 +158,7 @@ public class ClusterState
 
     public IPartitioner getPartitioner()
     {
-        return DatabaseDescriptor.instance.getPartitioner();
+        return databaseDescriptor.getPartitioner();
     }
 
     /**
@@ -136,7 +172,7 @@ public class ClusterState
      */
     public List<InetAddress> getNaturalEndpoints(String keyspaceName, String cf, String key)
     {
-        CFMetaData cfMetaData = Schema.instance.getKSMetaData(keyspaceName).cfMetaData().get(cf);
+        CFMetaData cfMetaData = schema.getKSMetaData(keyspaceName).cfMetaData().get(cf);
         return getNaturalEndpoints(keyspaceName, getPartitioner().getToken(cfMetaData.getKeyValidator().fromString(key)));
     }
 
@@ -155,7 +191,8 @@ public class ClusterState
      */
     public List<InetAddress> getNaturalEndpoints(String keyspaceName, RingPosition pos)
     {
-        return KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getNaturalEndpoints(pos);
+        assert keyspaceManager != null;
+        return keyspaceManager.open(keyspaceName).getReplicationStrategy().getNaturalEndpoints(pos);
     }
 
     /**
@@ -178,7 +215,7 @@ public class ClusterState
 
         for (InetAddress endpoint : endpoints)
         {
-            if (FailureDetector.instance.isAlive(endpoint))
+            if (failureDetector.isAlive(endpoint))
                 liveEps.add(endpoint);
         }
 
@@ -203,52 +240,52 @@ public class ClusterState
 
     public CommitLog getCommitLog()
     {
-        return CommitLog.instance;
+        return commitLog;
     }
 
     public long getReadRpcTimeout()
     {
-        return DatabaseDescriptor.instance.getReadRpcTimeout();
+        return databaseDescriptor.getReadRpcTimeout();
     }
 
     public int getFlushWriters()
     {
-        return DatabaseDescriptor.instance.getFlushWriters();
+        return databaseDescriptor.getFlushWriters();
     }
 
     public boolean isAutoSnapshot()
     {
-        return DatabaseDescriptor.instance.isAutoSnapshot();
+        return databaseDescriptor.isAutoSnapshot();
     }
 
     public String getSavedCachesLocation()
     {
-        return DatabaseDescriptor.instance.getSavedCachesLocation();
+        return databaseDescriptor.getSavedCachesLocation();
     }
 
     public int getCompactionThroughputMbPerSec()
     {
-        return DatabaseDescriptor.instance.getCompactionThroughputMbPerSec();
+        return databaseDescriptor.getCompactionThroughputMbPerSec();
     }
 
     public int getConcurrentCompactors()
     {
-        return DatabaseDescriptor.instance.getConcurrentCompactors();
+        return databaseDescriptor.getConcurrentCompactors();
     }
 
     public DebuggableScheduledThreadPoolExecutor getScheduledTasksExecutor()
     {
-        return StorageServiceTasks.instance.scheduledTasks;
+        return storageServiceTasks.scheduledTasks;
     }
 
     public DebuggableScheduledThreadPoolExecutor getTasksExecutor()
     {
-        return StorageServiceTasks.instance.tasks;
+        return storageServiceTasks.tasks;
     }
 
     public DebuggableScheduledThreadPoolExecutor getOptionalTasksExecutor()
     {
-        return StorageServiceTasks.instance.optionalTasks;
+        return storageServiceTasks.optionalTasks;
     }
 
 }
