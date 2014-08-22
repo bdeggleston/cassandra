@@ -50,6 +50,7 @@ import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.service.*;
 import org.apache.cassandra.sink.SinkManager;
 import org.apache.cassandra.streaming.StreamManager;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.triggers.TriggerExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,7 +122,14 @@ public class DatabaseDescriptor
         StorageService storageService = StorageService.instance;
         commitLog.setStorageService(storageService);
 
+        // TODO: more stuff goes here
+
         TriggerExecutor triggerExecutor = TriggerExecutor.instance;
+
+        PendingRangeCalculatorService pendingRangeCalculatorService = PendingRangeCalculatorService.instance;
+        Tracing tracing = Tracing.instance;
+        columnFamilyStoreManager.setTracing(tracing);
+
 
         instance.loadSnitch();
     }

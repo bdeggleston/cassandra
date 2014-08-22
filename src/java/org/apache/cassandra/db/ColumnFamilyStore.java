@@ -233,6 +233,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     private final SystemKeyspace systemKeyspace;
     private final CompactionManager compactionManager;
     private final CacheService cacheService;
+    private final Tracing tracing;
     private final ColumnFamilyStoreManager.TaskExecutors taskExecutors;
 
     // TODO: this is getting out of hand
@@ -248,6 +249,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                       SystemKeyspace systemKeyspace,
                       CompactionManager compactionManager,
                       CacheService cacheService,
+                      Tracing tracing,
                       ColumnFamilyStoreManager.TaskExecutors taskExecutors)
     {
         assert metadata != null : "null metadata for " + keyspace + ":" + columnFamilyName;
@@ -256,12 +258,14 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         assert systemKeyspace != null;
         assert compactionManager != null;
         assert cacheService != null;
+        assert tracing != null;
         assert taskExecutors != null;
 
         this.clusterState = clusterState;
         this.systemKeyspace = systemKeyspace;
         this.compactionManager = compactionManager;
         this.cacheService = cacheService;
+        this.tracing = tracing;
         this.taskExecutors = taskExecutors;
 
         this.keyspace = keyspace;
@@ -446,19 +450,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                         cachedShardsRead,
                         keyspace.getName(),
                         name);
-    }
-
-    /**
-     * See #{@code StorageService.loadNewSSTables(String, String)} for more info
-     *
-     * @param ksName The keyspace name
-     * @param cfName The columnFamily name
-     */
-    public static synchronized void loadNewSSTables(String ksName, String cfName)
-    {
-        /** ks/cf existence checks will be done by open and getCFS methods for us */
-        Keyspace keyspace = KeyspaceManager.instance.open(ksName);
-        keyspace.getColumnFamilyStore(cfName).loadNewSSTables();
     }
 
     /**
@@ -1289,7 +1280,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             if (cached instanceof RowCacheSentinel)
             {
                 // Some other read is trying to cache the value, just do a normal non-caching read
-                Tracing.instance.trace("Row cache miss (race)");
+                tracing.trace("Row cache miss (race)");
                 metric.rowCacheMiss.inc();
                 return getTopLevelColumns(filter, Integer.MIN_VALUE);
             }
@@ -1298,17 +1289,17 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             if (isFilterFullyCoveredBy(filter.filter, cachedCf, filter.timestamp))
             {
                 metric.rowCacheHit.inc();
-                Tracing.instance.trace("Row cache hit");
+                tracing.trace("Row cache hit");
                 return filterColumnFamily(cachedCf, filter);
             }
 
             metric.rowCacheHitOutOfRange.inc();
-            Tracing.instance.trace("Ignoring row cache as cached value could not satisfy query");
+            tracing.trace("Ignoring row cache as cached value could not satisfy query");
             return getTopLevelColumns(filter, Integer.MIN_VALUE);
         }
 
         metric.rowCacheMiss.inc();
-        Tracing.instance.trace("Row cache miss");
+        tracing.trace("Row cache miss");
         RowCacheSentinel sentinel = new RowCacheSentinel();
         boolean sentinelSuccess = cacheService.rowCache.putIfAbsent(key, sentinel);
         ColumnFamily data = null;
@@ -1320,7 +1311,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             {
                 data = getTopLevelColumns(QueryFilter.getIdentityFilter(filter.key, name, filter.timestamp), Integer.MIN_VALUE);
                 toCache = data;
-                Tracing.instance.trace("Populating row cache with the whole partition");
+                tracing.trace("Populating row cache with the whole partition");
                 if (sentinelSuccess && toCache != null)
                     cacheService.rowCache.replace(key, sentinel, toCache);
                 return filterColumnFamily(data, filter);
@@ -1352,7 +1343,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                     toCache = getTopLevelColumns(cacheFilter, Integer.MIN_VALUE);
                     if (toCache != null)
                     {
-                        Tracing.instance.trace("Populating row cache ({} rows cached)", cacheSlice.lastCounted());
+                        tracing.trace("Populating row cache ({} rows cached)", cacheSlice.lastCounted());
                         data = filterColumnFamily(toCache, filter);
                     }
                 }
@@ -1367,11 +1358,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                         if (sliceFilter.finish().isEmpty() || sliceFilter.lastCounted() >= rowsToCache)
                         {
                             toCache = filterColumnFamily(data, cacheFilter);
-                            Tracing.instance.trace("Caching {} rows (out of {} requested)", cacheSlice.lastCounted(), sliceFilter.count);
+                            tracing.trace("Caching {} rows (out of {} requested)", cacheSlice.lastCounted(), sliceFilter.count);
                         }
                         else
                         {
-                            Tracing.instance.trace("Not populating row cache, not enough rows fetched ({} fetched but {} required for the cache)", sliceFilter.lastCounted(), rowsToCache);
+                            tracing.trace("Not populating row cache, not enough rows fetched ({} fetched but {} required for the cache)", sliceFilter.lastCounted(), rowsToCache);
                         }
                     }
                 }
@@ -1382,7 +1373,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             }
             else
             {
-                Tracing.instance.trace("Fetching data but not populating cache as query does not query from the start of the partition");
+                tracing.trace("Fetching data but not populating cache as query does not query from the start of the partition");
                 return getTopLevelColumns(filter, Integer.MIN_VALUE);
             }
         }
@@ -1642,7 +1633,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     public ColumnFamily getTopLevelColumns(QueryFilter filter, int gcBefore)
     {
-        Tracing.instance.trace("Executing single-partition query on {}", name);
+        tracing.trace("Executing single-partition query on {}", name);
         CollationController controller = new CollationController(this, filter, gcBefore);
         ColumnFamily columns;
         try (OpOrder.Group op = readOrdering.start())
@@ -1693,7 +1684,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         assert !(range.keyRange() instanceof Range) || !((Range)range.keyRange()).isWrapAround() || range.keyRange().right.isMinimum(partitioner) : range.keyRange();
 
         final ViewFragment view = select(viewFilter(range.keyRange()));
-        Tracing.instance.trace("Executing seq scan across {} sstables for {}", view.sstables.size(), range.keyRange().getString(metadata.getKeyValidator()));
+        tracing.trace("Executing seq scan across {} sstables for {}", view.sstables.size(), range.keyRange().getString(metadata.getKeyValidator()));
 
         final CloseableIterator<Row> iterator = RowIteratorFactory.getIterator(view.memtables, view.sstables, range, this, now);
 
@@ -1838,7 +1829,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     public List<Row> search(ExtendedFilter filter)
     {
-        Tracing.instance.trace("Executing indexed scan for {}", filter.dataRange.keyRange().getString(metadata.getKeyValidator()));
+        tracing.trace("Executing indexed scan for {}", filter.dataRange.keyRange().getString(metadata.getKeyValidator()));
         return indexManager.search(filter);
     }
 
@@ -1898,7 +1889,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             try
             {
                 rowIterator.close();
-                Tracing.instance.trace("Scanned {} rows and matched {}", total, matched);
+                tracing.trace("Scanned {} rows and matched {}", total, matched);
             }
             catch (IOException e)
             {

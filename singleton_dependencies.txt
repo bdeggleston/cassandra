@@ -88,7 +88,7 @@ StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 
     * maybe remove dependency on StorageService(getPartitioner, TokenMetadata, getNaturalEndpoints, getLiveNaturalEndpoints)
     * move isBootstrapMode to ClusterState to remove dependency on StorageService
 
-ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService]
+Updated --> ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService, Tracing]
 
 RepairMessageVerbHandler [CompactionManager, Schema, KeyspaceManager, ActiveRepairService, MessagingService, StorageService]
     # instantiated by StorageService

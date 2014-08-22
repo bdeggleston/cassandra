@@ -19,6 +19,7 @@ import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.service.CacheService;
 import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.streaming.StreamLockfile;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +48,7 @@ public class ColumnFamilyStoreManager
     private final SystemKeyspace systemKeyspace;
     private final CompactionManager compactionManager;
     private final CacheService cacheService;
+    private volatile Tracing tracing;
     public final TaskExecutors taskExecutors;
 
     public ColumnFamilyStoreManager(Schema schema, ClusterState clusterState, SystemKeyspace systemKeyspace, CompactionManager compactionManager, CacheService cacheService)
@@ -63,6 +65,13 @@ public class ColumnFamilyStoreManager
         this.compactionManager = compactionManager;
         this.cacheService = cacheService;
         this.taskExecutors = new TaskExecutors();
+    }
+
+    public void setTracing(Tracing tracing)
+    {
+        assert this.tracing == null;
+        assert tracing != null;
+        this.tracing = tracing;
     }
 
     public void rebuildSecondaryIndex(String ksName, String cfName, String... idxNames)
@@ -128,6 +137,7 @@ public class ColumnFamilyStoreManager
         int value = (generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
 
         UUID cfId = schema.getId(keyspace.getName(), columnFamily);
+        assert tracing != null;
         return new ColumnFamilyStore(keyspace,
                                      columnFamily,
                                      partitioner,
@@ -140,6 +150,7 @@ public class ColumnFamilyStoreManager
                                      systemKeyspace,
                                      compactionManager,
                                      cacheService,
+                                     tracing,
                                      taskExecutors);
     }
 
@@ -227,6 +238,21 @@ public class ColumnFamilyStoreManager
                 }
             }
         }
+
+
+    }
+
+    /**
+     * See #{@code StorageService.loadNewSSTables(String, String)} for more info
+     *
+     * @param ksName The keyspace name
+     * @param cfName The columnFamily name
+     */
+    public synchronized void loadNewSSTables(String ksName, String cfName, KeyspaceManager keyspaceManager)
+    {
+        /** ks/cf existence checks will be done by open and getCFS methods for us */
+        Keyspace keyspace = keyspaceManager.open(ksName);
+        keyspace.getColumnFamilyStore(cfName).loadNewSSTables();
     }
 
     public class TaskExecutors

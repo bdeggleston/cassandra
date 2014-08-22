@@ -3702,7 +3702,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     public void loadNewSSTables(String ksName, String cfName)
     {
-        ColumnFamilyStore.loadNewSSTables(ksName, cfName);
+        ColumnFamilyStoreManager.instance.loadNewSSTables(ksName, cfName, KeyspaceManager.instance);
     }
 
     /**
