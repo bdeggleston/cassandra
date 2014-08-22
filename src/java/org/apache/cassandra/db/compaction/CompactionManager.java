@@ -110,9 +110,9 @@ public class CompactionManager implements CompactionManagerMBean
         return create(Schema.instance, SystemKeyspace.instance, ClusterState.instance, ActiveRepairService.instance);
     }
 
-    public static CompactionManager create(Schema schema, SystemKeyspace systemKeyspace, ClusterState storageService, ActiveRepairService activeRepairService)
+    public static CompactionManager create(Schema schema, SystemKeyspace systemKeyspace, ClusterState clusterState, ActiveRepairService activeRepairService)
     {
-        CompactionManager cm = new CompactionManager(schema, systemKeyspace, storageService, activeRepairService);
+        CompactionManager cm = new CompactionManager(schema, systemKeyspace, clusterState, activeRepairService);
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
         {

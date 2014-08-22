@@ -38,21 +38,23 @@ import java.util.UUID;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Longs;
-import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.auth.*;
+import org.apache.cassandra.concurrent.StageManager;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.commitlog.CommitLog;
+import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.gms.FailureDetector;
+import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.gms.IFailureDetector;
+import org.apache.cassandra.service.*;
+import org.apache.cassandra.sink.SinkManager;
+import org.apache.cassandra.streaming.StreamManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.cassandra.auth.AllowAllAuthenticator;
-import org.apache.cassandra.auth.AllowAllAuthorizer;
-import org.apache.cassandra.auth.AllowAllInternodeAuthenticator;
-import org.apache.cassandra.auth.IAuthenticator;
-import org.apache.cassandra.auth.IAuthorizer;
-import org.apache.cassandra.auth.IInternodeAuthenticator;
 import org.apache.cassandra.config.Config.RequestSchedulerId;
 import org.apache.cassandra.config.EncryptionOptions.ClientEncryptionOptions;
 import org.apache.cassandra.config.EncryptionOptions.ServerEncryptionOptions;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DefsTables;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.FSWriteError;
@@ -65,7 +67,6 @@ import org.apache.cassandra.locator.SeedProvider;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.scheduler.IRequestScheduler;
 import org.apache.cassandra.scheduler.NoScheduler;
-import org.apache.cassandra.service.CacheService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.memory.HeapPool;
@@ -83,7 +84,49 @@ public class DatabaseDescriptor
      */
     private static final int MAX_NUM_TOKENS = 1536;
 
-    public static final DatabaseDescriptor instance = create();
+    public static final DatabaseDescriptor instance;
+
+    static
+    {
+        instance = create();
+        CommitLog commitLog = CommitLog.instance;
+        QueryProcessor queryProcessor = QueryProcessor.instance;
+
+        SinkManager sinkManager = SinkManager.instance;
+        StreamManager streamManager = StreamManager.instance;
+
+        Schema schema = Schema.instance;
+        SystemKeyspace systemKeyspace = SystemKeyspace.instance;
+        DefsTables defsTables = DefsTables.instance;
+
+        StageManager stageManager = StageManager.instance;
+        MessagingService messagingService = MessagingService.instance;
+        Gossiper gossiper = Gossiper.instance;
+        LoadBroadcaster loadBroadcaster = LoadBroadcaster.instance;
+
+        IFailureDetector failureDetector = FailureDetector.instance;
+        MigrationManager migrationManager = MigrationManager.instance;
+
+        StorageServiceTasks storageServiceTasks = StorageServiceTasks.instance;
+        ClusterState clusterState = ClusterState.instance;
+        ActiveRepairService activeRepairService = ActiveRepairService.instance;
+        CompactionManager compactionManager = CompactionManager.instance;
+
+        ColumnFamilyStoreManager columnFamilyStoreManager = ColumnFamilyStoreManager.instance;
+        KeyspaceManager keyspaceManager = KeyspaceManager.instance;
+
+        Auth auth = Auth.instance;
+        BatchlogManager batchlogManager = BatchlogManager.instance;
+        StorageService storageService = StorageService.instance;
+        commitLog.setStorageService(storageService);
+
+        instance.loadSnitch();
+    }
+
+    public static DatabaseDescriptor init()
+    {
+        return instance;
+    }
 
     private final boolean clientMode;
     private IEndpointSnitch snitch;
@@ -438,23 +481,6 @@ public class DatabaseDescriptor
         {
             throw new ConfigurationException("Missing endpoint_snitch directive");
         }
-        snitch = createEndpointSnitch(conf.endpoint_snitch);
-        EndpointSnitchInfo.create();
-
-        localDC = snitch.getDatacenter(getBroadcastAddress());
-        localComparator = new Comparator<InetAddress>()
-        {
-            public int compare(InetAddress endpoint1, InetAddress endpoint2)
-            {
-                boolean local1 = localDC.equals(snitch.getDatacenter(endpoint1));
-                boolean local2 = localDC.equals(snitch.getDatacenter(endpoint2));
-                if (local1 && !local2)
-                    return -1;
-                if (local2 && !local1)
-                    return 1;
-                return 0;
-            }
-        };
 
         /* Request Scheduler setup */
         requestSchedulerOptions = conf.request_scheduler_options;
@@ -629,6 +655,36 @@ public class DatabaseDescriptor
         }
         if (seedProvider.getSeeds().size() == 0)
             throw new ConfigurationException("The seed provider lists no seeds.");
+    }
+
+    public void loadSnitch()
+    {
+        try
+        {
+            snitch = createEndpointSnitch(conf.endpoint_snitch);
+            localDC = snitch.getDatacenter(getBroadcastAddress());
+            localComparator = new Comparator<InetAddress>()
+            {
+                public int compare(InetAddress endpoint1, InetAddress endpoint2)
+                {
+                    boolean local1 = localDC.equals(snitch.getDatacenter(endpoint1));
+                    boolean local2 = localDC.equals(snitch.getDatacenter(endpoint2));
+                    if (local1 && !local2)
+                        return -1;
+                    if (local2 && !local1)
+                        return 1;
+                    return 0;
+                }
+            };
+
+        }
+        catch (ConfigurationException e)
+        {
+            logger.error("Fatal configuration error, unable to create snitch", e);
+            System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
+            throw new IllegalStateException(e);
+        }
+        EndpointSnitchInfo.create();
     }
 
     public boolean isClientMode()

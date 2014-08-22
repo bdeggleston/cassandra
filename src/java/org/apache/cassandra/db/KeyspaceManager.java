@@ -15,7 +15,7 @@ import java.util.List;
 
 public class KeyspaceManager
 {
-    private static final Logger logger = LoggerFactory.getLogger(Keyspace.class);
+    private static final Logger logger = LoggerFactory.getLogger(KeyspaceManager.class);
 
     public static final String SYSTEM_KS = "system";
 
@@ -28,6 +28,7 @@ public class KeyspaceManager
         // Hardcoded system keyspaces
         List<KSMetaData> systemKeyspaces = Arrays.asList(KSMetaData.systemKeyspace());
         instance = new KeyspaceManager(Schema.instance, ClusterState.instance, CommitLog.instance, ColumnFamilyStoreManager.instance);
+        ClusterState.instance.setKeyspaceManager(instance);
 
         // FIXME: move to static factory, or to SystemKeyspace?
         assert systemKeyspaces.size() == Schema.systemKeyspaceNames.size();

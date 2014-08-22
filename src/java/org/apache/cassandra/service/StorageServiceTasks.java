@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 
 public class StorageServiceTasks
 {
-    private static final Logger logger = LoggerFactory.getLogger(StorageService.class);
+    private static final Logger logger = LoggerFactory.getLogger(StorageServiceTasks.class);
 
     public static final StorageServiceTasks instance = new StorageServiceTasks();
     /**

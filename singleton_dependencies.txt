@@ -6,6 +6,8 @@ DatabaseDescriptor [Schema(?, 3m), SystemKeyspace(?, 2m), DefsTables(?, 1m), Key
     * move loadSchemas to SystemKeyspace
     * pass SystemKeyspace into isReplacing
 
+CommitLog [DatabaseDescriptor]
+
 QueryProcessor []  # maintains prepared statements, but has no dependencies
 
 SinkManager []
@@ -50,23 +52,20 @@ HintedHandOffManager [DatabaseDescriptor, Schema, StorageServiceTasks,
                       CompactionManager(weak, 1), Gossiper, FailureDetector, SystemKeyspace, MessagingService, ClusterState]
     * DI CompactionManager into compact method
 
-CommitLog [DatabaseDescriptor, StorageService(weak, 1m)]
+
+ClusterState [DatabaseDescriptor, Schema, KeyspaceManager, FailureDetector, CommitLog, StorageServiceTasks]
+    * resokve circular instantiation between ClusterState and KeyspaceManager
+        * StorageService
+
+Updated --> ActiveRepairService [Gossiper, FailureDetector, MessagingService]
+Updated --> CompactionManager [Schema, ActiveRepairService, SystemKeyspace]
 
 ColumnFamilyStoreManager [Schema, ClusterState, SystemKeyspace, CompactionManager, CacheService]
 ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService, ColumnFamilyStoreManager.TaskExecutors]
-    * pass CompactionManager from StorageService
-    * remove ClusterState dependency
 
 *Updated --> KeyspaceManager [Schema, ClusterState, CommitLog, ColumnFamilyStoreManager]
 Keyspace [Schema, ClusterState, CommitLog(weak, single method), ColumnFamilyStoreManager]
     * move static initialization methods into static factory
-    * remove ClusterState dependency
-
-ClusterState [DatabaseDescriptor, Schema, KeyspaceManager, FailureDetector, CommitLog, StorageServiceTasks]
-    * resokve circular instantiation between ClusterState and KeyspaceManager
-
-Updated --> ActiveRepairService [Gossiper, FailureDetector, MessagingService]
-Updated --> CompactionManager [Schema, ActiveRepairService, SystemKeyspace]
 
 
 Updated --> Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, ClusterState, Schema]
@@ -110,4 +109,8 @@ TriggerExecutor [QueryProcessor]
 
 Updated --> PendingRangeCalculatorService [Schema, ClusterState]
 Updated --> Tracing [StageManager, StorageProxy]
+
+---- other ----
+
+initialize CommitLogSegment in CommitLogSegmentManager before starting the managementThread
 

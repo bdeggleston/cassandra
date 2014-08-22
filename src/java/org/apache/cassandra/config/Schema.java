@@ -25,6 +25,7 @@ import java.util.*;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.service.ClusterState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +43,7 @@ public class Schema
 {
     private static final Logger logger = LoggerFactory.getLogger(Schema.class);
 
-    public static final Schema instance;
+    public static final Schema instance = new Schema();
 
     /**
      * longest permissible KS or CF name.  Our main concern is that filename not be more than 255 characters;
@@ -78,14 +79,6 @@ public class Schema
             throw new AssertionError();
         }
     }
-
-    // FIXME: move into static factory
-    static
-    {
-        instance = new Schema();
-        KeyspaceManager km = KeyspaceManager.instance;
-    }
-
 
     /**
      * Initialize empty schema object

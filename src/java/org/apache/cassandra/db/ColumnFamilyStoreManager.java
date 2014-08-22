@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
 
 public class ColumnFamilyStoreManager
 {
-    private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStore.class);
+    private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStoreManager.class);
 
     public static final ColumnFamilyStoreManager instance = new ColumnFamilyStoreManager(
             Schema.instance,
