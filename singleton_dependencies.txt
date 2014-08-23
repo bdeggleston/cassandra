@@ -7,9 +7,6 @@ DatabaseDescriptor [Schema(?, 3m), SystemKeyspace(?, 2m), DefsTables(?, 1m), Key
     * move loadSchemas to SystemKeyspace
     * pass SystemKeyspace into isReplacing
 
-CommitLog [DatabaseDescriptor, KeyspaceManager, Schema]
-CommitLogSegmentManager [DatabaseDescriptor, KeyspaceManager, Schema]
-
 QueryProcessor []  # maintains prepared statements, but has no dependencies
 Updated --> TriggerExecutor [QueryProcessor]
 
@@ -22,6 +19,9 @@ Schema [SystemKeyspace(?, 1m), MigrationManager(?, 1m)]
     * pass MigrationManager into updateVersionAndAnnounce (called by DefsTables, StorageService)
     * move static initialization stuff into static factory method
 
+Updated --> CommitLog [DatabaseDescriptor, KeyspaceManager, Schema]
+Updated --> CommitLogSegmentManager [DatabaseDescriptor, KeyspaceManager, Schema]
+    * do something about the KeyspaceManager dependency
 
 SystemKeyspace [ClusterState, Schema(weak, 1m finishStartup), QueryProcessor(strong), DatabaseDescriptor(strong)]
     * replace StorageService.getPartitioner gets with DatabaseDescriptor.getPartitioner
@@ -43,18 +43,14 @@ Gossiper [MessagingService, DatabaseDescriptor, FailureDetector(?), StorageServi
     * DI other FailureDetector dependent methods (3)
     * move valueFactory from StorageService to ClusterState to remove dependency
 
-LoadBroadcaster [Gossiper]
+Updated --> LoadBroadcaster [Gossiper]
 
 FailureDetector [Gossiper(strong), DatabaseDescriptor]
 
 MigrationManager [Schema(strong), Gossiper, StorageServiceTasks, StageManager, SystemKeyspace, DefsTables, MessagingService, StorageService]
     * DI StorageService instance to passiveAnnounce method
 
-
-
-ClusterState [DatabaseDescriptor, Schema, KeyspaceManager, FailureDetector, CommitLog, StorageServiceTasks]
-    * resokve circular instantiation between ClusterState and KeyspaceManager
-        * StorageService
+Updated --> ClusterState [DatabaseDescriptor, Schema, KeyspaceManager, FailureDetector, CommitLog, StorageServiceTasks]
 
 Updated --> ActiveRepairService [Gossiper, FailureDetector, MessagingService]
 Updated --> CompactionManager [Schema, ActiveRepairService, SystemKeyspace]

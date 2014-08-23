@@ -32,15 +32,23 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber
 {
     static final int BROADCAST_INTERVAL = 60 * 1000;
 
-    public static final LoadBroadcaster instance = new LoadBroadcaster();
+    public static final LoadBroadcaster instance = new LoadBroadcaster(StorageServiceTasks.instance, Gossiper.instance);
 
     private static final Logger logger = LoggerFactory.getLogger(LoadBroadcaster.class);
 
     private ConcurrentMap<InetAddress, Double> loadInfo = new ConcurrentHashMap<InetAddress, java.lang.Double>();
 
-    private LoadBroadcaster()
+    private final StorageServiceTasks storageServiceTasks;
+    private final Gossiper gossiper;
+
+    private LoadBroadcaster(StorageServiceTasks storageServiceTasks, Gossiper gossiper)
     {
-        Gossiper.instance.register(this);
+        assert storageServiceTasks != null;
+        assert gossiper != null;
+
+        this.storageServiceTasks = storageServiceTasks;
+        this.gossiper = gossiper;
+        gossiper.register(this);
     }
 
     public void onChange(InetAddress endpoint, ApplicationState state, VersionedValue value)
@@ -87,11 +95,11 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber
             {
                 if (logger.isDebugEnabled())
                     logger.debug("Disseminating load info ...");
-                Gossiper.instance.addLocalApplicationState(ApplicationState.LOAD,
+                gossiper.addLocalApplicationState(ApplicationState.LOAD,
                                                            StorageService.instance.valueFactory.load(StorageService.instance.getLoad()));
             }
         };
-        StorageServiceTasks.instance.scheduledTasks.scheduleWithFixedDelay(runnable, 2 * Gossiper.intervalInMillis, BROADCAST_INTERVAL, TimeUnit.MILLISECONDS);
+        storageServiceTasks.scheduledTasks.scheduleWithFixedDelay(runnable, 2 * Gossiper.intervalInMillis, BROADCAST_INTERVAL, TimeUnit.MILLISECONDS);
     }
 }
 

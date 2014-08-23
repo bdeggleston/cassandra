@@ -33,14 +33,6 @@ public class ClusterState
 
     public static final ClusterState instance = new ClusterState(DatabaseDescriptor.instance, Schema.instance, FailureDetector.instance, CommitLog.instance, StorageServiceTasks.instance);
 
-//    static
-//    {
-//        instance = new ClusterState(DatabaseDescriptor.instance, Schema.instance, FailureDetector.instance, CommitLog.instance, StorageServiceTasks.instance);
-//
-////        // FIXME: forcing KeyspaceManager to initialize before ClusterState does anything
-////        KeyspaceManager keyspaceManager = KeyspaceManager.instance;
-//    }
-
     /* This abstraction maintains the token/endpoint metadata information */
     private TokenMetadata tokenMetadata = new TokenMetadata();
 
