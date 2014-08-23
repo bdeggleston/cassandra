@@ -89,7 +89,7 @@ public abstract class AbstractReadExecutor
         if (readLocal)
         {
             logger.trace("reading data locally");
-            StageManager.instance.getStage(Stage.READ).maybeExecuteImmediately(new LocalReadRunnable(command, handler));
+            StageManager.instance.getStage(Stage.READ).maybeExecuteImmediately(new LocalReadRunnable(command, handler, DatabaseDescriptor.instance, MessagingService.instance));
         }
     }
 
@@ -103,7 +103,7 @@ public abstract class AbstractReadExecutor
             if (isLocalRequest(endpoint))
             {
                 logger.trace("reading digest locally");
-                StageManager.instance.getStage(Stage.READ).execute(new LocalReadRunnable(digestCommand, handler));
+                StageManager.instance.getStage(Stage.READ).execute(new LocalReadRunnable(digestCommand, handler, DatabaseDescriptor.instance, MessagingService.instance));
             }
             else
             {

@@ -48,10 +48,12 @@ import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.service.*;
+import org.apache.cassandra.service.paxos.Commit;
 import org.apache.cassandra.sink.SinkManager;
 import org.apache.cassandra.streaming.StreamManager;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.triggers.TriggerExecutor;
+import org.apache.cassandra.utils.StatusLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.cassandra.config.Config.RequestSchedulerId;
@@ -86,16 +88,18 @@ public class DatabaseDescriptor
      */
     private static final int MAX_NUM_TOKENS = 1536;
 
-    public static final DatabaseDescriptor instance;
+    public static volatile DatabaseDescriptor instance;
 
     static
     {
         instance = create();
         CommitLog commitLog = CommitLog.instance;
         QueryProcessor queryProcessor = QueryProcessor.instance;
+        TriggerExecutor triggerExecutor = TriggerExecutor.instance;
 
         SinkManager sinkManager = SinkManager.instance;
         StreamManager streamManager = StreamManager.instance;
+        StorageServiceTasks storageServiceTasks = StorageServiceTasks.instance;
 
         Schema schema = Schema.instance;
         SystemKeyspace systemKeyspace = SystemKeyspace.instance;
@@ -108,30 +112,45 @@ public class DatabaseDescriptor
 
         IFailureDetector failureDetector = FailureDetector.instance;
         MigrationManager migrationManager = MigrationManager.instance;
+        instance.loadSnitch();
 
-        StorageServiceTasks storageServiceTasks = StorageServiceTasks.instance;
         ClusterState clusterState = ClusterState.instance;
         ActiveRepairService activeRepairService = ActiveRepairService.instance;
         CompactionManager compactionManager = CompactionManager.instance;
 
+        HintedHandOffManager hintedHandOffManager = HintedHandOffManager.instance;
+        StorageProxy storageProxy = StorageProxy.instance;
+        Tracing tracing = Tracing.instance;
+
+        CacheService cacheService = CacheService.instance;
         ColumnFamilyStoreManager columnFamilyStoreManager = ColumnFamilyStoreManager.instance;
+
         KeyspaceManager keyspaceManager = KeyspaceManager.instance;
 
         Auth auth = Auth.instance;
         BatchlogManager batchlogManager = BatchlogManager.instance;
-        StorageService storageService = StorageService.instance;
-        commitLog.setStorageService(storageService);
-
-        // TODO: more stuff goes here
-
-        TriggerExecutor triggerExecutor = TriggerExecutor.instance;
 
         PendingRangeCalculatorService pendingRangeCalculatorService = PendingRangeCalculatorService.instance;
-        Tracing tracing = Tracing.instance;
-        columnFamilyStoreManager.setTracing(tracing);
 
+        // really ghetto workaround for the above not being visible to other threads
+        new Thread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                try
+                {
+                    Thread.sleep(100);
+                }
+                catch (InterruptedException e)
+                {
+                    throw new RuntimeException(e);
+                }
 
-        instance.loadSnitch();
+                CommitLog.instance.setStorageService(StorageService.instance);
+                HintedHandOffManager.instance.loadHintStore(KeyspaceManager.instance);
+            }
+        }).start();
     }
 
     public static DatabaseDescriptor init()
@@ -1176,6 +1195,7 @@ public class DatabaseDescriptor
      */
     public int getCommitLogSegmentSize()
     {
+        logger.warn("getCommitLogSegmentSize");
         return conf.commitlog_segment_size_in_mb * 1024 * 1024;
     }
 

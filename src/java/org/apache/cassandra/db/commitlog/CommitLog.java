@@ -70,16 +70,6 @@ public class CommitLog implements CommitLogMBean
                  ? new BatchCommitLogService(this)
                  : new PeriodicCommitLogService(this);
 
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        try
-        {
-            mbs.registerMBean(this, new ObjectName("org.apache.cassandra.db:type=Commitlog"));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
-        }
-
         // register metrics
         metrics = new CommitLogMetrics(executor, allocator);
     }
@@ -89,6 +79,18 @@ public class CommitLog implements CommitLogMBean
         assert this.storageService == null;
         assert storageService != null;
         this.storageService = storageService;
+        allocator.start();
+        executor.start();
+
+        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+        try
+        {
+            mbs.registerMBean(this, new ObjectName("org.apache.cassandra.db:type=Commitlog"));
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     /**

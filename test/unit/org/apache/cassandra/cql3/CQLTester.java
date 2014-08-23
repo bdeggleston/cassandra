@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.service.StorageServiceTasks;
 import org.junit.AfterClass;
@@ -53,11 +54,6 @@ public abstract class CQLTester
     private static final String KEYSPACE = "cql_test_keyspace";
     private static final boolean USE_PREPARED_VALUES = Boolean.valueOf(System.getProperty("cassandra.test.use_prepared", "true"));
     private static final AtomicInteger seqNumber = new AtomicInteger();
-
-    static
-    {
-        // Once per-JVM is enough
-    }
 
     private String currentTable;
     private final Set<String> currentTypes = new HashSet<>();

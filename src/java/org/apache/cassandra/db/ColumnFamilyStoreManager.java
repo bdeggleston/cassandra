@@ -40,7 +40,8 @@ public class ColumnFamilyStoreManager
             ClusterState.instance,
             SystemKeyspace.instance,
             CompactionManager.instance,
-            CacheService.instance
+            CacheService.instance,
+            Tracing.instance
     );
 
     private final Schema schema;
@@ -48,10 +49,10 @@ public class ColumnFamilyStoreManager
     private final SystemKeyspace systemKeyspace;
     private final CompactionManager compactionManager;
     private final CacheService cacheService;
-    private volatile Tracing tracing;
+    private final Tracing tracing;
     public final TaskExecutors taskExecutors;
 
-    public ColumnFamilyStoreManager(Schema schema, ClusterState clusterState, SystemKeyspace systemKeyspace, CompactionManager compactionManager, CacheService cacheService)
+    public ColumnFamilyStoreManager(Schema schema, ClusterState clusterState, SystemKeyspace systemKeyspace, CompactionManager compactionManager, CacheService cacheService, Tracing tracing)
     {
         assert schema != null;
         assert clusterState != null;
@@ -65,12 +66,6 @@ public class ColumnFamilyStoreManager
         this.compactionManager = compactionManager;
         this.cacheService = cacheService;
         this.taskExecutors = new TaskExecutors();
-    }
-
-    public void setTracing(Tracing tracing)
-    {
-        assert this.tracing == null;
-        assert tracing != null;
         this.tracing = tracing;
     }
 

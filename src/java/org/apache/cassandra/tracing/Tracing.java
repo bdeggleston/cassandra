@@ -73,7 +73,7 @@ public class Tracing
     public static final Tracing instance = new Tracing(StageManager.instance, StorageProxy.instance);
 
     private final StageManager stageManager;
-    private final StorageProxy storageProxy;
+    private volatile StorageProxy storageProxy;
 
     public Tracing(StageManager stageManager, StorageProxy storageProxy)
     {

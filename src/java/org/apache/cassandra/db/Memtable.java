@@ -53,7 +53,7 @@ public class Memtable
     private static final Logger logger = LoggerFactory.getLogger(Memtable.class);
 
     static final MemtablePool MEMORY_POOL = DatabaseDescriptor.instance.getMemtableAllocatorPool();
-    private static final int ROW_OVERHEAD_HEAP_SIZE = estimateRowOverhead(Integer.valueOf(System.getProperty("cassandra.memtable_row_overhead_computation_step", "100000")));
+    private static final int ROW_OVERHEAD_HEAP_SIZE = estimateRowOverhead(Integer.valueOf(System.getProperty("cassandra.memtable_row_overhead_computation_step", "10000")));
 
     private final MemtableAllocator allocator;
     private final AtomicLong liveDataSize = new AtomicLong(0);
@@ -397,7 +397,8 @@ public class Memtable
         final Object val = new Object();
         for (int i = 0 ; i < count ; i++)
             rows.put(allocator.clone(new BufferDecoratedKey(new LongToken((long) i), ByteBufferUtil.EMPTY_BYTE_BUFFER), group), val);
-        double avgSize = ObjectSizes.measureDeep(rows) / (double) count;
+        long rowSize = ObjectSizes.measureDeep(rows);
+        double avgSize = rowSize / (double) count;
         rowOverhead = (int) ((avgSize - Math.floor(avgSize)) < 0.05 ? Math.floor(avgSize) : Math.ceil(avgSize));
         rowOverhead -= ObjectSizes.measureDeep(new LongToken((long) 0));
         rowOverhead += AtomicBTreeColumns.EMPTY_SIZE;

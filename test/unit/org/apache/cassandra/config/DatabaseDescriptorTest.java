@@ -19,6 +19,7 @@
 package org.apache.cassandra.config;
 
 import org.apache.cassandra.db.KeyspaceManager;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -39,6 +40,13 @@ import static org.junit.Assert.assertNull;
 @RunWith(OrderedJUnit4ClassRunner.class)
 public class DatabaseDescriptorTest
 {
+
+    @BeforeClass
+    public static void setupClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     @Test
     public void testCFMetaDataSerialization() throws ConfigurationException, InvalidRequestException
     {

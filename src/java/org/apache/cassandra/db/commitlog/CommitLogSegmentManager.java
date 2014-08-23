@@ -42,7 +42,6 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.net.MessagingService;
@@ -168,6 +167,10 @@ public class CommitLogSegmentManager
         };
 
         managerThread = new Thread(runnable, "COMMIT-LOG-ALLOCATOR");
+    }
+
+    public void start()
+    {
         managerThread.start();
     }
 

@@ -114,8 +114,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                                                  new NamedThreadFactory("HintedHandoff", Thread.MIN_PRIORITY),
                                                                                  "internal");
 
-    private final ColumnFamilyStore hintStore = KeyspaceManager.instance.open(KeyspaceManager.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF);
-
+    private volatile ColumnFamilyStore hintStore = null;
     /**
      * Returns a mutation representing a Hint to be sent to <code>targetId</code>
      * as soon as it becomes available again.
@@ -153,6 +152,15 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         return ttl;
     }
 
+    /**
+     * getColumnFamilyStore depends on tracing being initialized, which relies on HintedHandOffManager being
+     * instantiated in a roundabout way. So we defer column family instantiation until here
+     */
+    public void loadHintStore(KeyspaceManager keyspaceManager)
+    {
+        Keyspace hintKs = keyspaceManager.open(KeyspaceManager.SYSTEM_KS);
+        hintStore = hintKs.getColumnFamilyStore(SystemKeyspace.HINTS_CF);
+    }
 
     public void start()
     {
@@ -253,6 +261,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
     @VisibleForTesting
     protected Future<?> compact()
     {
+        assert hintStore != null;
         hintStore.forceBlockingFlush();
         ArrayList<Descriptor> descriptors = new ArrayList<Descriptor>();
         for (SSTable sstable : hintStore.getDataTracker().getUncompactingSSTables())
@@ -302,6 +311,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     private void deliverHintsToEndpoint(InetAddress endpoint)
     {
+        assert hintStore != null;
         if (hintStore.isEmpty())
             return; // nothing to do, don't confuse users by logging a no-op handoff
 
@@ -371,6 +381,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                             pageSize,
                                                             now);
 
+            assert hintStore != null;
             ColumnFamily hintsPage = ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter), (int) (now / 1000));
 
             if (pagingFinished(hintsPage, startColumn))
@@ -485,6 +496,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
     // read less columns (mutations) per page if they are very large
     private int calculatePageSize()
     {
+        assert hintStore != null;
         int meanColumnCount = hintStore.getMeanColumns();
         if (meanColumnCount <= 0)
             return PAGE_SIZE;
@@ -503,6 +515,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
      */
     private void scheduleAllDeliveries()
     {
+        assert hintStore != null;
         if (logger.isDebugEnabled())
           logger.debug("Started scheduleAllDeliveries");
 

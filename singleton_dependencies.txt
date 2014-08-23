@@ -7,9 +7,11 @@ DatabaseDescriptor [Schema(?, 3m), SystemKeyspace(?, 2m), DefsTables(?, 1m), Key
     * move loadSchemas to SystemKeyspace
     * pass SystemKeyspace into isReplacing
 
-CommitLog [DatabaseDescriptor]
+CommitLog [DatabaseDescriptor, KeyspaceManager, Schema]
+CommitLogSegmentManager [DatabaseDescriptor, KeyspaceManager, Schema]
 
 QueryProcessor []  # maintains prepared statements, but has no dependencies
+Updated --> TriggerExecutor [QueryProcessor]
 
 SinkManager []
 StorageServiceTasks []
@@ -49,10 +51,6 @@ MigrationManager [Schema(strong), Gossiper, StorageServiceTasks, StageManager, S
     * DI StorageService instance to passiveAnnounce method
 
 
-HintedHandOffManager [DatabaseDescriptor, Schema, StorageServiceTasks, 
-                      CompactionManager(weak, 1), Gossiper, FailureDetector, SystemKeyspace, MessagingService, ClusterState]
-    * DI CompactionManager into compact method
-
 
 ClusterState [DatabaseDescriptor, Schema, KeyspaceManager, FailureDetector, CommitLog, StorageServiceTasks]
     * resokve circular instantiation between ClusterState and KeyspaceManager
@@ -61,8 +59,20 @@ ClusterState [DatabaseDescriptor, Schema, KeyspaceManager, FailureDetector, Comm
 Updated --> ActiveRepairService [Gossiper, FailureDetector, MessagingService]
 Updated --> CompactionManager [Schema, ActiveRepairService, SystemKeyspace]
 
+HintedHandOffManager [DatabaseDescriptor, Schema, StorageServiceTasks,  KeyspaceManager,
+                      CompactionManager(weak, 1), Gossiper, FailureDetector, SystemKeyspace, MessagingService, ClusterState]
+    * DI CompactionManager into compact method
+
+StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 1p), MessagingService, HintedHandOffManager,
+              FailureDetector(2m), SinkManager(2m), Gossiper(4m), ClusterState]
+    * maybe remove dependency on StorageService(getPartitioner, TokenMetadata, getNaturalEndpoints, getLiveNaturalEndpoints)
+    * move isBootstrapMode to ClusterState to remove dependency on StorageService
+
+Updated --> Tracing [StageManager, StorageProxy]
+
 ColumnFamilyStoreManager [Schema, ClusterState, SystemKeyspace, CompactionManager, CacheService]
 ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService, ColumnFamilyStoreManager.TaskExecutors]
+    * move tracing back into constructor
 
 *Updated --> KeyspaceManager [Schema, ClusterState, CommitLog, ColumnFamilyStoreManager]
 Keyspace [Schema, ClusterState, CommitLog(weak, single method), ColumnFamilyStoreManager]
@@ -74,6 +84,7 @@ Updated --> Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, ClusterS
 BatchlogManager [QueryProcessor, DatabaseDescriptor, ClusterState, KeyspaceManager, SystemKeyspace, StorageProxy, FailureDetector, 
                  MessagingService, CompactionManager]
 
+
 StorageService [SystemKeyspace, Gossiper(strong), StreamManager(weak, move to create method), MessagingService(strong),
                 StageManager, DatabaseDescriptor, MessagingService, MigrationManager(3-4m), StorageServiceTasks(2, init/drain),
                 StorageProxy(3m), CommitLog(2, init/drain), Schema, LoadBroadcaster(3m), HintedHandOffManager(3m, 1p),
@@ -83,10 +94,6 @@ StorageService [SystemKeyspace, Gossiper(strong), StreamManager(weak, move to cr
     * resolve dependency on KeyspaceManager
     * split out getValidColumnFamilies, forceKeyspaceFlush
 
-StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 1p), StorageService(strong), MessagingService,
-              FailureDetector(2m), SinkManager(2m), Gossiper(4m)] # Has a lot methods that just proxy calls to DatabaseDescriptor
-    * maybe remove dependency on StorageService(getPartitioner, TokenMetadata, getNaturalEndpoints, getLiveNaturalEndpoints)
-    * move isBootstrapMode to ClusterState to remove dependency on StorageService
 
 Updated --> ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService, Tracing]
 
@@ -103,10 +110,6 @@ Updated --> ColumnFamilyStore [CacheService, SystemKeyspace, CompactionManager(s
 
 StatusLogger [DatabaseDescriptor, ColumnFamilyStoreManager]
 
-Updated --> TriggerExecutor [QueryProcessor]
-
-
 Updated --> PendingRangeCalculatorService [Schema, ClusterState]
-Updated --> Tracing [StageManager, StorageProxy]
 
 
