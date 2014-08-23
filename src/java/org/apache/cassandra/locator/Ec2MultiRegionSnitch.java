@@ -24,6 +24,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.gms.ApplicationState;
 import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.service.StorageService;
 
 /**
@@ -58,7 +59,7 @@ public class Ec2MultiRegionSnitch extends Ec2Snitch
     public void gossiperStarting()
     {
         super.gossiperStarting();
-        Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP, StorageService.instance.valueFactory.internalIP(localPrivateAddress));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP, ClusterState.instance.valueFactory.internalIP(localPrivateAddress));
         Gossiper.instance.register(new ReconnectableSnitchHelper(this, ec2region, true));
     }
 }

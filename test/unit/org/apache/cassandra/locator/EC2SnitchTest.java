@@ -29,6 +29,7 @@ import java.util.Map;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.db.commitlog.CommitLog;
+import org.apache.cassandra.service.ClusterState;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -83,8 +84,8 @@ public class EC2SnitchTest
 
         Gossiper.instance.addSavedEndpoint(nonlocal);
         Map<ApplicationState,VersionedValue> stateMap = Gossiper.instance.getEndpointStateForEndpoint(nonlocal).getApplicationStateMap();
-        stateMap.put(ApplicationState.DC, StorageService.instance.valueFactory.datacenter("us-west"));
-        stateMap.put(ApplicationState.RACK, StorageService.instance.valueFactory.datacenter("1a"));
+        stateMap.put(ApplicationState.DC, ClusterState.instance.valueFactory.datacenter("us-west"));
+        stateMap.put(ApplicationState.RACK, ClusterState.instance.valueFactory.datacenter("1a"));
 
         assertEquals("us-west", snitch.getDatacenter(nonlocal));
         assertEquals("1a", snitch.getRack(nonlocal));

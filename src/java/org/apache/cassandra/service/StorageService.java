@@ -120,8 +120,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             return 30 * 1000;
     }
 
-    public volatile VersionedValue.VersionedValueFactory valueFactory;
-
     public static final StorageService instance = new StorageService();
 
     private final Set<InetAddress> replicatingNodes = Collections.synchronizedSet(new HashSet<InetAddress>());
@@ -170,15 +168,15 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         clusterState.getTokenMetadata().updateNormalTokens(tokens, FBUtilities.getBroadcastAddress());
         // order is important here, the gossiper can fire in between adding these two states.  It's ok to send TOKENS without STATUS, but *not* vice versa.
         Collection<Token> localTokens = getLocalTokens();
-        Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS, valueFactory.tokens(localTokens));
-        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.normal(localTokens));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS, clusterState.valueFactory.tokens(localTokens));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, clusterState.instance.valueFactory.normal(localTokens));
         setMode(Mode.NORMAL, false);
     }
 
     public StorageService()
     {
         clusterState = ClusterState.instance;
-        valueFactory = new VersionedValue.VersionedValueFactory(clusterState.getPartitioner());
+        clusterState.valueFactory = new VersionedValue.VersionedValueFactory(clusterState.getPartitioner());
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
@@ -457,7 +455,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         setMode(Mode.CLIENT, false);
         Gossiper.instance.register(this);
         Gossiper.instance.start((int) (System.currentTimeMillis() / 1000)); // needed for node-ring gathering.
-        Gossiper.instance.addLocalApplicationState(ApplicationState.NET_VERSION, valueFactory.networkVersion());
+        Gossiper.instance.addLocalApplicationState(ApplicationState.NET_VERSION, clusterState.valueFactory.networkVersion());
 
         if (!MessagingService.instance.isListening())
             MessagingService.instance.listen(FBUtilities.getLocalAddress());
@@ -587,8 +585,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             {
                 clusterState.getTokenMetadata().updateNormalTokens(tokens, FBUtilities.getBroadcastAddress());
                 // order is important here, the gossiper can fire in between adding these two states.  It's ok to send TOKENS without STATUS, but *not* vice versa.
-                Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS, valueFactory.tokens(tokens));
-                Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.hibernate(true));
+                Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS, clusterState.valueFactory.tokens(tokens));
+                Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, clusterState.valueFactory.hibernate(true));
             }
             logger.info("Not joining ring as requested. Use JMX (StorageService->joinRing()) to initiate ring joining");
         }
@@ -616,8 +614,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 if (!DatabaseDescriptor.instance.isAutoBootstrap())
                     throw new RuntimeException("Trying to replace_address with auto_bootstrap disabled will not work, check your configuration");
                 bootstrapTokens = prepareReplacementInfo();
-                appStates.put(ApplicationState.STATUS, valueFactory.hibernate(true));
-                appStates.put(ApplicationState.TOKENS, valueFactory.tokens(bootstrapTokens));
+                appStates.put(ApplicationState.STATUS, clusterState.valueFactory.hibernate(true));
+                appStates.put(ApplicationState.TOKENS, clusterState.valueFactory.tokens(bootstrapTokens));
             } else if (shouldBootstrap())
             {
                 checkForEndpointCollision();
@@ -629,10 +627,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             // Seed the host ID-to-endpoint map with our own ID.
             UUID localHostId = SystemKeyspace.instance.getLocalHostId();
             clusterState.getTokenMetadata().updateHostId(localHostId, FBUtilities.getBroadcastAddress());
-            appStates.put(ApplicationState.NET_VERSION, valueFactory.networkVersion());
-            appStates.put(ApplicationState.HOST_ID, valueFactory.hostId(localHostId));
-            appStates.put(ApplicationState.RPC_ADDRESS, valueFactory.rpcaddress(DatabaseDescriptor.instance.getBroadcastRpcAddress()));
-            appStates.put(ApplicationState.RELEASE_VERSION, valueFactory.releaseVersion());
+            appStates.put(ApplicationState.NET_VERSION, clusterState.valueFactory.networkVersion());
+            appStates.put(ApplicationState.HOST_ID, clusterState.valueFactory.hostId(localHostId));
+            appStates.put(ApplicationState.RPC_ADDRESS, clusterState.valueFactory.rpcaddress(DatabaseDescriptor.instance.getBroadcastRpcAddress()));
+            appStates.put(ApplicationState.RELEASE_VERSION, clusterState.valueFactory.releaseVersion());
             logger.info("Starting up server gossip");
             Gossiper.instance.register(this);
             Gossiper.instance.start(SystemKeyspace.instance.incrementAndGetGeneration(), appStates); // needed for node-ring gathering.
@@ -820,8 +818,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
         String dc = snitch.getDatacenter(FBUtilities.getBroadcastAddress());
         String rack = snitch.getRack(FBUtilities.getBroadcastAddress());
-        Gossiper.instance.addLocalApplicationState(ApplicationState.DC, StorageService.instance.valueFactory.datacenter(dc));
-        Gossiper.instance.addLocalApplicationState(ApplicationState.RACK, StorageService.instance.valueFactory.rack(rack));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.DC, clusterState.valueFactory.datacenter(dc));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.RACK, clusterState.valueFactory.rack(rack));
     }
 
     public synchronized void joinRing() throws IOException
@@ -936,9 +934,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             // if not an existing token then bootstrap
             // order is important here, the gossiper can fire in between adding these two states.  It's ok to send TOKENS without STATUS, but *not* vice versa.
-            Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS, valueFactory.tokens(tokens));
+            Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS, clusterState.valueFactory.tokens(tokens));
             Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,
-                    valueFactory.bootstrapping(tokens));
+                    clusterState.valueFactory.bootstrapping(tokens));
             setMode(Mode.JOINING, "sleeping " + RING_DELAY + " ms for pending range setup", true);
             Uninterruptibles.sleepUninterruptibly(RING_DELAY, TimeUnit.MILLISECONDS);
         } else
@@ -2796,7 +2794,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     private void startLeaving()
     {
-        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.leaving(getLocalTokens()));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, clusterState.valueFactory.leaving(getLocalTokens()));
         clusterState.getTokenMetadata().addLeavingEndpoint(FBUtilities.getBroadcastAddress());
         PendingRangeCalculatorService.instance.update();
     }
@@ -2842,7 +2840,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         clusterState.getTokenMetadata().removeEndpoint(FBUtilities.getBroadcastAddress());
         PendingRangeCalculatorService.instance.update();
 
-        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.left(getLocalTokens(), Gossiper.computeExpireTime()));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, clusterState.valueFactory.left(getLocalTokens(), Gossiper.computeExpireTime()));
         int delay = Math.max(RING_DELAY, Gossiper.intervalInMillis * 2);
         logger.info("Announcing that I have left the ring for {}ms", delay);
         Uninterruptibles.sleepUninterruptibly(delay, TimeUnit.MILLISECONDS);
@@ -2968,7 +2966,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
         }
 
-        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.moving(newToken));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, clusterState.valueFactory.moving(newToken));
         setMode(Mode.MOVING, String.format("Moving %s from %s to %s.", localAddress, getLocalTokens().iterator().next(), newToken), true);
 
         setMode(Mode.MOVING, String.format("Sleeping %s ms before start streaming/fetching ranges", RING_DELAY), true);
@@ -3377,8 +3375,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     IPartitioner setPartitionerUnsafe(IPartitioner newPartitioner)
     {
         IPartitioner oldPartitioner = DatabaseDescriptor.instance.getPartitioner();
-        DatabaseDescriptor.instance.setPartitioner(newPartitioner);
-        valueFactory = new VersionedValue.VersionedValueFactory(clusterState.getPartitioner());
+        clusterState.setPartitionerUnsafe(newPartitioner);
         return oldPartitioner;
     }
 

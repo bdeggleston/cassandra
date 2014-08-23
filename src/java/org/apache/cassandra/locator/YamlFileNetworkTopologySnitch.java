@@ -30,6 +30,7 @@ import org.apache.cassandra.gms.EndpointState;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.gms.VersionedValue;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.ResourceWatcher;
@@ -371,7 +372,7 @@ public class YamlFileNetworkTopologySnitch
             || vv == null)
         {
             Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP,
-                StorageService.instance.valueFactory.internalIP(localNodeData.dcLocalAddress.toString()));
+                    ClusterState.instance.valueFactory.internalIP(localNodeData.dcLocalAddress.toString()));
         }
     }
 

@@ -130,7 +130,7 @@ public class DatabaseDescriptor
         BatchlogManager batchlogManager = BatchlogManager.instance;
 
         StorageService storageService = StorageService.instance;
-        Gossiper.instance.init(FailureDetector.instance, StorageService.instance);
+        Gossiper.instance.init(FailureDetector.instance);
 
         PendingRangeCalculatorService pendingRangeCalculatorService = PendingRangeCalculatorService.instance;
 

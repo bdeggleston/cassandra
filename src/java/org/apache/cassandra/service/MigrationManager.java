@@ -64,7 +64,15 @@ public class MigrationManager
     public static final int MIGRATION_DELAY_IN_MS = 60000;
 
     private final List<IMigrationListener> listeners = new CopyOnWriteArrayList<IMigrationListener>();
-    
+
+//    private final SystemKeyspace systemKeyspace;
+//    private final Schema schema;
+//    private final StorageServiceTasks storageServiceTasks;
+//    private final Gossiper gossiper;
+//    private final DefsTables defsTables;
+//    private final StageManager stageManager;
+//    private final MessagingService messagingService;
+
     private MigrationManager() {}
 
     public void register(IMigrationListener listener)
@@ -456,7 +464,7 @@ public class MigrationManager
      */
     public void passiveAnnounce(UUID version)
     {
-        Gossiper.instance.addLocalApplicationState(ApplicationState.SCHEMA, StorageService.instance.valueFactory.schema(version));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.SCHEMA, ClusterState.instance.valueFactory.schema(version));
         logger.debug("Gossiping my schema version {}", version);
     }
 

@@ -34,6 +34,7 @@ import org.apache.cassandra.gms.ApplicationState;
 import org.apache.cassandra.gms.EndpointState;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.gms.VersionedValue;
+import org.apache.cassandra.service.ClusterState;
 import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -164,7 +165,7 @@ public class BackgroundActivityMonitor
             if (!Gossiper.instance.isEnabled())
                 return;
             report += manual_severity.get(); // add manual severity setting.
-            VersionedValue updated = StorageService.instance.valueFactory.severity(report);
+            VersionedValue updated = ClusterState.instance.valueFactory.severity(report);
             Gossiper.instance.addLocalApplicationState(ApplicationState.SEVERITY, updated);
         }
     }

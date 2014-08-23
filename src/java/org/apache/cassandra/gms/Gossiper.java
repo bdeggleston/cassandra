@@ -75,7 +75,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     private ScheduledFuture<?> scheduledGossipTask;
     public final static int intervalInMillis = 1000;
     private static final Logger logger = LoggerFactory.getLogger(Gossiper.class);
-    public static final Gossiper instance = new Gossiper(DatabaseDescriptor.instance, MessagingService.instance, StageManager.instance);
+    public static final Gossiper instance = new Gossiper(DatabaseDescriptor.instance, MessagingService.instance, StageManager.instance, ClusterState.instance);
     // FIXME: remove once we can talk to StorageService during initialization
 //    public final static int QUARANTINE_DELAY = StorageService.RING_DELAY * 2;
 
@@ -180,34 +180,34 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     private final DatabaseDescriptor databaseDescriptor;
     private final MessagingService messagingService;
     private final StageManager stageManager;
+    private final ClusterState clusterState;
 
     private volatile boolean initialized = false;
     private volatile IFailureDetector failureDetector;
-    private volatile StorageService storageService;
 
-    public Gossiper(DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager)
+    public Gossiper(DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager, ClusterState clusterState)
     {
         assert databaseDescriptor != null;
         assert messagingService != null;
         assert stageManager != null;
+        assert clusterState != null;
 
         this.databaseDescriptor = databaseDescriptor;
         this.messagingService = messagingService;
         this.stageManager = stageManager;
+        this.clusterState = clusterState;
 
         // half of QUARATINE_DELAY, to ensure justRemovedEndpoints has enough leeway to prevent re-gossip
 //        FatClientTimeout = (long) (getQuarantineDelay() / 2);
         /* register with the Failure Detector for receiving Failure detector events */
     }
 
-    public synchronized void init(IFailureDetector failureDetector, StorageService storageService)
+    public synchronized void init(IFailureDetector failureDetector)
     {
         assert !initialized;
         assert failureDetector != null;
-        assert storageService != null;
 
         this.failureDetector = failureDetector;
-        this.storageService = storageService;
 
         initialized = true;
 
@@ -492,8 +492,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         logger.info("Advertising removal for {}", endpoint);
         epState.updateTimestamp(); // make sure we don't evict it too soon
         epState.getHeartBeatState().forceNewerGenerationUnsafe();
-        epState.addApplicationState(ApplicationState.STATUS, storageService.valueFactory.removingNonlocal(hostId));
-        epState.addApplicationState(ApplicationState.REMOVAL_COORDINATOR, storageService.valueFactory.removalCoordinator(localHostId));
+        epState.addApplicationState(ApplicationState.STATUS, clusterState.valueFactory.removingNonlocal(hostId));
+        epState.addApplicationState(ApplicationState.REMOVAL_COORDINATOR, clusterState.valueFactory.removalCoordinator(localHostId));
         endpointStateMap.put(endpoint, epState);
     }
 
@@ -511,7 +511,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         epState.updateTimestamp(); // make sure we don't evict it too soon
         epState.getHeartBeatState().forceNewerGenerationUnsafe();
         long expireTime = computeExpireTime();
-        epState.addApplicationState(ApplicationState.STATUS, storageService.valueFactory.removedNonlocal(hostId, expireTime));
+        epState.addApplicationState(ApplicationState.STATUS, clusterState.valueFactory.removedNonlocal(hostId, expireTime));
         logger.info("Completing removal of {}", endpoint);
         addExpireTimeForEndpoint(endpoint, expireTime);
         endpointStateMap.put(endpoint, epState);
@@ -565,7 +565,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         }
 
         // do not pass go, do not collect 200 dollars, just gtfo
-        epState.addApplicationState(ApplicationState.STATUS, StorageService.instance.valueFactory.left(tokens, computeExpireTime()));
+        epState.addApplicationState(ApplicationState.STATUS, clusterState.valueFactory.left(tokens, computeExpireTime()));
         handleMajorStateChange(endpoint, epState);
         Uninterruptibles.sleepUninterruptibly(intervalInMillis * 4, TimeUnit.MILLISECONDS);
         logger.warn("Finished assassinating {}", endpoint);
@@ -1317,7 +1317,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         // Notifications may have taken some time, so preventively raise the version
         // of the new value, otherwise it could be ignored by the remote node
         // if another value with a newer version was received in the meantime:
-        value = storageService.valueFactory.cloneWithHigherVersion(value);
+        value = clusterState.valueFactory.cloneWithHigherVersion(value);
         // Add to local application state and fire "on change" notifications:
         epState.addApplicationState(state, value);
         doOnChangeNotifications(epAddr, state, value);
@@ -1361,8 +1361,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         EndpointState localState = oldState == null ? newState : oldState;
 
         // always add the version state
-        localState.addApplicationState(ApplicationState.NET_VERSION, storageService.valueFactory.networkVersion());
-        localState.addApplicationState(ApplicationState.HOST_ID, storageService.valueFactory.hostId(uuid));
+        localState.addApplicationState(ApplicationState.NET_VERSION, clusterState.valueFactory.networkVersion());
+        localState.addApplicationState(ApplicationState.HOST_ID, clusterState.valueFactory.hostId(uuid));
     }
 
     @VisibleForTesting

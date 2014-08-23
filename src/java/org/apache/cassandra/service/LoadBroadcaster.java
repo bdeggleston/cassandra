@@ -96,7 +96,7 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber
                 if (logger.isDebugEnabled())
                     logger.debug("Disseminating load info ...");
                 gossiper.addLocalApplicationState(ApplicationState.LOAD,
-                                                           StorageService.instance.valueFactory.load(StorageService.instance.getLoad()));
+                       ClusterState.instance.valueFactory.load(StorageService.instance.getLoad()));
             }
         };
         storageServiceTasks.scheduledTasks.scheduleWithFixedDelay(runnable, 2 * Gossiper.intervalInMillis, BROADCAST_INTERVAL, TimeUnit.MILLISECONDS);

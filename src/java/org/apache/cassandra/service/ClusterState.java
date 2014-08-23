@@ -14,6 +14,7 @@ import org.apache.cassandra.dht.RingPosition;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.IFailureDetector;
+import org.apache.cassandra.gms.VersionedValue;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.utils.FBUtilities;
@@ -32,6 +33,8 @@ public class ClusterState
     private static final Logger logger = LoggerFactory.getLogger(ClusterState.class);
 
     public static final ClusterState instance = new ClusterState(DatabaseDescriptor.instance, Schema.instance, FailureDetector.instance, CommitLog.instance, StorageServiceTasks.instance);
+
+    public volatile VersionedValue.VersionedValueFactory valueFactory;
 
     /* This abstraction maintains the token/endpoint metadata information */
     private TokenMetadata tokenMetadata = new TokenMetadata();
@@ -71,6 +74,15 @@ public class ClusterState
     public TokenMetadata getTokenMetadata()
     {
         return tokenMetadata;
+    }
+
+    // Never ever do this at home. Used by tests.
+    IPartitioner setPartitionerUnsafe(IPartitioner newPartitioner)
+    {
+        IPartitioner oldPartitioner = DatabaseDescriptor.instance.getPartitioner();
+        DatabaseDescriptor.instance.setPartitioner(newPartitioner);
+        valueFactory = new VersionedValue.VersionedValueFactory(getPartitioner());
+        return oldPartitioner;
     }
 
     // Never ever do this at home. Used by tests.
