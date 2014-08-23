@@ -17,15 +17,12 @@ StreamManager [DatabaseDescriptor]
 Updated --> SystemKeyspace [DatabaseDescriptor, QueryProcessor(strong)]
 
 Schema [SystemKeyspace(?, 1m), MigrationManager(?, 1m)]
-    * pass SystemKeyspace into updateVersion method
     * pass MigrationManager into updateVersionAndAnnounce (called by DefsTables, StorageService)
     * move static initialization stuff into static factory method
 
 Updated --> CommitLog [DatabaseDescriptor, KeyspaceManager, Schema]
 Updated --> CommitLogSegmentManager [DatabaseDescriptor, KeyspaceManager, Schema]
     * do something about the KeyspaceManager dependency
-
-DefsTables [SystemKeyspace, Schema, MigrationManager(med), CompactionManager(weak, 2), CommitLog(weak, 1)]
 
 StageManager [DatabaseDescriptor, MessagingService(weak, 1m, parameterize)]
 
@@ -38,16 +35,20 @@ MessagingService [StorageServiceTasks, StageManager(stronger, 2m), StorageProxy(
 
 ?? move cluster state here?
 
-Updated --> Gossiper [MessagingService, DatabaseDescriptor, FailureDetector(?), StorageService(?), StageManager]
+Updated --> Gossiper [MessagingService, DatabaseDescriptor, StageManager]
 
 Updated --> LoadBroadcaster [Gossiper]
 
 Updated --> FailureDetector [Gossiper(strong), DatabaseDescriptor]
 
-MigrationManager [Schema(strong), Gossiper, StorageServiceTasks, StageManager, SystemKeyspace, DefsTables, MessagingService, StorageService]
+Updated --> DefsTables [SystemKeyspace, Schema, MigrationManager(med), CompactionManager(weak, 2), CommitLog(weak, 1), KeyspaceManager]
+    * make MigrationManager volatile
+    * make CompactionManager volatile
+
+MigrationManager [Schema(strong), Gossiper, StorageServiceTasks, StageManager, SystemKeyspace, DefsTables(strong), MessagingService, StorageService]
     * DI StorageService instance to passiveAnnounce method
 
-Updated --> ClusterState [DatabaseDescriptor, Schema, KeyspaceManager, FailureDetector, CommitLog, StorageServiceTasks]
+Updated --> ClusterState [DatabaseDescriptor, Schema, KeyspaceManager, FailureDetector, CommitLog, StorageServiceTasks, DatabaseDescriptor]
 
 Updated --> ActiveRepairService [Gossiper, FailureDetector, MessagingService]
 Updated --> CompactionManager [Schema, ActiveRepairService, SystemKeyspace]

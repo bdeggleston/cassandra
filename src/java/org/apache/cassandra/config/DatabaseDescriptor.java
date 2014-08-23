@@ -114,6 +114,7 @@ public class DatabaseDescriptor
         ClusterState clusterState = ClusterState.instance;
         ActiveRepairService activeRepairService = ActiveRepairService.instance;
         CompactionManager compactionManager = CompactionManager.instance;
+        defsTables.init(migrationManager, compactionManager);
 
         HintedHandOffManager hintedHandOffManager = HintedHandOffManager.instance;
         StorageProxy storageProxy = StorageProxy.instance;
