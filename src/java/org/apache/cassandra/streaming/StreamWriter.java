@@ -26,6 +26,7 @@ import java.util.Collection;
 
 import com.ning.compress.lzf.LZFOutputStream;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.DataIntegrityMetadata;
@@ -57,7 +58,7 @@ public class StreamWriter
         this.session = session;
         this.sstable = sstable;
         this.sections = sections;
-        this.limiter =  StreamManager.getRateLimiter(session.peer);
+        this.limiter =  StreamManager.getRateLimiter(session.peer, DatabaseDescriptor.instance);
     }
 
     /**

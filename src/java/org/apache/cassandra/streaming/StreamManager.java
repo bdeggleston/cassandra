@@ -56,9 +56,9 @@ public class StreamManager implements StreamManagerMBean
      *
      * @return StreamRateLimiter with rate limit set based on peer location.
      */
-    public static StreamRateLimiter getRateLimiter(InetAddress peer)
+    public static StreamRateLimiter getRateLimiter(InetAddress peer, DatabaseDescriptor databaseDescriptor)
     {
-        return new StreamRateLimiter(peer);
+        return new StreamRateLimiter(peer, databaseDescriptor);
     }
 
     public static class StreamRateLimiter
@@ -68,17 +68,17 @@ public class StreamManager implements StreamManagerMBean
         private static final RateLimiter interDCLimiter = RateLimiter.create(Double.MAX_VALUE);
         private final boolean isLocalDC;
 
-        public StreamRateLimiter(InetAddress peer)
+        public StreamRateLimiter(InetAddress peer, DatabaseDescriptor databaseDescriptor)
         {
-            double throughput = ((double) DatabaseDescriptor.instance.getStreamThroughputOutboundMegabitsPerSec()) * ONE_MEGA_BIT;
+            double throughput = ((double) databaseDescriptor.getStreamThroughputOutboundMegabitsPerSec()) * ONE_MEGA_BIT;
             mayUpdateThroughput(throughput, limiter);
 
-            double interDCThroughput = ((double) DatabaseDescriptor.instance.getInterDCStreamThroughputOutboundMegabitsPerSec()) * ONE_MEGA_BIT;
+            double interDCThroughput = ((double) databaseDescriptor.getInterDCStreamThroughputOutboundMegabitsPerSec()) * ONE_MEGA_BIT;
             mayUpdateThroughput(interDCThroughput, interDCLimiter);
 
-            if (DatabaseDescriptor.instance.getLocalDataCenter() != null && DatabaseDescriptor.instance.getEndpointSnitch() != null)
-                isLocalDC = DatabaseDescriptor.instance.getLocalDataCenter().equals(
-                            DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(peer));
+            if (databaseDescriptor.getLocalDataCenter() != null && databaseDescriptor.getEndpointSnitch() != null)
+                isLocalDC = databaseDescriptor.getLocalDataCenter().equals(
+                            databaseDescriptor.getEndpointSnitch().getDatacenter(peer));
             else
                 isLocalDC = true;
         }

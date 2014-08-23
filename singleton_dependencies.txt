@@ -12,7 +12,7 @@ Updated --> TriggerExecutor [QueryProcessor]
 
 Updated --> SinkManager []
 Updated --> StorageServiceTasks []
-StreamManager [DatabaseDescriptor]
+Updated --> StreamManager [DatabaseDescriptor]
 
 Updated --> SystemKeyspace [DatabaseDescriptor, QueryProcessor(strong)]
 
