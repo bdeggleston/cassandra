@@ -127,6 +127,9 @@ public class DatabaseDescriptor
         Auth auth = Auth.instance;
         BatchlogManager batchlogManager = BatchlogManager.instance;
 
+        StorageService storageService = StorageService.instance;
+        Gossiper.instance.init(FailureDetector.instance, StorageService.instance);
+
         PendingRangeCalculatorService pendingRangeCalculatorService = PendingRangeCalculatorService.instance;
 
         // ghetto workaround for the above not being visible to other threads

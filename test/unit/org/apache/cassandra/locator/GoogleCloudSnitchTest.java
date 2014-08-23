@@ -52,8 +52,7 @@ public class GoogleCloudSnitchTest
     @BeforeClass
     public static void setup() throws Exception
     {
-        DatabaseDescriptor.init();
-        SchemaLoader.cleanupAndLeaveDirs();
+        SchemaLoader.prepareServer();
         KeyspaceManager.instance.setInitialized();
         StorageService.instance.initServer(0);
     }

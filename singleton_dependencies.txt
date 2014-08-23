@@ -38,6 +38,8 @@ MessagingService [StorageServiceTasks, StageManager(stronger, 2m), StorageProxy(
         * could push getStage up to DatabaseDescriptor, also ugly
         * could use a wrapper class for the timeoutReporter, which references a volatile member
 
+?? move cluster state here?
+
 Gossiper [MessagingService, DatabaseDescriptor, FailureDetector(?), StorageService(?), StageManager]
     * move failure detector registration out of constructor and into static factory
     * DI other FailureDetector dependent methods (3)
