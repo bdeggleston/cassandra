@@ -7,11 +7,11 @@ DatabaseDescriptor [Schema(?, 3m), SystemKeyspace(?, 2m), DefsTables(?, 1m), Key
     * move loadSchemas to SystemKeyspace
     * pass SystemKeyspace into isReplacing
 
-QueryProcessor []  # maintains prepared statements, but has no dependencies
+Updated --> QueryProcessor []  # maintains prepared statements, but has no dependencies
 Updated --> TriggerExecutor [QueryProcessor]
 
-SinkManager []
-StorageServiceTasks []
+Updated --> SinkManager []
+Updated --> StorageServiceTasks []
 StreamManager [DatabaseDescriptor]
 
 Schema [SystemKeyspace(?, 1m), MigrationManager(?, 1m)]
@@ -45,7 +45,7 @@ Gossiper [MessagingService, DatabaseDescriptor, FailureDetector(?), StorageServi
 
 Updated --> LoadBroadcaster [Gossiper]
 
-FailureDetector [Gossiper(strong), DatabaseDescriptor]
+Updated --> FailureDetector [Gossiper(strong), DatabaseDescriptor]
 
 MigrationManager [Schema(strong), Gossiper, StorageServiceTasks, StageManager, SystemKeyspace, DefsTables, MessagingService, StorageService]
     * DI StorageService instance to passiveAnnounce method
@@ -66,12 +66,12 @@ StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 
 
 Updated --> Tracing [StageManager, StorageProxy]
 
-ColumnFamilyStoreManager [Schema, ClusterState, SystemKeyspace, CompactionManager, CacheService]
-ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService, ColumnFamilyStoreManager.TaskExecutors]
+Updated --> ColumnFamilyStoreManager [Schema, ClusterState, SystemKeyspace, CompactionManager, CacheService]
+Updated --> ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService, ColumnFamilyStoreManager.TaskExecutors]
     * move tracing back into constructor
 
 *Updated --> KeyspaceManager [Schema, ClusterState, CommitLog, ColumnFamilyStoreManager]
-Keyspace [Schema, ClusterState, CommitLog(weak, single method), ColumnFamilyStoreManager]
+Updated --> Keyspace [Schema, ClusterState, CommitLog(weak, single method), ColumnFamilyStoreManager]
     * move static initialization methods into static factory
 
 
