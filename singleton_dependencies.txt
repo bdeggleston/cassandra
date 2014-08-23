@@ -42,13 +42,10 @@ Updated --> LoadBroadcaster [Gossiper]
 Updated --> FailureDetector [Gossiper(strong), DatabaseDescriptor]
 
 Updated --> DefsTables [SystemKeyspace, Schema, MigrationManager(med), CompactionManager(weak, 2), CommitLog(weak, 1), KeyspaceManager]
-    * make MigrationManager volatile
-    * make CompactionManager volatile
-
-MigrationManager [Schema(strong), Gossiper, StorageServiceTasks, StageManager, SystemKeyspace, DefsTables(strong), MessagingService, StorageService]
-    * DI StorageService instance to passiveAnnounce method
 
 Updated --> ClusterState [DatabaseDescriptor, Schema, KeyspaceManager, FailureDetector, CommitLog, StorageServiceTasks, DatabaseDescriptor]
+
+Updated --> MigrationManager [Schema(strong), Gossiper, StorageServiceTasks, StageManager, SystemKeyspace, DefsTables(strong), MessagingService, StorageService]
 
 Updated --> ActiveRepairService [Gossiper, FailureDetector, MessagingService]
 Updated --> CompactionManager [Schema, ActiveRepairService, SystemKeyspace]
@@ -57,10 +54,8 @@ HintedHandOffManager [DatabaseDescriptor, Schema, StorageServiceTasks,  Keyspace
                       CompactionManager(weak, 1), Gossiper, FailureDetector, SystemKeyspace, MessagingService, ClusterState]
     * DI CompactionManager into compact method
 
-StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 1p), MessagingService, HintedHandOffManager,
+Updated --> StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerExecutor(2m, 1p), MessagingService, HintedHandOffManager,
               FailureDetector(2m), SinkManager(2m), Gossiper(4m), ClusterState]
-    * maybe remove dependency on StorageService(getPartitioner, TokenMetadata, getNaturalEndpoints, getLiveNaturalEndpoints)
-    * move isBootstrapMode to ClusterState to remove dependency on StorageService
 
 Updated --> Tracing [StageManager, StorageProxy]
 

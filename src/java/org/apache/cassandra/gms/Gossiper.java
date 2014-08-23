@@ -75,7 +75,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     private ScheduledFuture<?> scheduledGossipTask;
     public final static int intervalInMillis = 1000;
     private static final Logger logger = LoggerFactory.getLogger(Gossiper.class);
-    public static final Gossiper instance = new Gossiper(DatabaseDescriptor.instance, MessagingService.instance, StageManager.instance, ClusterState.instance);
+    public static final Gossiper instance = new Gossiper(DatabaseDescriptor.instance, MessagingService.instance, StageManager.instance);
     // FIXME: remove once we can talk to StorageService during initialization
 //    public final static int QUARANTINE_DELAY = StorageService.RING_DELAY * 2;
 
@@ -180,34 +180,34 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     private final DatabaseDescriptor databaseDescriptor;
     private final MessagingService messagingService;
     private final StageManager stageManager;
-    private final ClusterState clusterState;
 
     private volatile boolean initialized = false;
     private volatile IFailureDetector failureDetector;
+    private volatile ClusterState clusterState = null;
 
-    public Gossiper(DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager, ClusterState clusterState)
+    public Gossiper(DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager)
     {
         assert databaseDescriptor != null;
         assert messagingService != null;
         assert stageManager != null;
-        assert clusterState != null;
 
         this.databaseDescriptor = databaseDescriptor;
         this.messagingService = messagingService;
         this.stageManager = stageManager;
-        this.clusterState = clusterState;
 
         // half of QUARATINE_DELAY, to ensure justRemovedEndpoints has enough leeway to prevent re-gossip
 //        FatClientTimeout = (long) (getQuarantineDelay() / 2);
         /* register with the Failure Detector for receiving Failure detector events */
     }
 
-    public synchronized void init(IFailureDetector failureDetector)
+    public synchronized void init(IFailureDetector failureDetector, ClusterState clusterState)
     {
         assert !initialized;
         assert failureDetector != null;
+        assert clusterState != null;
 
         this.failureDetector = failureDetector;
+        this.clusterState = clusterState;
 
         initialized = true;
 

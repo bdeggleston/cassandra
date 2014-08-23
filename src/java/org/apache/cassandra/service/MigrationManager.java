@@ -57,7 +57,9 @@ public class MigrationManager
 {
     private static final Logger logger = LoggerFactory.getLogger(MigrationManager.class);
 
-    public static final MigrationManager instance = new MigrationManager();
+    public static final MigrationManager instance = new MigrationManager(
+            SystemKeyspace.instance, Schema.instance, Gossiper.instance, DefsTables.instance, StageManager.instance, MessagingService.instance, ClusterState.instance
+    );
 
     private static final RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
 
@@ -65,15 +67,32 @@ public class MigrationManager
 
     private final List<IMigrationListener> listeners = new CopyOnWriteArrayList<IMigrationListener>();
 
-//    private final SystemKeyspace systemKeyspace;
-//    private final Schema schema;
-//    private final StorageServiceTasks storageServiceTasks;
-//    private final Gossiper gossiper;
-//    private final DefsTables defsTables;
-//    private final StageManager stageManager;
-//    private final MessagingService messagingService;
+    private final SystemKeyspace systemKeyspace;
+    private final Schema schema;
+    private final Gossiper gossiper;
+    private final DefsTables defsTables;
+    private final StageManager stageManager;
+    private final MessagingService messagingService;
+    private final ClusterState clusterState;
 
-    private MigrationManager() {}
+    public MigrationManager(SystemKeyspace systemKeyspace, Schema schema, Gossiper gossiper, DefsTables defsTables, StageManager stageManager, MessagingService messagingService, ClusterState clusterState)
+    {
+        assert systemKeyspace != null;
+        assert schema != null;
+        assert gossiper != null;
+        assert defsTables != null;
+        assert stageManager != null;
+        assert messagingService != null;
+        assert clusterState != null;
+
+        this.systemKeyspace = systemKeyspace;
+        this.schema = schema;
+        this.gossiper = gossiper;
+        this.defsTables = defsTables;
+        this.stageManager = stageManager;
+        this.messagingService = messagingService;
+        this.clusterState = clusterState;
+    }
 
     public void register(IMigrationListener listener)
     {
@@ -99,13 +118,13 @@ public class MigrationManager
      */
     private void maybeScheduleSchemaPull(final UUID theirVersion, final InetAddress endpoint)
     {
-        if ((Schema.instance.getVersion() != null && Schema.instance.getVersion().equals(theirVersion)) || !shouldPullSchemaFrom(endpoint))
+        if ((schema.getVersion() != null && schema.getVersion().equals(theirVersion)) || !shouldPullSchemaFrom(endpoint))
         {
             logger.debug("Not pulling schema because versions match or shouldPullSchemaFrom returned false");
             return;
         }
 
-        if (Schema.emptyVersion.equals(Schema.instance.getVersion()) || runtimeMXBean.getUptime() < MIGRATION_DELAY_IN_MS)
+        if (Schema.emptyVersion.equals(schema.getVersion()) || runtimeMXBean.getUptime() < MIGRATION_DELAY_IN_MS)
         {
             // If we think we may be bootstrapping or have recently started, submit MigrationTask immediately
             logger.debug("Submitting migration task for {}", endpoint);
@@ -120,7 +139,7 @@ public class MigrationManager
                 public void run()
                 {
                     // grab the latest version of the schema since it may have changed again since the initial scheduling
-                    EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+                    EndpointState epState = gossiper.getEndpointStateForEndpoint(endpoint);
                     if (epState == null)
                     {
                         logger.debug("epState vanished for {}, not submitting migration task", endpoint);
@@ -128,7 +147,7 @@ public class MigrationManager
                     }
                     VersionedValue value = epState.getApplicationState(ApplicationState.SCHEMA);
                     UUID currentVersion = UUID.fromString(value.value);
-                    if (Schema.instance.getVersion().equals(currentVersion))
+                    if (schema.getVersion().equals(currentVersion))
                     {
                         logger.debug("not submitting migration task for {} because our versions match", endpoint);
                         return;
@@ -137,7 +156,7 @@ public class MigrationManager
                     submitMigrationTask(endpoint);
                 }
             };
-            StorageServiceTasks.instance.optionalTasks.schedule(runnable, MIGRATION_DELAY_IN_MS, TimeUnit.MILLISECONDS);
+            clusterState.getOptionalTasksExecutor().schedule(runnable, MIGRATION_DELAY_IN_MS, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -147,7 +166,7 @@ public class MigrationManager
          * Do not de-ref the future because that causes distributed deadlock (CASSANDRA-3832) because we are
          * running in the gossip stage.
          */
-        return StageManager.instance.getStage(Stage.MIGRATION).submit(new MigrationTask(endpoint));
+        return stageManager.getStage(Stage.MIGRATION).submit(new MigrationTask(endpoint));
     }
 
     private boolean shouldPullSchemaFrom(InetAddress endpoint)
@@ -156,14 +175,14 @@ public class MigrationManager
          * Don't request schema from nodes with a differnt or unknonw major version (may have incompatible schema)
          * Don't request schema from fat clients
          */
-        return MessagingService.instance.knowsVersion(endpoint)
-                && MessagingService.instance.getRawVersion(endpoint) == MessagingService.current_version
-                && !Gossiper.instance.isFatClient(endpoint);
+        return messagingService.knowsVersion(endpoint)
+                && messagingService.getRawVersion(endpoint) == MessagingService.current_version
+                && !gossiper.isFatClient(endpoint);
     }
 
     public boolean isReadyForBootstrap()
     {
-        return ((ThreadPoolExecutor) StageManager.instance.getStage(Stage.MIGRATION)).getActiveCount() == 0;
+        return ((ThreadPoolExecutor) stageManager.getStage(Stage.MIGRATION)).getActiveCount() == 0;
     }
 
     public void notifyCreateKeyspace(KSMetaData ksm)
@@ -252,7 +271,7 @@ public class MigrationManager
     {
         ksm.validate();
 
-        if (Schema.instance.getKSMetaData(ksm.name) != null)
+        if (schema.getKSMetaData(ksm.name) != null)
             throw new AlreadyExistsException(ksm.name);
 
         logger.info(String.format("Create new Keyspace: %s", ksm));
@@ -268,7 +287,7 @@ public class MigrationManager
     {
         cfm.validate();
 
-        KSMetaData ksm = Schema.instance.getKSMetaData(cfm.ksName);
+        KSMetaData ksm = schema.getKSMetaData(cfm.ksName);
         if (ksm == null)
             throw new ConfigurationException(String.format("Cannot add table '%s' to non existing keyspace '%s'.", cfm.cfName, cfm.ksName));
         else if (ksm.cfMetaData().containsKey(cfm.cfName))
@@ -297,7 +316,7 @@ public class MigrationManager
     {
         ksm.validate();
 
-        KSMetaData oldKsm = Schema.instance.getKSMetaData(ksm.name);
+        KSMetaData oldKsm = schema.getKSMetaData(ksm.name);
         if (oldKsm == null)
             throw new ConfigurationException(String.format("Cannot update non existing keyspace '%s'.", ksm.name));
 
@@ -314,7 +333,7 @@ public class MigrationManager
     {
         cfm.validate();
 
-        CFMetaData oldCfm = Schema.instance.getCFMetaData(cfm.ksName, cfm.cfName);
+        CFMetaData oldCfm = schema.getCFMetaData(cfm.ksName, cfm.cfName);
         if (oldCfm == null)
             throw new ConfigurationException(String.format("Cannot update non existing table '%s' in keyspace '%s'.", cfm.cfName, cfm.ksName));
 
@@ -341,7 +360,7 @@ public class MigrationManager
 
     public void announceKeyspaceDrop(String ksName, boolean announceLocally) throws ConfigurationException
     {
-        KSMetaData oldKsm = Schema.instance.getKSMetaData(ksName);
+        KSMetaData oldKsm = schema.getKSMetaData(ksName);
         if (oldKsm == null)
             throw new ConfigurationException(String.format("Cannot drop non existing keyspace '%s'.", ksName));
 
@@ -356,7 +375,7 @@ public class MigrationManager
 
     public void announceColumnFamilyDrop(String ksName, String cfName, boolean announceLocally) throws ConfigurationException
     {
-        CFMetaData oldCfm = Schema.instance.getCFMetaData(ksName, cfName);
+        CFMetaData oldCfm = schema.getCFMetaData(ksName, cfName);
         if (oldCfm == null)
             throw new ConfigurationException(String.format("Cannot drop non existing table '%s' in keyspace '%s'.", cfName, ksName));
 
@@ -367,7 +386,7 @@ public class MigrationManager
     // Include the serialized keyspace for when a target node missed the CREATE KEYSPACE migration (see #5631).
     private Mutation addSerializedKeyspace(Mutation migration, String ksName)
     {
-        migration.add(SystemKeyspace.instance.readSchemaRow(SystemKeyspace.SCHEMA_KEYSPACES_CF, ksName).cf);
+        migration.add(systemKeyspace.readSchemaRow(SystemKeyspace.SCHEMA_KEYSPACES_CF, ksName).cf);
         return migration;
     }
 
@@ -412,7 +431,7 @@ public class MigrationManager
         {
             try
             {
-                DefsTables.instance.mergeSchemaInternal(Collections.singletonList(schema), false);
+                defsTables.mergeSchemaInternal(Collections.singletonList(schema), false);
             }
             catch (ConfigurationException | IOException e)
             {
@@ -430,26 +449,26 @@ public class MigrationManager
         MessageOut<Collection<Mutation>> msg = new MessageOut<>(MessagingService.Verb.DEFINITIONS_UPDATE,
                                                                 schema,
                                                                 MigrationsSerializer.instance);
-        MessagingService.instance.sendOneWay(msg, endpoint);
+        messagingService.sendOneWay(msg, endpoint);
     }
 
     // Returns a future on the local application of the schema
     private Future<?> announce(final Collection<Mutation> schema)
     {
-        Future<?> f = StageManager.instance.getStage(Stage.MIGRATION).submit(new WrappedRunnable()
+        Future<?> f = stageManager.getStage(Stage.MIGRATION).submit(new WrappedRunnable()
         {
             protected void runMayThrow() throws IOException, ConfigurationException
             {
-                DefsTables.instance.mergeSchema(schema);
+                defsTables.mergeSchema(schema);
             }
         });
 
-        for (InetAddress endpoint : Gossiper.instance.getLiveMembers())
+        for (InetAddress endpoint : gossiper.getLiveMembers())
         {
             // only push schema to nodes with known and equal versions
             if (!endpoint.equals(FBUtilities.getBroadcastAddress()) &&
-                    MessagingService.instance.knowsVersion(endpoint) &&
-                    MessagingService.instance.getRawVersion(endpoint) == MessagingService.current_version)
+                    messagingService.knowsVersion(endpoint) &&
+                    messagingService.getRawVersion(endpoint) == MessagingService.current_version)
                 pushSchemaMutation(endpoint, schema);
         }
 
@@ -464,7 +483,7 @@ public class MigrationManager
      */
     public void passiveAnnounce(UUID version)
     {
-        Gossiper.instance.addLocalApplicationState(ApplicationState.SCHEMA, ClusterState.instance.valueFactory.schema(version));
+        gossiper.addLocalApplicationState(ApplicationState.SCHEMA, clusterState.valueFactory.schema(version));
         logger.debug("Gossiping my schema version {}", version);
     }
 
@@ -482,13 +501,13 @@ public class MigrationManager
 
         // truncate schema tables
         for (String cf : SystemKeyspace.allSchemaCfs)
-            SystemKeyspace.instance.schemaCFS(cf).truncateBlocking();
+            systemKeyspace.schemaCFS(cf).truncateBlocking();
 
         logger.debug("Clearing local schema keyspace definitions...");
 
-        Schema.instance.clear();
+        schema.clear();
 
-        Set<InetAddress> liveEndpoints = Gossiper.instance.getLiveMembers();
+        Set<InetAddress> liveEndpoints = gossiper.getLiveMembers();
         liveEndpoints.remove(FBUtilities.getBroadcastAddress());
 
         // force migration if there are nodes around
