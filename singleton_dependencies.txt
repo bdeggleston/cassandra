@@ -14,6 +14,8 @@ Updated --> SinkManager []
 Updated --> StorageServiceTasks []
 StreamManager [DatabaseDescriptor]
 
+Updated --> SystemKeyspace [DatabaseDescriptor, QueryProcessor(strong)]
+
 Schema [SystemKeyspace(?, 1m), MigrationManager(?, 1m)]
     * pass SystemKeyspace into updateVersion method
     * pass MigrationManager into updateVersionAndAnnounce (called by DefsTables, StorageService)
@@ -22,10 +24,6 @@ Schema [SystemKeyspace(?, 1m), MigrationManager(?, 1m)]
 Updated --> CommitLog [DatabaseDescriptor, KeyspaceManager, Schema]
 Updated --> CommitLogSegmentManager [DatabaseDescriptor, KeyspaceManager, Schema]
     * do something about the KeyspaceManager dependency
-
-SystemKeyspace [ClusterState, Schema(weak, 1m finishStartup), QueryProcessor(strong), DatabaseDescriptor(strong)]
-    * replace StorageService.getPartitioner gets with DatabaseDescriptor.getPartitioner
-    * pass schema instance into finishStartup
 
 DefsTables [SystemKeyspace, Schema, MigrationManager(med), CompactionManager(weak, 2), CommitLog(weak, 1)]
 
@@ -40,10 +38,7 @@ MessagingService [StorageServiceTasks, StageManager(stronger, 2m), StorageProxy(
 
 ?? move cluster state here?
 
-Gossiper [MessagingService, DatabaseDescriptor, FailureDetector(?), StorageService(?), StageManager]
-    * move failure detector registration out of constructor and into static factory
-    * DI other FailureDetector dependent methods (3)
-    * move valueFactory from StorageService to ClusterState to remove dependency
+Updated --> Gossiper [MessagingService, DatabaseDescriptor, FailureDetector(?), StorageService(?), StageManager]
 
 Updated --> LoadBroadcaster [Gossiper]
 

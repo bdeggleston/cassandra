@@ -123,6 +123,7 @@ public class DatabaseDescriptor
         ColumnFamilyStoreManager columnFamilyStoreManager = ColumnFamilyStoreManager.instance;
 
         KeyspaceManager keyspaceManager = KeyspaceManager.instance;
+        systemKeyspace.setKeyspaceManager(keyspaceManager);
 
         Auth auth = Auth.instance;
         BatchlogManager batchlogManager = BatchlogManager.instance;

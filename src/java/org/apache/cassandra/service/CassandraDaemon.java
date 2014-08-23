@@ -327,7 +327,7 @@ public class CassandraDaemon
         };
         StorageServiceTasks.instance.optionalTasks.schedule(runnable, 5 * 60, TimeUnit.SECONDS);
 
-        SystemKeyspace.instance.finishStartup();
+        SystemKeyspace.instance.finishStartup(Schema.instance);
 
         // start server internals
         StorageService.instance.registerDaemon(this);
