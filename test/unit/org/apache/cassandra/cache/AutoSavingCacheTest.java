@@ -41,6 +41,7 @@ public class AutoSavingCacheTest
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
+        DatabaseDescriptor.init();
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     SimpleStrategy.class,

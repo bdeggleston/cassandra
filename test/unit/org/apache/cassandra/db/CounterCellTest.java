@@ -26,7 +26,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
@@ -58,6 +61,13 @@ public class CounterCellTest
         countLength   = 8; // size of long
 
         stepLength    = idLength + clockLength + countLength;
+    }
+
+    @BeforeClass
+    public static void setupClass()
+    {
+        DatabaseDescriptor.init();
+        CommitLog.instance.waitOnInitialized();
     }
 
     @Test

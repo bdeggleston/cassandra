@@ -19,6 +19,7 @@
 package org.apache.cassandra.config;
 
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -44,42 +45,17 @@ public class DatabaseDescriptorTest
     @BeforeClass
     public static void setupClass()
     {
+        System.setProperty("descriptor.start.wait", "3000");
         DatabaseDescriptor.init();
-    }
-
-    @Test
-    public void testCFMetaDataSerialization() throws ConfigurationException, InvalidRequestException
-    {
-        // test serialization of all defined test CFs.
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
-        {
-            for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(keyspaceName).values())
-            {
-                CFMetaData cfmDupe = CFMetaData.fromThrift(cfm.toThrift());
-                assertNotNull(cfmDupe);
-                assertEquals(cfm, cfmDupe);
-            }
-        }
-    }
-
-    @Test
-    @Ignore  // FIXME: prior to enforcing the order of initialization, getKeyspaceDefinitions didn't return anything, afterwards it does but fails on system keyspaces. Confirmed nothing is returned in trunk
-    public void testKSMetaDataSerialization() throws ConfigurationException
-    {
-        for (KSMetaData ksm : Schema.instance.getKeyspaceDefinitions())
-        {
-            // Not testing round-trip on the KsDef via serDe() because maps
-            KSMetaData ksmDupe = KSMetaData.fromThrift(ksm.toThrift());
-            assertNotNull(ksmDupe);
-            assertEquals(ksm, ksmDupe);
-        }
+        SchemaLoader.prepareServer();
+        CommitLog.instance.waitOnInitialized();
     }
 
     // this came as a result of CASSANDRA-995
     @Test
     public void testTransKsMigration() throws ConfigurationException
     {
-        SchemaLoader.cleanupAndLeaveDirs();
+//        SchemaLoader.cleanupAndLeaveDirs();
         DatabaseDescriptor.instance.loadSchemas();
         assertEquals(0, Schema.instance.getNonSystemKeyspaces().size());
 
@@ -109,6 +85,34 @@ public class DatabaseDescriptorTest
         finally
         {
             Gossiper.instance.stop();
+        }
+    }
+
+    @Test
+    public void testCFMetaDataSerialization() throws ConfigurationException, InvalidRequestException
+    {
+        // test serialization of all defined test CFs.
+        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        {
+            for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(keyspaceName).values())
+            {
+                CFMetaData cfmDupe = CFMetaData.fromThrift(cfm.toThrift());
+                assertNotNull(cfmDupe);
+                assertEquals(cfm, cfmDupe);
+            }
+        }
+    }
+
+    @Test
+    @Ignore  // FIXME: prior to enforcing the order of initialization, getKeyspaceDefinitions didn't return anything, afterwards it does but fails on system keyspaces. Confirmed nothing is returned in trunk
+    public void testKSMetaDataSerialization() throws ConfigurationException
+    {
+        for (KSMetaData ksm : Schema.instance.getKeyspaceDefinitions())
+        {
+            // Not testing round-trip on the KsDef via serDe() because maps
+            KSMetaData ksmDupe = KSMetaData.fromThrift(ksm.toThrift());
+            assertNotNull(ksmDupe);
+            assertEquals(ksm, ksmDupe);
         }
     }
 

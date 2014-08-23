@@ -27,7 +27,9 @@ import java.util.*;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -54,7 +56,9 @@ public class StorageServiceServerTest
     @BeforeClass
     public static void setUp() throws ConfigurationException
     {
-        DatabaseDescriptor.init();
+        System.setProperty("descriptor.start.wait", "3000");
+        SchemaLoader.prepareServer();
+        CommitLog.instance.waitOnInitialized();
         IEndpointSnitch snitch = new PropertyFileSnitch();
         DatabaseDescriptor.instance.setEndpointSnitch(snitch);
         KeyspaceManager.instance.setInitialized();
@@ -63,8 +67,8 @@ public class StorageServiceServerTest
     @Test
     public void testRegularMode() throws ConfigurationException
     {
-        SchemaLoader.mkdirs();
-        SchemaLoader.cleanup();
+//        SchemaLoader.mkdirs();
+//        SchemaLoader.cleanup();
         StorageService.instance.initServer(0);
         for (String path : DatabaseDescriptor.instance.getAllDataFileLocations())
         {

@@ -18,9 +18,11 @@
 package org.apache.cassandra;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.service.paxos.Commit;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.slf4j.Logger;
@@ -61,6 +63,7 @@ public class SchemaLoader
 
     public static void prepareServer()
     {
+        System.setProperty("descriptor.start.wait", "3000");
         DatabaseDescriptor.init();
         // Cleanup first
         cleanupAndLeaveDirs();
@@ -418,12 +421,11 @@ public class SchemaLoader
 
     public static void cleanupAndLeaveDirs()
     {
-        DatabaseDescriptor.init();
-        CommitLog.instance.resetUnsafe(); // calling cleanup with active tasks causes pain
         mkdirs();
         cleanup();
         mkdirs();
         CommitLog.instance.resetUnsafe(); // cleanup screws w/ CommitLog, this brings it back to safe state
+        CommitLog.instance.setPaused(false);
     }
 
     public static void cleanup()

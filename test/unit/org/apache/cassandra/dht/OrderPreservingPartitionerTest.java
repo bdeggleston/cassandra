@@ -30,7 +30,7 @@ public class OrderPreservingPartitionerTest extends PartitionerTestCase<StringTo
     {
         // Since OrderPreservingPartitioner#describeOwnership tries to read SSTables,
         // we need to clear data dir to clear garbage from previous test before running tests.
-        SchemaLoader.cleanupAndLeaveDirs();
+        SchemaLoader.prepareServer();
     }
 
     public void initPartitioner()

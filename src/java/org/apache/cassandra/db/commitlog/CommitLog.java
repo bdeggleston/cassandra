@@ -25,6 +25,7 @@ import java.util.*;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import org.apache.cassandra.config.Schema;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,37 +49,56 @@ public class CommitLog implements CommitLogMBean
 {
     private static final Logger logger = LoggerFactory.getLogger(CommitLog.class);
 
-    public static final CommitLog instance = new CommitLog();
+    public static final CommitLog instance = new CommitLog(DatabaseDescriptor.instance, Schema.instance);
 
     // we only permit records HALF the size of a commit log, to ensure we don't spin allocating many mostly
     // empty segments when writing large records
-    private static final long MAX_MUTATION_SIZE = DatabaseDescriptor.instance.getCommitLogSegmentSize() >> 1;
+    private final long maxMutationSize;
 
-    public final CommitLogSegmentManager allocator;
-    public final CommitLogArchiver archiver = new CommitLogArchiver();
+    public final CommitLogArchiver archiver;
+
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+
+    private volatile boolean initialized = false;
     private volatile StorageService storageService = null;
-    final CommitLogMetrics metrics;
-    final AbstractCommitLogService executor;
+    private volatile KeyspaceManager keyspaceManager = null;
+    public volatile CommitLogSegmentManager allocator;
+    volatile CommitLogMetrics metrics;
+    volatile AbstractCommitLogService executor;
 
-    private CommitLog()
+    public CommitLog(DatabaseDescriptor databaseDescriptor, Schema schema)
     {
-        DatabaseDescriptor.instance.createAllDirectories();
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
 
-        allocator = new CommitLogSegmentManager();
+        maxMutationSize = databaseDescriptor.getCommitLogSegmentSize() >> 1;
+        archiver = new CommitLogArchiver(this.databaseDescriptor);
 
-        executor = DatabaseDescriptor.instance.getCommitLogSync() == Config.CommitLogSync.batch
-                 ? new BatchCommitLogService(this)
-                 : new PeriodicCommitLogService(this);
+        databaseDescriptor.createAllDirectories();
+
+    }
+
+    public synchronized void init(StorageService storageService, KeyspaceManager keyspaceManager)
+    {
+        assert !initialized;
+
+        assert storageService != null;
+        assert keyspaceManager != null;
+
+        this.storageService = storageService;
+        this.keyspaceManager = keyspaceManager;
+
+        allocator = new CommitLogSegmentManager(this.databaseDescriptor, this.schema, this.keyspaceManager);
+
+        executor = databaseDescriptor.getCommitLogSync() == Config.CommitLogSync.batch
+                ? new BatchCommitLogService(this)
+                : new PeriodicCommitLogService(this);
 
         // register metrics
         metrics = new CommitLogMetrics(executor, allocator);
-    }
+        initialized = true;
 
-    public void setStorageService(StorageService storageService)
-    {
-        assert this.storageService == null;
-        assert storageService != null;
-        this.storageService = storageService;
         allocator.start();
         executor.start();
 
@@ -91,6 +111,36 @@ public class CommitLog implements CommitLogMBean
         {
             throw new RuntimeException(e);
         }
+
+    }
+
+    /**
+     * FOR TESTING PURPOSES. See CommitLogSegmentManager
+     */
+    public void waitOnInitialized()
+    {
+        while (!initialized)
+            try
+            {
+                Thread.sleep(100);
+            }
+            catch (InterruptedException e)
+            {
+                throw new RuntimeException(e);
+            }
+    }
+
+    /**
+     * FOR TESTING PURPOSES. See CommitLogSegmentManager
+     */
+    public void setPaused(boolean paused)
+    {
+        allocator.setPaused(paused);
+    }
+
+    public boolean isInitialized()
+    {
+        return initialized;
     }
 
     /**
@@ -100,16 +150,18 @@ public class CommitLog implements CommitLogMBean
      */
     public int recover() throws IOException
     {
+        waitOnInitialized();
+
         archiver.maybeRestoreArchive();
 
-        File[] files = new File(DatabaseDescriptor.instance.getCommitLogLocation()).listFiles(new FilenameFilter()
+        File[] files = new File(databaseDescriptor.getCommitLogLocation()).listFiles(new FilenameFilter()
         {
             public boolean accept(File dir, String name)
             {
                 // we used to try to avoid instantiating commitlog (thus creating an empty segment ready for writes)
                 // until after recover was finished.  this turns out to be fragile; it is less error-prone to go
                 // ahead and allow writes before recover(), and just skip active segments when we do.
-                return CommitLogDescriptor.isValid(name) && !instance.allocator.manages(name);
+                return CommitLogDescriptor.isValid(name) && !allocator.manages(name);
             }
         });
 
@@ -141,6 +193,8 @@ public class CommitLog implements CommitLogMBean
      */
     public int recover(File... clogs) throws IOException
     {
+        waitOnInitialized();
+
         CommitLogReplayer recovery = new CommitLogReplayer();
         recovery.recover(clogs);
         return recovery.blockForWrites();
@@ -160,6 +214,7 @@ public class CommitLog implements CommitLogMBean
      */
     public ReplayPosition getContext()
     {
+        waitOnInitialized();
         return allocator.allocatingFrom().getContext();
     }
 
@@ -168,6 +223,7 @@ public class CommitLog implements CommitLogMBean
      */
     public void forceRecycleAllSegments(Iterable<UUID> droppedCfs)
     {
+        waitOnInitialized();
         allocator.forceRecycleAll(droppedCfs);
     }
 
@@ -176,6 +232,7 @@ public class CommitLog implements CommitLogMBean
      */
     public void forceRecycleAllSegments()
     {
+        waitOnInitialized();
         allocator.forceRecycleAll(Collections.<UUID>emptyList());
     }
 
@@ -184,6 +241,7 @@ public class CommitLog implements CommitLogMBean
      */
     public void sync(boolean syncAllSegments)
     {
+        waitOnInitialized();
         CommitLogSegment current = allocator.allocatingFrom();
         for (CommitLogSegment segment : allocator.getActiveSegments())
         {
@@ -198,6 +256,7 @@ public class CommitLog implements CommitLogMBean
      */
     public void requestExtraSync()
     {
+        waitOnInitialized();
         executor.requestExtraSync();
     }
 
@@ -208,15 +267,16 @@ public class CommitLog implements CommitLogMBean
      */
     public ReplayPosition add(Mutation mutation)
     {
+        waitOnInitialized();
         assert mutation != null;
 
         long size = Mutation.serializer.serializedSize(mutation, MessagingService.current_version);
 
         long totalSize = size + ENTRY_OVERHEAD_SIZE;
-        if (totalSize > MAX_MUTATION_SIZE)
+        if (totalSize > maxMutationSize)
         {
             throw new IllegalArgumentException(String.format("Mutation of %s bytes is too large for the maxiumum size of %s",
-                                                             totalSize, MAX_MUTATION_SIZE));
+                                                             totalSize, maxMutationSize));
         }
 
         Allocation alloc = allocator.allocate(mutation, (int) totalSize);
@@ -259,6 +319,7 @@ public class CommitLog implements CommitLogMBean
      */
     public void discardCompletedSegments(final UUID cfId, final ReplayPosition context)
     {
+        waitOnInitialized();
         logger.debug("discard completed log segments for {}, table {}", context, cfId);
 
         // Go thru the active segment files, which are ordered oldest to newest, marking the
@@ -291,12 +352,14 @@ public class CommitLog implements CommitLogMBean
     @Override
     public long getCompletedTasks()
     {
+        waitOnInitialized();
         return metrics.completedTasks.value();
     }
 
     @Override
     public long getPendingTasks()
     {
+        waitOnInitialized();
         return metrics.pendingTasks.value();
     }
 
@@ -305,11 +368,13 @@ public class CommitLog implements CommitLogMBean
      */
     public long getTotalCommitlogSize()
     {
+        waitOnInitialized();
         return metrics.totalCommitLogSize.value();
     }
 
     public List<String> getActiveSegmentNames()
     {
+        waitOnInitialized();
         List<String> segmentNames = new ArrayList<>();
         for (CommitLogSegment segment : allocator.getActiveSegments())
             segmentNames.add(segment.getName());
@@ -318,6 +383,7 @@ public class CommitLog implements CommitLogMBean
 
     public List<String> getArchivingSegmentNames()
     {
+        waitOnInitialized();
         return new ArrayList<>(archiver.archivePending.keySet());
     }
 
@@ -326,18 +392,25 @@ public class CommitLog implements CommitLogMBean
      */
     public void shutdownBlocking() throws InterruptedException
     {
+        waitOnInitialized();
         executor.shutdown();
         executor.awaitTermination();
         allocator.shutdown();
         allocator.awaitTermination();
     }
 
+    public void resetUnsafe()
+    {
+        resetUnsafe(false);
+    }
+
     /**
      * FOR TESTING PURPOSES. See CommitLogAllocator.
      */
-    public void resetUnsafe()
+    public void resetUnsafe(boolean leaveSegmentTasks)
     {
-        allocator.resetUnsafe();
+        waitOnInitialized();
+        allocator.resetUnsafe(leaveSegmentTasks);
     }
 
     /**
@@ -347,23 +420,25 @@ public class CommitLog implements CommitLogMBean
      */
     public int activeSegments()
     {
+        waitOnInitialized();
         return allocator.getActiveSegments().size();
     }
 
     boolean handleCommitError(String message, Throwable t)
     {
-        switch (DatabaseDescriptor.instance.getCommitFailurePolicy())
+        waitOnInitialized();
+        switch (databaseDescriptor.getCommitFailurePolicy())
         {
             case stop:
                 storageService.stopTransports();
             case stop_commit:
-                logger.error(String.format("%s. Commit disk failure policy is %s; terminating thread", message, DatabaseDescriptor.instance.getCommitFailurePolicy()), t);
+                logger.error(String.format("%s. Commit disk failure policy is %s; terminating thread", message, databaseDescriptor.getCommitFailurePolicy()), t);
                 return false;
             case ignore:
                 logger.error(message, t);
                 return true;
             default:
-                throw new AssertionError(DatabaseDescriptor.instance.getCommitFailurePolicy());
+                throw new AssertionError(databaseDescriptor.getCommitFailurePolicy());
         }
     }
 

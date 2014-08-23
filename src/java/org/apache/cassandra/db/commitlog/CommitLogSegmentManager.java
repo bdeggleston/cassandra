@@ -93,8 +93,23 @@ public class CommitLogSegmentManager
     private final Thread managerThread;
     private volatile boolean run = true;
 
-    public CommitLogSegmentManager()
+    // FIXME: works around problems caused by SchemaLoader cleanup. After everything is DI, rework SchemaLoader to cleanup before instantiating system
+    private volatile boolean pause = false;
+
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+    private final KeyspaceManager keyspaceManager;
+
+    public CommitLogSegmentManager(final DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager)
     {
+        assert databaseDescriptor != null;
+        assert schema != null;
+        assert keyspaceManager != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.keyspaceManager = keyspaceManager;
+
         // The run loop for the manager thread
         Runnable runnable = new WrappedRunnable()
         {
@@ -110,8 +125,10 @@ public class CommitLogSegmentManager
                             // if we have no more work to do, check if we should create a new segment
                             if (availableSegments.isEmpty() && (activeSegments.isEmpty() || createReserveSegments))
                             {
+                                while(pause)
+                                    Thread.sleep(100);
                                 logger.debug("No segments in reserve; creating a fresh one");
-                                size.addAndGet(DatabaseDescriptor.instance.getCommitLogSegmentSize());
+                                size.addAndGet(databaseDescriptor.getCommitLogSegmentSize());
                                 // TODO : some error handling in case we fail to create a new segment
                                 availableSegments.add(CommitLogSegment.freshSegment());
                                 hasAvailableSegments.signalAll();
@@ -119,7 +136,7 @@ public class CommitLogSegmentManager
 
                             // flush old Cfs if we're full
                             long unused = unusedCapacity();
-                            if (unused < 0)
+                            if (unused < 0 && !pause)
                             {
                                 List<CommitLogSegment> segmentsToRecycle = new ArrayList<>();
                                 long spaceToReclaim = 0;
@@ -128,7 +145,7 @@ public class CommitLogSegmentManager
                                     if (segment == allocatingFrom)
                                         break;
                                     segmentsToRecycle.add(segment);
-                                    spaceToReclaim += DatabaseDescriptor.instance.getCommitLogSegmentSize();
+                                    spaceToReclaim += databaseDescriptor.getCommitLogSegmentSize();
                                     if (spaceToReclaim + unused >= 0)
                                         break;
                                 }
@@ -172,6 +189,14 @@ public class CommitLogSegmentManager
     public void start()
     {
         managerThread.start();
+    }
+
+    /**
+     * FOR TESTING PURPOSES. See CommitLogSegmentManager
+     */
+    public void setPaused(boolean pause)
+    {
+        this.pause = pause;
     }
 
     /**
@@ -377,7 +402,7 @@ public class CommitLogSegmentManager
 
         logger.debug("Recycling {}", file);
         // this wasn't previously a live segment, so add it to the managed size when we make it live
-        size.addAndGet(DatabaseDescriptor.instance.getCommitLogSegmentSize());
+        size.addAndGet(databaseDescriptor.getCommitLogSegmentSize());
         segmentManagementTasks.add(new Callable<CommitLogSegment>()
         {
             public CommitLogSegment call()
@@ -395,7 +420,7 @@ public class CommitLogSegmentManager
     private void discardSegment(final CommitLogSegment segment, final boolean deleteFile)
     {
         logger.debug("Segment {} is no longer active and will be deleted {}", segment, deleteFile ? "now" : "by the archive script");
-        size.addAndGet(-DatabaseDescriptor.instance.getCommitLogSegmentSize());
+        size.addAndGet(-databaseDescriptor.getCommitLogSegmentSize());
 
         segmentManagementTasks.add(new Callable<CommitLogSegment>()
         {
@@ -443,7 +468,7 @@ public class CommitLogSegmentManager
     {
         long currentSize = size.get();
         logger.debug("Total active commitlog segment space used is {}", currentSize);
-        return DatabaseDescriptor.instance.getTotalCommitlogSpaceInMB() * 1024 * 1024 - currentSize;
+        return databaseDescriptor.getTotalCommitlogSpaceInMB() * 1024 * 1024 - currentSize;
     }
 
     /**
@@ -474,7 +499,7 @@ public class CommitLogSegmentManager
         {
             for (UUID dirtyCFId : segment.getDirtyCFIDs())
             {
-                Pair<String,String> pair = Schema.instance.getCF(dirtyCFId);
+                Pair<String,String> pair = schema.getCF(dirtyCFId);
                 if (pair == null)
                 {
                     // even though we remove the schema entry before a final flush when dropping a CF,
@@ -485,7 +510,7 @@ public class CommitLogSegmentManager
                 else if (!flushes.containsKey(dirtyCFId))
                 {
                     String keyspace = pair.left;
-                    final ColumnFamilyStore cfs = KeyspaceManager.instance.open(keyspace).getColumnFamilyStore(dirtyCFId);
+                    final ColumnFamilyStore cfs = keyspaceManager.open(keyspace).getColumnFamilyStore(dirtyCFId);
                     // can safely call forceFlush here as we will only ever block (briefly) for other attempts to flush,
                     // no deadlock possibility since switchLock removal
                     flushes.put(dirtyCFId, force ? cfs.forceFlush() : cfs.forceFlush(maxReplayPosition));
@@ -499,12 +524,13 @@ public class CommitLogSegmentManager
     /**
      * Resets all the segments, for testing purposes. DO NOT USE THIS OUTSIDE OF TESTS.
      */
-    public void resetUnsafe()
+    public void resetUnsafe(boolean leaveSegmentTasks)
     {
         logger.debug("Closing and clearing existing commit log segments...");
 
-        while (!segmentManagementTasks.isEmpty())
-            Thread.yield();
+        if (!leaveSegmentTasks)
+            while (!segmentManagementTasks.isEmpty())
+                Thread.yield();
 
         for (CommitLogSegment segment : activeSegments)
             segment.close();

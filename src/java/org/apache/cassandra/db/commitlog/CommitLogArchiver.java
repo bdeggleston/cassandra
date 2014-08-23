@@ -58,8 +58,13 @@ public class CommitLogArchiver
     public final long restorePointInTime;
     public final TimeUnit precision;
 
-    public CommitLogArchiver()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public CommitLogArchiver(DatabaseDescriptor databaseDescriptor)
     {
+        assert databaseDescriptor != null;
+        this.databaseDescriptor = databaseDescriptor;
+
         Properties commitlog_commands = new Properties();
         InputStream stream = null;
         try
@@ -177,7 +182,7 @@ public class CommitLogArchiver
                 if (descriptor.version > CommitLogDescriptor.VERSION_21)
                     throw new IllegalStateException("Unsupported commit log version: " + descriptor.version);
 
-                File toFile = new File(DatabaseDescriptor.instance.getCommitLogLocation(), descriptor.fileName());
+                File toFile = new File(databaseDescriptor.getCommitLogLocation(), descriptor.fileName());
                 if (toFile.exists())
                     throw new IllegalStateException("Trying to restore archive " + fromFile.getPath() + ", but the same segment already exists in the restore location: " + toFile.getPath());
 

@@ -28,6 +28,7 @@ import java.util.Map;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -52,8 +53,8 @@ public class EC2SnitchTest
     @BeforeClass
     public static void setup() throws Exception
     {
-        DatabaseDescriptor.init();
-        SchemaLoader.cleanupAndLeaveDirs();
+        SchemaLoader.prepareServer();
+        CommitLog.instance.waitOnInitialized();
         KeyspaceManager.instance.setInitialized();
         StorageService.instance.initServer(0);
     }

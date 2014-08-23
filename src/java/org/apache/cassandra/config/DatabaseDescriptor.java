@@ -25,7 +25,6 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -48,12 +47,10 @@ import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.service.*;
-import org.apache.cassandra.service.paxos.Commit;
 import org.apache.cassandra.sink.SinkManager;
 import org.apache.cassandra.streaming.StreamManager;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.triggers.TriggerExecutor;
-import org.apache.cassandra.utils.StatusLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.cassandra.config.Config.RequestSchedulerId;
@@ -132,7 +129,7 @@ public class DatabaseDescriptor
 
         PendingRangeCalculatorService pendingRangeCalculatorService = PendingRangeCalculatorService.instance;
 
-        // really ghetto workaround for the above not being visible to other threads
+        // ghetto workaround for the above not being visible to other threads
         new Thread(new Runnable()
         {
             @Override
@@ -140,14 +137,17 @@ public class DatabaseDescriptor
             {
                 try
                 {
-                    Thread.sleep(100);
+                    // this sucks, but until we can clean up after previous runs before starting everything
+                    // it keeps tests from randomly failing spectacularly, and having to hack up the storage system
+                    int initWait = Integer.parseInt(System.getProperty("descriptor.start.wait", "100"));
+                    Thread.sleep(initWait);
                 }
                 catch (InterruptedException e)
                 {
                     throw new RuntimeException(e);
                 }
 
-                CommitLog.instance.setStorageService(StorageService.instance);
+                CommitLog.instance.init(StorageService.instance, KeyspaceManager.instance);
                 HintedHandOffManager.instance.loadHintStore(KeyspaceManager.instance);
             }
         }).start();
@@ -1195,7 +1195,6 @@ public class DatabaseDescriptor
      */
     public int getCommitLogSegmentSize()
     {
-        logger.warn("getCommitLogSegmentSize");
         return conf.commitlog_segment_size_in_mb * 1024 * 1024;
     }
 

@@ -29,6 +29,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.commitlog.CommitLog;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.dht.BytesToken;
@@ -38,6 +41,13 @@ import org.apache.cassandra.utils.FBUtilities;
 
 public class SystemKeyspaceTest
 {
+    @BeforeClass
+    public static void setupClass()
+    {
+        DatabaseDescriptor.init();
+        CommitLog.instance.waitOnInitialized();
+    }
+
     @Test
     public void testLocalTokens()
     {

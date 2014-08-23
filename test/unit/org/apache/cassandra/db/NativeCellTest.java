@@ -27,7 +27,10 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.config.CFMetaData;
@@ -59,6 +62,13 @@ public class NativeCellTest
 
     private static final NativeAllocator nativeAllocator = new NativePool(Integer.MAX_VALUE, Integer.MAX_VALUE, 1f, null).newAllocator();
     private static final OpOrder.Group group = new OpOrder().start();
+
+    @BeforeClass
+    public static void setupClass()
+    {
+        DatabaseDescriptor.init();
+        CommitLog.instance.waitOnInitialized();
+    }
 
     static class Name
     {

@@ -21,8 +21,10 @@ package org.apache.cassandra.dht;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -40,6 +42,8 @@ public abstract class PartitionerTestCase<T extends Token>
     public static void initializeSchema()
     {
         DatabaseDescriptor.init();
+        SchemaLoader.prepareServer();
+        CommitLog.instance.waitOnInitialized();
         Schema schema = Schema.instance;
     }
 
