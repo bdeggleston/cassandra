@@ -637,7 +637,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             // gossip snitch infos (local DC and rack)
             gossipSnitchInfo();
             // gossip Schema.emptyVersion forcing immediate check for schema updates (see MigrationManager#maybeScheduleSchemaPull)
-            Schema.instance.updateVersionAndAnnounce(); // Ensure we know our own actual Schema UUID in preparation for updates
+            Schema.instance.updateVersionAndAnnounce(MigrationManager.instance); // Ensure we know our own actual Schema UUID in preparation for updates
 
             if (!MessagingService.instance.isListening())
                 MessagingService.instance.listen(FBUtilities.getLocalAddress());

@@ -204,8 +204,9 @@ public class DefsTables
      */
     public synchronized void mergeSchema(Collection<Mutation> mutations) throws ConfigurationException, IOException
     {
+        assert initialized;
         mergeSchemaInternal(mutations, true);
-        schema.updateVersionAndAnnounce();
+        schema.updateVersionAndAnnounce(migrationManager);
     }
 
     public synchronized void mergeSchemaInternal(Collection<Mutation> mutations, boolean doFlush) throws ConfigurationException, IOException

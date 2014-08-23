@@ -42,7 +42,7 @@ public class Schema
 {
     private static final Logger logger = LoggerFactory.getLogger(Schema.class);
 
-    public static final Schema instance = new Schema();
+    public static final Schema instance = new Schema(SystemKeyspace.instance);
 
     /**
      * longest permissible KS or CF name.  Our main concern is that filename not be more than 255 characters;
@@ -79,11 +79,16 @@ public class Schema
         }
     }
 
+    private final SystemKeyspace systemKeyspace;
+
     /**
      * Initialize empty schema object
      */
-    public Schema()
-    {}
+    public Schema(SystemKeyspace systemKeyspace)
+    {
+        assert systemKeyspace != null;
+        this.systemKeyspace = systemKeyspace;
+    }
 
     /**
      * Load up non-system keyspaces
@@ -362,7 +367,7 @@ public class Schema
         {
             MessageDigest versionDigest = MessageDigest.getInstance("MD5");
 
-            for (Row row : SystemKeyspace.instance.serializedSchema())
+            for (Row row : systemKeyspace.serializedSchema())
             {
                 if (invalidSchemaRow(row) || ignoredSchemaRow(row))
                     continue;
@@ -374,7 +379,7 @@ public class Schema
             }
 
             version = UUID.nameUUIDFromBytes(versionDigest.digest());
-            SystemKeyspace.instance.updateSchemaVersion(version);
+            systemKeyspace.updateSchemaVersion(version);
         }
         catch (Exception e)
         {
@@ -385,16 +390,16 @@ public class Schema
     /*
      * Like updateVersion, but also announces via gossip
      */
-    public void updateVersionAndAnnounce()
+    public void updateVersionAndAnnounce(MigrationManager migrationManager)
     {
         updateVersion();
-        MigrationManager.instance.passiveAnnounce(version);
+        migrationManager.passiveAnnounce(version);
     }
 
     /**
      * Clear all KS/CF metadata and reset version.
      */
-    public synchronized void clear()
+    public synchronized void clear(MigrationManager migrationManager)
     {
         for (String keyspaceName : getNonSystemKeyspaces())
         {
@@ -404,7 +409,7 @@ public class Schema
             clearKeyspaceDefinition(ksm);
         }
 
-        updateVersionAndAnnounce();
+        updateVersionAndAnnounce(migrationManager);
     }
 
     public static boolean invalidSchemaRow(Row row)

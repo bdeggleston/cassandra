@@ -32,6 +32,7 @@ import org.apache.cassandra.db.marshal.TypeParser;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.service.EmbeddedCassandraService;
+import org.apache.cassandra.service.MigrationManager;
 import org.apache.cassandra.thrift.Cassandra;
 import org.apache.cassandra.thrift.Compression;
 import org.apache.cassandra.thrift.ConsistencyLevel;
@@ -102,7 +103,7 @@ public class PigTestBase extends SchemaLoader
 
     protected static void startCassandra() throws IOException
     {
-        Schema.instance.clear(); // Schema are now written on disk and will be reloaded
+        Schema.instance.clear(MigrationManager.instance); // Schema are now written on disk and will be reloaded
         cassandra = new EmbeddedCassandraService();
         cassandra.start();
     }

@@ -25,6 +25,7 @@ import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.service.EmbeddedCassandraService;
+import org.apache.cassandra.service.MigrationManager;
 import org.apache.cassandra.thrift.*;
 import org.apache.thrift.TException;
 import org.junit.BeforeClass;
@@ -237,7 +238,7 @@ public class CliTest
     @Test
     public void testCli() throws IOException, TException, TimedOutException, NotFoundException, SchemaDisagreementException, NoSuchFieldException, InvalidRequestException, UnavailableException, InstantiationException, IllegalAccessException
     {
-        Schema.instance.clear(); // Schema are now written on disk and will be reloaded
+        Schema.instance.clear(MigrationManager.instance); // Schema are now written on disk and will be reloaded
         new EmbeddedCassandraService().start();
 
         // new error/output streams for CliSessionState

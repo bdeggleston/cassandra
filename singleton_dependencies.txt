@@ -16,9 +16,7 @@ Updated --> StreamManager [DatabaseDescriptor]
 
 Updated --> SystemKeyspace [DatabaseDescriptor, QueryProcessor(strong)]
 
-Schema [SystemKeyspace(?, 1m), MigrationManager(?, 1m)]
-    * pass MigrationManager into updateVersionAndAnnounce (called by DefsTables, StorageService)
-    * move static initialization stuff into static factory method
+Updated --> Schema [SystemKeyspace(?, 1m), MigrationManager(?, 1m)]
 
 Updated --> CommitLog [DatabaseDescriptor, KeyspaceManager, Schema]
 Updated --> CommitLogSegmentManager [DatabaseDescriptor, KeyspaceManager, Schema]

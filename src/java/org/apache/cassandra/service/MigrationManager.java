@@ -505,7 +505,7 @@ public class MigrationManager
 
         logger.debug("Clearing local schema keyspace definitions...");
 
-        schema.clear();
+        schema.clear(this);
 
         Set<InetAddress> liveEndpoints = gossiper.getLiveMembers();
         liveEndpoints.remove(FBUtilities.getBroadcastAddress());
