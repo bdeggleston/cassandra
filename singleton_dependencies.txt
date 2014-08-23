@@ -22,7 +22,7 @@ Updated --> CommitLog [DatabaseDescriptor, KeyspaceManager, Schema]
 Updated --> CommitLogSegmentManager [DatabaseDescriptor, KeyspaceManager, Schema]
     * do something about the KeyspaceManager dependency
 
-StageManager [DatabaseDescriptor, MessagingService(weak, 1m, parameterize)]
+Updated --> StageManager [DatabaseDescriptor]
 
 MessagingService [StorageServiceTasks, StageManager(stronger, 2m), StorageProxy(weak, 1m), DatabaseDescriptor, SinkManager, Tracing]
     * work out how to decouple the MessagingService and StageManager constructors
@@ -41,7 +41,7 @@ Updated --> FailureDetector [Gossiper(strong), DatabaseDescriptor]
 
 Updated --> DefsTables [SystemKeyspace, Schema, MigrationManager(med), CompactionManager(weak, 2), CommitLog(weak, 1), KeyspaceManager]
 
-Updated --> ClusterState [DatabaseDescriptor, Schema, KeyspaceManager, FailureDetector, CommitLog, StorageServiceTasks, DatabaseDescriptor]
+>Updated --> ClusterState [DatabaseDescriptor, Schema, KeyspaceManager, FailureDetector, CommitLog, StorageServiceTasks, DatabaseDescriptor]
 
 Updated --> MigrationManager [Schema(strong), Gossiper, StorageServiceTasks, StageManager, SystemKeyspace, DefsTables(strong), MessagingService, StorageService]
 

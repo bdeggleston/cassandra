@@ -45,11 +45,15 @@ public class StageManager
 
     private final EnumMap<Stage, TracingAwareExecutorService> stages = new EnumMap<Stage, TracingAwareExecutorService>(Stage.class);
 
-    private StageManager()
+    private volatile boolean initialized = false;
+
+    public synchronized void init(DatabaseDescriptor databaseDescriptor, MessagingService messagingService)
     {
-        stages.put(Stage.MUTATION, multiThreadedLowSignalStage(Stage.MUTATION, DatabaseDescriptor.instance.getConcurrentWriters()));
-        stages.put(Stage.COUNTER_MUTATION, multiThreadedLowSignalStage(Stage.COUNTER_MUTATION, DatabaseDescriptor.instance.getConcurrentCounterWriters()));
-        stages.put(Stage.READ, multiThreadedLowSignalStage(Stage.READ, DatabaseDescriptor.instance.getConcurrentReaders()));
+        assert !initialized;
+
+        stages.put(Stage.MUTATION, multiThreadedLowSignalStage(Stage.MUTATION, databaseDescriptor.getConcurrentWriters()));
+        stages.put(Stage.COUNTER_MUTATION, multiThreadedLowSignalStage(Stage.COUNTER_MUTATION, databaseDescriptor.getConcurrentCounterWriters()));
+        stages.put(Stage.READ, multiThreadedLowSignalStage(Stage.READ, databaseDescriptor.getConcurrentReaders()));
         stages.put(Stage.REQUEST_RESPONSE, multiThreadedLowSignalStage(Stage.REQUEST_RESPONSE, FBUtilities.getAvailableProcessors()));
         stages.put(Stage.INTERNAL_RESPONSE, multiThreadedStage(Stage.INTERNAL_RESPONSE, FBUtilities.getAvailableProcessors()));
         // the rest are all single-threaded
@@ -58,16 +62,18 @@ public class StageManager
         stages.put(Stage.MIGRATION, new JMXEnabledThreadPoolExecutor(Stage.MIGRATION));
         stages.put(Stage.MISC, new JMXEnabledThreadPoolExecutor(Stage.MISC));
         stages.put(Stage.READ_REPAIR, multiThreadedStage(Stage.READ_REPAIR, FBUtilities.getAvailableProcessors()));
-        stages.put(Stage.TRACING, tracingExecutor());
+        stages.put(Stage.TRACING, tracingExecutor(messagingService));
+
+        initialized = true;
     }
 
-    private ExecuteOnlyExecutor tracingExecutor()
+    private ExecuteOnlyExecutor tracingExecutor(final MessagingService messagingService)
     {
         RejectedExecutionHandler reh = new RejectedExecutionHandler()
         {
             public void rejectedExecution(Runnable r, ThreadPoolExecutor executor)
             {
-                MessagingService.instance.incrementDroppedMessages(MessagingService.Verb._TRACE);
+                messagingService.incrementDroppedMessages(MessagingService.Verb._TRACE);
             }
         };
         return new ExecuteOnlyExecutor(1,

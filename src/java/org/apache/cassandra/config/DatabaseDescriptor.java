@@ -104,6 +104,7 @@ public class DatabaseDescriptor
 
         StageManager stageManager = StageManager.instance;
         MessagingService messagingService = MessagingService.instance;
+        StageManager.instance.init(DatabaseDescriptor.instance, MessagingService.instance);
         Gossiper gossiper = Gossiper.instance;
         LoadBroadcaster loadBroadcaster = LoadBroadcaster.instance;
 
