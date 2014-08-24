@@ -41,9 +41,17 @@ public class GCInspector implements NotificationListener
     final static long MIN_DURATION = 200;
     final static long MIN_DURATION_TPSTATS = 1000;
 
-    public static void register() throws Exception
+    private final StatusLogger statusLogger;
+
+    public GCInspector(StatusLogger statusLogger)
     {
-        GCInspector inspector = new GCInspector();
+        assert statusLogger != null;
+        this.statusLogger = statusLogger;
+    }
+
+    public static void register(StatusLogger statusLogger) throws Exception
+    {
+        GCInspector inspector = new GCInspector(statusLogger);
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         ObjectName gcName = new ObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE + ",*");
         for (ObjectName name : server.queryNames(gcName, null))
@@ -89,7 +97,7 @@ public class GCInspector implements NotificationListener
                 logger.debug(st);
 
             if (duration > MIN_DURATION_TPSTATS)
-                StatusLogger.log();
+                statusLogger.log();
 
             // if we just finished a full collection and we're still using a lot of memory, try to reduce the pressure
             if (info.getGcName().equals("ConcurrentMarkSweep"))

@@ -62,15 +62,11 @@ Updated --> BatchlogManager [QueryProcessor, DatabaseDescriptor, ClusterState, K
                  MessagingService, CompactionManager]
 
 
-StorageService [SystemKeyspace, Gossiper(strong), StreamManager(weak, move to create method), MessagingService(strong),
+Updated --> StorageService [SystemKeyspace, Gossiper(strong), StreamManager(weak, move to create method), MessagingService(strong),
                 StageManager, DatabaseDescriptor, MessagingService, MigrationManager(3-4m), StorageServiceTasks(2, init/drain),
                 StorageProxy(3m), CommitLog(2, init/drain), Schema, LoadBroadcaster(3m), HintedHandOffManager(3m, 1p),
                 BatchlogManager(2m), PendingRangeCalculatorService, Auth(weak, 2m, init/start),
                 FailureDetector(5m), ActiveRepairService(very strong), ColumnFamilyStoreManager(create), KeyspaceManager]
-    * DI StorageProxy into methods
-    * resolve dependency on KeyspaceManager
-    * split out getValidColumnFamilies, forceKeyspaceFlush
-
 
 Updated --> ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService, Tracing]
 
@@ -85,7 +81,7 @@ Updated --> CacheService [DatabaseDescriptor, StageManager, Schema]
 Updated --> ColumnFamilyStoreManager [Schema, StorageService, SystemKeyspace, CompactionManager, CacheService]
 Updated --> ColumnFamilyStore [CacheService, SystemKeyspace, CompactionManager(strong), StorageService(weaker, 2)]
 
-StatusLogger [DatabaseDescriptor, ColumnFamilyStoreManager]
+Updated --> StatusLogger [DatabaseDescriptor, ColumnFamilyStoreManager]
 
 Updated --> PendingRangeCalculatorService [Schema, ClusterState]
 

@@ -44,7 +44,32 @@ public class StatusLogger
 {
     private static final Logger logger = LoggerFactory.getLogger(StatusLogger.class);
 
-    public static void log()
+    public static final StatusLogger instance = new StatusLogger(
+            DatabaseDescriptor.instance, MessagingService.instance, CompactionManager.instance, CacheService.instance, ColumnFamilyStoreManager.instance
+    );
+
+    private final DatabaseDescriptor databaseDescriptor;
+    private final MessagingService messagingService;
+    private final CompactionManager compactionManager;
+    private final CacheService cacheService;
+    private final ColumnFamilyStoreManager columnFamilyStoreManager;
+
+    public StatusLogger(DatabaseDescriptor databaseDescriptor, MessagingService messagingService, CompactionManager compactionManager, CacheService cacheService, ColumnFamilyStoreManager columnFamilyStoreManager)
+    {
+        assert databaseDescriptor != null;
+        assert messagingService != null;
+        assert compactionManager != null;
+        assert cacheService != null;
+        assert columnFamilyStoreManager != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.messagingService = messagingService;
+        this.compactionManager = compactionManager;
+        this.cacheService = cacheService;
+        this.columnFamilyStoreManager = columnFamilyStoreManager;
+    }
+
+    public void log()
     {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
 
@@ -74,14 +99,14 @@ public class StatusLogger
         }
         // one offs
         logger.info(String.format("%-25s%10s%10s",
-                                  "CompactionManager", CompactionManager.instance.getActiveCompactions(), CompactionManager.instance.getPendingTasks()));
+                                  "CompactionManager", compactionManager.getActiveCompactions(), compactionManager.getPendingTasks()));
         int pendingCommands = 0;
-        for (int n : MessagingService.instance.getCommandPendingTasks().values())
+        for (int n : messagingService.getCommandPendingTasks().values())
         {
             pendingCommands += n;
         }
         int pendingResponses = 0;
-        for (int n : MessagingService.instance.getResponsePendingTasks().values())
+        for (int n : messagingService.getResponsePendingTasks().values())
         {
             pendingResponses += n;
         }
@@ -89,11 +114,11 @@ public class StatusLogger
                                   "MessagingService", "n/a", pendingCommands + "/" + pendingResponses));
 
         // Global key/row cache information
-        AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = CacheService.instance.keyCache;
-        AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache = CacheService.instance.rowCache;
+        AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = cacheService.keyCache;
+        AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache = cacheService.rowCache;
 
-        int keyCacheKeysToSave = DatabaseDescriptor.instance.getKeyCacheKeysToSave();
-        int rowCacheKeysToSave = DatabaseDescriptor.instance.getRowCacheKeysToSave();
+        int keyCacheKeysToSave = databaseDescriptor.getKeyCacheKeysToSave();
+        int rowCacheKeysToSave = databaseDescriptor.getRowCacheKeysToSave();
 
         logger.info(String.format("%-25s%10s%25s%25s",
                                   "Cache Type", "Size", "Capacity", "KeysToSave"));
@@ -111,7 +136,7 @@ public class StatusLogger
 
         // per-CF stats
         logger.info(String.format("%-25s%20s", "Table", "Memtable ops,data"));
-        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
+        for (ColumnFamilyStore cfs : columnFamilyStoreManager.all())
         {
             logger.info(String.format("%-25s%20s",
                                       cfs.keyspace.getName() + "." + cfs.name,

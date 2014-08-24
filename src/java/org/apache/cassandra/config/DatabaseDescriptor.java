@@ -51,6 +51,7 @@ import org.apache.cassandra.sink.SinkManager;
 import org.apache.cassandra.streaming.StreamManager;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.triggers.TriggerExecutor;
+import org.apache.cassandra.utils.StatusLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.cassandra.config.Config.RequestSchedulerId;
@@ -124,6 +125,8 @@ public class DatabaseDescriptor
 
         CacheService cacheService = CacheService.instance;
         ColumnFamilyStoreManager columnFamilyStoreManager = ColumnFamilyStoreManager.instance;
+        StatusLogger statusLogger = StatusLogger.instance;
+        messagingService.setStatusLogger(statusLogger);
 
         KeyspaceManager keyspaceManager = KeyspaceManager.instance;
         systemKeyspace.setKeyspaceManager(keyspaceManager);

@@ -311,9 +311,10 @@ public final class MessagingService implements MessagingServiceMBean
 
     private volatile boolean initialized = false;
     private volatile StorageProxy storageProxy = null;
-    private volatile Tracing tracing;
+    private volatile Tracing tracing = null;
+    private volatile StatusLogger statusLogger = null;
 
-    public MessagingService(DatabaseDescriptor databaseDescriptor, final StageManager stageManager1, SinkManager sinkManager)
+    public MessagingService(DatabaseDescriptor databaseDescriptor, StageManager stageManager1, SinkManager sinkManager)
     {
         assert databaseDescriptor != null;
         assert stageManager1 != null;
@@ -393,6 +394,13 @@ public final class MessagingService implements MessagingServiceMBean
         {
             throw new RuntimeException(e);
         }
+    }
+
+    public synchronized void setStatusLogger(StatusLogger statusLogger)
+    {
+        assert statusLogger != null;
+        assert this.statusLogger == null;
+        this.statusLogger = statusLogger;
     }
 
     /**
@@ -910,8 +918,8 @@ public final class MessagingService implements MessagingServiceMBean
             }
         }
 
-        if (logTpstats)
-            StatusLogger.log();
+        if (logTpstats && statusLogger != null)
+            statusLogger.log();
     }
 
     private static class SocketThread extends Thread
