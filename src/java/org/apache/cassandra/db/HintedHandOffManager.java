@@ -35,6 +35,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.common.util.concurrent.Uninterruptibles;
 
+import org.apache.cassandra.gms.FailureDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,8 +56,8 @@ import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.gms.ApplicationState;
-import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.metrics.HintedHandoffMetrics;
@@ -93,7 +94,9 @@ import org.cliffc.high_scale_lib.NonBlockingHashSet;
 public class HintedHandOffManager implements HintedHandOffManagerMBean
 {
     public static final String MBEAN_NAME = "org.apache.cassandra.db:type=HintedHandoffManager";
-    public static final HintedHandOffManager instance = new HintedHandOffManager();
+    public static final HintedHandOffManager instance = new HintedHandOffManager(
+            DatabaseDescriptor.instance, Schema.instance, SystemKeyspace.instance, MessagingService.instance, Gossiper.instance, FailureDetector.instance, ClusterState.instance, CompactionManager.instance
+    );
 
     private static final Logger logger = LoggerFactory.getLogger(HintedHandOffManager.class);
     private static final int PAGE_SIZE = 128;
@@ -107,12 +110,44 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     private final NonBlockingHashSet<InetAddress> queuedDeliveries = new NonBlockingHashSet<InetAddress>();
 
-    private final ThreadPoolExecutor executor = new JMXEnabledThreadPoolExecutor(DatabaseDescriptor.instance.getMaxHintsThread(),
-                                                                                 Integer.MAX_VALUE,
-                                                                                 TimeUnit.SECONDS,
-                                                                                 new LinkedBlockingQueue<Runnable>(),
-                                                                                 new NamedThreadFactory("HintedHandoff", Thread.MIN_PRIORITY),
-                                                                                 "internal");
+    private final ThreadPoolExecutor executor;
+
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+    private final SystemKeyspace systemKeyspace;
+    private final MessagingService messagingService;
+    private final Gossiper gossiper;
+    private final IFailureDetector failureDetector;
+    private final ClusterState clusterState;
+    private final CompactionManager compactionManager;
+
+    public HintedHandOffManager(DatabaseDescriptor databaseDescriptor, Schema schema, SystemKeyspace systemKeyspace, MessagingService messagingService, Gossiper gossiper, IFailureDetector failureDetector, ClusterState clusterState, CompactionManager compactionManager)
+    {
+        assert databaseDescriptor != null;
+        assert schema != null;
+        assert systemKeyspace != null;
+        assert messagingService != null;
+        assert gossiper != null;
+        assert failureDetector != null;
+        assert clusterState != null;
+        assert compactionManager != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.systemKeyspace = systemKeyspace;
+        this.messagingService = messagingService;
+        this.gossiper = gossiper;
+        this.failureDetector = failureDetector;
+        this.clusterState = clusterState;
+        this.compactionManager = compactionManager;
+
+        executor = new JMXEnabledThreadPoolExecutor(this.databaseDescriptor.getMaxHintsThread(),
+                                                    Integer.MAX_VALUE,
+                                                    TimeUnit.SECONDS,
+                                                    new LinkedBlockingQueue<Runnable>(),
+                                                    new NamedThreadFactory("HintedHandoff", Thread.MIN_PRIORITY),
+                                                    "internal");
+    }
 
     private volatile ColumnFamilyStore hintStore = null;
     /**
@@ -123,7 +158,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
     {
         assert ttl > 0;
 
-        InetAddress endpoint = ClusterState.instance.getTokenMetadata().getEndpointForHostId(targetId);
+        InetAddress endpoint = clusterState.getTokenMetadata().getEndpointForHostId(targetId);
         // during tests we may not have a matching endpoint, but this would be unexpected in real clusters
         if (endpoint != null)
             metrics.incrCreatedHints(endpoint);
@@ -134,7 +169,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         // serialize the hint with id and version as a composite column name
         CellName name = CFMetaData.HintsCf.comparator.makeCellName(hintId, MessagingService.current_version);
         ByteBuffer value = ByteBuffer.wrap(FBUtilities.serialize(mutation, Mutation.serializer, MessagingService.current_version));
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(Schema.instance.getCFMetaData(KeyspaceManager.SYSTEM_KS, SystemKeyspace.HINTS_CF));
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(schema.getCFMetaData(KeyspaceManager.SYSTEM_KS, SystemKeyspace.HINTS_CF));
         cf.addColumn(name, value, now, ttl);
         return new Mutation(KeyspaceManager.SYSTEM_KS, UUIDType.instance.decompose(targetId), cf);
     }
@@ -209,9 +244,9 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     public void deleteHintsForEndpoint(final InetAddress endpoint)
     {
-        if (!ClusterState.instance.getTokenMetadata().isMember(endpoint))
+        if (!clusterState.getTokenMetadata().isMember(endpoint))
             return;
-        UUID hostId = ClusterState.instance.getTokenMetadata().getHostId(endpoint);
+        UUID hostId = clusterState.getTokenMetadata().getHostId(endpoint);
         ByteBuffer hostIdBytes = ByteBuffer.wrap(UUIDGen.decompose(hostId));
         final Mutation mutation = new Mutation(KeyspaceManager.SYSTEM_KS, hostIdBytes);
         mutation.delete(SystemKeyspace.HINTS_CF, System.currentTimeMillis());
@@ -266,7 +301,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         ArrayList<Descriptor> descriptors = new ArrayList<Descriptor>();
         for (SSTable sstable : hintStore.getDataTracker().getUncompactingSSTables())
             descriptors.add(sstable.descriptor);
-        return CompactionManager.instance.submitUserDefined(hintStore, descriptors, (int) (System.currentTimeMillis() / 1000));
+        return compactionManager.submitUserDefined(hintStore, descriptors, (int) (System.currentTimeMillis() / 1000));
     }
 
     private static boolean pagingFinished(ColumnFamily hintColumnFamily, Composite startColumn)
@@ -278,7 +313,6 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     private int waitForSchemaAgreement(InetAddress endpoint) throws TimeoutException
     {
-        Gossiper gossiper = Gossiper.instance;
         int waited = 0;
         // first, wait for schema to be gossiped.
         while (gossiper.getEndpointStateForEndpoint(endpoint) != null && gossiper.getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.SCHEMA) == null)
@@ -332,7 +366,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
             return;
         }
 
-        if (!FailureDetector.instance.isAlive(endpoint))
+        if (!failureDetector.isAlive(endpoint))
         {
             logger.debug("Endpoint {} died before hint delivery, aborting", endpoint);
             return;
@@ -351,10 +385,10 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
     private void doDeliverHintsToEndpoint(InetAddress endpoint)
     {
         // find the hints for the node using its token.
-        UUID hostId = Gossiper.instance.getHostId(endpoint);
+        UUID hostId = gossiper.getHostId(endpoint);
         logger.info("Started hinted handoff for host: {} with IP: {}", hostId, endpoint);
         final ByteBuffer hostIdBytes = ByteBuffer.wrap(UUIDGen.decompose(hostId));
-        DecoratedKey epkey =  ClusterState.instance.getPartitioner().decorateKey(hostIdBytes);
+        DecoratedKey epkey =  clusterState.getPartitioner().decorateKey(hostIdBytes);
 
         final AtomicInteger rowsReplayed = new AtomicInteger(0);
         Composite startColumn = Composites.EMPTY;
@@ -364,8 +398,8 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
         // rate limit is in bytes per second. Uses Double.MAX_VALUE if disabled (set to 0 in cassandra.yaml).
         // max rate is scaled by the number of nodes in the cluster (CASSANDRA-5272).
-        int throttleInKB = DatabaseDescriptor.instance.getHintedHandoffThrottleInKB()
-                           / (ClusterState.instance.getTokenMetadata().getAllEndpoints().size() - 1);
+        int throttleInKB = databaseDescriptor.getHintedHandoffThrottleInKB()
+                           / (clusterState.getTokenMetadata().getAllEndpoints().size() - 1);
         RateLimiter rateLimiter = RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
 
         boolean finished = false;
@@ -392,7 +426,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
             }
 
             // check if node is still alive and we should continue delivery process
-            if (!FailureDetector.instance.isAlive(endpoint))
+            if (!failureDetector.isAlive(endpoint))
             {
                 logger.info("Endpoint {} died during hint delivery; aborting ({} delivered)", endpoint, rowsReplayed);
                 break;
@@ -438,7 +472,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
                 for (UUID cfId : mutation.getColumnFamilyIds())
                 {
-                    if (hint.timestamp() <= SystemKeyspace.instance.getTruncatedAt(cfId))
+                    if (hint.timestamp() <= systemKeyspace.getTruncatedAt(cfId))
                     {
                         logger.debug("Skipping delivery of hint for truncated table {}", cfId);
                         mutation = mutation.without(cfId);
@@ -462,7 +496,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                     }
                 };
                 WriteResponseHandler responseHandler = new WriteResponseHandler(endpoint, WriteType.SIMPLE, callback);
-                MessagingService.instance.sendRR(message, endpoint, responseHandler, false);
+                messagingService.sendRR(message, endpoint, responseHandler, false);
                 responseHandlers.add(responseHandler);
             }
 
@@ -480,7 +514,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
             }
         }
 
-        if (finished || rowsReplayed.get() >= DatabaseDescriptor.instance.getTombstoneWarnThreshold())
+        if (finished || rowsReplayed.get() >= databaseDescriptor.getTombstoneWarnThreshold())
         {
             try
             {
@@ -519,7 +553,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         if (logger.isDebugEnabled())
           logger.debug("Started scheduleAllDeliveries");
 
-        IPartitioner p = ClusterState.instance.getPartitioner();
+        IPartitioner p = clusterState.getPartitioner();
         RowPosition minPos = p.getMinimumToken().minKeyBound();
         Range<RowPosition> range = new Range<RowPosition>(minPos, minPos, p);
         IDiskAtomFilter filter = new NamesQueryFilter(ImmutableSortedSet.<CellName>of());
@@ -527,7 +561,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         for (Row row : rows)
         {
             UUID hostId = UUIDGen.getUUID(row.key.getKey());
-            InetAddress target = ClusterState.instance.getTokenMetadata().getEndpointForHostId(hostId);
+            InetAddress target = clusterState.getTokenMetadata().getEndpointForHostId(hostId);
             // token may have since been removed (in which case we have just read back a tombstone)
             if (target != null)
                 scheduleHintDelivery(target);
@@ -578,7 +612,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     public List<String> listEndpointsPendingHints()
     {
-        Token.TokenFactory tokenFactory = ClusterState.instance.getPartitioner().getTokenFactory();
+        Token.TokenFactory tokenFactory = clusterState.getPartitioner().getTokenFactory();
 
         // Extract the keys as strings to be reported.
         LinkedList<String> result = new LinkedList<String>();
@@ -598,7 +632,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                           columnCount);
 
         // From keys "" to ""...
-        IPartitioner<?> partitioner = ClusterState.instance.getPartitioner();
+        IPartitioner<?> partitioner = clusterState.getPartitioner();
         RowPosition minPos = partitioner.getMinimumToken().minKeyBound();
         Range<RowPosition> range = new Range<RowPosition>(minPos, minPos);
 
