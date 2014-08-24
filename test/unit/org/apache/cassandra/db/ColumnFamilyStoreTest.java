@@ -1777,12 +1777,12 @@ public class ColumnFamilyStoreTest
             {
                 MetadataCollector collector = new MetadataCollector(cfmeta.comparator);
                 collector.addAncestor(sstable1.descriptor.generation); // add ancestor from previously written sstable
-                return new SSTableWriter(makeFilename(directory, metadata.ksName, metadata.cfName),
-                                         0,
-                                         ActiveRepairService.UNREPAIRED_SSTABLE,
-                                         metadata,
-                                         ClusterState.instance.getPartitioner(),
-                                         collector);
+                return SSTableWriterFactory.instance.create(makeFilename(directory, metadata.ksName, metadata.cfName),
+                                                            0,
+                                                            ActiveRepairService.UNREPAIRED_SSTABLE,
+                                                            metadata,
+                                                            ClusterState.instance.getPartitioner(),
+                                                            collector);
             }
         };
         writer.newRow(key);
@@ -1834,12 +1834,12 @@ public class ColumnFamilyStoreTest
                 for (int ancestor : ancestors)
                     collector.addAncestor(ancestor);
                 String file = new Descriptor(directory, ks, cf, 3, Descriptor.Type.TEMP).filenameFor(Component.DATA);
-                return new SSTableWriter(file,
-                                         0,
-                                         ActiveRepairService.UNREPAIRED_SSTABLE,
-                                         metadata,
-                                         ClusterState.instance.getPartitioner(),
-                                         collector);
+                return SSTableWriterFactory.instance.create(file,
+                                                            0,
+                                                            ActiveRepairService.UNREPAIRED_SSTABLE,
+                                                            metadata,
+                                                            ClusterState.instance.getPartitioner(),
+                                                            collector);
             }
         };
         writer.newRow(key);

@@ -46,6 +46,8 @@ import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.gms.IFailureDetector;
+import org.apache.cassandra.io.sstable.SSTableReaderFactory;
+import org.apache.cassandra.io.sstable.SSTableWriterFactory;
 import org.apache.cassandra.service.*;
 import org.apache.cassandra.sink.SinkManager;
 import org.apache.cassandra.streaming.StreamManager;
@@ -122,6 +124,10 @@ public class DatabaseDescriptor
         StorageProxy storageProxy = StorageProxy.instance;
         Tracing tracing = Tracing.instance;
         messagingService.init(clusterState, storageProxy, tracing);
+
+        SSTableReaderFactory ssTableReaderFactory = SSTableReaderFactory.instance;
+        SSTableWriterFactory ssTableWriterFactory = SSTableWriterFactory.instance;
+        compactionManager.init(ssTableWriterFactory);
 
         CacheService cacheService = CacheService.instance;
         ColumnFamilyStoreManager columnFamilyStoreManager = ColumnFamilyStoreManager.instance;

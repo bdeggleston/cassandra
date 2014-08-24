@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.io.sstable.SSTableWriterFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -264,12 +265,12 @@ public class CompactionTask extends AbstractCompactionTask
 
     private SSTableWriter createCompactionWriter(File sstableDirectory, long keysPerSSTable, long repairedAt)
     {
-        return new SSTableWriter(cfs.getTempSSTablePath(sstableDirectory),
-                                 keysPerSSTable,
-                                 repairedAt,
-                                 cfs.metadata,
-                                 cfs.partitioner,
-                                 new MetadataCollector(sstables, cfs.metadata.comparator, getLevel()));
+        return SSTableWriterFactory.instance.create(cfs.getTempSSTablePath(sstableDirectory),
+                                                    keysPerSSTable,
+                                                    repairedAt,
+                                                    cfs.metadata,
+                                                    cfs.partitioner,
+                                                    new MetadataCollector(sstables, cfs.metadata.comparator, getLevel()));
     }
 
     protected int getLevel()

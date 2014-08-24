@@ -25,6 +25,7 @@ import java.util.concurrent.Future;
 
 import com.google.common.base.Predicate;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.io.sstable.SSTableWriterFactory;
 import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

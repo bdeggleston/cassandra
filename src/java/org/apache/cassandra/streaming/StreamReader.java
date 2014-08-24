@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import com.google.common.base.Throwables;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.io.sstable.SSTableWriterFactory;
 import org.apache.cassandra.service.ClusterState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,7 +114,7 @@ public class StreamReader
             throw new IOException("Insufficient disk space to store " + totalSize + " bytes");
         desc = Descriptor.fromFilename(cfs.getTempSSTablePath(cfs.directories.getLocationForDisk(localDir)));
 
-        return new SSTableWriter(desc.filenameFor(Component.DATA), estimatedKeys, repairedAt);
+        return SSTableWriterFactory.instance.create(desc.filenameFor(Component.DATA), estimatedKeys, repairedAt);
     }
 
     protected void drain(InputStream dis, long bytesRead) throws IOException

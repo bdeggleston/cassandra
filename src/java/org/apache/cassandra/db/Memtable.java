@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Throwables;
+import org.apache.cassandra.io.sstable.SSTableWriterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -378,12 +379,12 @@ public class Memtable
         public SSTableWriter createFlushWriter(String filename) throws ExecutionException, InterruptedException
         {
             MetadataCollector sstableMetadataCollector = new MetadataCollector(cfs.metadata.comparator).replayPosition(context);
-            return new SSTableWriter(filename,
-                                     rows.size(),
-                                     ActiveRepairService.UNREPAIRED_SSTABLE,
-                                     cfs.metadata,
-                                     cfs.partitioner,
-                                     sstableMetadataCollector);
+            return SSTableWriterFactory.instance.create(filename,
+                                                        rows.size(),
+                                                        ActiveRepairService.UNREPAIRED_SSTABLE,
+                                                        cfs.metadata,
+                                                        cfs.partitioner,
+                                                        sstableMetadataCollector);
         }
     }
 

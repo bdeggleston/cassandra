@@ -38,7 +38,7 @@ Updated --> DefsTables [SystemKeyspace, Schema, MigrationManager(med), Compactio
 Updated --> MigrationManager [Schema(strong), Gossiper, StorageServiceTasks, StageManager, SystemKeyspace, DefsTables(strong), MessagingService, StorageService]
 
 Updated --> ActiveRepairService [Gossiper, FailureDetector, MessagingService]
-Updated --> CompactionManager [Schema, ActiveRepairService, SystemKeyspace]
+Updated --> CompactionManager [Schema, ActiveRepairService, SystemKeyspace, SSTableWriterFactory]
 
 Updated --> HintedHandOffManager [DatabaseDescriptor, Schema, CompactionManager(weak, 1), Gossiper, FailureDetector, SystemKeyspace, MessagingService, ClusterState]
 
@@ -47,9 +47,9 @@ Updated --> StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerE
 
 Updated --> Tracing [StageManager, StorageProxy]
 
-SStableReaderFactory [CacheService, Schema, ClusterState, SystemKeyspace, DatabaseDescriptor, Tracing]
-SStableReader [SystemKeyspace, Schema, ClusterState, CacheService, DatabaseDescriptor, Tracing]
-SStableWriterFactory [CacheService, Schema, ClusterState, DatabaseDescriptor, SStableReaderFactory]
+Updated --> SStableReaderFactory [CacheService, Schema, ClusterState, SystemKeyspace, DatabaseDescriptor, Tracing]
+Updated --> SStableReader [SystemKeyspace, Schema, ClusterState, CacheService, DatabaseDescriptor, Tracing]
+Updated --> SStableWriterFactory [CacheService, Schema, ClusterState, DatabaseDescriptor, SStableReaderFactory]
 
 Updated --> ColumnFamilyStoreManager [Schema, ClusterState, SystemKeyspace, CompactionManager, CacheService]
 Updated --> ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService, ColumnFamilyStoreManager.TaskExecutors]

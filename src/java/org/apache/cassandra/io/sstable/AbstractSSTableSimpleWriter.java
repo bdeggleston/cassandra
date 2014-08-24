@@ -53,13 +53,12 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
 
     protected SSTableWriter getWriter()
     {
-        return new SSTableWriter(
-            makeFilename(directory, metadata.ksName, metadata.cfName),
-            0, // We don't care about the bloom filter
-            ActiveRepairService.UNREPAIRED_SSTABLE,
-            metadata,
-            DatabaseDescriptor.instance.getPartitioner(),
-            new MetadataCollector(metadata.comparator));
+        return SSTableWriterFactory.instance.create(makeFilename(directory, metadata.ksName, metadata.cfName),
+                                                    0, // We don't care about the bloom filter
+                                                    ActiveRepairService.UNREPAIRED_SSTABLE,
+                                                    metadata,
+                                                    DatabaseDescriptor.instance.getPartitioner(),
+                                                    new MetadataCollector(metadata.comparator));
     }
 
     // find available generation and pick up filename from that

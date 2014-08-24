@@ -140,6 +140,8 @@ public class CompactionManager implements CompactionManagerMBean
 
     private final RateLimiter compactionRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
+    private volatile boolean initialized = false;
+    private volatile SSTableWriterFactory ssTableWriterFactory = null;
 
     public CompactionManager(Schema schema, SystemKeyspace systemKeyspace, ClusterState clusterState, ActiveRepairService activeRepairService)
     {
@@ -155,6 +157,14 @@ public class CompactionManager implements CompactionManagerMBean
 
         executor = new CompactionExecutor(this.clusterState);
         metrics = new CompactionMetrics(executor, validationExecutor);
+    }
+
+    public synchronized void init(SSTableWriterFactory ssTableWriterFactory)
+    {
+        assert !initialized;
+        assert ssTableWriterFactory != null;
+        this.ssTableWriterFactory = ssTableWriterFactory;
+        initialized = true;
     }
 
     /**
@@ -849,19 +859,19 @@ public class CompactionManager implements CompactionManagerMBean
         }
     }
 
-    public static SSTableWriter createWriter(ColumnFamilyStore cfs,
+    public SSTableWriter createWriter(ColumnFamilyStore cfs,
                                              File compactionFileLocation,
                                              int expectedBloomFilterSize,
                                              long repairedAt,
                                              SSTableReader sstable)
     {
         FileUtils.createDirectory(compactionFileLocation);
-        return new SSTableWriter(cfs.getTempSSTablePath(compactionFileLocation),
-                                 expectedBloomFilterSize,
-                                 repairedAt,
-                                 cfs.metadata,
-                                 cfs.partitioner,
-                                 new MetadataCollector(Collections.singleton(sstable), cfs.metadata.comparator, sstable.getSSTableLevel()));
+        return ssTableWriterFactory.create(cfs.getTempSSTablePath(compactionFileLocation),
+                                           expectedBloomFilterSize,
+                                           repairedAt,
+                                           cfs.metadata,
+                                           cfs.partitioner,
+                                           new MetadataCollector(Collections.singleton(sstable), cfs.metadata.comparator, sstable.getSSTableLevel()));
     }
 
     /**
@@ -1005,8 +1015,8 @@ public class CompactionManager implements CompactionManagerMBean
 
             try (CompactionController controller = new CompactionController(cfs, new HashSet<>(Collections.singleton(sstable)), CFMetaData.DEFAULT_GC_GRACE_SECONDS))
             {
-                repairedSSTableWriter.switchWriter(CompactionManager.createWriter(cfs, destination, expectedBloomFilterSize, repairedAt, sstable));
-                unRepairedSSTableWriter.switchWriter(CompactionManager.createWriter(cfs, destination, expectedBloomFilterSize, ActiveRepairService.UNREPAIRED_SSTABLE, sstable));
+                repairedSSTableWriter.switchWriter(createWriter(cfs, destination, expectedBloomFilterSize, repairedAt, sstable));
+                unRepairedSSTableWriter.switchWriter(createWriter(cfs, destination, expectedBloomFilterSize, ActiveRepairService.UNREPAIRED_SSTABLE, sstable));
 
                 CompactionIterable ci = new CompactionIterable(OperationType.ANTICOMPACTION, scanners, controller);
 

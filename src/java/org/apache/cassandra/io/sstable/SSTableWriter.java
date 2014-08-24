@@ -32,13 +32,11 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.Sets;
-import org.apache.cassandra.service.ClusterState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ColumnIndex;
@@ -63,7 +61,6 @@ import org.apache.cassandra.io.util.FileMark;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.io.util.SegmentedFile;
 import org.apache.cassandra.io.util.SequentialWriter;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FilterFactory;
 import org.apache.cassandra.utils.IFilter;
@@ -85,15 +82,8 @@ public class SSTableWriter extends SSTable
     private final MetadataCollector sstableMetadataCollector;
     private final long repairedAt;
 
-    public SSTableWriter(String filename, long keyCount, long repairedAt)
-    {
-        this(filename,
-             keyCount,
-             repairedAt,
-             Schema.instance.getCFMetaData(Descriptor.fromFilename(filename)),
-             ClusterState.instance.getPartitioner(),
-             new MetadataCollector(Schema.instance.getCFMetaData(Descriptor.fromFilename(filename)).comparator));
-    }
+    private final DatabaseDescriptor databaseDescriptor;
+    private final SSTableReaderFactory ssTableReaderFactory;
 
     private static Set<Component> components(CFMetaData metadata)
     {
@@ -125,13 +115,21 @@ public class SSTableWriter extends SSTable
                          long repairedAt,
                          CFMetaData metadata,
                          IPartitioner<?> partitioner,
-                         MetadataCollector sstableMetadataCollector)
+                         MetadataCollector sstableMetadataCollector,
+                         DatabaseDescriptor databaseDescriptor,
+                         SSTableReaderFactory ssTableReaderFactory)
     {
         super(Descriptor.fromFilename(filename),
               components(metadata),
               metadata,
               partitioner);
+
+
         this.repairedAt = repairedAt;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.ssTableReaderFactory = ssTableReaderFactory;
+
         iwriter = new IndexWriter(keyCount);
 
         if (compression)
@@ -145,7 +143,7 @@ public class SSTableWriter extends SSTable
         else
         {
             dataFile = SequentialWriter.open(new File(getFilename()), new File(descriptor.filenameFor(Component.CRC)));
-            dbuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode());
+            dbuilder = SegmentedFile.getBuilder(databaseDescriptor.getDiskAccessMode());
         }
 
         this.sstableMetadataCollector = sstableMetadataCollector;
@@ -392,11 +390,11 @@ public class SSTableWriter extends SSTable
         // open the reader early, giving it a FINAL descriptor type so that it is indistinguishable for other consumers
         SegmentedFile ifile = iwriter.builder.openEarly(link.filenameFor(Component.PRIMARY_INDEX));
         SegmentedFile dfile = dbuilder.openEarly(link.filenameFor(Component.DATA));
-        SSTableReader sstable = SSTableReaderFactory.instance.internalOpen(descriptor.asType(Descriptor.Type.FINAL),
-                                                                           components, metadata,
-                                                                           partitioner, ifile,
-                                                                           dfile, iwriter.summary.build(partitioner, exclusiveUpperBoundOfReadableIndex),
-                                                                           iwriter.bf, maxDataAge, sstableMetadata, true);
+        SSTableReader sstable = ssTableReaderFactory.internalOpen(descriptor.asType(Descriptor.Type.FINAL),
+                                                                  components, metadata,
+                                                                  partitioner, ifile,
+                                                                  dfile, iwriter.summary.build(partitioner, exclusiveUpperBoundOfReadableIndex),
+                                                                  iwriter.bf, maxDataAge, sstableMetadata, true);
 
         // now it's open, find the ACTUAL last readable key (i.e. for which the data file has also been flushed)
         sstable.first = getMinimalKey(first);
@@ -437,17 +435,17 @@ public class SSTableWriter extends SSTable
         // finalize in-memory state for the reader
         SegmentedFile ifile = iwriter.builder.complete(newdesc.filenameFor(Component.PRIMARY_INDEX));
         SegmentedFile dfile = dbuilder.complete(newdesc.filenameFor(Component.DATA));
-        SSTableReader sstable = SSTableReaderFactory.instance.internalOpen(newdesc,
-                                                                           components,
-                                                                           metadata,
-                                                                           partitioner,
-                                                                           ifile,
-                                                                           dfile,
-                                                                           iwriter.summary.build(partitioner),
-                                                                           iwriter.bf,
-                                                                           maxDataAge,
-                                                                           sstableMetadata,
-                                                                           false);
+        SSTableReader sstable = ssTableReaderFactory.internalOpen(newdesc,
+                                                                  components,
+                                                                  metadata,
+                                                                  partitioner,
+                                                                  ifile,
+                                                                  dfile,
+                                                                  iwriter.summary.build(partitioner),
+                                                                  iwriter.bf,
+                                                                  maxDataAge,
+                                                                  sstableMetadata,
+                                                                  false);
         sstable.first = getMinimalKey(first);
         sstable.last = getMinimalKey(last);
         // try to save the summaries to disk
@@ -549,7 +547,7 @@ public class SSTableWriter extends SSTable
         IndexWriter(long keyCount)
         {
             indexFile = SequentialWriter.open(new File(descriptor.filenameFor(Component.PRIMARY_INDEX)));
-            builder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode());
+            builder = SegmentedFile.getBuilder(databaseDescriptor.getIndexAccessMode());
             summary = new IndexSummaryBuilder(keyCount, metadata.getMinIndexInterval(), Downsampling.BASE_SAMPLING_LEVEL);
             bf = FilterFactory.getFilter(keyCount, metadata.getBloomFilterFpChance(), true);
         }
