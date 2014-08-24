@@ -58,8 +58,13 @@ public class CommitLogReplayer
     private final PureJavaCrc32 checksum;
     private byte[] buffer;
 
-    public CommitLogReplayer()
+    private final CommitLog commitLog;
+
+    public CommitLogReplayer(CommitLog commitLog)
     {
+        assert commitLog != null;
+        this.commitLog = commitLog;
+
         this.keyspacesRecovered = new NonBlockingHashSet<Keyspace>();
         this.futures = new ArrayList<Future<?>>();
         this.buffer = new byte[4096];
@@ -444,11 +449,11 @@ public class CommitLogReplayer
 
     protected boolean pointInTimeExceeded(Mutation fm)
     {
-        long restoreTarget = CommitLog.instance.archiver.restorePointInTime;
+        long restoreTarget = commitLog.archiver.restorePointInTime;
 
         for (ColumnFamily families : fm.getColumnFamilies())
         {
-            if (CommitLog.instance.archiver.precision.toMillis(families.maxTimestamp()) > restoreTarget)
+            if (commitLog.archiver.precision.toMillis(families.maxTimestamp()) > restoreTarget)
                 return true;
         }
         return false;

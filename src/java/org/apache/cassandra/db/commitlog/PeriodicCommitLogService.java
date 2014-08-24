@@ -39,7 +39,7 @@ class PeriodicCommitLogService extends AbstractCommitLogService
             pending.incrementAndGet();
             while (waitForSyncToCatchUp(started))
             {
-                WaitQueue.Signal signal = syncComplete.register(CommitLog.instance.metrics.waitingOnCommit.time());
+                WaitQueue.Signal signal = syncComplete.register(commitLog.metrics.waitingOnCommit.time());
                 if (waitForSyncToCatchUp(started))
                     signal.awaitUninterruptibly();
                 else

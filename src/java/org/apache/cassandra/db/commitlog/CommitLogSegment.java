@@ -114,9 +114,9 @@ public class CommitLogSegment
     /**
      * @return a newly minted segment file
      */
-    static CommitLogSegment freshSegment()
+    static CommitLogSegment freshSegment(CommitLog commitLog)
     {
-        return new CommitLogSegment(null);
+        return new CommitLogSegment(null, commitLog);
     }
 
     static long getNextId()
@@ -124,13 +124,16 @@ public class CommitLogSegment
         return idBase + nextId.getAndIncrement();
     }
 
+    private final CommitLog commitLog;
+
     /**
      * Constructs a new segment file.
      *
      * @param filePath  if not null, recycles the existing file by renaming it and truncating it to CommitLog.SEGMENT_SIZE.
      */
-    CommitLogSegment(String filePath)
+    CommitLogSegment(String filePath, CommitLog commitLog)
     {
+        this.commitLog = commitLog;
         id = getNextId();
         descriptor = new CommitLogDescriptor(id);
         logFile = new File(DatabaseDescriptor.instance.getCommitLogLocation(), descriptor.fileName());
@@ -194,7 +197,7 @@ public class CommitLogSegment
                 return null;
             }
             markDirty(mutation, position);
-            return new Allocation(this, opGroup, position, (ByteBuffer) buffer.duplicate().position(position).limit(position + size));
+            return new Allocation(this, opGroup, position, (ByteBuffer) buffer.duplicate().position(position).limit(position + size), commitLog);
         }
         catch (Throwable t)
         {
@@ -362,7 +365,7 @@ public class CommitLogSegment
 
         close();
 
-        return new CommitLogSegment(getPath());
+        return new CommitLogSegment(getPath(), commitLog);
     }
 
     /**
@@ -585,13 +588,15 @@ public class CommitLogSegment
         private final OpOrder.Group appendOp;
         private final int position;
         private final ByteBuffer buffer;
+        private final CommitLog commitLog;
 
-        Allocation(CommitLogSegment segment, OpOrder.Group appendOp, int position, ByteBuffer buffer)
+        Allocation(CommitLogSegment segment, OpOrder.Group appendOp, int position, ByteBuffer buffer, CommitLog commitLog)
         {
             this.segment = segment;
             this.appendOp = appendOp;
             this.position = position;
             this.buffer = buffer;
+            this.commitLog = commitLog;
         }
 
         CommitLogSegment getSegment()
@@ -615,7 +620,7 @@ public class CommitLogSegment
         {
             while (segment.lastSyncedOffset < position)
             {
-                WaitQueue.Signal signal = segment.syncComplete.register(CommitLog.instance.metrics.waitingOnCommit.time());
+                WaitQueue.Signal signal = segment.syncComplete.register(commitLog.metrics.waitingOnCommit.time());
                 if (segment.lastSyncedOffset < position)
                     signal.awaitUninterruptibly();
                 else

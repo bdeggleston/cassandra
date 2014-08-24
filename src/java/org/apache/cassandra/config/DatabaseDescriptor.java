@@ -93,7 +93,7 @@ public class DatabaseDescriptor
     static
     {
         instance = create();
-        CommitLog commitLog = CommitLog.instance;
+        CommitLog commitLog = CommitLog.instance; // ok
         QueryProcessor queryProcessor = QueryProcessor.instance;
         TriggerExecutor triggerExecutor = TriggerExecutor.instance;
 

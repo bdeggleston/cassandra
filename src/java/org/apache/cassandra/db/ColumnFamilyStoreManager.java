@@ -7,6 +7,7 @@ import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.index.SecondaryIndex;
@@ -36,6 +37,7 @@ public class ColumnFamilyStoreManager
     private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStoreManager.class);
 
     public static final ColumnFamilyStoreManager instance = new ColumnFamilyStoreManager(
+            CommitLog.instance,
             Schema.instance,
             ClusterState.instance,
             SystemKeyspace.instance,
@@ -44,6 +46,7 @@ public class ColumnFamilyStoreManager
             Tracing.instance
     );
 
+    private final CommitLog commitLog;
     private final Schema schema;
     private final ClusterState clusterState;
     private final SystemKeyspace systemKeyspace;
@@ -52,14 +55,16 @@ public class ColumnFamilyStoreManager
     private final Tracing tracing;
     public final TaskExecutors taskExecutors;
 
-    public ColumnFamilyStoreManager(Schema schema, ClusterState clusterState, SystemKeyspace systemKeyspace, CompactionManager compactionManager, CacheService cacheService, Tracing tracing)
+    public ColumnFamilyStoreManager(CommitLog commitLog, Schema schema, ClusterState clusterState, SystemKeyspace systemKeyspace, CompactionManager compactionManager, CacheService cacheService, Tracing tracing)
     {
+        assert commitLog != null;
         assert schema != null;
         assert clusterState != null;
         assert systemKeyspace != null;
         assert compactionManager != null;
         assert cacheService != null;
 
+        this.commitLog = commitLog;
         this.schema = schema;
         this.clusterState = clusterState;
         this.systemKeyspace = systemKeyspace;
@@ -141,6 +146,7 @@ public class ColumnFamilyStoreManager
                                      directories,
                                      loadSSTables,
                                      cfId,
+                                     commitLog,
                                      clusterState,
                                      systemKeyspace,
                                      compactionManager,

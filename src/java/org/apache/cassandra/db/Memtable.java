@@ -65,7 +65,7 @@ public class Memtable
     // the last ReplayPosition owned by this Memtable; all ReplayPositions lower are owned by this or an earlier Memtable
     private final AtomicReference<ReplayPosition> lastReplayPosition = new AtomicReference<>();
     // the "first" ReplayPosition owned by this Memtable; this is inaccurate, and only used as a convenience to prevent CLSM flushing wantonly
-    private final ReplayPosition minReplayPosition = CommitLog.instance.getContext();
+    private final ReplayPosition minReplayPosition;
 
     // We index the memtable by RowPosition only for the purpose of being able
     // to select key range using Token.KeyBound. However put() ensures that we
@@ -80,9 +80,15 @@ public class Memtable
     // memtable was created with the new or old comparator.
     public final CellNameType initialComparator;
 
-    public Memtable(ColumnFamilyStore cfs)
+    private final CommitLog commitLog;
+
+    public Memtable(ColumnFamilyStore cfs, CommitLog commitLog)
     {
+        assert commitLog != null;
+
         this.cfs = cfs;
+        this.commitLog = commitLog;
+        minReplayPosition = commitLog.getContext();
         this.allocator = MEMORY_POOL.newAllocator();
         this.initialComparator = cfs.metadata.comparator;
         this.cfs.scheduleFlush();

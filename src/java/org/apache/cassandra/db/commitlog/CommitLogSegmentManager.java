@@ -99,16 +99,19 @@ public class CommitLogSegmentManager
     private final DatabaseDescriptor databaseDescriptor;
     private final Schema schema;
     private final KeyspaceManager keyspaceManager;
+    private final CommitLog commitLog;
 
-    public CommitLogSegmentManager(final DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager)
+    public CommitLogSegmentManager(final DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, CommitLog commitLog1)
     {
         assert databaseDescriptor != null;
         assert schema != null;
         assert keyspaceManager != null;
+        assert commitLog1 != null;
 
         this.databaseDescriptor = databaseDescriptor;
         this.schema = schema;
         this.keyspaceManager = keyspaceManager;
+        this.commitLog = commitLog1;
 
         // The run loop for the manager thread
         Runnable runnable = new WrappedRunnable()
@@ -130,7 +133,7 @@ public class CommitLogSegmentManager
                                 logger.debug("No segments in reserve; creating a fresh one");
                                 size.addAndGet(databaseDescriptor.getCommitLogSegmentSize());
                                 // TODO : some error handling in case we fail to create a new segment
-                                availableSegments.add(CommitLogSegment.freshSegment());
+                                availableSegments.add(CommitLogSegment.freshSegment(commitLog));
                                 hasAvailableSegments.signalAll();
                             }
 
@@ -174,7 +177,7 @@ public class CommitLogSegmentManager
                     }
                     catch (Throwable t)
                     {
-                        if (!CommitLog.instance.handleCommitError("Failed managing commit log segments", t))
+                        if (!commitLog.handleCommitError("Failed managing commit log segments", t))
                             return;
                         // sleep some arbitrary period to avoid spamming CL
                         Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
@@ -260,19 +263,19 @@ public class CommitLogSegmentManager
                 {
                     // Now we can run the user defined command just after switching to the new commit log.
                     // (Do this here instead of in the recycle call so we can get a head start on the archive.)
-                    CommitLog.instance.archiver.maybeArchive(old);
+                    commitLog.archiver.maybeArchive(old);
 
                     // ensure we don't continue to use the old file; not strictly necessary, but cleaner to enforce it
                     old.discardUnusedTail();
                 }
 
                 // request that the CL be synced out-of-band, as we've finished a segment
-                CommitLog.instance.requestExtraSync();
+                commitLog.requestExtraSync();
                 return;
             }
 
             // no more segments, so register to receive a signal when not empty
-            WaitQueue.Signal signal = hasAvailableSegments.register(CommitLog.instance.metrics.waitingOnSegmentAllocation.time());
+            WaitQueue.Signal signal = hasAvailableSegments.register(commitLog.metrics.waitingOnSegmentAllocation.time());
 
             // trigger the management thread; this must occur after registering
             // the signal to ensure we are woken by any new segment creation
@@ -359,7 +362,7 @@ public class CommitLogSegmentManager
      */
     void recycleSegment(final CommitLogSegment segment)
     {
-        boolean archiveSuccess = CommitLog.instance.archiver.maybeWaitForArchiving(segment.getName());
+        boolean archiveSuccess = commitLog.archiver.maybeWaitForArchiving(segment.getName());
         activeSegments.remove(segment);
         if (!archiveSuccess)
         {
@@ -407,7 +410,7 @@ public class CommitLogSegmentManager
         {
             public CommitLogSegment call()
             {
-                return new CommitLogSegment(file.getPath());
+                return new CommitLogSegment(file.getPath(), commitLog);
             }
         });
     }

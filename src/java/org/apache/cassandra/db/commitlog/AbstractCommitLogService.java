@@ -47,16 +47,21 @@ public abstract class AbstractCommitLogService
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractCommitLogService.class);
 
+    protected final CommitLog commitLog;
     /**
      * CommitLogService provides a fsync service for Allocations, fulfilling either the
      * Batch or Periodic contract.
      *
      * Subclasses may be notified when a sync finishes by using the syncComplete WaitQueue.
      */
-    AbstractCommitLogService(final CommitLog commitLog, final String name, final long pollIntervalMillis)
+    AbstractCommitLogService(CommitLog commitLog1, final String name, final long pollIntervalMillis)
     {
         if (pollIntervalMillis < 1)
             throw new IllegalArgumentException(String.format("Commit log flush interval must be positive: %dms", pollIntervalMillis));
+
+        assert commitLog1 != null;
+
+        this.commitLog = commitLog1;
 
         Runnable runnable = new Runnable()
         {
@@ -122,7 +127,7 @@ public abstract class AbstractCommitLogService
                     }
                     catch (Throwable t)
                     {
-                        if (!CommitLog.instance.handleCommitError("Failed to persist commits to disk", t))
+                        if (!commitLog.handleCommitError("Failed to persist commits to disk", t))
                             break;
 
                         // sleep for full poll-interval after an error, so we don't spam the log file

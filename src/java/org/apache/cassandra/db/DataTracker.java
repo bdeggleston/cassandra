@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.*;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,10 +46,12 @@ public class DataTracker
     public final Collection<INotificationConsumer> subscribers = new CopyOnWriteArrayList<>();
     public final ColumnFamilyStore cfstore;
     private final AtomicReference<View> view;
+    private final CommitLog commitLog;
 
-    public DataTracker(ColumnFamilyStore cfstore)
+    public DataTracker(ColumnFamilyStore cfstore, CommitLog commitLog)
     {
         this.cfstore = cfstore;
+        this.commitLog = commitLog;
         this.view = new AtomicReference<>();
         this.init();
     }
@@ -108,7 +111,7 @@ public class DataTracker
      */
     public Memtable switchMemtable(boolean truncating)
     {
-        Memtable newMemtable = new Memtable(cfstore);
+        Memtable newMemtable = new Memtable(cfstore, commitLog);
         Memtable toFlushMemtable;
         View currentView, newView;
         do
@@ -323,7 +326,7 @@ public class DataTracker
     void init()
     {
         view.set(new View(
-                         ImmutableList.of(new Memtable(cfstore)),
+                         ImmutableList.of(new Memtable(cfstore, commitLog)),
                          ImmutableList.<Memtable>of(),
                          Collections.<SSTableReader>emptySet(),
                          Collections.<SSTableReader>emptySet(),

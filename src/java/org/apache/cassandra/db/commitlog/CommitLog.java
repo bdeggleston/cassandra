@@ -89,7 +89,7 @@ public class CommitLog implements CommitLogMBean
         this.storageService = storageService;
         this.keyspaceManager = keyspaceManager;
 
-        allocator = new CommitLogSegmentManager(this.databaseDescriptor, this.schema, this.keyspaceManager);
+        allocator = new CommitLogSegmentManager(this.databaseDescriptor, this.schema, this.keyspaceManager, this);
 
         executor = databaseDescriptor.getCommitLogSync() == Config.CommitLogSync.batch
                 ? new BatchCommitLogService(this)
@@ -178,7 +178,7 @@ public class CommitLog implements CommitLogMBean
             logger.info("Log replay complete, {} replayed mutations", replayed);
 
             for (File f : files)
-                CommitLog.instance.allocator.recycleSegment(f);
+                allocator.recycleSegment(f);
         }
 
         allocator.enableReserveSegmentCreation();
@@ -195,7 +195,7 @@ public class CommitLog implements CommitLogMBean
     {
         waitOnInitialized();
 
-        CommitLogReplayer recovery = new CommitLogReplayer();
+        CommitLogReplayer recovery = new CommitLogReplayer(this);
         recovery.recover(clogs);
         return recovery.blockForWrites();
     }

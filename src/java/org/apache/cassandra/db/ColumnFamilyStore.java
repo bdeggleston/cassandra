@@ -32,6 +32,7 @@ import com.google.common.collect.*;
 import com.google.common.util.concurrent.*;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.service.ClusterState;
 import org.json.simple.*;
@@ -245,6 +246,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                       Directories directories,
                       boolean loadSSTables,
                       UUID columnFamilyId,
+                      CommitLog commitLog,
                       ClusterState clusterState,
                       SystemKeyspace systemKeyspace,
                       CompactionManager compactionManager,
@@ -285,7 +287,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         logger.info("Initializing {}.{}", keyspace.getName(), name);
 
         // scan for sstables corresponding to this cf and load them
-        data = new DataTracker(this);
+        data = new DataTracker(this, commitLog);
 
         if (loadSSTables)
         {
