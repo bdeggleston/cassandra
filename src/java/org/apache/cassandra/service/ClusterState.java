@@ -62,6 +62,8 @@ public class ClusterState
         this.failureDetector = failureDetector;
         this.commitLog = commitLog;
         this.storageServiceTasks = storageServiceTasks;
+
+        valueFactory = new VersionedValue.VersionedValueFactory(getPartitioner());
     }
 
     public void setKeyspaceManager(KeyspaceManager keyspaceManager)

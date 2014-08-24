@@ -56,6 +56,11 @@ public class KeyspaceManager
         this.columnFamilyStoreManager = columnFamilyStoreManager;
     }
 
+    public ColumnFamilyStoreManager getColumnFamilyStoreManager()
+    {
+        return columnFamilyStoreManager;
+    }
+
     public final Function<String,Keyspace> keyspaceTransformer = new Function<String, Keyspace>()
     {
         public Keyspace apply(String keyspaceName)
