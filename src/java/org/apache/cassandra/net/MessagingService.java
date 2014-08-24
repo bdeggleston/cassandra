@@ -303,10 +303,26 @@ public final class MessagingService implements MessagingServiceMBean
     // protocol versions of the other nodes in the cluster
     private final ConcurrentMap<InetAddress, Integer> versions = new NonBlockingHashMap<InetAddress, Integer>();
 
-    public static final MessagingService instance = new MessagingService();
+    public static final MessagingService instance = new MessagingService(DatabaseDescriptor.instance, StageManager.instance, SinkManager.instance);
 
-    private MessagingService()
+    private final DatabaseDescriptor databaseDescriptor;
+    private final StageManager stageManager;
+    private final SinkManager sinkManager;
+
+    private volatile boolean initialized = false;
+    private volatile StorageProxy storageProxy = null;
+    private volatile Tracing tracing;
+
+    public MessagingService(DatabaseDescriptor databaseDescriptor, final StageManager stageManager1, SinkManager sinkManager)
     {
+        assert databaseDescriptor != null;
+        assert stageManager1 != null;
+        assert sinkManager != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.stageManager = stageManager1;
+        this.sinkManager = sinkManager;
+
         for (Verb verb : DROPPABLE_VERBS)
         {
             droppedMessages.put(verb, new DroppedMessageMetrics(verb));
@@ -315,15 +331,6 @@ public final class MessagingService implements MessagingServiceMBean
 
         listenGate = new SimpleCondition();
         verbHandlers = new EnumMap<Verb, IVerbHandler>(Verb.class);
-        Runnable logDropped = new Runnable()
-        {
-            public void run()
-            {
-                logDroppedMessages();
-            }
-        };
-        StorageServiceTasks.instance.scheduledTasks.scheduleWithFixedDelay(logDropped, LOG_DROPPED_INTERVAL_IN_MS, LOG_DROPPED_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
-
         Function<Pair<Integer, ExpiringMap.CacheableObject<CallbackInfo>>, ?> timeoutReporter = new Function<Pair<Integer, ExpiringMap.CacheableObject<CallbackInfo>>, Object>()
         {
             public Object apply(Pair<Integer, ExpiringMap.CacheableObject<CallbackInfo>> pair)
@@ -334,7 +341,7 @@ public final class MessagingService implements MessagingServiceMBean
                 getConnectionPool(expiredCallbackInfo.target).incrementTimeout();
                 if (expiredCallbackInfo.isFailureCallback())
                 {
-                    StageManager.instance.getStage(Stage.INTERNAL_RESPONSE).submit(new Runnable() {
+                    stageManager.getStage(Stage.INTERNAL_RESPONSE).submit(new Runnable() {
                         @Override
                         public void run() {
                             ((IAsyncCallbackWithFailure)expiredCallbackInfo.callback).onFailure(expiredCallbackInfo.target);
@@ -346,16 +353,37 @@ public final class MessagingService implements MessagingServiceMBean
                 {
                     Mutation mutation = (Mutation) ((WriteCallbackInfo) expiredCallbackInfo).sentMessage.payload;
 
-                    return StorageProxy.instance.submitHint(mutation, expiredCallbackInfo.target, null);
+                    return storageProxy.submitHint(mutation, expiredCallbackInfo.target, null);
                 }
 
                 return null;
             }
         };
 
-        callbacks = new ExpiringMap<Integer, CallbackInfo>(DatabaseDescriptor.instance.getMinRpcTimeout(), timeoutReporter);
+        callbacks = new ExpiringMap<Integer, CallbackInfo>(databaseDescriptor.getMinRpcTimeout(), timeoutReporter);
+    }
 
-        // TODO: instance is escaping constructor
+    public synchronized void init(ClusterState clusterState, StorageProxy storageProxy, Tracing tracing)
+    {
+        assert !initialized;
+
+        assert storageProxy != null;
+        assert tracing != null;
+
+        this.storageProxy = storageProxy;
+        this.tracing = tracing;
+
+        Runnable logDropped = new Runnable()
+        {
+            public void run()
+            {
+                logDroppedMessages();
+            }
+        };
+        clusterState.getScheduledTasksExecutor().scheduleWithFixedDelay(logDropped, LOG_DROPPED_INTERVAL_IN_MS, LOG_DROPPED_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
+
+        initialized = true;
+
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
         {
@@ -405,7 +433,7 @@ public final class MessagingService implements MessagingServiceMBean
         callbacks.reset(); // hack to allow tests to stop/restart MS
         for (ServerSocket ss : getServerSockets(localEp))
         {
-            SocketThread th = new SocketThread(ss, "ACCEPT-" + localEp);
+            SocketThread th = new SocketThread(ss, "ACCEPT-" + localEp, databaseDescriptor);
             th.start();
             socketThreads.add(th);
         }
@@ -415,21 +443,21 @@ public final class MessagingService implements MessagingServiceMBean
     private List<ServerSocket> getServerSockets(InetAddress localEp) throws ConfigurationException
     {
         final List<ServerSocket> ss = new ArrayList<ServerSocket>(2);
-        if (DatabaseDescriptor.instance.getServerEncryptionOptions().internode_encryption != ServerEncryptionOptions.InternodeEncryption.none)
+        if (databaseDescriptor.getServerEncryptionOptions().internode_encryption != ServerEncryptionOptions.InternodeEncryption.none)
         {
             try
             {
-                ss.add(SSLFactory.getServerSocket(DatabaseDescriptor.instance.getServerEncryptionOptions(), localEp, DatabaseDescriptor.instance.getSSLStoragePort()));
+                ss.add(SSLFactory.getServerSocket(databaseDescriptor.getServerEncryptionOptions(), localEp, databaseDescriptor.getSSLStoragePort()));
             }
             catch (IOException e)
             {
                 throw new ConfigurationException("Unable to create ssl socket", e);
             }
             // setReuseAddress happens in the factory.
-            logger.info("Starting Encrypted Messaging Service on SSL port {}", DatabaseDescriptor.instance.getSSLStoragePort());
+            logger.info("Starting Encrypted Messaging Service on SSL port {}", databaseDescriptor.getSSLStoragePort());
         }
 
-        if (DatabaseDescriptor.instance.getServerEncryptionOptions().internode_encryption != ServerEncryptionOptions.InternodeEncryption.all)
+        if (databaseDescriptor.getServerEncryptionOptions().internode_encryption != ServerEncryptionOptions.InternodeEncryption.all)
         {
             ServerSocketChannel serverChannel = null;
             try
@@ -449,7 +477,7 @@ public final class MessagingService implements MessagingServiceMBean
             {
                 throw new ConfigurationException("Insufficient permissions to setReuseAddress", e);
             }
-            InetSocketAddress address = new InetSocketAddress(localEp, DatabaseDescriptor.instance.getStoragePort());
+            InetSocketAddress address = new InetSocketAddress(localEp, databaseDescriptor.getStoragePort());
             try
             {
                 socket.bind(address,500);
@@ -468,7 +496,7 @@ public final class MessagingService implements MessagingServiceMBean
             {
                 throw new RuntimeException(e);
             }
-            logger.info("Starting Messaging Service on port {}", DatabaseDescriptor.instance.getStoragePort());
+            logger.info("Starting Messaging Service on port {}", databaseDescriptor.getStoragePort());
             ss.add(socket);
         }
         return ss;
@@ -661,7 +689,7 @@ public final class MessagingService implements MessagingServiceMBean
             logger.trace("Message-to-self {} going over MessagingService", message);
 
         // message sinks are a testing hook
-        MessageOut processedMessage = SinkManager.instance.processOutboundMessage(message, id, to);
+        MessageOut processedMessage = sinkManager.processOutboundMessage(message, id, to);
         if (processedMessage == null)
         {
             return;
@@ -698,7 +726,7 @@ public final class MessagingService implements MessagingServiceMBean
     {
         logger.info("Waiting for messaging service to quiesce");
         // We may need to schedule hints on the mutation stage, so it's erroneous to shut down the mutation stage first
-        assert !StageManager.instance.getStage(Stage.MUTATION).isShutdown();
+        assert !stageManager.getStage(Stage.MUTATION).isShutdown();
 
         // the important part
         callbacks.shutdownBlocking();
@@ -717,12 +745,12 @@ public final class MessagingService implements MessagingServiceMBean
 
     public void receive(MessageIn message, int id, long timestamp)
     {
-        TraceState state = Tracing.instance.initializeFromMessage(message);
+        TraceState state = tracing.initializeFromMessage(message);
         if (state != null)
             state.trace("Message received from {}", message.from);
 
         Verb verb = message.verb;
-        message = SinkManager.instance.processInboundMessage(message, id);
+        message = sinkManager.processInboundMessage(message, id);
         if (message == null)
         {
             incrementRejectedMessages(verb);
@@ -730,7 +758,7 @@ public final class MessagingService implements MessagingServiceMBean
         }
 
         Runnable runnable = new MessageDeliveryTask(message, id, timestamp);
-        TracingAwareExecutorService stage = StageManager.instance.getStage(message.getMessageType());
+        TracingAwareExecutorService stage = stageManager.getStage(message.getMessageType());
         assert stage != null : "No stage for message type " + message.verb;
 
         stage.execute(runnable, state);
@@ -889,11 +917,14 @@ public final class MessagingService implements MessagingServiceMBean
     private static class SocketThread extends Thread
     {
         private final ServerSocket server;
+        private final DatabaseDescriptor databaseDescriptor;
 
-        SocketThread(ServerSocket server, String name)
+        SocketThread(ServerSocket server, String name, DatabaseDescriptor databaseDescriptor)
         {
             super(name);
+            assert databaseDescriptor != null;
             this.server = server;
+            this.databaseDescriptor = databaseDescriptor;
         }
 
         public void run()
@@ -953,7 +984,7 @@ public final class MessagingService implements MessagingServiceMBean
 
         private boolean authenticate(Socket socket)
         {
-            return DatabaseDescriptor.instance.getInternodeAuthenticator().authenticate(socket.getInetAddress(), socket.getPort());
+            return databaseDescriptor.getInternodeAuthenticator().authenticate(socket.getInetAddress(), socket.getPort());
         }
     }
 

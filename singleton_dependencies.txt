@@ -20,18 +20,10 @@ Updated --> Schema [SystemKeyspace(?, 1m), MigrationManager(?, 1m)]
 
 Updated --> CommitLog [DatabaseDescriptor, KeyspaceManager, Schema]
 Updated --> CommitLogSegmentManager [DatabaseDescriptor, KeyspaceManager, Schema]
-    * do something about the KeyspaceManager dependency
 
 Updated --> StageManager [DatabaseDescriptor]
 
-MessagingService [StorageServiceTasks, StageManager(stronger, 2m), StorageProxy(weak, 1m), DatabaseDescriptor, SinkManager, Tracing]
-    * work out how to decouple the MessagingService and StageManager constructors
-        * could push incrementDroppedMessages from MessagingService to DatabaseDescriptor, but that's kinda messy
-        * could special case tracingexecutor to live in an atomic reference outside the enum map and expose a setter
-        * could push getStage up to DatabaseDescriptor, also ugly
-        * could use a wrapper class for the timeoutReporter, which references a volatile member
-
-?? move cluster state here?
+Updated --> MessagingService [StorageServiceTasks, StageManager(stronger, 2m), StorageProxy(weak, 1m), DatabaseDescriptor, SinkManager, Tracing]
 
 Updated --> Gossiper [MessagingService, DatabaseDescriptor, StageManager]
 

@@ -52,6 +52,7 @@ import static org.apache.cassandra.io.sstable.SSTableUtils.tempSSTableFile;
 import static org.apache.cassandra.utils.ByteBufferUtil.hexToBytes;
 import static org.junit.Assert.assertEquals;
 
+// FIXME: fails sporadically
 public class SSTableImportTest
 {
     public static final String KEYSPACE1 = "SSTableImportTest";
