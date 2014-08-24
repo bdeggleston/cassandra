@@ -16,6 +16,7 @@ import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.gms.VersionedValue;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
+import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
@@ -292,6 +293,11 @@ public class ClusterState
     public DebuggableScheduledThreadPoolExecutor getOptionalTasksExecutor()
     {
         return storageServiceTasks.optionalTasks;
+    }
+
+    public IEndpointSnitch getEndpointSnitch()
+    {
+        return databaseDescriptor.getEndpointSnitch();
     }
 
 }

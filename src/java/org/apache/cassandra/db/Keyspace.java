@@ -84,7 +84,7 @@ public class Keyspace
 
     public ColumnFamilyStore getColumnFamilyStore(String cfName)
     {
-        UUID id = Schema.instance.getId(getName(), cfName);
+        UUID id = schema.getId(getName(), cfName);
         if (id == null)
             throw new IllegalArgumentException(String.format("Unknown keyspace/cf pair (%s.%s)", getName(), cfName));
         return getColumnFamilyStore(id);
@@ -177,9 +177,21 @@ public class Keyspace
         return list;
     }
 
-    Keyspace(String keyspaceName, boolean loadSSTables)
+    private final CommitLog commitLog;
+    private final Schema schema;
+    private final ClusterState clusterState;
+    private final Tracing tracing;
+    private final ColumnFamilyStoreManager columnFamilyStoreManager;
+
+    Keyspace(String keyspaceName, boolean loadSSTables, CommitLog commitLog, Schema schema, ClusterState clusterState, Tracing tracing, ColumnFamilyStoreManager columnFamilyStoreManager)
     {
-        metadata = Schema.instance.getKSMetaData(keyspaceName);
+        this.commitLog = commitLog;
+        this.schema = schema;
+        this.clusterState = clusterState;
+        this.tracing = tracing;
+        this.columnFamilyStoreManager = columnFamilyStoreManager;
+
+        metadata = this.schema.getKSMetaData(keyspaceName);
         assert metadata != null : "Unknown keyspace " + keyspaceName;
         createReplicationStrategy(metadata);
 
@@ -195,8 +207,8 @@ public class Keyspace
     {
         replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(ksm.name,
                                                                                     ksm.strategyClass,
-                                                                                    ClusterState.instance.getTokenMetadata(),
-                                                                                    DatabaseDescriptor.instance.getEndpointSnitch(),
+                                                                                    clusterState.getTokenMetadata(),
+                                                                                    clusterState.getEndpointSnitch(),
                                                                                     ksm.strategyOptions);
     }
 
@@ -234,7 +246,7 @@ public class Keyspace
             // CFS being created for the first time, either on server startup or new CF being added.
             // We don't worry about races here; startup is safe, and adding multiple idential CFs
             // simultaneously is a "don't do that" scenario.
-            ColumnFamilyStore oldCfs = columnFamilyStores.putIfAbsent(cfId, ColumnFamilyStoreManager.instance.createColumnFamilyStore(this, cfName, loadSSTables));
+            ColumnFamilyStore oldCfs = columnFamilyStores.putIfAbsent(cfId, columnFamilyStoreManager.createColumnFamilyStore(this, cfName, loadSSTables));
             // CFS mbean instantiation will error out before we hit this, but in case that changes...
             if (oldCfs != null)
                 throw new IllegalStateException("added multiple mappings for cf id " + cfId);
@@ -277,11 +289,11 @@ public class Keyspace
             ReplayPosition replayPosition = null;
             if (writeCommitLog)
             {
-                Tracing.instance.trace("Appending to commitlog");
-                replayPosition = CommitLog.instance.add(mutation);
+                tracing.trace("Appending to commitlog");
+                replayPosition = commitLog.add(mutation);
             }
 
-            DecoratedKey key = ClusterState.instance.getPartitioner().decorateKey(mutation.key());
+            DecoratedKey key = clusterState.getPartitioner().decorateKey(mutation.key());
             for (ColumnFamily cf : mutation.getColumnFamilies())
             {
                 ColumnFamilyStore cfs = columnFamilyStores.get(cf.id());
@@ -291,7 +303,7 @@ public class Keyspace
                     continue;
                 }
 
-                Tracing.instance.trace("Adding to {} memtable", cf.metadata().cfName);
+                tracing.trace("Adding to {} memtable", cf.metadata().cfName);
                 SecondaryIndexManager.Updater updater = updateIndexes
                                                       ? cfs.indexManager.updaterFor(key, cf, opGroup)
                                                       : SecondaryIndexManager.nullUpdater;

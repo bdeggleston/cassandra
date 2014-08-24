@@ -89,4 +89,21 @@ Updated --> StatusLogger [DatabaseDescriptor, ColumnFamilyStoreManager]
 
 Updated --> PendingRangeCalculatorService [Schema, ClusterState]
 
+TODO:
+The following need to be provided to CqlStatements:
+    TriggerExecutor
+    Auth
+    Schema
 
+pass CommitLog into:
+    ColumnFamilyStoreManager
+    KeyspaceManager
+
+pass SystemKeyspace into:
+    CFMetaData
+    KSMetaData
+    SecondaryIndex
+    SecondaryIndexManager
+
+ClientState needs:
+    Schema

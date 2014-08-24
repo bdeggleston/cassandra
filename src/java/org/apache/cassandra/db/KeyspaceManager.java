@@ -6,6 +6,7 @@ import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.service.ClusterState;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +28,7 @@ public class KeyspaceManager
         // FIXME: forcing CFMetaData to initialize before KeyspaceManager. Maybe make part of KeyspaceManager
         // Hardcoded system keyspaces
         List<KSMetaData> systemKeyspaces = Arrays.asList(KSMetaData.systemKeyspace());
-        instance = new KeyspaceManager(Schema.instance, ClusterState.instance, CommitLog.instance, ColumnFamilyStoreManager.instance);
+        instance = new KeyspaceManager(Schema.instance, ClusterState.instance, CommitLog.instance, Tracing.instance, ColumnFamilyStoreManager.instance);
         ClusterState.instance.setKeyspaceManager(instance);
 
         // FIXME: move to static factory, or to SystemKeyspace?
@@ -39,20 +40,23 @@ public class KeyspaceManager
     private final Schema schema;
     private final ClusterState clusterState;
     private final CommitLog commitLog;
+    private final Tracing tracing;
     private final ColumnFamilyStoreManager columnFamilyStoreManager;
 
     private volatile boolean initialized = false;
 
-    public KeyspaceManager(Schema schema, ClusterState clusterState, CommitLog commitLog, ColumnFamilyStoreManager columnFamilyStoreManager)
+    public KeyspaceManager(Schema schema, ClusterState clusterState, CommitLog commitLog, Tracing tracing, ColumnFamilyStoreManager columnFamilyStoreManager)
     {
         assert schema != null;
         assert clusterState != null;
         assert commitLog != null;
+        assert tracing != null;
         assert columnFamilyStoreManager != null;
 
         this.schema = schema;
         this.clusterState = clusterState;
         this.commitLog = commitLog;
+        this.tracing = tracing;
         this.columnFamilyStoreManager = columnFamilyStoreManager;
     }
 
@@ -105,7 +109,7 @@ public class KeyspaceManager
                 if (keyspaceInstance == null)
                 {
                     // open and store the keyspace
-                    keyspaceInstance = new Keyspace(keyspaceName, loadSSTables);
+                    keyspaceInstance = new Keyspace(keyspaceName, loadSSTables, commitLog, schema, clusterState, tracing, columnFamilyStoreManager);
                     schema.storeKeyspaceInstance(keyspaceInstance);
 
                     // keyspace has to be constructed and in the cache before cacheRow can be called
