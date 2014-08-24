@@ -392,11 +392,11 @@ public class SSTableWriter extends SSTable
         // open the reader early, giving it a FINAL descriptor type so that it is indistinguishable for other consumers
         SegmentedFile ifile = iwriter.builder.openEarly(link.filenameFor(Component.PRIMARY_INDEX));
         SegmentedFile dfile = dbuilder.openEarly(link.filenameFor(Component.DATA));
-        SSTableReader sstable = SSTableReader.internalOpen(descriptor.asType(Descriptor.Type.FINAL),
-                                                           components, metadata,
-                                                           partitioner, ifile,
-                                                           dfile, iwriter.summary.build(partitioner, exclusiveUpperBoundOfReadableIndex),
-                                                           iwriter.bf, maxDataAge, sstableMetadata, true);
+        SSTableReader sstable = SSTableReaderFactory.instance.internalOpen(descriptor.asType(Descriptor.Type.FINAL),
+                                                                           components, metadata,
+                                                                           partitioner, ifile,
+                                                                           dfile, iwriter.summary.build(partitioner, exclusiveUpperBoundOfReadableIndex),
+                                                                           iwriter.bf, maxDataAge, sstableMetadata, true);
 
         // now it's open, find the ACTUAL last readable key (i.e. for which the data file has also been flushed)
         sstable.first = getMinimalKey(first);
@@ -437,17 +437,17 @@ public class SSTableWriter extends SSTable
         // finalize in-memory state for the reader
         SegmentedFile ifile = iwriter.builder.complete(newdesc.filenameFor(Component.PRIMARY_INDEX));
         SegmentedFile dfile = dbuilder.complete(newdesc.filenameFor(Component.DATA));
-        SSTableReader sstable = SSTableReader.internalOpen(newdesc,
-                                                           components,
-                                                           metadata,
-                                                           partitioner,
-                                                           ifile,
-                                                           dfile,
-                                                           iwriter.summary.build(partitioner),
-                                                           iwriter.bf,
-                                                           maxDataAge,
-                                                           sstableMetadata,
-                                                           false);
+        SSTableReader sstable = SSTableReaderFactory.instance.internalOpen(newdesc,
+                                                                           components,
+                                                                           metadata,
+                                                                           partitioner,
+                                                                           ifile,
+                                                                           dfile,
+                                                                           iwriter.summary.build(partitioner),
+                                                                           iwriter.bf,
+                                                                           maxDataAge,
+                                                                           sstableMetadata,
+                                                                           false);
         sstable.first = getMinimalKey(first);
         sstable.last = getMinimalKey(last);
         // try to save the summaries to disk

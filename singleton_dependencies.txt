@@ -47,6 +47,10 @@ Updated --> StorageProxy [StageManager, Schema(3m), DatabaseDescriptor, TriggerE
 
 Updated --> Tracing [StageManager, StorageProxy]
 
+SStableReaderFactory [CacheService, Schema, ClusterState, SystemKeyspace, DatabaseDescriptor, Tracing]
+SStableReader [SystemKeyspace, Schema, ClusterState, CacheService, DatabaseDescriptor, Tracing]
+SStableWriterFactory [CacheService, Schema, ClusterState, DatabaseDescriptor, SStableReaderFactory]
+
 Updated --> ColumnFamilyStoreManager [Schema, ClusterState, SystemKeyspace, CompactionManager, CacheService]
 Updated --> ColumnFamilyStore [ClusterState, SystemKeyspace, CompactionManager, CacheService, ColumnFamilyStoreManager.TaskExecutors]
     * move tracing back into constructor

@@ -44,6 +44,7 @@ import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.service.ClusterState;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -76,12 +77,6 @@ import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.IncludingExcludingBounds;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.exceptions.ConfigurationException;
-import org.apache.cassandra.io.sstable.Component;
-import org.apache.cassandra.io.sstable.Descriptor;
-import org.apache.cassandra.io.sstable.SSTableDeletingTask;
-import org.apache.cassandra.io.sstable.SSTableReader;
-import org.apache.cassandra.io.sstable.SSTableSimpleWriter;
-import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.locator.SimpleStrategy;
@@ -1772,7 +1767,7 @@ public class ColumnFamilyStoreTest
         assertEquals(1, sstables.size());
 
         Map.Entry<Descriptor, Set<Component>> sstableToOpen = sstables.entrySet().iterator().next();
-        final SSTableReader sstable1 = SSTableReader.open(sstableToOpen.getKey());
+        final SSTableReader sstable1 = SSTableReaderFactory.instance.open(sstableToOpen.getKey());
 
         // simulate incomplete compaction
         writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
@@ -1800,7 +1795,7 @@ public class ColumnFamilyStoreTest
 
         UUID compactionTaskID = SystemKeyspace.instance.startCompaction(
                 KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf),
-                Collections.singleton(SSTableReader.open(sstable1.descriptor)));
+                Collections.singleton(SSTableReaderFactory.instance.open(sstable1.descriptor)));
 
         Map<Integer, UUID> unfinishedCompaction = new HashMap<>();
         unfinishedCompaction.put(sstable1.descriptor.generation, compactionTaskID);
@@ -1855,7 +1850,7 @@ public class ColumnFamilyStoreTest
         assert sstables.size() == 1;
 
         Map.Entry<Descriptor, Set<Component>> sstableToOpen = sstables.entrySet().iterator().next();
-        final SSTableReader sstable1 = SSTableReader.open(sstableToOpen.getKey());
+        final SSTableReader sstable1 = SSTableReaderFactory.instance.open(sstableToOpen.getKey());
 
         // simulate we don't have generation in compaction_history
         Map<Integer, UUID> unfinishedCompactions = new HashMap<>();

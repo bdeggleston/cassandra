@@ -286,7 +286,7 @@ public class SSTableReaderTest
         Descriptor desc = sstable.descriptor;
 
         // test to see if sstable can be opened as expected
-        SSTableReader target = SSTableReader.open(desc);
+        SSTableReader target = SSTableReaderFactory.instance.open(desc);
         Assert.assertEquals(target.getIndexSummarySize(), 1);
         Assert.assertArrayEquals(ByteBufferUtil.getArray(firstKey.getKey()), target.getIndexSummaryKey(0));
         assert target.first.equals(firstKey);
@@ -315,7 +315,7 @@ public class SSTableReaderTest
                                           : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode());
         sstable.saveSummary(ibuilder, dbuilder);
 
-        SSTableReader reopened = SSTableReader.open(sstable.descriptor);
+        SSTableReader reopened = SSTableReaderFactory.instance.open(sstable.descriptor);
         assert reopened.first.getToken() instanceof LocalToken;
     }
 
@@ -371,7 +371,7 @@ public class SSTableReaderTest
 
         // re-open the same sstable as it would be during bulk loading
         Set<Component> components = Sets.newHashSet(Component.DATA, Component.PRIMARY_INDEX);
-        SSTableReader bulkLoaded = SSTableReader.openForBatch(sstable.descriptor, components, store.metadata, sstable.partitioner);
+        SSTableReader bulkLoaded = SSTableReaderFactory.instance.openForBatch(sstable.descriptor, components, store.metadata, sstable.partitioner);
         sections = bulkLoaded.getPositionsForRanges(ranges);
         assert sections.size() == 1 : "Expected to find range in sstable opened for bulk loading";
     }

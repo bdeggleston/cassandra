@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.io.sstable.SSTableReaderFactory;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -207,7 +208,7 @@ public class SSTableExportTest
         File tempSS2 = tempSSTableFile(KEYSPACE1, "Standard1");
         new SSTableImport().importJson(tempJson.getPath(), KEYSPACE1, "Standard1", tempSS2.getPath());
 
-        reader = SSTableReader.open(Descriptor.fromFilename(tempSS2.getPath()));
+        reader = SSTableReaderFactory.instance.open(Descriptor.fromFilename(tempSS2.getPath()));
         QueryFilter qf = Util.namesQueryFilter(cfs, Util.dk("rowA"), "name");
         ColumnFamily cf = qf.getSSTableColumnIterator(reader).getColumnFamily();
         qf.collateOnDiskAtom(cf, qf.getSSTableColumnIterator(reader), Integer.MIN_VALUE);

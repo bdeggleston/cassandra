@@ -124,7 +124,7 @@ public class LegacySSTableTest
 
     private void testStreaming(String version) throws Exception
     {
-        SSTableReader sstable = SSTableReader.open(getDescriptor(version));
+        SSTableReader sstable = SSTableReaderFactory.instance.open(getDescriptor(version));
         IPartitioner p = ClusterState.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
         ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("100"))));
@@ -173,7 +173,7 @@ public class LegacySSTableTest
     {
         try
         {
-            SSTableReader reader = SSTableReader.open(getDescriptor(version));
+            SSTableReader reader = SSTableReaderFactory.instance.open(getDescriptor(version));
             CellNameType type = reader.metadata.comparator;
             for (String keystring : TEST_DATA)
             {

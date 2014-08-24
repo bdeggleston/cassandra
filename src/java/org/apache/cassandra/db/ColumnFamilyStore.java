@@ -290,7 +290,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         if (loadSSTables)
         {
             Directories.SSTableLister sstableFiles = directories.sstableLister().skipTemporary(true);
-            Collection<SSTableReader> sstables = SSTableReader.openAll(sstableFiles.list().entrySet(), metadata, this.partitioner);
+            Collection<SSTableReader> sstables = SSTableReaderFactory.instance.openAll(sstableFiles.list().entrySet(), metadata, this.partitioner);
             data.addInitialSSTables(sstables);
         }
 
@@ -511,7 +511,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             SSTableReader reader;
             try
             {
-                reader = SSTableReader.open(newDescriptor, entry.getValue(), metadata, partitioner);
+                reader = SSTableReaderFactory.instance.open(newDescriptor, entry.getValue(), metadata, partitioner);
             }
             catch (IOException e)
             {
@@ -1964,7 +1964,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         Map<Descriptor, Set<Component>> snapshots = directories.sstableLister().snapshots(tag).list();
         List<SSTableReader> readers = new ArrayList<SSTableReader>(snapshots.size());
         for (Map.Entry<Descriptor, Set<Component>> entries : snapshots.entrySet())
-            readers.add(SSTableReader.open(entries.getKey(), entries.getValue(), metadata, partitioner));
+            readers.add(SSTableReaderFactory.instance.open(entries.getKey(), entries.getValue(), metadata, partitioner));
         return readers;
     }
 
