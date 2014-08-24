@@ -58,7 +58,7 @@ Updated --> Keyspace [Schema, ClusterState, CommitLog(weak, single method), Colu
 
 Updated --> Auth [QueryProcessor, DatabaseDescriptor, MigrationManager, ClusterState, Schema]
 
-BatchlogManager [QueryProcessor, DatabaseDescriptor, ClusterState, KeyspaceManager, SystemKeyspace, StorageProxy, FailureDetector, 
+Updated --> BatchlogManager [QueryProcessor, DatabaseDescriptor, ClusterState, KeyspaceManager, SystemKeyspace, StorageProxy, FailureDetector, 
                  MessagingService, CompactionManager]
 
 

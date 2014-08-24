@@ -20,6 +20,10 @@ package org.apache.cassandra.service;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
+
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.gms.FailureDetector;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.matchers.JUnitMatchers;
 
@@ -34,6 +38,13 @@ import static org.hamcrest.CoreMatchers.is;
 public class BatchlogEndpointFilterTest
 {
     private static final String LOCAL = "local";
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
 
     @Test
     public void shouldSelect2hostsFromNonLocalRacks() throws UnknownHostException
@@ -97,7 +108,7 @@ public class BatchlogEndpointFilterTest
     {
         public TestEndpointFilter(String localRack, Multimap<String, InetAddress> endpoints)
         {
-            super(localRack, endpoints);
+            super(localRack, endpoints, FailureDetector.instance);
         }
 
         @Override

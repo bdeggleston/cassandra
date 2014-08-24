@@ -783,7 +783,7 @@ public class StorageProxy implements StorageProxyMBean
         Multimap<String, InetAddress> localEndpoints = HashMultimap.create(topology.getDatacenterRacks().get(localDataCenter));
         String localRack = databaseDescriptor.getEndpointSnitch().getRack(FBUtilities.getBroadcastAddress());
 
-        Collection<InetAddress> chosenEndpoints = new BatchlogManager.EndpointFilter(localRack, localEndpoints).filter();
+        Collection<InetAddress> chosenEndpoints = new BatchlogManager.EndpointFilter(localRack, localEndpoints, FailureDetector.instance).filter();
         if (chosenEndpoints.isEmpty())
         {
             if (consistencyLevel == ConsistencyLevel.ANY)

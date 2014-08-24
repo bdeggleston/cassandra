@@ -32,6 +32,7 @@ import javax.management.ObjectName;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 import com.google.common.util.concurrent.RateLimiter;
+import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.service.ClusterState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,12 +68,49 @@ public class BatchlogManager implements BatchlogManagerMBean
     private static final int PAGE_SIZE = 128; // same as HHOM, for now, w/out using any heuristics. TODO: set based on avg batch size.
 
     private static final Logger logger = LoggerFactory.getLogger(BatchlogManager.class);
-    public static final BatchlogManager instance = new BatchlogManager();
+    public static final BatchlogManager instance = new BatchlogManager(
+            DatabaseDescriptor.instance, QueryProcessor.instance, SystemKeyspace.instance, KeyspaceManager.instance, MessagingService.instance,
+            ClusterState.instance, FailureDetector.instance, CompactionManager.instance, StorageProxy.instance);
 
     private final AtomicLong totalBatchesReplayed = new AtomicLong();
     private final AtomicBoolean isReplaying = new AtomicBoolean();
 
     public static final ScheduledExecutorService batchlogTasks = new DebuggableScheduledThreadPoolExecutor("BatchlogTasks");
+
+    private final DatabaseDescriptor databaseDescriptor;
+    private final QueryProcessor queryProcessor;
+    private final SystemKeyspace systemKeyspace;
+    private final KeyspaceManager keyspaceManager;
+    private final MessagingService messagingService;
+    private final ClusterState clusterState;
+    private final IFailureDetector failureDetector;
+    private final CompactionManager compactionManager;
+    private final StorageProxy storageProxy;
+
+    public BatchlogManager(DatabaseDescriptor databaseDescriptor, QueryProcessor queryProcessor, SystemKeyspace systemKeyspace,
+                           KeyspaceManager keyspaceManager, MessagingService messagingService, ClusterState clusterState, IFailureDetector failureDetector,
+                           CompactionManager compactionManager, StorageProxy storageProxy)
+    {
+        assert databaseDescriptor != null;
+        assert queryProcessor != null;
+        assert systemKeyspace != null;
+        assert keyspaceManager != null;
+        assert messagingService != null;
+        assert clusterState != null;
+        assert failureDetector != null;
+        assert compactionManager != null;
+        assert storageProxy != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.queryProcessor = queryProcessor;
+        this.systemKeyspace = systemKeyspace;
+        this.keyspaceManager = keyspaceManager;
+        this.messagingService = messagingService;
+        this.clusterState = clusterState;
+        this.failureDetector = failureDetector;
+        this.compactionManager = compactionManager;
+        this.storageProxy = storageProxy;
+    }
 
     public void start()
     {
@@ -100,7 +138,7 @@ public class BatchlogManager implements BatchlogManagerMBean
     public int countAllBatches()
     {
         String query = String.format("SELECT count(*) FROM %s.%s", KeyspaceManager.SYSTEM_KS, SystemKeyspace.BATCHLOG_CF);
-        return (int) QueryProcessor.instance.executeInternal(query).one().getLong("count");
+        return (int) queryProcessor.executeInternal(query).one().getLong("count");
     }
 
     public long getTotalBatchesReplayed()
@@ -164,12 +202,12 @@ public class BatchlogManager implements BatchlogManagerMBean
 
         // rate limit is in bytes per second. Uses Double.MAX_VALUE if disabled (set to 0 in cassandra.yaml).
         // max rate is scaled by the number of nodes in the cluster (same as for HHOM - see CASSANDRA-5272).
-        int throttleInKB = DatabaseDescriptor.instance.getBatchlogReplayThrottleInKB() / ClusterState.instance.getTokenMetadata().getAllEndpoints().size();
+        int throttleInKB = databaseDescriptor.getBatchlogReplayThrottleInKB() / clusterState.getTokenMetadata().getAllEndpoints().size();
         RateLimiter rateLimiter = RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
 
         try
         {
-            UntypedResultSet page = QueryProcessor.instance.executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s LIMIT %d",
+            UntypedResultSet page = queryProcessor.executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s LIMIT %d",
                                                                   KeyspaceManager.SYSTEM_KS,
                                                                   SystemKeyspace.BATCHLOG_CF,
                                                                   PAGE_SIZE));
@@ -181,7 +219,7 @@ public class BatchlogManager implements BatchlogManagerMBean
                 if (page.size() < PAGE_SIZE)
                     break; // we've exhausted the batchlog, next query would be empty.
 
-                page = QueryProcessor.instance.executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s WHERE token(id) > token(?) LIMIT %d",
+                page = queryProcessor.executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s WHERE token(id) > token(?) LIMIT %d",
                                                      KeyspaceManager.SYSTEM_KS,
                                                      SystemKeyspace.BATCHLOG_CF,
                                                      PAGE_SIZE), 
@@ -216,12 +254,12 @@ public class BatchlogManager implements BatchlogManagerMBean
             id = row.getUUID("id");
             long writtenAt = row.getLong("written_at");
             // enough time for the actual write + batchlog entry mutation delivery (two separate requests).
-            long timeout = DatabaseDescriptor.instance.getWriteRpcTimeout() * 2; // enough time for the actual write + BM removal mutation
+            long timeout = databaseDescriptor.getWriteRpcTimeout() * 2; // enough time for the actual write + BM removal mutation
             if (System.currentTimeMillis() < writtenAt + timeout)
                 continue; // not ready to replay yet, might still get a deletion.
 
             int version = row.has("version") ? row.getInt("version") : MessagingService.VERSION_12;
-            Batch batch = new Batch(id, writtenAt, row.getBytes("data"), version);
+            Batch batch = new Batch(id, writtenAt, row.getBytes("data"), version, systemKeyspace, messagingService, clusterState, failureDetector, storageProxy);
             try
             {
                 if (batch.replay(rateLimiter) > 0)
@@ -261,14 +299,32 @@ public class BatchlogManager implements BatchlogManagerMBean
         private final ByteBuffer data;
         private final int version;
 
+        private final SystemKeyspace systemKeyspace;
+        private final MessagingService messagingService;
+        private final ClusterState clusterState;
+        private final IFailureDetector failureDetector;
+        private final StorageProxy storageProxy;
+
         private List<ReplayWriteResponseHandler> replayHandlers;
 
-        public Batch(UUID id, long writtenAt, ByteBuffer data, int version)
+        private Batch(UUID id, long writtenAt, ByteBuffer data, int version, SystemKeyspace systemKeyspace, MessagingService messagingService, ClusterState clusterState, IFailureDetector failureDetector, StorageProxy storageProxy)
         {
+            assert systemKeyspace != null;
+            assert messagingService != null;
+            assert clusterState != null;
+            assert failureDetector != null;
+            assert storageProxy != null;
+
             this.id = id;
             this.writtenAt = writtenAt;
             this.data = data;
             this.version = version;
+
+            this.systemKeyspace = systemKeyspace;
+            this.messagingService = messagingService;
+            this.clusterState = clusterState;
+            this.failureDetector = failureDetector;
+            this.storageProxy = storageProxy;
         }
 
         public int replay(RateLimiter rateLimiter) throws IOException
@@ -323,7 +379,7 @@ public class BatchlogManager implements BatchlogManagerMBean
                 // We don't abort the replay entirely b/c this can be considered a success (truncated is same as delivered then
                 // truncated.
                 for (UUID cfId : mutation.getColumnFamilyIds())
-                    if (writtenAt <= SystemKeyspace.instance.getTruncatedAt(cfId))
+                    if (writtenAt <= systemKeyspace.getTruncatedAt(cfId))
                         mutation = mutation.without(cfId);
 
                 if (!mutation.isEmpty())
@@ -349,7 +405,7 @@ public class BatchlogManager implements BatchlogManagerMBean
 
                     if (ttl > 0 && handler != null)
                         for (InetAddress endpoint : handler.undelivered)
-                            StorageProxy.instance.writeHintForMutation(undeliveredMutation, writtenAt, ttl, endpoint);
+                            storageProxy.writeHintForMutation(undeliveredMutation, writtenAt, ttl, endpoint);
                 }
             }
             catch (IOException e)
@@ -380,17 +436,17 @@ public class BatchlogManager implements BatchlogManagerMBean
         {
             Set<InetAddress> liveEndpoints = new HashSet<>();
             String ks = mutation.getKeyspaceName();
-            Token<?> tk = ClusterState.instance.getPartitioner().getToken(mutation.key());
+            Token<?> tk = clusterState.getPartitioner().getToken(mutation.key());
 
-            for (InetAddress endpoint : Iterables.concat(ClusterState.instance.getNaturalEndpoints(ks, tk),
-                                                         ClusterState.instance.getTokenMetadata().pendingEndpointsFor(tk, ks)))
+            for (InetAddress endpoint : Iterables.concat(clusterState.getNaturalEndpoints(ks, tk),
+                                                         clusterState.getTokenMetadata().pendingEndpointsFor(tk, ks)))
             {
                 if (endpoint.equals(FBUtilities.getBroadcastAddress()))
                     mutation.apply();
-                else if (FailureDetector.instance.isAlive(endpoint))
+                else if (failureDetector.isAlive(endpoint))
                     liveEndpoints.add(endpoint); // will try delivering directly instead of writing a hint.
                 else
-                    StorageProxy.instance.writeHintForMutation(mutation, writtenAt, ttl, endpoint);
+                    storageProxy.writeHintForMutation(mutation, writtenAt, ttl, endpoint);
             }
 
             if (liveEndpoints.isEmpty())
@@ -399,7 +455,7 @@ public class BatchlogManager implements BatchlogManagerMBean
             ReplayWriteResponseHandler handler = new ReplayWriteResponseHandler(liveEndpoints);
             MessageOut<Mutation> message = mutation.createMessage();
             for (InetAddress endpoint : liveEndpoints)
-                MessagingService.instance.sendRR(message, endpoint, handler, false);
+                messagingService.sendRR(message, endpoint, handler, false);
             return handler;
         }
 
@@ -444,13 +500,13 @@ public class BatchlogManager implements BatchlogManagerMBean
     // force flush + compaction to reclaim space from the replayed batches
     private void cleanup() throws ExecutionException, InterruptedException
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KeyspaceManager.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF);
+        ColumnFamilyStore cfs = keyspaceManager.open(KeyspaceManager.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF);
         cfs.forceBlockingFlush();
         Collection<Descriptor> descriptors = new ArrayList<>();
         for (SSTableReader sstr : cfs.getSSTables())
             descriptors.add(sstr.descriptor);
         if (!descriptors.isEmpty()) // don't pollute the logs if there is nothing to compact.
-            CompactionManager.instance.submitUserDefined(cfs, descriptors, Integer.MAX_VALUE).get();
+            compactionManager.submitUserDefined(cfs, descriptors, Integer.MAX_VALUE).get();
     }
 
     public static class EndpointFilter
@@ -458,10 +514,16 @@ public class BatchlogManager implements BatchlogManagerMBean
         private final String localRack;
         private final Multimap<String, InetAddress> endpoints;
 
-        public EndpointFilter(String localRack, Multimap<String, InetAddress> endpoints)
+        private final IFailureDetector failureDetector;
+
+        public EndpointFilter(String localRack, Multimap<String, InetAddress> endpoints, IFailureDetector failureDetector)
         {
+            assert failureDetector != null;
+
             this.localRack = localRack;
             this.endpoints = endpoints;
+
+            this.failureDetector = failureDetector;
         }
 
         /**
@@ -521,7 +583,7 @@ public class BatchlogManager implements BatchlogManagerMBean
         @VisibleForTesting
         protected boolean isValid(InetAddress input)
         {
-            return !input.equals(FBUtilities.getBroadcastAddress()) && FailureDetector.instance.isAlive(input);
+            return !input.equals(FBUtilities.getBroadcastAddress()) && failureDetector.isAlive(input);
         }
 
         @VisibleForTesting
