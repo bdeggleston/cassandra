@@ -311,6 +311,7 @@ public final class MessagingService implements MessagingServiceMBean
     private volatile StorageProxy storageProxy = null;
     private volatile Tracing tracing = null;
     private volatile StatusLogger statusLogger = null;
+    private volatile Gossiper gossiper = null;
 
     public MessagingService(DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace, StageManager stageManager1, SinkManager sinkManager)
     {
@@ -364,15 +365,17 @@ public final class MessagingService implements MessagingServiceMBean
         callbacks = new ExpiringMap<Integer, CallbackInfo>(databaseDescriptor.getMinRpcTimeout(), timeoutReporter);
     }
 
-    public synchronized void init(ClusterState clusterState, StorageProxy storageProxy, Tracing tracing)
+    public synchronized void init(ClusterState clusterState, StorageProxy storageProxy, Tracing tracing, Gossiper gossiper)
     {
         assert !initialized;
 
         assert storageProxy != null;
         assert tracing != null;
+        assert gossiper != null;
 
         this.storageProxy = storageProxy;
         this.tracing = tracing;
+        this.gossiper = gossiper;
 
         Runnable logDropped = new Runnable()
         {
@@ -765,7 +768,7 @@ public final class MessagingService implements MessagingServiceMBean
             return;
         }
 
-        Runnable runnable = new MessageDeliveryTask(message, id, timestamp);
+        Runnable runnable = new MessageDeliveryTask(message, id, timestamp, this, gossiper);
         TracingAwareExecutorService stage = stageManager.getStage(message.getMessageType());
         assert stage != null : "No stage for message type " + message.verb;
 

@@ -250,7 +250,7 @@ org.apache.cassandra.metrics
 org.apache.cassandra.net  
     IAsyncCallback [FailureDetector]
     Updated --> IncomingTcpConnection [MessagingService, Gossiper, DatabaseDescriptor]
-    MessageDeliveryTask [MessagingService, Gossiper]
+    Updated --> MessageDeliveryTask [MessagingService, Gossiper]
     MessageIn [DatabaseDescriptor, MessagingService]
     MessageOut [DatabaseDescriptor, Tracing]
     Updated --> OutboundTcpConnection [MessagingService, DatabaseDescriptor, Tracing]

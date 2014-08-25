@@ -32,12 +32,18 @@ public class MessageDeliveryTask implements Runnable
     private final long constructionTime;
     private final int id;
 
-    public MessageDeliveryTask(MessageIn message, int id, long timestamp)
+    private final MessagingService messagingService;
+    private final Gossiper gossiper;
+
+    public MessageDeliveryTask(MessageIn message, int id, long timestamp, MessagingService messagingService, Gossiper gossiper)
     {
         assert message != null;
         this.message = message;
         this.id = id;
         constructionTime = timestamp;
+
+        this.messagingService = messagingService;
+        this.gossiper = gossiper;
     }
 
     public void run()
@@ -46,11 +52,11 @@ public class MessageDeliveryTask implements Runnable
         if (MessagingService.DROPPABLE_VERBS.contains(verb)
             && System.currentTimeMillis() > constructionTime + message.getTimeout())
         {
-            MessagingService.instance.incrementDroppedMessages(verb);
+            messagingService.incrementDroppedMessages(verb);
             return;
         }
 
-        IVerbHandler verbHandler = MessagingService.instance.getVerbHandler(verb);
+        IVerbHandler verbHandler = messagingService.getVerbHandler(verb);
         if (verbHandler == null)
         {
             logger.debug("Unknown verb {}", verb);
@@ -67,13 +73,13 @@ public class MessageDeliveryTask implements Runnable
             {
                 MessageOut response = new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE)
                                                     .withParameter(MessagingService.FAILURE_RESPONSE_PARAM, MessagingService.ONE_BYTE);
-                MessagingService.instance.sendReply(response, id, message.from);
+                messagingService.sendReply(response, id, message.from);
             }
 
             throw t;
         }
         if (GOSSIP_VERBS.contains(message.verb))
-            Gossiper.instance.setLastProcessedMessageAt(constructionTime);
+            gossiper.setLastProcessedMessageAt(constructionTime);
     }
 
     EnumSet<MessagingService.Verb> GOSSIP_VERBS = EnumSet.of(MessagingService.Verb.GOSSIP_DIGEST_ACK,

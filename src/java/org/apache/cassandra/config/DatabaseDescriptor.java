@@ -123,7 +123,7 @@ public class DatabaseDescriptor
         HintedHandOffManager hintedHandOffManager = HintedHandOffManager.instance;
         StorageProxy storageProxy = StorageProxy.instance;
         Tracing tracing = Tracing.instance;
-        messagingService.init(clusterState, storageProxy, tracing);
+        messagingService.init(clusterState, storageProxy, tracing, gossiper);
 
         SSTableReaderFactory ssTableReaderFactory = SSTableReaderFactory.instance;
         SSTableWriterFactory ssTableWriterFactory = SSTableWriterFactory.instance;
