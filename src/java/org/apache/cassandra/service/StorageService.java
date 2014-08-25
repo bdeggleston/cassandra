@@ -442,7 +442,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         logger.info("Gathering node replacement information for {}", databaseDescriptor.getReplaceAddress());
         if (!messagingService.isListening())
-            messagingService.listen(FBUtilities.getLocalAddress());
+            messagingService.listen(FBUtilities.getLocalAddress(), gossiper);
 
         // make magic happen
         gossiper.doShadowRound();
@@ -472,7 +472,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         logger.debug("Starting shadow gossip round to check for endpoint collision");
         if (!messagingService.isListening())
-            messagingService.listen(FBUtilities.getLocalAddress());
+            messagingService.listen(FBUtilities.getLocalAddress(), gossiper);
         gossiper.doShadowRound();
         EndpointState epState = gossiper.getEndpointStateForEndpoint(FBUtilities.getBroadcastAddress());
         if (epState != null && !gossiper.isDeadState(epState))
@@ -524,7 +524,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         gossiper.addLocalApplicationState(ApplicationState.NET_VERSION, clusterState.valueFactory.networkVersion());
 
         if (!messagingService.isListening())
-            messagingService.listen(FBUtilities.getLocalAddress());
+            messagingService.listen(FBUtilities.getLocalAddress(), gossiper);
         Uninterruptibles.sleepUninterruptibly(ringDelay, TimeUnit.MILLISECONDS);
     }
 
@@ -706,7 +706,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             schema.updateVersionAndAnnounce(migrationManager); // Ensure we know our own actual Schema UUID in preparation for updates
 
             if (!messagingService.isListening())
-                messagingService.listen(FBUtilities.getLocalAddress());
+                messagingService.listen(FBUtilities.getLocalAddress(), gossiper);
             loadBroadcaster.startBroadcasting();
 
             hintedHandOffManager.start();

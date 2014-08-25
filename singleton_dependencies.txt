@@ -89,6 +89,300 @@ Updated --> StatusLogger [DatabaseDescriptor, ColumnFamilyStoreManager]
 
 Updated --> PendingRangeCalculatorService [Schema, ClusterState]
 
+Next:
+org.apache.cassandra.auth  
+    AuthenticatedUser [Auth]
+    CassandraAuthorizer [QueryProcessor, Auth]
+    DataResource [Schema]
+    PasswordAuthenticator [QueryProcessor, Auth, DatabaseDescriptor, StorageServiceTasks]
+
+org.apache.cassandra.cache  
+    AutoSavingCache [DatabaseDescriptor, StorageServiceTasks, CompactionManager]
+    CounterCacheKey [Schema]
+    RowCacheKey [Schema]
+
+org.apache.cassandra.concurrent  
+    AbstractTracingAwareExecutorService [Tracing]
+    DebuggableThreadPoolExecutor [Tracing]
+
+org.apache.cassandra.config  
+    CFMetaData [Schema, QueryProcessor, SystemKeyspace, KeyspaceManager, ColumnFamilyStoreManager]
+    ColumnDefinition [QueryProcessor]
+    DatabaseDescriptor [SystemKeyspace, DefsTables, Schema]
+    KSMetaData [QueryProcessor, SystemKeyspace, ClusterState, DatabaseDescriptor]
+    TriggerDefinition [QueryProcessor]
+    UFMetaData [QueryProcessor, SystemKeyspace]
+    UTMetaData [SystemKeyspace, QueryProcessor]
+
+org.apache.cassandra.cql3  
+    QueryProcessor [Tracing]
+    UpdateParameters [QueryProcessor]
+    UserOptions [DatabaseDescriptor]
+
+org.apache.cassandra.cql3.functions  
+    TokenFct [ClusterState, Schema]
+
+org.apache.cassandra.cql3.udf  
+    UDFRegistry [QueryProcessor]
+
+org.apache.cassandra.db  
+    AbstractRangeCommand [DatabaseDescriptor]
+    CollationController [Tracing, KeyspaceManager]
+    ColumnFamily [Schema, MessagingService]
+    ColumnFamilySerializer [Schema]
+    ColumnFamilyStore [SSTableReaderFactory, ColumnFamilyStoreManager]
+    ColumnFamilyStoreManager [KeyspaceManager]
+    ColumnIndex [DatabaseDescriptor]
+    ConsistencyLevel [DatabaseDescriptor, KeyspaceManager]
+    CounterMutation [KeyspaceManager, Tracing, CacheService, DatabaseDescriptor, CacheService]
+    CounterMutationVerbHandler [DatabaseDescriptor, StorageProxy, MessagingService]
+    DataTracker [DatabaseDescriptor]
+    DecoratedKey [ClusterState]
+    DefinitionsUpdateVerbHandler [StageManager, DefsTables]
+    Directories [DatabaseDescriptor, StorageService]
+    HintedHandOffManager [StorageServiceTasks, StorageProxy, KeyspaceManager]
+    KeyspaceManager [ClusterState, Schema]
+    Memtable [SSTableWriterFactory, DatabaseDescriptor]
+    MigrationRequestVerbHandler [SystemKeyspace, MessagingService]
+    Mutation [Schema, KeyspaceManager, DatabaseDescriptor]
+    MutationVerbHandler [Tracing, MessagingService]
+    PagedRangeCommand [Schema, KeyspaceManager]
+    RangeSliceCommand [Schema, KeyspaceManager]
+    ReadCommand [DatabaseDescriptor]
+    ReadRepairVerbHandler [MessagingService]
+    ReadVerbHandler [ClusterState, KeyspaceManager, Tracing, MessagingService]
+    Row [ClusterState]
+    RowPosition [ClusterState]
+    SchemaCheckVerbHandler [Schema, MessagingService]
+    SliceByNamesReadCommand [Schema, ClusterState]
+    SliceFromReadCommand [Schema, ClusterState]
+    TruncateVerbHandler [Tracing, KeyspaceManager, MessagingService]
+
+org.apache.cassandra.db.columniterator  
+    IndexedSliceReader [Tracing]
+    SimpleSliceReader [Tracing]
+
+org.apache.cassandra.db.commitlog  
+    BatchCommitLogService [DatabaseDescriptor]
+    CommitLogReplayer [ColumnFamilyStoreManager, SystemKeyspace, Schema, KeyspaceManager, StageManager]
+    CommitLogSegment [DatabaseDescriptor, Schema]
+    PeriodicCommitLogService [DatabaseDescriptor]
+
+org.apache.cassandra.db.compaction  
+    AbstractCompactionStrategy [CompactionManager]
+    CompactionInfo [StorageService]
+    CompactionManager [KeyspaceManager]
+    CompactionTask [SSTableWriterFactory, DatabaseDescriptor, SystemKeyspace]
+    LeveledCompactionStrategy [CompactionManager]
+    LeveledManifest [DatabaseDescriptor]
+    Scrubber [CompactionManager]
+    Upgrader [SSTableWriterFactory]
+
+org.apache.cassandra.db.filter  
+    ExtendedFilter [DatabaseDescriptor]
+    SliceQueryFilter [DatabaseDescriptor, Tracing]
+
+org.apache.cassandra.db.index  
+    AbstractSimplePerColumnSecondaryIndex [ColumnFamilyStoreManager]
+    SecondaryIndex [SystemKeyspace, CompactionManager, ClusterState]
+    SecondaryIndexManager [CompactionManager, SystemKeyspace]
+    SecondaryIndexSearcher [Tracing]
+
+org.apache.cassandra.dht  
+    AbstractByteOrderedPartitioner [Schema, StorageService]
+    BootStrapper [Schema, KeyspaceManager, ClusterState, DatabaseDescriptor]
+    Bounds [ClusterState]
+    ExcludingBounds [ClusterState]
+    IncludingExcludingBounds [ClusterState]
+    OrderPreservingPartitioner [Schema, StorageService]
+    Range [ClusterState]
+    RangeStreamer [KeyspaceManager, DatabaseDescriptor, Gossiper]
+    Token [ClusterState]
+
+org.apache.cassandra.gms  
+    GossipDigestAck2VerbHandler [Gossiper]
+    GossipDigestAckVerbHandler [Gossiper, EndpointState , MessagingService]
+    GossipDigestSynVerbHandler [Gossiper, DatabaseDescriptor, MessagingService]
+    Gossiper [ClusterState, Gossiper]
+    GossipShutdownVerbHandler [Gossiper, FailureDetector]
+
+org.apache.cassandra.hadoop  
+    AbstractBulkRecordWriter [DatabaseDescriptor]
+
+org.apache.cassandra.io.sstable  
+    AbstractSSTableSimpleWriter [DatabaseDescriptor, SSTableWriterFactory]
+    CQLSSTableWriter [Schema, QueryProcessor]
+    IndexSummaryManager [KeyspaceManager, DatabaseDescriptor]
+    KeyIterator [ClusterState]
+    SSTableDeletingTask [SystemKeyspace, StorageServiceTasks]
+    SSTableLoader [SSTableReaderFactory, DatabaseDescriptor]
+    SSTableReader [StorageServiceTasks]
+    SSTableRewriter [DatabaseDescriptor]
+
+org.apache.cassandra.io.util  
+    FileUtils [StorageServiceTasks, DatabaseDescriptor, StorageService, KeyspaceManager]
+    Memory [DatabaseDescriptor,]
+    PoolingSegmentedFile [FileCacheService]
+    SegmentedFile [DatabaseDescriptor]
+    SequentialWriter [DatabaseDescriptor]
+
+org.apache.cassandra.locator  
+    AbstractEndpointSnitch [DatabaseDescriptor]
+    AbstractReplicationStrategy [KeyspaceManager]
+    CloudstackSnitch [Gossiper, SystemKeyspace]
+    DynamicEndpointSnitch [DatabaseDescriptor StorageServiceTasks, StorageService, MessagingService]
+    Ec2MultiRegionSnitch [DatabaseDescriptor, Gossiper]
+    Ec2Snitch [Gossiper, SystemKeyspace]
+    EndpointSnitchInfo [DatabaseDescriptor]
+    GoogleCloudSnitch [Gossiper, SystemKeyspace]
+    GossipingPropertyFileSnitch [Gossiper, SystemKeyspace, ClusterState, StorageService]
+    PropertyFileSnitch [ClusterState, StorageService]
+    ReconnectableSnitchHelper [MessagingService]
+    TokenMetadata [DatabaseDescriptor, ClusterState, FailureDetector]
+    YamlFileNetworkTopologySnitch [StorageService, Gossiper, ClusterState]
+
+org.apache.cassandra.metrics  
+    ColumnFamilyMetrics [KeyspaceManager]
+    CompactionMetrics [Schema, KeyspaceManager]
+    FileCacheMetrics [FileCacheService]
+    HintedHandoffMetrics [SystemKeyspace]
+
+org.apache.cassandra.net  
+    IAsyncCallback [FailureDetector]
+    Updated --> IncomingTcpConnection [MessagingService, Gossiper, DatabaseDescriptor]
+    MessageDeliveryTask [MessagingService, Gossiper]
+    MessageIn [DatabaseDescriptor, MessagingService]
+    MessageOut [DatabaseDescriptor, Tracing]
+    OutboundTcpConnection [MessagingService, DatabaseDescriptor, DatabaseDescriptor, Tracing]
+    OutboundTcpConnectionPool [DatabaseDescriptor, SystemKeyspace]
+    ResponseVerbHandler [MessagingService, Tracing]
+    WriteCallbackInfo [StorageProxy]
+
+org.apache.cassandra.repair  
+    Differencer [MessagingService]
+    RepairJob [MessagingService, KeyspaceManager]
+    RepairMessageVerbHandler [Schema, KeyspaceManager, ActiveRepairService, MessagingService, CompactionManager]
+    RepairSession [DatabaseDescriptor, FailureDetector, ActiveRepairService, FailureDetector]
+    SnapshotTask [MessagingService]
+    StreamingRepairTask [MessagingService, ActiveRepairService]
+    Validator [StageManager, MessagingService]
+
+org.apache.cassandra.service  
+    AbstractReadExecutor [KeyspaceManager, StorageProxy, Schema, DatabaseDescriptor, MessagingService, StageManager, MessagingService]
+    AbstractRowResolver [ClusterState]
+    AbstractWriteResponseHandler [DatabaseDescriptor]
+    AsyncRepairCallback [StageManager]
+    CacheService [StageManager, CacheService]
+    ClientState [DatabaseDescriptor, Auth, Schema, KeyspaceManager]
+    ClusterState [DatabaseDescriptor]
+    DatacenterSyncWriteResponseHandler [DatabaseDescriptor]
+    DatacenterWriteResponseHandler [DatabaseDescriptor]
+    EchoVerbHandler [MessagingService]
+    FileCacheService [DatabaseDescriptor]
+    LoadBroadcaster [ClusterState]
+    MigrationTask [FailureDetector, DefsTables, MessagingService]
+    PendingRangeCalculatorService [KeyspaceManager]
+    QueryState [Tracing, StorageService]
+    RangeSliceVerbHandler [ClusterState, Tracing, MessagingService]
+    ReadCallback [KeyspaceManager, StageManager, MessagingService, DatabaseDescriptor]
+    RowDataResolver [MessagingService]
+    SnapshotVerbHandler [KeyspaceManager, MessagingService]
+    StorageProxy [KeyspaceManager, KeyspaceManager, Tracing, ClusterState]
+    TruncateResponseHandler [DatabaseDescriptor]
+
+org.apache.cassandra.service.pager  
+    AbstractQueryPager [Schema]
+    NamesQueryPager [KeyspaceManager, StorageProxy]
+    QueryPagers [Schema]
+    RangeNamesQueryPager [StorageProxy, ClusterState]
+    RangeSliceQueryPager [StorageProxy, ClusterState]
+    SliceQueryPager [KeyspaceManager, StorageProxy]
+
+org.apache.cassandra.service.paxos  
+    AbstractPaxosCallback [DatabaseDescriptor]
+    CommitVerbHandler [Tracing, MessagingService]
+    PaxosState [Tracing, KeyspaceManager, SystemKeyspace]
+    PrepareVerbHandler [MessagingService]
+    ProposeVerbHandler [MessagingService]
+
+org.apache.cassandra.streaming  
+    DefaultConnectionFactory [DatabaseDescriptor]
+    ReplicationFinishedVerbHandler [StorageService, MessagingService]
+    StreamReader [SSTableWriterFactory, Schema, KeyspaceManager, ClusterState]
+    StreamReceiveTask [StorageServiceTasks, Schema, ColumnFamilyStore ]
+    StreamResultFuture [StreamManager]
+    StreamSession [DatabaseDescriptor, KeyspaceManager]
+
+org.apache.cassandra.streaming.compress  
+    CompressedStreamReader [Schema, KeyspaceManager]
+
+org.apache.cassandra.thrift  
+    CustomTNonBlockingServer [DatabaseDescriptor, ThriftSessionManager]
+    CustomTThreadPoolServer [DatabaseDescriptor, ThriftSessionManager]
+    ThriftClientState [DatabaseDescriptor]
+    ThriftServer [DatabaseDescriptor]
+    ThriftValidation [KeyspaceManager, Schema, ClusterState]
+    THsHaDisruptorServer [ThriftSessionManager, DatabaseDescriptor]
+
+org.apache.cassandra.tools  
+    BulkLoader [DatabaseDescriptor]
+    SSTableExport [SSTableReaderFactory, DatabaseDescriptor, Schema, KeyspaceManager]
+    SSTableImport [DatabaseDescriptor, SSTableWriterFactory, DatabaseDescriptor, Schema]
+    SSTableLevelResetter [DatabaseDescriptor, Schema, KeyspaceManager]
+    StandaloneScrubber [DatabaseDescriptor, Schema, KeyspaceManager, SSTableReaderFactory]
+    StandaloneSplitter [DatabaseDescriptor, KeyspaceManager, SSTableReaderFactory]
+    StandaloneUpgrader [DatabaseDescriptor, Schema, KeyspaceManager, SSTableReaderFactory]
+
+org.apache.cassandra.transport  
+    Frame [DatabaseDescriptor]
+    RequestThreadPoolExecutor [DatabaseDescriptor]
+    Server [StorageService, ClientMetrics, DatabaseDescriptor, MigrationManager]
+    ServerConnection [DatabaseDescriptor]
+
+org.apache.cassandra.transport.messages  
+    BatchMessage [Tracing, QueryProcessor, Tracing]
+    CredentialsMessage [DatabaseDescriptor]
+    ExecuteMessage [Tracing]
+    PrepareMessage [Tracing]
+    QueryMessage [Tracing]
+    StartupMessage [DatabaseDescriptor]
+
+org.apache.cassandra.utils 
+    BackgroundActivityMonitor [Gossiper, ClusterState]
+    CounterId [SystemKeyspace]
+    FBUtilities [DatabaseDescriptor]
+    ResourceWatcher [StorageServiceTasks]
+
+org.apache.cassandra.cql3.statements
+    AlterKeyspaceStatement [Schema, MigrationManager, KeyspaceManager, ClusterState, DatabaseDescriptor]
+    AlterTableStatement [MigrationManager]
+    AlterTypeStatement [Schema, MigrationManager, Schema]
+    AlterUserStatement [DatabaseDescriptor, Auth]
+    BatchStatement [StorageProxy, DatabaseDescriptor]
+    CreateFunctionStatement [MigrationManager]
+    CreateIndexStatement [Schema, MigrationManager]
+    CreateKeyspaceStatement [MigrationManager, ClusterState, DatabaseDescriptor]
+    CreateTableStatement [MigrationManager]
+    CreateTriggerStatement [Schema, MigrationManager, TriggerExecutor]
+    CreateTypeStatement [Schema, MigrationManager, Schema]
+    CreateUserStatement [Auth, DatabaseDescriptor, Auth]
+    DropFunctionStatement [MigrationManager]
+    DropIndexStatement [MigrationManager, Schema]
+    DropKeyspaceStatement [MigrationManager]
+    DropTableStatement [MigrationManager]
+    DropTriggerStatement [Schema, MigrationManager]
+    DropTypeStatement [Schema, MigrationManager]
+    DropUserStatement [Auth, DatabaseDescriptor]
+    GrantStatement [DatabaseDescriptor]
+    ListPermissionsStatement [DatabaseDescriptor, Auth]
+    ListUsersStatement [QueryProcessor]
+    ModificationStatement [StorageProxy]
+    PermissionAlteringStatement [Auth]
+    RevokeStatement [DatabaseDescriptor]
+    SelectStatement [StorageProxy, ClusterState, QueryProcessor, ColumnFamilyStore , KeyspaceManager]
+    TruncateStatement [StorageProxy]
+
+
 TODO:
 The following need to be provided to CqlStatements:
     TriggerExecutor

@@ -34,6 +34,7 @@ import javax.management.ObjectName;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
+import org.apache.cassandra.gms.*;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,10 +46,6 @@ import org.apache.cassandra.config.EncryptionOptions.ServerEncryptionOptions;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.dht.BootStrapper;
 import org.apache.cassandra.exceptions.ConfigurationException;
-import org.apache.cassandra.gms.EchoMessage;
-import org.apache.cassandra.gms.GossipDigestAck;
-import org.apache.cassandra.gms.GossipDigestAck2;
-import org.apache.cassandra.gms.GossipDigestSyn;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.FileUtils;
@@ -436,12 +433,12 @@ public final class MessagingService implements MessagingServiceMBean
      *
      * @param localEp InetAddress whose port to listen on.
      */
-    public void listen(InetAddress localEp) throws ConfigurationException
+    public void listen(InetAddress localEp, Gossiper gossiper) throws ConfigurationException
     {
         callbacks.reset(); // hack to allow tests to stop/restart MS
         for (ServerSocket ss : getServerSockets(localEp))
         {
-            SocketThread th = new SocketThread(ss, "ACCEPT-" + localEp, databaseDescriptor);
+            SocketThread th = new SocketThread(ss, "ACCEPT-" + localEp, databaseDescriptor, this, gossiper);
             th.start();
             socketThreads.add(th);
         }
@@ -926,13 +923,17 @@ public final class MessagingService implements MessagingServiceMBean
     {
         private final ServerSocket server;
         private final DatabaseDescriptor databaseDescriptor;
+        private final MessagingService messagingService;
+        private final Gossiper gossiper;
 
-        SocketThread(ServerSocket server, String name, DatabaseDescriptor databaseDescriptor)
+        SocketThread(ServerSocket server, String name, DatabaseDescriptor databaseDescriptor, MessagingService messagingService, Gossiper gossiper)
         {
             super(name);
             assert databaseDescriptor != null;
             this.server = server;
             this.databaseDescriptor = databaseDescriptor;
+            this.messagingService = messagingService;
+            this.gossiper = gossiper;
         }
 
         public void run()
@@ -961,7 +962,7 @@ public final class MessagingService implements MessagingServiceMBean
 
                     Thread thread = isStream
                                   ? new IncomingStreamingConnection(version, socket)
-                                  : new IncomingTcpConnection(version, MessagingService.getBits(header, 2, 1) == 1, socket);
+                                  : new IncomingTcpConnection(version, MessagingService.getBits(header, 2, 1) == 1, socket, databaseDescriptor, messagingService, gossiper);
                     thread.start();
                 }
                 catch (AsynchronousCloseException e)
