@@ -44,11 +44,12 @@ public class WriteCallbackInfo extends CallbackInfo
         this.allowHints = allowHints;
     }
 
-    public boolean shouldHint()
+    @Override
+    public boolean shouldHint(StorageProxy storageProxy)
     {
         return allowHints
             && sentMessage.verb != MessagingService.Verb.COUNTER_MUTATION
             && consistencyLevel != ConsistencyLevel.ANY
-            && StorageProxy.instance.shouldHint(target);
+            && storageProxy.shouldHint(target);
     }
 }

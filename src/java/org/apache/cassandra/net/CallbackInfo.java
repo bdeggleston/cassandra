@@ -20,6 +20,7 @@ package org.apache.cassandra.net;
 import java.net.InetAddress;
 
 import org.apache.cassandra.io.IVersionedSerializer;
+import org.apache.cassandra.service.StorageProxy;
 
 /**
  * Encapsulates the callback information.
@@ -53,7 +54,7 @@ public class CallbackInfo
         this.failureCallback = failureCallback;
     }
 
-    public boolean shouldHint()
+    public boolean shouldHint(StorageProxy storageProxy)
     {
         return false;
     }

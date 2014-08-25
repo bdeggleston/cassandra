@@ -256,7 +256,7 @@ org.apache.cassandra.net
     Updated --> OutboundTcpConnection [MessagingService, DatabaseDescriptor, Tracing]
     Updated --> OutboundTcpConnectionPool [DatabaseDescriptor, SystemKeyspace]
     Updated --> ResponseVerbHandler [MessagingService, Tracing]
-    WriteCallbackInfo [StorageProxy]
+    Updated --> WriteCallbackInfo [StorageProxy]
 
 org.apache.cassandra.repair  
     Differencer [MessagingService]
