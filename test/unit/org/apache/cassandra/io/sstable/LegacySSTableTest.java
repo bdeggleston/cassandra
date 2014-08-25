@@ -133,7 +133,7 @@ public class LegacySSTableTest
         details.add(new StreamSession.SSTableStreamingSections(sstable,
                                                                sstable.getPositionsForRanges(ranges),
                                                                sstable.estimatedKeysForRanges(ranges), sstable.getSSTableMetadata().repairedAt));
-        new StreamPlan("LegacyStreamingTest").transferFiles(FBUtilities.getBroadcastAddress(), details)
+        new StreamPlan("LegacyStreamingTest", DatabaseDescriptor.instance).transferFiles(FBUtilities.getBroadcastAddress(), details)
                                              .execute().get();
 
         ColumnFamilyStore cfs = KeyspaceManager.instance.open(KSNAME).getColumnFamilyStore(CFNAME);

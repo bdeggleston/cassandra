@@ -253,8 +253,8 @@ org.apache.cassandra.net
     MessageDeliveryTask [MessagingService, Gossiper]
     MessageIn [DatabaseDescriptor, MessagingService]
     MessageOut [DatabaseDescriptor, Tracing]
-    OutboundTcpConnection [MessagingService, DatabaseDescriptor, DatabaseDescriptor, Tracing]
-    OutboundTcpConnectionPool [DatabaseDescriptor, SystemKeyspace]
+    Updated --> OutboundTcpConnection [MessagingService, DatabaseDescriptor, Tracing]
+    Updated --> OutboundTcpConnectionPool [DatabaseDescriptor, SystemKeyspace]
     ResponseVerbHandler [MessagingService, Tracing]
     WriteCallbackInfo [StorageProxy]
 

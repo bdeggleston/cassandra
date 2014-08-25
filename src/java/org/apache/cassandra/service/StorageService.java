@@ -1884,7 +1884,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
         }
 
-        StreamPlan stream = new StreamPlan("Restore replica count");
+        StreamPlan stream = new StreamPlan("Restore replica count", databaseDescriptor);
         for (String keyspaceName : rangesToFetch.keySet())
         {
             for (Map.Entry<InetAddress, Collection<Range<Token>>> entry : rangesToFetch.get(keyspaceName))
@@ -2975,7 +2975,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             Token token = clusterState.getPartitioner().getMinimumToken();
             List<Range<Token>> ranges = Collections.singletonList(new Range<>(token, token));
 
-            return new StreamPlan("Hints").transferRanges(hintsDestinationHost,
+            return new StreamPlan("Hints", databaseDescriptor).transferRanges(hintsDestinationHost,
                     KeyspaceManager.SYSTEM_KS,
                     ranges,
                     SystemKeyspace.HINTS_CF)
@@ -3062,7 +3062,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private class RangeRelocator
     {
-        private final StreamPlan streamPlan = new StreamPlan("Relocation");
+        private final StreamPlan streamPlan = new StreamPlan("Relocation", databaseDescriptor);
 
         private RangeRelocator(Collection<Token> tokens, List<String> keyspaceNames)
         {
@@ -3622,7 +3622,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             sessionsToStreamByKeyspace.put(keyspace, rangesPerEndpoint);
         }
 
-        StreamPlan streamPlan = new StreamPlan("Unbootstrap");
+        StreamPlan streamPlan = new StreamPlan("Unbootstrap", databaseDescriptor);
         for (Map.Entry<String, Map<InetAddress, List<Range<Token>>>> entry : sessionsToStreamByKeyspace.entrySet())
         {
             String keyspaceName = entry.getKey();
@@ -3717,7 +3717,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (!dir.exists() || !dir.isDirectory())
             throw new IllegalArgumentException("Invalid directory " + directory);
 
-        SSTableLoader.Client client = new SSTableLoader.Client()
+        SSTableLoader.Client client = new SSTableLoader.Client(databaseDescriptor)
         {
             public void init(String keyspace)
             {

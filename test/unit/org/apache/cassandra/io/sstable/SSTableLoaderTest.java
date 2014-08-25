@@ -21,6 +21,7 @@ import java.io.File;
 import java.util.List;
 
 import com.google.common.io.Files;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.service.ClusterState;
 import org.junit.BeforeClass;
@@ -81,7 +82,7 @@ public class SSTableLoaderTest
         writer.addColumn(ByteBufferUtil.bytes("col1"), ByteBufferUtil.bytes(100), 1);
         writer.close();
 
-        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client()
+        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client(DatabaseDescriptor.instance)
         {
             public void init(String keyspace)
             {

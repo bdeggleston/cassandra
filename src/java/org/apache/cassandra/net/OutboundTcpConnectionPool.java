@@ -32,6 +32,7 @@ import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.metrics.ConnectionMetrics;
 import org.apache.cassandra.security.SSLFactory;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 
 public class OutboundTcpConnectionPool
@@ -45,14 +46,20 @@ public class OutboundTcpConnectionPool
     private InetAddress resetedEndpoint;
     private ConnectionMetrics metrics;
 
-    OutboundTcpConnectionPool(InetAddress remoteEp)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final SystemKeyspace systemKeyspace;
+
+    OutboundTcpConnectionPool(InetAddress remoteEp, DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace, MessagingService messagingService, Tracing tracing)
     {
         id = remoteEp;
-        resetedEndpoint = SystemKeyspace.instance.getPreferredIP(remoteEp);
+        resetedEndpoint = systemKeyspace.getPreferredIP(remoteEp);
         started = new CountDownLatch(1);
 
-        cmdCon = new OutboundTcpConnection(this);
-        ackCon = new OutboundTcpConnection(this);
+        this.databaseDescriptor = databaseDescriptor;
+        this.systemKeyspace = systemKeyspace;
+
+        cmdCon = new OutboundTcpConnection(this, this.databaseDescriptor, messagingService, tracing);
+        ackCon = new OutboundTcpConnection(this, this.databaseDescriptor, messagingService, tracing);
     }
 
     /**
@@ -89,7 +96,7 @@ public class OutboundTcpConnectionPool
      */
     public void reset(InetAddress remoteEP)
     {
-        SystemKeyspace.instance.updatePreferredIP(id, remoteEP);
+        systemKeyspace.updatePreferredIP(id, remoteEP);
         resetedEndpoint = remoteEP;
         for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon })
             conn.softCloseSocket();
@@ -116,22 +123,22 @@ public class OutboundTcpConnectionPool
 
     public Socket newSocket() throws IOException
     {
-        return newSocket(endPoint());
+        return newSocket(endPoint(), databaseDescriptor);
     }
 
-    public static Socket newSocket(InetAddress endpoint) throws IOException
+    public static Socket newSocket(InetAddress endpoint, DatabaseDescriptor databaseDescriptor) throws IOException
     {
         // zero means 'bind on any available port.'
-        if (isEncryptedChannel(endpoint))
+        if (isEncryptedChannel(endpoint, databaseDescriptor))
         {
             if (Config.getOutboundBindAny())
-                return SSLFactory.getSocket(DatabaseDescriptor.instance.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.instance.getSSLStoragePort());
+                return SSLFactory.getSocket(databaseDescriptor.getServerEncryptionOptions(), endpoint, databaseDescriptor.getSSLStoragePort());
             else
-                return SSLFactory.getSocket(DatabaseDescriptor.instance.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.instance.getSSLStoragePort(), FBUtilities.getLocalAddress(), 0);
+                return SSLFactory.getSocket(databaseDescriptor.getServerEncryptionOptions(), endpoint, databaseDescriptor.getSSLStoragePort(), FBUtilities.getLocalAddress(), 0);
         }
         else
         {
-            Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, DatabaseDescriptor.instance.getStoragePort())).socket();
+            Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, databaseDescriptor.getStoragePort())).socket();
             if (Config.getOutboundBindAny() && !socket.isBound())
                 socket.bind(new InetSocketAddress(FBUtilities.getLocalAddress(), 0));
             return socket;
@@ -145,10 +152,10 @@ public class OutboundTcpConnectionPool
         return resetedEndpoint == null ? id : resetedEndpoint;
     }
 
-    public static boolean isEncryptedChannel(InetAddress address)
+    public static boolean isEncryptedChannel(InetAddress address, DatabaseDescriptor databaseDescriptor)
     {
-        IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
-        switch (DatabaseDescriptor.instance.getServerEncryptionOptions().internode_encryption)
+        IEndpointSnitch snitch = databaseDescriptor.getEndpointSnitch();
+        switch (databaseDescriptor.getServerEncryptionOptions().internode_encryption)
         {
             case none:
                 return false; // if nothing needs to be encrypted then return immediately.

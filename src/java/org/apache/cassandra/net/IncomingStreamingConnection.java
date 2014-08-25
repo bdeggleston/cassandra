@@ -22,6 +22,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.Socket;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,12 +39,14 @@ public class IncomingStreamingConnection extends Thread
 
     private final int version;
     private final Socket socket;
+    private final DatabaseDescriptor databaseDescriptor;
 
-    public IncomingStreamingConnection(int version, Socket socket)
+    public IncomingStreamingConnection(int version, Socket socket, DatabaseDescriptor databaseDescriptor)
     {
         super("STREAM-INIT-" + socket.getRemoteSocketAddress());
         this.version = version;
         this.socket = socket;
+        this.databaseDescriptor = databaseDescriptor;
     }
 
     @Override
@@ -62,7 +65,7 @@ public class IncomingStreamingConnection extends Thread
             // The receiving side distinguish two connections by looking at StreamInitMessage#isForOutgoing.
             // Note: we cannot use the same socket for incoming and outgoing streams because we want to
             // parallelize said streams and the socket is blocking, so we might deadlock.
-            StreamResultFuture.initReceivingSide(init.sessionIndex, init.planId, init.description, init.from, socket, init.isForOutgoing, version);
+            StreamResultFuture.initReceivingSide(init.sessionIndex, init.planId, init.description, init.from, socket, init.isForOutgoing, version, databaseDescriptor);
         }
         catch (IOException e)
         {

@@ -110,7 +110,7 @@ public class RangeStreamer
         this.tokens = tokens;
         this.address = address;
         this.description = description;
-        this.streamPlan = new StreamPlan(description);
+        this.streamPlan = new StreamPlan(description, DatabaseDescriptor.instance);
     }
 
     public RangeStreamer(TokenMetadata metadata, InetAddress address, String description)
@@ -119,7 +119,7 @@ public class RangeStreamer
         this.tokens = null;
         this.address = address;
         this.description = description;
-        this.streamPlan = new StreamPlan(description);
+        this.streamPlan = new StreamPlan(description, DatabaseDescriptor.instance);
     }
 
     public void addSourceFilter(ISourceFilter filter)

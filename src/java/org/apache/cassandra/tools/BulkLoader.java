@@ -273,7 +273,7 @@ public class BulkLoader
                               int sslStoragePort,
                               EncryptionOptions.ServerEncryptionOptions serverEncryptionOptions)
         {
-            super();
+            super(DatabaseDescriptor.instance);
             this.hosts = hosts;
             this.rpcPort = port;
             this.user = user;

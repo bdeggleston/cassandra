@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.repair;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +63,7 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
             repairedAt = ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId).repairedAt;
 
         logger.info(String.format("[streaming task #%s] Performing streaming repair of %d ranges with %s", desc.sessionId, request.ranges.size(), request.dst));
-        StreamResultFuture op = new StreamPlan("Repair", repairedAt, 1)
+        StreamResultFuture op = new StreamPlan("Repair", repairedAt, 1, DatabaseDescriptor.instance)
                                     .flushBeforeTransfer(true)
                                     // request ranges from the remote node
                                     .requestRanges(request.dst, desc.keyspace, request.ranges, desc.columnFamily)

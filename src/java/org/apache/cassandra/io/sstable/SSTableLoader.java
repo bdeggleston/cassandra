@@ -29,12 +29,15 @@ import com.google.common.collect.Multimap;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.streaming.*;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.OutputHandler;
 import org.apache.cassandra.utils.Pair;
@@ -157,7 +160,7 @@ public class SSTableLoader implements StreamEventHandler
         client.init(keyspace);
         outputHandler.output("Established connection to initial hosts");
 
-        StreamPlan plan = new StreamPlan("Bulk Load", 0, connectionsPerHost).connectionFactory(client.getConnectionFactory());
+        StreamPlan plan = new StreamPlan("Bulk Load", 0, connectionsPerHost, DatabaseDescriptor.instance).connectionFactory(client.getConnectionFactory());
 
         Map<InetAddress, Collection<Range<Token>>> endpointToRanges = client.getEndpointToRangesMap();
         openSSTables(endpointToRanges);
@@ -231,6 +234,13 @@ public class SSTableLoader implements StreamEventHandler
         private final Map<InetAddress, Collection<Range<Token>>> endpointToRanges = new HashMap<>();
         private IPartitioner partitioner;
 
+        private final DatabaseDescriptor databaseDescriptor;
+
+        protected Client(DatabaseDescriptor databaseDescriptor)
+        {
+            this.databaseDescriptor = databaseDescriptor;
+        }
+
         /**
          * Initialize the client.
          * Perform any step necessary so that after the call to the this
@@ -255,7 +265,7 @@ public class SSTableLoader implements StreamEventHandler
          */
         public StreamConnectionFactory getConnectionFactory()
         {
-            return new DefaultConnectionFactory();
+            return new DefaultConnectionFactory(databaseDescriptor);
         }
 
         /**
@@ -278,7 +288,7 @@ public class SSTableLoader implements StreamEventHandler
         {
             this.partitioner = partitioner;
             // the following is still necessary since Range/Token reference partitioner through StorageService.getPartitioner
-            DatabaseDescriptor.instance.setPartitioner(partitioner);
+            databaseDescriptor.setPartitioner(partitioner);
         }
 
         public IPartitioner getPartitioner()

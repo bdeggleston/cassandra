@@ -20,6 +20,7 @@ package org.apache.cassandra.streaming;
 import java.net.InetAddress;
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.service.ActiveRepairService;
@@ -38,7 +39,7 @@ public class StreamPlan
     private final long repairedAt;
     private final StreamCoordinator coordinator;
 
-    private StreamConnectionFactory connectionFactory = new DefaultConnectionFactory();
+    private final StreamConnectionFactory connectionFactory;
 
     private boolean flushBeforeTransfer = true;
 
@@ -47,15 +48,16 @@ public class StreamPlan
      *
      * @param description Stream type that describes this StreamPlan
      */
-    public StreamPlan(String description)
+    public StreamPlan(String description, DatabaseDescriptor databaseDescriptor)
     {
-        this(description, ActiveRepairService.UNREPAIRED_SSTABLE, 1);
+        this(description, ActiveRepairService.UNREPAIRED_SSTABLE, 1, databaseDescriptor);
     }
 
-    public StreamPlan(String description, long repairedAt, int connectionsPerHost)
+    public StreamPlan(String description, long repairedAt, int connectionsPerHost, DatabaseDescriptor databaseDescriptor)
     {
         this.description = description;
         this.repairedAt = repairedAt;
+        connectionFactory = new DefaultConnectionFactory(databaseDescriptor);
         this.coordinator = new StreamCoordinator(connectionsPerHost, connectionFactory);
     }
 

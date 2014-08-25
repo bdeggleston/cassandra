@@ -21,6 +21,9 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 
+import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +35,13 @@ public class DefaultConnectionFactory implements StreamConnectionFactory
     private static final Logger logger = LoggerFactory.getLogger(DefaultConnectionFactory.class);
 
     private static final int MAX_CONNECT_ATTEMPTS = 3;
+
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public DefaultConnectionFactory(DatabaseDescriptor databaseDescriptor)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+    }
 
     /**
      * Connect to peer and start exchanging message.
@@ -49,7 +59,7 @@ public class DefaultConnectionFactory implements StreamConnectionFactory
         {
             try
             {
-                Socket socket = OutboundTcpConnectionPool.newSocket(peer);
+                Socket socket = OutboundTcpConnectionPool.newSocket(peer, databaseDescriptor);
                 socket.setSoTimeout(DatabaseDescriptor.instance.getStreamingSocketTimeout());
                 socket.setKeepAlive(true);
                 return socket;

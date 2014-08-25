@@ -160,7 +160,7 @@ implements org.apache.hadoop.mapred.RecordWriter<K, V>
 
         public ExternalClient(Configuration conf)
         {
-          super();
+          super(DatabaseDescriptor.instance);
           this.conf = conf;
           this.hostlist = ConfigHelper.getOutputInitialAddress(conf);
           this.rpcPort = ConfigHelper.getOutputRpcPort(conf);

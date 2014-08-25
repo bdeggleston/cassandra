@@ -300,9 +300,10 @@ public final class MessagingService implements MessagingServiceMBean
     // protocol versions of the other nodes in the cluster
     private final ConcurrentMap<InetAddress, Integer> versions = new NonBlockingHashMap<InetAddress, Integer>();
 
-    public static final MessagingService instance = new MessagingService(DatabaseDescriptor.instance, StageManager.instance, SinkManager.instance);
+    public static final MessagingService instance = new MessagingService(DatabaseDescriptor.instance, SystemKeyspace.instance, StageManager.instance, SinkManager.instance);
 
     private final DatabaseDescriptor databaseDescriptor;
+    private final SystemKeyspace systemKeyspace;
     private final StageManager stageManager;
     private final SinkManager sinkManager;
 
@@ -311,13 +312,15 @@ public final class MessagingService implements MessagingServiceMBean
     private volatile Tracing tracing = null;
     private volatile StatusLogger statusLogger = null;
 
-    public MessagingService(DatabaseDescriptor databaseDescriptor, StageManager stageManager1, SinkManager sinkManager)
+    public MessagingService(DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace, StageManager stageManager1, SinkManager sinkManager)
     {
         assert databaseDescriptor != null;
+        assert systemKeyspace != null;
         assert stageManager1 != null;
         assert sinkManager != null;
 
         this.databaseDescriptor = databaseDescriptor;
+        this.systemKeyspace = systemKeyspace;
         this.stageManager = stageManager1;
         this.sinkManager = sinkManager;
 
@@ -538,7 +541,7 @@ public final class MessagingService implements MessagingServiceMBean
         OutboundTcpConnectionPool cp = connectionManagers.get(to);
         if (cp == null)
         {
-            cp = new OutboundTcpConnectionPool(to);
+            cp = new OutboundTcpConnectionPool(to, databaseDescriptor, systemKeyspace, this, tracing);
             OutboundTcpConnectionPool existingPool = connectionManagers.putIfAbsent(to, cp);
             if (existingPool != null)
                 cp = existingPool;
@@ -961,7 +964,7 @@ public final class MessagingService implements MessagingServiceMBean
                     logger.debug("Connection version {} from {}", version, socket.getInetAddress());
 
                     Thread thread = isStream
-                                  ? new IncomingStreamingConnection(version, socket)
+                                  ? new IncomingStreamingConnection(version, socket, databaseDescriptor)
                                   : new IncomingTcpConnection(version, MessagingService.getBits(header, 2, 1) == 1, socket, databaseDescriptor, messagingService, gossiper);
                     thread.start();
                 }

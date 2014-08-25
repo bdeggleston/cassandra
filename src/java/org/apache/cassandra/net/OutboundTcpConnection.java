@@ -80,16 +80,23 @@ public class OutboundTcpConnection extends Thread
     private volatile int currentMsgBufferCount = 0;
     private int targetVersion;
 
-    public OutboundTcpConnection(OutboundTcpConnectionPool pool)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final MessagingService messagingService;
+    private final Tracing tracing;
+
+    public OutboundTcpConnection(OutboundTcpConnectionPool pool, DatabaseDescriptor databaseDescriptor, MessagingService messagingService, Tracing tracing)
     {
         super("WRITE-" + pool.endPoint());
         this.poolReference = pool;
+        this.databaseDescriptor = databaseDescriptor;
+        this.messagingService = messagingService;
+        this.tracing = tracing;
     }
 
-    private static boolean isLocalDC(InetAddress targetHost)
+    private boolean isLocalDC(InetAddress targetHost)
     {
-        String remoteDC = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(targetHost);
-        String localDC = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+        String remoteDC = databaseDescriptor.getEndpointSnitch().getDatacenter(targetHost);
+        String localDC = databaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
         return remoteDC.equals(localDC);
     }
 
@@ -196,8 +203,8 @@ public class OutboundTcpConnection extends Thread
     private boolean shouldCompressConnection()
     {
         // assumes version >= 1.2
-        return DatabaseDescriptor.instance.internodeCompression() == Config.InternodeCompression.all
-               || (DatabaseDescriptor.instance.internodeCompression() == Config.InternodeCompression.dc && !isLocalDC(poolReference.endPoint()));
+        return databaseDescriptor.internodeCompression() == Config.InternodeCompression.all
+               || (databaseDescriptor.internodeCompression() == Config.InternodeCompression.dc && !isLocalDC(poolReference.endPoint()));
     }
 
     private void writeConnected(QueuedMessage qm, boolean flush)
@@ -208,18 +215,18 @@ public class OutboundTcpConnection extends Thread
             if (sessionBytes != null)
             {
                 UUID sessionId = UUIDGen.getUUID(ByteBuffer.wrap(sessionBytes));
-                TraceState state = Tracing.instance.get(sessionId);
+                TraceState state = tracing.get(sessionId);
                 String message = String.format("Sending message to %s", poolReference.endPoint());
                 // session may have already finished; see CASSANDRA-5668
                 if (state == null)
                 {
-                    Tracing.instance.trace(ByteBuffer.wrap(sessionBytes), message, -1);
+                    tracing.trace(ByteBuffer.wrap(sessionBytes), message, -1);
                 }
                 else
                 {
                     state.trace(message);
                     if (qm.message.verb == MessagingService.Verb.REQUEST_RESPONSE)
-                        Tracing.instance.doneWithNonLocalSession(state);
+                        tracing.doneWithNonLocalSession(state);
                 }
             }
 
@@ -313,10 +320,10 @@ public class OutboundTcpConnection extends Thread
             logger.debug("attempting to connect to {}", poolReference.endPoint());
 
         long start = System.nanoTime();
-        long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.instance.getRpcTimeout());
+        long timeout = TimeUnit.MILLISECONDS.toNanos(databaseDescriptor.getRpcTimeout());
         while (System.nanoTime() - start < timeout)
         {
-            targetVersion = MessagingService.instance.getVersion(poolReference.endPoint());
+            targetVersion = messagingService.getVersion(poolReference.endPoint());
             try
             {
                 socket = poolReference.newSocket();
@@ -327,13 +334,13 @@ public class OutboundTcpConnection extends Thread
                 }
                 else
                 {
-                    socket.setTcpNoDelay(DatabaseDescriptor.instance.getInterDCTcpNoDelay());
+                    socket.setTcpNoDelay(databaseDescriptor.getInterDCTcpNoDelay());
                 }
-                if (DatabaseDescriptor.instance.getInternodeSendBufferSize() != null)
+                if (databaseDescriptor.getInternodeSendBufferSize() != null)
                 {
                     try
                     {
-                        socket.setSendBufferSize(DatabaseDescriptor.instance.getInternodeSendBufferSize());
+                        socket.setSendBufferSize(databaseDescriptor.getInternodeSendBufferSize());
                     }
                     catch (SocketException se)
                     {
@@ -360,7 +367,7 @@ public class OutboundTcpConnection extends Thread
                 if (targetVersion > maxTargetVersion)
                 {
                     logger.debug("Target max version is {}; will reconnect with that version", maxTargetVersion);
-                    MessagingService.instance.setVersion(poolReference.endPoint(), maxTargetVersion);
+                    messagingService.setVersion(poolReference.endPoint(), maxTargetVersion);
                     disconnect();
                     return false;
                 }
@@ -369,7 +376,7 @@ public class OutboundTcpConnection extends Thread
                 {
                     logger.trace("Detected higher max version {} (using {}); will reconnect when queued messages are done",
                                  maxTargetVersion, targetVersion);
-                    MessagingService.instance.setVersion(poolReference.endPoint(), Math.min(MessagingService.current_version, maxTargetVersion));
+                    messagingService.setVersion(poolReference.endPoint(), Math.min(MessagingService.current_version, maxTargetVersion));
                     softCloseSocket();
                 }
 
