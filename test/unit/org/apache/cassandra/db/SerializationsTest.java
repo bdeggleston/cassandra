@@ -120,7 +120,7 @@ public class SerializationsTest extends AbstractSerializationsTester
 
         DataInputStream in = getInput("db.RangeSliceCommand.bin");
         for (int i = 0; i < 6; i++)
-            MessageIn.read(in, getVersion(), -1);
+            MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance);
         in.close();
     }
 
@@ -154,8 +154,8 @@ public class SerializationsTest extends AbstractSerializationsTester
         assert SliceByNamesReadCommand.serializer.deserialize(in, getVersion()) != null;
         assert ReadCommand.serializer.deserialize(in, getVersion()) != null;
         assert ReadCommand.serializer.deserialize(in, getVersion()) != null;
-        assert MessageIn.read(in, getVersion(), -1) != null;
-        assert MessageIn.read(in, getVersion(), -1) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
         in.close();
     }
 
@@ -190,8 +190,8 @@ public class SerializationsTest extends AbstractSerializationsTester
         assert SliceFromReadCommand.serializer.deserialize(in, getVersion()) != null;
         assert ReadCommand.serializer.deserialize(in, getVersion()) != null;
         assert ReadCommand.serializer.deserialize(in, getVersion()) != null;
-        assert MessageIn.read(in, getVersion(), -1) != null;
-        assert MessageIn.read(in, getVersion(), -1) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
         in.close();
     }
 
@@ -270,11 +270,11 @@ public class SerializationsTest extends AbstractSerializationsTester
         assert Mutation.serializer.deserialize(in, getVersion()) != null;
         assert Mutation.serializer.deserialize(in, getVersion()) != null;
         assert Mutation.serializer.deserialize(in, getVersion()) != null;
-        assert MessageIn.read(in, getVersion(), -1) != null;
-        assert MessageIn.read(in, getVersion(), -1) != null;
-        assert MessageIn.read(in, getVersion(), -1) != null;
-        assert MessageIn.read(in, getVersion(), -1) != null;
-        assert MessageIn.read(in, getVersion(), -1) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
         in.close();
     }
 
@@ -310,14 +310,14 @@ public class SerializationsTest extends AbstractSerializationsTester
         assert Truncation.serializer.deserialize(in, getVersion()) != null;
         assert TruncateResponse.serializer.deserialize(in, getVersion()) != null;
         assert TruncateResponse.serializer.deserialize(in, getVersion()) != null;
-        assert MessageIn.read(in, getVersion(), -1) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
 
         // set up some fake callbacks so deserialization knows that what it's deserializing is a TruncateResponse
         MessagingService.instance.setCallbackForTests(1, new CallbackInfo(null, null, TruncateResponse.serializer));
         MessagingService.instance.setCallbackForTests(2, new CallbackInfo(null, null, TruncateResponse.serializer));
 
-        assert MessageIn.read(in, getVersion(), 1) != null;
-        assert MessageIn.read(in, getVersion(), 2) != null;
+        assert MessageIn.read(in, getVersion(), 1, DatabaseDescriptor.instance, MessagingService.instance) != null;
+        assert MessageIn.read(in, getVersion(), 2, DatabaseDescriptor.instance, MessagingService.instance) != null;
         in.close();
     }
 

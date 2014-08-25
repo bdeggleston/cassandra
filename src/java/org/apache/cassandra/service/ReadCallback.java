@@ -151,7 +151,8 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
                                                        result,
                                                        Collections.<String, byte[]>emptyMap(),
                                                        MessagingService.Verb.INTERNAL_RESPONSE,
-                                                       MessagingService.current_version);
+                                                       MessagingService.current_version,
+                                                       DatabaseDescriptor.instance);
         response(message);
     }
 

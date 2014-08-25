@@ -42,22 +42,24 @@ public class MessageIn<T>
     public final Map<String, byte[]> parameters;
     public final MessagingService.Verb verb;
     public final int version;
+    private final DatabaseDescriptor databaseDescriptor;
 
-    private MessageIn(InetAddress from, T payload, Map<String, byte[]> parameters, MessagingService.Verb verb, int version)
+    private MessageIn(InetAddress from, T payload, Map<String, byte[]> parameters, MessagingService.Verb verb, int version, DatabaseDescriptor databaseDescriptor)
     {
         this.from = from;
         this.payload = payload;
         this.parameters = parameters;
         this.verb = verb;
         this.version = version;
+        this.databaseDescriptor = databaseDescriptor;
     }
 
-    public static <T> MessageIn<T> create(InetAddress from, T payload, Map<String, byte[]> parameters, MessagingService.Verb verb, int version)
+    public static <T> MessageIn<T> create(InetAddress from, T payload, Map<String, byte[]> parameters, MessagingService.Verb verb, int version, DatabaseDescriptor databaseDescriptor)
     {
-        return new MessageIn<T>(from, payload, parameters, verb, version);
+        return new MessageIn<T>(from, payload, parameters, verb, version, databaseDescriptor);
     }
 
-    public static <T2> MessageIn<T2> read(DataInput in, int version, int id) throws IOException
+    public static <T2> MessageIn<T2> read(DataInput in, int version, int id, DatabaseDescriptor databaseDescriptor, MessagingService messagingService) throws IOException
     {
         InetAddress from = CompactEndpointSerializationHelper.deserialize(in);
 
@@ -85,7 +87,7 @@ public class MessageIn<T>
         IVersionedSerializer<T2> serializer = (IVersionedSerializer<T2>) MessagingService.verbSerializers.get(verb);
         if (serializer instanceof MessagingService.CallbackDeterminedSerializer)
         {
-            CallbackInfo callback = MessagingService.instance.getRegisteredCallback(id);
+            CallbackInfo callback = messagingService.getRegisteredCallback(id);
             if (callback == null)
             {
                 // reply for expired callback.  we'll have to skip it.
@@ -95,9 +97,9 @@ public class MessageIn<T>
             serializer = (IVersionedSerializer<T2>) callback.serializer;
         }
         if (payloadSize == 0 || serializer == null)
-            return create(from, null, parameters, verb, version);
+            return create(from, null, parameters, verb, version, databaseDescriptor);
         T2 payload = serializer.deserialize(in, version);
-        return MessageIn.create(from, payload, parameters, verb, version);
+        return MessageIn.create(from, payload, parameters, verb, version, databaseDescriptor);
     }
 
     public Stage getMessageType()
@@ -117,7 +119,7 @@ public class MessageIn<T>
 
     public long getTimeout()
     {
-        return DatabaseDescriptor.instance.getTimeout(verb);
+        return databaseDescriptor.getTimeout(verb);
     }
 
     public String toString()
