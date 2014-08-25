@@ -124,7 +124,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             DatabaseDescriptor.instance, StreamManager.instance, SystemKeyspace.instance, Schema.instance, CommitLog.instance,
             StageManager.instance, MessagingService.instance, Gossiper.instance, LoadBroadcaster.instance, FailureDetector.instance,
             ClusterState.instance, MigrationManager.instance, ActiveRepairService.instance, CompactionManager.instance, HintedHandOffManager.instance,
-            StorageProxy.instance, KeyspaceManager.instance, BatchlogManager.instance, Auth.instance, PendingRangeCalculatorService.instance
+            StorageProxy.instance, KeyspaceManager.instance, BatchlogManager.instance, Auth.instance, Tracing.instance, PendingRangeCalculatorService.instance
     );
 
     private final Set<InetAddress> replicatingNodes = Collections.synchronizedSet(new HashSet<InetAddress>());
@@ -195,13 +195,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private final KeyspaceManager keyspaceManager;
     private final BatchlogManager batchlogManager;
     private final Auth auth;
+    private final Tracing tracing;
     private final PendingRangeCalculatorService pendingRangeCalculatorService;
 
     public StorageService(DatabaseDescriptor databaseDescriptor, StreamManager streamManager, SystemKeyspace systemKeyspace,  Schema schema,
                           CommitLog commitLog, StageManager stageManager, MessagingService messagingService,  Gossiper gossiper, LoadBroadcaster loadBroadcaster,
                           IFailureDetector failureDetector, ClusterState clusterState,  MigrationManager migrationManager, ActiveRepairService activeRepairService,
                           CompactionManager compactionManager, HintedHandOffManager hintedHandOffManager,  StorageProxy storageProxy, KeyspaceManager keyspaceManager,
-                          BatchlogManager batchlogManager, Auth auth, PendingRangeCalculatorService pendingRangeCalculatorService)
+                          BatchlogManager batchlogManager, Auth auth, Tracing tracing, PendingRangeCalculatorService pendingRangeCalculatorService)
     {
         assert databaseDescriptor != null;
         assert streamManager != null;
@@ -222,6 +223,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         assert keyspaceManager != null;
         assert batchlogManager != null;
         assert auth != null;
+        assert tracing != null;
         assert pendingRangeCalculatorService != null;
 
         this.databaseDescriptor = databaseDescriptor;
@@ -242,6 +244,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         this.keyspaceManager = keyspaceManager;
         this.batchlogManager = batchlogManager;
         this.auth = auth;
+        this.tracing = tracing;
         this.pendingRangeCalculatorService = pendingRangeCalculatorService;
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
@@ -270,8 +273,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         // see BootStrapper for a summary of how the bootstrap verbs interact
         this.messagingService.registerVerbHandlers(MessagingService.Verb.REPLICATION_FINISHED, new ReplicationFinishedVerbHandler());
-        this.messagingService.registerVerbHandlers(MessagingService.Verb.REQUEST_RESPONSE, new ResponseVerbHandler());
-        this.messagingService.registerVerbHandlers(MessagingService.Verb.INTERNAL_RESPONSE, new ResponseVerbHandler());
+        this.messagingService.registerVerbHandlers(MessagingService.Verb.REQUEST_RESPONSE, new ResponseVerbHandler(messagingService, tracing));
+        this.messagingService.registerVerbHandlers(MessagingService.Verb.INTERNAL_RESPONSE, new ResponseVerbHandler(messagingService, tracing));
         this.messagingService.registerVerbHandlers(MessagingService.Verb.REPAIR_MESSAGE, new RepairMessageVerbHandler());
         this.messagingService.registerVerbHandlers(MessagingService.Verb.GOSSIP_SHUTDOWN, new GossipShutdownVerbHandler());
 

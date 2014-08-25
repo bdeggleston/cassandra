@@ -29,6 +29,15 @@ public class ResponseVerbHandler implements IVerbHandler
 {
     private static final Logger logger = LoggerFactory.getLogger( ResponseVerbHandler.class );
 
+    private final MessagingService messagingService;
+    private final Tracing tracing;
+
+    public ResponseVerbHandler(MessagingService messagingService, Tracing tracing)
+    {
+        this.messagingService = messagingService;
+        this.tracing = tracing;
+    }
+
     public void doVerb(MessageIn message, int id)
     {
         long latency = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - MessagingService.instance.getRegisteredCallbackAge(id));
