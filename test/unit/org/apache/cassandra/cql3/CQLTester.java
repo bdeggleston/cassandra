@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.junit.AfterClass;
 import org.junit.After;
 import org.junit.Assert;
@@ -97,7 +98,7 @@ public abstract class CQLTester
         currentTypes.clear();
 
         // We want to clean up after the test, but dropping a table is rather long so just do that asynchronously
-        StorageService.optionalTasks.execute(new Runnable()
+        StorageServiceExecutors.instance.optionalTasks.execute(new Runnable()
         {
             public void run()
             {
@@ -110,11 +111,11 @@ public abstract class CQLTester
 
                     // Dropping doesn't delete the sstables. It's not a huge deal but it's cleaner to cleanup after us
                     // Thas said, we shouldn't delete blindly before the SSTableDeletingTask for the table we drop
-                    // have run or they will be unhappy. Since those taks are scheduled on StorageService.tasks and that's
+                    // have run or they will be unhappy. Since those taks are scheduled on StorageServiceExecutors.instance.tasks and that's
                     // mono-threaded, just push a task on the queue to find when it's empty. No perfect but good enough.
 
                     final CountDownLatch latch = new CountDownLatch(1);
-                    StorageService.tasks.execute(new Runnable()
+                    StorageServiceExecutors.instance.tasks.execute(new Runnable()
                     {
                             public void run()
                             {

@@ -50,6 +50,7 @@ import com.google.common.collect.Iterators;
 import com.google.common.collect.Ordering;
 import com.google.common.primitives.Longs;
 import com.google.common.util.concurrent.RateLimiter;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -625,7 +626,7 @@ public class SSTableReader extends SSTable
         else
             barrier = null;
 
-        StorageService.tasks.execute(new Runnable()
+        StorageServiceExecutors.instance.tasks.execute(new Runnable()
         {
             public void run()
             {

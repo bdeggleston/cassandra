@@ -33,6 +33,7 @@ import java.nio.file.StandardCopyOption;
 import java.text.DecimalFormat;
 import java.util.Arrays;
 
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -323,7 +324,7 @@ public class FileUtils
                 deleteWithConfirm(new File(file));
             }
         };
-        StorageService.tasks.execute(runnable);
+        StorageServiceExecutors.instance.tasks.execute(runnable);
     }
 
     public static String stringifyFileSize(double value)

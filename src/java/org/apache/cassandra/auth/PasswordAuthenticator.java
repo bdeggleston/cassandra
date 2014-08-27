@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -169,7 +170,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
         // the delay is here to give the node some time to see its peers - to reduce
         // "skipped default user setup: some nodes are were not ready" log spam.
         // It's the only reason for the delay.
-        StorageService.tasks.schedule(new Runnable()
+        StorageServiceExecutors.instance.tasks.schedule(new Runnable()
                                       {
                                           public void run()
                                           {

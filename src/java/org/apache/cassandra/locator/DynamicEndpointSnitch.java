@@ -30,6 +30,7 @@ import javax.management.ObjectName;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.cassandra.utils.FBUtilities;
 
 import com.yammer.metrics.stats.ExponentiallyDecayingSample;
@@ -84,8 +85,8 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
                 reset();
             }
         };
-        StorageService.scheduledTasks.scheduleWithFixedDelay(update, UPDATE_INTERVAL_IN_MS, UPDATE_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
-        StorageService.scheduledTasks.scheduleWithFixedDelay(reset, RESET_INTERVAL_IN_MS, RESET_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
+        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(update, UPDATE_INTERVAL_IN_MS, UPDATE_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
+        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(reset, RESET_INTERVAL_IN_MS, RESET_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
         registerMBean();
    }
 

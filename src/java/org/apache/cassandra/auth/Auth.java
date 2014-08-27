@@ -140,7 +140,7 @@ public class Auth
         // the delay is here to give the node some time to see its peers - to reduce
         // "Skipped default superuser setup: some nodes were not ready" log spam.
         // It's the only reason for the delay.
-        StorageService.tasks.schedule(new Runnable()
+        StorageServiceExecutors.instance.tasks.schedule(new Runnable()
                                       {
                                           public void run()
                                           {

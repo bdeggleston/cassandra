@@ -23,6 +23,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,7 +91,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
                     submitWrite(keysToSave);
                 }
             };
-            saveTask = StorageService.optionalTasks.scheduleWithFixedDelay(runnable,
+            saveTask = StorageServiceExecutors.instance.optionalTasks.scheduleWithFixedDelay(runnable,
                                                                            savePeriodInSeconds,
                                                                            savePeriodInSeconds,
                                                                            TimeUnit.SECONDS);

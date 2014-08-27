@@ -329,7 +329,7 @@ public class CassandraDaemon
                 }
             }
         };
-        StorageService.optionalTasks.schedule(runnable, 5 * 60, TimeUnit.SECONDS);
+        StorageServiceExecutors.instance.optionalTasks.schedule(runnable, 5 * 60, TimeUnit.SECONDS);
 
         SystemKeyspace.finishStartup();
 

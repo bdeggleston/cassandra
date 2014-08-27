@@ -123,24 +123,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             return 30 * 1000;
     }
 
-    /**
-     * This pool is used for periodic short (sub-second) tasks.
-     */
-     public static final DebuggableScheduledThreadPoolExecutor scheduledTasks = new DebuggableScheduledThreadPoolExecutor("ScheduledTasks");
-
-    /**
-     * This pool is used by tasks that can have longer execution times, and usually are non periodic.
-     */
-    public static final DebuggableScheduledThreadPoolExecutor tasks = new DebuggableScheduledThreadPoolExecutor("NonPeriodicTasks");
-    /**
-     * tasks that do not need to be waited for on shutdown/drain
-     */
-    public static final DebuggableScheduledThreadPoolExecutor optionalTasks = new DebuggableScheduledThreadPoolExecutor("OptionalTasks");
-    static
-    {
-        tasks.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
-    }
-
     /* This abstraction maintains the token/endpoint metadata information */
     private TokenMetadata tokenMetadata = new TokenMetadata();
 
@@ -570,7 +552,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     return; // drained already
 
                 shutdownClientServers();
-                optionalTasks.shutdown();
+                StorageServiceExecutors.instance.optionalTasks.shutdown();
                 Gossiper.instance.stop();
 
                 // In-progress writes originating here could generate hints to be written, so shut down MessagingService
@@ -605,8 +587,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 CommitLog.instance.shutdownBlocking();
 
                 // wait for miscellaneous tasks like sstable and commitlog segment deletion
-                tasks.shutdown();
-                if (!tasks.awaitTermination(1, TimeUnit.MINUTES))
+                StorageServiceExecutors.instance.tasks.shutdown();
+                if (!StorageServiceExecutors.instance.tasks.awaitTermination(1, TimeUnit.MINUTES))
                     logger.warn("Miscellaneous task executor still busy after one minute; proceeding with shutdown");
             }
         }, "StorageServiceShutdownHook");
@@ -3482,7 +3464,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
         setMode(Mode.DRAINING, "starting drain process", true);
         shutdownClientServers();
-        optionalTasks.shutdown();
+        StorageServiceExecutors.instance.optionalTasks.shutdown();
         Gossiper.instance.stop();
 
         setMode(Mode.DRAINING, "shutting down MessageService", false);
@@ -3540,8 +3522,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         CommitLog.instance.shutdownBlocking();
 
         // wait for miscellaneous tasks like sstable and commitlog segment deletion
-        tasks.shutdown();
-        if (!tasks.awaitTermination(1, TimeUnit.MINUTES))
+        StorageServiceExecutors.instance.tasks.shutdown();
+        if (!StorageServiceExecutors.instance.tasks.awaitTermination(1, TimeUnit.MINUTES))
             logger.warn("Miscellaneous task executor still busy after one minute; proceeding with shutdown");
 
         setMode(Mode.DRAINED, true);
