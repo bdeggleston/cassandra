@@ -110,7 +110,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
             if (psnitch == null)
             {
                 if (savedEndpoints == null)
-                    savedEndpoints = SystemKeyspace.loadDcRackInfo();
+                    savedEndpoints = SystemKeyspace.instance.loadDcRackInfo();
                 if (savedEndpoints.containsKey(endpoint))
                     return savedEndpoints.get(endpoint).get("data_center");
                 return DEFAULT_DC;
@@ -138,7 +138,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
             if (psnitch == null)
             {
                 if (savedEndpoints == null)
-                    savedEndpoints = SystemKeyspace.loadDcRackInfo();
+                    savedEndpoints = SystemKeyspace.instance.loadDcRackInfo();
                 if (savedEndpoints.containsKey(endpoint))
                     return savedEndpoints.get(endpoint).get("rack");
                 return DEFAULT_RACK;

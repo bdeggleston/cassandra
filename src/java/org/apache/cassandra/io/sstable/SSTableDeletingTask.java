@@ -81,7 +81,7 @@ public class SSTableDeletingTask implements Runnable
             tracker.notifyDeleting(referent);
 
         if (referent.readMeter != null)
-            SystemKeyspace.clearSSTableReadMeter(referent.getKeyspaceName(), referent.getColumnFamilyName(), referent.descriptor.generation);
+            SystemKeyspace.instance.clearSSTableReadMeter(referent.getKeyspaceName(), referent.getColumnFamilyName(), referent.descriptor.generation);
 
         // If we can't successfully delete the DATA component, set the task to be retried later: see above
         File datafile = new File(desc.filenameFor(Component.DATA));

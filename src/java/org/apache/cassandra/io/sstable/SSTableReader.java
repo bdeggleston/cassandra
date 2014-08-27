@@ -508,7 +508,7 @@ public class SSTableReader extends SSTable
             return;
         }
 
-        readMeter = SystemKeyspace.getSSTableReadMeter(desc.ksname, desc.cfname, desc.generation);
+        readMeter = SystemKeyspace.instance.getSSTableReadMeter(desc.ksname, desc.cfname, desc.generation);
         // sync the average read rate to system.sstable_activity every five minutes, starting one minute from now
         readMeterSyncFuture = syncExecutor.scheduleAtFixedRate(new Runnable()
         {
@@ -517,7 +517,7 @@ public class SSTableReader extends SSTable
                 if (!isCompacted.get())
                 {
                     meterSyncThrottle.acquire();
-                    SystemKeyspace.persistSSTableReadMeter(desc.ksname, desc.cfname, desc.generation, readMeter);
+                    SystemKeyspace.instance.persistSSTableReadMeter(desc.ksname, desc.cfname, desc.generation, readMeter);
                 }
             }
         }, 1, 5, TimeUnit.MINUTES);

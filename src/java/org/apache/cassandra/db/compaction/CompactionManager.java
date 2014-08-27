@@ -1299,7 +1299,7 @@ public class CompactionManager implements CompactionManagerMBean
     {
         try
         {
-            return SystemKeyspace.getCompactionHistory();
+            return SystemKeyspace.instance.getCompactionHistory();
         }
         catch (OpenDataException e)
         {

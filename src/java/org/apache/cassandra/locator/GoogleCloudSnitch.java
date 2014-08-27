@@ -102,7 +102,7 @@ public class GoogleCloudSnitch extends AbstractNetworkTopologySnitch
         if (state == null || state.getApplicationState(ApplicationState.RACK) == null)
         {
             if (savedEndpoints == null)
-                savedEndpoints = SystemKeyspace.loadDcRackInfo();
+                savedEndpoints = SystemKeyspace.instance.loadDcRackInfo();
             if (savedEndpoints.containsKey(endpoint))
                 return savedEndpoints.get(endpoint).get("rack");
             return DEFAULT_RACK;
@@ -118,7 +118,7 @@ public class GoogleCloudSnitch extends AbstractNetworkTopologySnitch
         if (state == null || state.getApplicationState(ApplicationState.DC) == null)
         {
             if (savedEndpoints == null)
-                savedEndpoints = SystemKeyspace.loadDcRackInfo();
+                savedEndpoints = SystemKeyspace.instance.loadDcRackInfo();
             if (savedEndpoints.containsKey(endpoint))
                 return savedEndpoints.get(endpoint).get("data_center");
             return DEFAULT_DC;

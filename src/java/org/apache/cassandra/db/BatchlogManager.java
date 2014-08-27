@@ -322,7 +322,7 @@ public class BatchlogManager implements BatchlogManagerMBean
                 // We don't abort the replay entirely b/c this can be considered a success (truncated is same as delivered then
                 // truncated.
                 for (UUID cfId : mutation.getColumnFamilyIds())
-                    if (writtenAt <= SystemKeyspace.getTruncatedAt(cfId))
+                    if (writtenAt <= SystemKeyspace.instance.getTruncatedAt(cfId))
                         mutation = mutation.without(cfId);
 
                 if (!mutation.isEmpty())

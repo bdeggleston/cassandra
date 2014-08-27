@@ -77,7 +77,7 @@ public class HintedHandoffMetrics
             if (difference == 0)
                 continue;
             logger.warn("{} has {} dropped hints, because node is down past configured hint window.", entry.getKey(), difference);
-            SystemKeyspace.updateHintsDropped(entry.getKey(), UUIDGen.getTimeUUID(), (int) difference);
+            SystemKeyspace.instance.updateHintsDropped(entry.getKey(), UUIDGen.getTimeUUID(), (int) difference);
         }
     }
 

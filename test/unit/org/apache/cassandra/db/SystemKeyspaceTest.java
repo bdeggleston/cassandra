@@ -42,9 +42,9 @@ public class SystemKeyspaceTest
     public void testLocalTokens()
     {
         // Remove all existing tokens
-        Collection<Token> current = SystemKeyspace.loadTokens().asMap().get(FBUtilities.getLocalAddress());
+        Collection<Token> current = SystemKeyspace.instance.loadTokens().asMap().get(FBUtilities.getLocalAddress());
         if (current != null && !current.isEmpty())
-            SystemKeyspace.updateTokens(current);
+            SystemKeyspace.instance.updateTokens(current);
 
         List<Token> tokens = new ArrayList<Token>()
         {{
@@ -52,10 +52,10 @@ public class SystemKeyspaceTest
                 add(new BytesToken(ByteBufferUtil.bytes(String.format("token%d", i))));
         }};
 
-        SystemKeyspace.updateTokens(tokens);
+        SystemKeyspace.instance.updateTokens(tokens);
         int count = 0;
 
-        for (Token tok : SystemKeyspace.getSavedTokens())
+        for (Token tok : SystemKeyspace.instance.getSavedTokens())
             assert tokens.get(count++).equals(tok);
     }
 
@@ -64,17 +64,17 @@ public class SystemKeyspaceTest
     {
         BytesToken token = new BytesToken(ByteBufferUtil.bytes("token3"));
         InetAddress address = InetAddress.getByName("127.0.0.2");
-        SystemKeyspace.updateTokens(address, Collections.<Token>singletonList(token));
-        assert SystemKeyspace.loadTokens().get(address).contains(token);
-        SystemKeyspace.removeEndpoint(address);
-        assert !SystemKeyspace.loadTokens().containsValue(token);
+        SystemKeyspace.instance.updateTokens(address, Collections.<Token>singletonList(token));
+        assert SystemKeyspace.instance.loadTokens().get(address).contains(token);
+        SystemKeyspace.instance.removeEndpoint(address);
+        assert !SystemKeyspace.instance.loadTokens().containsValue(token);
     }
 
     @Test
     public void testLocalHostID()
     {
-        UUID firstId = SystemKeyspace.getLocalHostId();
-        UUID secondId = SystemKeyspace.getLocalHostId();
+        UUID firstId = SystemKeyspace.instance.getLocalHostId();
+        UUID secondId = SystemKeyspace.instance.getLocalHostId();
         assert firstId.equals(secondId) : String.format("%s != %s%n", firstId.toString(), secondId.toString());
     }
 }

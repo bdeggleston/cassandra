@@ -61,11 +61,11 @@ public class PaxosState
         lock.lock();
         try
         {
-            PaxosState state = SystemKeyspace.loadPaxosState(toPrepare.key, toPrepare.update.metadata());
+            PaxosState state = SystemKeyspace.instance.loadPaxosState(toPrepare.key, toPrepare.update.metadata());
             if (toPrepare.isAfter(state.promised))
             {
                 Tracing.trace("Promising ballot {}", toPrepare.ballot);
-                SystemKeyspace.savePaxosPromise(toPrepare);
+                SystemKeyspace.instance.savePaxosPromise(toPrepare);
                 return new PrepareResponse(true, state.accepted, state.mostRecentCommit);
             }
             else
@@ -87,11 +87,11 @@ public class PaxosState
         lock.lock();
         try
         {
-            PaxosState state = SystemKeyspace.loadPaxosState(proposal.key, proposal.update.metadata());
+            PaxosState state = SystemKeyspace.instance.loadPaxosState(proposal.key, proposal.update.metadata());
             if (proposal.hasBallot(state.promised.ballot) || proposal.isAfter(state.promised))
             {
                 Tracing.trace("Accepting proposal {}", proposal);
-                SystemKeyspace.savePaxosProposal(proposal);
+                SystemKeyspace.instance.savePaxosProposal(proposal);
                 return true;
             }
             else
@@ -118,6 +118,6 @@ public class PaxosState
         Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
 
         // We don't need to lock, we're just blindly updating
-        SystemKeyspace.savePaxosCommit(proposal);
+        SystemKeyspace.instance.savePaxosCommit(proposal);
     }
 }

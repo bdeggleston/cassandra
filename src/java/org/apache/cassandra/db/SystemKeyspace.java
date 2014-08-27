@@ -66,6 +66,8 @@ public class SystemKeyspace
 {
     private static final Logger logger = LoggerFactory.getLogger(SystemKeyspace.class);
 
+    public static final SystemKeyspace instance = new SystemKeyspace();
+
     // see CFMetaData for schema definitions
     public static final String PEERS_CF = "peers";
     public static final String PEER_EVENTS_CF = "peer_events";
@@ -104,12 +106,12 @@ public class SystemKeyspace
         IN_PROGRESS
     }
 
-    private static DecoratedKey decorate(ByteBuffer key)
+    private DecoratedKey decorate(ByteBuffer key)
     {
         return StorageService.instance.getPartitioner().decorateKey(key);
     }
 
-    public static void finishStartup()
+    public void finishStartup()
     {
         setupVersion();
 
@@ -129,7 +131,7 @@ public class SystemKeyspace
         }
     }
 
-    private static void setupVersion()
+    private void setupVersion()
     {
         String req = "INSERT INTO system.%s (key, release_version, cql_version, thrift_version, native_protocol_version, data_center, rack, partitioner) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
@@ -146,7 +148,7 @@ public class SystemKeyspace
 
     // TODO: In 3.0, remove this and the index_interval column from system.schema_columnfamilies
     /** Migrates index_interval values to min_index_interval and sets index_interval to null */
-    private static void migrateIndexInterval()
+    private void migrateIndexInterval()
     {
         for (UntypedResultSet.Row row : executeOnceInternal(String.format("SELECT * FROM system.%s", SCHEMA_COLUMNFAMILIES_CF)))
         {
@@ -169,7 +171,7 @@ public class SystemKeyspace
         }
     }
 
-    private static void migrateCachingOption()
+    private void migrateCachingOption()
     {
         for (UntypedResultSet.Row row : executeOnceInternal(String.format("SELECT * FROM system.%s", SCHEMA_COLUMNFAMILIES_CF)))
         {
@@ -201,7 +203,7 @@ public class SystemKeyspace
      * @param toCompact sstables to compact
      * @return compaction task id or null if cfs is under system keyspace
      */
-    public static UUID startCompaction(ColumnFamilyStore cfs, Iterable<SSTableReader> toCompact)
+    public UUID startCompaction(ColumnFamilyStore cfs, Iterable<SSTableReader> toCompact)
     {
         if (Keyspace.SYSTEM_KS.equals(cfs.keyspace.getName()))
             return null;
@@ -225,7 +227,7 @@ public class SystemKeyspace
      * to complete successfully for this to be called.
      * @param taskId what was returned from {@code startCompaction}
      */
-    public static void finishCompaction(UUID taskId)
+    public void finishCompaction(UUID taskId)
     {
         assert taskId != null;
 
@@ -237,7 +239,7 @@ public class SystemKeyspace
      * Returns a Map whose keys are KS.CF pairs and whose values are maps from sstable generation numbers to the
      * task ID of the compaction they were participating in.
      */
-    public static Map<Pair<String, String>, Map<Integer, UUID>> getUnfinishedCompactions()
+    public Map<Pair<String, String>, Map<Integer, UUID>> getUnfinishedCompactions()
     {
         String req = "SELECT * FROM system.%s";
         UntypedResultSet resultSet = executeInternal(String.format(req, COMPACTION_LOG));
@@ -263,13 +265,13 @@ public class SystemKeyspace
         return unfinishedCompactions;
     }
 
-    public static void discardCompactionsInProgress()
+    public void discardCompactionsInProgress()
     {
         ColumnFamilyStore compactionLog = Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(COMPACTION_LOG);
         compactionLog.truncateBlocking();
     }
 
-    public static void updateCompactionHistory(String ksname,
+    public void updateCompactionHistory(String ksname,
                                                String cfname,
                                                long compactedAt,
                                                long bytesIn,
@@ -283,13 +285,13 @@ public class SystemKeyspace
         executeInternal(String.format(req, COMPACTION_HISTORY_CF), UUIDGen.getTimeUUID(), ksname, cfname, ByteBufferUtil.bytes(compactedAt), bytesIn, bytesOut, rowsMerged);
     }
 
-    public static TabularData getCompactionHistory() throws OpenDataException
+    public TabularData getCompactionHistory() throws OpenDataException
     {
         UntypedResultSet queryResultSet = executeInternal(String.format("SELECT * from system.%s", COMPACTION_HISTORY_CF));
         return CompactionHistoryTabularData.from(queryResultSet);
     }
 
-    public static synchronized void saveTruncationRecord(ColumnFamilyStore cfs, long truncatedAt, ReplayPosition position)
+    public synchronized void saveTruncationRecord(ColumnFamilyStore cfs, long truncatedAt, ReplayPosition position)
     {
         String req = "UPDATE system.%s SET truncated_at = truncated_at + ? WHERE key = '%s'";
         executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY), truncationAsMapEntry(cfs, truncatedAt, position));
@@ -300,7 +302,7 @@ public class SystemKeyspace
     /**
      * This method is used to remove information about truncation time for specified column family
      */
-    public static synchronized void removeTruncationRecord(UUID cfId)
+    public synchronized void removeTruncationRecord(UUID cfId)
     {
         String req = "DELETE truncated_at[?] from system.%s WHERE key = '%s'";
         executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY), cfId);
@@ -308,7 +310,7 @@ public class SystemKeyspace
         forceBlockingFlush(LOCAL_CF);
     }
 
-    private static Map<UUID, ByteBuffer> truncationAsMapEntry(ColumnFamilyStore cfs, long truncatedAt, ReplayPosition position)
+    private Map<UUID, ByteBuffer> truncationAsMapEntry(ColumnFamilyStore cfs, long truncatedAt, ReplayPosition position)
     {
         DataOutputBuffer out = new DataOutputBuffer();
         try
@@ -323,26 +325,26 @@ public class SystemKeyspace
         return Collections.<UUID, ByteBuffer>singletonMap(cfs.metadata.cfId, ByteBuffer.wrap(out.getData(), 0, out.getLength()));
     }
 
-    public static ReplayPosition getTruncatedPosition(UUID cfId)
+    public ReplayPosition getTruncatedPosition(UUID cfId)
     {
         Pair<ReplayPosition, Long> record = getTruncationRecord(cfId);
         return record == null ? null : record.left;
     }
 
-    public static long getTruncatedAt(UUID cfId)
+    public long getTruncatedAt(UUID cfId)
     {
         Pair<ReplayPosition, Long> record = getTruncationRecord(cfId);
         return record == null ? Long.MIN_VALUE : record.right;
     }
 
-    private static synchronized Pair<ReplayPosition, Long> getTruncationRecord(UUID cfId)
+    private synchronized Pair<ReplayPosition, Long> getTruncationRecord(UUID cfId)
     {
         if (truncationRecords == null)
             truncationRecords = readTruncationRecords();
         return truncationRecords.get(cfId);
     }
 
-    private static Map<UUID, Pair<ReplayPosition, Long>> readTruncationRecords()
+    private Map<UUID, Pair<ReplayPosition, Long>> readTruncationRecords()
     {
         UntypedResultSet rows = executeInternal(String.format("SELECT truncated_at FROM system.%s WHERE key = '%s'", LOCAL_CF, LOCAL_KEY));
 
@@ -358,7 +360,7 @@ public class SystemKeyspace
         return records;
     }
 
-    private static Pair<ReplayPosition, Long> truncationRecordFromBlob(ByteBuffer bytes)
+    private Pair<ReplayPosition, Long> truncationRecordFromBlob(ByteBuffer bytes)
     {
         try
         {
@@ -374,7 +376,7 @@ public class SystemKeyspace
     /**
      * Record tokens being used by another node
      */
-    public static synchronized void updateTokens(InetAddress ep, Collection<Token> tokens)
+    public synchronized void updateTokens(InetAddress ep, Collection<Token> tokens)
     {
         if (ep.equals(FBUtilities.getBroadcastAddress()))
         {
@@ -386,14 +388,14 @@ public class SystemKeyspace
         executeInternal(String.format(req, PEERS_CF), ep, tokensAsSet(tokens));
     }
 
-    public static synchronized void updatePreferredIP(InetAddress ep, InetAddress preferred_ip)
+    public synchronized void updatePreferredIP(InetAddress ep, InetAddress preferred_ip)
     {
         String req = "INSERT INTO system.%s (peer, preferred_ip) VALUES (?, ?)";
         executeInternal(String.format(req, PEERS_CF), ep, preferred_ip);
         forceBlockingFlush(PEERS_CF);
     }
 
-    public static synchronized void updatePeerInfo(InetAddress ep, String columnName, Object value)
+    public synchronized void updatePeerInfo(InetAddress ep, String columnName, Object value)
     {
         if (ep.equals(FBUtilities.getBroadcastAddress()))
             return;
@@ -402,20 +404,20 @@ public class SystemKeyspace
         executeInternal(String.format(req, PEERS_CF, columnName), ep, value);
     }
 
-    public static synchronized void updateHintsDropped(InetAddress ep, UUID timePeriod, int value)
+    public synchronized void updateHintsDropped(InetAddress ep, UUID timePeriod, int value)
     {
         // with 30 day TTL
         String req = "UPDATE system.%s USING TTL 2592000 SET hints_dropped[ ? ] = ? WHERE peer = ?";
         executeInternal(String.format(req, PEER_EVENTS_CF), timePeriod, value, ep);
     }
 
-    public static synchronized void updateSchemaVersion(UUID version)
+    public synchronized void updateSchemaVersion(UUID version)
     {
         String req = "INSERT INTO system.%s (key, schema_version) VALUES ('%s', ?)";
         executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY), version);
     }
 
-    private static Set<String> tokensAsSet(Collection<Token> tokens)
+    private Set<String> tokensAsSet(Collection<Token> tokens)
     {
         Token.TokenFactory factory = StorageService.instance.getPartitioner().getTokenFactory();
         Set<String> s = new HashSet<>(tokens.size());
@@ -424,7 +426,7 @@ public class SystemKeyspace
         return s;
     }
 
-    private static Collection<Token> deserializeTokens(Collection<String> tokensStrings)
+    private Collection<Token> deserializeTokens(Collection<String> tokensStrings)
     {
         Token.TokenFactory factory = StorageService.instance.getPartitioner().getTokenFactory();
         List<Token> tokens = new ArrayList<Token>(tokensStrings.size());
@@ -436,7 +438,7 @@ public class SystemKeyspace
     /**
      * Remove stored tokens being used by another node
      */
-    public static synchronized void removeEndpoint(InetAddress ep)
+    public synchronized void removeEndpoint(InetAddress ep)
     {
         String req = "DELETE FROM system.%s WHERE peer = ?";
         executeInternal(String.format(req, PEERS_CF), ep);
@@ -445,7 +447,7 @@ public class SystemKeyspace
     /**
      * This method is used to update the System Keyspace with the new tokens for this node
     */
-    public static synchronized void updateTokens(Collection<Token> tokens)
+    public synchronized void updateTokens(Collection<Token> tokens)
     {
         assert !tokens.isEmpty() : "removeEndpoint should be used instead";
         String req = "INSERT INTO system.%s (key, tokens) VALUES ('%s', ?)";
@@ -460,7 +462,7 @@ public class SystemKeyspace
      * @param rmTokens tokens to remove
      * @return the collection of persisted tokens
      */
-    public static synchronized Collection<Token> updateLocalTokens(Collection<Token> addTokens, Collection<Token> rmTokens)
+    public synchronized Collection<Token> updateLocalTokens(Collection<Token> addTokens, Collection<Token> rmTokens)
     {
         Collection<Token> tokens = getSavedTokens();
         tokens.removeAll(rmTokens);
@@ -469,7 +471,7 @@ public class SystemKeyspace
         return tokens;
     }
 
-    public static void forceBlockingFlush(String cfname)
+    public void forceBlockingFlush(String cfname)
     {
         if (!Boolean.getBoolean("cassandra.unsafesystem"))
             FBUtilities.waitOnFuture(Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(cfname).forceFlush());
@@ -479,7 +481,7 @@ public class SystemKeyspace
      * Return a map of stored tokens to IP addresses
      *
      */
-    public static SetMultimap<InetAddress, Token> loadTokens()
+    public SetMultimap<InetAddress, Token> loadTokens()
     {
         SetMultimap<InetAddress, Token> tokenMap = HashMultimap.create();
         for (UntypedResultSet.Row row : executeInternal("SELECT peer, tokens FROM system." + PEERS_CF))
@@ -496,7 +498,7 @@ public class SystemKeyspace
      * Return a map of store host_ids to IP addresses
      *
      */
-    public static Map<InetAddress, UUID> loadHostIds()
+    public Map<InetAddress, UUID> loadHostIds()
     {
         Map<InetAddress, UUID> hostIdMap = new HashMap<InetAddress, UUID>();
         for (UntypedResultSet.Row row : executeInternal("SELECT peer, host_id FROM system." + PEERS_CF))
@@ -510,7 +512,7 @@ public class SystemKeyspace
         return hostIdMap;
     }
 
-    public static InetAddress getPreferredIP(InetAddress ep)
+    public InetAddress getPreferredIP(InetAddress ep)
     {
         String req = "SELECT preferred_ip FROM system.%s WHERE peer=?";
         UntypedResultSet result = executeInternal(String.format(req, PEERS_CF), ep);
@@ -522,7 +524,7 @@ public class SystemKeyspace
     /**
      * Return a map of IP addresses containing a map of dc and rack info
      */
-    public static Map<InetAddress, Map<String,String>> loadDcRackInfo()
+    public Map<InetAddress, Map<String,String>> loadDcRackInfo()
     {
         Map<InetAddress, Map<String, String>> result = new HashMap<InetAddress, Map<String, String>>();
         for (UntypedResultSet.Row row : executeInternal("SELECT peer, data_center, rack from system." + PEERS_CF))
@@ -546,7 +548,7 @@ public class SystemKeyspace
      * 3. files are present but you can't read them: bad
      * @throws ConfigurationException
      */
-    public static void checkHealth() throws ConfigurationException
+    public void checkHealth() throws ConfigurationException
     {
         Keyspace keyspace;
         try
@@ -582,7 +584,7 @@ public class SystemKeyspace
             throw new ConfigurationException("Saved cluster name " + savedClusterName + " != configured name " + DatabaseDescriptor.instance.getClusterName());
     }
 
-    public static Collection<Token> getSavedTokens()
+    public Collection<Token> getSavedTokens()
     {
         String req = "SELECT tokens FROM system.%s WHERE key='%s'";
         UntypedResultSet result = executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY));
@@ -591,7 +593,7 @@ public class SystemKeyspace
              : deserializeTokens(result.one().<String>getSet("tokens", UTF8Type.instance));
     }
 
-    public static int incrementAndGetGeneration()
+    public int incrementAndGetGeneration()
     {
         String req = "SELECT gossip_generation FROM system.%s WHERE key='%s'";
         UntypedResultSet result = executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY));
@@ -628,7 +630,7 @@ public class SystemKeyspace
         return generation;
     }
 
-    public static BootstrapState getBootstrapState()
+    public BootstrapState getBootstrapState()
     {
         String req = "SELECT bootstrapped FROM system.%s WHERE key='%s'";
         UntypedResultSet result = executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY));
@@ -639,24 +641,24 @@ public class SystemKeyspace
         return BootstrapState.valueOf(result.one().getString("bootstrapped"));
     }
 
-    public static boolean bootstrapComplete()
+    public boolean bootstrapComplete()
     {
         return getBootstrapState() == BootstrapState.COMPLETED;
     }
 
-    public static boolean bootstrapInProgress()
+    public boolean bootstrapInProgress()
     {
         return getBootstrapState() == BootstrapState.IN_PROGRESS;
     }
 
-    public static void setBootstrapState(BootstrapState state)
+    public void setBootstrapState(BootstrapState state)
     {
         String req = "INSERT INTO system.%s (key, bootstrapped) VALUES ('%s', ?)";
         executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY), state.name());
         forceBlockingFlush(LOCAL_CF);
     }
 
-    public static boolean isIndexBuilt(String keyspaceName, String indexName)
+    public boolean isIndexBuilt(String keyspaceName, String indexName)
     {
         ColumnFamilyStore cfs = Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(INDEX_CF);
         QueryFilter filter = QueryFilter.getNamesFilter(decorate(ByteBufferUtil.bytes(keyspaceName)),
@@ -666,14 +668,14 @@ public class SystemKeyspace
         return ColumnFamilyStore.removeDeleted(cfs.getColumnFamily(filter), Integer.MAX_VALUE) != null;
     }
 
-    public static void setIndexBuilt(String keyspaceName, String indexName)
+    public void setIndexBuilt(String keyspaceName, String indexName)
     {
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(Keyspace.SYSTEM_KS, INDEX_CF);
         cf.addColumn(new BufferCell(cf.getComparator().makeCellName(indexName), ByteBufferUtil.EMPTY_BYTE_BUFFER, FBUtilities.timestampMicros()));
         new Mutation(Keyspace.SYSTEM_KS, ByteBufferUtil.bytes(keyspaceName), cf).apply();
     }
 
-    public static void setIndexRemoved(String keyspaceName, String indexName)
+    public void setIndexRemoved(String keyspaceName, String indexName)
     {
         Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, ByteBufferUtil.bytes(keyspaceName));
         mutation.delete(INDEX_CF, CFMetaData.IndexCf.comparator.makeCellName(indexName), FBUtilities.timestampMicros());
@@ -684,7 +686,7 @@ public class SystemKeyspace
      * Read the host ID from the system keyspace, creating (and storing) one if
      * none exists.
      */
-    public static UUID getLocalHostId()
+    public UUID getLocalHostId()
     {
         String req = "SELECT host_id FROM system.%s WHERE key='%s'";
         UntypedResultSet result = executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY));
@@ -702,7 +704,7 @@ public class SystemKeyspace
     /**
      * Sets the local host ID explicitly.  Should only be called outside of SystemTable when replacing a node.
      */
-    public static UUID setLocalHostId(UUID hostId)
+    public UUID setLocalHostId(UUID hostId)
     {
         String req = "INSERT INTO system.%s (key, host_id) VALUES ('%s', ?)";
         executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY), hostId);
@@ -713,12 +715,12 @@ public class SystemKeyspace
      * @param cfName The name of the ColumnFamily responsible for part of the schema (keyspace, ColumnFamily, columns)
      * @return CFS responsible to hold low-level serialized schema
      */
-    public static ColumnFamilyStore schemaCFS(String cfName)
+    public ColumnFamilyStore schemaCFS(String cfName)
     {
         return Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(cfName);
     }
 
-    public static List<Row> serializedSchema()
+    public List<Row> serializedSchema()
     {
         List<Row> schema = new ArrayList<>();
 
@@ -732,7 +734,7 @@ public class SystemKeyspace
      * @param schemaCfName The name of the ColumnFamily responsible for part of the schema (keyspace, ColumnFamily, columns)
      * @return low-level schema representation (each row represents individual Keyspace or ColumnFamily)
      */
-    public static List<Row> serializedSchema(String schemaCfName)
+    public List<Row> serializedSchema(String schemaCfName)
     {
         Token minToken = StorageService.instance.getPartitioner().getMinimumToken();
 
@@ -743,7 +745,7 @@ public class SystemKeyspace
                                                      System.currentTimeMillis());
     }
 
-    public static Collection<Mutation> serializeSchema()
+    public Collection<Mutation> serializeSchema()
     {
         Map<DecoratedKey, Mutation> mutationMap = new HashMap<>();
 
@@ -753,7 +755,7 @@ public class SystemKeyspace
         return mutationMap.values();
     }
 
-    private static void serializeSchema(Map<DecoratedKey, Mutation> mutationMap, String schemaCfName)
+    private void serializeSchema(Map<DecoratedKey, Mutation> mutationMap, String schemaCfName)
     {
         for (Row schemaRow : serializedSchema(schemaCfName))
         {
@@ -771,17 +773,17 @@ public class SystemKeyspace
         }
     }
 
-    public static Map<DecoratedKey, ColumnFamily> getSchema(String cfName)
+    public Map<DecoratedKey, ColumnFamily> getSchema(String cfName)
     {
         Map<DecoratedKey, ColumnFamily> schema = new HashMap<>();
 
-        for (Row schemaEntity : SystemKeyspace.serializedSchema(cfName))
+        for (Row schemaEntity : serializedSchema(cfName))
             schema.put(schemaEntity.key, schemaEntity.cf);
 
         return schema;
     }
 
-    public static Map<DecoratedKey, ColumnFamily> getSchema(String schemaCfName, Set<String> keyspaces)
+    public Map<DecoratedKey, ColumnFamily> getSchema(String schemaCfName, Set<String> keyspaces)
     {
         Map<DecoratedKey, ColumnFamily> schema = new HashMap<>();
 
@@ -795,7 +797,7 @@ public class SystemKeyspace
         return schema;
     }
 
-    public static ByteBuffer getSchemaKSKey(String ksName)
+    public ByteBuffer getSchemaKSKey(String ksName)
     {
         return AsciiType.instance.fromString(ksName);
     }
@@ -807,11 +809,11 @@ public class SystemKeyspace
      * @param ksName the keyspace of the tables we are interested in
      * @return a Row containing the schema data of a particular type for the keyspace
      */
-    public static Row readSchemaRow(String schemaCfName, String ksName)
+    public Row readSchemaRow(String schemaCfName, String ksName)
     {
         DecoratedKey key = StorageService.instance.getPartitioner().decorateKey(getSchemaKSKey(ksName));
 
-        ColumnFamilyStore schemaCFS = SystemKeyspace.schemaCFS(schemaCfName);
+        ColumnFamilyStore schemaCFS = schemaCFS(schemaCfName);
         ColumnFamily result = schemaCFS.getColumnFamily(QueryFilter.getIdentityFilter(key, schemaCfName, System.currentTimeMillis()));
 
         return new Row(key, result);
@@ -825,10 +827,10 @@ public class SystemKeyspace
      * @param cfName the table we are interested in
      * @return a Row containing the schema data of a particular type for the table
      */
-    public static Row readSchemaRow(String schemaCfName, String ksName, String cfName)
+    public Row readSchemaRow(String schemaCfName, String ksName, String cfName)
     {
         DecoratedKey key = StorageService.instance.getPartitioner().decorateKey(getSchemaKSKey(ksName));
-        ColumnFamilyStore schemaCFS = SystemKeyspace.schemaCFS(schemaCfName);
+        ColumnFamilyStore schemaCFS = schemaCFS(schemaCfName);
         Composite prefix = schemaCFS.getComparator().make(cfName);
         ColumnFamily cf = schemaCFS.getColumnFamily(key,
                                                     prefix,
@@ -839,7 +841,7 @@ public class SystemKeyspace
         return new Row(key, cf);
     }
 
-    public static PaxosState loadPaxosState(ByteBuffer key, CFMetaData metadata)
+    public PaxosState loadPaxosState(ByteBuffer key, CFMetaData metadata)
     {
         String req = "SELECT * FROM system.%s WHERE row_key = ? AND cf_id = ?";
         UntypedResultSet results = executeInternal(String.format(req, PAXOS_CF), key, metadata.cfId);
@@ -860,7 +862,7 @@ public class SystemKeyspace
         return new PaxosState(promised, accepted, mostRecent);
     }
 
-    public static void savePaxosPromise(Commit promise)
+    public void savePaxosPromise(Commit promise)
     {
         String req = "UPDATE system.%s USING TIMESTAMP ? AND TTL ? SET in_progress_ballot = ? WHERE row_key = ? AND cf_id = ?";
         executeInternal(String.format(req, PAXOS_CF),
@@ -871,7 +873,7 @@ public class SystemKeyspace
                         promise.update.id());
     }
 
-    public static void savePaxosProposal(Commit proposal)
+    public void savePaxosProposal(Commit proposal)
     {
         executeInternal(String.format("UPDATE system.%s USING TIMESTAMP ? AND TTL ? SET proposal_ballot = ?, proposal = ? WHERE row_key = ? AND cf_id = ?", PAXOS_CF),
                         UUIDGen.microsTimestamp(proposal.ballot),
@@ -882,13 +884,13 @@ public class SystemKeyspace
                         proposal.update.id());
     }
 
-    private static int paxosTtl(CFMetaData metadata)
+    private int paxosTtl(CFMetaData metadata)
     {
         // keep paxos state around for at least 3h
         return Math.max(3 * 3600, metadata.getGcGraceSeconds());
     }
 
-    public static void savePaxosCommit(Commit commit)
+    public void savePaxosCommit(Commit commit)
     {
         // We always erase the last proposal (with the commit timestamp to no erase more recent proposal in case the commit is old)
         // even though that's really just an optimization  since SP.beginAndRepairPaxos will exclude accepted proposal older than the mrc.
@@ -909,7 +911,7 @@ public class SystemKeyspace
      * @param table the table the sstable belongs to
      * @param generation the generation number for the sstable
      */
-    public static RestorableMeter getSSTableReadMeter(String keyspace, String table, int generation)
+    public RestorableMeter getSSTableReadMeter(String keyspace, String table, int generation)
     {
         String cql = "SELECT * FROM system.%s WHERE keyspace_name=? and columnfamily_name=? and generation=?";
         UntypedResultSet results = executeInternal(String.format(cql, SSTABLE_ACTIVITY_CF), keyspace, table, generation);
@@ -926,7 +928,7 @@ public class SystemKeyspace
     /**
      * Writes the current read rates for a given SSTable to system.sstable_activity
      */
-    public static void persistSSTableReadMeter(String keyspace, String table, int generation, RestorableMeter meter)
+    public void persistSSTableReadMeter(String keyspace, String table, int generation, RestorableMeter meter)
     {
         // Store values with a one-day TTL to handle corner cases where cleanup might not occur
         String cql = "INSERT INTO system.%s (keyspace_name, columnfamily_name, generation, rate_15m, rate_120m) VALUES (?, ?, ?, ?, ?) USING TTL 864000";
@@ -941,7 +943,7 @@ public class SystemKeyspace
     /**
      * Clears persisted read rates from system.sstable_activity for SSTables that have been deleted.
      */
-    public static void clearSSTableReadMeter(String keyspace, String table, int generation)
+    public void clearSSTableReadMeter(String keyspace, String table, int generation)
     {
         String cql = "DELETE FROM system.%s WHERE keyspace_name=? AND columnfamily_name=? and generation=?";
         executeInternal(String.format(cql, SSTABLE_ACTIVITY_CF), keyspace, table, generation);

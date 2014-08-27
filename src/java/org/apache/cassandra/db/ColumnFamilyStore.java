@@ -369,7 +369,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
         compactionStrategy.shutdown();
 
-        SystemKeyspace.removeTruncationRecord(metadata.cfId);
+        SystemKeyspace.instance.removeTruncationRecord(metadata.cfId);
         data.unreferenceSSTables();
         indexManager.invalidate();
 
@@ -593,7 +593,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 assert compactionTaskID != null;
                 logger.debug("Going to delete unfinished compaction product {}", desc);
                 SSTable.delete(desc, sstableFiles.getValue());
-                SystemKeyspace.finishCompaction(compactionTaskID);
+                SystemKeyspace.instance.finishCompaction(compactionTaskID);
             }
             else
             {
@@ -612,7 +612,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 SSTable.delete(desc, sstableFiles.getValue());
                 UUID compactionTaskID = unfinishedCompactions.get(desc.generation);
                 if (compactionTaskID != null)
-                    SystemKeyspace.finishCompaction(unfinishedCompactions.get(desc.generation));
+                    SystemKeyspace.instance.finishCompaction(unfinishedCompactions.get(desc.generation));
             }
         }
     }
@@ -2452,7 +2452,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 for (SecondaryIndex index : indexManager.getIndexes())
                     index.truncateBlocking(truncatedAt);
 
-                SystemKeyspace.saveTruncationRecord(ColumnFamilyStore.this, truncatedAt, replayAfter);
+                SystemKeyspace.instance.saveTruncationRecord(ColumnFamilyStore.this, truncatedAt, replayAfter);
                 logger.debug("cleaning out row cache");
                 invalidateCaches();
             }

@@ -135,7 +135,7 @@ public class CounterId implements Comparable<CounterId>
 
         LocalCounterIdHolder()
         {
-            current = new AtomicReference<>(wrap(ByteBufferUtil.bytes(SystemKeyspace.getLocalHostId())));
+            current = new AtomicReference<>(wrap(ByteBufferUtil.bytes(SystemKeyspace.instance.getLocalHostId())));
         }
 
         CounterId get()

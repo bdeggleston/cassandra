@@ -427,7 +427,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
                 for (UUID cfId : mutation.getColumnFamilyIds())
                 {
-                    if (hint.timestamp() <= SystemKeyspace.getTruncatedAt(cfId))
+                    if (hint.timestamp() <= SystemKeyspace.instance.getTruncatedAt(cfId))
                     {
                         logger.debug("Skipping delivery of hint for truncated table {}", cfId);
                         mutation = mutation.without(cfId);
