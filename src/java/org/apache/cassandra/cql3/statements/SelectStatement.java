@@ -254,8 +254,8 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         else
         {
             rows = command instanceof Pageable.ReadCommands
-                 ? StorageProxy.read(((Pageable.ReadCommands)command).commands, options.getConsistency())
-                 : StorageProxy.getRangeSlice((RangeSliceCommand)command, options.getConsistency());
+                 ? StorageProxy.instance.read(((Pageable.ReadCommands)command).commands, options.getConsistency())
+                 : StorageProxy.instance.getRangeSlice((RangeSliceCommand)command, options.getConsistency());
         }
 
         return processResults(rows, options, limit, now);

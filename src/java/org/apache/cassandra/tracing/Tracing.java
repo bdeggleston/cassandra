@@ -286,7 +286,7 @@ public class Tracing
     {
         try
         {
-            StorageProxy.mutate(Arrays.asList(mutation), ConsistencyLevel.ANY);
+            StorageProxy.instance.mutate(Arrays.asList(mutation), ConsistencyLevel.ANY);
         }
         catch (UnavailableException | WriteTimeoutException e)
         {

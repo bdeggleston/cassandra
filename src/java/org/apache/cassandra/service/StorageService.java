@@ -562,7 +562,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 mutationStage.shutdown();
                 counterMutationStage.awaitTermination(3600, TimeUnit.SECONDS);
                 mutationStage.awaitTermination(3600, TimeUnit.SECONDS);
-                StorageProxy.instance.verifyNoHintsInProgress();
+                StorageProxy.instance.instance.verifyNoHintsInProgress();
 
                 List<Future<?>> flushes = new ArrayList<>();
                 for (Keyspace keyspace : Keyspace.all())
@@ -3476,7 +3476,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         counterMutationStage.awaitTermination(3600, TimeUnit.SECONDS);
         mutationStage.awaitTermination(3600, TimeUnit.SECONDS);
 
-        StorageProxy.instance.verifyNoHintsInProgress();
+        StorageProxy.instance.instance.verifyNoHintsInProgress();
 
         setMode(Mode.DRAINING, "flushing column families", false);
         // count CFs first, since forceFlush could block for the flushWriter to get a queue slot empty
@@ -3549,7 +3549,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         try
         {
-            StorageProxy.truncateBlocking(keyspace, columnFamily);
+            StorageProxy.instance.truncateBlocking(keyspace, columnFamily);
         }
         catch (UnavailableException e)
         {

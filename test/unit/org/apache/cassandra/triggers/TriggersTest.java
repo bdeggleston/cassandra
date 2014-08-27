@@ -197,7 +197,7 @@ public class TriggersTest
         assertUpdateIsAugmented(6);
     }
 
-    // Unfortunately, an IRE thrown from StorageProxy.cas
+    // Unfortunately, an IRE thrown from StorageProxy.instance.cas
     // results in a RuntimeException from QueryProcessor.process
     @Test(expected=RuntimeException.class)
     public void onCqlUpdateWithConditionsRejectGeneratedUpdatesForDifferentPartition() throws Exception
@@ -215,7 +215,7 @@ public class TriggersTest
         }
     }
 
-    // Unfortunately, an IRE thrown from StorageProxy.cas
+    // Unfortunately, an IRE thrown from StorageProxy.instance.cas
     // results in a RuntimeException from QueryProcessor.process
     @Test(expected=RuntimeException.class)
     public void onCqlUpdateWithConditionsRejectGeneratedUpdatesForDifferentTable() throws Exception

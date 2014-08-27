@@ -72,7 +72,7 @@ public abstract class AbstractReadExecutor
 
     private static boolean isLocalRequest(InetAddress replica)
     {
-        return replica.equals(FBUtilities.getBroadcastAddress()) && StorageProxy.OPTIMIZE_LOCAL_REQUESTS;
+        return replica.equals(FBUtilities.getBroadcastAddress()) && StorageProxy.instance.OPTIMIZE_LOCAL_REQUESTS;
     }
 
     protected void makeDataRequests(Iterable<InetAddress> endpoints)
@@ -150,7 +150,7 @@ public abstract class AbstractReadExecutor
     public static AbstractReadExecutor getReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel) throws UnavailableException
     {
         Keyspace keyspace = Keyspace.open(command.ksName);
-        List<InetAddress> allReplicas = StorageProxy.getLiveSortedEndpoints(keyspace, command.key);
+        List<InetAddress> allReplicas = StorageProxy.instance.getLiveSortedEndpoints(keyspace, command.key);
         ReadRepairDecision repairDecision = Schema.instance.getCFMetaData(command.ksName, command.cfName).newReadRepairDecision();
         List<InetAddress> targetReplicas = consistencyLevel.filterForQuery(keyspace, allReplicas, repairDecision);
 

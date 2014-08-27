@@ -441,7 +441,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 
         List<Row> rows = local
                        ? SelectStatement.readLocally(keyspace(), commands)
-                       : StorageProxy.read(commands, cl);
+                       : StorageProxy.instance.read(commands, cl);
 
         Map<ByteBuffer, CQL3Row> map = new HashMap<ByteBuffer, CQL3Row>();
         for (Row row : rows)
@@ -493,7 +493,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 
         Collection<? extends IMutation> mutations = getMutations(options, false, options.getTimestamp(queryState));
         if (!mutations.isEmpty())
-            StorageProxy.mutateWithTriggers(mutations, cl, false);
+            StorageProxy.instance.mutateWithTriggers(mutations, cl, false);
 
         return null;
     }
@@ -514,7 +514,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         addConditions(prefix, request, options);
         request.addRowUpdate(prefix, this, options, now);
 
-        ColumnFamily result = StorageProxy.cas(keyspace(),
+        ColumnFamily result = StorageProxy.instance.cas(keyspace(),
                                                columnFamily(),
                                                key,
                                                request,

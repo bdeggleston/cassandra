@@ -108,7 +108,7 @@ public class CassandraServer implements Cassandra.Iface
             schedule(DatabaseDescriptor.instance.getReadRpcTimeout());
             try
             {
-                rows = StorageProxy.read(commands, consistency_level);
+                rows = StorageProxy.instance.read(commands, consistency_level);
             }
             finally
             {
@@ -775,7 +775,7 @@ public class CassandraServer implements Cassandra.Iface
             }
 
             schedule(DatabaseDescriptor.instance.getWriteRpcTimeout());
-            ColumnFamily result = StorageProxy.cas(cState.getKeyspace(),
+            ColumnFamily result = StorageProxy.instance.cas(cState.getKeyspace(),
                                                    column_family,
                                                    key,
                                                    new ThriftCASRequest(cfExpected, cfUpdates),
@@ -1086,7 +1086,7 @@ public class CassandraServer implements Cassandra.Iface
         schedule(timeout);
         try
         {
-            StorageProxy.mutateWithTriggers(mutations, consistencyLevel, mutateAtomically);
+            StorageProxy.instance.mutateWithTriggers(mutations, consistencyLevel, mutateAtomically);
         }
         catch (RequestExecutionException e)
         {
@@ -1175,7 +1175,7 @@ public class CassandraServer implements Cassandra.Iface
             try
             {
                 IDiskAtomFilter filter = ThriftValidation.asIFilter(predicate, metadata, column_parent.super_column);
-                rows = StorageProxy.getRangeSlice(new RangeSliceCommand(keyspace,
+                rows = StorageProxy.instance.getRangeSlice(new RangeSliceCommand(keyspace,
                                                                         column_parent.column_family,
                                                                         now,
                                                                         filter,
@@ -1268,7 +1268,7 @@ public class CassandraServer implements Cassandra.Iface
             try
             {
                 IDiskAtomFilter filter = ThriftValidation.asIFilter(predicate, metadata, null);
-                rows = StorageProxy.getRangeSlice(new RangeSliceCommand(keyspace, column_family, now, filter, bounds, null, range.count, true, true), consistencyLevel);
+                rows = StorageProxy.instance.getRangeSlice(new RangeSliceCommand(keyspace, column_family, now, filter, bounds, null, range.count, true, true), consistencyLevel);
             }
             finally
             {
@@ -1351,7 +1351,7 @@ public class CassandraServer implements Cassandra.Iface
                                                               ThriftConversion.fromThrift(index_clause.expressions),
                                                               index_clause.count);
 
-            List<Row> rows = StorageProxy.getRangeSlice(command, consistencyLevel);
+            List<Row> rows = StorageProxy.instance.getRangeSlice(command, consistencyLevel);
             return thriftifyKeySlices(rows, column_parent, column_predicate, now);
         }
         catch (RequestValidationException e)
@@ -1702,7 +1702,7 @@ public class CassandraServer implements Cassandra.Iface
             schedule(DatabaseDescriptor.instance.getTruncateRpcTimeout());
             try
             {
-                StorageProxy.truncateBlocking(cState.getKeyspace(), cfname);
+                StorageProxy.instance.truncateBlocking(cState.getKeyspace(), cfname);
             }
             finally
             {
@@ -1746,7 +1746,7 @@ public class CassandraServer implements Cassandra.Iface
     public Map<String, List<String>> describe_schema_versions() throws TException, InvalidRequestException
     {
         logger.debug("checking schema agreement");
-        return StorageProxy.describeSchemaVersions();
+        return StorageProxy.instance.describeSchemaVersions();
     }
 
     // counter methods
