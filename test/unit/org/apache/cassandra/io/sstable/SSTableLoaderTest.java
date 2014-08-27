@@ -72,7 +72,7 @@ public class SSTableLoaderTest
         CFMetaData cfmeta = Schema.instance.getCFMetaData(KEYSPACE1, CF_STANDARD);
         SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(dataDir,
                                                                              cfmeta,
-                                                                             StorageService.getPartitioner(),
+                                                                             StorageService.instance.getPartitioner(),
                                                                              1);
         DecoratedKey key = Util.dk("key1");
         writer.newRow(key.getKey());
@@ -85,7 +85,7 @@ public class SSTableLoaderTest
             {
                 for (Range<Token> range : StorageService.instance.getLocalRanges(KEYSPACE1))
                     addRangeForEndpoint(range, FBUtilities.getBroadcastAddress());
-                setPartitioner(StorageService.getPartitioner());
+                setPartitioner(StorageService.instance.getPartitioner());
             }
 
             public CFMetaData getCFMetaData(String keyspace, String cfName)

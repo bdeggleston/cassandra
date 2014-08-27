@@ -85,7 +85,7 @@ public interface RowPosition extends RingPosition<RowPosition>
             if (kind == Kind.ROW_KEY)
             {
                 ByteBuffer k = ByteBufferUtil.readWithShortLength(in);
-                return StorageService.getPartitioner().decorateKey(k);
+                return StorageService.instance.getPartitioner().decorateKey(k);
             }
             else
             {

@@ -93,7 +93,7 @@ public class BatchlogManager implements BatchlogManagerMBean
             }
         };
 
-        batchlogTasks.scheduleWithFixedDelay(runnable, StorageService.RING_DELAY, REPLAY_INTERVAL, TimeUnit.MILLISECONDS);
+        batchlogTasks.scheduleWithFixedDelay(runnable, StorageService.instance.RING_DELAY, REPLAY_INTERVAL, TimeUnit.MILLISECONDS);
     }
 
     public int countAllBatches()
@@ -379,7 +379,7 @@ public class BatchlogManager implements BatchlogManagerMBean
         {
             Set<InetAddress> liveEndpoints = new HashSet<>();
             String ks = mutation.getKeyspaceName();
-            Token<?> tk = StorageService.getPartitioner().getToken(mutation.key());
+            Token<?> tk = StorageService.instance.getPartitioner().getToken(mutation.key());
 
             for (InetAddress endpoint : Iterables.concat(StorageService.instance.getNaturalEndpoints(ks, tk),
                                                          StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk, ks)))

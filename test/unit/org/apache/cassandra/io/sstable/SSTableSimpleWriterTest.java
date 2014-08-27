@@ -63,7 +63,7 @@ public class SSTableSimpleWriterTest
         File dir = new Directories(Schema.instance.getCFMetaData(keyspaceName, cfname)).getDirectoryForNewSSTables();
         assert dir.exists();
 
-        IPartitioner partitioner = StorageService.getPartitioner();
+        IPartitioner partitioner = StorageService.instance.getPartitioner();
         SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(dir, partitioner, keyspaceName, cfname, IntegerType.instance, null, 16);
 
         int k = 0;

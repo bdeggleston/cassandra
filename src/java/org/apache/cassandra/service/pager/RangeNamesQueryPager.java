@@ -54,7 +54,7 @@ public class RangeNamesQueryPager extends AbstractQueryPager
 
         if (state != null)
         {
-            lastReturnedKey = StorageService.getPartitioner().decorateKey(state.partitionKey);
+            lastReturnedKey = StorageService.instance.getPartitioner().decorateKey(state.partitionKey);
             restoreState(state.remaining, true);
         }
     }

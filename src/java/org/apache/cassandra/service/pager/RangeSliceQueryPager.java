@@ -54,7 +54,7 @@ public class RangeSliceQueryPager extends AbstractQueryPager
 
         if (state != null)
         {
-            lastReturnedKey = StorageService.getPartitioner().decorateKey(state.partitionKey);
+            lastReturnedKey = StorageService.instance.getPartitioner().decorateKey(state.partitionKey);
             lastReturnedName = cfm.comparator.cellFromByteBuffer(state.cellName);
             restoreState(state.remaining, true);
         }

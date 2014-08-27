@@ -277,7 +277,7 @@ public class SSTableLoader implements StreamEventHandler
         protected void setPartitioner(IPartitioner partitioner)
         {
             this.partitioner = partitioner;
-            // the following is still necessary since Range/Token reference partitioner through StorageService.getPartitioner
+            // the following is still necessary since Range/Token reference partitioner through StorageService.instance.getPartitioner
             DatabaseDescriptor.instance.setPartitioner(partitioner);
         }
 

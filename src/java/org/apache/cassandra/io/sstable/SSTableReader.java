@@ -286,7 +286,7 @@ public class SSTableReader extends SSTable
     {
         IPartitioner p = desc.cfname.contains(SECONDARY_INDEX_NAME_SEPARATOR)
                        ? new LocalPartitioner(metadata.getKeyValidator())
-                       : StorageService.getPartitioner();
+                       : StorageService.instance.getPartitioner();
         return open(desc, componentsFor(desc), metadata, p);
     }
 
@@ -297,7 +297,7 @@ public class SSTableReader extends SSTable
 
     public static SSTableReader openNoValidation(Descriptor descriptor, Set<Component> components, CFMetaData metadata) throws IOException
     {
-        return open(descriptor, components, metadata, StorageService.getPartitioner(), false);
+        return open(descriptor, components, metadata, StorageService.instance.getPartitioner(), false);
     }
 
     /**

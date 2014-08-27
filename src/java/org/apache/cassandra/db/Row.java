@@ -43,7 +43,7 @@ public class Row
 
     public Row(ByteBuffer key, ColumnFamily updates)
     {
-        this(StorageService.getPartitioner().decorateKey(key), updates);
+        this(StorageService.instance.getPartitioner().decorateKey(key), updates);
     }
 
     @Override
@@ -70,7 +70,7 @@ public class Row
 
         public Row deserialize(DataInput in, int version, ColumnSerializer.Flag flag) throws IOException
         {
-            return new Row(StorageService.getPartitioner().decorateKey(ByteBufferUtil.readWithShortLength(in)),
+            return new Row(StorageService.instance.getPartitioner().decorateKey(ByteBufferUtil.readWithShortLength(in)),
                            ColumnFamily.serializer.deserialize(in, flag, version));
         }
 

@@ -106,7 +106,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 {
     private static final Logger logger = LoggerFactory.getLogger(StorageService.class);
 
-    public static final int RING_DELAY = getRingDelay(); // delay after which we assume ring has stablized
+    public final int RING_DELAY = getRingDelay(); // delay after which we assume ring has stablized
 
     /* JMX notification serial number counter */
     private final AtomicLong notificationSerialNumber = new AtomicLong();
@@ -130,7 +130,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public static final StorageService instance = new StorageService();
 
-    public static IPartitioner getPartitioner()
+    public IPartitioner getPartitioner()
     {
         return DatabaseDescriptor.instance.getPartitioner();
     }
@@ -170,11 +170,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     /* Used for tracking drain progress */
     private volatile int totalCFs, remainingCFs;
 
-    private static final AtomicInteger nextRepairCommand = new AtomicInteger();
+    private final AtomicInteger nextRepairCommand = new AtomicInteger();
 
     private final List<IEndpointLifecycleSubscriber> lifecycleSubscribers = new CopyOnWriteArrayList<>();
 
-    private static final BackgroundActivityMonitor bgMonitor = new BackgroundActivityMonitor();
+    private final BackgroundActivityMonitor bgMonitor = new BackgroundActivityMonitor();
 
     private final ObjectName jmxObjectName;
 
@@ -3047,7 +3047,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             InetAddress hintsDestinationHost = candidates.get(0);
 
             // stream all hints -- range list will be a singleton of "the entire ring"
-            Token token = StorageService.getPartitioner().getMinimumToken();
+            Token token = StorageService.instance.getPartitioner().getMinimumToken();
             List<Range<Token>> ranges = Collections.singletonList(new Range<>(token, token));
 
             return new StreamPlan("Hints").transferRanges(hintsDestinationHost,

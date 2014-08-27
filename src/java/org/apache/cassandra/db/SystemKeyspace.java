@@ -106,7 +106,7 @@ public class SystemKeyspace
 
     private static DecoratedKey decorate(ByteBuffer key)
     {
-        return StorageService.getPartitioner().decorateKey(key);
+        return StorageService.instance.getPartitioner().decorateKey(key);
     }
 
     public static void finishStartup()
@@ -417,7 +417,7 @@ public class SystemKeyspace
 
     private static Set<String> tokensAsSet(Collection<Token> tokens)
     {
-        Token.TokenFactory factory = StorageService.getPartitioner().getTokenFactory();
+        Token.TokenFactory factory = StorageService.instance.getPartitioner().getTokenFactory();
         Set<String> s = new HashSet<>(tokens.size());
         for (Token tk : tokens)
             s.add(factory.toString(tk));
@@ -426,7 +426,7 @@ public class SystemKeyspace
 
     private static Collection<Token> deserializeTokens(Collection<String> tokensStrings)
     {
-        Token.TokenFactory factory = StorageService.getPartitioner().getTokenFactory();
+        Token.TokenFactory factory = StorageService.instance.getPartitioner().getTokenFactory();
         List<Token> tokens = new ArrayList<Token>(tokensStrings.size());
         for (String tk : tokensStrings)
             tokens.add(factory.fromString(tk));
@@ -734,7 +734,7 @@ public class SystemKeyspace
      */
     public static List<Row> serializedSchema(String schemaCfName)
     {
-        Token minToken = StorageService.getPartitioner().getMinimumToken();
+        Token minToken = StorageService.instance.getPartitioner().getMinimumToken();
 
         return schemaCFS(schemaCfName).getRangeSlice(new Range<RowPosition>(minToken.minKeyBound(), minToken.maxKeyBound()),
                                                      null,
@@ -809,7 +809,7 @@ public class SystemKeyspace
      */
     public static Row readSchemaRow(String schemaCfName, String ksName)
     {
-        DecoratedKey key = StorageService.getPartitioner().decorateKey(getSchemaKSKey(ksName));
+        DecoratedKey key = StorageService.instance.getPartitioner().decorateKey(getSchemaKSKey(ksName));
 
         ColumnFamilyStore schemaCFS = SystemKeyspace.schemaCFS(schemaCfName);
         ColumnFamily result = schemaCFS.getColumnFamily(QueryFilter.getIdentityFilter(key, schemaCfName, System.currentTimeMillis()));
@@ -827,7 +827,7 @@ public class SystemKeyspace
      */
     public static Row readSchemaRow(String schemaCfName, String ksName, String cfName)
     {
-        DecoratedKey key = StorageService.getPartitioner().decorateKey(getSchemaKSKey(ksName));
+        DecoratedKey key = StorageService.instance.getPartitioner().decorateKey(getSchemaKSKey(ksName));
         ColumnFamilyStore schemaCFS = SystemKeyspace.schemaCFS(schemaCfName);
         Composite prefix = schemaCFS.getComparator().make(cfName);
         ColumnFamily cf = schemaCFS.getColumnFamily(key,

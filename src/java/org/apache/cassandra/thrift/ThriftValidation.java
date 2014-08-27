@@ -516,7 +516,7 @@ public class ThriftValidation
         if (range.start_token != null && range.end_key != null)
             throw new org.apache.cassandra.exceptions.InvalidRequestException("start token + end key is not a supported key range");
 
-        IPartitioner p = StorageService.getPartitioner();
+        IPartitioner p = StorageService.instance.getPartitioner();
 
         if (range.start_key != null && range.end_key != null)
         {

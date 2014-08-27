@@ -39,7 +39,7 @@ public class Range<T extends RingPosition> extends AbstractBounds<T> implements 
 
     public Range(T left, T right)
     {
-        this(left, right, StorageService.getPartitioner());
+        this(left, right, StorageService.instance.getPartitioner());
     }
 
     public Range(T left, T right, IPartitioner partitioner)

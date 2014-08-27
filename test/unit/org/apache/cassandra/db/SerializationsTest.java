@@ -76,7 +76,7 @@ public class SerializationsTest extends AbstractSerializationsTester
 
     private void testRangeSliceCommandWrite() throws IOException
     {
-        IPartitioner part = StorageService.getPartitioner();
+        IPartitioner part = StorageService.instance.getPartitioner();
         AbstractBounds<RowPosition> bounds = new Range<Token>(part.getRandomToken(), part.getRandomToken()).toRowBounds();
 
         RangeSliceCommand namesCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, namesPred, bounds, 100);

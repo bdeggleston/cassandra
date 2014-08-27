@@ -103,7 +103,7 @@ public abstract class DecoratedKey implements RowPosition
 
     public boolean isMinimum()
     {
-        return isMinimum(StorageService.getPartitioner());
+        return isMinimum(StorageService.instance.getPartitioner());
     }
 
     public RowPosition.Kind kind()

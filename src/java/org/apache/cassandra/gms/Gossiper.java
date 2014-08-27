@@ -73,7 +73,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
     private ScheduledFuture<?> scheduledGossipTask;
     public final static int intervalInMillis = 1000;
-    public final static int QUARANTINE_DELAY = StorageService.RING_DELAY * 2;
+    public final static int QUARANTINE_DELAY = StorageService.instance.RING_DELAY * 2;
     private static final Logger logger = LoggerFactory.getLogger(Gossiper.class);
     public static final Gossiper instance = new Gossiper();
 
@@ -436,8 +436,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         // remember this node's generation
         int generation = epState.getHeartBeatState().getGeneration();
         logger.info("Removing host: {}", hostId);
-        logger.info("Sleeping for {}ms to ensure {} does not change", StorageService.RING_DELAY, endpoint);
-        Uninterruptibles.sleepUninterruptibly(StorageService.RING_DELAY, TimeUnit.MILLISECONDS);
+        logger.info("Sleeping for {}ms to ensure {} does not change", StorageService.instance.RING_DELAY, endpoint);
+        Uninterruptibles.sleepUninterruptibly(StorageService.instance.RING_DELAY, TimeUnit.MILLISECONDS);
         // make sure it did not change
         epState = endpointStateMap.get(endpoint);
         if (epState.getHeartBeatState().getGeneration() != generation)
@@ -502,11 +502,11 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
             {
                 // TODO this is broken
                 logger.warn("Unable to calculate tokens for {}.  Will use a random one", address);
-                tokens = Collections.singletonList(StorageService.getPartitioner().getRandomToken());
+                tokens = Collections.singletonList(StorageService.instance.getPartitioner().getRandomToken());
             }
             int generation = epState.getHeartBeatState().getGeneration();
-            logger.info("Sleeping for {}ms to ensure {} does not change", StorageService.RING_DELAY, endpoint);
-            Uninterruptibles.sleepUninterruptibly(StorageService.RING_DELAY, TimeUnit.MILLISECONDS);
+            logger.info("Sleeping for {}ms to ensure {} does not change", StorageService.instance.RING_DELAY, endpoint);
+            Uninterruptibles.sleepUninterruptibly(StorageService.instance.RING_DELAY, TimeUnit.MILLISECONDS);
             // make sure it did not change
             EndpointState newState = endpointStateMap.get(endpoint);
             if (newState == null)
@@ -1196,7 +1196,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
                 if (!inShadowRound)
                     break;
                 slept += 1000;
-                if (slept > StorageService.RING_DELAY)
+                if (slept > StorageService.instance.RING_DELAY)
                     throw new RuntimeException("Unable to gossip with any seeds");
             }
         }

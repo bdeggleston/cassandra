@@ -31,7 +31,7 @@ import org.apache.cassandra.service.StorageService;
 public class TokenFct extends NativeFunction
 {
     // The actual token function depends on the partitioner used
-    private static final IPartitioner partitioner = StorageService.getPartitioner();
+    private static final IPartitioner partitioner = StorageService.instance.getPartitioner();
 
     private final CFMetaData cfm;
 
