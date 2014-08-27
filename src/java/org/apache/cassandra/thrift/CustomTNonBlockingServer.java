@@ -49,7 +49,7 @@ public class CustomTNonBlockingServer extends TNonblockingServer
     {
         public TServer buildTServer(Args args)
         {
-            if (DatabaseDescriptor.getClientEncryptionOptions().enabled)
+            if (DatabaseDescriptor.instance.getClientEncryptionOptions().enabled)
                 throw new RuntimeException("Client SSL is not supported for non-blocking sockets. Please remove client ssl from the configuration.");
 
             final InetSocketAddress addr = args.addr;

@@ -37,7 +37,7 @@ public class RevokeStatement extends PermissionAlteringStatement
 
     public ResultMessage execute(ClientState state) throws RequestValidationException, RequestExecutionException
     {
-        DatabaseDescriptor.getAuthorizer().revoke(state.getUser(), permissions, resource, username);
+        DatabaseDescriptor.instance.getAuthorizer().revoke(state.getUser(), permissions, resource, username);
         return null;
     }
 }

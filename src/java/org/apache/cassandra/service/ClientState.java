@@ -71,8 +71,8 @@ public class ClientState
         for (String cf : cfs)
             READABLE_SYSTEM_RESOURCES.add(DataResource.columnFamily(Keyspace.SYSTEM_KS, cf));
 
-        PROTECTED_AUTH_RESOURCES.addAll(DatabaseDescriptor.getAuthenticator().protectedResources());
-        PROTECTED_AUTH_RESOURCES.addAll(DatabaseDescriptor.getAuthorizer().protectedResources());
+        PROTECTED_AUTH_RESOURCES.addAll(DatabaseDescriptor.instance.getAuthenticator().protectedResources());
+        PROTECTED_AUTH_RESOURCES.addAll(DatabaseDescriptor.instance.getAuthorizer().protectedResources());
     }
 
     // Current user for the session
@@ -119,7 +119,7 @@ public class ClientState
     {
         this.isInternal = false;
         this.remoteAddress = remoteAddress;
-        if (!DatabaseDescriptor.getAuthenticator().requireAuthentication())
+        if (!DatabaseDescriptor.instance.getAuthenticator().requireAuthentication())
             this.user = AuthenticatedUser.ANONYMOUS_USER;
     }
 
@@ -260,7 +260,7 @@ public class ClientState
 
     public void ensureIsSuper(String message) throws UnauthorizedException
     {
-        if (DatabaseDescriptor.getAuthenticator().requireAuthentication() && (user == null || !user.isSuper()))
+        if (DatabaseDescriptor.instance.getAuthenticator().requireAuthentication() && (user == null || !user.isSuper()))
             throw new UnauthorizedException(message);
     }
 
@@ -282,10 +282,10 @@ public class ClientState
 
     private static LoadingCache<Pair<AuthenticatedUser, IResource>, Set<Permission>> initPermissionsCache()
     {
-        if (DatabaseDescriptor.getAuthorizer() instanceof AllowAllAuthorizer)
+        if (DatabaseDescriptor.instance.getAuthorizer() instanceof AllowAllAuthorizer)
             return null;
 
-        int validityPeriod = DatabaseDescriptor.getPermissionsValidity();
+        int validityPeriod = DatabaseDescriptor.instance.getPermissionsValidity();
         if (validityPeriod <= 0)
             return null;
 
@@ -294,7 +294,7 @@ public class ClientState
                                         {
                                             public Set<Permission> load(Pair<AuthenticatedUser, IResource> userResource)
                                             {
-                                                return DatabaseDescriptor.getAuthorizer().authorize(userResource.left,
+                                                return DatabaseDescriptor.instance.getAuthorizer().authorize(userResource.left,
                                                                                                     userResource.right);
                                             }
                                         });
@@ -304,7 +304,7 @@ public class ClientState
     {
         // AllowAllAuthorizer or manually disabled caching.
         if (permissionsCache == null)
-            return DatabaseDescriptor.getAuthorizer().authorize(user, resource);
+            return DatabaseDescriptor.instance.getAuthorizer().authorize(user, resource);
 
         try
         {

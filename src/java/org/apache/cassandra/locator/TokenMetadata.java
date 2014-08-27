@@ -1135,7 +1135,7 @@ public class TokenMetadata
          */
         protected void addEndpoint(InetAddress ep)
         {
-            IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
+            IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
             String dc = snitch.getDatacenter(ep);
             String rack = snitch.getRack(ep);
             Pair<String, String> current = currentLocations.get(ep);

@@ -35,7 +35,7 @@ import org.apache.cassandra.db.WriteType;
  */
 public class DatacenterSyncWriteResponseHandler extends AbstractWriteResponseHandler
 {
-    private static final IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
+    private static final IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
 
     private final NetworkTopologyStrategy strategy;
     private final HashMap<String, AtomicInteger> responses = new HashMap<String, AtomicInteger>();
@@ -71,7 +71,7 @@ public class DatacenterSyncWriteResponseHandler extends AbstractWriteResponseHan
     public void response(MessageIn message)
     {
         String dataCenter = message == null
-                            ? DatabaseDescriptor.getLocalDataCenter()
+                            ? DatabaseDescriptor.instance.getLocalDataCenter()
                             : snitch.getDatacenter(message.from);
 
         responses.get(dataCenter).getAndDecrement();

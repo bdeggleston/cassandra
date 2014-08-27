@@ -94,7 +94,7 @@ public class BootStrapper
      */
     public static Collection<Token> getBootstrapTokens(final TokenMetadata metadata) throws ConfigurationException
     {
-        Collection<String> initialTokens = DatabaseDescriptor.getInitialTokens();
+        Collection<String> initialTokens = DatabaseDescriptor.instance.getInitialTokens();
         // if user specified tokens, use those
         if (initialTokens.size() > 0)
         {
@@ -110,7 +110,7 @@ public class BootStrapper
             return tokens;
         }
 
-        int numTokens = DatabaseDescriptor.getNumTokens();
+        int numTokens = DatabaseDescriptor.instance.getNumTokens();
         if (numTokens < 1)
             throw new ConfigurationException("num_tokens must be >= 1");
 

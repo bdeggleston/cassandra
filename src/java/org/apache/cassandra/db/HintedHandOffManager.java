@@ -107,7 +107,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     private final NonBlockingHashSet<InetAddress> queuedDeliveries = new NonBlockingHashSet<InetAddress>();
 
-    private final ThreadPoolExecutor executor = new JMXEnabledThreadPoolExecutor(DatabaseDescriptor.getMaxHintsThread(),
+    private final ThreadPoolExecutor executor = new JMXEnabledThreadPoolExecutor(DatabaseDescriptor.instance.getMaxHintsThread(),
                                                                                  Integer.MAX_VALUE,
                                                                                  TimeUnit.SECONDS,
                                                                                  new LinkedBlockingQueue<Runnable>(),
@@ -354,7 +354,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
         // rate limit is in bytes per second. Uses Double.MAX_VALUE if disabled (set to 0 in cassandra.yaml).
         // max rate is scaled by the number of nodes in the cluster (CASSANDRA-5272).
-        int throttleInKB = DatabaseDescriptor.getHintedHandoffThrottleInKB()
+        int throttleInKB = DatabaseDescriptor.instance.getHintedHandoffThrottleInKB()
                            / (StorageService.instance.getTokenMetadata().getAllEndpoints().size() - 1);
         RateLimiter rateLimiter = RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
 
@@ -469,7 +469,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
             }
         }
 
-        if (finished || rowsReplayed.get() >= DatabaseDescriptor.getTombstoneWarnThreshold())
+        if (finished || rowsReplayed.get() >= DatabaseDescriptor.instance.getTombstoneWarnThreshold())
         {
             try
             {

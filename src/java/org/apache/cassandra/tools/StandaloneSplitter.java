@@ -50,7 +50,7 @@ public class StandaloneSplitter
         try
         {
             // load keyspace descriptions.
-            DatabaseDescriptor.loadSchemas();
+            DatabaseDescriptor.instance.loadSchemas();
 
             String ksName = null;
             String cfName = null;

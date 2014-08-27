@@ -48,9 +48,9 @@ public class UserOptions
     {
         for (IAuthenticator.Option option : options.keySet())
         {
-            if (!DatabaseDescriptor.getAuthenticator().supportedOptions().contains(option))
+            if (!DatabaseDescriptor.instance.getAuthenticator().supportedOptions().contains(option))
                 throw new InvalidRequestException(String.format("%s doesn't support %s option",
-                                                                DatabaseDescriptor.getAuthenticator().getClass().getName(),
+                                                                DatabaseDescriptor.instance.getAuthenticator().getClass().getName(),
                                                                 option));
         }
     }

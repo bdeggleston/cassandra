@@ -75,7 +75,7 @@ public class CredentialsMessage extends Message.Request
     {
         try
         {
-            AuthenticatedUser user = DatabaseDescriptor.getAuthenticator().authenticate(credentials);
+            AuthenticatedUser user = DatabaseDescriptor.instance.getAuthenticator().authenticate(credentials);
             state.getClientState().login(user);
             return new ReadyMessage();
         }

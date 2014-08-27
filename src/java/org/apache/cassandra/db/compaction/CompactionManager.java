@@ -150,7 +150,7 @@ public class CompactionManager implements CompactionManagerMBean
      */
     public RateLimiter getRateLimiter()
     {
-        double currentThroughput = DatabaseDescriptor.getCompactionThroughputMbPerSec() * 1024.0 * 1024.0;
+        double currentThroughput = DatabaseDescriptor.instance.getCompactionThroughputMbPerSec() * 1024.0 * 1024.0;
         // if throughput is set to 0, throttling is disabled
         if (currentThroughput == 0 || StorageService.instance.isBootstrapMode())
             currentThroughput = Double.MAX_VALUE;
@@ -1220,7 +1220,7 @@ public class CompactionManager implements CompactionManagerMBean
 
         public CompactionExecutor()
         {
-            this(Math.max(1, DatabaseDescriptor.getConcurrentCompactors()), "CompactionExecutor");
+            this(Math.max(1, DatabaseDescriptor.instance.getConcurrentCompactors()), "CompactionExecutor");
         }
 
         protected void beforeExecute(Thread t, Runnable r)

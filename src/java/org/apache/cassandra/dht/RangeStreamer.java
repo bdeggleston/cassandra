@@ -151,7 +151,7 @@ public class RangeStreamer
     private boolean useStrictSourcesForRanges(String keyspaceName)
     {
         AbstractReplicationStrategy strat = Keyspace.open(keyspaceName).getReplicationStrategy();
-        return !DatabaseDescriptor.isReplacing()
+        return !DatabaseDescriptor.instance.isReplacing()
                 && useStrictConsistency
                 && tokens != null
                 && metadata.getAllEndpoints().size() != strat.getReplicationFactor();
@@ -173,7 +173,7 @@ public class RangeStreamer
             {
                 if (range.contains(desiredRange))
                 {
-                    List<InetAddress> preferred = DatabaseDescriptor.getEndpointSnitch().getSortedListByProximity(address, rangeAddresses.get(range));
+                    List<InetAddress> preferred = DatabaseDescriptor.instance.getEndpointSnitch().getSortedListByProximity(address, rangeAddresses.get(range));
                     rangeSources.putAll(desiredRange, preferred);
                     break;
                 }

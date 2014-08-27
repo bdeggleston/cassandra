@@ -64,7 +64,7 @@ public class THsHaDisruptorServer extends TDisruptorServer
     {
         public TServer buildTServer(Args args)
         {
-            if (DatabaseDescriptor.getClientEncryptionOptions().enabled)
+            if (DatabaseDescriptor.instance.getClientEncryptionOptions().enabled)
                 throw new RuntimeException("Client SSL is not supported for non-blocking sockets (hsha). Please remove client ssl from the configuration.");
 
             final InetSocketAddress addr = args.addr;
@@ -86,7 +86,7 @@ public class THsHaDisruptorServer extends TDisruptorServer
                                                                                          .inputProtocolFactory(protocolFactory)
                                                                                          .outputProtocolFactory(protocolFactory)
                                                                                          .processor(args.processor)
-                                                                                         .maxFrameSizeInBytes(DatabaseDescriptor.getThriftFramedTransportSize())
+                                                                                         .maxFrameSizeInBytes(DatabaseDescriptor.instance.getThriftFramedTransportSize())
                                                                                          .alwaysReallocateBuffers(true);
 
             return new THsHaDisruptorServer(serverArgs);

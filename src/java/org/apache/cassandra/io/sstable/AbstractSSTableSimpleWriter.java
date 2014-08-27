@@ -48,7 +48,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
     {
         this.metadata = metadata;
         this.directory = directory;
-        DatabaseDescriptor.setPartitioner(partitioner);
+        DatabaseDescriptor.instance.setPartitioner(partitioner);
     }
 
     protected SSTableWriter getWriter()
@@ -58,7 +58,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
             0, // We don't care about the bloom filter
             ActiveRepairService.UNREPAIRED_SSTABLE,
             metadata,
-            DatabaseDescriptor.getPartitioner(),
+            DatabaseDescriptor.instance.getPartitioner(),
             new MetadataCollector(metadata.comparator));
     }
 
@@ -96,7 +96,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
         if (currentKey != null && !columnFamily.isEmpty())
             writeRow(currentKey, columnFamily);
 
-        currentKey = DatabaseDescriptor.getPartitioner().decorateKey(key);
+        currentKey = DatabaseDescriptor.instance.getPartitioner().decorateKey(key);
         columnFamily = getColumnFamily();
     }
 

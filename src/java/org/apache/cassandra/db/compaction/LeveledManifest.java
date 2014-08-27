@@ -371,7 +371,7 @@ public class LeveledManifest
             if (score > 1.001)
             {
                 // before proceeding with a higher level, let's see if L0 is far enough behind to warrant STCS
-                if (!DatabaseDescriptor.getDisableSTCSInL0() && getLevel(0).size() > MAX_COMPACTING_L0)
+                if (!DatabaseDescriptor.instance.getDisableSTCSInL0() && getLevel(0).size() > MAX_COMPACTING_L0)
                 {
                     List<SSTableReader> mostInteresting = getSSTablesForSTCS(getLevel(0));
                     if (!mostInteresting.isEmpty())

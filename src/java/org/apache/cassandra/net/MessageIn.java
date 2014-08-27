@@ -117,7 +117,7 @@ public class MessageIn<T>
 
     public long getTimeout()
     {
-        return DatabaseDescriptor.getTimeout(verb);
+        return DatabaseDescriptor.instance.getTimeout(verb);
     }
 
     public String toString()

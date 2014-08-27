@@ -46,7 +46,7 @@ public class CounterMutation implements IMutation
 {
     public static final CounterMutationSerializer serializer = new CounterMutationSerializer();
 
-    private static final Striped<Lock> LOCKS = Striped.lazyWeakLock(DatabaseDescriptor.getConcurrentCounterWriters() * 1024);
+    private static final Striped<Lock> LOCKS = Striped.lazyWeakLock(DatabaseDescriptor.instance.getConcurrentCounterWriters() * 1024);
 
     private final Mutation mutation;
     private final ConsistencyLevel consistency;
@@ -299,7 +299,7 @@ public class CounterMutation implements IMutation
 
     public long getTimeout()
     {
-        return DatabaseDescriptor.getCounterWriteRpcTimeout();
+        return DatabaseDescriptor.instance.getCounterWriteRpcTimeout();
     }
 
     @Override

@@ -125,14 +125,14 @@ public class Auth
      */
     public static void setup()
     {
-        if (DatabaseDescriptor.getAuthenticator() instanceof AllowAllAuthenticator)
+        if (DatabaseDescriptor.instance.instance.getAuthenticator() instanceof AllowAllAuthenticator)
             return;
 
         setupAuthKeyspace();
         setupTable(USERS_CF, USERS_CF_SCHEMA);
 
-        DatabaseDescriptor.getAuthenticator().setup();
-        DatabaseDescriptor.getAuthorizer().setup();
+        DatabaseDescriptor.instance.getAuthenticator().setup();
+        DatabaseDescriptor.instance.getAuthorizer().setup();
 
         // register a custom MigrationListener for permissions cleanup after dropped keyspaces/cfs.
         MigrationManager.instance.register(new MigrationListener());
@@ -276,12 +276,12 @@ public class Auth
     {
         public void onDropKeyspace(String ksName)
         {
-            DatabaseDescriptor.getAuthorizer().revokeAll(DataResource.keyspace(ksName));
+            DatabaseDescriptor.instance.getAuthorizer().revokeAll(DataResource.keyspace(ksName));
         }
 
         public void onDropColumnFamily(String ksName, String cfName)
         {
-            DatabaseDescriptor.getAuthorizer().revokeAll(DataResource.columnFamily(ksName, cfName));
+            DatabaseDescriptor.instance.getAuthorizer().revokeAll(DataResource.columnFamily(ksName, cfName));
         }
 
         public void onDropUserType(String ksName, String userType)

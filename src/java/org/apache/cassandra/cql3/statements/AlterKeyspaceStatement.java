@@ -74,7 +74,7 @@ public class AlterKeyspaceStatement extends SchemaAlteringStatement
             AbstractReplicationStrategy.validateReplicationStrategy(name,
                                                                     AbstractReplicationStrategy.getClass(attrs.getReplicationStrategyClass()),
                                                                     StorageService.instance.getTokenMetadata(),
-                                                                    DatabaseDescriptor.getEndpointSnitch(),
+                                                                    DatabaseDescriptor.instance.getEndpointSnitch(),
                                                                     attrs.getReplicationOptions());
         }
     }

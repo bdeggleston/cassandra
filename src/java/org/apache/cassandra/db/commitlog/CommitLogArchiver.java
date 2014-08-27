@@ -177,7 +177,7 @@ public class CommitLogArchiver
                 if (descriptor.version > CommitLogDescriptor.VERSION_21)
                     throw new IllegalStateException("Unsupported commit log version: " + descriptor.version);
 
-                File toFile = new File(DatabaseDescriptor.getCommitLogLocation(), descriptor.fileName());
+                File toFile = new File(DatabaseDescriptor.instance.getCommitLogLocation(), descriptor.fileName());
                 if (toFile.exists())
                     throw new IllegalStateException("Trying to restore archive " + fromFile.getPath() + ", but the same segment already exists in the restore location: " + toFile.getPath());
 

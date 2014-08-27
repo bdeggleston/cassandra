@@ -55,7 +55,7 @@ public class StorageServiceServerTest
     public static void setUp() throws ConfigurationException
     {
         IEndpointSnitch snitch = new PropertyFileSnitch();
-        DatabaseDescriptor.setEndpointSnitch(snitch);
+        DatabaseDescriptor.instance.setEndpointSnitch(snitch);
         Keyspace.setInitialized();
     }
 
@@ -65,7 +65,7 @@ public class StorageServiceServerTest
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();
         StorageService.instance.initServer(0);
-        for (String path : DatabaseDescriptor.getAllDataFileLocations())
+        for (String path : DatabaseDescriptor.instance.getAllDataFileLocations())
         {
             // verify that storage directories are there.
             assertTrue(new File(path).exists());

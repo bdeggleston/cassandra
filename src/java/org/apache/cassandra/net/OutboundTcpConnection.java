@@ -88,8 +88,8 @@ public class OutboundTcpConnection extends Thread
 
     private static boolean isLocalDC(InetAddress targetHost)
     {
-        String remoteDC = DatabaseDescriptor.getEndpointSnitch().getDatacenter(targetHost);
-        String localDC = DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+        String remoteDC = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(targetHost);
+        String localDC = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
         return remoteDC.equals(localDC);
     }
 
@@ -196,8 +196,8 @@ public class OutboundTcpConnection extends Thread
     private boolean shouldCompressConnection()
     {
         // assumes version >= 1.2
-        return DatabaseDescriptor.internodeCompression() == Config.InternodeCompression.all
-               || (DatabaseDescriptor.internodeCompression() == Config.InternodeCompression.dc && !isLocalDC(poolReference.endPoint()));
+        return DatabaseDescriptor.instance.internodeCompression() == Config.InternodeCompression.all
+               || (DatabaseDescriptor.instance.internodeCompression() == Config.InternodeCompression.dc && !isLocalDC(poolReference.endPoint()));
     }
 
     private void writeConnected(QueuedMessage qm, boolean flush)
@@ -313,7 +313,7 @@ public class OutboundTcpConnection extends Thread
             logger.debug("attempting to connect to {}", poolReference.endPoint());
 
         long start = System.nanoTime();
-        long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getRpcTimeout());
+        long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.instance.getRpcTimeout());
         while (System.nanoTime() - start < timeout)
         {
             targetVersion = MessagingService.instance().getVersion(poolReference.endPoint());
@@ -327,13 +327,13 @@ public class OutboundTcpConnection extends Thread
                 }
                 else
                 {
-                    socket.setTcpNoDelay(DatabaseDescriptor.getInterDCTcpNoDelay());
+                    socket.setTcpNoDelay(DatabaseDescriptor.instance.getInterDCTcpNoDelay());
                 }
-                if (DatabaseDescriptor.getInternodeSendBufferSize() != null)
+                if (DatabaseDescriptor.instance.getInternodeSendBufferSize() != null)
                 {
                     try
                     {
-                        socket.setSendBufferSize(DatabaseDescriptor.getInternodeSendBufferSize());
+                        socket.setSendBufferSize(DatabaseDescriptor.instance.getInternodeSendBufferSize());
                     }
                     catch (SocketException se)
                     {

@@ -118,6 +118,6 @@ public class ListPermissionsStatement extends AuthorizationStatement
     private Set<PermissionDetails> list(ClientState state, IResource resource)
     throws RequestValidationException, RequestExecutionException
     {
-        return DatabaseDescriptor.getAuthorizer().list(state.getUser(), permissions, resource, username);
+        return DatabaseDescriptor.instance.getAuthorizer().list(state.getUser(), permissions, resource, username);
     }
 }

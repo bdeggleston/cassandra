@@ -185,11 +185,11 @@ public class DirectoriesTest
     @Test
     public void testDiskFailurePolicy_best_effort()
     {
-        DiskFailurePolicy origPolicy = DatabaseDescriptor.getDiskFailurePolicy();
+        DiskFailurePolicy origPolicy = DatabaseDescriptor.instance.getDiskFailurePolicy();
         
         try 
         {
-            DatabaseDescriptor.setDiskFailurePolicy(DiskFailurePolicy.best_effort);
+            DatabaseDescriptor.instance.setDiskFailurePolicy(DiskFailurePolicy.best_effort);
             
             for (DataDirectory dd : Directories.dataDirectories)
             {
@@ -214,7 +214,7 @@ public class DirectoriesTest
                 dd.location.setWritable(true);
             }
             
-            DatabaseDescriptor.setDiskFailurePolicy(origPolicy);
+            DatabaseDescriptor.instance.setDiskFailurePolicy(origPolicy);
         }
     }
 

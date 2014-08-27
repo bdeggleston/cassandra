@@ -64,9 +64,9 @@ public class DropUserStatement extends AuthenticationStatement
             return null;
 
         // clean up permissions after the dropped user.
-        DatabaseDescriptor.getAuthorizer().revokeAll(username);
+        DatabaseDescriptor.instance.getAuthorizer().revokeAll(username);
         Auth.deleteUser(username);
-        DatabaseDescriptor.getAuthenticator().drop(username);
+        DatabaseDescriptor.instance.getAuthenticator().drop(username);
         return null;
     }
 }

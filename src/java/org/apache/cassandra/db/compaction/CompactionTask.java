@@ -111,7 +111,7 @@ public class CompactionTask extends AbstractCompactionTask
         // This should be harmless; see comments to CFS.maybeReloadCompactionStrategy.
         AbstractCompactionStrategy strategy = cfs.getCompactionStrategy();
 
-        if (DatabaseDescriptor.isSnapshotBeforeCompaction())
+        if (DatabaseDescriptor.instance.isSnapshotBeforeCompaction())
             cfs.snapshotWithoutFlush(System.currentTimeMillis() + "-compact-" + cfs.name);
 
         // sanity check: all sstables must belong to the same cfs

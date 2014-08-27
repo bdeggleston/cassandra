@@ -43,9 +43,9 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     private static final double ALPHA = 0.75; // set to 0.75 to make EDS more biased to towards the newer values
     private static final int WINDOW_SIZE = 100;
 
-    private int UPDATE_INTERVAL_IN_MS = DatabaseDescriptor.getDynamicUpdateInterval();
-    private int RESET_INTERVAL_IN_MS = DatabaseDescriptor.getDynamicResetInterval();
-    private double BADNESS_THRESHOLD = DatabaseDescriptor.getDynamicBadnessThreshold();
+    private final int updateIntervalInMs;
+    private final int resetIntervalInMs;
+    private final double badnessThreshold;
 
     // the score for a merged set of endpoints must be this much worse than the score for separate endpoints to
     // warrant not merging two ranges into a single range
@@ -63,12 +63,23 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     {
         this(snitch, null);
     }
+
     public DynamicEndpointSnitch(IEndpointSnitch snitch, String instance)
+    {
+        this(snitch, instance, DatabaseDescriptor.instance.getDynamicUpdateInterval(), DatabaseDescriptor.instance.getDynamicResetInterval(), DatabaseDescriptor.instance.getDynamicBadnessThreshold());
+    }
+
+    public DynamicEndpointSnitch(IEndpointSnitch snitch, String instance, int updateIntervalMs, int resetIntervalMs, double badnessThreshold)
     {
         mbeanName = "org.apache.cassandra.db:type=DynamicEndpointSnitch";
         if (instance != null)
             mbeanName += ",instance=" + instance;
         subsnitch = snitch;
+
+        this.updateIntervalInMs = updateIntervalMs;
+        this.resetIntervalInMs = resetIntervalMs;
+        this.badnessThreshold = badnessThreshold;
+
         Runnable update = new Runnable()
         {
             public void run()
@@ -85,8 +96,8 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
                 reset();
             }
         };
-        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(update, UPDATE_INTERVAL_IN_MS, UPDATE_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
-        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(reset, RESET_INTERVAL_IN_MS, RESET_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
+        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(update, updateIntervalInMs, updateIntervalInMs, TimeUnit.MILLISECONDS);
+        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(reset, resetIntervalInMs, resetIntervalInMs, TimeUnit.MILLISECONDS);
         registerMBean();
    }
 
@@ -143,7 +154,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     public void sortByProximity(final InetAddress address, List<InetAddress> addresses)
     {
         assert address.equals(FBUtilities.getBroadcastAddress()); // we only know about ourself
-        if (BADNESS_THRESHOLD == 0)
+        if (badnessThreshold == 0)
         {
             sortByProximityWithScore(address, addresses);
         }
@@ -174,7 +185,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
         }
 
         // Sort the scores and then compare them (positionally) to the scores in the subsnitch order.
-        // If any of the subsnitch-ordered scores exceed the optimal/sorted score by BADNESS_THRESHOLD, use
+        // If any of the subsnitch-ordered scores exceed the optimal/sorted score by badnessThreshold, use
         // the score-sorted ordering instead of the subsnitch ordering.
         ArrayList<Double> sortedScores = new ArrayList<>(subsnitchOrderedScores);
         Collections.sort(sortedScores);
@@ -182,7 +193,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
         Iterator<Double> sortedScoreIterator = sortedScores.iterator();
         for (Double subsnitchScore : subsnitchOrderedScores)
         {
-            if (subsnitchScore > (sortedScoreIterator.next() * (1.0 + BADNESS_THRESHOLD)))
+            if (subsnitchScore > (sortedScoreIterator.next() * (1.0 + badnessThreshold)))
             {
                 sortByProximityWithScore(address, addresses);
                 return;
@@ -276,15 +287,15 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
 
     public int getUpdateInterval()
     {
-        return UPDATE_INTERVAL_IN_MS;
+        return updateIntervalInMs;
     }
     public int getResetInterval()
     {
-        return RESET_INTERVAL_IN_MS;
+        return resetIntervalInMs;
     }
     public double getBadnessThreshold()
     {
-        return BADNESS_THRESHOLD;
+        return badnessThreshold;
     }
     public String getSubsnitchClassName()
     {

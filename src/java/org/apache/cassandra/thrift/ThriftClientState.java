@@ -47,7 +47,7 @@ public class ThriftClientState extends ClientState
 
     public String getSchedulingValue()
     {
-        switch(DatabaseDescriptor.getRequestSchedulerId())
+        switch(DatabaseDescriptor.instance.getRequestSchedulerId())
         {
             case keyspace: return getRawKeyspace();
         }

@@ -96,7 +96,7 @@ import org.apache.cassandra.utils.Pair;
  *       are added to the CFS (and 2ndary index are built, StreamReceiveTask.complete()) and the task
  *       is marked complete (taskCompleted())
  *   (b) If during the streaming of a particular file an I/O error occurs on the receiving end of a stream
- *       (FileMessage.deserialize), the node will retry the file (up to DatabaseDescriptor.getMaxStreamingRetries())
+ *       (FileMessage.deserialize), the node will retry the file (up to DatabaseDescriptor.instance.getMaxStreamingRetries())
  *       by sending a RetryMessage to the sender. On receiving a RetryMessage, the sender simply issue a new
  *       FileMessage for that file.
  *   (c) When all transfer and receive tasks for a session are complete, the move to the Completion phase
@@ -578,7 +578,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         logger.warn("[Stream #{}] Retrying for following error", planId(), e);
         // retry
         retries++;
-        if (retries > DatabaseDescriptor.getMaxStreamingRetries())
+        if (retries > DatabaseDescriptor.instance.getMaxStreamingRetries())
             onError(new IOException("Too many retries for " + header, e));
         else
             handler.sendMessage(new RetryMessage(header.cfId, header.sequenceNumber));

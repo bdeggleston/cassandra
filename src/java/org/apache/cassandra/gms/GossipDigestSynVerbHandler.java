@@ -47,15 +47,15 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
 
         GossipDigestSyn gDigestMessage = message.payload;
         /* If the message is from a different cluster throw it away. */
-        if (!gDigestMessage.clusterId.equals(DatabaseDescriptor.getClusterName()))
+        if (!gDigestMessage.clusterId.equals(DatabaseDescriptor.instance.getClusterName()))
         {
-            logger.warn("ClusterName mismatch from {} {}!={}", from, gDigestMessage.clusterId, DatabaseDescriptor.getClusterName());
+            logger.warn("ClusterName mismatch from {} {}!={}", from, gDigestMessage.clusterId, DatabaseDescriptor.instance.getClusterName());
             return;
         }
 
-        if (gDigestMessage.partioner != null && !gDigestMessage.partioner.equals(DatabaseDescriptor.getPartitionerName()))
+        if (gDigestMessage.partioner != null && !gDigestMessage.partioner.equals(DatabaseDescriptor.instance.getPartitionerName()))
         {
-            logger.warn("Partitioner mismatch from {} {}!={}", from, gDigestMessage.partioner, DatabaseDescriptor.getPartitionerName());
+            logger.warn("Partitioner mismatch from {} {}!={}", from, gDigestMessage.partioner, DatabaseDescriptor.instance.getPartitionerName());
             return;
         }
 

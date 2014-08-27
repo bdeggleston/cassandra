@@ -88,7 +88,7 @@ implements org.apache.hadoop.mapred.RecordWriter<K, V>
         Config.setClientMode(true);
         Config.setOutboundBindAny(true);
         this.conf = conf;
-        DatabaseDescriptor.setStreamThroughputOutboundMegabitsPerSec(Integer.parseInt(conf.get(STREAM_THROTTLE_MBITS, "0")));
+        DatabaseDescriptor.instance.setStreamThroughputOutboundMegabitsPerSec(Integer.parseInt(conf.get(STREAM_THROTTLE_MBITS, "0")));
         maxFailures = Integer.parseInt(conf.get(MAX_FAILED_HOSTS, "0"));
         bufferSize = Integer.parseInt(conf.get(BUFFER_SIZE_IN_MB, "64"));
     }

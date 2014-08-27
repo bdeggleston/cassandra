@@ -190,7 +190,7 @@ public class ColumnIndex
             blockSize += size;
 
             // if we hit the column index size that we have to index after, go ahead and index it.
-            if (blockSize >= DatabaseDescriptor.getColumnIndexSize())
+            if (blockSize >= DatabaseDescriptor.instance.getColumnIndexSize())
             {
                 IndexHelper.IndexInfo cIndexInfo = new IndexHelper.IndexInfo(firstColumn.name(), column.name(), indexOffset + startPosition, endPosition - startPosition);
                 result.columnsIndex.add(cIndexInfo);

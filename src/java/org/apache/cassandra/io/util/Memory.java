@@ -32,7 +32,7 @@ import sun.nio.ch.DirectBuffer;
 public class Memory
 {
     private static final Unsafe unsafe = NativeAllocator.unsafe;
-    private static final IAllocator allocator = DatabaseDescriptor.getoffHeapMemoryAllocator();
+    private static final IAllocator allocator = DatabaseDescriptor.instance.getoffHeapMemoryAllocator();
     private static final long BYTE_ARRAY_BASE_OFFSET = unsafe.arrayBaseOffset(byte[].class);
 
     private static final boolean bigEndian = ByteOrder.nativeOrder().equals(ByteOrder.BIG_ENDIAN);

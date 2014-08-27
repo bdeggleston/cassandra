@@ -90,7 +90,7 @@ public class Directories
     public static final DataDirectory[] dataDirectories;
     static
     {
-        String[] locations = DatabaseDescriptor.getAllDataFileLocations();
+        String[] locations = DatabaseDescriptor.instance.getAllDataFileLocations();
         dataDirectories = new DataDirectory[locations.length];
         for (int i = 0; i < locations.length; ++i)
             dataDirectories[i] = new DataDirectory(new File(locations[i]));
@@ -269,7 +269,7 @@ public class Directories
 
         // Requesting GC has a chance to free space only if we're using mmap and a non SUN jvm
         if (path == null
-            && (DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap || DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
+            && (DatabaseDescriptor.instance.getDiskAccessMode() == Config.DiskAccessMode.mmap || DatabaseDescriptor.instance.getIndexAccessMode() == Config.DiskAccessMode.mmap)
             && !FileUtils.isCleanerAvailable())
         {
             logger.info("Forcing GC to free up disk space.  Upgrade to the Oracle JVM to avoid this");
@@ -680,7 +680,7 @@ public class Directories
     @VisibleForTesting
     static void resetDataDirectoriesAfterTest()
     {
-        String[] locations = DatabaseDescriptor.getAllDataFileLocations();
+        String[] locations = DatabaseDescriptor.instance.getAllDataFileLocations();
         for (int i = 0; i < locations.length; ++i)
             dataDirectories[i] = new DataDirectory(new File(locations[i]));
     }

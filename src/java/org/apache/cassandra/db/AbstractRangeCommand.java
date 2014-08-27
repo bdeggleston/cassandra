@@ -60,6 +60,6 @@ public abstract class AbstractRangeCommand implements IReadCommand
 
     public long getTimeout()
     {
-        return DatabaseDescriptor.getRangeRpcTimeout();
+        return DatabaseDescriptor.instance.getRangeRpcTimeout();
     }
 }

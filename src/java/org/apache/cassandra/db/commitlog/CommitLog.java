@@ -52,7 +52,7 @@ public class CommitLog implements CommitLogMBean
 
     // we only permit records HALF the size of a commit log, to ensure we don't spin allocating many mostly
     // empty segments when writing large records
-    private static final long MAX_MUTATION_SIZE = DatabaseDescriptor.getCommitLogSegmentSize() >> 1;
+    private static final long MAX_MUTATION_SIZE = DatabaseDescriptor.instance.getCommitLogSegmentSize() >> 1;
 
     public final CommitLogSegmentManager allocator;
     public final CommitLogArchiver archiver = new CommitLogArchiver();
@@ -61,11 +61,11 @@ public class CommitLog implements CommitLogMBean
 
     private CommitLog()
     {
-        DatabaseDescriptor.createAllDirectories();
+        DatabaseDescriptor.instance.createAllDirectories();
 
         allocator = new CommitLogSegmentManager();
 
-        executor = DatabaseDescriptor.getCommitLogSync() == Config.CommitLogSync.batch
+        executor = DatabaseDescriptor.instance.getCommitLogSync() == Config.CommitLogSync.batch
                  ? new BatchCommitLogService(this)
                  : new PeriodicCommitLogService(this);
 
@@ -92,7 +92,7 @@ public class CommitLog implements CommitLogMBean
     {
         archiver.maybeRestoreArchive();
 
-        File[] files = new File(DatabaseDescriptor.getCommitLogLocation()).listFiles(new FilenameFilter()
+        File[] files = new File(DatabaseDescriptor.instance.getCommitLogLocation()).listFiles(new FilenameFilter()
         {
             public boolean accept(File dir, String name)
             {
@@ -342,18 +342,18 @@ public class CommitLog implements CommitLogMBean
 
     static boolean handleCommitError(String message, Throwable t)
     {
-        switch (DatabaseDescriptor.getCommitFailurePolicy())
+        switch (DatabaseDescriptor.instance.getCommitFailurePolicy())
         {
             case stop:
                 StorageService.instance.stopTransports();
             case stop_commit:
-                logger.error(String.format("%s. Commit disk failure policy is %s; terminating thread", message, DatabaseDescriptor.getCommitFailurePolicy()), t);
+                logger.error(String.format("%s. Commit disk failure policy is %s; terminating thread", message, DatabaseDescriptor.instance.getCommitFailurePolicy()), t);
                 return false;
             case ignore:
                 logger.error(message, t);
                 return true;
             default:
-                throw new AssertionError(DatabaseDescriptor.getCommitFailurePolicy());
+                throw new AssertionError(DatabaseDescriptor.instance.getCommitFailurePolicy());
         }
     }
 

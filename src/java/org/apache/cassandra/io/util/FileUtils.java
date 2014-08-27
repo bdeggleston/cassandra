@@ -393,13 +393,13 @@ public class FileUtils
 
     public static void handleCorruptSSTable(CorruptSSTableException e)
     {
-        if (DatabaseDescriptor.getDiskFailurePolicy() == Config.DiskFailurePolicy.stop_paranoid)
+        if (DatabaseDescriptor.instance.getDiskFailurePolicy() == Config.DiskFailurePolicy.stop_paranoid)
             StorageService.instance.stopTransports();
     }
     
     public static void handleFSError(FSError e)
     {
-        switch (DatabaseDescriptor.getDiskFailurePolicy())
+        switch (DatabaseDescriptor.instance.getDiskFailurePolicy())
         {
             case stop_paranoid:
             case stop:

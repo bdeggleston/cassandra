@@ -140,7 +140,7 @@ public class CommitLogTest
         CommitLog.instance.resetUnsafe();
         // Roughly 32 MB mutation
         Mutation rm = new Mutation(KEYSPACE1, bytes("k"));
-        rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate(DatabaseDescriptor.getCommitLogSegmentSize()/4), 0);
+        rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate(DatabaseDescriptor.instance.getCommitLogSegmentSize()/4), 0);
 
         // Adding it 5 times
         CommitLog.instance.add(rm);
@@ -166,11 +166,11 @@ public class CommitLogTest
     @Test
     public void testDeleteIfNotDirty() throws Exception
     {
-        DatabaseDescriptor.getCommitLogSegmentSize();
+        DatabaseDescriptor.instance.getCommitLogSegmentSize();
         CommitLog.instance.resetUnsafe();
         // Roughly 32 MB mutation
         Mutation rm = new Mutation(KEYSPACE1, bytes("k"));
-        rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate((DatabaseDescriptor.getCommitLogSegmentSize()/4) - 1), 0);
+        rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate((DatabaseDescriptor.instance.getCommitLogSegmentSize()/4) - 1), 0);
 
         // Adding it twice (won't change segment)
         CommitLog.instance.add(rm);
@@ -187,7 +187,7 @@ public class CommitLogTest
 
         // Adding new mutation on another CF, large enough (including CL entry overhead) that a new segment is created
         Mutation rm2 = new Mutation(KEYSPACE1, bytes("k"));
-        rm2.add(CF2, Util.cellname("c1"), ByteBuffer.allocate((DatabaseDescriptor.getCommitLogSegmentSize()/2) - 100), 0);
+        rm2.add(CF2, Util.cellname("c1"), ByteBuffer.allocate((DatabaseDescriptor.instance.getCommitLogSegmentSize()/2) - 100), 0);
         CommitLog.instance.add(rm2);
         // also forces a new segment, since each entry-with-overhead is just under half the CL size
         CommitLog.instance.add(rm2);
@@ -211,7 +211,7 @@ public class CommitLogTest
         Mutation rm = new Mutation(KEYSPACE1, bytes("k"));
         rm.add("Standard1", Util.cellname("c1"), ByteBuffer.allocate(0), 0);
 
-        int max = (DatabaseDescriptor.getCommitLogSegmentSize() / 2);
+        int max = (DatabaseDescriptor.instance.getCommitLogSegmentSize() / 2);
         max -= CommitLogSegment.ENTRY_OVERHEAD_SIZE; // log entry overhead
         return max - (int) Mutation.serializer.serializedSize(rm, MessagingService.current_version);
     }
@@ -305,19 +305,19 @@ public class CommitLogTest
     @Test
     public void testCommitFailurePolicy_stop()
     {
-        File commitDir = new File(DatabaseDescriptor.getCommitLogLocation());
+        File commitDir = new File(DatabaseDescriptor.instance.getCommitLogLocation());
 
         try
         {
 
-            DatabaseDescriptor.setCommitFailurePolicy(Config.CommitFailurePolicy.stop);
+            DatabaseDescriptor.instance.setCommitFailurePolicy(Config.CommitFailurePolicy.stop);
             commitDir.setWritable(false);
             Mutation rm = new Mutation(KEYSPACE1, bytes("k"));
             rm.add("Standard1", Util.cellname("c1"), ByteBuffer.allocate(100), 0);
 
             // Adding it twice (won't change segment)
             CommitLog.instance.add(rm);
-            Uninterruptibles.sleepUninterruptibly((int) DatabaseDescriptor.getCommitLogSyncBatchWindow(), TimeUnit.MILLISECONDS);
+            Uninterruptibles.sleepUninterruptibly((int) DatabaseDescriptor.instance.getCommitLogSyncBatchWindow(), TimeUnit.MILLISECONDS);
             Assert.assertFalse(StorageService.instance.isRPCServerRunning());
             Assert.assertFalse(StorageService.instance.isNativeTransportRunning());
             Assert.assertFalse(StorageService.instance.isInitialized());
@@ -333,8 +333,8 @@ public class CommitLogTest
     public void testTruncateWithoutSnapshot()  throws ExecutionException, InterruptedException
     {
         CommitLog.instance.resetUnsafe();
-        boolean prev = DatabaseDescriptor.isAutoSnapshot();
-        DatabaseDescriptor.setAutoSnapshot(false);
+        boolean prev = DatabaseDescriptor.instance.isAutoSnapshot();
+        DatabaseDescriptor.instance.setAutoSnapshot(false);
         ColumnFamilyStore cfs1 = Keyspace.open(KEYSPACE1).getColumnFamilyStore("Standard1");
         ColumnFamilyStore cfs2 = Keyspace.open(KEYSPACE1).getColumnFamilyStore("Standard2");
 
@@ -342,9 +342,9 @@ public class CommitLogTest
         rm1.add("Standard1", Util.cellname("c1"), ByteBuffer.allocate(100), 0);
         rm1.apply();
         cfs1.truncateBlocking();
-        DatabaseDescriptor.setAutoSnapshot(prev);
+        DatabaseDescriptor.instance.setAutoSnapshot(prev);
         final Mutation rm2 = new Mutation(KEYSPACE1, bytes("k"));
-        rm2.add("Standard2", Util.cellname("c1"), ByteBuffer.allocate(DatabaseDescriptor.getCommitLogSegmentSize() / 4), 0);
+        rm2.add("Standard2", Util.cellname("c1"), ByteBuffer.allocate(DatabaseDescriptor.instance.getCommitLogSegmentSize() / 4), 0);
 
         for (int i = 0 ; i < 5 ; i++)
             CommitLog.instance.add(rm2);
@@ -362,8 +362,8 @@ public class CommitLogTest
     public void testTruncateWithoutSnapshotNonDurable()  throws ExecutionException, InterruptedException
     {
         CommitLog.instance.resetUnsafe();
-        boolean prevAutoSnapshot = DatabaseDescriptor.isAutoSnapshot();
-        DatabaseDescriptor.setAutoSnapshot(false);
+        boolean prevAutoSnapshot = DatabaseDescriptor.instance.isAutoSnapshot();
+        DatabaseDescriptor.instance.setAutoSnapshot(false);
         Keyspace notDurableKs = Keyspace.open(KEYSPACE2);
         Assert.assertFalse(notDurableKs.metadata.durableWrites);
         ColumnFamilyStore cfs = notDurableKs.getColumnFamilyStore("Standard1");
@@ -381,7 +381,7 @@ public class CommitLogTest
         Cell col = row.cf.getColumn(Util.cellname("Column1"));
         Assert.assertEquals(col.value(), ByteBuffer.wrap("abcd".getBytes()));
         cfs.truncateBlocking();
-        DatabaseDescriptor.setAutoSnapshot(prevAutoSnapshot);
+        DatabaseDescriptor.instance.setAutoSnapshot(prevAutoSnapshot);
         row = command.getRow(notDurableKs);
         Assert.assertEquals(null, row.cf);
     }

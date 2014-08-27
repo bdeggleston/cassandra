@@ -91,8 +91,8 @@ public class StatusLogger
         AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = CacheService.instance.keyCache;
         AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache = CacheService.instance.rowCache;
 
-        int keyCacheKeysToSave = DatabaseDescriptor.getKeyCacheKeysToSave();
-        int rowCacheKeysToSave = DatabaseDescriptor.getRowCacheKeysToSave();
+        int keyCacheKeysToSave = DatabaseDescriptor.instance.getKeyCacheKeysToSave();
+        int rowCacheKeysToSave = DatabaseDescriptor.instance.getRowCacheKeysToSave();
 
         logger.info(String.format("%-25s%10s%25s%25s",
                                   "Cache Type", "Size", "Capacity", "KeysToSave"));

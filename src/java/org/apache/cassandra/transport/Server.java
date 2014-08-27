@@ -126,7 +126,7 @@ public class Server implements CassandraDaemon.Server
     {
         // Check that a SaslAuthenticator can be provided by the configured
         // IAuthenticator. If not, don't start the server.
-        IAuthenticator authenticator = DatabaseDescriptor.getAuthenticator();
+        IAuthenticator authenticator = DatabaseDescriptor.instance.getAuthenticator();
         if (authenticator.requireAuthentication() && !(authenticator instanceof ISaslAwareAuthenticator))
         {
             logger.error("Not starting native transport as the configured IAuthenticator is not capable of SASL authentication");
@@ -142,12 +142,12 @@ public class Server implements CassandraDaemon.Server
                                     .group(workerGroup)
                                     .channel(NioServerSocketChannel.class)
                                     .childOption(ChannelOption.TCP_NODELAY, true)
-                                    .childOption(ChannelOption.SO_KEEPALIVE, DatabaseDescriptor.getRpcKeepAlive())
+                                    .childOption(ChannelOption.SO_KEEPALIVE, DatabaseDescriptor.instance.getRpcKeepAlive())
                                     .childOption(ChannelOption.ALLOCATOR, CBUtil.allocator)
                                     .childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 32 * 1024)
                                     .childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);
 
-        final EncryptionOptions.ClientEncryptionOptions clientEnc = DatabaseDescriptor.getClientEncryptionOptions();
+        final EncryptionOptions.ClientEncryptionOptions clientEnc = DatabaseDescriptor.instance.getClientEncryptionOptions();
         if (clientEnc.enabled)
         {
             logger.info("Enabling encrypted CQL connections between client and server");

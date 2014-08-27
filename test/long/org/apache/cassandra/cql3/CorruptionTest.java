@@ -67,7 +67,7 @@ public class CorruptionTest extends SchemaLoader
 
         cluster = Cluster.builder().addContactPoint("127.0.0.1")
                          .withRetryPolicy(new LoggingRetryPolicy(Policies.defaultRetryPolicy()))
-                         .withPort(DatabaseDescriptor.getNativeTransportPort()).build();
+                         .withPort(DatabaseDescriptor.instance.getNativeTransportPort()).build();
         session = cluster.connect();
 
         session.execute("CREATE KEYSPACE IF NOT EXISTS " + KEYSPACE +" WITH replication " +

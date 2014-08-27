@@ -122,7 +122,7 @@ public enum ConsistencyLevel
                 return keyspace.getReplicationStrategy().getReplicationFactor();
             case LOCAL_QUORUM:
             case LOCAL_SERIAL:
-                return localQuorumFor(keyspace, DatabaseDescriptor.getLocalDataCenter());
+                return localQuorumFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter());
             case EACH_QUORUM:
                 if (keyspace.getReplicationStrategy() instanceof NetworkTopologyStrategy)
                 {
@@ -148,7 +148,7 @@ public enum ConsistencyLevel
 
     private boolean isLocal(InetAddress endpoint)
     {
-        return DatabaseDescriptor.getLocalDataCenter().equals(DatabaseDescriptor.getEndpointSnitch().getDatacenter(endpoint));
+        return DatabaseDescriptor.instance.getLocalDataCenter().equals(DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(endpoint));
     }
 
     private int countLocalEndpoints(Iterable<InetAddress> liveEndpoints)
@@ -170,7 +170,7 @@ public enum ConsistencyLevel
 
         for (InetAddress endpoint : liveEndpoints)
         {
-            String dc = DatabaseDescriptor.getEndpointSnitch().getDatacenter(endpoint);
+            String dc = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(endpoint);
             dcEndpoints.put(dc, dcEndpoints.get(dc) + 1);
         }
         return dcEndpoints;
@@ -190,7 +190,7 @@ public enum ConsistencyLevel
          * the blockFor first ones).
          */
         if (isDCLocal)
-            Collections.sort(liveEndpoints, DatabaseDescriptor.getLocalComparator());
+            Collections.sort(liveEndpoints, DatabaseDescriptor.instance.getLocalComparator());
 
         switch (readRepair)
         {
@@ -270,7 +270,7 @@ public enum ConsistencyLevel
                             if (isLocal(endpoint))
                                 builder.append(endpoint).append(",");
                         }
-                        builder.append("] are insufficient to satisfy LOCAL_QUORUM requirement of ").append(blockFor).append(" live nodes in '").append(DatabaseDescriptor.getLocalDataCenter()).append("'");
+                        builder.append("] are insufficient to satisfy LOCAL_QUORUM requirement of ").append(blockFor).append(" live nodes in '").append(DatabaseDescriptor.instance.getLocalDataCenter()).append("'");
                         logger.debug(builder.toString());
                     }
                     throw new UnavailableException(this, blockFor, localLive);

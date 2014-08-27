@@ -360,7 +360,7 @@ public final class MessagingService implements MessagingServiceMBean
             }
         };
 
-        callbacks = new ExpiringMap<Integer, CallbackInfo>(DatabaseDescriptor.getMinRpcTimeout(), timeoutReporter);
+        callbacks = new ExpiringMap<Integer, CallbackInfo>(DatabaseDescriptor.instance.getMinRpcTimeout(), timeoutReporter);
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
@@ -421,21 +421,21 @@ public final class MessagingService implements MessagingServiceMBean
     private List<ServerSocket> getServerSockets(InetAddress localEp) throws ConfigurationException
     {
         final List<ServerSocket> ss = new ArrayList<ServerSocket>(2);
-        if (DatabaseDescriptor.getServerEncryptionOptions().internode_encryption != ServerEncryptionOptions.InternodeEncryption.none)
+        if (DatabaseDescriptor.instance.getServerEncryptionOptions().internode_encryption != ServerEncryptionOptions.InternodeEncryption.none)
         {
             try
             {
-                ss.add(SSLFactory.getServerSocket(DatabaseDescriptor.getServerEncryptionOptions(), localEp, DatabaseDescriptor.getSSLStoragePort()));
+                ss.add(SSLFactory.getServerSocket(DatabaseDescriptor.instance.getServerEncryptionOptions(), localEp, DatabaseDescriptor.instance.getSSLStoragePort()));
             }
             catch (IOException e)
             {
                 throw new ConfigurationException("Unable to create ssl socket", e);
             }
             // setReuseAddress happens in the factory.
-            logger.info("Starting Encrypted Messaging Service on SSL port {}", DatabaseDescriptor.getSSLStoragePort());
+            logger.info("Starting Encrypted Messaging Service on SSL port {}", DatabaseDescriptor.instance.getSSLStoragePort());
         }
 
-        if (DatabaseDescriptor.getServerEncryptionOptions().internode_encryption != ServerEncryptionOptions.InternodeEncryption.all)
+        if (DatabaseDescriptor.instance.getServerEncryptionOptions().internode_encryption != ServerEncryptionOptions.InternodeEncryption.all)
         {
             ServerSocketChannel serverChannel = null;
             try
@@ -455,7 +455,7 @@ public final class MessagingService implements MessagingServiceMBean
             {
                 throw new ConfigurationException("Insufficient permissions to setReuseAddress", e);
             }
-            InetSocketAddress address = new InetSocketAddress(localEp, DatabaseDescriptor.getStoragePort());
+            InetSocketAddress address = new InetSocketAddress(localEp, DatabaseDescriptor.instance.getStoragePort());
             try
             {
                 socket.bind(address,500);
@@ -474,7 +474,7 @@ public final class MessagingService implements MessagingServiceMBean
             {
                 throw new RuntimeException(e);
             }
-            logger.info("Starting Messaging Service on port {}", DatabaseDescriptor.getStoragePort());
+            logger.info("Starting Messaging Service on port {}", DatabaseDescriptor.instance.getStoragePort());
             ss.add(socket);
         }
         return ss;
@@ -959,7 +959,7 @@ public final class MessagingService implements MessagingServiceMBean
 
         private boolean authenticate(Socket socket)
         {
-            return DatabaseDescriptor.getInternodeAuthenticator().authenticate(socket.getInetAddress(), socket.getPort());
+            return DatabaseDescriptor.instance.getInternodeAuthenticator().authenticate(socket.getInetAddress(), socket.getPort());
         }
     }
 
