@@ -127,7 +127,7 @@ public class CreateTypeStatement extends SchemaAlteringStatement
 
         UserType type = createType();
         checkForDuplicateNames(type);
-        MigrationManager.announceNewType(type, isLocalOnly);
+        MigrationManager.instance.announceNewType(type, isLocalOnly);
         return true;
     }
 }

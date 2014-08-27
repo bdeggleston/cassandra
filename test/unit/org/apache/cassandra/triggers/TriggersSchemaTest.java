@@ -59,7 +59,7 @@ public class TriggersSchemaTest
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
                                                 Collections.singletonList(cfm1));
-        MigrationManager.announceNewKeyspace(ksm);
+        MigrationManager.instance.announceNewKeyspace(ksm);
 
         CFMetaData cfm2 = Schema.instance.getCFMetaData(ksName, cfName);
         assertFalse(cfm2.getTriggers().isEmpty());
@@ -75,13 +75,13 @@ public class TriggersSchemaTest
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
                                                 Collections.EMPTY_LIST);
-        MigrationManager.announceNewKeyspace(ksm);
+        MigrationManager.instance.announceNewKeyspace(ksm);
 
         CFMetaData cfm1 = CFMetaData.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName);
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass);
         cfm1.addTriggerDefinition(td);
 
-        MigrationManager.announceNewColumnFamily(cfm1);
+        MigrationManager.instance.announceNewColumnFamily(cfm1);
 
         CFMetaData cfm2 = Schema.instance.getCFMetaData(ksName, cfName);
         assertFalse(cfm2.getTriggers().isEmpty());
@@ -98,12 +98,12 @@ public class TriggersSchemaTest
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
                                                 Collections.singletonList(cfm1));
-        MigrationManager.announceNewKeyspace(ksm);
+        MigrationManager.instance.announceNewKeyspace(ksm);
 
         CFMetaData cfm2 = Schema.instance.getCFMetaData(ksName, cfName).copy();
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass);
         cfm2.addTriggerDefinition(td);
-        MigrationManager.announceColumnFamilyUpdate(cfm2, false);
+        MigrationManager.instance.announceColumnFamilyUpdate(cfm2, false);
 
         CFMetaData cfm3 = Schema.instance.getCFMetaData(ksName, cfName);
         assertFalse(cfm3.getTriggers().isEmpty());
@@ -122,11 +122,11 @@ public class TriggersSchemaTest
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
                                                 Collections.singletonList(cfm1));
-        MigrationManager.announceNewKeyspace(ksm);
+        MigrationManager.instance.announceNewKeyspace(ksm);
 
         CFMetaData cfm2 = Schema.instance.getCFMetaData(ksName, cfName).copy();
         cfm2.removeTrigger(triggerName);
-        MigrationManager.announceColumnFamilyUpdate(cfm2, false);
+        MigrationManager.instance.announceColumnFamilyUpdate(cfm2, false);
 
         CFMetaData cfm3 = Schema.instance.getCFMetaData(ksName, cfName).copy();
         assertTrue(cfm3.getTriggers().isEmpty());

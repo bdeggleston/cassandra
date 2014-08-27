@@ -59,7 +59,7 @@ public class DropKeyspaceStatement extends SchemaAlteringStatement
     {
         try
         {
-            MigrationManager.announceKeyspaceDrop(keyspace, isLocalOnly);
+            MigrationManager.instance.announceKeyspaceDrop(keyspace, isLocalOnly);
             return true;
         }
         catch(ConfigurationException e)

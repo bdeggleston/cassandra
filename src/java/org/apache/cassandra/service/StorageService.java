@@ -459,7 +459,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
 
         // sleep until any schema migrations have finished
-        while (!MigrationManager.isReadyForBootstrap())
+        while (!MigrationManager.instance.isReadyForBootstrap())
         {
             Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
         }
@@ -717,7 +717,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
             // if our schema hasn't matched yet, keep sleeping until it does
             // (post CASSANDRA-1391 we don't expect this to be necessary very often, but it doesn't hurt to be careful)
-            while (!MigrationManager.isReadyForBootstrap())
+            while (!MigrationManager.instance.isReadyForBootstrap())
             {
                 setMode(Mode.JOINING, "waiting for schema information to complete", true);
                 Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
@@ -826,7 +826,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (Schema.instance.getKSMetaData(Tracing.TRACE_KS) == null)
         {
             KSMetaData tracingKeyspace = KSMetaData.traceKeyspace();
-            MigrationManager.announceNewKeyspace(tracingKeyspace, 0, false);
+            MigrationManager.instance.announceNewKeyspace(tracingKeyspace, 0, false);
         }
 
         if (!isSurveyMode)
@@ -3885,7 +3885,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void resetLocalSchema() throws IOException
     {
-        MigrationManager.resetLocalSchema();
+        MigrationManager.instance.resetLocalSchema();
     }
 
     public void setTraceProbability(double probability)

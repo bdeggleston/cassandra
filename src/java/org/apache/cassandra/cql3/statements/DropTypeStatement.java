@@ -147,7 +147,7 @@ public class DropTypeStatement extends SchemaAlteringStatement
         if (toDrop == null)
             return false;
 
-        MigrationManager.announceTypeDrop(toDrop, isLocalOnly);
+        MigrationManager.instance.announceTypeDrop(toDrop, isLocalOnly);
         return true;
     }
 }

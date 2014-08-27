@@ -177,7 +177,7 @@ public class Auth
             try
             {
                 KSMetaData ksm = KSMetaData.newKeyspace(AUTH_KS, SimpleStrategy.class.getName(), ImmutableMap.of("replication_factor", "1"), true);
-                MigrationManager.announceNewKeyspace(ksm, 0, false);
+                MigrationManager.instance.announceNewKeyspace(ksm, 0, false);
             }
             catch (Exception e)
             {
@@ -203,7 +203,7 @@ public class Auth
                 CreateTableStatement statement = (CreateTableStatement) parsed.prepare().statement;
                 CFMetaData cfm = statement.getCFMetaData().copy(CFMetaData.generateLegacyCfId(AUTH_KS, name));
                 assert cfm.cfName.equals(name);
-                MigrationManager.announceNewColumnFamily(cfm);
+                MigrationManager.instance.announceNewColumnFamily(cfm);
             }
             catch (Exception e)
             {

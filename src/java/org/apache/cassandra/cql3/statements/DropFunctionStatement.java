@@ -129,7 +129,7 @@ public final class DropFunctionStatement extends SchemaAlteringStatement
             throw new InvalidRequestException(String.format("Cannot drop function '%s' because it is a " +
                                                             "native (built-in) function", functionName));
 
-        MigrationManager.announceFunctionDrop((UDFunction)old, isLocalOnly);
+        MigrationManager.instance.announceFunctionDrop((UDFunction)old, isLocalOnly);
         return true;
     }
 }

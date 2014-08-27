@@ -158,7 +158,7 @@ public class DefsTest
         CFMetaData newCf = addTestCF("MadeUpKeyspace", "NewCF", "new cf");
         try
         {
-            MigrationManager.announceNewColumnFamily(newCf);
+            MigrationManager.instance.announceNewColumnFamily(newCf);
             throw new AssertionError("You shouldn't be able to do anything to a keyspace that doesn't exist.");
         }
         catch (ConfigurationException expected)
@@ -176,7 +176,7 @@ public class DefsTest
         CFMetaData newCf = addTestCF(original.name, cf, null);
 
         Assert.assertFalse(Schema.instance.getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
-        MigrationManager.announceNewColumnFamily(newCf);
+        MigrationManager.instance.announceNewColumnFamily(newCf);
 
         Assert.assertTrue(Schema.instance.getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
         Assert.assertEquals(newCf, Schema.instance.getKSMetaData(ks).cfMetaData().get(newCf.cfName));
@@ -192,7 +192,7 @@ public class DefsTest
         CFMetaData newCf = addTestCF(original.name, cf, "A New Table");
 
         Assert.assertFalse(Schema.instance.getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
-        MigrationManager.announceNewColumnFamily(newCf);
+        MigrationManager.instance.announceNewColumnFamily(newCf);
 
         Assert.assertTrue(Schema.instance.getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
         Assert.assertEquals(newCf, Schema.instance.getKSMetaData(ks).cfMetaData().get(newCf.cfName));
@@ -233,7 +233,7 @@ public class DefsTest
         store.forceBlockingFlush();
         Assert.assertTrue(store.directories.sstableLister().list().size() > 0);
 
-        MigrationManager.announceColumnFamilyDrop(ks.name, cfm.cfName);
+        MigrationManager.instance.announceColumnFamilyDrop(ks.name, cfm.cfName);
 
         Assert.assertFalse(Schema.instance.getKSMetaData(ks.name).cfMetaData().containsKey(cfm.cfName));
 
@@ -267,7 +267,7 @@ public class DefsTest
 
         KSMetaData newKs = KSMetaData.testMetadata(newCf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(5), newCf);
 
-        MigrationManager.announceNewKeyspace(newKs);
+        MigrationManager.instance.announceNewKeyspace(newKs);
 
         Assert.assertNotNull(Schema.instance.getKSMetaData(newCf.ksName));
         Assert.assertEquals(Schema.instance.getKSMetaData(newCf.ksName), newKs);
@@ -307,7 +307,7 @@ public class DefsTest
         store.forceBlockingFlush();
         Assert.assertTrue(store.directories.sstableLister().list().size() > 0);
 
-        MigrationManager.announceKeyspaceDrop(ks.name);
+        MigrationManager.instance.announceKeyspaceDrop(ks.name);
 
         Assert.assertNull(Schema.instance.getKSMetaData(ks.name));
 
@@ -354,7 +354,7 @@ public class DefsTest
             rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.applyUnsafe();
 
-        MigrationManager.announceKeyspaceDrop(ks.name);
+        MigrationManager.instance.announceKeyspaceDrop(ks.name);
 
         Assert.assertNull(Schema.instance.getKSMetaData(ks.name));
     }
@@ -366,7 +366,7 @@ public class DefsTest
 
         KSMetaData newKs = KSMetaData.testMetadata(EMPTYKEYSPACE, SimpleStrategy.class, KSMetaData.optsWithRF(5));
 
-        MigrationManager.announceNewKeyspace(newKs);
+        MigrationManager.instance.announceNewKeyspace(newKs);
         Assert.assertNotNull(Schema.instance.getKSMetaData(EMPTYKEYSPACE));
 
         CFMetaData newCf = addTestCF(EMPTYKEYSPACE, "AddedLater", "A new CF to add to an empty KS");
@@ -375,7 +375,7 @@ public class DefsTest
         Assert.assertFalse(Schema.instance.getKSMetaData(newKs.name).cfMetaData().containsKey(newCf.cfName));
 
         //add the new CF to the empty space
-        MigrationManager.announceNewColumnFamily(newCf);
+        MigrationManager.instance.announceNewColumnFamily(newCf);
 
         Assert.assertTrue(Schema.instance.getKSMetaData(newKs.name).cfMetaData().containsKey(newCf.cfName));
         Assert.assertEquals(Schema.instance.getKSMetaData(newKs.name).cfMetaData().get(newCf.cfName), newCf);
@@ -403,7 +403,7 @@ public class DefsTest
         CFMetaData cf = addTestCF("UpdatedKeyspace", "AddedStandard1", "A new cf for a new ks");
         KSMetaData oldKs = KSMetaData.testMetadata(cf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(5), cf);
 
-        MigrationManager.announceNewKeyspace(oldKs);
+        MigrationManager.instance.announceNewKeyspace(oldKs);
 
         Assert.assertNotNull(Schema.instance.getKSMetaData(cf.ksName));
         Assert.assertEquals(Schema.instance.getKSMetaData(cf.ksName), oldKs);
@@ -412,7 +412,7 @@ public class DefsTest
         KSMetaData newBadKs2 = KSMetaData.testMetadata(cf.ksName + "trash", SimpleStrategy.class, KSMetaData.optsWithRF(4));
         try
         {
-            MigrationManager.announceKeyspaceUpdate(newBadKs2);
+            MigrationManager.instance.announceKeyspaceUpdate(newBadKs2);
             throw new AssertionError("Should not have been able to update a KS with an invalid KS name.");
         }
         catch (ConfigurationException ex)
@@ -421,7 +421,7 @@ public class DefsTest
         }
 
         KSMetaData newKs = KSMetaData.testMetadata(cf.ksName, OldNetworkTopologyStrategy.class, KSMetaData.optsWithRF(1));
-        MigrationManager.announceKeyspaceUpdate(newKs);
+        MigrationManager.instance.announceKeyspaceUpdate(newKs);
 
         KSMetaData newFetchedKs = Schema.instance.getKSMetaData(newKs.name);
         Assert.assertEquals(newFetchedKs.strategyClass, newKs.strategyClass);
@@ -434,7 +434,7 @@ public class DefsTest
         // create a keyspace with a cf to update.
         CFMetaData cf = addTestCF("UpdatedCfKs", "Standard1added", "A new cf that will be updated");
         KSMetaData ksm = KSMetaData.testMetadata(cf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(1), cf);
-        MigrationManager.announceNewKeyspace(ksm);
+        MigrationManager.instance.announceNewKeyspace(ksm);
 
         Assert.assertNotNull(Schema.instance.getKSMetaData(cf.ksName));
         Assert.assertEquals(Schema.instance.getKSMetaData(cf.ksName), ksm);
@@ -448,22 +448,22 @@ public class DefsTest
 
         // test valid operations.
         newCfm.comment("Modified comment");
-        MigrationManager.announceColumnFamilyUpdate(newCfm, false); // doesn't get set back here.
+        MigrationManager.instance.announceColumnFamilyUpdate(newCfm, false); // doesn't get set back here.
 
         newCfm.readRepairChance(0.23);
-        MigrationManager.announceColumnFamilyUpdate(newCfm, false);
+        MigrationManager.instance.announceColumnFamilyUpdate(newCfm, false);
 
         newCfm.gcGraceSeconds(12);
-        MigrationManager.announceColumnFamilyUpdate(newCfm, false);
+        MigrationManager.instance.announceColumnFamilyUpdate(newCfm, false);
 
         newCfm.defaultValidator(UTF8Type.instance);
-        MigrationManager.announceColumnFamilyUpdate(newCfm, false);
+        MigrationManager.instance.announceColumnFamilyUpdate(newCfm, false);
 
         newCfm.minCompactionThreshold(3);
-        MigrationManager.announceColumnFamilyUpdate(newCfm, false);
+        MigrationManager.instance.announceColumnFamilyUpdate(newCfm, false);
 
         newCfm.maxCompactionThreshold(33);
-        MigrationManager.announceColumnFamilyUpdate(newCfm, false);
+        MigrationManager.instance.announceColumnFamilyUpdate(newCfm, false);
 
         // can't test changing the reconciler because there is only one impl.
 
@@ -545,7 +545,7 @@ public class DefsTest
         ColumnDefinition cdOld = meta.regularColumns().iterator().next();
         ColumnDefinition cdNew = ColumnDefinition.regularDef(meta, cdOld.name.bytes, cdOld.type, null);
         meta.addOrReplaceColumnDefinition(cdNew);
-        MigrationManager.announceColumnFamilyUpdate(meta, false);
+        MigrationManager.instance.announceColumnFamilyUpdate(meta, false);
 
         // check
         Assert.assertTrue(cfs.indexManager.getIndexes().isEmpty());

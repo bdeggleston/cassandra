@@ -57,7 +57,7 @@ public class LongFlushMemtableTest
         for (int i = 0; i < 100; i++)
         {
             CFMetaData metadata = CFMetaData.denseCFMetaData(keyspace.getName(), "_CF" + i, UTF8Type.instance);
-            MigrationManager.announceNewColumnFamily(metadata);
+            MigrationManager.instance.announceNewColumnFamily(metadata);
         }
 
         for (int j = 0; j < 200; j++)

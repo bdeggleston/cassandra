@@ -388,7 +388,7 @@ public class Schema
     public void updateVersionAndAnnounce()
     {
         updateVersion();
-        MigrationManager.passiveAnnounce(version);
+        MigrationManager.instance.passiveAnnounce(version);
     }
 
     /**

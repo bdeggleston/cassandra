@@ -111,7 +111,7 @@ public class CreateTableStatement extends SchemaAlteringStatement
     {
         try
         {
-            MigrationManager.announceNewColumnFamily(getCFMetaData(), isLocalOnly);
+            MigrationManager.instance.announceNewColumnFamily(getCFMetaData(), isLocalOnly);
             return true;
         }
         catch (AlreadyExistsException e)

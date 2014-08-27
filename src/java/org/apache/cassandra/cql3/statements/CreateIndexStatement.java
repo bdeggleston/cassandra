@@ -147,7 +147,7 @@ public class CreateIndexStatement extends SchemaAlteringStatement
 
         cd.setIndexName(indexName);
         cfm.addDefaultIndexNames();
-        MigrationManager.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
+        MigrationManager.instance.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
         return true;
     }
 
