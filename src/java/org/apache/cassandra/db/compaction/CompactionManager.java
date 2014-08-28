@@ -102,10 +102,26 @@ public class CompactionManager implements CompactionManagerMBean
 {
     public static final String MBEAN_OBJECT_NAME = "org.apache.cassandra.db:type=CompactionManager";
     private static final Logger logger = LoggerFactory.getLogger(CompactionManager.class);
-    public static final CompactionManager instance;
+    public static final CompactionManager instance = create();
 
     public static final int NO_GC = Integer.MIN_VALUE;
     public static final int GC_ALL = Integer.MAX_VALUE;
+
+    public static CompactionManager create()
+    {
+        CompactionManager cm = new CompactionManager();
+        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+        try
+        {
+            mbs.registerMBean(cm, new ObjectName(MBEAN_OBJECT_NAME));
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
+
+        return cm;
+    }
 
     // A thread local that tells us if the current thread is owned by the compaction manager. Used
     // by CounterContext to figure out if it should log a warning for invalid counter shards.
@@ -118,23 +134,9 @@ public class CompactionManager implements CompactionManagerMBean
         }
     };
 
-    static
-    {
-        instance = new CompactionManager();
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        try
-        {
-            mbs.registerMBean(instance, new ObjectName(MBEAN_OBJECT_NAME));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
-
     private final CompactionExecutor executor = new CompactionExecutor();
     private final CompactionExecutor validationExecutor = new ValidationExecutor();
-    private final static CompactionExecutor cacheCleanupExecutor = new CacheCleanupExecutor();
+    private final CompactionExecutor cacheCleanupExecutor = new CacheCleanupExecutor();
 
     private final CompactionMetrics metrics = new CompactionMetrics(executor, validationExecutor);
     private final Multiset<ColumnFamilyStore> compactingCF = ConcurrentHashMultiset.create();
@@ -350,7 +352,7 @@ public class CompactionManager implements CompactionManagerMBean
             return AllSSTableOpStatus.ABORTED;
         }
         final boolean hasIndexes = cfStore.indexManager.hasIndexes();
-        final CleanupStrategy cleanupStrategy = CleanupStrategy.get(cfStore, ranges);
+        final CleanupStrategy cleanupStrategy = CleanupStrategy.get(cfStore, ranges, this);
         return parallelAllSSTableOperation(cfStore, new OneSSTableOperation()
         {
             @Override
@@ -737,11 +739,19 @@ public class CompactionManager implements CompactionManagerMBean
 
     private static abstract class CleanupStrategy
     {
-        public static CleanupStrategy get(ColumnFamilyStore cfs, Collection<Range<Token>> ranges)
+
+        protected final CompactionManager compactionManager;
+
+        protected CleanupStrategy(CompactionManager compactionManager)
+        {
+            this.compactionManager = compactionManager;
+        }
+
+        public static CleanupStrategy get(ColumnFamilyStore cfs, Collection<Range<Token>> ranges, CompactionManager compactionManager)
         {
             return cfs.indexManager.hasIndexes()
-                 ? new Full(cfs, ranges)
-                 : new Bounded(cfs, ranges);
+                 ? new Full(cfs, ranges, compactionManager)
+                 : new Bounded(cfs, ranges, compactionManager);
         }
 
         public abstract ICompactionScanner getScanner(SSTableReader sstable, RateLimiter limiter);
@@ -751,10 +761,11 @@ public class CompactionManager implements CompactionManagerMBean
         {
             private final Collection<Range<Token>> ranges;
 
-            public Bounded(final ColumnFamilyStore cfs, Collection<Range<Token>> ranges)
+            public Bounded(final ColumnFamilyStore cfs, Collection<Range<Token>> ranges, CompactionManager compactionManager)
             {
+                super(compactionManager);
                 this.ranges = ranges;
-                cacheCleanupExecutor.submit(new Runnable()
+                this.compactionManager.cacheCleanupExecutor.submit(new Runnable()
                 {
                     @Override
                     public void run()
@@ -783,8 +794,9 @@ public class CompactionManager implements CompactionManagerMBean
             private final ColumnFamilyStore cfs;
             private List<Cell> indexedColumnsInRow;
 
-            public Full(ColumnFamilyStore cfs, Collection<Range<Token>> ranges)
+            public Full(ColumnFamilyStore cfs, Collection<Range<Token>> ranges, CompactionManager compactionManager)
             {
+                super(compactionManager);
                 this.cfs = cfs;
                 this.ranges = ranges;
                 this.indexedColumnsInRow = null;
