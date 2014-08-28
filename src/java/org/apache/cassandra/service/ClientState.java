@@ -175,7 +175,7 @@ public class ClientState
      */
     public void login(AuthenticatedUser user) throws AuthenticationException
     {
-        if (!user.isAnonymous() && !Auth.isExistingUser(user.getName()))
+        if (!user.isAnonymous() && !Auth.instance.isExistingUser(user.getName()))
            throw new AuthenticationException(String.format("User %s doesn't exist - create it with CREATE USER query first",
                                                            user.getName()));
         this.user = user;
@@ -240,7 +240,7 @@ public class ClientState
             throw new UnauthorizedException(keyspace + " keyspace is not user-modifiable.");
 
         // we want to allow altering AUTH_KS and TRACING_KS.
-        Set<String> allowAlter = Sets.newHashSet(Auth.AUTH_KS, Tracing.TRACE_KS);
+        Set<String> allowAlter = Sets.newHashSet(Auth.instance.AUTH_KS, Tracing.TRACE_KS);
         if (allowAlter.contains(keyspace.toLowerCase()) && !(resource.isKeyspaceLevel() && perm.equals(Permission.ALTER)))
             throw new UnauthorizedException(String.format("Cannot %s %s", perm, resource));
     }

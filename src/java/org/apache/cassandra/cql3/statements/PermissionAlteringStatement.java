@@ -46,7 +46,7 @@ public abstract class PermissionAlteringStatement extends AuthorizationStatement
         // validate login here before checkAccess to avoid leaking user existence to anonymous users.
         state.ensureNotAnonymous();
 
-        if (!Auth.isExistingUser(username))
+        if (!Auth.instance.isExistingUser(username))
             throw new InvalidRequestException(String.format("User %s doesn't exist", username));
 
         // if a keyspace is omitted when GRANT/REVOKE ON TABLE <table>, we need to correct the resource.

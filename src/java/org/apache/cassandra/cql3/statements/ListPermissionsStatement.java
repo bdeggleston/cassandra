@@ -33,7 +33,7 @@ import org.apache.cassandra.transport.messages.ResultMessage;
 
 public class ListPermissionsStatement extends AuthorizationStatement
 {
-    private static final String KS = Auth.AUTH_KS;
+    private static final String KS = Auth.instance.AUTH_KS;
     private static final String CF = "permissions"; // virtual cf to use for now.
 
     private static final List<ColumnSpecification> metadata;
@@ -65,7 +65,7 @@ public class ListPermissionsStatement extends AuthorizationStatement
         // a check to ensure the existence of the user isn't being leaked by user existence check.
         state.ensureNotAnonymous();
 
-        if (username != null && !Auth.isExistingUser(username))
+        if (username != null && !Auth.instance.isExistingUser(username))
             throw new InvalidRequestException(String.format("User %s doesn't exist", username));
 
         if (resource != null)

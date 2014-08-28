@@ -47,9 +47,11 @@ public class Auth
 {
     private static final Logger logger = LoggerFactory.getLogger(Auth.class);
 
+    public static final Auth instance = new Auth();
+
     public static final String DEFAULT_SUPERUSER_NAME = "cassandra";
 
-    public static final long SUPERUSER_SETUP_DELAY = Long.getLong("cassandra.superuser_setup_delay_ms", 10000);
+    private final long superuserSetupDelay;
 
     public static final String AUTH_KS = "system_auth";
     public static final String USERS_CF = "users";
@@ -63,7 +65,17 @@ public class Auth
                                                                 USERS_CF,
                                                                 90 * 24 * 60 * 60); // 3 months.
 
-    private static SelectStatement selectUserStatement;
+    private SelectStatement selectUserStatement;
+
+    public Auth()
+    {
+        superuserSetupDelay = Long.getLong("cassandra.superuser_setup_delay_ms", 10000);
+    }
+
+    public long getSuperuserSetupDelay()
+    {
+        return superuserSetupDelay;
+    }
 
     /**
      * Checks if the username is stored in AUTH_KS.USERS_CF.
@@ -71,7 +83,7 @@ public class Auth
      * @param username Username to query.
      * @return whether or not Cassandra knows about the user.
      */
-    public static boolean isExistingUser(String username)
+    public boolean isExistingUser(String username)
     {
         return !selectUser(username).isEmpty();
     }
@@ -82,7 +94,7 @@ public class Auth
      * @param username Username to query.
      * @return true is the user is a superuser, false if they aren't or don't exist at all.
      */
-    public static boolean isSuperuser(String username)
+    public boolean isSuperuser(String username)
     {
         UntypedResultSet result = selectUser(username);
         return !result.isEmpty() && result.one().getBoolean("super");
@@ -95,7 +107,7 @@ public class Auth
      * @param isSuper User's new status.
      * @throws RequestExecutionException
      */
-    public static void insertUser(String username, boolean isSuper) throws RequestExecutionException
+    public void insertUser(String username, boolean isSuper) throws RequestExecutionException
     {
         QueryProcessor.process(String.format("INSERT INTO %s.%s (name, super) VALUES ('%s', %s)",
                                              AUTH_KS,
@@ -111,7 +123,7 @@ public class Auth
      * @param username Username to delete.
      * @throws RequestExecutionException
      */
-    public static void deleteUser(String username) throws RequestExecutionException
+    public void deleteUser(String username) throws RequestExecutionException
     {
         QueryProcessor.process(String.format("DELETE FROM %s.%s WHERE name = '%s'",
                                              AUTH_KS,
@@ -123,9 +135,9 @@ public class Auth
     /**
      * Sets up Authenticator and Authorizer.
      */
-    public static void setup()
+    public void setup()
     {
-        if (DatabaseDescriptor.instance.instance.getAuthenticator() instanceof AllowAllAuthenticator)
+        if (DatabaseDescriptor.instance.getAuthenticator() instanceof AllowAllAuthenticator)
             return;
 
         setupAuthKeyspace();
@@ -147,7 +159,7 @@ public class Auth
                                               setupDefaultSuperuser();
                                           }
                                       },
-                                      SUPERUSER_SETUP_DELAY,
+                                                        superuserSetupDelay,
                                       TimeUnit.MILLISECONDS);
 
         try
@@ -162,7 +174,7 @@ public class Auth
     }
 
     // Only use QUORUM cl for the default superuser.
-    private static ConsistencyLevel consistencyForUser(String username)
+    private ConsistencyLevel consistencyForUser(String username)
     {
         if (username.equals(DEFAULT_SUPERUSER_NAME))
             return ConsistencyLevel.QUORUM;
@@ -170,7 +182,7 @@ public class Auth
             return ConsistencyLevel.LOCAL_ONE;
     }
 
-    private static void setupAuthKeyspace()
+    private void setupAuthKeyspace()
     {
         if (Schema.instance.getKSMetaData(AUTH_KS) == null)
         {
@@ -192,7 +204,7 @@ public class Auth
      * @param name name of the table
      * @param cql CREATE TABLE statement
      */
-    public static void setupTable(String name, String cql)
+    public void setupTable(String name, String cql)
     {
         if (Schema.instance.getCFMetaData(AUTH_KS, name) == null)
         {
@@ -212,7 +224,7 @@ public class Auth
         }
     }
 
-    private static void setupDefaultSuperuser()
+    private void setupDefaultSuperuser()
     {
         try
         {
@@ -234,7 +246,7 @@ public class Auth
         }
     }
 
-    private static boolean hasExistingUsers() throws RequestExecutionException
+    private boolean hasExistingUsers() throws RequestExecutionException
     {
         // Try looking up the 'cassandra' default super user first, to avoid the range query if possible.
         String defaultSUQuery = String.format("SELECT * FROM %s.%s WHERE name = '%s'", AUTH_KS, USERS_CF, DEFAULT_SUPERUSER_NAME);
@@ -245,12 +257,12 @@ public class Auth
     }
 
     // we only worry about one character ('). Make sure it's properly escaped.
-    private static String escape(String name)
+    private String escape(String name)
     {
         return StringUtils.replace(name, "'", "''");
     }
 
-    private static UntypedResultSet selectUser(String username)
+    private UntypedResultSet selectUser(String username)
     {
         try
         {
@@ -272,7 +284,7 @@ public class Auth
     /**
      * IMigrationListener implementation that cleans up permissions on dropped resources.
      */
-    public static class MigrationListener implements IMigrationListener
+    public class MigrationListener implements IMigrationListener
     {
         public void onDropKeyspace(String ksName)
         {

@@ -43,7 +43,7 @@ public class DropUserStatement extends AuthenticationStatement
         // validate login here before checkAccess to avoid leaking user existence to anonymous users.
         state.ensureNotAnonymous();
 
-        if (!ifExists && !Auth.isExistingUser(username))
+        if (!ifExists && !Auth.instance.isExistingUser(username))
             throw new InvalidRequestException(String.format("User %s doesn't exist", username));
 
         AuthenticatedUser user = state.getUser();
@@ -60,12 +60,12 @@ public class DropUserStatement extends AuthenticationStatement
     public ResultMessage execute(ClientState state) throws RequestValidationException, RequestExecutionException
     {
         // not rejected in validate()
-        if (ifExists && !Auth.isExistingUser(username))
+        if (ifExists && !Auth.instance.isExistingUser(username))
             return null;
 
         // clean up permissions after the dropped user.
         DatabaseDescriptor.instance.getAuthorizer().revokeAll(username);
-        Auth.deleteUser(username);
+        Auth.instance.deleteUser(username);
         DatabaseDescriptor.instance.getAuthenticator().drop(username);
         return null;
     }

@@ -38,7 +38,6 @@ import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.service.QueryState;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.transport.messages.ResultMessage;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.mindrot.jbcrypt.BCrypt;
@@ -165,7 +164,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
 
     public void setup()
     {
-        Auth.setupTable(CREDENTIALS_CF, CREDENTIALS_CF_SCHEMA);
+        Auth.instance.setupTable(CREDENTIALS_CF, CREDENTIALS_CF_SCHEMA);
 
         // the delay is here to give the node some time to see its peers - to reduce
         // "skipped default user setup: some nodes are were not ready" log spam.
@@ -177,7 +176,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
                                               setupDefaultUser();
                                           }
                                       },
-                                      Auth.SUPERUSER_SETUP_DELAY,
+                                      Auth.instance.getSuperuserSetupDelay(),
                                       TimeUnit.MILLISECONDS);
 
         try

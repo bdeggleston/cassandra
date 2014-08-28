@@ -47,7 +47,7 @@ public class AuthenticatedUser
      */
     public boolean isSuper()
     {
-        return !isAnonymous() && Auth.isSuperuser(name);
+        return !isAnonymous() && Auth.instance.isSuperuser(name);
     }
 
     /**
