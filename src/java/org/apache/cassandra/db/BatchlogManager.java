@@ -60,17 +60,18 @@ import org.apache.cassandra.utils.WrappedRunnable;
 
 public class BatchlogManager implements BatchlogManagerMBean
 {
+    private static final Logger logger = LoggerFactory.getLogger(BatchlogManager.class);
+
     private static final String MBEAN_NAME = "org.apache.cassandra.db:type=BatchlogManager";
     private static final long REPLAY_INTERVAL = 60 * 1000; // milliseconds
-    private static final int PAGE_SIZE = 128; // same as HHOM, for now, w/out using any heuristics. TODO: set based on avg batch size.
 
-    private static final Logger logger = LoggerFactory.getLogger(BatchlogManager.class);
+    private static final int PAGE_SIZE = 128; // same as HHOM, for now, w/out using any heuristics. TODO: set based on avg batch size.
     public static final BatchlogManager instance = new BatchlogManager();
 
     private final AtomicLong totalBatchesReplayed = new AtomicLong();
     private final AtomicBoolean isReplaying = new AtomicBoolean();
 
-    public static final ScheduledExecutorService batchlogTasks = new DebuggableScheduledThreadPoolExecutor("BatchlogTasks");
+    public final ScheduledExecutorService batchlogTasks = new DebuggableScheduledThreadPoolExecutor("BatchlogTasks");
 
     public void start()
     {
