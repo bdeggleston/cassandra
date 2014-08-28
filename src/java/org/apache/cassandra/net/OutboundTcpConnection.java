@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.Checksum;
 
+import org.apache.cassandra.locator.IEndpointSnitch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,10 +87,10 @@ public class OutboundTcpConnection extends Thread
         this.poolReference = pool;
     }
 
-    private static boolean isLocalDC(InetAddress targetHost)
+    private static boolean isLocalDC(InetAddress targetHost, IEndpointSnitch snitch)
     {
-        String remoteDC = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(targetHost);
-        String localDC = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+        String remoteDC = snitch.getDatacenter(targetHost);
+        String localDC = snitch.getDatacenter(FBUtilities.getBroadcastAddress());
         return remoteDC.equals(localDC);
     }
 
@@ -197,7 +198,7 @@ public class OutboundTcpConnection extends Thread
     {
         // assumes version >= 1.2
         return DatabaseDescriptor.instance.internodeCompression() == Config.InternodeCompression.all
-               || (DatabaseDescriptor.instance.internodeCompression() == Config.InternodeCompression.dc && !isLocalDC(poolReference.endPoint()));
+               || (DatabaseDescriptor.instance.internodeCompression() == Config.InternodeCompression.dc && !isLocalDC(poolReference.endPoint(), DatabaseDescriptor.instance.getEndpointSnitch()));
     }
 
     private void writeConnected(QueuedMessage qm, boolean flush)
@@ -321,7 +322,7 @@ public class OutboundTcpConnection extends Thread
             {
                 socket = poolReference.newSocket();
                 socket.setKeepAlive(true);
-                if (isLocalDC(poolReference.endPoint()))
+                if (isLocalDC(poolReference.endPoint(), DatabaseDescriptor.instance.getEndpointSnitch()))
                 {
                     socket.setTcpNoDelay(true);
                 }
