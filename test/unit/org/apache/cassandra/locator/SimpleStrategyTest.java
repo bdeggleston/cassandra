@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 
+import org.apache.cassandra.service.StorageService;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -150,7 +151,7 @@ public class SimpleStrategyTest
         {
             strategy = getStrategy(keyspaceName, tmd);
 
-            PendingRangeCalculatorService.calculatePendingRanges(strategy, keyspaceName);
+            PendingRangeCalculatorService.calculatePendingRanges(strategy, keyspaceName, StorageService.instance.getTokenMetadata());
 
             int replicationFactor = strategy.getReplicationFactor();
 
