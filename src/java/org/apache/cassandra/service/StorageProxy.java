@@ -971,7 +971,7 @@ public class StorageProxy implements StorageProxyMBean
         {
             public void runMayThrow()
             {
-                IMutation processed = SinkManager.processWriteRequest(mutation);
+                IMutation processed = SinkManager.instance.processWriteRequest(mutation);
                 if (processed != null)
                 {
                     ((Mutation) processed).apply();
@@ -1086,7 +1086,7 @@ public class StorageProxy implements StorageProxyMBean
             @Override
             public void runMayThrow() throws OverloadedException, WriteTimeoutException
             {
-                IMutation processed = SinkManager.processWriteRequest(mutation);
+                IMutation processed = SinkManager.instance.processWriteRequest(mutation);
                 if (processed == null)
                     return;
 
