@@ -19,6 +19,7 @@
 package org.apache.cassandra.gms;
 
 import org.apache.cassandra.AbstractSerializationsTester;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataOutputStreamAndChannel;
 import org.apache.cassandra.service.StorageService;
@@ -122,7 +123,7 @@ public class SerializationsTest extends AbstractSerializationsTester
             EndpointSt.addApplicationState(ApplicationState.LOAD, vv0);
             EndpointSt.addApplicationState(ApplicationState.STATUS, vv1);
             for (int i = 0; i < 100; i++)
-                Digests.add(new GossipDigest(FBUtilities.getBroadcastAddress(), 100 + i, 1000 + 2 * i));
+                Digests.add(new GossipDigest(DatabaseDescriptor.instance.getBroadcastAddress(), 100 + i, 1000 + 2 * i));
         }
     }
 }

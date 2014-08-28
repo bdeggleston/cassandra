@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.Test;
 
 import org.apache.cassandra.utils.FBUtilities;
@@ -36,7 +37,7 @@ public class SessionInfoTest
     public void testTotals()
     {
         UUID cfId = UUID.randomUUID();
-        InetAddress local = FBUtilities.getLocalAddress();
+        InetAddress local = DatabaseDescriptor.instance.getLocalAddress();
 
         Collection<StreamSummary> summaries = new ArrayList<>();
         for (int i = 0; i < 10; i++)

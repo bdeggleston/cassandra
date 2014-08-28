@@ -384,7 +384,7 @@ public class BatchlogManager implements BatchlogManagerMBean
             for (InetAddress endpoint : Iterables.concat(StorageService.instance.getNaturalEndpoints(ks, tk),
                                                          StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk, ks)))
             {
-                if (endpoint.equals(FBUtilities.getBroadcastAddress()))
+                if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
                     mutation.apply();
                 else if (FailureDetector.instance.isAlive(endpoint))
                     liveEndpoints.add(endpoint); // will try delivering directly instead of writing a hint.
@@ -520,7 +520,7 @@ public class BatchlogManager implements BatchlogManagerMBean
         @VisibleForTesting
         protected boolean isValid(InetAddress input)
         {
-            return !input.equals(FBUtilities.getBroadcastAddress()) && FailureDetector.instance.isAlive(input);
+            return !input.equals(DatabaseDescriptor.instance.getBroadcastAddress()) && FailureDetector.instance.isAlive(input);
         }
 
         @VisibleForTesting

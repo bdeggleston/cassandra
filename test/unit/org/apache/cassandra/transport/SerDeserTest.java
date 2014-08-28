@@ -23,6 +23,7 @@ import java.util.*;
 import io.netty.buffer.Unpooled;
 import io.netty.buffer.ByteBuf;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.Test;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.db.ConsistencyLevel;
@@ -101,12 +102,12 @@ public class SerDeserTest
     {
         List<Event> events = new ArrayList<>();
 
-        events.add(TopologyChange.newNode(FBUtilities.getBroadcastAddress(), 42));
-        events.add(TopologyChange.removedNode(FBUtilities.getBroadcastAddress(), 42));
-        events.add(TopologyChange.movedNode(FBUtilities.getBroadcastAddress(), 42));
+        events.add(TopologyChange.newNode(DatabaseDescriptor.instance.getBroadcastAddress(), 42));
+        events.add(TopologyChange.removedNode(DatabaseDescriptor.instance.getBroadcastAddress(), 42));
+        events.add(TopologyChange.movedNode(DatabaseDescriptor.instance.getBroadcastAddress(), 42));
 
-        events.add(StatusChange.nodeUp(FBUtilities.getBroadcastAddress(), 42));
-        events.add(StatusChange.nodeDown(FBUtilities.getBroadcastAddress(), 42));
+        events.add(StatusChange.nodeUp(DatabaseDescriptor.instance.getBroadcastAddress(), 42));
+        events.add(StatusChange.nodeDown(DatabaseDescriptor.instance.getBroadcastAddress(), 42));
 
         events.add(new SchemaChange(SchemaChange.Change.CREATED, "ks"));
         events.add(new SchemaChange(SchemaChange.Change.UPDATED, "ks"));

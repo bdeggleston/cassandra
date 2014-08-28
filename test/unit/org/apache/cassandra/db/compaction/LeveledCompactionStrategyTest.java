@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -177,7 +178,7 @@ public class LeveledCompactionStrategyTest
         UUID parentRepSession = UUID.randomUUID();
         ActiveRepairService.instance.registerParentRepairSession(parentRepSession, Arrays.asList(cfs), Arrays.asList(range));
         RepairJobDesc desc = new RepairJobDesc(parentRepSession, UUID.randomUUID(), KEYSPACE1, CF_STANDARDDLEVELED, range);
-        Validator validator = new Validator(desc, FBUtilities.getBroadcastAddress(), gcBefore);
+        Validator validator = new Validator(desc, DatabaseDescriptor.instance.getBroadcastAddress(), gcBefore);
         CompactionManager.instance.submitValidation(cfs, validator).get();
     }
 

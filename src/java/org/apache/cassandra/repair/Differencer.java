@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.base.Objects;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +67,7 @@ public class Differencer implements Runnable
         {
             logger.info(String.format(format, "are consistent"));
             // send back sync complete message
-            MessagingService.instance.sendOneWay(new SyncComplete(desc, r1.endpoint, r2.endpoint, true).createMessage(), FBUtilities.getLocalAddress());
+            MessagingService.instance.sendOneWay(new SyncComplete(desc, r1.endpoint, r2.endpoint, true).createMessage(), DatabaseDescriptor.instance.getLocalAddress());
             return;
         }
 
@@ -81,7 +82,7 @@ public class Differencer implements Runnable
      */
     void performStreamingRepair()
     {
-        InetAddress local = FBUtilities.getBroadcastAddress();
+        InetAddress local = DatabaseDescriptor.instance.getBroadcastAddress();
         // We can take anyone of the node as source or destination, however if one is localhost, we put at source to avoid a forwarding
         InetAddress src = r2.endpoint.equals(local) ? r2.endpoint : r1.endpoint;
         InetAddress dst = r2.endpoint.equals(local) ? r1.endpoint : r2.endpoint;

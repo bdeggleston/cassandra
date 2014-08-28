@@ -29,6 +29,7 @@ import java.util.concurrent.*;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 
+import org.apache.cassandra.config.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,7 +80,7 @@ public class MigrationManager
     {
         VersionedValue value = state.getApplicationState(ApplicationState.SCHEMA);
 
-        if (!endpoint.equals(FBUtilities.getBroadcastAddress()) && value != null)
+        if (!endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()) && value != null)
             maybeScheduleSchemaPull(UUID.fromString(value.value), endpoint);
     }
 
@@ -430,7 +431,7 @@ public class MigrationManager
         for (InetAddress endpoint : Gossiper.instance.getLiveMembers())
         {
             // only push schema to nodes with known and equal versions
-            if (!endpoint.equals(FBUtilities.getBroadcastAddress()) &&
+            if (!endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()) &&
                     MessagingService.instance.knowsVersion(endpoint) &&
                     MessagingService.instance.getRawVersion(endpoint) == MessagingService.current_version)
                 pushSchemaMutation(endpoint, schema);
@@ -472,7 +473,7 @@ public class MigrationManager
         Schema.instance.clear();
 
         Set<InetAddress> liveEndpoints = Gossiper.instance.getLiveMembers();
-        liveEndpoints.remove(FBUtilities.getBroadcastAddress());
+        liveEndpoints.remove(DatabaseDescriptor.instance.getBroadcastAddress());
 
         // force migration if there are nodes around
         for (InetAddress node : liveEndpoints)

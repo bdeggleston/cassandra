@@ -21,6 +21,7 @@ import java.lang.management.ManagementFactory;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,7 +77,7 @@ public class Mx4jTool
 
     private static String getAddress()
     {
-        return System.getProperty("mx4jaddress", FBUtilities.getBroadcastAddress().getHostAddress());
+        return System.getProperty("mx4jaddress", DatabaseDescriptor.instance.getBroadcastAddress().getHostAddress());
     }
 
     private static int getPort()

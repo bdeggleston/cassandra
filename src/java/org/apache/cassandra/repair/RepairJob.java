@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 
 import com.google.common.util.concurrent.*;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,7 +102,7 @@ public class RepairJob
     {
         // send requests to all nodes
         List<InetAddress> allEndpoints = new ArrayList<>(endpoints);
-        allEndpoints.add(FBUtilities.getBroadcastAddress());
+        allEndpoints.add(DatabaseDescriptor.instance.getBroadcastAddress());
 
         if (isSequential)
         {

@@ -21,6 +21,7 @@ import java.io.File;
 import java.util.List;
 
 import com.google.common.io.Files;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -84,7 +85,7 @@ public class SSTableLoaderTest
             public void init(String keyspace)
             {
                 for (Range<Token> range : StorageService.instance.getLocalRanges(KEYSPACE1))
-                    addRangeForEndpoint(range, FBUtilities.getBroadcastAddress());
+                    addRangeForEndpoint(range, DatabaseDescriptor.instance.getBroadcastAddress());
                 setPartitioner(StorageService.instance.getPartitioner());
             }
 

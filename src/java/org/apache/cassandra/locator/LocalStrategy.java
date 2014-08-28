@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.dht.RingPosition;
 import org.apache.cassandra.dht.Token;
@@ -45,13 +46,13 @@ public class LocalStrategy extends AbstractReplicationStrategy
     public ArrayList<InetAddress> getNaturalEndpoints(RingPosition searchPosition)
     {
         ArrayList<InetAddress> l = new ArrayList<InetAddress>(1);
-        l.add(FBUtilities.getBroadcastAddress());
+        l.add(DatabaseDescriptor.instance.getBroadcastAddress());
         return l;
     }
 
     public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata)
     {
-        return Collections.singletonList(FBUtilities.getBroadcastAddress());
+        return Collections.singletonList(DatabaseDescriptor.instance.getBroadcastAddress());
     }
 
     public int getReplicationFactor()

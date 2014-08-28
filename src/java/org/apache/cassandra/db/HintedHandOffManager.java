@@ -287,7 +287,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         // here we check the one in gossip instead; this serves as a canary to warn us if we introduce a bug that
         // causes the two to diverge (see CASSANDRA-2946)
         while (gossiper.getEndpointStateForEndpoint(endpoint) != null && !gossiper.getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.SCHEMA).value.equals(
-                gossiper.getEndpointStateForEndpoint(FBUtilities.getBroadcastAddress()).getApplicationState(ApplicationState.SCHEMA).value))
+                gossiper.getEndpointStateForEndpoint(DatabaseDescriptor.instance.getBroadcastAddress()).getApplicationState(ApplicationState.SCHEMA).value))
         {
             Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
             waited += 1000;

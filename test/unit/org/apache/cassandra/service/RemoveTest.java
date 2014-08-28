@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.*;
 
 import org.apache.cassandra.SchemaLoader;
@@ -79,7 +80,7 @@ public class RemoveTest
         // create a ring of 5 nodes
         Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6);
 
-        MessagingService.instance.listen(FBUtilities.getBroadcastAddress());
+        MessagingService.instance.listen(DatabaseDescriptor.instance.getBroadcastAddress());
         Gossiper.instance.start(1);
         removalhost = hosts.get(5);
         hosts.remove(removalhost);
@@ -141,7 +142,7 @@ public class RemoveTest
         for (InetAddress host : hosts)
         {
             MessageOut msg = new MessageOut(host, MessagingService.Verb.REPLICATION_FINISHED, null, null, Collections.<String, byte[]>emptyMap());
-            MessagingService.instance.sendRR(msg, FBUtilities.getBroadcastAddress());
+            MessagingService.instance.sendRR(msg, DatabaseDescriptor.instance.getBroadcastAddress());
         }
 
         remover.join();

@@ -127,21 +127,21 @@ public class OutboundTcpConnectionPool
             if (Config.getOutboundBindAny())
                 return SSLFactory.getSocket(DatabaseDescriptor.instance.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.instance.getSSLStoragePort());
             else
-                return SSLFactory.getSocket(DatabaseDescriptor.instance.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.instance.getSSLStoragePort(), FBUtilities.getLocalAddress(), 0);
+                return SSLFactory.getSocket(DatabaseDescriptor.instance.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.instance.getSSLStoragePort(), DatabaseDescriptor.instance.getLocalAddress(), 0);
         }
         else
         {
             Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, DatabaseDescriptor.instance.getStoragePort())).socket();
             if (Config.getOutboundBindAny() && !socket.isBound())
-                socket.bind(new InetSocketAddress(FBUtilities.getLocalAddress(), 0));
+                socket.bind(new InetSocketAddress(DatabaseDescriptor.instance.getLocalAddress(), 0));
             return socket;
         }
     }
 
     public InetAddress endPoint()
     {
-        if (id.equals(FBUtilities.getBroadcastAddress()))
-            return FBUtilities.getLocalAddress();
+        if (id.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+            return DatabaseDescriptor.instance.getLocalAddress();
         return resetedEndpoint == null ? id : resetedEndpoint;
     }
 
@@ -155,13 +155,13 @@ public class OutboundTcpConnectionPool
             case all:
                 break;
             case dc:
-                if (snitch.getDatacenter(address).equals(snitch.getDatacenter(FBUtilities.getBroadcastAddress())))
+                if (snitch.getDatacenter(address).equals(snitch.getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress())))
                     return false;
                 break;
             case rack:
                 // for rack then check if the DC's are the same.
-                if (snitch.getRack(address).equals(snitch.getRack(FBUtilities.getBroadcastAddress()))
-                        && snitch.getDatacenter(address).equals(snitch.getDatacenter(FBUtilities.getBroadcastAddress())))
+                if (snitch.getRack(address).equals(snitch.getRack(DatabaseDescriptor.instance.getBroadcastAddress()))
+                        && snitch.getDatacenter(address).equals(snitch.getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress())))
                     return false;
                 break;
         }

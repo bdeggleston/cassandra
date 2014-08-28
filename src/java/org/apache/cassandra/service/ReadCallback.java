@@ -146,7 +146,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
 
     public void response(TMessage result)
     {
-        MessageIn<TMessage> message = MessageIn.create(FBUtilities.getBroadcastAddress(),
+        MessageIn<TMessage> message = MessageIn.create(DatabaseDescriptor.instance.getBroadcastAddress(),
                                                        result,
                                                        Collections.<String, byte[]>emptyMap(),
                                                        MessagingService.Verb.INTERNAL_RESPONSE,

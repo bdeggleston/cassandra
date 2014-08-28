@@ -248,7 +248,7 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
     private String repairedNodes()
     {
         StringBuilder sb = new StringBuilder();
-        sb.append(FBUtilities.getBroadcastAddress());
+        sb.append(DatabaseDescriptor.instance.getBroadcastAddress());
         for (InetAddress ep : endpoints)
             sb.append(", ").append(ep);
         return sb.toString();

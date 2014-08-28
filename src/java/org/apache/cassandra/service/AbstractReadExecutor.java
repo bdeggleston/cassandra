@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.Iterables;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +73,7 @@ public abstract class AbstractReadExecutor
 
     private static boolean isLocalRequest(InetAddress replica)
     {
-        return replica.equals(FBUtilities.getBroadcastAddress()) && StorageProxy.instance.OPTIMIZE_LOCAL_REQUESTS;
+        return replica.equals(DatabaseDescriptor.instance.getBroadcastAddress()) && StorageProxy.instance.OPTIMIZE_LOCAL_REQUESTS;
     }
 
     protected void makeDataRequests(Iterable<InetAddress> endpoints)

@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -189,7 +190,7 @@ public class ActiveRepairService
             return Collections.emptySet();
 
         Set<InetAddress> neighbors = new HashSet<>(replicaSets.get(rangeSuperSet));
-        neighbors.remove(FBUtilities.getBroadcastAddress());
+        neighbors.remove(DatabaseDescriptor.instance.getBroadcastAddress());
 
         if (dataCenters != null)
         {
@@ -212,7 +213,7 @@ public class ActiveRepairService
                 try
                 {
                     final InetAddress endpoint = InetAddress.getByName(host.trim());
-                    if (endpoint.equals(FBUtilities.getBroadcastAddress()) || neighbors.contains(endpoint))
+                    if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()) || neighbors.contains(endpoint))
                         specifiedHost.add(endpoint);
                 }
                 catch (UnknownHostException e)
@@ -221,7 +222,7 @@ public class ActiveRepairService
                 }
             }
 
-            if (!specifiedHost.contains(FBUtilities.getBroadcastAddress()))
+            if (!specifiedHost.contains(DatabaseDescriptor.instance.getBroadcastAddress()))
                 throw new IllegalArgumentException("The current host must be part of the repair");
 
             if (specifiedHost.size() <= 1)
@@ -231,7 +232,7 @@ public class ActiveRepairService
                 throw new IllegalArgumentException(String.format(msg, specifiedHost, neighbors, hosts));
             }
 
-            specifiedHost.remove(FBUtilities.getBroadcastAddress());
+            specifiedHost.remove(DatabaseDescriptor.instance.getBroadcastAddress());
             return specifiedHost;
 
         }

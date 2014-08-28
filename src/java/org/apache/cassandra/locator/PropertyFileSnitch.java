@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -181,9 +182,9 @@ public class PropertyFileSnitch extends AbstractNetworkTopologySnitch
                 reloadedMap.put(host, token);
             }
         }
-        if (defaultDCRack == null && !reloadedMap.containsKey(FBUtilities.getBroadcastAddress()))
+        if (defaultDCRack == null && !reloadedMap.containsKey(DatabaseDescriptor.instance.getBroadcastAddress()))
             throw new ConfigurationException(String.format("Snitch definitions at %s do not define a location for this node's broadcast address %s, nor does it provides a default",
-                                                           SNITCH_PROPERTIES_FILENAME, FBUtilities.getBroadcastAddress()));
+                                                           SNITCH_PROPERTIES_FILENAME, DatabaseDescriptor.instance.getBroadcastAddress()));
 
         logger.debug("loaded network topology {}", FBUtilities.toString(reloadedMap));
         endpointMap = reloadedMap;

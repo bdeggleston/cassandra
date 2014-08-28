@@ -133,21 +133,6 @@ public class FBUtilities
         return localRandom.get();
     }
 
-    /**
-     * Please use getBroadcastAddress instead. You need this only when you have to listen/connect.
-     */
-    @Deprecated
-    public static InetAddress getLocalAddress()
-    {
-        return DatabaseDescriptor.instance.getLocalAddress();
-    }
-
-    @Deprecated
-    public static InetAddress getBroadcastAddress()
-    {
-        return DatabaseDescriptor.instance.getBroadcastAddress();
-    }
-
     public static Collection<InetAddress> getAllLocalAddresses()
     {
         Set<InetAddress> localAddresses = new HashSet<InetAddress>();

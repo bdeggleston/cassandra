@@ -19,6 +19,7 @@ package org.apache.cassandra.locator;
 
 import java.net.InetAddress;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.utils.FBUtilities;
 import org.junit.Assert;
@@ -65,7 +66,7 @@ public class YamlFileNetworkTopologySnitchTest
     {
         final TestYamlFileNetworkTopologySnitch snitch = new TestYamlFileNetworkTopologySnitch(
                 "cassandra-topology.yaml");
-        checkEndpoint(snitch, FBUtilities.getBroadcastAddress()
+        checkEndpoint(snitch, DatabaseDescriptor.instance.getBroadcastAddress()
                 .getHostAddress(), "DC1", "RAC1");
         checkEndpoint(snitch, "192.168.1.100", "DC1", "RAC1");
         checkEndpoint(snitch, "10.0.0.12", "DC1", "RAC2");

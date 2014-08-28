@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.Test;
 
 import org.apache.cassandra.dht.BytesToken;
@@ -42,7 +43,7 @@ public class SystemKeyspaceTest
     public void testLocalTokens()
     {
         // Remove all existing tokens
-        Collection<Token> current = SystemKeyspace.instance.loadTokens().asMap().get(FBUtilities.getLocalAddress());
+        Collection<Token> current = SystemKeyspace.instance.loadTokens().asMap().get(DatabaseDescriptor.instance.getLocalAddress());
         if (current != null && !current.isEmpty())
             SystemKeyspace.instance.updateTokens(current);
 

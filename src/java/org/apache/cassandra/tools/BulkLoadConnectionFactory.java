@@ -23,6 +23,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.SocketChannel;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.EncryptionOptions;
 import org.apache.cassandra.security.SSLFactory;
 import org.apache.cassandra.streaming.StreamConnectionFactory;
@@ -53,13 +54,13 @@ public class BulkLoadConnectionFactory implements StreamConnectionFactory
             if (outboundBindAny)
                 return SSLFactory.getSocket(encryptionOptions, peer, secureStoragePort);
             else
-                return SSLFactory.getSocket(encryptionOptions, peer, secureStoragePort, FBUtilities.getLocalAddress(), 0);
+                return SSLFactory.getSocket(encryptionOptions, peer, secureStoragePort, DatabaseDescriptor.instance.getLocalAddress(), 0);
         }
         else
         {
             Socket socket = SocketChannel.open(new InetSocketAddress(peer, storagePort)).socket();
             if (outboundBindAny && !socket.isBound())
-                socket.bind(new InetSocketAddress(FBUtilities.getLocalAddress(), 0));
+                socket.bind(new InetSocketAddress(DatabaseDescriptor.instance.getLocalAddress(), 0));
             return socket;
         }
     }

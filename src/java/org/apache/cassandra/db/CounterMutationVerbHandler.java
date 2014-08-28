@@ -39,7 +39,7 @@ public class CounterMutationVerbHandler implements IVerbHandler<CounterMutation>
             final CounterMutation cm = message.payload;
             logger.debug("Applying forwarded {}", cm);
 
-            String localDataCenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+            String localDataCenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
             // We should not wait for the result of the write in this thread,
             // otherwise we could have a distributed deadlock between replicas
             // running this VerbHandler (see #4578).

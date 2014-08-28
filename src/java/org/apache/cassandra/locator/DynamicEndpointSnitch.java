@@ -153,7 +153,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     @Override
     public void sortByProximity(final InetAddress address, List<InetAddress> addresses)
     {
-        assert address.equals(FBUtilities.getBroadcastAddress()); // we only know about ourself
+        assert address.equals(DatabaseDescriptor.instance.getBroadcastAddress()); // we only know about ourself
         if (badnessThreshold == 0)
         {
             sortByProximityWithScore(address, addresses);
@@ -322,7 +322,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
 
     public double getSeverity()
     {
-        return StorageService.instance.getSeverity(FBUtilities.getBroadcastAddress());
+        return StorageService.instance.getSeverity(DatabaseDescriptor.instance.getBroadcastAddress());
     }
 
     public boolean isWorthMergingForRangeQuery(List<InetAddress> merged, List<InetAddress> l1, List<InetAddress> l2)

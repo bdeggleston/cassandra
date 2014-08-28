@@ -25,6 +25,7 @@ import java.util.HashSet;
 
 import org.apache.cassandra.Util;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -42,7 +43,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 public class RowIterationTest
 {
     public static final String KEYSPACE1 = "RowIterationTest";
-    public static final InetAddress LOCAL = FBUtilities.getBroadcastAddress();
+    public static final InetAddress LOCAL = DatabaseDescriptor.instance.getBroadcastAddress();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

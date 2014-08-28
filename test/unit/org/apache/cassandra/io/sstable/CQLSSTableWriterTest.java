@@ -22,6 +22,7 @@ import java.util.Iterator;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -81,7 +82,7 @@ public class CQLSSTableWriterTest
             public void init(String keyspace)
             {
                 for (Range<Token> range : StorageService.instance.getLocalRanges("cql_keyspace"))
-                    addRangeForEndpoint(range, FBUtilities.getBroadcastAddress());
+                    addRangeForEndpoint(range, DatabaseDescriptor.instance.getBroadcastAddress());
                 setPartitioner(StorageService.instance.getPartitioner());
             }
 

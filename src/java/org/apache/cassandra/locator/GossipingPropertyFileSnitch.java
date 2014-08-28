@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.Map;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,7 +102,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
      */
     public String getDatacenter(InetAddress endpoint)
     {
-        if (endpoint.equals(FBUtilities.getBroadcastAddress()))
+        if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
             return myDC;
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
@@ -129,7 +130,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
      */
     public String getRack(InetAddress endpoint)
     {
-        if (endpoint.equals(FBUtilities.getBroadcastAddress()))
+        if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
             return myRack;
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
@@ -154,7 +155,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
         super.gossiperStarting();
 
         Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP,
-                StorageService.instance.valueFactory.internalIP(FBUtilities.getLocalAddress().getHostAddress()));
+                StorageService.instance.valueFactory.internalIP(DatabaseDescriptor.instance.getLocalAddress().getHostAddress()));
 
         reloadGossiperState();
 

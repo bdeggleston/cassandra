@@ -291,7 +291,7 @@ public class StorageProxy implements StorageProxyMBean
         if (consistencyForPaxos == ConsistencyLevel.LOCAL_SERIAL)
         {
             // Restrict naturalEndpoints and pendingEndpoints to node in the local DC only
-            String localDc = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+            String localDc = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
             Predicate<InetAddress> isLocalDc = sameDCPredicateFor(localDc);
             naturalEndpoints = ImmutableList.copyOf(Iterables.filter(naturalEndpoints, isLocalDc));
             pendingEndpoints = ImmutableList.copyOf(Iterables.filter(pendingEndpoints, isLocalDc));
@@ -463,7 +463,7 @@ public class StorageProxy implements StorageProxyMBean
     throws UnavailableException, OverloadedException, WriteTimeoutException
     {
         Tracing.instance.trace("Determining replicas for mutation");
-        final String localDataCenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+        final String localDataCenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
 
         long startTime = System.nanoTime();
         List<AbstractWriteResponseHandler> responseHandlers = new ArrayList<>(mutations.size());
@@ -508,7 +508,7 @@ public class StorageProxy implements StorageProxyMBean
                     {
                         // local writes can timeout, but cannot be dropped (see LocalMutationRunnable and
                         // CASSANDRA-6510), so there is no need to hint or retry
-                        if (!target.equals(FBUtilities.getBroadcastAddress()) && shouldHint(target))
+                        if (!target.equals(DatabaseDescriptor.instance.getBroadcastAddress()) && shouldHint(target))
                             submitHint((Mutation) mutation, target, null);
                     }
                 }
@@ -573,7 +573,7 @@ public class StorageProxy implements StorageProxyMBean
         long startTime = System.nanoTime();
 
         List<WriteResponseHandlerWrapper> wrappers = new ArrayList<WriteResponseHandlerWrapper>(mutations.size());
-        String localDataCenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+        String localDataCenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
 
         try
         {
@@ -632,7 +632,7 @@ public class StorageProxy implements StorageProxyMBean
         for (InetAddress target : endpoints)
         {
             int targetVersion = MessagingService.instance.getVersion(target);
-            if (target.equals(FBUtilities.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS)
+            if (target.equals(DatabaseDescriptor.instance.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS)
             {
                 insertLocal(message.payload, handler);
             }
@@ -666,7 +666,7 @@ public class StorageProxy implements StorageProxyMBean
         MessageOut<Mutation> message = mutation.createMessage();
         for (InetAddress target : endpoints)
         {
-            if (target.equals(FBUtilities.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS)
+            if (target.equals(DatabaseDescriptor.instance.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS)
                 insertLocal(message.payload, handler);
             else
                 MessagingService.instance.sendRR(message, target, handler, false);
@@ -761,13 +761,13 @@ public class StorageProxy implements StorageProxyMBean
     {
         TokenMetadata.Topology topology = StorageService.instance.getTokenMetadata().cachedOnlyTokenMap().getTopology();
         Multimap<String, InetAddress> localEndpoints = HashMultimap.create(topology.getDatacenterRacks().get(localDataCenter));
-        String localRack = DatabaseDescriptor.instance.getEndpointSnitch().getRack(FBUtilities.getBroadcastAddress());
+        String localRack = DatabaseDescriptor.instance.getEndpointSnitch().getRack(DatabaseDescriptor.instance.getBroadcastAddress());
 
         Collection<InetAddress> chosenEndpoints = new BatchlogManager.EndpointFilter(localRack, localEndpoints).filter();
         if (chosenEndpoints.isEmpty())
         {
             if (consistencyLevel == ConsistencyLevel.ANY)
-                return Collections.singleton(FBUtilities.getBroadcastAddress());
+                return Collections.singleton(DatabaseDescriptor.instance.getBroadcastAddress());
 
             throw new UnavailableException(ConsistencyLevel.ONE, 1, 0);
         }
@@ -818,7 +818,7 @@ public class StorageProxy implements StorageProxyMBean
 
             if (FailureDetector.instance.isAlive(destination))
             {
-                if (destination.equals(FBUtilities.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS)
+                if (destination.equals(DatabaseDescriptor.instance.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS)
                 {
                     insertLocal = true;
                 } else
@@ -886,7 +886,7 @@ public class StorageProxy implements StorageProxyMBean
                                           final AbstractWriteResponseHandler responseHandler)
     {
         // local write that time out should be handled by LocalMutationRunnable
-        assert !target.equals(FBUtilities.getBroadcastAddress()) : target;
+        assert !target.equals(DatabaseDescriptor.instance.getBroadcastAddress()) : target;
 
         HintRunnable runnable = new HintRunnable(target, this)
         {
@@ -999,7 +999,7 @@ public class StorageProxy implements StorageProxyMBean
     {
         InetAddress endpoint = findSuitableEndpoint(cm.getKeyspaceName(), cm.key(), localDataCenter, cm.consistency());
 
-        if (endpoint.equals(FBUtilities.getBroadcastAddress()))
+        if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
         {
             return applyCounterMutationOnCoordinator(cm, localDataCenter);
         }
@@ -1051,7 +1051,7 @@ public class StorageProxy implements StorageProxyMBean
         if (localEndpoints.isEmpty())
         {
             // No endpoint in local DC, pick the closest endpoint according to the snitch
-            snitch.sortByProximity(FBUtilities.getBroadcastAddress(), endpoints);
+            snitch.sortByProximity(DatabaseDescriptor.instance.getBroadcastAddress(), endpoints);
             return endpoints.get(0);
         }
         else
@@ -1097,7 +1097,7 @@ public class StorageProxy implements StorageProxyMBean
                 responseHandler.response(null);
 
                 Set<InetAddress> remotes = Sets.difference(ImmutableSet.copyOf(targets),
-                            ImmutableSet.of(FBUtilities.getBroadcastAddress()));
+                            ImmutableSet.of(DatabaseDescriptor.instance.getBroadcastAddress()));
                 if (!remotes.isEmpty())
                     sendToHintedEndpoints(result, remotes, responseHandler, localDataCenter);
             }
@@ -1368,7 +1368,7 @@ public class StorageProxy implements StorageProxyMBean
             Keyspace keyspace = Keyspace.open(command.ksName);
             Row r = command.getRow(keyspace);
             ReadResponse result = ReadVerbHandler.getResponse(command, r);
-            MessagingService.instance.addLatency(FBUtilities.getBroadcastAddress(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+            MessagingService.instance.addLatency(DatabaseDescriptor.instance.getBroadcastAddress(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
             handler.response(result);
         }
     }
@@ -1389,7 +1389,7 @@ public class StorageProxy implements StorageProxyMBean
         protected void runMayThrow()
         {
             RangeSliceReply result = new RangeSliceReply(command.executeLocally());
-            MessagingService.instance.addLatency(FBUtilities.getBroadcastAddress(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+            MessagingService.instance.addLatency(DatabaseDescriptor.instance.getBroadcastAddress(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
             handler.response(result);
         }
     }
@@ -1402,7 +1402,7 @@ public class StorageProxy implements StorageProxyMBean
     private List<InetAddress> getLiveSortedEndpoints(Keyspace keyspace, RingPosition pos)
     {
         List<InetAddress> liveEndpoints = StorageService.instance.getLiveNaturalEndpoints(keyspace, pos);
-        DatabaseDescriptor.instance.getEndpointSnitch().sortByProximity(FBUtilities.getBroadcastAddress(), liveEndpoints);
+        DatabaseDescriptor.instance.getEndpointSnitch().sortByProximity(DatabaseDescriptor.instance.getBroadcastAddress(), liveEndpoints);
         return liveEndpoints;
     }
 
@@ -1576,7 +1576,7 @@ public class StorageProxy implements StorageProxyMBean
                     handler.assureSufficientLiveNodes();
                     resolver.setSources(filteredEndpoints);
                     if (filteredEndpoints.size() == 1
-                        && filteredEndpoints.get(0).equals(FBUtilities.getBroadcastAddress())
+                        && filteredEndpoints.get(0).equals(DatabaseDescriptor.instance.getBroadcastAddress())
                         && OPTIMIZE_LOCAL_REQUESTS)
                     {
                         StageManager.instance.getStage(Stage.READ).execute(new LocalRangeSliceRunnable(nodeCmd, handler), Tracing.instance.get());
@@ -2080,7 +2080,7 @@ public class StorageProxy implements StorageProxyMBean
             if (System.currentTimeMillis() > constructionTime + DatabaseDescriptor.instance.getTimeout(MessagingService.Verb.MUTATION))
             {
                 MessagingService.instance.incrementDroppedMessages(MessagingService.Verb.MUTATION);
-                HintRunnable runnable = new HintRunnable(FBUtilities.getBroadcastAddress(), storageProxy)
+                HintRunnable runnable = new HintRunnable(DatabaseDescriptor.instance.getBroadcastAddress(), storageProxy)
                 {
                     protected void runMayThrow() throws Exception
                     {

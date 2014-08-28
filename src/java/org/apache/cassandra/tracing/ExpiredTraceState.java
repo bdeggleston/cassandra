@@ -23,13 +23,14 @@ package org.apache.cassandra.tracing;
 
 import java.util.UUID;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.utils.FBUtilities;
 
 public class ExpiredTraceState extends TraceState
 {
     public ExpiredTraceState(UUID sessionId)
     {
-        super(FBUtilities.getBroadcastAddress(), sessionId);
+        super(DatabaseDescriptor.instance.getBroadcastAddress(), sessionId);
     }
 
     public int elapsed()

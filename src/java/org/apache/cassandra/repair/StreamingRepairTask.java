@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.repair;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +50,7 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
 
     public void run()
     {
-        if (request.src.equals(FBUtilities.getBroadcastAddress()))
+        if (request.src.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
             initiateStreaming();
         else
             forwardToSource();

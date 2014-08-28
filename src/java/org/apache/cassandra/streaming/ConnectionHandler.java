@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -174,7 +175,7 @@ public class ConnectionHandler
         public void sendInitMessage(Socket socket, boolean isForOutgoing) throws IOException
         {
             StreamInitMessage message = new StreamInitMessage(
-                    FBUtilities.getBroadcastAddress(),
+                    DatabaseDescriptor.instance.getBroadcastAddress(),
                     session.sessionIndex(),
                     session.planId(),
                     session.description(),

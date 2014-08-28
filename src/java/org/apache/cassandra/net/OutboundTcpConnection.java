@@ -90,7 +90,7 @@ public class OutboundTcpConnection extends Thread
     private static boolean isLocalDC(InetAddress targetHost, IEndpointSnitch snitch)
     {
         String remoteDC = snitch.getDatacenter(targetHost);
-        String localDC = snitch.getDatacenter(FBUtilities.getBroadcastAddress());
+        String localDC = snitch.getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
         return remoteDC.equals(localDC);
     }
 
@@ -375,7 +375,7 @@ public class OutboundTcpConnection extends Thread
                 }
 
                 out.writeInt(MessagingService.current_version);
-                CompactEndpointSerializationHelper.serialize(FBUtilities.getBroadcastAddress(), out);
+                CompactEndpointSerializationHelper.serialize(DatabaseDescriptor.instance.getBroadcastAddress(), out);
                 if (shouldCompressConnection())
                 {
                     out.flush();

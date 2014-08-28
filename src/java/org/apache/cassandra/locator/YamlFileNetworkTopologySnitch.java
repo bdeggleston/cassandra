@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.gms.ApplicationState;
 import org.apache.cassandra.gms.EndpointState;
@@ -311,8 +312,7 @@ public class YamlFileNetworkTopologySnitch
             }
         }
 
-        final NodeData localNodeData = nodeDataMap.get(FBUtilities
-                .getBroadcastAddress());
+        final NodeData localNodeData = nodeDataMap.get(DatabaseDescriptor.instance.getBroadcastAddress());
         if (localNodeData == null)
         {
             throw new ConfigurationException(
@@ -363,7 +363,7 @@ public class YamlFileNetworkTopologySnitch
     {
         if (localNodeData.dcLocalAddress == null)
             return;
-        final EndpointState es = Gossiper.instance.getEndpointStateForEndpoint(FBUtilities.getBroadcastAddress());
+        final EndpointState es = Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.instance.getBroadcastAddress());
         if (es == null)
             return;
         final VersionedValue vv = es.getApplicationState(ApplicationState.INTERNAL_IP);

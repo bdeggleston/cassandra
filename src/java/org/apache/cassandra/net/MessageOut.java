@@ -62,7 +62,7 @@ public class MessageOut<T>
 
     private MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer, Map<String, byte[]> parameters)
     {
-        this(FBUtilities.getBroadcastAddress(), verb, payload, serializer, parameters);
+        this(DatabaseDescriptor.instance.getBroadcastAddress(), verb, payload, serializer, parameters);
     }
 
     @VisibleForTesting

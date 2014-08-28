@@ -138,8 +138,8 @@ public class SystemKeyspace
                                                     QueryProcessor.CQL_VERSION.toString(),
                                                     cassandraConstants.VERSION,
                                                     String.valueOf(Server.CURRENT_VERSION),
-                                                    snitch.getDatacenter(FBUtilities.getBroadcastAddress()),
-                                                    snitch.getRack(FBUtilities.getBroadcastAddress()),
+                                                    snitch.getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress()),
+                                                    snitch.getRack(DatabaseDescriptor.instance.getBroadcastAddress()),
                                                     DatabaseDescriptor.instance.getPartitioner().getClass().getName());
     }
 
@@ -375,7 +375,7 @@ public class SystemKeyspace
      */
     public synchronized void updateTokens(InetAddress ep, Collection<Token> tokens)
     {
-        if (ep.equals(FBUtilities.getBroadcastAddress()))
+        if (ep.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
         {
             removeEndpoint(ep);
             return;
@@ -394,7 +394,7 @@ public class SystemKeyspace
 
     public synchronized void updatePeerInfo(InetAddress ep, String columnName, Object value)
     {
-        if (ep.equals(FBUtilities.getBroadcastAddress()))
+        if (ep.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
             return;
 
         String req = "INSERT INTO system.%s (peer, %s) VALUES (?, ?)";

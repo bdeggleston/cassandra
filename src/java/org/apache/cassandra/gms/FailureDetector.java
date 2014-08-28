@@ -189,7 +189,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean
 
     public boolean isAlive(InetAddress ep)
     {
-        if (ep.equals(FBUtilities.getBroadcastAddress()))
+        if (ep.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
             return true;
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(ep);

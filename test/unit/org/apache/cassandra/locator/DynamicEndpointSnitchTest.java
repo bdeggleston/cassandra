@@ -24,6 +24,7 @@ import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.service.StorageService;
 import org.junit.Test;
@@ -52,7 +53,7 @@ public class DynamicEndpointSnitchTest
         StorageService.instance.initClient(0);
         SimpleSnitch ss = new SimpleSnitch();
         DynamicEndpointSnitch dsnitch = new DynamicEndpointSnitch(ss, String.valueOf(ss.hashCode()));
-        InetAddress self = FBUtilities.getBroadcastAddress();
+        InetAddress self = DatabaseDescriptor.instance.getBroadcastAddress();
         InetAddress host1 = InetAddress.getByName("127.0.0.2");
         InetAddress host2 = InetAddress.getByName("127.0.0.3");
         InetAddress host3 = InetAddress.getByName("127.0.0.4");

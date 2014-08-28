@@ -138,7 +138,7 @@ public class DefsTest
     {
         /*
         // verify dump and reload.
-        UUID first = UUIDGen.makeType1UUIDFromHost(FBUtilities.getBroadcastAddress());
+        UUID first = UUIDGen.makeType1UUIDFromHost(DatabaseDescriptor.instance.getBroadcastAddress());
         DefsTables.instance.dumpToStorage(first);
         List<KSMetaData> defs = new ArrayList<KSMetaData>(DefsTables.instance.loadFromStorage(first));
 
