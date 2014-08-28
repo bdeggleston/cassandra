@@ -395,7 +395,7 @@ public class MigrationManager
         {
             try
             {
-                DefsTables.mergeSchemaInternal(Collections.singletonList(schema), false);
+                DefsTables.instance.mergeSchemaInternal(Collections.singletonList(schema), false);
             }
             catch (IOException e)
             {
@@ -423,7 +423,7 @@ public class MigrationManager
         {
             protected void runMayThrow() throws IOException, ConfigurationException
             {
-                DefsTables.mergeSchema(schema);
+                DefsTables.instance.mergeSchema(schema);
             }
         });
 

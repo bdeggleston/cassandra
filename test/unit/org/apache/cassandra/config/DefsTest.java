@@ -139,8 +139,8 @@ public class DefsTest
         /*
         // verify dump and reload.
         UUID first = UUIDGen.makeType1UUIDFromHost(FBUtilities.getBroadcastAddress());
-        DefsTables.dumpToStorage(first);
-        List<KSMetaData> defs = new ArrayList<KSMetaData>(DefsTables.loadFromStorage(first));
+        DefsTables.instance.dumpToStorage(first);
+        List<KSMetaData> defs = new ArrayList<KSMetaData>(DefsTables.instance.loadFromStorage(first));
 
         Assert.assertTrue(defs.size() > 0);
         Assert.assertEquals(defs.size(), Schema.instance.getNonSystemKeyspaces().size());

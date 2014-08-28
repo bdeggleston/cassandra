@@ -688,7 +688,7 @@ public class DatabaseDescriptor
         }
         else
         {
-            Schema.instance.load(DefsTables.loadFromKeyspace());
+            Schema.instance.load(DefsTables.instance.loadFromKeyspace());
         }
 
         Schema.instance.updateVersion();
