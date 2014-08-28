@@ -36,11 +36,11 @@ public class ResponseVerbHandler implements IVerbHandler
         {
             String msg = "Callback already removed for {} (from {})";
             logger.debug(msg, id, message.from);
-            Tracing.trace(msg, id, message.from);
+            Tracing.instance.trace(msg, id, message.from);
             return;
         }
 
-        Tracing.trace("Processing response from {}", message.from);
+        Tracing.instance.trace("Processing response from {}", message.from);
         IAsyncCallback cb = callbackInfo.callback;
         if (message.isFailureResponse())
         {

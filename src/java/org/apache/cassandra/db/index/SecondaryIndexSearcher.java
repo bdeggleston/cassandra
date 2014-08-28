@@ -100,9 +100,9 @@ public abstract class SecondaryIndexSearcher
         }
 
         if (best == null)
-            Tracing.trace("No applicable indexes found");
+            Tracing.instance.trace("No applicable indexes found");
         else
-            Tracing.trace("Candidate index mean cardinalities are {}. Scanning with {}.",
+            Tracing.instance.trace("Candidate index mean cardinalities are {}. Scanning with {}.",
                           FBUtilities.toString(candidates), indexManager.getIndexForColumn(best.column).getIndexName());
 
         return best;

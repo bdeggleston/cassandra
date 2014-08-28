@@ -1386,7 +1386,7 @@ public class SSTableReader extends SSTable
             assert key instanceof DecoratedKey; // EQ only make sense if the key is a valid row key
             if (!bf.isPresent(((DecoratedKey)key).getKey()))
             {
-                Tracing.trace("Bloom filter allows skipping sstable {}", descriptor.generation);
+                Tracing.instance.trace("Bloom filter allows skipping sstable {}", descriptor.generation);
                 return null;
             }
         }
@@ -1399,7 +1399,7 @@ public class SSTableReader extends SSTable
             RowIndexEntry cachedPosition = getCachedPosition(cacheKey, updateCacheAndStats);
             if (cachedPosition != null)
             {
-                Tracing.trace("Key cache hit for sstable {}", descriptor.generation);
+                Tracing.instance.trace("Key cache hit for sstable {}", descriptor.generation);
                 return cachedPosition;
             }
         }
@@ -1412,7 +1412,7 @@ public class SSTableReader extends SSTable
 
             if (op.apply(1) < 0)
             {
-                Tracing.trace("Check against min and max keys allows skipping sstable {}", descriptor.generation);
+                Tracing.instance.trace("Check against min and max keys allows skipping sstable {}", descriptor.generation);
                 return null;
             }
         }
@@ -1462,7 +1462,7 @@ public class SSTableReader extends SSTable
                         exactMatch = (comparison == 0);
                         if (v < 0)
                         {
-                            Tracing.trace("Partition index lookup allows skipping sstable {}", descriptor.generation);
+                            Tracing.instance.trace("Partition index lookup allows skipping sstable {}", descriptor.generation);
                             return null;
                         }
                     }
@@ -1491,7 +1491,7 @@ public class SSTableReader extends SSTable
                         }
                         if (op == Operator.EQ && updateCacheAndStats)
                             bloomFilterTracker.addTruePositive();
-                        Tracing.trace("Partition index with {} entries found for sstable {}", indexEntry.columnsIndex().size(), descriptor.generation);
+                        Tracing.instance.trace("Partition index with {} entries found for sstable {}", indexEntry.columnsIndex().size(), descriptor.generation);
                         return indexEntry;
                     }
 
@@ -1511,7 +1511,7 @@ public class SSTableReader extends SSTable
 
         if (op == Operator.EQ && updateCacheAndStats)
             bloomFilterTracker.addFalsePositive();
-        Tracing.trace("Partition index lookup complete (bloom filter false positive) for sstable {}", descriptor.generation);
+        Tracing.instance.trace("Partition index lookup complete (bloom filter false positive) for sstable {}", descriptor.generation);
         return null;
     }
 

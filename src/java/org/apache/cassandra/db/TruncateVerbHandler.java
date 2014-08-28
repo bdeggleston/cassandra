@@ -33,7 +33,7 @@ public class TruncateVerbHandler implements IVerbHandler<Truncation>
     public void doVerb(MessageIn<Truncation> message, int id)
     {
         Truncation t = message.payload;
-        Tracing.trace("Applying truncation of {}.{}", t.keyspace, t.columnFamily);
+        Tracing.instance.trace("Applying truncation of {}.{}", t.keyspace, t.columnFamily);
         try
         {
             ColumnFamilyStore cfs = Keyspace.open(t.keyspace).getColumnFamilyStore(t.columnFamily);
@@ -47,7 +47,7 @@ public class TruncateVerbHandler implements IVerbHandler<Truncation>
             if (FSError.findNested(e) != null)
                 throw FSError.findNested(e);
         }
-        Tracing.trace("Enqueuing response to truncate operation to {}", message.from);
+        Tracing.instance.trace("Enqueuing response to truncate operation to {}", message.from);
 
         TruncateResponse response = new TruncateResponse(t.keyspace, t.columnFamily, true);
         logger.trace("{} applied.  Enqueuing response to {}@{} ", new Object[]{ t, id, message.from });

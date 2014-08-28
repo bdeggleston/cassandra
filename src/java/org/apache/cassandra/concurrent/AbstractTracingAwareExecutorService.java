@@ -33,8 +33,6 @@ import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.concurrent.SimpleCondition;
 
-import static org.apache.cassandra.tracing.Tracing.isTracing;
-
 public abstract class AbstractTracingAwareExecutorService implements TracingAwareExecutorService
 {
     private static final Logger logger = LoggerFactory.getLogger(AbstractTracingAwareExecutorService.class);
@@ -99,7 +97,7 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
 
     protected <T> FutureTask<T> newTaskFor(Callable<T> callable)
     {
-        if (isTracing())
+        if (Tracing.instance.isTracing())
         {
             if (callable instanceof TraceSessionFutureTask)
                 return (TraceSessionFutureTask<T>) callable;

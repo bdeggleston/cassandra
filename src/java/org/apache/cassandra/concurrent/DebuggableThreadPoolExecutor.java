@@ -25,8 +25,6 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.tracing.Tracing;
 
-import static org.apache.cassandra.tracing.Tracing.isTracing;
-
 /**
  * This class encorporates some Executor best practices for Cassandra.  Most of the executors in the system
  * should use or extend this.  There are two main improvements over a vanilla TPE:
@@ -147,7 +145,7 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     @Override
     public void execute(Runnable command)
     {
-        super.execute(isTracing() && !(command instanceof TraceSessionWrapper)
+        super.execute(Tracing.instance.isTracing() && !(command instanceof TraceSessionWrapper)
                       ? new TraceSessionWrapper<Object>(Executors.callable(command, null))
                       : command);
     }
@@ -155,7 +153,7 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     @Override
     protected <T> RunnableFuture<T> newTaskFor(Runnable runnable, T result)
     {
-        if (isTracing() && !(runnable instanceof TraceSessionWrapper))
+        if (Tracing.instance.isTracing() && !(runnable instanceof TraceSessionWrapper))
         {
             return new TraceSessionWrapper<T>(Executors.callable(runnable, result));
         }
@@ -165,7 +163,7 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     @Override
     protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable)
     {
-        if (isTracing() && !(callable instanceof TraceSessionWrapper))
+        if (Tracing.instance.isTracing() && !(callable instanceof TraceSessionWrapper))
         {
             return new TraceSessionWrapper<T>(callable);
         }

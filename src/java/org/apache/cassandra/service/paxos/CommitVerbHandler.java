@@ -34,7 +34,7 @@ public class CommitVerbHandler implements IVerbHandler<Commit>
         PaxosState.commit(message.payload);
 
         WriteResponse response = new WriteResponse();
-        Tracing.trace("Enqueuing acknowledge to {}", message.from);
+        Tracing.instance.trace("Enqueuing acknowledge to {}", message.from);
         MessagingService.instance.sendReply(response.createMessage(), id, message.from);
     }
 }

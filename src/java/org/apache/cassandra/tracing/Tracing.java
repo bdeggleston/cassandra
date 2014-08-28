@@ -119,9 +119,9 @@ public class Tracing
     /**
      * Indicates if the current thread's execution is being traced.
      */
-    public static boolean isTracing()
+    public boolean isTracing()
     {
-        return instance.state.get() != null;
+        return state.get() != null;
     }
 
     public UUID newSession()
@@ -246,43 +246,43 @@ public class Tracing
         }
     }
 
-    public static void trace(String message)
+    public void trace(String message)
     {
-        final TraceState state = instance.get();
+        final TraceState state = get();
         if (state == null) // inline isTracing to avoid implicit two calls to state.get()
             return;
 
         state.trace(message);
     }
 
-    public static void trace(String format, Object arg)
+    public void trace(String format, Object arg)
     {
-        final TraceState state = instance.get();
+        final TraceState state = get();
         if (state == null) // inline isTracing to avoid implicit two calls to state.get()
             return;
 
         state.trace(format, arg);
     }
 
-    public static void trace(String format, Object arg1, Object arg2)
+    public void trace(String format, Object arg1, Object arg2)
     {
-        final TraceState state = instance.get();
+        final TraceState state = get();
         if (state == null) // inline isTracing to avoid implicit two calls to state.get()
             return;
 
         state.trace(format, arg1, arg2);
     }
 
-    public static void trace(String format, Object[] args)
+    public void trace(String format, Object[] args)
     {
-        final TraceState state = instance.get();
+        final TraceState state = get();
         if (state == null) // inline isTracing to avoid implicit two calls to state.get()
             return;
 
         state.trace(format, args);
     }
 
-    static void mutateWithCatch(Mutation mutation)
+    void mutateWithCatch(Mutation mutation)
     {
         try
         {

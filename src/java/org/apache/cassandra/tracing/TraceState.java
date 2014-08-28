@@ -105,7 +105,7 @@ public class TraceState
                 if (elapsed >= 0)
                     Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("source_elapsed")), elapsed);
                 Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("thread")), threadName);
-                Tracing.mutateWithCatch(new Mutation(Tracing.TRACE_KS, sessionIdBytes, cf));
+                Tracing.instance.mutateWithCatch(new Mutation(Tracing.TRACE_KS, sessionIdBytes, cf));
             }
         });
     }

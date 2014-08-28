@@ -165,7 +165,7 @@ public class CassandraDaemon
             {
                 StorageMetrics.exceptions.inc();
                 logger.error("Exception in thread {}", t, e);
-                Tracing.trace("Exception in thread {}", t, e);
+                Tracing.instance.trace("Exception in thread {}", t, e);
                 for (Throwable e2 = e; e2 != null; e2 = e2.getCause())
                 {
                     // some code, like FileChannel.map, will wrap an OutOfMemoryError in another exception
