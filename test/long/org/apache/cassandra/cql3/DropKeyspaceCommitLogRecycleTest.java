@@ -24,8 +24,6 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.SchemaLoader;
 
-import static org.apache.cassandra.cql3.QueryProcessor.executeOnceInternal;
-
 /**
  * Base class for CQL tests.
  */
@@ -44,32 +42,32 @@ public class DropKeyspaceCommitLogRecycleTest
 
     private void create(boolean both)
     {
-        executeOnceInternal(String.format("CREATE KEYSPACE %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}", KEYSPACE));
-        executeOnceInternal(String.format("CREATE TABLE %s.test (k1 int, k2 int, v int, PRIMARY KEY (k1, k2))", KEYSPACE));
-        
+        QueryProcessor.instance.executeOnceInternal(String.format("CREATE KEYSPACE %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}", KEYSPACE));
+        QueryProcessor.instance.executeOnceInternal(String.format("CREATE TABLE %s.test (k1 int, k2 int, v int, PRIMARY KEY (k1, k2))", KEYSPACE));
+
         if (both)
         {
-            executeOnceInternal(String.format("CREATE KEYSPACE %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}", KEYSPACE2));
-            executeOnceInternal(String.format("CREATE TABLE %s.test (k1 int, k2 int, v int, PRIMARY KEY (k1, k2))", KEYSPACE2));
+            QueryProcessor.instance.executeOnceInternal(String.format("CREATE KEYSPACE %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}", KEYSPACE2));
+            QueryProcessor.instance.executeOnceInternal(String.format("CREATE TABLE %s.test (k1 int, k2 int, v int, PRIMARY KEY (k1, k2))", KEYSPACE2));
         }
     }
 
     private void insert()
     {
-        executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (0, 0, 0)", KEYSPACE));
-        executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (1, 1, 1)", KEYSPACE));
-        executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (2, 2, 2)", KEYSPACE));
+        QueryProcessor.instance.executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (0, 0, 0)", KEYSPACE));
+        QueryProcessor.instance.executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (1, 1, 1)", KEYSPACE));
+        QueryProcessor.instance.executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (2, 2, 2)", KEYSPACE));
 
-        executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (0, 0, 0)", KEYSPACE2));
-        executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (1, 1, 1)", KEYSPACE2));
-        executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (2, 2, 2)", KEYSPACE2));       
+        QueryProcessor.instance.executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (0, 0, 0)", KEYSPACE2));
+        QueryProcessor.instance.executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (1, 1, 1)", KEYSPACE2));
+        QueryProcessor.instance.executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (2, 2, 2)", KEYSPACE2));
     }
 
     private void drop(boolean both)
     {
-        executeOnceInternal(String.format("DROP KEYSPACE IF EXISTS %s", KEYSPACE));
+        QueryProcessor.instance.executeOnceInternal(String.format("DROP KEYSPACE IF EXISTS %s", KEYSPACE));
         if (both)
-            executeOnceInternal(String.format("DROP KEYSPACE IF EXISTS %s", KEYSPACE2));
+            QueryProcessor.instance.executeOnceInternal(String.format("DROP KEYSPACE IF EXISTS %s", KEYSPACE2));
     }
 
     @Test

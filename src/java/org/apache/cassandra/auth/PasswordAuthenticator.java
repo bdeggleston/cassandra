@@ -185,7 +185,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
                                          SALTED_HASH,
                                          Auth.AUTH_KS,
                                          CREDENTIALS_CF);
-            authenticateStatement = (SelectStatement) QueryProcessor.parseStatement(query).prepare().statement;
+            authenticateStatement = (SelectStatement) QueryProcessor.instance.parseStatement(query).prepare().statement;
         }
         catch (RequestValidationException e)
         {
@@ -243,7 +243,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
 
     private static UntypedResultSet process(String query, ConsistencyLevel cl) throws RequestExecutionException
     {
-        return QueryProcessor.process(query, cl);
+        return QueryProcessor.instance.process(query, cl);
     }
 
     private static ConsistencyLevel consistencyForUser(String username)

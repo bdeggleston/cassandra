@@ -154,7 +154,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
     }
 
     // The batch itself will be validated in either Parsed#prepare() - for regular CQL3 batches,
-    //   or in QueryProcessor.processBatch() - for native protocol batches.
+    //   or in QueryProcessor.instance.processBatch() - for native protocol batches.
     public void validate(ClientState state) throws InvalidRequestException
     {
         for (ModificationStatement statement : statements)

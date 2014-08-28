@@ -80,7 +80,7 @@ public abstract class Functions
     public static void loadUDFFromSchema()
     {
         logger.debug("Loading UDFs");
-        for (UntypedResultSet.Row row : QueryProcessor.executeOnceInternal(SELECT_UDFS))
+        for (UntypedResultSet.Row row : QueryProcessor.instance.executeOnceInternal(SELECT_UDFS))
             addFunction(UDFunction.fromSchema(row));
     }
 

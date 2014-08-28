@@ -558,7 +558,7 @@ public final class CFMetaData
     {
         try
         {
-            CFStatement parsed = (CFStatement)QueryProcessor.parseStatement(cql);
+            CFStatement parsed = (CFStatement)QueryProcessor.instance.parseStatement(cql);
             parsed.prepareKeyspace(keyspace);
             CreateTableStatement statement = (CreateTableStatement) parsed.prepare().statement;
             CFMetaData cfm = newSystemMetadata(keyspace, statement.columnFamily(), "", statement.comparator);
@@ -1868,7 +1868,7 @@ public final class CFMetaData
 
     private static CFMetaData fromSchema(Row row)
     {
-        UntypedResultSet.Row result = QueryProcessor.resultify("SELECT * FROM system.schema_columnfamilies", row).one();
+        UntypedResultSet.Row result = QueryProcessor.instance.resultify("SELECT * FROM system.schema_columnfamilies", row).one();
         return fromSchema(result);
     }
 

@@ -109,7 +109,7 @@ public class Auth
      */
     public void insertUser(String username, boolean isSuper) throws RequestExecutionException
     {
-        QueryProcessor.process(String.format("INSERT INTO %s.%s (name, super) VALUES ('%s', %s)",
+        QueryProcessor.instance.process(String.format("INSERT INTO %s.%s (name, super) VALUES ('%s', %s)",
                                              AUTH_KS,
                                              USERS_CF,
                                              escape(username),
@@ -125,7 +125,7 @@ public class Auth
      */
     public void deleteUser(String username) throws RequestExecutionException
     {
-        QueryProcessor.process(String.format("DELETE FROM %s.%s WHERE name = '%s'",
+        QueryProcessor.instance.process(String.format("DELETE FROM %s.%s WHERE name = '%s'",
                                              AUTH_KS,
                                              USERS_CF,
                                              escape(username)),
@@ -165,7 +165,7 @@ public class Auth
         try
         {
             String query = String.format("SELECT * FROM %s.%s WHERE name = ?", AUTH_KS, USERS_CF);
-            selectUserStatement = (SelectStatement) QueryProcessor.parseStatement(query).prepare().statement;
+            selectUserStatement = (SelectStatement) QueryProcessor.instance.parseStatement(query).prepare().statement;
         }
         catch (RequestValidationException e)
         {
@@ -210,7 +210,7 @@ public class Auth
         {
             try
             {
-                CFStatement parsed = (CFStatement)QueryProcessor.parseStatement(cql);
+                CFStatement parsed = (CFStatement)QueryProcessor.instance.parseStatement(cql);
                 parsed.prepareKeyspace(AUTH_KS);
                 CreateTableStatement statement = (CreateTableStatement) parsed.prepare().statement;
                 CFMetaData cfm = statement.getCFMetaData().copy(CFMetaData.generateLegacyCfId(AUTH_KS, name));
@@ -231,7 +231,7 @@ public class Auth
             // insert a default superuser if AUTH_KS.USERS_CF is empty.
             if (!hasExistingUsers())
             {
-                QueryProcessor.process(String.format("INSERT INTO %s.%s (name, super) VALUES ('%s', %s) USING TIMESTAMP 0",
+                QueryProcessor.instance.process(String.format("INSERT INTO %s.%s (name, super) VALUES ('%s', %s) USING TIMESTAMP 0",
                                                      AUTH_KS,
                                                      USERS_CF,
                                                      DEFAULT_SUPERUSER_NAME,
@@ -251,9 +251,9 @@ public class Auth
         // Try looking up the 'cassandra' default super user first, to avoid the range query if possible.
         String defaultSUQuery = String.format("SELECT * FROM %s.%s WHERE name = '%s'", AUTH_KS, USERS_CF, DEFAULT_SUPERUSER_NAME);
         String allUsersQuery = String.format("SELECT * FROM %s.%s LIMIT 1", AUTH_KS, USERS_CF);
-        return !QueryProcessor.process(defaultSUQuery, ConsistencyLevel.ONE).isEmpty()
-            || !QueryProcessor.process(defaultSUQuery, ConsistencyLevel.QUORUM).isEmpty()
-            || !QueryProcessor.process(allUsersQuery, ConsistencyLevel.QUORUM).isEmpty();
+        return !QueryProcessor.instance.process(defaultSUQuery, ConsistencyLevel.ONE).isEmpty()
+            || !QueryProcessor.instance.process(defaultSUQuery, ConsistencyLevel.QUORUM).isEmpty()
+            || !QueryProcessor.instance.process(allUsersQuery, ConsistencyLevel.QUORUM).isEmpty();
     }
 
     // we only worry about one character ('). Make sure it's properly escaped.

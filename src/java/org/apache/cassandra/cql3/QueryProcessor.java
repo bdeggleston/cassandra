@@ -27,6 +27,7 @@ import com.google.common.primitives.Ints;
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 import com.googlecode.concurrentlinkedhashmap.EntryWeigher;
 import org.antlr.runtime.*;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.github.jamm.MemoryMeter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,15 +50,15 @@ import org.apache.cassandra.utils.SemanticVersion;
 
 public class QueryProcessor implements QueryHandler
 {
+    private static final Logger logger = LoggerFactory.getLogger(QueryProcessor.class);
     public static final SemanticVersion CQL_VERSION = new SemanticVersion("3.2.0");
+    private static final long MAX_CACHE_PREPARED_MEMORY = Runtime.getRuntime().maxMemory() / 256;
 
     public static final QueryProcessor instance = new QueryProcessor();
 
-    private static final Logger logger = LoggerFactory.getLogger(QueryProcessor.class);
-    private static final MemoryMeter meter = new MemoryMeter().withGuessing(MemoryMeter.Guess.FALLBACK_BEST);
-    private static final long MAX_CACHE_PREPARED_MEMORY = Runtime.getRuntime().maxMemory() / 256;
+    private final MemoryMeter meter = new MemoryMeter().withGuessing(MemoryMeter.Guess.FALLBACK_BEST);
 
-    private static EntryWeigher<MD5Digest, ParsedStatement.Prepared> cqlMemoryUsageWeigher = new EntryWeigher<MD5Digest, ParsedStatement.Prepared>()
+    private EntryWeigher<MD5Digest, ParsedStatement.Prepared> cqlMemoryUsageWeigher = new EntryWeigher<MD5Digest, ParsedStatement.Prepared>()
     {
         @Override
         public int weightOf(MD5Digest key, ParsedStatement.Prepared value)
@@ -66,7 +67,7 @@ public class QueryProcessor implements QueryHandler
         }
     };
 
-    private static EntryWeigher<Integer, CQLStatement> thriftMemoryUsageWeigher = new EntryWeigher<Integer, CQLStatement>()
+    private EntryWeigher<Integer, CQLStatement> thriftMemoryUsageWeigher = new EntryWeigher<Integer, CQLStatement>()
     {
         @Override
         public int weightOf(Integer key, CQLStatement value)
@@ -75,55 +76,49 @@ public class QueryProcessor implements QueryHandler
         }
     };
 
-    private static final ConcurrentLinkedHashMap<MD5Digest, ParsedStatement.Prepared> preparedStatements;
-    private static final ConcurrentLinkedHashMap<Integer, CQLStatement> thriftPreparedStatements;
+    private final ConcurrentLinkedHashMap<MD5Digest, ParsedStatement.Prepared> preparedStatements;
+    private final ConcurrentLinkedHashMap<Integer, CQLStatement> thriftPreparedStatements;
 
     // A map for prepared statements used internally (which we don't want to mix with user statement, in particular we don't
     // bother with expiration on those.
-    private static final ConcurrentMap<String, ParsedStatement.Prepared> internalStatements = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, ParsedStatement.Prepared> internalStatements = new ConcurrentHashMap<>();
 
-    static
+    private QueryState internalQueryState()
     {
-        preparedStatements = new ConcurrentLinkedHashMap.Builder<MD5Digest, ParsedStatement.Prepared>()
-                             .maximumWeightedCapacity(MAX_CACHE_PREPARED_MEMORY)
-                             .weigher(cqlMemoryUsageWeigher)
-                             .build();
-        thriftPreparedStatements = new ConcurrentLinkedHashMap.Builder<Integer, CQLStatement>()
-                                   .maximumWeightedCapacity(MAX_CACHE_PREPARED_MEMORY)
-                                   .weigher(thriftMemoryUsageWeigher)
-                                   .build();
-
-    }
-
-    // Work aound initialization dependency
-    private static enum InternalStateInstance
-    {
-        INSTANCE;
-
-        private final QueryState queryState;
-
-        InternalStateInstance()
+        ClientState state = ClientState.forInternalCalls();
+        try
         {
-            ClientState state = ClientState.forInternalCalls();
-            try
-            {
-                state.setKeyspace(Keyspace.SYSTEM_KS);
-            }
-            catch (InvalidRequestException e)
-            {
-                throw new RuntimeException();
-            }
-            this.queryState = new QueryState(state);
+            state.setKeyspace(Keyspace.SYSTEM_KS);
         }
+        catch (InvalidRequestException e)
+        {
+            throw new RuntimeException(e);
+        }
+        return new QueryState(state);
     }
 
-    private static QueryState internalQueryState()
-    {
-        return InternalStateInstance.INSTANCE.queryState;
-    }
 
     private QueryProcessor()
     {
+        preparedStatements = new ConcurrentLinkedHashMap.Builder<MD5Digest, ParsedStatement.Prepared>()
+                .maximumWeightedCapacity(MAX_CACHE_PREPARED_MEMORY)
+                .weigher(cqlMemoryUsageWeigher)
+                .build();
+        thriftPreparedStatements = new ConcurrentLinkedHashMap.Builder<Integer, CQLStatement>()
+                .maximumWeightedCapacity(MAX_CACHE_PREPARED_MEMORY)
+                .weigher(thriftMemoryUsageWeigher)
+                .build();
+
+//        ClientState state = ClientState.forInternalCalls();
+//        try
+//        {
+//            state.setKeyspace(Keyspace.SYSTEM_KS);
+//        }
+//        catch (InvalidRequestException e)
+//        {
+//            throw new RuntimeException(e);
+//        }
+//        queryState = new QueryState(state);
     }
 
     public ParsedStatement.Prepared getPrepared(MD5Digest id)
@@ -136,7 +131,7 @@ public class QueryProcessor implements QueryHandler
         return thriftPreparedStatements.get(id);
     }
 
-    public static void validateKey(ByteBuffer key) throws InvalidRequestException
+    public void validateKey(ByteBuffer key) throws InvalidRequestException
     {
         if (key == null || key.remaining() == 0)
         {
@@ -151,20 +146,20 @@ public class QueryProcessor implements QueryHandler
         }
     }
 
-    public static void validateCellNames(Iterable<CellName> cellNames, CellNameType type) throws InvalidRequestException
+    public void validateCellNames(Iterable<CellName> cellNames, CellNameType type) throws InvalidRequestException
     {
         for (CellName name : cellNames)
             validateCellName(name, type);
     }
 
-    public static void validateCellName(CellName name, CellNameType type) throws InvalidRequestException
+    public void validateCellName(CellName name, CellNameType type) throws InvalidRequestException
     {
         validateComposite(name, type);
         if (name.isEmpty())
             throw new InvalidRequestException("Invalid empty value for clustering column of COMPACT TABLE");
     }
 
-    public static void validateComposite(Composite name, CType type) throws InvalidRequestException
+    public void validateComposite(Composite name, CType type) throws InvalidRequestException
     {
         long serializedSize = type.serializer().serializedSize(name, TypeSizes.NATIVE);
         if (serializedSize > Cell.MAX_NAME_LENGTH)
@@ -173,7 +168,7 @@ public class QueryProcessor implements QueryHandler
                                                             Cell.MAX_NAME_LENGTH));
     }
 
-    public static ResultMessage processStatement(CQLStatement statement,
+    public ResultMessage processStatement(CQLStatement statement,
                                                   QueryState queryState,
                                                   QueryOptions options)
     throws RequestExecutionException, RequestValidationException
@@ -187,10 +182,10 @@ public class QueryProcessor implements QueryHandler
         return result == null ? new ResultMessage.Void() : result;
     }
 
-    public static ResultMessage process(String queryString, ConsistencyLevel cl, QueryState queryState)
+    public ResultMessage process(String queryString, ConsistencyLevel cl, QueryState queryState)
     throws RequestExecutionException, RequestValidationException
     {
-        return instance.process(queryString, queryState, QueryOptions.forInternalCalls(cl, Collections.<ByteBuffer>emptyList()));
+        return process(queryString, queryState, QueryOptions.forInternalCalls(cl, Collections.<ByteBuffer>emptyList()));
     }
 
     public ResultMessage process(String queryString, QueryState queryState, QueryOptions options)
@@ -205,16 +200,16 @@ public class QueryProcessor implements QueryHandler
         return processStatement(prepared, queryState, options);
     }
 
-    public static ParsedStatement.Prepared parseStatement(String queryStr, QueryState queryState) throws RequestValidationException
+    public ParsedStatement.Prepared parseStatement(String queryStr, QueryState queryState) throws RequestValidationException
     {
         return getStatement(queryStr, queryState.getClientState());
     }
 
-    public static UntypedResultSet process(String query, ConsistencyLevel cl) throws RequestExecutionException
+    public UntypedResultSet process(String query, ConsistencyLevel cl) throws RequestExecutionException
     {
         try
         {
-            ResultMessage result = instance.process(query, QueryState.forInternalCalls(), QueryOptions.forInternalCalls(cl, Collections.<ByteBuffer>emptyList()));
+            ResultMessage result = process(query, QueryState.forInternalCalls(), QueryOptions.forInternalCalls(cl, Collections.<ByteBuffer>emptyList()));
             if (result instanceof ResultMessage.Rows)
                 return UntypedResultSet.create(((ResultMessage.Rows)result).result);
             else
@@ -226,7 +221,7 @@ public class QueryProcessor implements QueryHandler
         }
     }
 
-    private static QueryOptions makeInternalOptions(ParsedStatement.Prepared prepared, Object[] values)
+    private QueryOptions makeInternalOptions(ParsedStatement.Prepared prepared, Object[] values)
     {
         if (prepared.boundNames.size() != values.length)
             throw new IllegalArgumentException(String.format("Invalid number of values. Expecting %d but got %d", prepared.boundNames.size(), values.length));
@@ -241,7 +236,7 @@ public class QueryProcessor implements QueryHandler
         return QueryOptions.forInternalCalls(boundValues);
     }
 
-    private static ParsedStatement.Prepared prepareInternal(String query) throws RequestValidationException
+    private ParsedStatement.Prepared prepareInternal(String query) throws RequestValidationException
     {
         ParsedStatement.Prepared prepared = internalStatements.get(query);
         if (prepared != null)
@@ -254,7 +249,7 @@ public class QueryProcessor implements QueryHandler
         return prepared;
     }
 
-    public static UntypedResultSet executeInternal(String query, Object... values)
+    public UntypedResultSet executeInternal(String query, Object... values)
     {
         try
         {
@@ -275,7 +270,7 @@ public class QueryProcessor implements QueryHandler
         }
     }
 
-    public static UntypedResultSet executeInternalWithPaging(String query, int pageSize, Object... values)
+    public UntypedResultSet executeInternalWithPaging(String query, int pageSize, Object... values)
     {
         try
         {
@@ -297,7 +292,7 @@ public class QueryProcessor implements QueryHandler
      * Same than executeInternal, but to use for queries we know are only executed once so that the
      * created statement object is not cached.
      */
-    public static UntypedResultSet executeOnceInternal(String query, Object... values)
+    public UntypedResultSet executeOnceInternal(String query, Object... values)
     {
         try
         {
@@ -319,12 +314,12 @@ public class QueryProcessor implements QueryHandler
         }
     }
 
-    public static UntypedResultSet resultify(String query, Row row)
+    public UntypedResultSet resultify(String query, Row row)
     {
         return resultify(query, Collections.singletonList(row));
     }
 
-    public static UntypedResultSet resultify(String query, List<Row> rows)
+    public UntypedResultSet resultify(String query, List<Row> rows)
     {
         try
         {
@@ -345,7 +340,7 @@ public class QueryProcessor implements QueryHandler
         return prepare(queryString, cState, cState instanceof ThriftClientState);
     }
 
-    public static ResultMessage.Prepared prepare(String queryString, ClientState clientState, boolean forThrift)
+    public ResultMessage.Prepared prepare(String queryString, ClientState clientState, boolean forThrift)
     throws RequestValidationException
     {
         ParsedStatement.Prepared prepared = getStatement(queryString, clientState);
@@ -357,7 +352,7 @@ public class QueryProcessor implements QueryHandler
         return storePreparedStatement(queryString, clientState.getRawKeyspace(), prepared, forThrift);
     }
 
-    private static ResultMessage.Prepared storePreparedStatement(String queryString, String keyspace, ParsedStatement.Prepared prepared, boolean forThrift)
+    private ResultMessage.Prepared storePreparedStatement(String queryString, String keyspace, ParsedStatement.Prepared prepared, boolean forThrift)
     throws InvalidRequestException
     {
         // Concatenate the current keyspace so we don't mix prepared statements between keyspace (#5352).
@@ -422,7 +417,7 @@ public class QueryProcessor implements QueryHandler
         return batch.execute(queryState, options);
     }
 
-    public static ParsedStatement.Prepared getStatement(String queryStr, ClientState clientState)
+    public ParsedStatement.Prepared getStatement(String queryStr, ClientState clientState)
     throws RequestValidationException
     {
         Tracing.trace("Parsing {}", queryStr);
@@ -436,7 +431,7 @@ public class QueryProcessor implements QueryHandler
         return statement.prepare();
     }
 
-    public static ParsedStatement parseStatement(String queryStr) throws SyntaxException
+    public ParsedStatement parseStatement(String queryStr) throws SyntaxException
     {
         try
         {
@@ -472,7 +467,7 @@ public class QueryProcessor implements QueryHandler
         }
     }
 
-    private static long measure(Object key)
+    private long measure(Object key)
     {
         return key instanceof MeasurableForPreparedCache
              ? ((MeasurableForPreparedCache)key).measureForPreparedCache(meter)

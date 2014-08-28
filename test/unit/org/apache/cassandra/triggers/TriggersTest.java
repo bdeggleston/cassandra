@@ -76,20 +76,20 @@ public class TriggersTest
         String cql = String.format("CREATE KEYSPACE IF NOT EXISTS %s " +
                                    "WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1}",
                                    ksName);
-        QueryProcessor.process(cql, ConsistencyLevel.ONE);
+        QueryProcessor.instance.process(cql, ConsistencyLevel.ONE);
 
         cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (k int, v1 int, v2 int, PRIMARY KEY (k))", ksName, cfName);
-        QueryProcessor.process(cql, ConsistencyLevel.ONE);
+        QueryProcessor.instance.process(cql, ConsistencyLevel.ONE);
 
         cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (k int, v1 int, v2 int, PRIMARY KEY (k))", ksName, otherCf);
-        QueryProcessor.process(cql, ConsistencyLevel.ONE);
+        QueryProcessor.instance.process(cql, ConsistencyLevel.ONE);
 
         // no conditional execution of create trigger stmt yet
         if (! triggerCreated)
         {
             cql = String.format("CREATE TRIGGER trigger_1 ON %s.%s USING '%s'",
                                 ksName, cfName, TestTrigger.class.getName());
-            QueryProcessor.process(cql, ConsistencyLevel.ONE);
+            QueryProcessor.instance.process(cql, ConsistencyLevel.ONE);
             triggerCreated = true;
         }
     }
@@ -107,7 +107,7 @@ public class TriggersTest
     public void executeTriggerOnCqlInsert() throws Exception
     {
         String cql = String.format("INSERT INTO %s.%s (k, v1) VALUES (0, 0)", ksName, cfName);
-        QueryProcessor.process(cql, ConsistencyLevel.ONE);
+        QueryProcessor.instance.process(cql, ConsistencyLevel.ONE);
         assertUpdateIsAugmented(0);
     }
 
@@ -118,7 +118,7 @@ public class TriggersTest
                                    "    INSERT INTO %s.%s (k, v1) VALUES (1, 1); " +
                                    "APPLY BATCH",
                                    ksName, cfName);
-        QueryProcessor.process(cql, ConsistencyLevel.ONE);
+        QueryProcessor.instance.process(cql, ConsistencyLevel.ONE);
         assertUpdateIsAugmented(1);
     }
 
@@ -163,7 +163,7 @@ public class TriggersTest
     public void executeTriggerOnCqlInsertWithConditions() throws Exception
     {
         String cql = String.format("INSERT INTO %s.%s (k, v1) VALUES (4, 4) IF NOT EXISTS", ksName, cfName);
-        QueryProcessor.process(cql, ConsistencyLevel.ONE);
+        QueryProcessor.instance.process(cql, ConsistencyLevel.ONE);
         assertUpdateIsAugmented(4);
     }
 
@@ -175,7 +175,7 @@ public class TriggersTest
                                    "  INSERT INTO %1$s.%2$s (k, v1) VALUES (5, 5); " +
                                    "APPLY BATCH",
                                     ksName, cfName);
-        QueryProcessor.process(cql, ConsistencyLevel.ONE);
+        QueryProcessor.instance.process(cql, ConsistencyLevel.ONE);
         assertUpdateIsAugmented(5);
     }
 
@@ -198,7 +198,7 @@ public class TriggersTest
     }
 
     // Unfortunately, an IRE thrown from StorageProxy.instance.cas
-    // results in a RuntimeException from QueryProcessor.process
+    // results in a RuntimeException from QueryProcessor.instance.process
     @Test(expected=RuntimeException.class)
     public void onCqlUpdateWithConditionsRejectGeneratedUpdatesForDifferentPartition() throws Exception
     {
@@ -207,7 +207,7 @@ public class TriggersTest
         {
             setupTableWithTrigger(cf, CrossPartitionTrigger.class);
             String cql = String.format("INSERT INTO %s.%s (k, v1) VALUES (7, 7) IF NOT EXISTS", ksName, cf);
-            QueryProcessor.process(cql, ConsistencyLevel.ONE);
+            QueryProcessor.instance.process(cql, ConsistencyLevel.ONE);
         }
         finally
         {
@@ -216,7 +216,7 @@ public class TriggersTest
     }
 
     // Unfortunately, an IRE thrown from StorageProxy.instance.cas
-    // results in a RuntimeException from QueryProcessor.process
+    // results in a RuntimeException from QueryProcessor.instance.process
     @Test(expected=RuntimeException.class)
     public void onCqlUpdateWithConditionsRejectGeneratedUpdatesForDifferentTable() throws Exception
     {
@@ -225,7 +225,7 @@ public class TriggersTest
         {
             setupTableWithTrigger(cf, CrossTableTrigger.class);
             String cql = String.format("INSERT INTO %s.%s (k, v1) VALUES (8, 8) IF NOT EXISTS", ksName, cf);
-            QueryProcessor.process(cql, ConsistencyLevel.ONE);
+            QueryProcessor.instance.process(cql, ConsistencyLevel.ONE);
         }
         finally
         {
@@ -287,17 +287,17 @@ public class TriggersTest
     throws RequestExecutionException
     {
         String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (k int, v1 int, v2 int, PRIMARY KEY (k))", ksName, cf);
-        QueryProcessor.process(cql, ConsistencyLevel.ONE);
+        QueryProcessor.instance.process(cql, ConsistencyLevel.ONE);
 
         // no conditional execution of create trigger stmt yet
         cql = String.format("CREATE TRIGGER trigger_1 ON %s.%s USING '%s'",
                             ksName, cf, triggerImpl.getName());
-        QueryProcessor.process(cql, ConsistencyLevel.ONE);
+        QueryProcessor.instance.process(cql, ConsistencyLevel.ONE);
     }
 
     private void assertUpdateIsAugmented(int key)
     {
-        UntypedResultSet rs = QueryProcessor.executeInternal(
+        UntypedResultSet rs = QueryProcessor.instance.executeInternal(
                                 String.format("SELECT * FROM %s.%s WHERE k=%s", ksName, cfName, key));
         assertTrue(String.format("Expected value (%s) for augmented cell v2 was not found", key), rs.one().has("v2"));
         assertEquals(999, rs.one().getInt("v2"));
@@ -305,7 +305,7 @@ public class TriggersTest
 
     private void assertUpdateNotExecuted(String cf, int key)
     {
-        UntypedResultSet rs = QueryProcessor.executeInternal(
+        UntypedResultSet rs = QueryProcessor.instance.executeInternal(
                 String.format("SELECT * FROM %s.%s WHERE k=%s", ksName, cf, key));
         assertTrue(rs.isEmpty());
     }

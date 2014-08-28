@@ -121,7 +121,7 @@ public class StressProfile implements Serializable
 
         if (keyspaceCql != null && keyspaceCql.length() > 0)
         {
-            String name = ((CreateKeyspaceStatement) QueryProcessor.parseStatement(keyspaceCql)).keyspace();
+            String name = ((CreateKeyspaceStatement) QueryProcessor.instance.parseStatement(keyspaceCql)).keyspace();
             assert name.equalsIgnoreCase(keyspaceName) : "Name in keyspace_definition doesn't match keyspace property: '" + name + "' != '" + keyspaceName + "'";
         }
         else

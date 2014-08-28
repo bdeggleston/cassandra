@@ -55,33 +55,33 @@ public class UpdateParameters
 
     public Cell makeColumn(CellName name, ByteBuffer value) throws InvalidRequestException
     {
-        QueryProcessor.validateCellName(name, metadata.comparator);
+        QueryProcessor.instance.validateCellName(name, metadata.comparator);
         return AbstractCell.create(name, value, timestamp, ttl, metadata);
     }
 
      public Cell makeCounter(CellName name, long delta) throws InvalidRequestException
      {
-         QueryProcessor.validateCellName(name, metadata.comparator);
+         QueryProcessor.instance.validateCellName(name, metadata.comparator);
          return new BufferCounterUpdateCell(name, delta, FBUtilities.timestampMicros());
      }
 
     public Cell makeTombstone(CellName name) throws InvalidRequestException
     {
-        QueryProcessor.validateCellName(name, metadata.comparator);
+        QueryProcessor.instance.validateCellName(name, metadata.comparator);
         return new BufferDeletedCell(name, localDeletionTime, timestamp);
     }
 
     public RangeTombstone makeRangeTombstone(ColumnSlice slice) throws InvalidRequestException
     {
-        QueryProcessor.validateComposite(slice.start, metadata.comparator);
-        QueryProcessor.validateComposite(slice.finish, metadata.comparator);
+        QueryProcessor.instance.validateComposite(slice.start, metadata.comparator);
+        QueryProcessor.instance.validateComposite(slice.finish, metadata.comparator);
         return new RangeTombstone(slice.start, slice.finish, timestamp, localDeletionTime);
     }
 
     public RangeTombstone makeTombstoneForOverwrite(ColumnSlice slice) throws InvalidRequestException
     {
-        QueryProcessor.validateComposite(slice.start, metadata.comparator);
-        QueryProcessor.validateComposite(slice.finish, metadata.comparator);
+        QueryProcessor.instance.validateComposite(slice.start, metadata.comparator);
+        QueryProcessor.instance.validateComposite(slice.finish, metadata.comparator);
         return new RangeTombstone(slice.start, slice.finish, timestamp - 1, localDeletionTime);
     }
 

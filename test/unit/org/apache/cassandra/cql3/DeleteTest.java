@@ -25,7 +25,9 @@ import com.datastax.driver.core.Session;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.exceptions.ConfigurationException;
+import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.EmbeddedCassandraService;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -110,11 +112,12 @@ public class DeleteTest extends SchemaLoader
 
 
     @Test
-    public void lostDeletesTest()
+    public void lostDeletesTest() throws Exception
     {
 
         for (int i = 0; i < 500; i++)
         {
+            QueryProcessor.instance.process("insert into junit.tpc_inherit_b ( id, cid, inh_b, val) values (1, 1, 'inhB', 'valB')", ConsistencyLevel.ONE);
             session.execute(pstmtI.bind(1, 1, "inhB", "valB"));
 
             ResultSetFuture[] futures = load();

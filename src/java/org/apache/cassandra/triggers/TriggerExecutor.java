@@ -160,7 +160,7 @@ public class TriggerExecutor
     {
         for (Mutation mutation : tmutations)
         {
-            QueryProcessor.validateKey(mutation.key());
+            QueryProcessor.instance.validateKey(mutation.key());
             for (ColumnFamily tcf : mutation.getColumnFamilies())
                 for (Cell cell : tcf)
                     cell.validateFields(tcf.metadata());
