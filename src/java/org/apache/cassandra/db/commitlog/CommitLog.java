@@ -340,7 +340,7 @@ public class CommitLog implements CommitLogMBean
         return allocator.getActiveSegments().size();
     }
 
-    static boolean handleCommitError(String message, Throwable t)
+    boolean handleCommitError(String message, Throwable t)
     {
         switch (DatabaseDescriptor.instance.getCommitFailurePolicy())
         {

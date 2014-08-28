@@ -159,7 +159,7 @@ public class CommitLogSegmentManager
                     }
                     catch (Throwable t)
                     {
-                        if (!CommitLog.handleCommitError("Failed managing commit log segments", t))
+                        if (!CommitLog.instance.handleCommitError("Failed managing commit log segments", t))
                             return;
                         // sleep some arbitrary period to avoid spamming CL
                         Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
