@@ -420,7 +420,7 @@ public class CommitLogReplayer
                             }
                         }
                     };
-                    futures.add(StageManager.getStage(Stage.MUTATION).submit(runnable));
+                    futures.add(StageManager.instance.getStage(Stage.MUTATION).submit(runnable));
                     if (futures.size() > MAX_OUTSTANDING_REPLAY_COUNT)
                     {
                         FBUtilities.waitOnFutures(futures);

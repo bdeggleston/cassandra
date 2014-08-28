@@ -415,7 +415,7 @@ public class CacheService implements CacheServiceMBean
         {
             final ByteBuffer partitionKey = ByteBufferUtil.readWithLength(in);
             final CellName cellName = cfs.metadata.comparator.cellFromByteBuffer(ByteBufferUtil.readWithLength(in));
-            return StageManager.getStage(Stage.READ).submit(new Callable<Pair<CounterCacheKey, ClockAndCount>>()
+            return StageManager.instance.getStage(Stage.READ).submit(new Callable<Pair<CounterCacheKey, ClockAndCount>>()
             {
                 public Pair<CounterCacheKey, ClockAndCount> call() throws Exception
                 {
@@ -447,7 +447,7 @@ public class CacheService implements CacheServiceMBean
         public Future<Pair<RowCacheKey, IRowCacheEntry>> deserialize(DataInputStream in, final ColumnFamilyStore cfs) throws IOException
         {
             final ByteBuffer buffer = ByteBufferUtil.readWithLength(in);
-            return StageManager.getStage(Stage.READ).submit(new Callable<Pair<RowCacheKey, IRowCacheEntry>>()
+            return StageManager.instance.getStage(Stage.READ).submit(new Callable<Pair<RowCacheKey, IRowCacheEntry>>()
             {
                 public Pair<RowCacheKey, IRowCacheEntry> call() throws Exception
                 {

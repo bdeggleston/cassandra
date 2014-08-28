@@ -82,19 +82,19 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStore.class);
 
     private static final ExecutorService flushExecutor = new JMXEnabledThreadPoolExecutor(DatabaseDescriptor.instance.getFlushWriters(),
-                                                                                          StageManager.KEEPALIVE,
+                                                                                          StageManager.instance.KEEPALIVE,
                                                                                           TimeUnit.SECONDS,
                                                                                           new LinkedBlockingQueue<Runnable>(),
                                                                                           new NamedThreadFactory("MemtableFlushWriter"),
                                                                                           "internal");
     // post-flush executor is single threaded to provide guarantee that any flush Future on a CF will never return until prior flushes have completed
     public static final ExecutorService postFlushExecutor = new JMXEnabledThreadPoolExecutor(1,
-                                                                                             StageManager.KEEPALIVE,
+                                                                                             StageManager.instance.KEEPALIVE,
                                                                                              TimeUnit.SECONDS,
                                                                                              new LinkedBlockingQueue<Runnable>(),
                                                                                              new NamedThreadFactory("MemtablePostFlush"),
                                                                                              "internal");
-    public static final ExecutorService reclaimExecutor = new JMXEnabledThreadPoolExecutor(1, StageManager.KEEPALIVE,
+    public static final ExecutorService reclaimExecutor = new JMXEnabledThreadPoolExecutor(1, StageManager.instance.KEEPALIVE,
                                                                                            TimeUnit.SECONDS,
                                                                                            new LinkedBlockingQueue<Runnable>(),
                                                                                            new NamedThreadFactory("MemtableReclaimMemory"),

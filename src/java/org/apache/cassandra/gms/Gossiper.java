@@ -625,7 +625,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         long now = System.currentTimeMillis();
         long nowNano = System.nanoTime();
 
-        long pending = ((JMXEnabledThreadPoolExecutor) StageManager.getStage(Stage.GOSSIP)).getPendingTasks();
+        long pending = ((JMXEnabledThreadPoolExecutor) StageManager.instance.getStage(Stage.GOSSIP)).getPendingTasks();
         if (pending > 0 && lastProcessedMessageAt < now - 1000)
         {
             // if some new messages just arrived, give the executor some time to work on them

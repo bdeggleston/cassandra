@@ -157,7 +157,7 @@ public class StorageProxy implements StorageProxyMBean
                               String localDataCenter,
                               ConsistencyLevel consistencyLevel)
             {
-                StageManager.getStage(Stage.COUNTER_MUTATION)
+                StageManager.instance.getStage(Stage.COUNTER_MUTATION)
                         .execute(counterWriteTask(mutation, targets, responseHandler, localDataCenter));
             }
         };
@@ -914,7 +914,7 @@ public class StorageProxy implements StorageProxyMBean
     {
         StorageMetrics.totalHintsInProgress.inc();
         getHintsInProgressFor(runnable.target).incrementAndGet();
-        return (Future<Void>) StageManager.getStage(Stage.MUTATION).submit(runnable);
+        return (Future<Void>) StageManager.instance.getStage(Stage.MUTATION).submit(runnable);
     }
 
     /**
@@ -967,7 +967,7 @@ public class StorageProxy implements StorageProxyMBean
     private void insertLocal(final Mutation mutation, final AbstractWriteResponseHandler responseHandler)
     {
 
-        StageManager.getStage(Stage.MUTATION).maybeExecuteImmediately(new LocalMutationRunnable(this)
+        StageManager.instance.getStage(Stage.MUTATION).maybeExecuteImmediately(new LocalMutationRunnable(this)
         {
             public void runMayThrow()
             {
@@ -1579,7 +1579,7 @@ public class StorageProxy implements StorageProxyMBean
                         && filteredEndpoints.get(0).equals(FBUtilities.getBroadcastAddress())
                         && OPTIMIZE_LOCAL_REQUESTS)
                     {
-                        StageManager.getStage(Stage.READ).execute(new LocalRangeSliceRunnable(nodeCmd, handler), Tracing.instance.get());
+                        StageManager.instance.getStage(Stage.READ).execute(new LocalRangeSliceRunnable(nodeCmd, handler), Tracing.instance.get());
                     }
                     else
                     {

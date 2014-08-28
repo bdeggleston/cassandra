@@ -137,7 +137,7 @@ public class MigrationManager
          * Do not de-ref the future because that causes distributed deadlock (CASSANDRA-3832) because we are
          * running in the gossip stage.
          */
-        return StageManager.getStage(Stage.MIGRATION).submit(new MigrationTask(endpoint));
+        return StageManager.instance.getStage(Stage.MIGRATION).submit(new MigrationTask(endpoint));
     }
 
     private boolean shouldPullSchemaFrom(InetAddress endpoint)
@@ -153,7 +153,7 @@ public class MigrationManager
 
     public boolean isReadyForBootstrap()
     {
-        return ((ThreadPoolExecutor) StageManager.getStage(Stage.MIGRATION)).getActiveCount() == 0;
+        return ((ThreadPoolExecutor) StageManager.instance.getStage(Stage.MIGRATION)).getActiveCount() == 0;
     }
 
     public void notifyCreateKeyspace(KSMetaData ksm)
@@ -419,7 +419,7 @@ public class MigrationManager
     // Returns a future on the local application of the schema
     private Future<?> announce(final Collection<Mutation> schema)
     {
-        Future<?> f = StageManager.getStage(Stage.MIGRATION).submit(new WrappedRunnable()
+        Future<?> f = StageManager.instance.getStage(Stage.MIGRATION).submit(new WrappedRunnable()
         {
             protected void runMayThrow() throws IOException, ConfigurationException
             {

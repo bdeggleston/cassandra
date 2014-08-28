@@ -378,7 +378,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance().shutdown();
         // give it a second so that task accepted before the MessagingService shutdown gets submitted to the stage (to avoid RejectedExecutionException)
         Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
-        StageManager.shutdownNow();
+        StageManager.instance.shutdownNow();
     }
 
     public boolean isInitialized()
@@ -546,8 +546,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             @Override
             public void runMayThrow() throws InterruptedException
             {
-                ExecutorService counterMutationStage = StageManager.getStage(Stage.COUNTER_MUTATION);
-                ExecutorService mutationStage = StageManager.getStage(Stage.MUTATION);
+                ExecutorService counterMutationStage = StageManager.instance.getStage(Stage.COUNTER_MUTATION);
+                ExecutorService mutationStage = StageManager.instance.getStage(Stage.MUTATION);
                 if (mutationStage.isShutdown() && counterMutationStage.isShutdown())
                     return; // drained already
 
@@ -2964,7 +2964,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 shutdownClientServers();
                 Gossiper.instance.stop();
                 MessagingService.instance().shutdown();
-                StageManager.shutdownNow();
+                StageManager.instance.shutdownNow();
                 setMode(Mode.DECOMMISSIONED, true);
                 // let op be responsible for killing the process
             }
@@ -3455,8 +3455,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     public synchronized void drain() throws IOException, InterruptedException, ExecutionException
     {
-        ExecutorService counterMutationStage = StageManager.getStage(Stage.COUNTER_MUTATION);
-        ExecutorService mutationStage = StageManager.getStage(Stage.MUTATION);
+        ExecutorService counterMutationStage = StageManager.instance.getStage(Stage.COUNTER_MUTATION);
+        ExecutorService mutationStage = StageManager.instance.getStage(Stage.MUTATION);
         if (mutationStage.isTerminated() && counterMutationStage.isTerminated())
         {
             logger.warn("Cannot drain node (did it already happen?)");

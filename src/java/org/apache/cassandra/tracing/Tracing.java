@@ -161,7 +161,7 @@ public class Tracing
             final int elapsed = state.elapsed();
             final ByteBuffer sessionIdBytes = state.sessionIdBytes;
 
-            StageManager.getStage(Stage.TRACING).execute(new Runnable()
+            StageManager.instance.getStage(Stage.TRACING).execute(new Runnable()
             {
                 public void run()
                 {
@@ -199,7 +199,7 @@ public class Tracing
         final long started_at = System.currentTimeMillis();
         final ByteBuffer sessionIdBytes = state.get().sessionIdBytes;
 
-        StageManager.getStage(Stage.TRACING).execute(new Runnable()
+        StageManager.instance.getStage(Stage.TRACING).execute(new Runnable()
         {
             public void run()
             {
