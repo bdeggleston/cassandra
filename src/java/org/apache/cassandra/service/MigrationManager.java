@@ -146,8 +146,8 @@ public class MigrationManager
          * Don't request schema from nodes with a differnt or unknonw major version (may have incompatible schema)
          * Don't request schema from fat clients
          */
-        return MessagingService.instance().knowsVersion(endpoint)
-                && MessagingService.instance().getRawVersion(endpoint) == MessagingService.current_version
+        return MessagingService.instance.knowsVersion(endpoint)
+                && MessagingService.instance.getRawVersion(endpoint) == MessagingService.current_version
                 && !Gossiper.instance.isFatClient(endpoint);
     }
 
@@ -413,7 +413,7 @@ public class MigrationManager
         MessageOut<Collection<Mutation>> msg = new MessageOut<>(MessagingService.Verb.DEFINITIONS_UPDATE,
                                                                 schema,
                                                                 MigrationsSerializer.instance);
-        MessagingService.instance().sendOneWay(msg, endpoint);
+        MessagingService.instance.sendOneWay(msg, endpoint);
     }
 
     // Returns a future on the local application of the schema
@@ -431,8 +431,8 @@ public class MigrationManager
         {
             // only push schema to nodes with known and equal versions
             if (!endpoint.equals(FBUtilities.getBroadcastAddress()) &&
-                    MessagingService.instance().knowsVersion(endpoint) &&
-                    MessagingService.instance().getRawVersion(endpoint) == MessagingService.current_version)
+                    MessagingService.instance.knowsVersion(endpoint) &&
+                    MessagingService.instance.getRawVersion(endpoint) == MessagingService.current_version)
                 pushSchemaMutation(endpoint, schema);
         }
 

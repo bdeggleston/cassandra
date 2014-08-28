@@ -36,6 +36,6 @@ public class ReplicationFinishedVerbHandler implements IVerbHandler
         MessageOut response = new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE);
         if (logger.isDebugEnabled())
             logger.debug("Replying to {}@{}", id, msg.from);
-        MessagingService.instance().sendReply(response, id, msg.from);
+        MessagingService.instance.sendReply(response, id, msg.from);
     }
 }

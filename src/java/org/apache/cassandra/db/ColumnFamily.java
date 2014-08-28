@@ -385,7 +385,7 @@ public abstract class ColumnFamily implements Iterable<Cell>, IRowCacheEntry
     {
         for (Cell cell : this)
             cell.updateDigest(digest);
-        if (MessagingService.instance().areAllNodesAtLeast21())
+        if (MessagingService.instance.areAllNodesAtLeast21())
             deletionInfo().updateDigest(digest);
     }
 

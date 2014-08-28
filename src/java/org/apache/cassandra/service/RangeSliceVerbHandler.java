@@ -38,7 +38,7 @@ public class RangeSliceVerbHandler implements IVerbHandler<AbstractRangeCommand>
             }
             RangeSliceReply reply = new RangeSliceReply(message.payload.executeLocally());
             Tracing.trace("Enqueuing response to {}", message.from);
-            MessagingService.instance().sendReply(reply.createMessage(), id, message.from);
+            MessagingService.instance.sendReply(reply.createMessage(), id, message.from);
         }
         catch (TombstoneOverwhelmingException e)
         {

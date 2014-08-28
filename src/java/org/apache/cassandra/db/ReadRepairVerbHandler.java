@@ -27,6 +27,6 @@ public class ReadRepairVerbHandler implements IVerbHandler<Mutation>
     {
         message.payload.apply();
         WriteResponse response = new WriteResponse();
-        MessagingService.instance().sendReply(response.createMessage(), id, message.from);
+        MessagingService.instance.sendReply(response.createMessage(), id, message.from);
     }
 }

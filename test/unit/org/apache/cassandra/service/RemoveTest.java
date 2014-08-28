@@ -79,7 +79,7 @@ public class RemoveTest
         // create a ring of 5 nodes
         Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6);
 
-        MessagingService.instance().listen(FBUtilities.getBroadcastAddress());
+        MessagingService.instance.listen(FBUtilities.getBroadcastAddress());
         Gossiper.instance.start(1);
         removalhost = hosts.get(5);
         hosts.remove(removalhost);
@@ -91,8 +91,8 @@ public class RemoveTest
     public void tearDown()
     {
         SinkManager.instance.clear();
-        MessagingService.instance().clearCallbacksUnsafe();
-        MessagingService.instance().shutdown();
+        MessagingService.instance.clearCallbacksUnsafe();
+        MessagingService.instance.shutdown();
     }
 
     @Test(expected = UnsupportedOperationException.class)
@@ -141,7 +141,7 @@ public class RemoveTest
         for (InetAddress host : hosts)
         {
             MessageOut msg = new MessageOut(host, MessagingService.Verb.REPLICATION_FINISHED, null, null, Collections.<String, byte[]>emptyMap());
-            MessagingService.instance().sendRR(msg, FBUtilities.getBroadcastAddress());
+            MessagingService.instance.sendRR(msg, FBUtilities.getBroadcastAddress());
         }
 
         remover.join();

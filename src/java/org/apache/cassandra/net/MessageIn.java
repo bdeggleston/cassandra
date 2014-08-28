@@ -82,10 +82,10 @@ public class MessageIn<T>
         }
 
         int payloadSize = in.readInt();
-        IVersionedSerializer<T2> serializer = (IVersionedSerializer<T2>) MessagingService.verbSerializers.get(verb);
+        IVersionedSerializer<T2> serializer = (IVersionedSerializer<T2>) MessagingService.instance.verbSerializers.get(verb);
         if (serializer instanceof MessagingService.CallbackDeterminedSerializer)
         {
-            CallbackInfo callback = MessagingService.instance().getRegisteredCallback(id);
+            CallbackInfo callback = MessagingService.instance.getRegisteredCallback(id);
             if (callback == null)
             {
                 // reply for expired callback.  we'll have to skip it.
@@ -102,7 +102,7 @@ public class MessageIn<T>
 
     public Stage getMessageType()
     {
-        return MessagingService.verbStages.get(verb);
+        return MessagingService.instance.verbStages.get(verb);
     }
 
     public boolean doCallbackOnFailure()

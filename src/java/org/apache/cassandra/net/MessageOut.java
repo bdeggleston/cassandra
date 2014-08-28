@@ -85,7 +85,7 @@ public class MessageOut<T>
 
     public Stage getStage()
     {
-        return MessagingService.verbStages.get(verb);
+        return MessagingService.instance.verbStages.get(verb);
     }
 
     public long getTimeout()

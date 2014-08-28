@@ -231,7 +231,7 @@ public class Validator implements Runnable
     {
         logger.error("Failed creating a merkle tree for {}, {} (see log for details)", desc, initiator);
         // send fail message only to nodes >= version 2.0
-        MessagingService.instance().sendOneWay(new ValidationComplete(desc).createMessage(), initiator);
+        MessagingService.instance.sendOneWay(new ValidationComplete(desc).createMessage(), initiator);
     }
 
     /**
@@ -242,6 +242,6 @@ public class Validator implements Runnable
         // respond to the request that triggered this validation
         if (!initiator.equals(FBUtilities.getBroadcastAddress()))
             logger.info(String.format("[repair #%s] Sending completed merkle tree to %s for %s/%s", desc.sessionId, initiator, desc.keyspace, desc.columnFamily));
-        MessagingService.instance().sendOneWay(new ValidationComplete(desc, tree).createMessage(), initiator);
+        MessagingService.instance.sendOneWay(new ValidationComplete(desc, tree).createMessage(), initiator);
     }
 }

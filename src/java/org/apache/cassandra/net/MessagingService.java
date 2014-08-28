@@ -68,6 +68,7 @@ import org.apache.cassandra.utils.concurrent.SimpleCondition;
 
 public final class MessagingService implements MessagingServiceMBean
 {
+    private static final Logger logger = LoggerFactory.getLogger(MessagingService.class);
     public static final String MBEAN_NAME = "org.apache.cassandra.net:type=MessagingService";
 
     // 8 bits version, so don't waste versions
@@ -135,7 +136,7 @@ public final class MessagingService implements MessagingServiceMBean
         ;
     }
 
-    public static final EnumMap<MessagingService.Verb, Stage> verbStages = new EnumMap<MessagingService.Verb, Stage>(MessagingService.Verb.class)
+    public final EnumMap<MessagingService.Verb, Stage> verbStages = new EnumMap<MessagingService.Verb, Stage>(MessagingService.Verb.class)
     {{
         put(Verb.MUTATION, Stage.MUTATION);
         put(Verb.COUNTER_MUTATION, Stage.COUNTER_MUTATION);
@@ -191,7 +192,7 @@ public final class MessagingService implements MessagingServiceMBean
      * intermediary byte[] (See CASSANDRA-3716), we need to wire that up to the CallbackInfo object
      * (see below).
      */
-    public static final EnumMap<Verb, IVersionedSerializer<?>> verbSerializers = new EnumMap<Verb, IVersionedSerializer<?>>(Verb.class)
+    public final EnumMap<Verb, IVersionedSerializer<?>> verbSerializers = new EnumMap<Verb, IVersionedSerializer<?>>(Verb.class)
     {{
         put(Verb.REQUEST_RESPONSE, CallbackDeterminedSerializer.instance);
         put(Verb.INTERNAL_RESPONSE, CallbackDeterminedSerializer.instance);
@@ -220,7 +221,7 @@ public final class MessagingService implements MessagingServiceMBean
     /**
      * A Map of what kind of serializer to wire up to a REQUEST_RESPONSE callback, based on outbound Verb.
      */
-    public static final EnumMap<Verb, IVersionedSerializer<?>> callbackDeserializers = new EnumMap<Verb, IVersionedSerializer<?>>(Verb.class)
+    public final EnumMap<Verb, IVersionedSerializer<?>> callbackDeserializers = new EnumMap<Verb, IVersionedSerializer<?>>(Verb.class)
     {{
         put(Verb.MUTATION, WriteResponse.serializer);
         put(Verb.READ_REPAIR, WriteResponse.serializer);
@@ -271,8 +272,6 @@ public final class MessagingService implements MessagingServiceMBean
     private final Map<Verb, IVerbHandler> verbHandlers;
 
     private final ConcurrentMap<InetAddress, OutboundTcpConnectionPool> connectionManagers = new NonBlockingHashMap<InetAddress, OutboundTcpConnectionPool>();
-
-    private static final Logger logger = LoggerFactory.getLogger(MessagingService.class);
     private static final int LOG_DROPPED_INTERVAL_IN_MS = 5000;
 
     private final List<SocketThread> socketThreads = Lists.newArrayList();
@@ -303,14 +302,7 @@ public final class MessagingService implements MessagingServiceMBean
     // protocol versions of the other nodes in the cluster
     private final ConcurrentMap<InetAddress, Integer> versions = new NonBlockingHashMap<InetAddress, Integer>();
 
-    private static class MSHandle
-    {
-        public static final MessagingService instance = new MessagingService();
-    }
-    public static MessagingService instance()
-    {
-        return MSHandle.instance;
-    }
+    public static final MessagingService instance = new MessagingService();
 
     private MessagingService()
     {
@@ -584,9 +576,9 @@ public final class MessagingService implements MessagingServiceMBean
         return messageId;
     }
 
-    private static final AtomicInteger idGen = new AtomicInteger(0);
+    private final AtomicInteger idGen = new AtomicInteger(0);
 
-    private static int nextId()
+    private int nextId()
     {
         return idGen.incrementAndGet();
     }

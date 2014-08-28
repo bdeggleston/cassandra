@@ -117,7 +117,7 @@ public abstract class AntiEntropyServiceTestAbstract
         tmd.updateNormalToken(StorageService.instance.getPartitioner().getMinimumToken(), REMOTE);
         assert tmd.isMember(REMOTE);
 
-        MessagingService.instance().setVersion(REMOTE, MessagingService.current_version);
+        MessagingService.instance.setVersion(REMOTE, MessagingService.current_version);
         Gossiper.instance.initializeNodeUnsafe(REMOTE, UUID.randomUUID(), 1);
 
         local_range = StorageService.instance.getPrimaryRangesForEndpoint(keyspaceName, LOCAL).iterator().next();

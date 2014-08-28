@@ -272,7 +272,7 @@ public class ActiveRepairService
         {
             PrepareMessage message = new PrepareMessage(parentRepairSession, cfIds, ranges);
             MessageOut<RepairMessage> msg = message.createMessage();
-            MessagingService.instance().sendRRWithFailure(msg, neighbour, callback);
+            MessagingService.instance.sendRRWithFailure(msg, neighbour, callback);
         }
         try
         {
@@ -324,7 +324,7 @@ public class ActiveRepairService
                 {
                     AnticompactionRequest acr = new AnticompactionRequest(parentSession);
                     MessageOut<RepairMessage> req = acr.createMessage();
-                    MessagingService.instance().sendOneWay(req, neighbor);
+                    MessagingService.instance.sendOneWay(req, neighbor);
                 }
                 List<Future<?>> futures = doAntiCompaction(parentSession);
                 FBUtilities.waitOnFutures(futures);

@@ -37,6 +37,6 @@ public class EchoVerbHandler implements IVerbHandler<EchoMessage>
     {
         MessageOut<EchoMessage> echoMessage = new MessageOut<EchoMessage>(MessagingService.Verb.REQUEST_RESPONSE, new EchoMessage(), EchoMessage.serializer);
         logger.trace("Sending a EchoMessage reply {}", message.from);
-        MessagingService.instance().sendReply(echoMessage, id, message.from);
+        MessagingService.instance.sendReply(echoMessage, id, message.from);
     }
 }

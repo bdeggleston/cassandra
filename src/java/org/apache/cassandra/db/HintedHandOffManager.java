@@ -451,7 +451,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                     }
                 };
                 WriteResponseHandler responseHandler = new WriteResponseHandler(endpoint, WriteType.SIMPLE, callback);
-                MessagingService.instance().sendRR(message, endpoint, responseHandler, false);
+                MessagingService.instance.sendRR(message, endpoint, responseHandler, false);
                 responseHandlers.add(responseHandler);
             }
 
