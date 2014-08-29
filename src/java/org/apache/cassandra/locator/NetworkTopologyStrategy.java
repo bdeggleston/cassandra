@@ -21,6 +21,7 @@ import java.net.InetAddress;
 import java.util.*;
 import java.util.Map.Entry;
 
+import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,7 +107,7 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy
             for (Map.Entry<String, Integer> dc : datacenters.entrySet())
                 put(dc.getKey(), new LinkedHashSet<InetAddress>());
         }};
-        Iterator<Token> tokenIter = TokenMetadata.ringIterator(tokenMetadata.sortedTokens(), searchToken, false);
+        Iterator<Token> tokenIter = TokenMetadata.ringIterator(tokenMetadata.sortedTokens(), searchToken, false, StorageService.instance.getPartitioner());
         while (tokenIter.hasNext() && !hasSufficientReplicas(dcReplicas, allEndpoints))
         {
             Token next = tokenIter.next();

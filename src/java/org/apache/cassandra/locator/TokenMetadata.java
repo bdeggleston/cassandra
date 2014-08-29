@@ -27,6 +27,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.google.common.collect.*;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -875,10 +876,10 @@ public class TokenMetadata
      * (which does not have to be a Token in the ring)
      * @param includeMin True if the minimum token should be returned in the ring even if it has no owner.
      */
-    public static Iterator<Token> ringIterator(final ArrayList<Token> ring, Token start, boolean includeMin)
+    public static Iterator<Token> ringIterator(final ArrayList<Token> ring, Token start, boolean includeMin, final IPartitioner partitioner)
     {
         if (ring.isEmpty())
-            return includeMin ? Iterators.singletonIterator(StorageService.instance.getPartitioner().getMinimumToken())
+            return includeMin ? Iterators.singletonIterator(partitioner.getMinimumToken())
                               : Iterators.<Token>emptyIterator();
 
         final boolean insertMin = includeMin && !ring.get(0).isMinimum();
@@ -894,7 +895,7 @@ public class TokenMetadata
                 {
                     // return minimum for index == -1
                     if (j == -1)
-                        return StorageService.instance.getPartitioner().getMinimumToken();
+                        return partitioner.getMinimumToken();
                     // return ring token for other indexes
                     return ring.get(j);
                 }

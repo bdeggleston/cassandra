@@ -53,7 +53,7 @@ public class TokenMetadataTest
     private void testRingIterator(ArrayList<Token> ring, String start, boolean includeMin, String... expected)
     {
         ArrayList<Token> actual = new ArrayList<Token>();
-        Iterators.addAll(actual, TokenMetadata.ringIterator(ring, token(start), includeMin));
+        Iterators.addAll(actual, TokenMetadata.ringIterator(ring, token(start), includeMin, StorageService.instance.getPartitioner()));
         assertEquals(actual.toString(), expected.length, actual.size());
         for (int i = 0; i < expected.length; i++)
             assertEquals("Mismatch at index " + i + ": " + actual, token(expected[i]), actual.get(i));

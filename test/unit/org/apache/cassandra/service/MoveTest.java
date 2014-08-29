@@ -106,7 +106,7 @@ public class MoveTest
         for (Token token : keyTokens)
         {
             List<InetAddress> endpoints = new ArrayList<InetAddress>();
-            Iterator<Token> tokenIter = TokenMetadata.ringIterator(tmd.sortedTokens(), token, false);
+            Iterator<Token> tokenIter = TokenMetadata.ringIterator(tmd.sortedTokens(), token, false, StorageService.instance.getPartitioner());
             while (tokenIter.hasNext())
             {
                 endpoints.add(tmd.getEndpoint(tokenIter.next()));
