@@ -29,6 +29,7 @@ import org.apache.cassandra.db.RangeSliceReply;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.net.AsyncOneResponse;
 import org.apache.cassandra.net.MessageIn;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.MergeIterator;
 import org.apache.cassandra.utils.Pair;
@@ -159,7 +160,7 @@ public class RangeSliceResponseResolver implements IResponseResolver<RangeSliceR
             }
             // resolved can be null even if versions doesn't have all nulls because of the call to removeDeleted in resolveSuperSet
             if (resolved != null)
-                repairResults.addAll(RowDataResolver.scheduleRepairs(resolved, keyspaceName, key, versions, versionSources));
+                repairResults.addAll(RowDataResolver.scheduleRepairs(resolved, keyspaceName, key, versions, versionSources, MessagingService.instance));
             versions.clear();
             versionSources.clear();
             return new Row(key, resolved);

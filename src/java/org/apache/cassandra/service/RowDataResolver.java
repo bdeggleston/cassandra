@@ -88,7 +88,7 @@ public class RowDataResolver extends AbstractRowResolver
             // send updates to any replica that was missing part of the full row
             // (resolved can be null even if versions doesn't have all nulls because of the call to removeDeleted in resolveSuperSet)
             if (resolved != null)
-                repairResults = scheduleRepairs(resolved, keyspaceName, key, versions, endpoints);
+                repairResults = scheduleRepairs(resolved, keyspaceName, key, versions, endpoints, MessagingService.instance);
         }
         else
         {
@@ -105,7 +105,7 @@ public class RowDataResolver extends AbstractRowResolver
      * For each row version, compare with resolved (the superset of all row versions);
      * if it is missing anything, send a mutation to the endpoint it come from.
      */
-    public static List<AsyncOneResponse> scheduleRepairs(ColumnFamily resolved, String keyspaceName, DecoratedKey key, List<ColumnFamily> versions, List<InetAddress> endpoints)
+    public static List<AsyncOneResponse> scheduleRepairs(ColumnFamily resolved, String keyspaceName, DecoratedKey key, List<ColumnFamily> versions, List<InetAddress> endpoints, MessagingService messagingService)
     {
         List<AsyncOneResponse> results = new ArrayList<AsyncOneResponse>(versions.size());
 
@@ -119,8 +119,8 @@ public class RowDataResolver extends AbstractRowResolver
             Mutation mutation = new Mutation(keyspaceName, key.getKey(), diffCf);
             // use a separate verb here because we don't want these to be get the white glove hint-
             // on-timeout behavior that a "real" mutation gets
-            results.add(MessagingService.instance.sendRR(mutation.createMessage(MessagingService.Verb.READ_REPAIR),
-                                                           endpoints.get(i)));
+            results.add(messagingService.sendRR(mutation.createMessage(MessagingService.Verb.READ_REPAIR),
+                                                                       endpoints.get(i)));
         }
 
         return results;
