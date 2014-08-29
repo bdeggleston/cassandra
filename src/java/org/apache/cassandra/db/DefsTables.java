@@ -25,6 +25,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import org.apache.cassandra.config.*;
+import org.apache.cassandra.cql3.QueryProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -129,7 +130,7 @@ public class DefsTables
             if (Schema.invalidSchemaRow(row) || Schema.ignoredSchemaRow(row))
                 continue;
 
-            keyspaces.add(KSMetaData.fromSchema(row, serializedColumnFamilies(row.key), serializedUserTypes(row.key)));
+            keyspaces.add(KSMetaDataFactory.instance.fromSchema(row, serializedColumnFamilies(row.key), serializedUserTypes(row.key)));
         }
 
         return keyspaces;
@@ -215,7 +216,7 @@ public class DefsTables
 
             // we don't care about nested ColumnFamilies here because those are going to be processed separately
             if (ksAttrs.hasColumns())
-                addKeyspace(KSMetaData.fromSchema(new Row(entry.getKey(), entry.getValue()), Collections.<CFMetaData>emptyList(), new UTMetaData()));
+                addKeyspace(KSMetaDataFactory.instance.fromSchema(new Row(entry.getKey(), entry.getValue()), Collections.<CFMetaData>emptyList(), new UTMetaData()));
         }
 
         /**
@@ -236,7 +237,7 @@ public class DefsTables
 
             if (!prevValue.hasColumns())
             {
-                addKeyspace(KSMetaData.fromSchema(new Row(entry.getKey(), newValue), Collections.<CFMetaData>emptyList(), new UTMetaData()));
+                addKeyspace(KSMetaDataFactory.instance.fromSchema(new Row(entry.getKey(), newValue), Collections.<CFMetaData>emptyList(), new UTMetaData()));
                 continue;
             }
 
@@ -259,7 +260,7 @@ public class DefsTables
             ColumnFamily newState = valueDiff.rightValue();
 
             if (newState.hasColumns())
-                updateKeyspace(KSMetaData.fromSchema(new Row(key, newState), Collections.<CFMetaData>emptyList(), new UTMetaData()));
+                updateKeyspace(KSMetaDataFactory.instance.fromSchema(new Row(key, newState), Collections.<CFMetaData>emptyList(), new UTMetaData()));
             else
                 keyspacesToDrop.add(AsciiType.instance.getString(key.getKey()));
         }
@@ -343,7 +344,7 @@ public class DefsTables
             if (!cfTypes.hasColumns())
                 continue;
 
-            for (UserType ut : UTMetaData.fromSchema(new Row(entry.getKey(), cfTypes)).values())
+            for (UserType ut : UTMetaData.fromSchema(new Row(entry.getKey(), cfTypes), QueryProcessor.instance).values())
                 addType(ut);
         }
 
@@ -355,18 +356,18 @@ public class DefsTables
 
             if (!prevCFTypes.hasColumns()) // whole keyspace was deleted and now it's re-created
             {
-                for (UserType ut : UTMetaData.fromSchema(new Row(keyspace, newCFTypes)).values())
+                for (UserType ut : UTMetaData.fromSchema(new Row(keyspace, newCFTypes), QueryProcessor.instance).values())
                     addType(ut);
             }
             else if (!newCFTypes.hasColumns()) // whole keyspace is deleted
             {
-                for (UserType ut : UTMetaData.fromSchema(new Row(keyspace, prevCFTypes)).values())
+                for (UserType ut : UTMetaData.fromSchema(new Row(keyspace, prevCFTypes), QueryProcessor.instance).values())
                     dropType(ut);
             }
             else // has modifications in the types, need to perform nested diff to determine what was really changed
             {
-                MapDifference<ByteBuffer, UserType> typesDiff = Maps.difference(UTMetaData.fromSchema(new Row(keyspace, prevCFTypes)),
-                                                                                UTMetaData.fromSchema(new Row(keyspace, newCFTypes)));
+                MapDifference<ByteBuffer, UserType> typesDiff = Maps.difference(UTMetaData.fromSchema(new Row(keyspace, prevCFTypes), QueryProcessor.instance),
+                                                                                UTMetaData.fromSchema(new Row(keyspace, newCFTypes), QueryProcessor.instance));
 
                 for (UserType type : typesDiff.entriesOnlyOnRight().values())
                     addType(type);

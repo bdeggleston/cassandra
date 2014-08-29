@@ -2,11 +2,16 @@ package org.apache.cassandra.config;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.cql3.UntypedResultSet;
+import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.LocalStrategy;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.utils.FBUtilities;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -74,6 +79,46 @@ public class KSMetaDataFactory
     public KSMetaData testMetadataNotDurable(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> strategyOptions, CFMetaData... cfDefs)
     {
         return new KSMetaData(name, strategyClass, strategyOptions, false, Arrays.asList(cfDefs));
+    }
+
+    /**
+     * Deserialize only Keyspace attributes without nested ColumnFamilies
+     *
+     * @param row Keyspace attributes in serialized form
+     *
+     * @return deserialized keyspace without cf_defs
+     */
+    public KSMetaData fromSchema(Row row, Iterable<CFMetaData> cfms, UTMetaData userTypes)
+    {
+        UntypedResultSet.Row result = QueryProcessor.instance.resultify("SELECT * FROM system.schema_keyspaces", row).one();
+        try
+        {
+            return new KSMetaData(result.getString("keyspace_name"),
+                                  AbstractReplicationStrategy.getClass(result.getString("strategy_class")),
+                                  FBUtilities.fromJsonMap(result.getString("strategy_options")),
+                                  result.getBoolean("durable_writes"),
+                                  cfms,
+                                  userTypes);
+        }
+        catch (ConfigurationException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Deserialize Keyspace with nested ColumnFamilies
+     *
+     * @param serializedKs Keyspace in serialized form
+     * @param serializedCFs Collection of the serialized ColumnFamilies
+     *
+     * @return deserialized keyspace with cf_defs
+     */
+    public KSMetaData fromSchema(Row serializedKs, Row serializedCFs, Row serializedUserTypes)
+    {
+        Map<String, CFMetaData> cfs = KSMetaData.deserializeColumnFamilies(serializedCFs);
+        UTMetaData userTypes = new UTMetaData(UTMetaData.fromSchema(serializedUserTypes, QueryProcessor.instance));
+        return fromSchema(serializedKs, cfs.values(), userTypes);
     }
 
 }

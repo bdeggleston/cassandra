@@ -200,7 +200,7 @@ public final class KSMetaData
         for (CFMetaData cfm : cfMetaData.values())
             cfm.toSchema(mutation, timestamp);
 
-        userTypes.toSchema(mutation, timestamp);
+        userTypes.toSchema(mutation, timestamp, SystemKeyspace.instance);
         return mutation;
     }
 
@@ -211,7 +211,7 @@ public final class KSMetaData
      *
      * @return deserialized keyspace without cf_defs
      */
-    public static KSMetaData fromSchema(Row row, Iterable<CFMetaData> cfms, UTMetaData userTypes)
+    private KSMetaData fromSchema(Row row, Iterable<CFMetaData> cfms, UTMetaData userTypes)
     {
         UntypedResultSet.Row result = QueryProcessor.instance.resultify("SELECT * FROM system.schema_keyspaces", row).one();
         try
@@ -227,21 +227,6 @@ public final class KSMetaData
         {
             throw new RuntimeException(e);
         }
-    }
-
-    /**
-     * Deserialize Keyspace with nested ColumnFamilies
-     *
-     * @param serializedKs Keyspace in serialized form
-     * @param serializedCFs Collection of the serialized ColumnFamilies
-     *
-     * @return deserialized keyspace with cf_defs
-     */
-    public static KSMetaData fromSchema(Row serializedKs, Row serializedCFs, Row serializedUserTypes)
-    {
-        Map<String, CFMetaData> cfs = deserializeColumnFamilies(serializedCFs);
-        UTMetaData userTypes = new UTMetaData(UTMetaData.fromSchema(serializedUserTypes));
-        return fromSchema(serializedKs, cfs.values(), userTypes);
     }
 
     /**

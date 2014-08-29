@@ -276,7 +276,7 @@ public class MigrationManager
 
     public void announceNewType(UserType newType, boolean announceLocally)
     {
-        announce(addSerializedKeyspace(UTMetaData.toSchema(newType, FBUtilities.timestampMicros()), newType.keyspace), announceLocally);
+        announce(addSerializedKeyspace(UTMetaData.toSchema(newType, FBUtilities.timestampMicros(), SystemKeyspace.instance), newType.keyspace), announceLocally);
     }
 
     public void announceKeyspaceUpdate(KSMetaData ksm) throws ConfigurationException
@@ -369,7 +369,7 @@ public class MigrationManager
 
     public void announceTypeDrop(UserType droppedType, boolean announceLocally)
     {
-        announce(addSerializedKeyspace(UTMetaData.dropFromSchema(droppedType, FBUtilities.timestampMicros()), droppedType.keyspace), announceLocally);
+        announce(addSerializedKeyspace(UTMetaData.dropFromSchema(droppedType, FBUtilities.timestampMicros(), SystemKeyspace.instance), droppedType.keyspace), announceLocally);
     }
 
     public void announceFunctionDrop(UDFunction udf, boolean announceLocally)

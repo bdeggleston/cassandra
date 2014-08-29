@@ -73,9 +73,9 @@ public final class UTMetaData
         }
     }
 
-    public static Map<ByteBuffer, UserType> fromSchema(Row row)
+    public static Map<ByteBuffer, UserType> fromSchema(Row row, QueryProcessor queryProcessor)
     {
-        UntypedResultSet results = QueryProcessor.instance.resultify("SELECT * FROM system." + SystemKeyspace.SCHEMA_USER_TYPES_CF, row);
+        UntypedResultSet results = queryProcessor.resultify("SELECT * FROM system." + SystemKeyspace.SCHEMA_USER_TYPES_CF, row);
         Map<ByteBuffer, UserType> types = new HashMap<>(results.size());
         for (UntypedResultSet.Row result : results)
         {
@@ -85,12 +85,12 @@ public final class UTMetaData
         return types;
     }
 
-    public static Mutation toSchema(UserType newType, long timestamp)
+    public static Mutation toSchema(UserType newType, long timestamp, SystemKeyspace systemKeyspace)
     {
-        return toSchema(new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(newType.keyspace)), newType, timestamp);
+        return toSchema(new Mutation(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(newType.keyspace)), newType, timestamp, systemKeyspace);
     }
 
-    public static Mutation toSchema(Mutation mutation, UserType newType, long timestamp)
+    public static Mutation toSchema(Mutation mutation, UserType newType, long timestamp, SystemKeyspace systemKeyspace)
     {
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_USER_TYPES_CF);
 
@@ -108,16 +108,16 @@ public final class UTMetaData
         return mutation;
     }
 
-    public Mutation toSchema(Mutation mutation, long timestamp)
+    public Mutation toSchema(Mutation mutation, long timestamp, SystemKeyspace systemKeyspace)
     {
         for (UserType ut : userTypes.values())
-            toSchema(mutation, ut, timestamp);
+            toSchema(mutation, ut, timestamp, systemKeyspace);
         return mutation;
     }
 
-    public static Mutation dropFromSchema(UserType droppedType, long timestamp)
+    public static Mutation dropFromSchema(UserType droppedType, long timestamp, SystemKeyspace systemKeyspace)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(droppedType.keyspace));
+        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(droppedType.keyspace));
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_USER_TYPES_CF);
         int ldt = (int) (System.currentTimeMillis() / 1000);
 
