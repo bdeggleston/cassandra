@@ -75,7 +75,7 @@ public class LongFlushMemtableTest
         }
 
         int flushes = 0;
-        for (ColumnFamilyStore cfs : ColumnFamilyStore.all())
+        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
         {
             if (cfs.name.startsWith("_CF"))
                 flushes += cfs.getMemtableSwitchCount();

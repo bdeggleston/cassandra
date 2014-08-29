@@ -1528,7 +1528,7 @@ public final class CFMetaData
     private static Set<String> existingIndexNames(String cfToExclude)
     {
         Set<String> indexNames = new HashSet<>();
-        for (ColumnFamilyStore cfs : ColumnFamilyStore.all())
+        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
             if (cfToExclude == null || !cfs.name.equals(cfToExclude))
                 for (ColumnDefinition cd : cfs.metadata.allColumns())
                     indexNames.add(cd.getIndexName());

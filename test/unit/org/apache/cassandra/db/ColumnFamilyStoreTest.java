@@ -1802,7 +1802,7 @@ public class ColumnFamilyStoreTest
 
         Map<Integer, UUID> unfinishedCompaction = new HashMap<>();
         unfinishedCompaction.put(sstable1.descriptor.generation, compactionTaskID);
-        ColumnFamilyStore.removeUnfinishedCompactionLeftovers(cfmeta, unfinishedCompaction);
+        ColumnFamilyStoreManager.instance.removeUnfinishedCompactionLeftovers(cfmeta, unfinishedCompaction);
 
         // 2nd sstable should be removed (only 1st sstable exists in set of size 1)
         sstables = dir.sstableLister().list();
@@ -1860,7 +1860,7 @@ public class ColumnFamilyStoreTest
         UUID compactionTaskID = UUID.randomUUID();
         for (Integer ancestor : ancestors)
             unfinishedCompactions.put(ancestor, compactionTaskID);
-        ColumnFamilyStore.removeUnfinishedCompactionLeftovers(cfmeta, unfinishedCompactions);
+        ColumnFamilyStoreManager.instance.removeUnfinishedCompactionLeftovers(cfmeta, unfinishedCompactions);
 
         // SSTable should not be deleted
         sstables = dir.sstableLister().list();

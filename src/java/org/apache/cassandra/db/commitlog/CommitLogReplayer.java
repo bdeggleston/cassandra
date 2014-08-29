@@ -71,7 +71,7 @@ public class CommitLogReplayer
         // compute per-CF and global replay positions
         cfPositions = new HashMap<UUID, ReplayPosition>();
         Ordering<ReplayPosition> replayPositionOrdering = Ordering.from(ReplayPosition.comparator);
-        for (ColumnFamilyStore cfs : ColumnFamilyStore.all())
+        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
         {
             // it's important to call RP.gRP per-cf, before aggregating all the positions w/ the Ordering.min call
             // below: gRP will return NONE if there are no flushed sstables, which is important to have in the

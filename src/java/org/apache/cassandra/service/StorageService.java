@@ -597,7 +597,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         prepareToJoin();
 
         // Has to be called after the host id has potentially changed in prepareToJoin().
-        for (ColumnFamilyStore cfs : ColumnFamilyStore.all())
+        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
             if (cfs.metadata.isCounter())
                 cfs.initCounterCache();
 
@@ -3429,7 +3429,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private boolean hasUnreclaimedSpace()
     {
-        for (ColumnFamilyStore cfs : ColumnFamilyStore.all())
+        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
         {
             if (cfs.hasUnreclaimedSpace())
                 return true;
@@ -3516,8 +3516,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // there are no segments to replay, so we force the recycling of any remaining (should be at most one)
         CommitLog.instance.forceRecycleAllSegments();
 
-        ColumnFamilyStore.postFlushExecutor.shutdown();
-        ColumnFamilyStore.postFlushExecutor.awaitTermination(60, TimeUnit.SECONDS);
+        ColumnFamilyStoreManager.instance.shutdownPostFlushExecutor();
 
         CommitLog.instance.shutdownBlocking();
 
@@ -3857,7 +3856,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     public void loadNewSSTables(String ksName, String cfName)
     {
-        ColumnFamilyStore.loadNewSSTables(ksName, cfName);
+        ColumnFamilyStoreManager.instance.loadNewSSTables(ksName, cfName);
     }
 
     /**
@@ -3880,7 +3879,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void rebuildSecondaryIndex(String ksName, String cfName, String... idxNames)
     {
-        ColumnFamilyStore.rebuildSecondaryIndex(ksName, cfName, idxNames);
+        ColumnFamilyStoreManager.instance.rebuildSecondaryIndex(ksName, cfName, idxNames);
     }
 
     public void resetLocalSchema() throws IOException
