@@ -40,7 +40,7 @@ public class CompactionMetrics implements CompactionManager.CompactionExecutorSt
     public static final MetricNameFactory factory = new DefaultNameFactory("Compaction");
 
     // a synchronized identity set of running tasks to their compaction info
-    private static final Set<CompactionInfo.Holder> compactions = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<CompactionInfo.Holder, Boolean>()));
+    private final Set<CompactionInfo.Holder> compactions = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<CompactionInfo.Holder, Boolean>()));
 
     /** Estimated number of compactions remaining to perform */
     public final Gauge<Integer> pendingTasks;
@@ -98,7 +98,7 @@ public class CompactionMetrics implements CompactionManager.CompactionExecutorSt
         totalCompactionsCompleted.mark();
     }
 
-    public static List<CompactionInfo.Holder> getCompactions()
+    public List<CompactionInfo.Holder> getCompactions()
     {
         return new ArrayList<CompactionInfo.Holder>(compactions);
     }
