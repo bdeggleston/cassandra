@@ -257,7 +257,7 @@ public class CassandraAuthorizer implements IAuthorizer
         return StringUtils.replace(name, "'", "''");
     }
 
-    private static UntypedResultSet process(String query) throws RequestExecutionException
+    private UntypedResultSet process(String query) throws RequestExecutionException
     {
         return QueryProcessor.instance.process(query, ConsistencyLevel.ONE);
     }

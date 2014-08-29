@@ -221,7 +221,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
         }
     }
 
-    private static boolean hasExistingUsers() throws RequestExecutionException
+    private boolean hasExistingUsers() throws RequestExecutionException
     {
         // Try looking up the 'cassandra' default user first, to avoid the range query if possible.
         String defaultSUQuery = String.format("SELECT * FROM %s.%s WHERE username = '%s'", Auth.AUTH_KS, CREDENTIALS_CF, DEFAULT_USER_NAME);
@@ -241,7 +241,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
         return StringUtils.replace(name, "'", "''");
     }
 
-    private static UntypedResultSet process(String query, ConsistencyLevel cl) throws RequestExecutionException
+    private UntypedResultSet process(String query, ConsistencyLevel cl) throws RequestExecutionException
     {
         return QueryProcessor.instance.process(query, cl);
     }
