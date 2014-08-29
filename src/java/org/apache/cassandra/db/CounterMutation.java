@@ -204,7 +204,7 @@ public class CounterMutation implements IMutation
             long count = currentValue.count + update.delta();
 
             resultCF.addColumn(new BufferCounterCell(update.name(),
-                                                     CounterContext.instance().createGlobal(CounterId.getLocalId(), clock, count),
+                                                     CounterContext.instance().createGlobal(CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()), clock, count),
                                                      update.timestamp()));
         }
 

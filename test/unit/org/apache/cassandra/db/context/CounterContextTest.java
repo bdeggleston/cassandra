@@ -22,6 +22,7 @@ package org.apache.cassandra.db.context;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.db.SystemKeyspace;
 import org.junit.Test;
 
 import org.apache.cassandra.Util;
@@ -247,19 +248,19 @@ public class CounterContextTest
         left.writeRemote(CounterId.fromInt(1), 1L, 1L);
         left.writeRemote(CounterId.fromInt(2), 2L, 2L);
         left.writeRemote(CounterId.fromInt(4), 6L, 3L);
-        left.writeLocal(CounterId.getLocalId(), 7L, 3L);
+        left.writeLocal(CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()), 7L, 3L);
 
         ContextState right = ContextState.allocate(0, 1, 2);
         right.writeRemote(CounterId.fromInt(4), 4L, 4L);
         right.writeRemote(CounterId.fromInt(5), 5L, 5L);
-        right.writeLocal(CounterId.getLocalId(), 2L, 9L);
+        right.writeLocal(CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()), 2L, 9L);
 
         ByteBuffer merged = cc.merge(left.context, right.context);
         int hd = 4;
 
         assertEquals(hd + 5 * stepLength, merged.remaining());
         // local node id's counts are aggregated
-        assertTrue(Util.equalsCounterId(CounterId.getLocalId(), merged, hd + 4 * stepLength));
+        assertTrue(Util.equalsCounterId(CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()), merged, hd + 4 * stepLength));
         assertEquals(9L, merged.getLong(merged.position() + hd + 4 * stepLength + idLength));
         assertEquals(12L,  merged.getLong(merged.position() + hd + 4*stepLength + idLength + clockLength));
 
@@ -368,7 +369,7 @@ public class CounterContextTest
         mixed.writeRemote(CounterId.fromInt(2), 2L, 2L);
         mixed.writeRemote(CounterId.fromInt(4), 4L, 4L);
         mixed.writeRemote(CounterId.fromInt(5), 5L, 5L);
-        mixed.writeLocal(CounterId.getLocalId(), 12L, 12L);
+        mixed.writeLocal(CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()), 12L, 12L);
         assertEquals(24L, cc.total(mixed.context));
 
         ContextState global = ContextState.allocate(3, 0, 0);

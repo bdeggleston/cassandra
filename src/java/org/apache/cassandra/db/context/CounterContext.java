@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,7 +117,7 @@ public class CounterContext
     public ByteBuffer createLocal(long count)
     {
         ContextState state = ContextState.allocate(0, 1, 0);
-        state.writeLocal(CounterId.getLocalId(), 1L, count);
+        state.writeLocal(CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()), 1L, count);
         return state.context;
     }
 
@@ -665,7 +666,7 @@ public class CounterContext
      */
     public ClockAndCount getLocalClockAndCount(ByteBuffer context)
     {
-        return getClockAndCountOf(context, CounterId.getLocalId());
+        return getClockAndCountOf(context, CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()));
     }
 
     /**

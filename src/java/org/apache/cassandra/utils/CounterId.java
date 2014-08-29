@@ -18,6 +18,7 @@
 package org.apache.cassandra.utils;
 
 import java.nio.ByteBuffer;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.cassandra.db.SystemKeyspace;
@@ -26,23 +27,11 @@ public class CounterId implements Comparable<CounterId>
 {
     public static final int LENGTH = 16; // we assume a fixed length size for all CounterIds
 
-    // Lazy holder because this opens the system keyspace and we want to avoid
-    // having this triggered during class initialization
-    private static class LocalId
-    {
-        static final LocalCounterIdHolder instance = new LocalCounterIdHolder();
-    }
-
     private final ByteBuffer id;
 
-    private static LocalCounterIdHolder localId()
+    public static CounterId getLocalId(UUID localHostId)
     {
-        return LocalId.instance;
-    }
-
-    public static CounterId getLocalId()
-    {
-        return localId().get();
+        return wrap(ByteBufferUtil.bytes(localHostId));
     }
 
     /**
@@ -95,9 +84,9 @@ public class CounterId implements Comparable<CounterId>
         return id;
     }
 
-    public boolean isLocalId()
+    public boolean isLocalId(UUID localHostId)
     {
-        return equals(getLocalId());
+        return equals(getLocalId(localHostId));
     }
 
     public int compareTo(CounterId o)
@@ -127,20 +116,5 @@ public class CounterId implements Comparable<CounterId>
     public int hashCode()
     {
         return id.hashCode();
-    }
-
-    private static class LocalCounterIdHolder
-    {
-        private final AtomicReference<CounterId> current;
-
-        LocalCounterIdHolder()
-        {
-            current = new AtomicReference<>(wrap(ByteBufferUtil.bytes(SystemKeyspace.instance.getLocalHostId())));
-        }
-
-        CounterId get()
-        {
-            return current.get();
-        }
     }
 }

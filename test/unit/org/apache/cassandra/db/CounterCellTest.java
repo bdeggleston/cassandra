@@ -72,7 +72,7 @@ public class CounterCellTest
         Assert.assertEquals(delta, cell.total());
         Assert.assertEquals(1, cell.value().getShort(0));
         Assert.assertEquals(0, cell.value().getShort(2));
-        Assert.assertTrue(CounterId.wrap(cell.value(), 4).isLocalId());
+        Assert.assertTrue(CounterId.wrap(cell.value(), 4).isLocalId(SystemKeyspace.instance.getLocalHostId()));
         Assert.assertEquals(1L, cell.value().getLong(4 + idLength));
         Assert.assertEquals(delta, cell.value().getLong(4 + idLength + clockLength));
     }

@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.management.openmbean.*;
 
 import com.google.common.base.Function;
@@ -90,6 +91,8 @@ public class SystemKeyspace
                                                                   SCHEMA_TRIGGERS_CF,
                                                                   SCHEMA_USER_TYPES_CF,
                                                                   SCHEMA_FUNCTIONS_CF);
+
+    private final AtomicReference<UUID> localHostId = new AtomicReference<>();
 
     private volatile Map<UUID, Pair<ReplayPosition, Long>> truncationRecords;
 
@@ -682,12 +685,20 @@ public class SystemKeyspace
      */
     public UUID getLocalHostId()
     {
+        UUID id = localHostId.get();
+        if (id != null)
+            return id;
+
         String req = "SELECT host_id FROM system.%s WHERE key='%s'";
         UntypedResultSet result = QueryProcessor.instance.executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY));
 
         // Look up the Host UUID (return it if found)
         if (!result.isEmpty() && result.one().has("host_id"))
-            return result.one().getUUID("host_id");
+        {
+            id = result.one().getUUID("host_id");
+            localHostId.set(id);
+            return id;
+        }
 
         // ID not found, generate a new one, persist, and then return it.
         UUID hostId = UUID.randomUUID();
@@ -700,9 +711,12 @@ public class SystemKeyspace
      */
     public UUID setLocalHostId(UUID hostId)
     {
-        String req = "INSERT INTO system.%s (key, host_id) VALUES ('%s', ?)";
-        QueryProcessor.instance.executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY), hostId);
-        return hostId;
+        if (localHostId.compareAndSet(null, hostId))
+        {
+            String req = "INSERT INTO system.%s (key, host_id) VALUES ('%s', ?)";
+            QueryProcessor.instance.executeInternal(String.format(req, LOCAL_CF, LOCAL_KEY), hostId);
+        }
+        return localHostId.get();
     }
 
     /**
