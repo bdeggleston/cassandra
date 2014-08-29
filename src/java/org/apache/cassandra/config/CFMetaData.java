@@ -1960,7 +1960,7 @@ public final class CFMetaData
 
     private static void addTriggerDefinitionsFromSchema(CFMetaData cfDef, Row serializedTriggerDefinitions)
     {
-        for (TriggerDefinition td : TriggerDefinition.fromSchema(serializedTriggerDefinitions))
+        for (TriggerDefinition td : TriggerDefinition.fromSchema(serializedTriggerDefinitions, QueryProcessor.instance))
             cfDef.triggers.put(td.name, td);
     }
 

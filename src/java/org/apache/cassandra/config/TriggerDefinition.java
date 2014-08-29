@@ -58,11 +58,11 @@ public class TriggerDefinition
      * @param serializedTriggers storage-level partition containing the trigger definitions
      * @return the list of processed TriggerDefinitions
      */
-    public static List<TriggerDefinition> fromSchema(Row serializedTriggers)
+    public static List<TriggerDefinition> fromSchema(Row serializedTriggers, QueryProcessor queryProcessor)
     {
         List<TriggerDefinition> triggers = new ArrayList<>();
         String query = String.format("SELECT * FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_TRIGGERS_CF);
-        for (UntypedResultSet.Row row : QueryProcessor.instance.resultify(query, serializedTriggers))
+        for (UntypedResultSet.Row row : queryProcessor.resultify(query, serializedTriggers))
         {
             String name = row.getString(TRIGGER_NAME);
             String classOption = row.getMap(TRIGGER_OPTIONS, UTF8Type.instance, UTF8Type.instance).get(CLASS);
