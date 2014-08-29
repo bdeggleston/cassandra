@@ -71,9 +71,9 @@ public abstract class AbstractReadExecutor
         handler = new ReadCallback<>(resolver, consistencyLevel, command, targetReplicas);
     }
 
-    private static boolean isLocalRequest(InetAddress replica)
+    private boolean isLocalRequest(InetAddress replica)
     {
-        return replica.equals(DatabaseDescriptor.instance.getBroadcastAddress()) && StorageProxy.instance.OPTIMIZE_LOCAL_REQUESTS;
+        return replica.equals(DatabaseDescriptor.instance.getBroadcastAddress()) && StorageProxy.OPTIMIZE_LOCAL_REQUESTS;
     }
 
     protected void makeDataRequests(Iterable<InetAddress> endpoints)
