@@ -79,26 +79,6 @@ public class ClientState
     private volatile AuthenticatedUser user;
     private volatile String keyspace;
 
-    private static final QueryHandler cqlQueryHandler;
-    static
-    {
-        QueryHandler handler = QueryProcessor.instance;
-        String customHandlerClass = System.getProperty("cassandra.custom_query_handler_class");
-        if (customHandlerClass != null)
-        {
-            try
-            {
-                handler = (QueryHandler)FBUtilities.construct(customHandlerClass, "QueryHandler");
-                logger.info("Using {} as query handler for native protocol queries (as requested with -Dcassandra.custom_query_handler_class)", customHandlerClass);
-            }
-            catch (Exception e)
-            {
-                logger.info("Cannot use class {} as query handler ({}), ignoring by defaulting on normal query handling", customHandlerClass, e.getMessage());
-            }
-        }
-        cqlQueryHandler = handler;
-    }
-
     // isInternal is used to mark ClientState as used by some internal component
     // that should have an ability to modify system keyspace.
     private final boolean isInternal;
@@ -137,11 +117,6 @@ public class ClientState
     public static ClientState forExternalCalls(SocketAddress remoteAddress)
     {
         return new ClientState(remoteAddress);
-    }
-
-    public static QueryHandler getCQLQueryHandler()
-    {
-        return cqlQueryHandler;
     }
 
     public SocketAddress getRemoteAddress()

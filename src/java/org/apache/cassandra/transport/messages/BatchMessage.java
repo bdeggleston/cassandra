@@ -169,7 +169,7 @@ public class BatchMessage extends Message.Request
                 Tracing.instance.begin("Execute batch of CQL3 queries", Collections.<String, String>emptyMap());
             }
 
-            QueryHandler handler = ClientState.getCQLQueryHandler();
+            QueryHandler handler = QueryHandlerInstance.instance;
             List<ParsedStatement.Prepared> prepared = new ArrayList<>(queryOrIdList.size());
             for (int i = 0; i < queryOrIdList.size(); i++)
             {

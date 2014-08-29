@@ -26,6 +26,7 @@ import io.netty.buffer.ByteBuf;
 
 import org.apache.cassandra.cql3.CQLStatement;
 import org.apache.cassandra.cql3.QueryHandler;
+import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.statements.ParsedStatement;
 import org.apache.cassandra.db.ConsistencyLevel;
@@ -100,7 +101,7 @@ public class ExecuteMessage extends Message.Request
     {
         try
         {
-            QueryHandler handler = state.getClientState().getCQLQueryHandler();
+            QueryHandler handler = QueryHandlerInstance.instance;
             ParsedStatement.Prepared prepared = handler.getPrepared(statementId);
             if (prepared == null)
                 throw new PreparedQueryNotFoundException(statementId);
