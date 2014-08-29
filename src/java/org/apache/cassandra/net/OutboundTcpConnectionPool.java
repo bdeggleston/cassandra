@@ -32,7 +32,6 @@ import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.metrics.ConnectionMetrics;
 import org.apache.cassandra.security.SSLFactory;
-import org.apache.cassandra.utils.FBUtilities;
 
 public class OutboundTcpConnectionPool
 {
@@ -116,24 +115,24 @@ public class OutboundTcpConnectionPool
 
     public Socket newSocket() throws IOException
     {
-        return newSocket(endPoint());
+        return newSocket(endPoint(), DatabaseDescriptor.instance);
     }
 
-    public static Socket newSocket(InetAddress endpoint) throws IOException
+    public static Socket newSocket(InetAddress endpoint, DatabaseDescriptor databaseDescriptor) throws IOException
     {
         // zero means 'bind on any available port.'
-        if (isEncryptedChannel(endpoint))
+        if (isEncryptedChannel(endpoint, databaseDescriptor))
         {
             if (Config.getOutboundBindAny())
-                return SSLFactory.getSocket(DatabaseDescriptor.instance.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.instance.getSSLStoragePort());
+                return SSLFactory.getSocket(databaseDescriptor.getServerEncryptionOptions(), endpoint, databaseDescriptor.getSSLStoragePort());
             else
-                return SSLFactory.getSocket(DatabaseDescriptor.instance.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.instance.getSSLStoragePort(), DatabaseDescriptor.instance.getLocalAddress(), 0);
+                return SSLFactory.getSocket(databaseDescriptor.getServerEncryptionOptions(), endpoint, databaseDescriptor.getSSLStoragePort(), databaseDescriptor.getLocalAddress(), 0);
         }
         else
         {
-            Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, DatabaseDescriptor.instance.getStoragePort())).socket();
+            Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, databaseDescriptor.getStoragePort())).socket();
             if (Config.getOutboundBindAny() && !socket.isBound())
-                socket.bind(new InetSocketAddress(DatabaseDescriptor.instance.getLocalAddress(), 0));
+                socket.bind(new InetSocketAddress(databaseDescriptor.getLocalAddress(), 0));
             return socket;
         }
     }
@@ -145,23 +144,23 @@ public class OutboundTcpConnectionPool
         return resetedEndpoint == null ? id : resetedEndpoint;
     }
 
-    public static boolean isEncryptedChannel(InetAddress address)
+    public static boolean isEncryptedChannel(InetAddress address, DatabaseDescriptor databaseDescriptor)
     {
-        IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
-        switch (DatabaseDescriptor.instance.getServerEncryptionOptions().internode_encryption)
+        IEndpointSnitch snitch = databaseDescriptor.getEndpointSnitch();
+        switch (databaseDescriptor.getServerEncryptionOptions().internode_encryption)
         {
             case none:
                 return false; // if nothing needs to be encrypted then return immediately.
             case all:
                 break;
             case dc:
-                if (snitch.getDatacenter(address).equals(snitch.getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress())))
+                if (snitch.getDatacenter(address).equals(snitch.getDatacenter(databaseDescriptor.getBroadcastAddress())))
                     return false;
                 break;
             case rack:
                 // for rack then check if the DC's are the same.
-                if (snitch.getRack(address).equals(snitch.getRack(DatabaseDescriptor.instance.getBroadcastAddress()))
-                        && snitch.getDatacenter(address).equals(snitch.getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress())))
+                if (snitch.getRack(address).equals(snitch.getRack(databaseDescriptor.getBroadcastAddress()))
+                        && snitch.getDatacenter(address).equals(snitch.getDatacenter(databaseDescriptor.getBroadcastAddress())))
                     return false;
                 break;
         }

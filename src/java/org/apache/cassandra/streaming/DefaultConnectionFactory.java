@@ -49,7 +49,7 @@ public class DefaultConnectionFactory implements StreamConnectionFactory
         {
             try
             {
-                Socket socket = OutboundTcpConnectionPool.newSocket(peer);
+                Socket socket = OutboundTcpConnectionPool.newSocket(peer, DatabaseDescriptor.instance);
                 socket.setSoTimeout(DatabaseDescriptor.instance.getStreamingSocketTimeout());
                 socket.setKeepAlive(true);
                 return socket;
