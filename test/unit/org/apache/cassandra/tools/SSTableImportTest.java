@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.junit.BeforeClass;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -40,7 +41,6 @@ import org.junit.internal.matchers.TypeSafeMatcher;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.BufferDeletedCell;
@@ -78,9 +78,9 @@ public class SSTableImportTest
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD),
-                                    CFMetaData.denseCFMetaData(KEYSPACE1, CF_COUNTER, BytesType.instance).defaultValidator(CounterColumnType.instance),
+                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_COUNTER, BytesType.instance).defaultValidator(CounterColumnType.instance),
                                     SchemaLoader.standardCFMD(KEYSPACE1, "AsciiKeys").keyValidator(AsciiType.instance),
-                                    CFMetaData.compile("CREATE TABLE table1 (k int PRIMARY KEY, v1 text, v2 int)", KEYSPACE1));
+                                    CFMetaDataFactory.compile("CREATE TABLE table1 (k int PRIMARY KEY, v1 text, v2 int)", KEYSPACE1, QueryProcessor.instance));
     }
 
     @Test

@@ -24,6 +24,7 @@ import java.util.concurrent.Future;
 
 import org.apache.cassandra.cache.CachingOptions;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
@@ -81,11 +82,11 @@ public class CompactionsPurgeTest
         SchemaLoader.createKeyspace(KEYSPACE_CQL,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
-                                    CFMetaData.compile("CREATE TABLE " + CF_CQL + " ("
-                                                     + "k int PRIMARY KEY,"
-                                                     + "v1 text,"
-                                                     + "v2 int"
-                                                     + ")", KEYSPACE_CQL));
+                                    CFMetaDataFactory.compile("CREATE TABLE " + CF_CQL + " ("
+                                                                      + "k int PRIMARY KEY,"
+                                                                      + "v1 text,"
+                                                                      + "v2 int"
+                                                                      + ")", KEYSPACE_CQL, QueryProcessor.instance));
     }
 
     @Test

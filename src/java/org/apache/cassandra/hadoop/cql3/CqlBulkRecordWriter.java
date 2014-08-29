@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.hadoop.AbstractBulkRecordWriter;
 import org.apache.cassandra.hadoop.BulkRecordWriter;
@@ -179,7 +181,7 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
                 knownCqlCfs.put(keyspace, cfs);
             }
             
-            CFMetaData metadata = CFMetaData.compile(cql, keyspace);
+            CFMetaData metadata = CFMetaDataFactory.compile(cql, keyspace, QueryProcessor.instance);
             cfs.put(metadata.cfName, metadata);
         }
         

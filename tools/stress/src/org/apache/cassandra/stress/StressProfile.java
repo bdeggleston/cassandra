@@ -26,6 +26,7 @@ import com.datastax.driver.core.exceptions.AlreadyExistsException;
 
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.statements.CreateKeyspaceStatement;
 import org.apache.cassandra.exceptions.RequestValidationException;
@@ -131,7 +132,7 @@ public class StressProfile implements Serializable
 
         if (tableCql != null && tableCql.length() > 0)
         {
-            String name = CFMetaData.compile(tableCql, keyspaceName).cfName;
+            String name = CFMetaDataFactory.compile(tableCql, keyspaceName, QueryProcessor.instance).cfName;
             assert name.equalsIgnoreCase(tableName) : "Name in table_definition doesn't match table property: '" + name + "' != '" + tableName + "'";
         }
         else

@@ -26,6 +26,7 @@ import java.util.TreeMap;
 
 import com.google.common.collect.Iterables;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -67,7 +68,7 @@ public class ColumnFamilyTest
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD1),
-                                    CFMetaData.denseCFMetaData(KEYSPACE1, CF_COUNTER1, BytesType.instance)
+                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_COUNTER1, BytesType.instance)
                                               .defaultValidator(CounterColumnType.instance));
     }
 

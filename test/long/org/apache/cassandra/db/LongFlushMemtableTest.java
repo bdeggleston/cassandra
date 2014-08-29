@@ -24,6 +24,7 @@ package org.apache.cassandra.db;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -56,7 +57,7 @@ public class LongFlushMemtableTest
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         for (int i = 0; i < 100; i++)
         {
-            CFMetaData metadata = CFMetaData.denseCFMetaData(keyspace.getName(), "_CF" + i, UTF8Type.instance);
+            CFMetaData metadata = CFMetaDataFactory.instance.denseCFMetaData(keyspace.getName(), "_CF" + i, UTF8Type.instance);
             MigrationManager.instance.announceNewColumnFamily(metadata);
         }
 

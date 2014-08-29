@@ -35,16 +35,13 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Longs;
+import org.apache.cassandra.config.*;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.auth.AuthenticatedUser;
 import org.apache.cassandra.auth.Permission;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.KSMetaData;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.*;
@@ -1526,7 +1523,7 @@ public class CassandraServer implements Cassandra.Iface
             String keyspace = cState.getKeyspace();
             cState.hasKeyspaceAccess(keyspace, Permission.CREATE);
             cf_def.unsetId(); // explicitly ignore any id set by client (Hector likes to set zero)
-            CFMetaData cfm = CFMetaData.fromThrift(cf_def);
+            CFMetaData cfm = CFMetaDataFactory.instance.fromThrift(cf_def);
             CFMetaData.validateCompactionOptions(cfm.compactionStrategyClass, cfm.compactionStrategyOptions);
             cfm.addDefaultIndexNames();
 
@@ -1586,7 +1583,7 @@ public class CassandraServer implements Cassandra.Iface
             for (CfDef cf_def : ks_def.cf_defs)
             {
                 cf_def.unsetId(); // explicitly ignore any id set by client (same as system_add_column_family)
-                CFMetaData cfm = CFMetaData.fromThrift(cf_def);
+                CFMetaData cfm = CFMetaDataFactory.instance.fromThrift(cf_def);
                 cfm.addDefaultIndexNames();
 
                 if (!cfm.getTriggers().isEmpty())
@@ -1666,7 +1663,7 @@ public class CassandraServer implements Cassandra.Iface
             if (!oldCfm.isThriftCompatible())
                 throw new InvalidRequestException("Cannot modify CQL3 table " + oldCfm.cfName + " as it may break the schema. You should use cqlsh to modify CQL3 tables instead.");
 
-            CFMetaData cfm = CFMetaData.fromThriftForUpdate(cf_def, oldCfm);
+            CFMetaData cfm = CFMetaDataFactory.instance.fromThriftForUpdate(cf_def, oldCfm);
             CFMetaData.validateCompactionOptions(cfm.compactionStrategyClass, cfm.compactionStrategyOptions);
             cfm.addDefaultIndexNames();
 
@@ -1981,8 +1978,8 @@ public class CassandraServer implements Cassandra.Iface
             logger.trace("Retrieved prepared statement #{} with {} bind markers", itemId, statement.getBoundTerms());
 
             return QueryHandlerInstance.instance.processPrepared(statement,
-                                                               cState.getQueryState(),
-                                                               QueryOptions.fromProtocolV2(ThriftConversion.fromThrift(cLevel), bindVariables)).toThriftResult();
+                                                                 cState.getQueryState(),
+                                                                 QueryOptions.fromProtocolV2(ThriftConversion.fromThrift(cLevel), bindVariables)).toThriftResult();
         }
         catch (RequestExecutionException e)
         {

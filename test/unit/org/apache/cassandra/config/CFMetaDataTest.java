@@ -82,7 +82,7 @@ public class CFMetaDataTest
                                  .setName(CF_STANDARD1);
 
         // convert Thrift to CFMetaData
-        CFMetaData cfMetaData = CFMetaData.fromThrift(cfDef);
+        CFMetaData cfMetaData = CFMetaDataFactory.instance.fromThrift(cfDef);
 
         CfDef thriftCfDef = new CfDef();
         thriftCfDef.keyspace = KEYSPACE1;
@@ -136,7 +136,7 @@ public class CFMetaDataTest
 
         // Test thrift conversion
         CFMetaData before = cfm;
-        CFMetaData after = CFMetaData.fromThriftForUpdate(before.toThrift(), before);
+        CFMetaData after = CFMetaDataFactory.instance.fromThriftForUpdate(before.toThrift(), before);
         assert before.equals(after) : String.format("%n%s%n!=%n%s", before, after);
 
         // Test schema conversion

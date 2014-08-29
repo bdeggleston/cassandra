@@ -480,7 +480,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 CellNameType indexComparator = SecondaryIndex.getIndexComparator(metadata, def);
                 if (indexComparator != null)
                 {
-                    CFMetaData indexMetadata = CFMetaData.newIndexMetadata(metadata, def, indexComparator);
+                    CFMetaData indexMetadata = CFMetaDataFactory.instance.newIndexMetadata(metadata, def, indexComparator);
                     scrubDataDirectories(indexMetadata);
                 }
             }

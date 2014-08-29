@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.Future;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
@@ -53,7 +54,7 @@ public abstract class AbstractSimplePerColumnSecondaryIndex extends PerColumnSec
         columnDef = columnDefs.iterator().next();
 
         CellNameType indexComparator = SecondaryIndex.getIndexComparator(baseCfs.metadata, columnDef);
-        CFMetaData indexedCfMetadata = CFMetaData.newIndexMetadata(baseCfs.metadata, columnDef, indexComparator);
+        CFMetaData indexedCfMetadata = CFMetaDataFactory.instance.newIndexMetadata(baseCfs.metadata, columnDef, indexComparator);
         indexCfs = ColumnFamilyStoreManager.instance.createColumnFamilyStore(baseCfs.keyspace,
                                                                              indexedCfMetadata.cfName,
                                                                              new LocalPartitioner(getIndexKeyComparator()),

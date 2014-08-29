@@ -27,6 +27,7 @@ import java.io.IOException;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
@@ -58,7 +59,7 @@ public class EncodedStreamsTest
                                 SimpleStrategy.class,
                                 KSMetaData.optsWithRF(1),
                                 SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD),
-                                CFMetaData.denseCFMetaData(KEYSPACE1, CF_COUNTER, BytesType.instance)
+                                CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_COUNTER, BytesType.instance)
                                           .defaultValidator(CounterColumnType.instance));
     }
 

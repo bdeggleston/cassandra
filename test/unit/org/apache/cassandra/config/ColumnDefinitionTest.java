@@ -32,7 +32,7 @@ public class ColumnDefinitionTest
     @Test
     public void testSerializeDeserialize() throws Exception
     {
-        CFMetaData cfm = CFMetaData.denseCFMetaData("ks", "cf", UTF8Type.instance);
+        CFMetaData cfm = CFMetaDataFactory.instance.denseCFMetaData("ks", "cf", UTF8Type.instance);
 
         ColumnDefinition cd0 = ColumnDefinition.regularDef(cfm, ByteBufferUtil.bytes("TestColumnDefinitionName0"), BytesType.instance, null)
                                                .setIndex("random index name 0", IndexType.KEYS, null);

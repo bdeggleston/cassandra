@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.fail;
@@ -70,7 +71,7 @@ public class DynamicCompositeTypeTest
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
-                                    CFMetaData.denseCFMetaData(KEYSPACE1, CF_STANDARDDYNCOMPOSITE, dynamicComposite));
+                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_STANDARDDYNCOMPOSITE, dynamicComposite));
     }
 
     @Test

@@ -39,14 +39,14 @@ import static org.junit.Assert.assertNull;
 public class DatabaseDescriptorTest
 {
     @Test
-    public void testCFMetaDataSerialization() throws ConfigurationException, InvalidRequestException
+    public void testCFMetaDataSerialization() throws Exception
     {
         // test serialization of all defined test CFs.
         for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
         {
             for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(keyspaceName).values())
             {
-                CFMetaData cfmDupe = CFMetaData.fromThrift(cfm.toThrift());
+                CFMetaData cfmDupe = CFMetaDataFactory.instance.fromThrift(cfm.toThrift());
                 assertNotNull(cfmDupe);
                 assertEquals(cfm, cfmDupe);
             }

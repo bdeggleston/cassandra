@@ -27,6 +27,7 @@ import java.util.concurrent.SynchronousQueue;
 import com.google.common.base.Throwables;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.DecoratedKey;
@@ -76,7 +77,7 @@ public class SSTableSimpleUnsortedWriter extends AbstractSSTableSimpleWriter
                                        int bufferSizeInMB,
                                        CompressionParameters compressParameters)
     {
-        this(directory, CFMetaData.denseCFMetaData(keyspace, columnFamily, comparator, subComparator).compressionParameters(compressParameters), partitioner, bufferSizeInMB);
+        this(directory, CFMetaDataFactory.instance.denseCFMetaData(keyspace, columnFamily, comparator, subComparator).compressionParameters(compressParameters), partitioner, bufferSizeInMB);
     }
 
     public SSTableSimpleUnsortedWriter(File directory,

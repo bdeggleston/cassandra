@@ -21,6 +21,7 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.cql3.QueryProcessor;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.slf4j.Logger;
@@ -136,7 +137,7 @@ public class SchemaLoader
                                            standardCFMD(ks1, "StandardGCGS0").gcGraceSeconds(0),
                                            standardCFMD(ks1, "StandardLong1"),
                                            standardCFMD(ks1, "StandardLong2"),
-                                           CFMetaData.denseCFMetaData(ks1, "ValuesWithQuotes", BytesType.instance).defaultValidator(UTF8Type.instance),
+                                           CFMetaDataFactory.instance.denseCFMetaData(ks1, "ValuesWithQuotes", BytesType.instance).defaultValidator(UTF8Type.instance),
                                            superCFMD(ks1, "Super1", LongType.instance),
                                            superCFMD(ks1, "Super2", LongType.instance),
                                            superCFMD(ks1, "Super3", LongType.instance),
@@ -145,19 +146,19 @@ public class SchemaLoader
                                            superCFMD(ks1, "Super6", LexicalUUIDType.instance, UTF8Type.instance),
                                            indexCFMD(ks1, "Indexed1", true),
                                            indexCFMD(ks1, "Indexed2", false),
-                                           CFMetaData.denseCFMetaData(ks1, "StandardInteger1", IntegerType.instance),
-                                           CFMetaData.denseCFMetaData(ks1, "StandardLong3", IntegerType.instance),
-                                           CFMetaData.denseCFMetaData(ks1, "Counter1", bytes).defaultValidator(CounterColumnType.instance),
-                                           CFMetaData.denseCFMetaData(ks1, "SuperCounter1", bytes, bytes).defaultValidator(CounterColumnType.instance),
+                                           CFMetaDataFactory.instance.denseCFMetaData(ks1, "StandardInteger1", IntegerType.instance),
+                                           CFMetaDataFactory.instance.denseCFMetaData(ks1, "StandardLong3", IntegerType.instance),
+                                           CFMetaDataFactory.instance.denseCFMetaData(ks1, "Counter1", bytes).defaultValidator(CounterColumnType.instance),
+                                           CFMetaDataFactory.instance.denseCFMetaData(ks1, "SuperCounter1", bytes, bytes).defaultValidator(CounterColumnType.instance),
                                            superCFMD(ks1, "SuperDirectGC", BytesType.instance).gcGraceSeconds(0),
                                            jdbcSparseCFMD(ks1, "JdbcInteger", IntegerType.instance).addColumnDefinition(integerColumn(ks1, "JdbcInteger")),
                                            jdbcSparseCFMD(ks1, "JdbcUtf8", UTF8Type.instance).addColumnDefinition(utf8Column(ks1, "JdbcUtf8")),
                                            jdbcCFMD(ks1, "JdbcLong", LongType.instance),
                                            jdbcCFMD(ks1, "JdbcBytes", bytes),
                                            jdbcCFMD(ks1, "JdbcAscii", AsciiType.instance),
-                                           CFMetaData.denseCFMetaData(ks1, "StandardComposite", composite),
-                                           CFMetaData.denseCFMetaData(ks1, "StandardComposite2", compositeMaxMin),
-                                           CFMetaData.denseCFMetaData(ks1, "StandardDynamicComposite", dynamicComposite),
+                                           CFMetaDataFactory.instance.denseCFMetaData(ks1, "StandardComposite", composite),
+                                           CFMetaDataFactory.instance.denseCFMetaData(ks1, "StandardComposite2", compositeMaxMin),
+                                           CFMetaDataFactory.instance.denseCFMetaData(ks1, "StandardDynamicComposite", dynamicComposite),
                                            standardCFMD(ks1, "StandardLeveled")
                                                                                .compactionStrategyClass(LeveledCompactionStrategy.class)
                                                                                .compactionStrategyOptions(leveledOptions),
@@ -169,8 +170,8 @@ public class SchemaLoader
                                                                                         .caching(CachingOptions.NONE),
 
                                            standardCFMD(ks1, "UUIDKeys").keyValidator(UUIDType.instance),
-                                           CFMetaData.denseCFMetaData(ks1, "MixedTypes", LongType.instance).keyValidator(UUIDType.instance).defaultValidator(BooleanType.instance),
-                                           CFMetaData.denseCFMetaData(ks1, "MixedTypesComposite", composite).keyValidator(composite).defaultValidator(BooleanType.instance),
+                                           CFMetaDataFactory.instance.denseCFMetaData(ks1, "MixedTypes", LongType.instance).keyValidator(UUIDType.instance).defaultValidator(BooleanType.instance),
+                                           CFMetaDataFactory.instance.denseCFMetaData(ks1, "MixedTypesComposite", composite).keyValidator(composite).defaultValidator(BooleanType.instance),
                                            standardCFMD(ks1, "AsciiKeys").keyValidator(AsciiType.instance)
         ));
 
@@ -207,7 +208,7 @@ public class SchemaLoader
                                            standardCFMD(ks4, "Standard3"),
                                            superCFMD(ks4, "Super3", bytes),
                                            superCFMD(ks4, "Super4", TimeUUIDType.instance),
-                                           CFMetaData.denseCFMetaData(ks4, "Super5", TimeUUIDType.instance, bytes)));
+                                           CFMetaDataFactory.instance.denseCFMetaData(ks4, "Super5", TimeUUIDType.instance, bytes)));
 
         // Keyspace 5
         schema.add(KSMetaData.testMetadata(ks5,
@@ -266,31 +267,31 @@ public class SchemaLoader
                                            opts_rf1,
 
                                            // Column Families
-                                           CFMetaData.compile("CREATE TABLE table1 ("
+                                           CFMetaDataFactory.compile("CREATE TABLE table1 ("
                                                               + "k int PRIMARY KEY,"
                                                               + "v1 text,"
                                                               + "v2 int"
-                                                              + ")", ks_cql),
+                                                              + ")", ks_cql, QueryProcessor.instance),
 
-                                           CFMetaData.compile("CREATE TABLE table2 ("
+                                           CFMetaDataFactory.compile("CREATE TABLE table2 ("
                                                               + "k text,"
                                                               + "c text,"
                                                               + "v text,"
-                                                              + "PRIMARY KEY (k, c))", ks_cql),
-                                           CFMetaData.compile("CREATE TABLE foo ("
+                                                              + "PRIMARY KEY (k, c))", ks_cql, QueryProcessor.instance),
+                                           CFMetaDataFactory.compile("CREATE TABLE foo ("
                                                    + "bar text, "
                                                    + "baz text, "
                                                    + "qux text, "
                                                    + "PRIMARY KEY(bar, baz) ) "
-                                                   + "WITH COMPACT STORAGE", ks_cql),
-                                           CFMetaData.compile("CREATE TABLE foofoo ("
+                                                   + "WITH COMPACT STORAGE", ks_cql, QueryProcessor.instance),
+                                           CFMetaDataFactory.compile("CREATE TABLE foofoo ("
                                                    + "bar text, "
                                                    + "baz text, "
                                                    + "qux text, "
                                                    + "quz text, "
                                                    + "foo text, "
                                                    + "PRIMARY KEY((bar, baz), qux, quz) ) "
-                                                   + "WITH COMPACT STORAGE", ks_cql)
+                                                   + "WITH COMPACT STORAGE", ks_cql, QueryProcessor.instance)
                                            ));
 
 
@@ -355,7 +356,7 @@ public class SchemaLoader
                                                       SecondaryIndex.CUSTOM_INDEX_OPTION_NAME,
                                                       PerRowSecondaryIndexTest.TestIndex.class.getName());
 
-        CFMetaData cfm =  CFMetaData.sparseCFMetaData(ksName, cfName, BytesType.instance).keyValidator(AsciiType.instance);
+        CFMetaData cfm =  CFMetaDataFactory.instance.sparseCFMetaData(ksName, cfName, BytesType.instance).keyValidator(AsciiType.instance);
 
         ByteBuffer cName = ByteBufferUtil.bytes("indexed");
         return cfm.addOrReplaceColumnDefinition(ColumnDefinition.regularDef(cfm, cName, AsciiType.instance, null)
@@ -375,7 +376,7 @@ public class SchemaLoader
 
     public static CFMetaData standardCFMD(String ksName, String cfName)
     {
-        return CFMetaData.denseCFMetaData(ksName, cfName, BytesType.instance);
+        return CFMetaDataFactory.instance.denseCFMetaData(ksName, cfName, BytesType.instance);
     }
     public static CFMetaData superCFMD(String ksName, String cfName, AbstractType subcc)
     {
@@ -383,11 +384,11 @@ public class SchemaLoader
     }
     public static CFMetaData superCFMD(String ksName, String cfName, AbstractType cc, AbstractType subcc)
     {
-        return CFMetaData.denseCFMetaData(ksName, cfName, cc, subcc);
+        return CFMetaDataFactory.instance.denseCFMetaData(ksName, cfName, cc, subcc);
     }
     public static CFMetaData indexCFMD(String ksName, String cfName, final Boolean withIdxType) throws ConfigurationException
     {
-        CFMetaData cfm = CFMetaData.sparseCFMetaData(ksName, cfName, BytesType.instance).keyValidator(AsciiType.instance);
+        CFMetaData cfm = CFMetaDataFactory.instance.sparseCFMetaData(ksName, cfName, BytesType.instance).keyValidator(AsciiType.instance);
 
         ByteBuffer cName = ByteBufferUtil.bytes("birthdate");
         IndexType keys = withIdxType ? IndexType.KEYS : null;
@@ -397,7 +398,7 @@ public class SchemaLoader
     public static CFMetaData compositeIndexCFMD(String ksName, String cfName, final Boolean withIdxType) throws ConfigurationException
     {
         final CompositeType composite = CompositeType.getInstance(Arrays.asList(new AbstractType<?>[]{UTF8Type.instance, UTF8Type.instance})); 
-        CFMetaData cfm = CFMetaData.sparseCFMetaData(ksName, cfName, composite);
+        CFMetaData cfm = CFMetaDataFactory.instance.sparseCFMetaData(ksName, cfName, composite);
 
         ByteBuffer cName = ByteBufferUtil.bytes("col1");
         IndexType idxType = withIdxType ? IndexType.COMPOSITES : null;
@@ -407,12 +408,12 @@ public class SchemaLoader
     
     private static CFMetaData jdbcCFMD(String ksName, String cfName, AbstractType comp)
     {
-        return CFMetaData.denseCFMetaData(ksName, cfName, comp).defaultValidator(comp);
+        return CFMetaDataFactory.instance.denseCFMetaData(ksName, cfName, comp).defaultValidator(comp);
     }
 
     private static CFMetaData jdbcSparseCFMD(String ksName, String cfName, AbstractType comp)
     {
-        return CFMetaData.sparseCFMetaData(ksName, cfName, comp).defaultValidator(comp);
+        return CFMetaDataFactory.instance.sparseCFMetaData(ksName, cfName, comp).defaultValidator(comp);
     }
 
     public static void cleanupAndLeaveDirs()

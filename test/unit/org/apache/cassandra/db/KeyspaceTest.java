@@ -26,6 +26,7 @@ import java.util.*;
 import java.io.IOException;
 
 import com.google.common.collect.Iterables;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -78,7 +79,7 @@ public class KeyspaceTest
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD2),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARDLONG),
-                                    CFMetaData.denseCFMetaData(KEYSPACE1, CF_STANDARDCOMPOSITE2, compositeMaxMin));
+                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_STANDARDCOMPOSITE2, compositeMaxMin));
         SchemaLoader.createKeyspace(KEYSPACE2,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),

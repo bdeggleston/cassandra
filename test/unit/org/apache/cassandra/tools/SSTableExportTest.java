@@ -23,6 +23,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.db.*;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -74,9 +75,9 @@ public class SSTableExportTest
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD),
-                                    CFMetaData.denseCFMetaData(KEYSPACE1, CF_COUNTER, BytesType.instance).defaultValidator(CounterColumnType.instance),
+                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_COUNTER, BytesType.instance).defaultValidator(CounterColumnType.instance),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_UUID).keyValidator(UUIDType.instance),
-                                    CFMetaData.denseCFMetaData(KEYSPACE1, CF_VALSWITHQUOTES, BytesType.instance).defaultValidator(UTF8Type.instance),
+                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_VALSWITHQUOTES, BytesType.instance).defaultValidator(UTF8Type.instance),
                                     SchemaLoader.standardCFMD(KEYSPACE1, "AsciiKeys").keyValidator(AsciiType.instance));
     }
 
@@ -108,7 +109,7 @@ public class SSTableExportTest
         File temp = File.createTempFile("Standard1", ".txt");
         final Descriptor descriptor = Descriptor.fromFilename(writer.getFilename());
         SSTableExport.enumeratekeys(descriptor, new PrintStream(temp.getPath()),
-                CFMetaData.sparseCFMetaData(descriptor.ksname, descriptor.cfname, BytesType.instance));
+                CFMetaDataFactory.instance.sparseCFMetaData(descriptor.ksname, descriptor.cfname, BytesType.instance));
 
 
         try (FileReader file = new FileReader(temp))
@@ -151,7 +152,7 @@ public class SSTableExportTest
         // Export to JSON and verify
         File tempJson = File.createTempFile("Standard1", ".json");
         SSTableExport.export(reader, new PrintStream(tempJson.getPath()), new String[]{asHex("rowExclude")},
-                CFMetaData.sparseCFMetaData(KEYSPACE1, "Standard1", BytesType.instance));
+                CFMetaDataFactory.instance.sparseCFMetaData(KEYSPACE1, "Standard1", BytesType.instance));
 
         JSONArray json = (JSONArray)JSONValue.parseWithException(new FileReader(tempJson));
         assertEquals("unexpected number of rows", 2, json.size());
@@ -201,7 +202,7 @@ public class SSTableExportTest
         // Export to JSON and verify
         File tempJson = File.createTempFile("Standard1", ".json");
         SSTableExport.export(reader, new PrintStream(tempJson.getPath()), new String[]{asHex("rowExclude")},
-                CFMetaData.sparseCFMetaData(KEYSPACE1, "Standard1", BytesType.instance));
+                CFMetaDataFactory.instance.sparseCFMetaData(KEYSPACE1, "Standard1", BytesType.instance));
 
         // Import JSON to another SSTable file
         File tempSS2 = tempSSTableFile(KEYSPACE1, "Standard1");
@@ -236,7 +237,7 @@ public class SSTableExportTest
         // Export to JSON and verify
         File tempJson = File.createTempFile("Counter1", ".json");
         SSTableExport.export(reader, new PrintStream(tempJson.getPath()), new String[0],
-                CFMetaData.sparseCFMetaData(KEYSPACE1, "Counter1", BytesType.instance));
+                CFMetaDataFactory.instance.sparseCFMetaData(KEYSPACE1, "Counter1", BytesType.instance));
         JSONArray json = (JSONArray)JSONValue.parseWithException(new FileReader(tempJson));
         assertEquals("unexpected number of rows", 1, json.size());
 
@@ -268,7 +269,7 @@ public class SSTableExportTest
         // Export to JSON and verify
         File tempJson = File.createTempFile("ValuesWithQuotes", ".json");
         SSTableExport.export(reader, new PrintStream(tempJson.getPath()), new String[0],
-                CFMetaData.sparseCFMetaData(KEYSPACE1, "ValuesWithQuotes", BytesType.instance));
+                CFMetaDataFactory.instance.sparseCFMetaData(KEYSPACE1, "ValuesWithQuotes", BytesType.instance));
 
         JSONArray json = (JSONArray)JSONValue.parseWithException(new FileReader(tempJson));
         assertEquals("unexpected number of rows", 1, json.size());
@@ -300,7 +301,7 @@ public class SSTableExportTest
         // Export to JSON and verify
         File tempJson = File.createTempFile("CFWithDeletionInfo", ".json");
         SSTableExport.export(reader, new PrintStream(tempJson.getPath()), new String[0],
-                CFMetaData.sparseCFMetaData(KEYSPACE1, "Counter1", BytesType.instance));
+                CFMetaDataFactory.instance.sparseCFMetaData(KEYSPACE1, "Counter1", BytesType.instance));
 
         JSONArray json = (JSONArray)JSONValue.parseWithException(new FileReader(tempJson));
         assertEquals("unexpected number of rows", 1, json.size());
@@ -360,7 +361,7 @@ public class SSTableExportTest
         // Export to JSON and verify
         File tempJson = File.createTempFile("CFWithColumnNameEqualToDefaultKeyAlias", ".json");
         SSTableExport.export(reader, new PrintStream(tempJson.getPath()), new String[0],
-                CFMetaData.sparseCFMetaData(KEYSPACE1, "UUIDKeys", BytesType.instance));
+                CFMetaDataFactory.instance.sparseCFMetaData(KEYSPACE1, "UUIDKeys", BytesType.instance));
 
         JSONArray json = (JSONArray)JSONValue.parseWithException(new FileReader(tempJson));
         assertEquals(1, json.size());
@@ -392,7 +393,7 @@ public class SSTableExportTest
         SSTableExport.export(reader,
                              new PrintStream(tempJson.getPath()),
                              new String[0],
-                             CFMetaData.sparseCFMetaData(KEYSPACE1, "AsciiKeys", BytesType.instance));
+                             CFMetaDataFactory.instance.sparseCFMetaData(KEYSPACE1, "AsciiKeys", BytesType.instance));
 
         JSONArray json = (JSONArray)JSONValue.parseWithException(new FileReader(tempJson));
         assertEquals(1, json.size());

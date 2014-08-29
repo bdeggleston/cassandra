@@ -318,7 +318,7 @@ public final class KSMetaData
         UntypedResultSet results = QueryProcessor.instance.resultify("SELECT * FROM system.schema_columnfamilies", row);
         for (UntypedResultSet.Row result : results)
         {
-            CFMetaData cfm = CFMetaData.fromSchema(result);
+            CFMetaData cfm = CFMetaDataFactory.instance.fromSchema(result);
             cfms.put(cfm.cfName, cfm);
         }
         return cfms;

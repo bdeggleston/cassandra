@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.util.*;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.db.Cell;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.SyntaxException;
@@ -777,7 +778,7 @@ public abstract class AbstractCassandraStorage extends LoadFunc implements Store
         for (CfDef cfDef : ksDef.cf_defs)
         {
             if (cfDef.name.equalsIgnoreCase(cf))
-                return CFMetaData.fromThrift(cfDef);
+                return CFMetaDataFactory.instance.fromThrift(cfDef);
         }
         return null;
     }

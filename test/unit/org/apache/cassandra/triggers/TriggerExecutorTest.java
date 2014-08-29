@@ -19,6 +19,8 @@ package org.apache.cassandra.triggers;
 
 import java.nio.ByteBuffer;
 import java.util.*;
+
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.junit.Test;
 
 import org.apache.cassandra.config.CFMetaData;
@@ -210,7 +212,7 @@ public class TriggerExecutorTest
     private static CFMetaData makeCfMetaData(String ks, String cf, TriggerDefinition trigger)
     {
 
-        CFMetaData metadata = CFMetaData.sparseCFMetaData(ks, cf, CompositeType.getInstance(UTF8Type.instance));
+        CFMetaData metadata = CFMetaDataFactory.instance.sparseCFMetaData(ks, cf, CompositeType.getInstance(UTF8Type.instance));
 
         metadata.keyValidator(UTF8Type.instance);
         metadata.addOrReplaceColumnDefinition(ColumnDefinition.partitionKeyDef(metadata,

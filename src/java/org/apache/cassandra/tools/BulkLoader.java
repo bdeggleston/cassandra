@@ -323,7 +323,7 @@ public class BulkLoader
                                                             columnFamily);
                         CqlResult columnsRes = client.execute_cql3_query(ByteBufferUtil.bytes(columnsQuery), Compression.NONE, ConsistencyLevel.ONE);
 
-                        CFMetaData metadata = CFMetaData.fromThriftCqlRow(row, columnsRes);
+                        CFMetaData metadata = CFMetaDataFactory.instance.fromThriftCqlRow(row, columnsRes);
                         knownCfs.put(metadata.cfName, metadata);
                     }
                     break;

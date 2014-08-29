@@ -22,6 +22,7 @@ import java.util.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -65,11 +66,11 @@ public class QueryPagerTest
         SchemaLoader.createKeyspace(KEYSPACE_CQL,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
-                                    CFMetaData.compile("CREATE TABLE " + CF_CQL + " ("
-                                                     + "k text,"
-                                                     + "c text,"
-                                                     + "v text,"
-                                                     + "PRIMARY KEY (k, c))", KEYSPACE_CQL));
+                                    CFMetaDataFactory.compile("CREATE TABLE " + CF_CQL + " ("
+                                                                      + "k text,"
+                                                                      + "c text,"
+                                                                      + "v text,"
+                                                                      + "PRIMARY KEY (k, c))", KEYSPACE_CQL, QueryProcessor.instance));
         addData();
     }
 

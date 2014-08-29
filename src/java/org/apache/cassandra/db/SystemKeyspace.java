@@ -29,14 +29,11 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.config.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.cache.CachingOptions;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.KSMetaData;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
@@ -94,7 +91,7 @@ public class SystemKeyspace
                                                                   SCHEMA_USER_TYPES_CF,
                                                                   SCHEMA_FUNCTIONS_CF);
 
-    private static volatile Map<UUID, Pair<ReplayPosition, Long>> truncationRecords;
+    private volatile Map<UUID, Pair<ReplayPosition, Long>> truncationRecords;
 
     public enum BootstrapState
     {
@@ -154,7 +151,7 @@ public class SystemKeyspace
 
             logger.debug("Migrating index_interval to min_index_interval");
 
-            CFMetaData table = CFMetaData.fromSchema(row);
+            CFMetaData table = CFMetaDataFactory.instance.fromSchema(row);
             String query = String.format("SELECT writetime(type) FROM system.%s WHERE keyspace_name = ? AND columnfamily_name = ?", SCHEMA_COLUMNFAMILIES_CF);
             long timestamp = QueryProcessor.instance.executeOnceInternal(query, table.ksName, table.cfName).one().getLong("writetime(type)");
             try
@@ -180,7 +177,7 @@ public class SystemKeyspace
             try
             {
                 CachingOptions caching = CachingOptions.fromString(row.getString("caching"));
-                CFMetaData table = CFMetaData.fromSchema(row);
+                CFMetaData table = CFMetaDataFactory.instance.fromSchema(row);
                 logger.info("Migrating caching option {} to {} for {}.{}", row.getString("caching"), caching.toString(), table.ksName, table.cfName);
                 String query = String.format("SELECT writetime(type) FROM system.%s WHERE keyspace_name = ? AND columnfamily_name = ?", SCHEMA_COLUMNFAMILIES_CF);
                 long timestamp = QueryProcessor.instance.executeOnceInternal(query, table.ksName, table.cfName).one().getLong("writetime(type)");

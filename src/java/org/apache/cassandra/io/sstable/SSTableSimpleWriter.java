@@ -20,6 +20,7 @@ package org.apache.cassandra.io.sstable;
 import java.io.File;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.dht.IPartitioner;
@@ -56,7 +57,7 @@ public class SSTableSimpleWriter extends AbstractSSTableSimpleWriter
                                AbstractType<?> comparator,
                                AbstractType<?> subComparator)
     {
-        this(directory, CFMetaData.denseCFMetaData(keyspace, columnFamily, comparator, subComparator), partitioner);
+        this(directory, CFMetaDataFactory.instance.denseCFMetaData(keyspace, columnFamily, comparator, subComparator), partitioner);
     }
 
     public SSTableSimpleWriter(File directory, CFMetaData metadata, IPartitioner partitioner)

@@ -34,6 +34,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.apache.cassandra.auth.IAuthenticator;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.Range;
@@ -221,7 +222,7 @@ implements org.apache.hadoop.mapred.RecordWriter<K, V>
                     {
                         Map<String, CFMetaData> cfs = new HashMap<>(ksDef.cf_defs.size());
                         for (CfDef cfDef : ksDef.cf_defs)
-                            cfs.put(cfDef.name, CFMetaData.fromThrift(cfDef));
+                            cfs.put(cfDef.name, CFMetaDataFactory.instance.fromThrift(cfDef));
                         knownCfs.put(ksDef.name, cfs);
                     }
                     break;

@@ -21,6 +21,7 @@ package org.apache.cassandra.db.marshal;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.fail;
@@ -69,7 +70,7 @@ public class CompositeTypeTest
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
-                                    CFMetaData.denseCFMetaData(KEYSPACE1, CF_STANDARDCOMPOSITE, composite));
+                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_STANDARDCOMPOSITE, composite));
     }
 
     @Test

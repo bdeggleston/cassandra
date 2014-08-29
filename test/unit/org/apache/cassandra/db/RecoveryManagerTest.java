@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.CounterColumnType;
@@ -61,7 +62,7 @@ public class RecoveryManagerTest
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD1),
-                                    CFMetaData.denseCFMetaData(KEYSPACE1, CF_COUNTER1, BytesType.instance).defaultValidator(CounterColumnType.instance));
+                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_COUNTER1, BytesType.instance).defaultValidator(CounterColumnType.instance));
         SchemaLoader.createKeyspace(KEYSPACE2,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),

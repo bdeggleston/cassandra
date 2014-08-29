@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -87,8 +88,8 @@ public class StreamingTransferTest
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD),
-                                    CFMetaData.denseCFMetaData(KEYSPACE1, CF_COUNTER, BytesType.instance).defaultValidator(CounterColumnType.instance),
-                                    CFMetaData.denseCFMetaData(KEYSPACE1, CF_STANDARDINT, IntegerType.instance),
+                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_COUNTER, BytesType.instance).defaultValidator(CounterColumnType.instance),
+                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_STANDARDINT, IntegerType.instance),
                                     SchemaLoader.indexCFMD(KEYSPACE1, CF_INDEX, true));
         SchemaLoader.createKeyspace(KEYSPACE2,
                                     SimpleStrategy.class,
