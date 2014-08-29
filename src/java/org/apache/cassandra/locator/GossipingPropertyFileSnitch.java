@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.Map;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +87,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
                     reloadConfiguration();
                 }
             };
-            ResourceWatcher.watch(SnitchProperties.RACKDC_PROPERTY_FILENAME, runnable, refreshPeriodInSeconds * 1000);
+            ResourceWatcher.watch(SnitchProperties.RACKDC_PROPERTY_FILENAME, runnable, refreshPeriodInSeconds * 1000, StorageServiceExecutors.instance.scheduledTasks);
         }
         catch (ConfigurationException ex)
         {

@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +71,7 @@ public class PropertyFileSnitch extends AbstractNetworkTopologySnitch
                     reloadConfiguration();
                 }
             };
-            ResourceWatcher.watch(SNITCH_PROPERTIES_FILENAME, runnable, 60 * 1000);
+            ResourceWatcher.watch(SNITCH_PROPERTIES_FILENAME, runnable, 60 * 1000, StorageServiceExecutors.instance.scheduledTasks);
         }
         catch (ConfigurationException ex)
         {

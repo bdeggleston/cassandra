@@ -20,6 +20,7 @@ package org.apache.cassandra.utils;
 import java.io.File;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.apache.cassandra.service.StorageServiceExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,9 +29,9 @@ import org.apache.cassandra.service.StorageService;
 
 public class ResourceWatcher
 {
-    public static void watch(String resource, Runnable callback, int period)
+    public static void watch(String resource, Runnable callback, int period, DebuggableScheduledThreadPoolExecutor scheduledTaskExecutor)
     {
-        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(new WatchedResource(resource, callback), period, period, TimeUnit.MILLISECONDS);
+        scheduledTaskExecutor.scheduleWithFixedDelay(new WatchedResource(resource, callback), period, period, TimeUnit.MILLISECONDS);
     }
 
     public static class WatchedResource implements Runnable

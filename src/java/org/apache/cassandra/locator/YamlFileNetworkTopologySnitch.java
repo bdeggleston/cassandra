@@ -32,6 +32,7 @@ import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.gms.VersionedValue;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.ResourceWatcher;
 import org.apache.cassandra.utils.WrappedRunnable;
@@ -124,7 +125,7 @@ public class YamlFileNetworkTopologySnitch
                 }
             };
             ResourceWatcher.watch(topologyConfigFilename, runnable,
-                    CHECK_PERIOD_IN_MS);
+                    CHECK_PERIOD_IN_MS, StorageServiceExecutors.instance.scheduledTasks);
         }
         catch (final ConfigurationException e)
         {
