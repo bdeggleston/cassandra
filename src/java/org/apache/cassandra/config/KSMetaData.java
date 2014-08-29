@@ -20,7 +20,6 @@ package org.apache.cassandra.config;
 import java.util.*;
 
 import com.google.common.base.Objects;
-import com.google.common.collect.ImmutableMap;
 
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
@@ -30,7 +29,6 @@ import org.apache.cassandra.locator.*;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.thrift.CfDef;
 import org.apache.cassandra.thrift.KsDef;
-import org.apache.cassandra.tracing.Tracing;
 
 import static org.apache.cassandra.utils.FBUtilities.*;
 
@@ -65,64 +63,6 @@ public final class KSMetaData
         this.cfMetaData = Collections.unmodifiableMap(cfmap);
         this.durableWrites = durableWrites;
         this.userTypes = userTypes;
-    }
-
-    // For new user created keyspaces (through CQL)
-    public static KSMetaData newKeyspace(String name, String strategyName, Map<String, String> options, boolean durableWrites) throws ConfigurationException
-    {
-        Class<? extends AbstractReplicationStrategy> cls = AbstractReplicationStrategy.getClass(strategyName);
-        if (cls.equals(LocalStrategy.class))
-            throw new ConfigurationException("Unable to use given strategy class: LocalStrategy is reserved for internal use.");
-
-        return newKeyspace(name, cls, options, durableWrites, Collections.<CFMetaData>emptyList());
-    }
-
-    public static KSMetaData newKeyspace(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> options, boolean durablesWrites, Iterable<CFMetaData> cfDefs)
-    {
-        return new KSMetaData(name, strategyClass, options, durablesWrites, cfDefs, new UTMetaData());
-    }
-
-    public static KSMetaData cloneWith(KSMetaData ksm, Iterable<CFMetaData> cfDefs)
-    {
-        return new KSMetaData(ksm.name, ksm.strategyClass, ksm.strategyOptions, ksm.durableWrites, cfDefs, ksm.userTypes);
-    }
-
-    public static KSMetaData systemKeyspace()
-    {
-        List<CFMetaData> cfDefs = Arrays.asList(CFMetaData.BatchlogCf,
-                                                CFMetaData.RangeXfersCf,
-                                                CFMetaData.LocalCf,
-                                                CFMetaData.PeersCf,
-                                                CFMetaData.PeerEventsCf,
-                                                CFMetaData.HintsCf,
-                                                CFMetaData.IndexCf,
-                                                CFMetaData.SchemaKeyspacesCf,
-                                                CFMetaData.SchemaColumnFamiliesCf,
-                                                CFMetaData.SchemaColumnsCf,
-                                                CFMetaData.SchemaTriggersCf,
-                                                CFMetaData.SchemaUserTypesCf,
-                                                CFMetaData.SchemaFunctionsCf,
-                                                CFMetaData.CompactionLogCf,
-                                                CFMetaData.CompactionHistoryCf,
-                                                CFMetaData.PaxosCf,
-                                                CFMetaData.SSTableActivityCF);
-        return new KSMetaData(Keyspace.SYSTEM_KS, LocalStrategy.class, Collections.<String, String>emptyMap(), true, cfDefs);
-    }
-
-    public static KSMetaData traceKeyspace()
-    {
-        List<CFMetaData> cfDefs = Arrays.asList(CFMetaData.TraceSessionsCf, CFMetaData.TraceEventsCf);
-        return new KSMetaData(Tracing.TRACE_KS, SimpleStrategy.class, ImmutableMap.of("replication_factor", "2"), true, cfDefs);
-    }
-
-    public static KSMetaData testMetadata(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> strategyOptions, CFMetaData... cfDefs)
-    {
-        return new KSMetaData(name, strategyClass, strategyOptions, true, Arrays.asList(cfDefs));
-    }
-
-    public static KSMetaData testMetadataNotDurable(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> strategyOptions, CFMetaData... cfDefs)
-    {
-        return new KSMetaData(name, strategyClass, strategyOptions, false, Arrays.asList(cfDefs));
     }
 
     @Override
@@ -228,7 +168,7 @@ public final class KSMetaData
         Row ksDefRow = SystemKeyspace.instance.readSchemaRow(SystemKeyspace.SCHEMA_KEYSPACES_CF, name);
 
         if (ksDefRow.cf == null)
-            throw new RuntimeException(String.format("%s not found in the schema definitions keyspaceName (%s).", name, SystemKeyspace.instance.SCHEMA_KEYSPACES_CF));
+            throw new RuntimeException(String.format("%s not found in the schema definitions keyspaceName (%s).", name, SystemKeyspace.SCHEMA_KEYSPACES_CF));
 
         return fromSchema(ksDefRow, Collections.<CFMetaData>emptyList(), userTypes);
     }
@@ -237,7 +177,7 @@ public final class KSMetaData
     {
         Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(name));
 
-        mutation.delete(SystemKeyspace.instance.SCHEMA_KEYSPACES_CF, timestamp);
+        mutation.delete(SystemKeyspace.SCHEMA_KEYSPACES_CF, timestamp);
         mutation.delete(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF, timestamp);
         mutation.delete(SystemKeyspace.SCHEMA_COLUMNS_CF, timestamp);
         mutation.delete(SystemKeyspace.SCHEMA_TRIGGERS_CF, timestamp);

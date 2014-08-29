@@ -52,7 +52,7 @@ public class TriggersSchemaTest
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass);
         CFMetaData cfm1 = CFMetaDataFactory.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
         cfm1.addTriggerDefinition(td);
-        KSMetaData ksm = KSMetaData.newKeyspace(ksName,
+        KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(ksName,
                                                 SimpleStrategy.class,
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
@@ -68,7 +68,7 @@ public class TriggersSchemaTest
     @Test
     public void addNewCfWithTriggerToKs() throws Exception
     {
-        KSMetaData ksm = KSMetaData.newKeyspace(ksName,
+        KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(ksName,
                                                 SimpleStrategy.class,
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
@@ -91,7 +91,7 @@ public class TriggersSchemaTest
     public void addTriggerToCf() throws Exception
     {
         CFMetaData cfm1 = CFMetaDataFactory.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
-        KSMetaData ksm = KSMetaData.newKeyspace(ksName,
+        KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(ksName,
                                                 SimpleStrategy.class,
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
@@ -115,7 +115,7 @@ public class TriggersSchemaTest
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass);
         CFMetaData cfm1 = CFMetaDataFactory.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
         cfm1.addTriggerDefinition(td);
-        KSMetaData ksm = KSMetaData.newKeyspace(ksName,
+        KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(ksName,
                                                 SimpleStrategy.class,
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,

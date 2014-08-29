@@ -24,14 +24,10 @@ import java.util.*;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
+import org.apache.cassandra.config.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.KSMetaData;
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.config.UTMetaData;
 import org.apache.cassandra.cql3.functions.Functions;
 import org.apache.cassandra.cql3.functions.UDFunction;
 import org.apache.cassandra.db.commitlog.CommitLog;
@@ -448,7 +444,7 @@ public class DefsTables
     {
         assert Schema.instance.getCFMetaData(cfm.ksName, cfm.cfName) == null;
         KSMetaData ksm = Schema.instance.getKSMetaData(cfm.ksName);
-        ksm = KSMetaData.cloneWith(ksm, Iterables.concat(ksm.cfMetaData().values(), Collections.singleton(cfm)));
+        ksm = KSMetaDataFactory.instance.cloneWith(ksm, Iterables.concat(ksm.cfMetaData().values(), Collections.singleton(cfm)));
 
         logger.info("Loading {}", cfm);
 
@@ -494,7 +490,7 @@ public class DefsTables
     {
         KSMetaData oldKsm = Schema.instance.getKSMetaData(newState.name);
         assert oldKsm != null;
-        KSMetaData newKsm = KSMetaData.cloneWith(oldKsm.reloadAttributes(), oldKsm.cfMetaData().values());
+        KSMetaData newKsm = KSMetaDataFactory.instance.cloneWith(oldKsm.reloadAttributes(), oldKsm.cfMetaData().values());
 
         Schema.instance.setKeyspaceDefinition(newKsm);
 
@@ -638,7 +634,7 @@ public class DefsTables
         List<CFMetaData> newCfs = new ArrayList<CFMetaData>(ksm.cfMetaData().values());
         newCfs.remove(toExclude);
         assert newCfs.size() == ksm.cfMetaData().size() - 1;
-        return KSMetaData.cloneWith(ksm, newCfs);
+        return KSMetaDataFactory.instance.cloneWith(ksm, newCfs);
     }
 
     private void flushSchemaCFs()

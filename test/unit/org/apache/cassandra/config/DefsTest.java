@@ -265,7 +265,7 @@ public class DefsTest
         DecoratedKey dk = Util.dk("key0");
         CFMetaData newCf = addTestCF("NewKeyspace1", "AddedStandard1", "A new cf for a new ks");
 
-        KSMetaData newKs = KSMetaData.testMetadata(newCf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(5), newCf);
+        KSMetaData newKs = KSMetaDataFactory.instance.testMetadata(newCf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(5), newCf);
 
         MigrationManager.instance.announceNewKeyspace(newKs);
 
@@ -364,7 +364,7 @@ public class DefsTest
     {
         Assert.assertNull(Schema.instance.getKSMetaData(EMPTYKEYSPACE));
 
-        KSMetaData newKs = KSMetaData.testMetadata(EMPTYKEYSPACE, SimpleStrategy.class, KSMetaData.optsWithRF(5));
+        KSMetaData newKs = KSMetaDataFactory.instance.testMetadata(EMPTYKEYSPACE, SimpleStrategy.class, KSMetaData.optsWithRF(5));
 
         MigrationManager.instance.announceNewKeyspace(newKs);
         Assert.assertNotNull(Schema.instance.getKSMetaData(EMPTYKEYSPACE));
@@ -401,7 +401,7 @@ public class DefsTest
     {
         // create a keyspace to serve as existing.
         CFMetaData cf = addTestCF("UpdatedKeyspace", "AddedStandard1", "A new cf for a new ks");
-        KSMetaData oldKs = KSMetaData.testMetadata(cf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(5), cf);
+        KSMetaData oldKs = KSMetaDataFactory.instance.testMetadata(cf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(5), cf);
 
         MigrationManager.instance.announceNewKeyspace(oldKs);
 
@@ -409,7 +409,7 @@ public class DefsTest
         Assert.assertEquals(Schema.instance.getKSMetaData(cf.ksName), oldKs);
 
         // names should match.
-        KSMetaData newBadKs2 = KSMetaData.testMetadata(cf.ksName + "trash", SimpleStrategy.class, KSMetaData.optsWithRF(4));
+        KSMetaData newBadKs2 = KSMetaDataFactory.instance.testMetadata(cf.ksName + "trash", SimpleStrategy.class, KSMetaData.optsWithRF(4));
         try
         {
             MigrationManager.instance.announceKeyspaceUpdate(newBadKs2);
@@ -420,7 +420,7 @@ public class DefsTest
             // expected.
         }
 
-        KSMetaData newKs = KSMetaData.testMetadata(cf.ksName, OldNetworkTopologyStrategy.class, KSMetaData.optsWithRF(1));
+        KSMetaData newKs = KSMetaDataFactory.instance.testMetadata(cf.ksName, OldNetworkTopologyStrategy.class, KSMetaData.optsWithRF(1));
         MigrationManager.instance.announceKeyspaceUpdate(newKs);
 
         KSMetaData newFetchedKs = Schema.instance.getKSMetaData(newKs.name);
@@ -433,7 +433,7 @@ public class DefsTest
     {
         // create a keyspace with a cf to update.
         CFMetaData cf = addTestCF("UpdatedCfKs", "Standard1added", "A new cf that will be updated");
-        KSMetaData ksm = KSMetaData.testMetadata(cf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(1), cf);
+        KSMetaData ksm = KSMetaDataFactory.instance.testMetadata(cf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(1), cf);
         MigrationManager.instance.announceNewKeyspace(ksm);
 
         Assert.assertNotNull(Schema.instance.getKSMetaData(cf.ksName));

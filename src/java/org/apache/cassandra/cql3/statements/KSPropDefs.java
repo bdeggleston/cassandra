@@ -20,6 +20,7 @@ package org.apache.cassandra.cql3.statements;
 import java.util.*;
 
 import org.apache.cassandra.config.KSMetaData;
+import org.apache.cassandra.config.KSMetaDataFactory;
 import org.apache.cassandra.exceptions.*;
 
 public class KSPropDefs extends PropertyDefinitions
@@ -72,7 +73,7 @@ public class KSPropDefs extends PropertyDefinitions
 
     public KSMetaData asKSMetadata(String ksName) throws RequestValidationException
     {
-        return KSMetaData.newKeyspace(ksName, getReplicationStrategyClass(), getReplicationOptions(), getBoolean(KW_DURABLE_WRITES, true));
+        return KSMetaDataFactory.instance.newKeyspace(ksName, getReplicationStrategyClass(), getReplicationOptions(), getBoolean(KW_DURABLE_WRITES, true));
     }
 
     public KSMetaData asKSMetadataUpdate(KSMetaData old) throws RequestValidationException
@@ -84,6 +85,6 @@ public class KSPropDefs extends PropertyDefinitions
             sClass = old.strategyClass.getName();
             sOptions = old.strategyOptions;
         }
-        return KSMetaData.newKeyspace(old.name, sClass, sOptions, getBoolean(KW_DURABLE_WRITES, old.durableWrites));
+        return KSMetaDataFactory.instance.newKeyspace(old.name, sClass, sOptions, getBoolean(KW_DURABLE_WRITES, old.durableWrites));
     }
 }

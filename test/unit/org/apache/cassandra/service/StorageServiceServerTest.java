@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import org.apache.cassandra.config.KSMetaDataFactory;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -116,7 +117,7 @@ public class StorageServiceServerTest
         configOptions.put("DC2", "1");
 
         Keyspace.clear("Keyspace1");
-        KSMetaData meta = KSMetaData.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
+        KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
         Collection<Range<Token>> primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
@@ -152,7 +153,7 @@ public class StorageServiceServerTest
         configOptions.put("DC2", "2");
 
         Keyspace.clear("Keyspace1");
-        KSMetaData meta = KSMetaData.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
+        KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
         // endpoints in DC1 should not have primary range
@@ -202,7 +203,7 @@ public class StorageServiceServerTest
         configOptions.put("DC2", "2");
 
         Keyspace.clear("Keyspace1");
-        KSMetaData meta = KSMetaData.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
+        KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
         // endpoints in DC1 should not have primary range
@@ -250,7 +251,7 @@ public class StorageServiceServerTest
         configOptions.put("replication_factor", "2");
 
         Keyspace.clear("Keyspace1");
-        KSMetaData meta = KSMetaData.newKeyspace("Keyspace1", "SimpleStrategy", configOptions, false);
+        KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "SimpleStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
         Collection<Range<Token>> primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));

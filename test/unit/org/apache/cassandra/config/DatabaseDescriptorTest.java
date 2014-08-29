@@ -79,8 +79,8 @@ public class DatabaseDescriptorTest
         try
         {
             // add a few.
-            MigrationManager.instance.announceNewKeyspace(KSMetaData.testMetadata("ks0", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
-            MigrationManager.instance.announceNewKeyspace(KSMetaData.testMetadata("ks1", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
+            MigrationManager.instance.announceNewKeyspace(KSMetaDataFactory.instance.testMetadata("ks0", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
+            MigrationManager.instance.announceNewKeyspace(KSMetaDataFactory.instance.testMetadata("ks1", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
 
             assertNotNull(Schema.instance.getKSMetaData("ks0"));
             assertNotNull(Schema.instance.getKSMetaData("ks1"));

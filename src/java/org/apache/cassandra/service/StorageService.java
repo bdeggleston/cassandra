@@ -50,6 +50,7 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.Uninterruptibles;
 
+import org.apache.cassandra.config.*;
 import org.apache.commons.lang3.StringUtils;
 
 import org.slf4j.Logger;
@@ -59,10 +60,6 @@ import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.KSMetaData;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.compaction.CompactionManager;
@@ -825,7 +822,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // if we don't have system_traces keyspace at this point, then create it manually
         if (Schema.instance.getKSMetaData(Tracing.TRACE_KS) == null)
         {
-            KSMetaData tracingKeyspace = KSMetaData.traceKeyspace();
+            KSMetaData tracingKeyspace = KSMetaDataFactory.instance.traceKeyspace();
             MigrationManager.instance.announceNewKeyspace(tracingKeyspace, 0, false);
         }
 
