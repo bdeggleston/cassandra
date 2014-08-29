@@ -2586,7 +2586,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 {
                     try
                     {
-                        Set<InetAddress> neighbors = ActiveRepairService.getNeighbors(keyspace, range, dataCenters, hosts);
+                        Set<InetAddress> neighbors = ActiveRepairService.instance.getNeighbors(keyspace, range, dataCenters, hosts);
                         rangeToNeighbors.put(range, neighbors);
                         allNeighbors.addAll(neighbors);
                     }

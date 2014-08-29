@@ -78,16 +78,7 @@ public class ActiveRepairService
 
     public static final long UNREPAIRED_SSTABLE = 0;
 
-    private static final ThreadPoolExecutor executor;
-    static
-    {
-        executor = new JMXConfigurableThreadPoolExecutor(4,
-                                                         60,
-                                                         TimeUnit.SECONDS,
-                                                         new LinkedBlockingQueue<Runnable>(),
-                                                         new NamedThreadFactory("AntiEntropySessions"),
-                                                         "internal");
-    }
+    private final ThreadPoolExecutor executor;
 
     public static enum Status
     {
@@ -108,6 +99,13 @@ public class ActiveRepairService
     {
         sessions = new ConcurrentHashMap<>();
         parentRepairSessions = new ConcurrentHashMap<>();
+
+        executor = new JMXConfigurableThreadPoolExecutor(4,
+                                                         60,
+                                                         TimeUnit.SECONDS,
+                                                         new LinkedBlockingQueue<Runnable>(),
+                                                         new NamedThreadFactory("AntiEntropySessions"),
+                                                         "internal");
     }
 
     /**
@@ -152,7 +150,7 @@ public class ActiveRepairService
     RepairFuture submitArtificialRepairSession(RepairJobDesc desc)
     {
         Set<InetAddress> neighbours = new HashSet<>();
-        neighbours.addAll(ActiveRepairService.getNeighbors(desc.keyspace, desc.range, null, null));
+        neighbours.addAll(getNeighbors(desc.keyspace, desc.range, null, null));
         RepairSession session = new RepairSession(desc.parentSessionId, desc.sessionId, desc.range, desc.keyspace, false, neighbours, new String[]{desc.columnFamily});
         sessions.put(session.getId(), session);
         RepairFuture futureTask = new RepairFuture(session);
@@ -169,7 +167,7 @@ public class ActiveRepairService
      *
      * @return neighbors with whom we share the provided range
      */
-    public static Set<InetAddress> getNeighbors(String keyspaceName, Range<Token> toRepair, Collection<String> dataCenters, Collection<String> hosts)
+    public Set<InetAddress> getNeighbors(String keyspaceName, Range<Token> toRepair, Collection<String> dataCenters, Collection<String> hosts)
     {
         StorageService ss = StorageService.instance;
         Map<Range<Token>, List<InetAddress>> replicaSets = ss.getRangeToAddressMap(keyspaceName);
