@@ -84,7 +84,7 @@ public class BlacklistingCompactionsTest
     public void testBlacklisting(String compactionStrategy) throws Exception
     {
         // this test does enough rows to force multiple block indexes to be used
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         final ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Standard1");
 
         final int ROWS_PER_SSTABLE = 10;

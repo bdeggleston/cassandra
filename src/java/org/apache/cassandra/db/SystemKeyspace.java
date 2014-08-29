@@ -264,7 +264,7 @@ public class SystemKeyspace
 
     public void discardCompactionsInProgress()
     {
-        ColumnFamilyStore compactionLog = Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(COMPACTION_LOG);
+        ColumnFamilyStore compactionLog = KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(COMPACTION_LOG);
         compactionLog.truncateBlocking();
     }
 
@@ -471,7 +471,7 @@ public class SystemKeyspace
     public void forceBlockingFlush(String cfname)
     {
         if (!Boolean.getBoolean("cassandra.unsafesystem"))
-            FBUtilities.waitOnFuture(Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(cfname).forceFlush());
+            FBUtilities.waitOnFuture(KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(cfname).forceFlush());
     }
 
     /**
@@ -550,7 +550,7 @@ public class SystemKeyspace
         Keyspace keyspace;
         try
         {
-            keyspace = Keyspace.open(Keyspace.SYSTEM_KS);
+            keyspace = KeyspaceManager.instance.open(Keyspace.SYSTEM_KS);
         }
         catch (AssertionError err)
         {
@@ -657,7 +657,7 @@ public class SystemKeyspace
 
     public boolean isIndexBuilt(String keyspaceName, String indexName)
     {
-        ColumnFamilyStore cfs = Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(INDEX_CF);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(INDEX_CF);
         QueryFilter filter = QueryFilter.getNamesFilter(decorate(ByteBufferUtil.bytes(keyspaceName)),
                                                         INDEX_CF,
                                                         FBUtilities.singleton(cfs.getComparator().makeCellName(indexName), cfs.getComparator()),
@@ -714,7 +714,7 @@ public class SystemKeyspace
      */
     public ColumnFamilyStore schemaCFS(String cfName)
     {
-        return Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(cfName);
+        return KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(cfName);
     }
 
     public List<Row> serializedSchema()

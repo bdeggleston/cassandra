@@ -117,7 +117,7 @@ public class QueryPagerTest
 
     private static ColumnFamilyStore cfs()
     {
-        return Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD);
+        return KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD);
     }
 
     private static String toString(List<Row> rows)
@@ -360,7 +360,7 @@ public class QueryPagerTest
         // Testing for the bug of #6748
         String keyspace = "cql_keyspace";
         String table = "table2";
-        ColumnFamilyStore cfs = Keyspace.open(keyspace).getColumnFamilyStore(table);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(keyspace).getColumnFamilyStore(table);
         CompositeType ct = (CompositeType)cfs.metadata.comparator.asAbstractType();
 
         // Insert rows but with a tombstone as last cell

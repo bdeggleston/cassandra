@@ -268,7 +268,7 @@ public class StorageProxy implements StorageProxyMBean
             // continue to retry
         }
 
-        throw new WriteTimeoutException(WriteType.CAS, consistencyForPaxos, 0, consistencyForPaxos.blockFor(Keyspace.open(keyspaceName)));
+        throw new WriteTimeoutException(WriteType.CAS, consistencyForPaxos, 0, consistencyForPaxos.blockFor(KeyspaceManager.instance.open(keyspaceName)));
     }
 
     private Predicate<InetAddress> sameDCPredicateFor(final String dc)
@@ -375,7 +375,7 @@ public class StorageProxy implements StorageProxyMBean
             return ballot;
         }
 
-        throw new WriteTimeoutException(WriteType.CAS, consistencyForPaxos, 0, consistencyForPaxos.blockFor(Keyspace.open(metadata.ksName)));
+        throw new WriteTimeoutException(WriteType.CAS, consistencyForPaxos, 0, consistencyForPaxos.blockFor(KeyspaceManager.instance.open(metadata.ksName)));
     }
 
     /**
@@ -421,7 +421,7 @@ public class StorageProxy implements StorageProxyMBean
     private void commitPaxos(Commit proposal, ConsistencyLevel consistencyLevel) throws WriteTimeoutException
     {
         boolean shouldBlock = consistencyLevel != ConsistencyLevel.ANY;
-        Keyspace keyspace = Keyspace.open(proposal.update.metadata().ksName);
+        Keyspace keyspace = KeyspaceManager.instance.open(proposal.update.metadata().ksName);
 
         Token tk = StorageService.instance.getPartitioner().getToken(proposal.key);
         List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspace.getName(), tk);
@@ -623,7 +623,7 @@ public class StorageProxy implements StorageProxyMBean
         AbstractWriteResponseHandler handler = new WriteResponseHandler(endpoints,
                                                                         Collections.<InetAddress>emptyList(),
                                                                         ConsistencyLevel.ONE,
-                                                                        Keyspace.open(Keyspace.SYSTEM_KS),
+                                                                        KeyspaceManager.instance.open(Keyspace.SYSTEM_KS),
                                                                         null,
                                                                         WriteType.BATCH_LOG);
 
@@ -658,7 +658,7 @@ public class StorageProxy implements StorageProxyMBean
         AbstractWriteResponseHandler handler = new WriteResponseHandler(endpoints,
                                                                         Collections.<InetAddress>emptyList(),
                                                                         ConsistencyLevel.ANY,
-                                                                        Keyspace.open(Keyspace.SYSTEM_KS),
+                                                                        KeyspaceManager.instance.open(Keyspace.SYSTEM_KS),
                                                                         null,
                                                                         WriteType.SIMPLE);
         Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(uuid));
@@ -709,7 +709,7 @@ public class StorageProxy implements StorageProxyMBean
     throws UnavailableException, OverloadedException
     {
         String keyspaceName = mutation.getKeyspaceName();
-        AbstractReplicationStrategy rs = Keyspace.open(keyspaceName).getReplicationStrategy();
+        AbstractReplicationStrategy rs = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
 
         Token tk = StorageService.instance.getPartitioner().getToken(mutation.key());
         List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
@@ -727,7 +727,7 @@ public class StorageProxy implements StorageProxyMBean
     // same as above except does not initiate writes (but does perform availability checks).
     private WriteResponseHandlerWrapper wrapResponseHandler(Mutation mutation, ConsistencyLevel consistency_level, WriteType writeType)
     {
-        AbstractReplicationStrategy rs = Keyspace.open(mutation.getKeyspaceName()).getReplicationStrategy();
+        AbstractReplicationStrategy rs = KeyspaceManager.instance.open(mutation.getKeyspaceName()).getReplicationStrategy();
         String keyspaceName = mutation.getKeyspaceName();
         Token tk = StorageService.instance.getPartitioner().getToken(mutation.key());
         List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
@@ -1007,7 +1007,7 @@ public class StorageProxy implements StorageProxyMBean
         {
             // Exit now if we can't fulfill the CL here instead of forwarding to the leader replica
             String keyspaceName = cm.getKeyspaceName();
-            AbstractReplicationStrategy rs = Keyspace.open(keyspaceName).getReplicationStrategy();
+            AbstractReplicationStrategy rs = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
             Token tk = StorageService.instance.getPartitioner().getToken(cm.key());
             List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
             Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspaceName);
@@ -1035,7 +1035,7 @@ public class StorageProxy implements StorageProxyMBean
      */
     private InetAddress findSuitableEndpoint(String keyspaceName, ByteBuffer key, String localDataCenter, ConsistencyLevel cl) throws UnavailableException
     {
-        Keyspace keyspace = Keyspace.open(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
         List<InetAddress> endpoints = StorageService.instance.getLiveNaturalEndpoints(keyspace, key);
         if (endpoints.isEmpty())
@@ -1151,7 +1151,7 @@ public class StorageProxy implements StorageProxyMBean
                 }
                 catch (WriteTimeoutException e)
                 {
-                    throw new ReadTimeoutException(consistency_level, 0, consistency_level.blockFor(Keyspace.open(command.ksName)), false);
+                    throw new ReadTimeoutException(consistency_level, 0, consistency_level.blockFor(KeyspaceManager.instance.open(command.ksName)), false);
                 }
 
                 rows = fetchRows(commands, consistencyForCommitOrFetch);
@@ -1179,7 +1179,7 @@ public class StorageProxy implements StorageProxyMBean
             readMetrics.addNano(latency);
             // TODO avoid giving every command the same latency number.  Can fix this in CASSADRA-5329
             for (ReadCommand command : commands)
-                Keyspace.open(command.ksName).getColumnFamilyStore(command.cfName).metric.coordinatorReadLatency.update(latency, TimeUnit.NANOSECONDS);
+                KeyspaceManager.instance.open(command.ksName).getColumnFamilyStore(command.cfName).metric.coordinatorReadLatency.update(latency, TimeUnit.NANOSECONDS);
         }
         return rows;
     }
@@ -1244,7 +1244,7 @@ public class StorageProxy implements StorageProxyMBean
                 }
                 catch (ReadTimeoutException ex)
                 {
-                    int blockFor = consistencyLevel.blockFor(Keyspace.open(exec.command.getKeyspace()));
+                    int blockFor = consistencyLevel.blockFor(KeyspaceManager.instance.open(exec.command.getKeyspace()));
                     int responseCount = exec.handler.getReceivedCount();
                     String gotData = responseCount > 0
                                    ? exec.resolver.isDataPresent() ? " (including data)" : " (only digests)"
@@ -1273,7 +1273,7 @@ public class StorageProxy implements StorageProxyMBean
                                                                                        ConsistencyLevel.ALL,
                                                                                        exec.getContactedReplicas().size(),
                                                                                        exec.command,
-                                                                                       Keyspace.open(exec.command.getKeyspace()),
+                                                                                       KeyspaceManager.instance.open(exec.command.getKeyspace()),
                                                                                        exec.handler.endpoints);
 
                     if (repairCommands == null)
@@ -1323,7 +1323,7 @@ public class StorageProxy implements StorageProxyMBean
                     catch (TimeoutException e)
                     {
                         Tracing.instance.trace("Timed out on digest mismatch retries");
-                        int blockFor = consistencyLevel.blockFor(Keyspace.open(command.getKeyspace()));
+                        int blockFor = consistencyLevel.blockFor(KeyspaceManager.instance.open(command.getKeyspace()));
                         throw new ReadTimeoutException(consistencyLevel, blockFor-1, blockFor, true);
                     }
 
@@ -1365,7 +1365,7 @@ public class StorageProxy implements StorageProxyMBean
 
         protected void runMayThrow()
         {
-            Keyspace keyspace = Keyspace.open(command.ksName);
+            Keyspace keyspace = KeyspaceManager.instance.open(command.ksName);
             Row r = command.getRow(keyspace);
             ReadResponse result = ReadVerbHandler.getResponse(command, r);
             MessagingService.instance.addLatency(DatabaseDescriptor.instance.getBroadcastAddress(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
@@ -1479,7 +1479,7 @@ public class StorageProxy implements StorageProxyMBean
         Tracing.instance.trace("Computing ranges to query");
         long startTime = System.nanoTime();
 
-        Keyspace keyspace = Keyspace.open(command.keyspace);
+        Keyspace keyspace = KeyspaceManager.instance.open(command.keyspace);
         List<Row> rows;
         // now scan until we have enough results
         try
@@ -1691,7 +1691,7 @@ public class StorageProxy implements StorageProxyMBean
         {
             long latency = System.nanoTime() - startTime;
             rangeMetrics.addNano(latency);
-            Keyspace.open(command.keyspace).getColumnFamilyStore(command.columnFamily).metric.coordinatorScanLatency.update(latency, TimeUnit.NANOSECONDS);
+            KeyspaceManager.instance.open(command.keyspace).getColumnFamilyStore(command.columnFamily).metric.coordinatorScanLatency.update(latency, TimeUnit.NANOSECONDS);
         }
         return trim(command, rows);
     }

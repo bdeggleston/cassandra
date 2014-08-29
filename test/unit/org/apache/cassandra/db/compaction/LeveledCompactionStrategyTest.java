@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -37,10 +38,6 @@ import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.KSMetaData;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
@@ -80,7 +77,7 @@ public class LeveledCompactionStrategyTest
     @Before
     public void enableCompaction()
     {
-        keyspace = Keyspace.open(KEYSPACE1);
+        keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         cfs = keyspace.getColumnFamilyStore(CF_STANDARDDLEVELED);
         cfs.enableAutoCompaction();
     }

@@ -63,7 +63,7 @@ public class OneCompactionTest
     {
         CompactionManager.instance.disableAutoCompaction();
 
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(columnFamilyName);
 
         Set<DecoratedKey> inserted = new HashSet<DecoratedKey>();

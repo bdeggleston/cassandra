@@ -106,7 +106,7 @@ public class SSTableScannerTest
     @Test
     public void testSingleDataRange()
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(TABLE);
         store.clearUnsafe();
 
@@ -169,7 +169,7 @@ public class SSTableScannerTest
     @Test
     public void testMultipleRanges()
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(TABLE);
         store.clearUnsafe();
 
@@ -301,7 +301,7 @@ public class SSTableScannerTest
     @Test
     public void testSingleKeyMultipleRanges()
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(TABLE);
         store.clearUnsafe();
 

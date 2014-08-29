@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.service.StorageServiceExecutors;
 import org.junit.AfterClass;
 import org.junit.After;
@@ -139,7 +140,7 @@ public abstract class CQLTester
         try
         {
             if (currentTable != null)
-                Keyspace.open(KEYSPACE).getColumnFamilyStore(currentTable).forceFlush().get();
+                KeyspaceManager.instance.open(KEYSPACE).getColumnFamilyStore(currentTable).forceFlush().get();
         }
         catch (InterruptedException e)
         {

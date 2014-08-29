@@ -28,6 +28,7 @@ import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.utils.FBUtilities;
@@ -103,7 +104,7 @@ public class StreamReceiveTask extends StreamTask
         public void run()
         {
             Pair<String, String> kscf = Schema.instance.getCF(task.cfId);
-            ColumnFamilyStore cfs = Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
+            ColumnFamilyStore cfs = KeyspaceManager.instance.open(kscf.left).getColumnFamilyStore(kscf.right);
 
             StreamLockfile lockfile = new StreamLockfile(cfs.directories.getWriteableLocationAsFile(), UUID.randomUUID());
             lockfile.create(task.sstables);

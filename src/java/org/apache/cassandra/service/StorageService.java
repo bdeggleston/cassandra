@@ -565,7 +565,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 StorageProxy.instance.instance.verifyNoHintsInProgress();
 
                 List<Future<?>> flushes = new ArrayList<>();
-                for (Keyspace keyspace : Keyspace.all())
+                for (Keyspace keyspace : KeyspaceManager.instance.all())
                 {
                     KSMetaData ksm = Schema.instance.getKSMetaData(keyspace.getName());
                     if (!ksm.durableWrites)
@@ -1195,7 +1195,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (!Schema.instance.getKeyspaces().contains(keyspace))
             throw new InvalidRequestException("No such keyspace: " + keyspace);
 
-        if (keyspace == null || Keyspace.open(keyspace).getReplicationStrategy() instanceof LocalStrategy)
+        if (keyspace == null || KeyspaceManager.instance.open(keyspace).getReplicationStrategy() instanceof LocalStrategy)
             throw new InvalidRequestException("There is no ring for the keyspace: " + keyspace);
 
         List<TokenRange> ranges = new ArrayList<>();
@@ -1275,7 +1275,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         Map<Range<Token>, List<InetAddress>> rangeToEndpointMap = new HashMap<>();
         for (Range<Token> range : ranges)
         {
-            rangeToEndpointMap.put(range, Keyspace.open(keyspace).getReplicationStrategy().getNaturalEndpoints(range.right));
+            rangeToEndpointMap.put(range, KeyspaceManager.instance.open(keyspace).getReplicationStrategy().getNaturalEndpoints(range.right));
         }
         return rangeToEndpointMap;
     }
@@ -1790,7 +1790,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private Multimap<InetAddress, Range<Token>> getNewSourceRanges(String keyspaceName, Set<Range<Token>> ranges)
     {
         InetAddress myAddress = DatabaseDescriptor.instance.getBroadcastAddress();
-        Multimap<Range<Token>, InetAddress> rangeAddresses = Keyspace.open(keyspaceName).getReplicationStrategy().getRangeAddresses(tokenMetadata.cloneOnlyTokenMap());
+        Multimap<Range<Token>, InetAddress> rangeAddresses = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getRangeAddresses(tokenMetadata.cloneOnlyTokenMap());
         Multimap<InetAddress, Range<Token>> sourceRanges = HashMultimap.create();
         IFailureDetector failureDetector = FailureDetector.instance;
 
@@ -1917,7 +1917,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // Find (for each range) all nodes that store replicas for these ranges as well
         TokenMetadata metadata = tokenMetadata.cloneOnlyTokenMap(); // don't do this in the loop! #7758
         for (Range<Token> range : ranges)
-            currentReplicaEndpoints.put(range, Keyspace.open(keyspaceName).getReplicationStrategy().calculateNaturalEndpoints(range.right, metadata));
+            currentReplicaEndpoints.put(range, KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().calculateNaturalEndpoints(range.right, metadata));
 
         TokenMetadata temp = tokenMetadata.cloneAfterAllLeft();
 
@@ -1935,7 +1935,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // range.
         for (Range<Token> range : ranges)
         {
-            Collection<InetAddress> newReplicaEndpoints = Keyspace.open(keyspaceName).getReplicationStrategy().calculateNaturalEndpoints(range.right, temp);
+            Collection<InetAddress> newReplicaEndpoints = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().calculateNaturalEndpoints(range.right, temp);
             newReplicaEndpoints.removeAll(currentReplicaEndpoints.get(range));
             if (logger.isDebugEnabled())
                 if (newReplicaEndpoints.isEmpty())
@@ -2201,7 +2201,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         Iterable<Keyspace> keyspaces;
         if (keyspaceNames.length == 0)
         {
-            keyspaces = Keyspace.all();
+            keyspaces = KeyspaceManager.instance.all();
         }
         else
         {
@@ -2256,7 +2256,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             throw new IOException("Keyspace " + keyspaceName + " does not exist");
         }
-        return Keyspace.open(keyspaceName);
+        return KeyspaceManager.instance.open(keyspaceName);
     }
 
     /**
@@ -2290,7 +2290,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public Map<String, TabularData> getSnapshotDetails()
     {
         Map<String, TabularData> snapshotMap = new HashMap<>();
-        for (Keyspace keyspace : Keyspace.all())
+        for (Keyspace keyspace : KeyspaceManager.instance.all())
         {
             if (Keyspace.SYSTEM_KS.equals(keyspace.getName()))
                 continue;
@@ -2316,7 +2316,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public long trueSnapshotsSize()
     {
         long total = 0;
-        for (Keyspace keyspace : Keyspace.all())
+        for (Keyspace keyspace : KeyspaceManager.instance.all())
         {
             if (Keyspace.SYSTEM_KS.equals(keyspace.getName()))
                 continue;
@@ -2699,7 +2699,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     public Collection<Range<Token>> getPrimaryRangesForEndpoint(String keyspace, InetAddress ep)
     {
-        AbstractReplicationStrategy strategy = Keyspace.open(keyspace).getReplicationStrategy();
+        AbstractReplicationStrategy strategy = KeyspaceManager.instance.open(keyspace).getReplicationStrategy();
         Collection<Range<Token>> primaryRanges = new HashSet<>();
         TokenMetadata metadata = tokenMetadata.cloneOnlyTokenMap();
         for (Token token : metadata.sortedTokens())
@@ -2735,7 +2735,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     Collection<Range<Token>> getRangesForEndpoint(String keyspaceName, InetAddress ep)
     {
-        return Keyspace.open(keyspaceName).getReplicationStrategy().getAddressRanges().get(ep);
+        return KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getAddressRanges().get(ep);
     }
 
     /**
@@ -2794,7 +2794,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     public List<InetAddress> getNaturalEndpoints(String keyspaceName, RingPosition pos)
     {
-        return Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalEndpoints(pos);
+        return KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getNaturalEndpoints(pos);
     }
 
     /**
@@ -2876,7 +2876,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     public List<Pair<Range<Token>, Long>> getSplits(String keyspaceName, String cfName, Range<Token> range, int keysPerSplit)
     {
-        Keyspace t = Keyspace.open(keyspaceName);
+        Keyspace t = KeyspaceManager.instance.open(keyspaceName);
         ColumnFamilyStore cfs = t.getColumnFamilyStore(cfName);
         List<DecoratedKey> keys = keySamples(Collections.singleton(cfs), range);
 
@@ -3022,7 +3022,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private Future<StreamState> streamHints()
     {
         // StreamPlan will not fail if there are zero files to transfer, so flush anyway (need to get any in-memory hints, as well)
-        ColumnFamilyStore hintsCF = Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF);
+        ColumnFamilyStore hintsCF = KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF);
         FBUtilities.waitOnFuture(hintsCF.forceFlush());
 
         // gather all live nodes in the cluster that aren't also leaving
@@ -3160,7 +3160,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 for (Token newToken : newTokens)
                 {
                     // replication strategy of the current keyspace (aka table)
-                    AbstractReplicationStrategy strategy = Keyspace.open(keyspace).getReplicationStrategy();
+                    AbstractReplicationStrategy strategy = KeyspaceManager.instance.open(keyspace).getReplicationStrategy();
 
                     // getting collection of the currently used ranges by this keyspace
                     Collection<Range<Token>> currentRanges = getRangesForEndpoint(keyspace, localAddress);
@@ -3355,7 +3355,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
         {
             // if the replication factor is 1 the data is lost so we shouldn't wait for confirmation
-            if (Keyspace.open(keyspaceName).getReplicationStrategy().getReplicationFactor() == 1)
+            if (KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor() == 1)
                 continue;
 
             // get all ranges that change ownership (that is, a node needs
@@ -3481,12 +3481,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         setMode(Mode.DRAINING, "flushing column families", false);
         // count CFs first, since forceFlush could block for the flushWriter to get a queue slot empty
         totalCFs = 0;
-        for (Keyspace keyspace : Keyspace.nonSystem())
+        for (Keyspace keyspace : KeyspaceManager.instance.nonSystem())
             totalCFs += keyspace.getColumnFamilyStores().size();
         remainingCFs = totalCFs;
         // flush
         List<Future<?>> flushes = new ArrayList<>();
-        for (Keyspace keyspace : Keyspace.nonSystem())
+        for (Keyspace keyspace : KeyspaceManager.instance.nonSystem())
         {
             for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
                 flushes.add(cfs.forceFlush());
@@ -3502,7 +3502,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // flush the system ones after all the rest are done, just in case flushing modifies any system state
         // like CASSANDRA-5151. don't bother with progress tracking since system data is tiny.
         flushes.clear();
-        for (Keyspace keyspace : Keyspace.system())
+        for (Keyspace keyspace : KeyspaceManager.instance.system())
         {
             for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
                 flushes.add(cfs.forceFlush());
@@ -3674,7 +3674,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         DatabaseDescriptor.instance.setEndpointSnitch(newSnitch);
         for (String ks : Schema.instance.getKeyspaces())
         {
-            Keyspace.open(ks).getReplicationStrategy().snitch = newSnitch;
+            KeyspaceManager.instance.open(ks).getReplicationStrategy().snitch = newSnitch;
         }
 
         if (oldSnitch instanceof DynamicEndpointSnitch)
@@ -3866,7 +3866,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public List<String> sampleKeyRange() // do not rename to getter - see CASSANDRA-4452 for details
     {
         List<DecoratedKey> keys = new ArrayList<>();
-        for (Keyspace keyspace : Keyspace.nonSystem())
+        for (Keyspace keyspace : KeyspaceManager.instance.nonSystem())
         {
             for (Range<Token> range : getPrimaryRangesForEndpoint(keyspace.getName(), DatabaseDescriptor.instance.getBroadcastAddress()))
                 keys.addAll(keySamples(keyspace.getColumnFamilyStores(), range));

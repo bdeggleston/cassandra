@@ -75,7 +75,7 @@ public class RowCacheTest
     {
         CompactionManager.instance.disableAutoCompaction();
 
-        Keyspace keyspace = Keyspace.open(KEYSPACE_CACHED);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE_CACHED);
         ColumnFamilyStore cachedStore  = keyspace.getColumnFamilyStore(CF_CACHED);
 
         // empty the row cache
@@ -155,7 +155,7 @@ public class RowCacheTest
         CacheService.instance.setRowCacheCapacityInMB(1);
         rowCacheLoad(100, Integer.MAX_VALUE, 1000);
 
-        ColumnFamilyStore store = Keyspace.open(KEYSPACE_CACHED).getColumnFamilyStore(CF_CACHED);
+        ColumnFamilyStore store = KeyspaceManager.instance.open(KEYSPACE_CACHED).getColumnFamilyStore(CF_CACHED);
         assertEquals(CacheService.instance.rowCache.getKeySet().size(), 100);
         store.cleanupCache();
         assertEquals(CacheService.instance.rowCache.getKeySet().size(), 100);
@@ -182,7 +182,7 @@ public class RowCacheTest
     {
         CompactionManager.instance.disableAutoCompaction();
 
-        Keyspace keyspace = Keyspace.open(KEYSPACE_CACHED);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE_CACHED);
         String cf = "CachedIntCF";
         ColumnFamilyStore cachedStore  = keyspace.getColumnFamilyStore(cf);
         long startRowCacheHits = cachedStore.metric.rowCacheHit.count();
@@ -255,7 +255,7 @@ public class RowCacheTest
     {
         CompactionManager.instance.disableAutoCompaction();
 
-        ColumnFamilyStore store = Keyspace.open(KEYSPACE_CACHED).getColumnFamilyStore(CF_CACHED);
+        ColumnFamilyStore store = KeyspaceManager.instance.open(KEYSPACE_CACHED).getColumnFamilyStore(CF_CACHED);
 
         // empty the cache
         CacheService.instance.invalidateRowCache();

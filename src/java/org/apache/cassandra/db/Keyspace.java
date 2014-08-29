@@ -64,7 +64,7 @@ public class Keyspace
 
     public final KeyspaceMetrics metric;
 
-    // It is possible to call Keyspace.open without a running daemon, so it makes sense to ensure
+    // It is possible to call KeyspaceManager.instance.open without a running daemon, so it makes sense to ensure
     // proper directories here as well as in CassandraDaemon.
     static
     {
@@ -78,58 +78,6 @@ public class Keyspace
     /* ColumnFamilyStore per column family */
     private final ConcurrentMap<UUID, ColumnFamilyStore> columnFamilyStores = new ConcurrentHashMap<UUID, ColumnFamilyStore>();
     private volatile AbstractReplicationStrategy replicationStrategy;
-
-    public static final Function<String,Keyspace> keyspaceTransformer = new Function<String, Keyspace>()
-    {
-        public Keyspace apply(String keyspaceName)
-        {
-            return Keyspace.open(keyspaceName);
-        }
-    };
-
-    private static volatile boolean initialized = false;
-    public static void setInitialized()
-    {
-        initialized = true;
-    }
-
-    public static Keyspace open(String keyspaceName)
-    {
-        assert initialized || keyspaceName.equals(SYSTEM_KS);
-        return open(keyspaceName, Schema.instance, true);
-    }
-
-    // to only be used by org.apache.cassandra.tools.Standalone* classes
-    public static Keyspace openWithoutSSTables(String keyspaceName)
-    {
-        return open(keyspaceName, Schema.instance, false);
-    }
-
-    private static Keyspace open(String keyspaceName, Schema schema, boolean loadSSTables)
-    {
-        Keyspace keyspaceInstance = schema.getKeyspaceInstance(keyspaceName);
-
-        if (keyspaceInstance == null)
-        {
-            // instantiate the Keyspace.  we could use putIfAbsent but it's important to making sure it is only done once
-            // per keyspace, so we synchronize and re-check before doing it.
-            synchronized (Keyspace.class)
-            {
-                keyspaceInstance = schema.getKeyspaceInstance(keyspaceName);
-                if (keyspaceInstance == null)
-                {
-                    // open and store the keyspace
-                    keyspaceInstance = new Keyspace(keyspaceName, loadSSTables);
-                    schema.storeKeyspaceInstance(keyspaceInstance);
-
-                    // keyspace has to be constructed and in the cache before cacheRow can be called
-                    for (ColumnFamilyStore cfs : keyspaceInstance.getColumnFamilyStores())
-                        cfs.initRowCache();
-                }
-            }
-        }
-        return keyspaceInstance;
-    }
 
     public static Keyspace clear(String keyspaceName)
     {
@@ -148,22 +96,6 @@ public class Keyspace
                 t.metric.release();
             }
             return t;
-        }
-    }
-
-    /**
-     * Removes every SSTable in the directory from the appropriate DataTracker's view.
-     * @param directory the unreadable directory, possibly with SSTables in it, but not necessarily.
-     */
-    public static void removeUnreadableSSTables(File directory)
-    {
-        for (Keyspace keyspace : Keyspace.all())
-        {
-            for (ColumnFamilyStore baseCfs : keyspace.getColumnFamilyStores())
-            {
-                for (ColumnFamilyStore cfs : baseCfs.concatWithIndexes())
-                    cfs.maybeRemoveUnreadableSSTables(directory);
-            }
         }
     }
 
@@ -267,7 +199,7 @@ public class Keyspace
         return list;
     }
 
-    private Keyspace(String keyspaceName, boolean loadSSTables)
+    Keyspace(String keyspaceName, boolean loadSSTables)
     {
         metadata = Schema.instance.getKSMetaData(keyspaceName);
         assert metadata != null : "Unknown keyspace " + keyspaceName;
@@ -430,21 +362,6 @@ public class Keyspace
         for (UUID cfId : columnFamilyStores.keySet())
             futures.add(columnFamilyStores.get(cfId).forceFlush());
         return futures;
-    }
-
-    public static Iterable<Keyspace> all()
-    {
-        return Iterables.transform(Schema.instance.getKeyspaces(), keyspaceTransformer);
-    }
-
-    public static Iterable<Keyspace> nonSystem()
-    {
-        return Iterables.transform(Schema.instance.getNonSystemKeyspaces(), keyspaceTransformer);
-    }
-
-    public static Iterable<Keyspace> system()
-    {
-        return Iterables.transform(Schema.systemKeyspaceNames, keyspaceTransformer);
     }
 
     @Override

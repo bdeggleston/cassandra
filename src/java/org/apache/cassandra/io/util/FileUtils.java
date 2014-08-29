@@ -33,6 +33,7 @@ import java.nio.file.StandardCopyOption;
 import java.text.DecimalFormat;
 import java.util.Arrays;
 
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.service.StorageServiceExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -400,7 +401,7 @@ public class FileUtils
                 {
                     File directory = BlacklistedDirectories.maybeMarkUnreadable(e.path);
                     if (directory != null)
-                        Keyspace.removeUnreadableSSTables(directory);
+                        KeyspaceManager.instance.removeUnreadableSSTables(directory);
                 }
                 break;
             case ignore:

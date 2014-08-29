@@ -439,7 +439,7 @@ public class DefsTables
 
         if (!StorageService.instance.isClientMode())
         {
-            Keyspace.open(ksm.name);
+            KeyspaceManager.instance.open(ksm.name);
             MigrationManager.instance.notifyCreateKeyspace(ksm);
         }
     }
@@ -456,13 +456,13 @@ public class DefsTables
 
         // make sure it's init-ed w/ the old definitions first,
         // since we're going to call initCf on the new one manually
-        Keyspace.open(cfm.ksName);
+        KeyspaceManager.instance.open(cfm.ksName);
 
         Schema.instance.setKeyspaceDefinition(ksm);
 
         if (!StorageService.instance.isClientMode())
         {
-            Keyspace.open(ksm.name).initCf(cfm.cfId, cfm.cfName, true);
+            KeyspaceManager.instance.open(ksm.name).initCf(cfm.cfId, cfm.cfName, true);
             MigrationManager.instance.notifyCreateColumnFamily(cfm);
         }
     }
@@ -500,7 +500,7 @@ public class DefsTables
 
         if (!StorageService.instance.isClientMode())
         {
-            Keyspace.open(newState.name).createReplicationStrategy(newKsm);
+            KeyspaceManager.instance.open(newState.name).createReplicationStrategy(newKsm);
             MigrationManager.instance.notifyUpdateKeyspace(newKsm);
         }
     }
@@ -513,7 +513,7 @@ public class DefsTables
 
         if (!StorageService.instance.isClientMode())
         {
-            Keyspace keyspace = Keyspace.open(cfm.ksName);
+            Keyspace keyspace = KeyspaceManager.instance.open(cfm.ksName);
             keyspace.getColumnFamilyStore(cfm.cfName).reload();
             MigrationManager.instance.notifyUpdateColumnFamily(cfm);
         }
@@ -549,7 +549,7 @@ public class DefsTables
 
         CompactionManager.instance.interruptCompactionFor(ksm.cfMetaData().values(), true);
 
-        Keyspace keyspace = Keyspace.open(ksm.name);
+        Keyspace keyspace = KeyspaceManager.instance.open(ksm.name);
 
         // remove all cfs from the keyspace instance.
         List<UUID> droppedCfs = new ArrayList<>();
@@ -563,7 +563,7 @@ public class DefsTables
             {
                 if (DatabaseDescriptor.instance.isAutoSnapshot())
                     cfs.snapshot(snapshotName);
-                Keyspace.open(ksm.name).dropCf(cfm.cfId);
+                KeyspaceManager.instance.open(ksm.name).dropCf(cfm.cfId);
             }
 
             droppedCfs.add(cfm.cfId);
@@ -588,7 +588,7 @@ public class DefsTables
     {
         KSMetaData ksm = Schema.instance.getKSMetaData(ksName);
         assert ksm != null;
-        ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(ksName).getColumnFamilyStore(cfName);
         assert cfs != null;
 
         // reinitialize the keyspace.
@@ -603,7 +603,7 @@ public class DefsTables
         {
             if (DatabaseDescriptor.instance.isAutoSnapshot())
                 cfs.snapshot(Keyspace.getTimestampedSnapshotName(cfs.name));
-            Keyspace.open(ksm.name).dropCf(cfm.cfId);
+            KeyspaceManager.instance.open(ksm.name).dropCf(cfm.cfId);
             MigrationManager.instance.notifyDropColumnFamily(cfm);
 
             CommitLog.instance.forceRecycleAllSegments(Collections.singleton(cfm.cfId));

@@ -156,7 +156,7 @@ public class CollationController
                 Tracing.instance.trace("Defragmenting requested data");
                 Mutation mutation = new Mutation(cfs.keyspace.getName(), filter.key.getKey(), returnCF.cloneMe());
                 // skipping commitlog and index updates is fine since we're just de-fragmenting existing data
-                Keyspace.open(mutation.getKeyspaceName()).apply(mutation, false, false);
+                KeyspaceManager.instance.open(mutation.getKeyspaceName()).apply(mutation, false, false);
             }
 
             // Caller is responsible for final removeDeletedCF.  This is important for cacheRow to work correctly:

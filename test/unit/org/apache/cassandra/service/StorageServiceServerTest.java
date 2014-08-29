@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -56,7 +57,7 @@ public class StorageServiceServerTest
     {
         IEndpointSnitch snitch = new PropertyFileSnitch();
         DatabaseDescriptor.instance.setEndpointSnitch(snitch);
-        Keyspace.setInitialized();
+        KeyspaceManager.instance.setInitialized();
     }
 
     @Test

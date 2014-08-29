@@ -53,6 +53,7 @@ import com.google.common.collect.Multiset;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.RateLimiter;
 
+import org.apache.cassandra.db.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,12 +64,6 @@ import org.apache.cassandra.concurrent.NamedThreadFactory;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.Cell;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.OnDiskAtom;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.CompactionInfo.Holder;
 import org.apache.cassandra.db.index.SecondaryIndexBuilder;
 import org.apache.cassandra.dht.Bounds;
@@ -481,7 +476,7 @@ public class CompactionManager implements CompactionManagerMBean
                 continue;
             }
             // group by keyspace/columnfamily
-            ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
+            ColumnFamilyStore cfs = KeyspaceManager.instance.open(desc.ksname).getColumnFamilyStore(desc.cfname);
             descriptors.put(cfs, cfs.directories.find(new File(filename.trim()).getName()));
         }
 
@@ -571,7 +566,7 @@ public class CompactionManager implements CompactionManagerMBean
     {
         for (String ksname : Schema.instance.getNonSystemKeyspaces())
         {
-            for (ColumnFamilyStore cfs : Keyspace.open(ksname).getColumnFamilyStores())
+            for (ColumnFamilyStore cfs : KeyspaceManager.instance.open(ksname).getColumnFamilyStores())
                 cfs.disableAutoCompaction();
         }
     }

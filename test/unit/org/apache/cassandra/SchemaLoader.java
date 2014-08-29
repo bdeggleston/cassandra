@@ -74,7 +74,7 @@ public class SchemaLoader
             }
         });
 
-        Keyspace.setInitialized();
+        KeyspaceManager.instance.setInitialized();
     }
 
     public static void startGossiper()
@@ -466,7 +466,7 @@ public class SchemaLoader
     /* usually used to populate the cache */
     public static void readData(String keyspace, String columnFamily, int offset, int numberOfRows)
     {
-        ColumnFamilyStore store = Keyspace.open(keyspace).getColumnFamilyStore(columnFamily);
+        ColumnFamilyStore store = KeyspaceManager.instance.open(keyspace).getColumnFamilyStore(columnFamily);
         for (int i = offset; i < offset + numberOfRows; i++)
         {
             DecoratedKey key = Util.dk("key" + i);

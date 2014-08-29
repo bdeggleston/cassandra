@@ -251,7 +251,7 @@ public class StreamingTransferTest
 
     private void doTransferTable(boolean transferSSTables) throws Exception
     {
-        final Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         final ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Indexed1");
 
         List<String> keys = createAndTransfer(cfs, new Mutator()
@@ -292,7 +292,7 @@ public class StreamingTransferTest
     {
         String ks = KEYSPACE1;
         String cfname = "StandardInteger1";
-        Keyspace keyspace = Keyspace.open(ks);
+        Keyspace keyspace = KeyspaceManager.instance.open(ks);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
 
         String key = "key1";
@@ -333,7 +333,7 @@ public class StreamingTransferTest
     @Test
     public void testTransferTableCounter() throws Exception
     {
-        final Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         final ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Counter1");
         final CounterContext cc = new CounterContext();
 
@@ -411,7 +411,7 @@ public class StreamingTransferTest
         new StreamPlan("StreamingTransferTest").transferFiles(LOCAL, makeStreamingDetails(ranges, Arrays.asList(sstable, sstable2))).execute().get();
 
         // confirm that the sstables were transferred and registered and that 2 keys arrived
-        ColumnFamilyStore cfstore = Keyspace.open(keyspaceName).getColumnFamilyStore(cfname);
+        ColumnFamilyStore cfstore = KeyspaceManager.instance.open(keyspaceName).getColumnFamilyStore(cfname);
         List<Row> rows = Util.getRangeSlice(cfstore);
         assertEquals(2, rows.size());
         assert rows.get(0).key.getKey().equals(ByteBufferUtil.bytes("test"));
@@ -467,7 +467,7 @@ public class StreamingTransferTest
         // check that only two keys were transferred
         for (Map.Entry<DecoratedKey,String> entry : Arrays.asList(first, last))
         {
-            ColumnFamilyStore store = Keyspace.open(keyspace).getColumnFamilyStore(entry.getValue());
+            ColumnFamilyStore store = KeyspaceManager.instance.open(keyspace).getColumnFamilyStore(entry.getValue());
             List<Row> rows = Util.getRangeSlice(store);
             assertEquals(rows.toString(), 1, rows.size());
             assertEquals(entry.getKey(), rows.get(0).key);
@@ -477,7 +477,7 @@ public class StreamingTransferTest
     @Test
     public void testRandomSSTableTransfer() throws Exception
     {
-        final Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         final ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Standard1");
         Mutator mutator = new Mutator()
         {

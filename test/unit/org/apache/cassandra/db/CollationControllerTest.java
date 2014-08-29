@@ -53,7 +53,7 @@ public class CollationControllerTest
     @Test
     public void getTopLevelColumnsSkipsSSTablesModifiedBeforeRowDelete() 
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF);
         Mutation rm;
         DecoratedKey dk = Util.dk("key1");
@@ -102,7 +102,7 @@ public class CollationControllerTest
     @Test
     public void ensureTombstonesAppliedAfterGCGS()
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CFGCGRACE);
         cfs.disableAutoCompaction();
 

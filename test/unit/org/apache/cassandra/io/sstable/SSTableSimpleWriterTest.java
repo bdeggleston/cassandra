@@ -59,7 +59,7 @@ public class SSTableSimpleWriterTest
         String keyspaceName = KEYSPACE;
         String cfname = "StandardInteger1";
 
-        Keyspace t = Keyspace.open(keyspaceName); // make sure we create the directory
+        Keyspace t = KeyspaceManager.instance.open(keyspaceName); // make sure we create the directory
         File dir = new Directories(Schema.instance.getCFMetaData(keyspaceName, cfname)).getDirectoryForNewSSTables();
         assert dir.exists();
 

@@ -50,7 +50,7 @@ public class RemoveCellTest
     @Test
     public void testRemoveColumn()
     {
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard1");
         Mutation rm;
         DecoratedKey dk = Util.dk("key1");

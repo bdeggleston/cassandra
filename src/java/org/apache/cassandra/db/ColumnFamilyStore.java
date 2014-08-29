@@ -659,7 +659,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public static synchronized void loadNewSSTables(String ksName, String cfName)
     {
         /** ks/cf existence checks will be done by open and getCFS methods for us */
-        Keyspace keyspace = Keyspace.open(ksName);
+        Keyspace keyspace = KeyspaceManager.instance.open(ksName);
         keyspace.getColumnFamilyStore(cfName).loadNewSSTables();
     }
 
@@ -755,7 +755,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     public static void rebuildSecondaryIndex(String ksName, String cfName, String... idxNames)
     {
-        ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(ksName).getColumnFamilyStore(cfName);
 
         Set<String> indexes = new HashSet<String>(Arrays.asList(idxNames));
 
@@ -2336,7 +2336,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public static Iterable<ColumnFamilyStore> all()
     {
         List<Iterable<ColumnFamilyStore>> stores = new ArrayList<Iterable<ColumnFamilyStore>>(Schema.instance.getKeyspaces().size());
-        for (Keyspace keyspace : Keyspace.all())
+        for (Keyspace keyspace : KeyspaceManager.instance.all())
         {
             stores.add(keyspace.getColumnFamilyStores());
         }

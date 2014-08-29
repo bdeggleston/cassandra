@@ -76,8 +76,8 @@ public class RecoveryManagerTest
     @Test
     public void testOne() throws IOException
     {
-        Keyspace keyspace1 = Keyspace.open(KEYSPACE1);
-        Keyspace keyspace2 = Keyspace.open(KEYSPACE2);
+        Keyspace keyspace1 = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace2 = KeyspaceManager.instance.open(KEYSPACE2);
 
         Mutation rm;
         DecoratedKey dk = Util.dk("keymulti");
@@ -106,7 +106,7 @@ public class RecoveryManagerTest
     @Test
     public void testRecoverCounter() throws IOException
     {
-        Keyspace keyspace1 = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace1 = KeyspaceManager.instance.open(KEYSPACE1);
 
         Mutation rm;
         DecoratedKey dk = Util.dk("key");
@@ -140,7 +140,7 @@ public class RecoveryManagerTest
         Date date = CommitLogArchiver.format.parse("2112:12:12 12:12:12");
         long timeMS = date.getTime() - 5000;
 
-        Keyspace keyspace1 = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace1 = KeyspaceManager.instance.open(KEYSPACE1);
         DecoratedKey dk = Util.dk("dkey");
         for (int i = 0; i < 10; ++i)
         {
@@ -165,7 +165,7 @@ public class RecoveryManagerTest
         Date date = CommitLogArchiver.format.parse("2112:12:12 12:12:12");
         long timeMS = date.getTime();
 
-        Keyspace keyspace1 = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace1 = KeyspaceManager.instance.open(KEYSPACE1);
         DecoratedKey dk = Util.dk("dkey");
 
         // Col 0 and 9 are the only ones to be recovered

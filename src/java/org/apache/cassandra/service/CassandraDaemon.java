@@ -33,6 +33,7 @@ import javax.management.StandardMBean;
 
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.cassandra.db.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,10 +45,6 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.functions.Functions;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.exceptions.ConfigurationException;
@@ -263,14 +260,14 @@ public class CassandraDaemon
                 ColumnFamilyStore.scrubDataDirectories(cfm);
         }
 
-        Keyspace.setInitialized();
+        KeyspaceManager.instance.setInitialized();
         // initialize keyspaces
         for (String keyspaceName : Schema.instance.getKeyspaces())
         {
             if (logger.isDebugEnabled())
                 logger.debug("opening keyspace {}", keyspaceName);
             // disable auto compaction until commit log replay ends
-            for (ColumnFamilyStore cfs : Keyspace.open(keyspaceName).getColumnFamilyStores())
+            for (ColumnFamilyStore cfs : KeyspaceManager.instance.open(keyspaceName).getColumnFamilyStores())
             {
                 for (ColumnFamilyStore store : cfs.concatWithIndexes())
                 {
@@ -305,7 +302,7 @@ public class CassandraDaemon
         }
 
         // enable auto compaction
-        for (Keyspace keyspace : Keyspace.all())
+        for (Keyspace keyspace : KeyspaceManager.instance.all())
         {
             for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
             {
@@ -321,7 +318,7 @@ public class CassandraDaemon
         {
             public void run()
             {
-                for (Keyspace keyspaceName : Keyspace.all())
+                for (Keyspace keyspaceName : KeyspaceManager.instance.all())
                 {
                     for (ColumnFamilyStore cf : keyspaceName.getColumnFamilyStores())
                     {

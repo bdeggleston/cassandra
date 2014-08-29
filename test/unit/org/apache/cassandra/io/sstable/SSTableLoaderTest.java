@@ -22,6 +22,7 @@ import java.util.List;
 
 import com.google.common.io.Files;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -97,7 +98,7 @@ public class SSTableLoaderTest
 
         loader.stream().get();
 
-        List<Row> rows = Util.getRangeSlice(Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD));
+        List<Row> rows = Util.getRangeSlice(KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD));
         assertEquals(1, rows.size());
         assertEquals(key, rows.get(0).key);
         assertEquals(ByteBufferUtil.bytes(100), rows.get(0).cf.getColumn(Util.cellname("col1")).value());

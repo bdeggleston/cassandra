@@ -21,6 +21,7 @@ package org.apache.cassandra.tools;
 import java.io.File;
 import java.util.*;
 
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -59,7 +60,7 @@ public class StandaloneScrubber
                                                                  options.cfName));
 
             // Do not load sstables since they might be broken
-            Keyspace keyspace = Keyspace.openWithoutSSTables(options.keyspaceName);
+            Keyspace keyspace = KeyspaceManager.instance.openWithoutSSTables(options.keyspaceName);
             ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(options.cfName);
             String snapshotName = "pre-scrub-" + System.currentTimeMillis();
 

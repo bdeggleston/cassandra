@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.service.StorageService;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -57,7 +58,7 @@ public class SimpleStrategyTest
     @Test
     public void tryValidKeyspace()
     {
-        assert Keyspace.open(KEYSPACE1).getReplicationStrategy() != null;
+        assert KeyspaceManager.instance.open(KEYSPACE1).getReplicationStrategy() != null;
     }
 
     @Test

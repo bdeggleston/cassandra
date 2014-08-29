@@ -166,7 +166,7 @@ public class SizeTieredCompactionStrategyTest
     {
         String ksname = KEYSPACE1;
         String cfname = "Standard1";
-        Keyspace keyspace = Keyspace.open(ksname);
+        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
@@ -210,7 +210,7 @@ public class SizeTieredCompactionStrategyTest
     {
         String ksname = KEYSPACE1;
         String cfname = "Standard1";
-        Keyspace keyspace = Keyspace.open(ksname);
+        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();

@@ -55,7 +55,7 @@ public class RecoveryManagerTruncateTest
 	@Test
 	public void testTruncate() throws IOException
 	{
-		Keyspace keyspace = Keyspace.open(KEYSPACE1);
+		Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
 		ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Standard1");
 
 		Mutation rm;

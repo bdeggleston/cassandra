@@ -57,7 +57,7 @@ public class LongLeveledCompactionStrategyTest
     {
         String ksname = KEYSPACE1;
         String cfname = "StandardLeveled";
-        Keyspace keyspace = Keyspace.open(ksname);
+        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(cfname);
         store.disableAutoCompaction();
 

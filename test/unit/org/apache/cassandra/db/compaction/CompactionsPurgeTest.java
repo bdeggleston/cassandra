@@ -93,7 +93,7 @@ public class CompactionsPurgeTest
     {
         CompactionManager.instance.disableAutoCompaction();
 
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         String cfName = "Standard1";
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
 
@@ -137,7 +137,7 @@ public class CompactionsPurgeTest
     {
         CompactionManager.instance.disableAutoCompaction();
 
-        Keyspace keyspace = Keyspace.open(KEYSPACE2);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE2);
         String cfName = "Standard1";
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
 
@@ -196,7 +196,7 @@ public class CompactionsPurgeTest
     {
         CompactionManager.instance.disableAutoCompaction();
 
-        Keyspace keyspace = Keyspace.open(KEYSPACE2);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE2);
         String cfName = "Standard1";
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         Mutation rm;
@@ -236,7 +236,7 @@ public class CompactionsPurgeTest
     {
         CompactionManager.instance.disableAutoCompaction();
 
-        Keyspace keyspace = Keyspace.open(KEYSPACE1);
+        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         String cfName = "Standard2";
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
 
@@ -275,7 +275,7 @@ public class CompactionsPurgeTest
 
         String keyspaceName = KEYSPACE_CACHED;
         String cfName = CF_CACHED;
-        Keyspace keyspace = Keyspace.open(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
 
         DecoratedKey key = Util.dk("key3");
@@ -323,7 +323,7 @@ public class CompactionsPurgeTest
 
         String keyspaceName = KEYSPACE1;
         String cfName = "Standard1";
-        Keyspace keyspace = Keyspace.open(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         DecoratedKey key = Util.dk("key3");
         Mutation rm;
@@ -365,7 +365,7 @@ public class CompactionsPurgeTest
     {
         String keyspace = "cql_keyspace";
         String table = "table1";
-        ColumnFamilyStore cfs = Keyspace.open(keyspace).getColumnFamilyStore(table);
+        ColumnFamilyStore cfs = KeyspaceManager.instance.open(keyspace).getColumnFamilyStore(table);
         cfs.disableAutoCompaction();
 
         // write a row out to one sstable

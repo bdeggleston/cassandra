@@ -230,8 +230,8 @@ public class SSTableImportTest
         File tempSS = tempSSTableFile(KEYSPACE1, CQL_TABLE);
         new SSTableImport(true).importJson(jsonUrl, KEYSPACE1, CQL_TABLE, tempSS.getPath());
         SSTableReader reader = SSTableReader.open(Descriptor.fromFilename(tempSS.getPath()));
-        Keyspace.open(KEYSPACE1).getColumnFamilyStore(CQL_TABLE).addSSTable(reader);
-        
+        KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CQL_TABLE).addSSTable(reader);
+
         UntypedResultSet result = QueryProcessor.instance.executeOnceInternal(String.format("SELECT * FROM \"%s\".%s", KEYSPACE1, CQL_TABLE));
         assertThat(result.size(), is(2));
         assertThat(result, hasItem(withElements(1, "NY", 1980)));

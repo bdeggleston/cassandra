@@ -206,17 +206,17 @@ public class Mutation implements IMutation
 
     /*
      * This is equivalent to calling commit. Applies the changes to
-     * to the keyspace that is obtained by calling Keyspace.open().
+     * to the keyspace that is obtained by calling KeyspaceManager.instance.open().
      */
     public void apply()
     {
-        Keyspace ks = Keyspace.open(keyspaceName);
+        Keyspace ks = KeyspaceManager.instance.open(keyspaceName);
         ks.apply(this, ks.metadata.durableWrites);
     }
 
     public void applyUnsafe()
     {
-        Keyspace.open(keyspaceName).apply(this, false);
+        KeyspaceManager.instance.open(keyspaceName).apply(this, false);
     }
 
     public MessageOut<Mutation> createMessage()

@@ -22,6 +22,7 @@ import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.TokenMetadata;
 import org.slf4j.Logger;
@@ -59,7 +60,7 @@ public class PendingRangeCalculatorService
             long start = System.currentTimeMillis();
             for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
             {
-                calculatePendingRanges(Keyspace.open(keyspaceName).getReplicationStrategy(), keyspaceName, StorageService.instance.getTokenMetadata());
+                calculatePendingRanges(KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy(), keyspaceName, StorageService.instance.getTokenMetadata());
             }
             PendingRangeCalculatorService.instance.finishUpdate();
             logger.debug("finished calculation for {} keyspaces in {}ms", Schema.instance.getNonSystemKeyspaces().size(), System.currentTimeMillis() - start);

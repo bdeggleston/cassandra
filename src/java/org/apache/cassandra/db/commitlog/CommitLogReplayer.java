@@ -387,7 +387,7 @@ public class CommitLogReplayer
                             if (pointInTimeExceeded(mutation))
                                 return;
 
-                            final Keyspace keyspace = Keyspace.open(mutation.getKeyspaceName());
+                            final Keyspace keyspace = KeyspaceManager.instance.open(mutation.getKeyspaceName());
 
                             // Rebuild the mutation, omitting column families that
                             //    a) the user has requested that we ignore,
@@ -415,7 +415,7 @@ public class CommitLogReplayer
                             if (newMutation != null)
                             {
                                 assert !newMutation.isEmpty();
-                                Keyspace.open(newMutation.getKeyspaceName()).apply(newMutation, false);
+                                KeyspaceManager.instance.open(newMutation.getKeyspaceName()).apply(newMutation, false);
                                 keyspacesRecovered.add(keyspace);
                             }
                         }

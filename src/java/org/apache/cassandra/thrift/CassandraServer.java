@@ -538,7 +538,7 @@ public class CassandraServer implements Cassandra.Iface
             ThriftClientState cState = state();
             String keyspace = cState.getKeyspace();
             cState.hasColumnFamilyAccess(keyspace, column_parent.column_family, Permission.SELECT);
-            Keyspace keyspaceName = Keyspace.open(keyspace);
+            Keyspace keyspaceName = KeyspaceManager.instance.open(keyspace);
             ColumnFamilyStore cfs = keyspaceName.getColumnFamilyStore(column_parent.column_family);
             long timestamp = System.currentTimeMillis();
 
