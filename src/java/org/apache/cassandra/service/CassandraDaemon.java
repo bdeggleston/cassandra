@@ -176,14 +176,16 @@ public class CassandraDaemon
                     {
                         if (e2 != e) // make sure FSError gets logged exactly once.
                             logger.error("Exception in thread {}", t, e2);
-                        FileUtils.handleFSError((FSError) e2);
+                        FileUtils.handleFSError((FSError) e2, DatabaseDescriptor.instance.getDiskFailurePolicy(), StorageService.instance);
                     }
 
                     if (e2 instanceof CorruptSSTableException)
                     {
                         if (e2 != e)
                             logger.error("Exception in thread " + t, e2);
-                        FileUtils.handleCorruptSSTable((CorruptSSTableException) e2);
+                        FileUtils.handleCorruptSSTable((CorruptSSTableException) e2,
+                                                       DatabaseDescriptor.instance.getDiskFailurePolicy(),
+                                                       StorageService.instance);
                     }
                 }
             }

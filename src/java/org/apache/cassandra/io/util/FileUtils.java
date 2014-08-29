@@ -315,18 +315,6 @@ public class FileUtils
         }
     }
 
-    public static void deleteAsync(final String file)
-    {
-        Runnable runnable = new Runnable()
-        {
-            public void run()
-            {
-                deleteWithConfirm(new File(file));
-            }
-        };
-        StorageServiceExecutors.instance.tasks.execute(runnable);
-    }
-
     public static String stringifyFileSize(double value)
     {
         double d;
@@ -391,19 +379,19 @@ public class FileUtils
         }
     }
 
-    public static void handleCorruptSSTable(CorruptSSTableException e)
+    public static void handleCorruptSSTable(CorruptSSTableException e, Config.DiskFailurePolicy diskFailurePolicy, StorageService storageService)
     {
-        if (DatabaseDescriptor.instance.getDiskFailurePolicy() == Config.DiskFailurePolicy.stop_paranoid)
-            StorageService.instance.stopTransports();
+        if (diskFailurePolicy == Config.DiskFailurePolicy.stop_paranoid)
+            storageService.stopTransports();
     }
     
-    public static void handleFSError(FSError e)
+    public static void handleFSError(FSError e, Config.DiskFailurePolicy diskFailurePolicy, StorageService storageService)
     {
-        switch (DatabaseDescriptor.instance.getDiskFailurePolicy())
+        switch (diskFailurePolicy)
         {
             case stop_paranoid:
             case stop:
-                StorageService.instance.stopTransports();
+                storageService.stopTransports();
                 break;
             case best_effort:
                 // for both read and write errors mark the path as unwritable.
