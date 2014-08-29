@@ -122,7 +122,7 @@ public class SimpleStrategyTest
         // the token difference will be RING_SIZE * 2.
         final int RING_SIZE = 10;
         TokenMetadata tmd = new TokenMetadata();
-        TokenMetadata oldTmd = StorageServiceAccessor.setTokenMetadata(tmd);
+        TokenMetadata oldTmd = StorageServiceAccessor.setTokenMetadata(tmd, StorageService.instance);
 
         Token[] endpointTokens = new Token[RING_SIZE];
         Token[] keyTokens = new Token[RING_SIZE];
@@ -174,7 +174,7 @@ public class SimpleStrategyTest
             }
         }
 
-        StorageServiceAccessor.setTokenMetadata(oldTmd);
+        StorageServiceAccessor.setTokenMetadata(oldTmd, StorageService.instance);
     }
 
     private AbstractReplicationStrategy getStrategy(String keyspaceName, TokenMetadata tmd)

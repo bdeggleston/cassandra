@@ -22,8 +22,8 @@ import org.apache.cassandra.locator.TokenMetadata;
 
 public class StorageServiceAccessor
 {
-    public static TokenMetadata setTokenMetadata(TokenMetadata tmd)
+    public static TokenMetadata setTokenMetadata(TokenMetadata tmd, StorageService storageService)
     {
-        return StorageService.instance.setTokenMetadataUnsafe(tmd);
+        return storageService.setTokenMetadataUnsafe(tmd);
     }
 }
