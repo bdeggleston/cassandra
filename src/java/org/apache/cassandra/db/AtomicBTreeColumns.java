@@ -33,7 +33,9 @@ import com.google.common.collect.Iterators;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.Composite;
+import org.apache.cassandra.db.composites.SimpleSparseCellNameType;
 import org.apache.cassandra.db.filter.ColumnSlice;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.SearchIterator;
 import org.apache.cassandra.utils.btree.BTree;
@@ -43,6 +45,7 @@ import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.HeapAllocator;
 import org.apache.cassandra.utils.memory.MemtableAllocator;
 import org.apache.cassandra.utils.memory.NativePool;
+import org.apache.hadoop.mapred.join.ResetableIterator;
 
 import static org.apache.cassandra.db.index.SecondaryIndexManager.Updater;
 
@@ -57,7 +60,7 @@ import static org.apache.cassandra.db.index.SecondaryIndexManager.Updater;
  */
 public class AtomicBTreeColumns extends ColumnFamily
 {
-    static final long EMPTY_SIZE = ObjectSizes.measure(new AtomicBTreeColumns(CFMetaData.IndexCf, null))
+    static final long EMPTY_SIZE = ObjectSizes.measure(new AtomicBTreeColumns(new CFMetaData("ks", "cf", ColumnFamilyType.Standard, new SimpleSparseCellNameType(UTF8Type.instance)), null))
             + ObjectSizes.measure(new Holder(null, null));
 
     private static final Function<Cell, CellName> NAME = new Function<Cell, CellName>()
