@@ -22,6 +22,8 @@ import java.util.*;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.github.jamm.MemoryMeter;
 
 import org.apache.cassandra.auth.Permission;
@@ -437,7 +439,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                                   key,
                                                   columnFamily(),
                                                   now,
-                                                  new SliceQueryFilter(slices, false, Integer.MAX_VALUE)));
+                                                  new SliceQueryFilter(slices, false, Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance)));
 
         List<Row> rows = local
                        ? SelectStatement.readLocally(keyspace(), commands)

@@ -28,9 +28,11 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class SuperColumns
@@ -168,15 +170,15 @@ public class SuperColumns
         return CellNames.compositeDense(scName).end();
     }
 
-    public static IDiskAtomFilter fromSCFilter(CellNameType type, ByteBuffer scName, IDiskAtomFilter filter)
+    public static IDiskAtomFilter fromSCFilter(CellNameType type, ByteBuffer scName, IDiskAtomFilter filter, DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
         if (filter instanceof NamesQueryFilter)
-            return fromSCNamesFilter(type, scName, (NamesQueryFilter)filter);
+            return fromSCNamesFilter(type, scName, (NamesQueryFilter)filter, databaseDescriptor, tracing);
         else
-            return fromSCSliceFilter(type, scName, (SliceQueryFilter)filter);
+            return fromSCSliceFilter(type, scName, (SliceQueryFilter)filter, databaseDescriptor, tracing);
     }
 
-    public static IDiskAtomFilter fromSCNamesFilter(CellNameType type, ByteBuffer scName, NamesQueryFilter filter)
+    public static IDiskAtomFilter fromSCNamesFilter(CellNameType type, ByteBuffer scName, NamesQueryFilter filter, DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
         if (scName == null)
         {
@@ -189,7 +191,7 @@ public class SuperColumns
                 // This is why we call toByteBuffer() and rebuild a  Composite of the right type before call slice().
                 slices[i++] = type.make(name.toByteBuffer()).slice();
             }
-            return new SliceQueryFilter(slices, false, slices.length, 1);
+            return new SliceQueryFilter(slices, false, slices.length, 1, databaseDescriptor, tracing);
         }
         else
         {
@@ -200,7 +202,7 @@ public class SuperColumns
         }
     }
 
-    public static SliceQueryFilter fromSCSliceFilter(CellNameType type, ByteBuffer scName, SliceQueryFilter filter)
+    public static SliceQueryFilter fromSCSliceFilter(CellNameType type, ByteBuffer scName, SliceQueryFilter filter, DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
         assert filter.slices.length == 1;
         if (scName == null)
@@ -213,7 +215,7 @@ public class SuperColumns
             Composite finish = filter.finish().isEmpty()
                              ? Composites.EMPTY
                              : builder.buildWith(filter.finish().toByteBuffer()).withEOC(filter.reversed ? Composite.EOC.START : Composite.EOC.END);
-            return new SliceQueryFilter(start, finish, filter.reversed, filter.count, 1);
+            return new SliceQueryFilter(start, finish, filter.reversed, filter.count, 1, databaseDescriptor, tracing);
         }
         else
         {
@@ -224,7 +226,7 @@ public class SuperColumns
             Composite end = filter.finish().isEmpty()
                           ? builder.build().withEOC(filter.reversed ? Composite.EOC.START : Composite.EOC.END)
                           : builder.buildWith(filter.finish().toByteBuffer());
-            return new SliceQueryFilter(start, end, filter.reversed, filter.count);
+            return new SliceQueryFilter(start, end, filter.reversed, filter.count, databaseDescriptor, tracing);
         }
     }
 }

@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -179,7 +181,9 @@ public class CompositesSearcher extends SecondaryIndexSearcher
                                                                              endPrefix,
                                                                              false,
                                                                              rowsPerQuery,
-                                                                             filter.timestamp);
+                                                                             filter.timestamp,
+                                                                             DatabaseDescriptor.instance,
+                                                                             Tracing.instance);
                         ColumnFamily indexRow = index.getIndexCfs().getColumnFamily(indexFilter);
                         if (indexRow == null || !indexRow.hasColumns())
                             return makeReturn(currentKey, data);
@@ -278,7 +282,7 @@ public class CompositesSearcher extends SecondaryIndexSearcher
                         ColumnSlice[] slices = baseCfs.metadata.hasStaticColumns()
                                              ? new ColumnSlice[]{ baseCfs.metadata.comparator.staticPrefix().slice(), dataSlice }
                                              : new ColumnSlice[]{ dataSlice };
-                        SliceQueryFilter dataFilter = new SliceQueryFilter(slices, false, Integer.MAX_VALUE, baseCfs.metadata.clusteringColumns().size());
+                        SliceQueryFilter dataFilter = new SliceQueryFilter(slices, false, Integer.MAX_VALUE, baseCfs.metadata.clusteringColumns().size(), DatabaseDescriptor.instance, Tracing.instance);
                         ColumnFamily newData = baseCfs.getColumnFamily(new QueryFilter(dk, baseCfs.name, dataFilter, filter.timestamp));
                         if (newData == null || index.isStale(entry, newData, filter.timestamp))
                         {

@@ -26,6 +26,7 @@ import java.util.HashSet;
 import org.apache.cassandra.Util;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -72,7 +73,7 @@ public class RowIterationTest
             inserted.add(key);
         }
         store.forceBlockingFlush();
-        assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(store).size());
+        assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(store, DatabaseDescriptor.instance, Tracing.instance).size());
     }
 
     @Test
@@ -99,7 +100,7 @@ public class RowIterationTest
         rm.applyUnsafe();
         store.forceBlockingFlush();
 
-        ColumnFamily cf = Util.getRangeSlice(store).get(0).cf;
+        ColumnFamily cf = Util.getRangeSlice(store, DatabaseDescriptor.instance, Tracing.instance).get(0).cf;
         assert cf.deletionInfo().equals(delInfo2);
     }
 
@@ -117,7 +118,7 @@ public class RowIterationTest
         rm.applyUnsafe();
         store.forceBlockingFlush();
 
-        ColumnFamily cf = Util.getRangeSlice(store).get(0).cf;
+        ColumnFamily cf = Util.getRangeSlice(store, DatabaseDescriptor.instance, Tracing.instance).get(0).cf;
         assert cf != null;
     }
 }

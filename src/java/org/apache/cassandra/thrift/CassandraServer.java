@@ -379,13 +379,13 @@ public class CassandraServer implements Cassandra.Iface
             CellNameType columnType = new SimpleDenseCellNameType(metadata.comparator.subtype(parent.isSetSuper_column() ? 1 : 0));
             Composite start = columnType.fromByteBuffer(range.start);
             Composite finish = columnType.fromByteBuffer(range.finish);
-            SliceQueryFilter filter = new SliceQueryFilter(start, finish, range.reversed, range.count);
-            return SuperColumns.fromSCSliceFilter(metadata.comparator, parent.bufferForSuper_column(), filter);
+            SliceQueryFilter filter = new SliceQueryFilter(start, finish, range.reversed, range.count, DatabaseDescriptor.instance, Tracing.instance);
+            return SuperColumns.fromSCSliceFilter(metadata.comparator, parent.bufferForSuper_column(), filter, DatabaseDescriptor.instance, Tracing.instance);
         }
 
         Composite start = metadata.comparator.fromByteBuffer(range.start);
         Composite finish = metadata.comparator.fromByteBuffer(range.finish);
-        return new SliceQueryFilter(start, finish, range.reversed, range.count);
+        return new SliceQueryFilter(start, finish, range.reversed, range.count, DatabaseDescriptor.instance, Tracing.instance);
     }
 
     private IDiskAtomFilter toInternalFilter(CFMetaData metadata, ColumnParent parent, SlicePredicate predicate)
@@ -400,7 +400,7 @@ public class CassandraServer implements Cassandra.Iface
                 SortedSet<CellName> s = new TreeSet<>(columnType);
                 for (ByteBuffer bb : predicate.column_names)
                     s.add(columnType.cellFromByteBuffer(bb));
-                filter = SuperColumns.fromSCNamesFilter(metadata.comparator, parent.bufferForSuper_column(), new NamesQueryFilter(s));
+                filter = SuperColumns.fromSCNamesFilter(metadata.comparator, parent.bufferForSuper_column(), new NamesQueryFilter(s), DatabaseDescriptor.instance, Tracing.instance);
             }
             else
             {
@@ -480,7 +480,8 @@ public class CassandraServer implements Cassandra.Iface
                 CellNameType columnType = new SimpleDenseCellNameType(metadata.comparator.subtype(column_path.column == null ? 0 : 1));
                 SortedSet<CellName> names = new TreeSet<CellName>(columnType);
                 names.add(columnType.cellFromByteBuffer(column_path.column == null ? column_path.super_column : column_path.column));
-                filter = SuperColumns.fromSCNamesFilter(metadata.comparator, column_path.column == null ? null : column_path.bufferForSuper_column(), new NamesQueryFilter(names));
+                filter = SuperColumns.fromSCNamesFilter(metadata.comparator, column_path.column == null ? null : column_path.bufferForSuper_column(), new NamesQueryFilter(names),
+                                                        DatabaseDescriptor.instance, Tracing.instance);
             }
             else
             {
@@ -2041,7 +2042,7 @@ public class CassandraServer implements Cassandra.Iface
                 slices[i] = new ColumnSlice(start, finish);
             }
             ColumnSlice[] deoverlapped = ColumnSlice.deoverlapSlices(slices, request.reversed ? metadata.comparator.reverseComparator() : metadata.comparator);
-            SliceQueryFilter filter = new SliceQueryFilter(deoverlapped, request.reversed, request.count);
+            SliceQueryFilter filter = new SliceQueryFilter(deoverlapped, request.reversed, request.count, DatabaseDescriptor.instance, Tracing.instance);
             ThriftValidation.validateKey(metadata, request.key);
             commands.add(ReadCommand.create(keyspace, request.key, request.column_parent.getColumn_family(), System.currentTimeMillis(), filter));
             return getSlice(commands, request.column_parent.isSetSuper_column(), consistencyLevel).entrySet().iterator().next().getValue();
@@ -2117,7 +2118,7 @@ public class CassandraServer implements Cassandra.Iface
         public IDiskAtomFilter readFilter()
         {
             return expected == null || expected.isEmpty()
-                 ? new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 1)
+                 ? new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 1, DatabaseDescriptor.instance, Tracing.instance)
                  : new NamesQueryFilter(ImmutableSortedSet.copyOf(expected.getComparator(), expected.getColumnNames()));
         }
 

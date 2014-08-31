@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
@@ -43,6 +44,7 @@ import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -88,7 +90,7 @@ public class CleanupTest
         // record max timestamps of the sstables pre-cleanup
         List<Long> expectedMaxTimestamps = getMaxTimestampList(cfs);
 
-        rows = Util.getRangeSlice(cfs);
+        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance);
         assertEquals(LOOPS, rows.size());
 
         // with one token in the ring, owned by the local node, cleanup should be a no-op
@@ -98,7 +100,7 @@ public class CleanupTest
         assert expectedMaxTimestamps.equals(getMaxTimestampList(cfs));
 
         // check data is still there
-        rows = Util.getRangeSlice(cfs);
+        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance);
         assertEquals(LOOPS, rows.size());
     }
 
@@ -112,7 +114,7 @@ public class CleanupTest
 
         // insert data and verify we get it back w/ range query
         fillCF(cfs, LOOPS);
-        rows = Util.getRangeSlice(cfs);
+        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance);
         assertEquals(LOOPS, rows.size());
 
         SecondaryIndex index = cfs.indexManager.getIndexForColumn(COLUMN);
@@ -140,7 +142,7 @@ public class CleanupTest
         CompactionManager.instance.performCleanup(cfs);
 
         // row data should be gone
-        rows = Util.getRangeSlice(cfs);
+        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance);
         assertEquals(0, rows.size());
 
         // not only should it be gone but there should be no data on disk, not even tombstones
@@ -164,7 +166,7 @@ public class CleanupTest
         // insert data and verify we get it back w/ range query
         fillCF(cfs, LOOPS);
 
-        rows = Util.getRangeSlice(cfs);
+        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance);
 
         assertEquals(LOOPS, rows.size());
         TokenMetadata tmd = StorageService.instance.getTokenMetadata();
@@ -176,7 +178,7 @@ public class CleanupTest
         tmd.updateNormalToken(new BytesToken(tk2), InetAddress.getByName("127.0.0.2"));
         CompactionManager.instance.performCleanup(cfs);
 
-        rows = Util.getRangeSlice(cfs);
+        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance);
         assertEquals(0, rows.size());
     }
 

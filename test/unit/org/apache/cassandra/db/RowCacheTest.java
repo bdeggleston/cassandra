@@ -22,7 +22,9 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -206,14 +208,18 @@ public class RowCacheTest
         cachedStore.getColumnFamily(QueryFilter.getSliceFilter(dk, cf,
                                                                 Composites.EMPTY,
                                                                 Composites.EMPTY,
-                                                                false, 10, System.currentTimeMillis()));
+                                                                false, 10, System.currentTimeMillis(),
+                                                                DatabaseDescriptor.instance,
+                                                                Tracing.instance));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
 
         // do another query, limit is 20, which is < 100 that we cache, we should get a hit and it should be in range
         cachedStore.getColumnFamily(QueryFilter.getSliceFilter(dk, cf,
                                                                 Composites.EMPTY,
                                                                 Composites.EMPTY,
-                                                                false, 20, System.currentTimeMillis()));
+                                                                false, 20, System.currentTimeMillis(),
+                                                                DatabaseDescriptor.instance,
+                                                                Tracing.instance));
         assertEquals(++startRowCacheHits, cachedStore.metric.rowCacheHit.count());
         assertEquals(startRowCacheOutOfRange, cachedStore.metric.rowCacheHitOutOfRange.count());
 
@@ -221,7 +227,9 @@ public class RowCacheTest
         cachedStore.getColumnFamily(QueryFilter.getSliceFilter(dk, cf,
                                                                CellNames.simpleDense(ByteBufferUtil.bytes(95)),
                                                                CellNames.simpleDense(ByteBufferUtil.bytes(105)),
-                                                               false, 10, System.currentTimeMillis()));
+                                                               false, 10, System.currentTimeMillis(),
+                                                                DatabaseDescriptor.instance,
+                                                                Tracing.instance));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
         assertEquals(++startRowCacheOutOfRange, cachedStore.metric.rowCacheHitOutOfRange.count());
 
@@ -229,7 +237,9 @@ public class RowCacheTest
         cachedStore.getColumnFamily(QueryFilter.getSliceFilter(dk, cf,
                                                                Composites.EMPTY,
                                                                Composites.EMPTY,
-                                                               false, 101, System.currentTimeMillis()));
+                                                               false, 101, System.currentTimeMillis(),
+                                                                DatabaseDescriptor.instance,
+                                                                Tracing.instance));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
         assertEquals(++startRowCacheOutOfRange, cachedStore.metric.rowCacheHitOutOfRange.count());
 
@@ -240,7 +250,9 @@ public class RowCacheTest
         cachedStore.getColumnFamily(QueryFilter.getSliceFilter(dk, cf,
                                                                 Composites.EMPTY,
                                                                 Composites.EMPTY,
-                                                                false, 105, System.currentTimeMillis()));
+                                                                false, 105, System.currentTimeMillis(),
+                                                                DatabaseDescriptor.instance,
+                                                                Tracing.instance));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
         // validate the stuff in cache;
         ColumnFamily cachedCf = (ColumnFamily)CacheService.instance.rowCache.get(rck);

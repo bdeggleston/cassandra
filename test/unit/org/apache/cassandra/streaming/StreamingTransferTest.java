@@ -27,6 +27,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -191,7 +192,7 @@ public class StreamingTransferTest
         assertEquals(1, cfs.getSSTables().size());
 
         // and that the index and filter were properly recovered
-        List<Row> rows = Util.getRangeSlice(cfs);
+        List<Row> rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance);
         assertEquals(offs.length, rows.size());
         for (int i = 0; i < offs.length; i++)
         {
@@ -313,7 +314,7 @@ public class StreamingTransferTest
         // confirm that a single SSTable was transferred and registered
         assertEquals(1, cfs.getSSTables().size());
 
-        List<Row> rows = Util.getRangeSlice(cfs);
+        List<Row> rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance);
         assertEquals(1, rows.size());
     }
 
@@ -411,7 +412,7 @@ public class StreamingTransferTest
 
         // confirm that the sstables were transferred and registered and that 2 keys arrived
         ColumnFamilyStore cfstore = KeyspaceManager.instance.open(keyspaceName).getColumnFamilyStore(cfname);
-        List<Row> rows = Util.getRangeSlice(cfstore);
+        List<Row> rows = Util.getRangeSlice(cfstore, DatabaseDescriptor.instance, Tracing.instance);
         assertEquals(2, rows.size());
         assert rows.get(0).key.getKey().equals(ByteBufferUtil.bytes("test"));
         assert rows.get(1).key.getKey().equals(ByteBufferUtil.bytes("transfer3"));
@@ -467,7 +468,7 @@ public class StreamingTransferTest
         for (Map.Entry<DecoratedKey,String> entry : Arrays.asList(first, last))
         {
             ColumnFamilyStore store = KeyspaceManager.instance.open(keyspace).getColumnFamilyStore(entry.getValue());
-            List<Row> rows = Util.getRangeSlice(store);
+            List<Row> rows = Util.getRangeSlice(store, DatabaseDescriptor.instance, Tracing.instance);
             assertEquals(rows.toString(), 1, rows.size());
             assertEquals(entry.getKey(), rows.get(0).key);
         }
@@ -505,7 +506,7 @@ public class StreamingTransferTest
         ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key9")), p.getToken(ByteBufferUtil.bytes("key900"))));
         transfer(sstable, ranges);
         assertEquals(1, cfs.getSSTables().size());
-        assertEquals(7, Util.getRangeSlice(cfs).size());
+        assertEquals(7, Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance).size());
     }
 
     public interface Mutator

@@ -28,6 +28,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.*;
 
 import org.apache.cassandra.SchemaLoader;
@@ -48,8 +49,8 @@ import static org.junit.Assert.assertTrue;
 public class RemoveTest
 {
     static final IPartitioner partitioner = new RandomPartitioner();
-    StorageService ss = StorageService.instance;
-    TokenMetadata tmd = ss.getTokenMetadata();
+    StorageService ss;
+    TokenMetadata tmd;
     static IPartitioner oldPartitioner;
     ArrayList<Token> endpointTokens = new ArrayList<Token>();
     ArrayList<Token> keyTokens = new ArrayList<Token>();
@@ -61,6 +62,7 @@ public class RemoveTest
     @BeforeClass
     public static void setupClass() throws ConfigurationException
     {
+        System.setProperty("cassandra.ring_delay_ms", "2000");
         oldPartitioner = StorageService.instance.setPartitionerUnsafe(partitioner);
         SchemaLoader.loadSchema();
     }
@@ -74,6 +76,8 @@ public class RemoveTest
     @Before
     public void setup() throws IOException, ConfigurationException
     {
+        ss = StorageService.instance;
+        tmd = ss.getTokenMetadata();
         tmd.clearUnsafe();
 
         // create a ring of 5 nodes

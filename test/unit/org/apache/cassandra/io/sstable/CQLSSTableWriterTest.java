@@ -24,6 +24,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.gms.Gossiper;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -44,6 +46,7 @@ public class CQLSSTableWriterTest
     @BeforeClass
     public static void setup() throws Exception
     {
+        assert Gossiper.instance != null;
         KeyspaceManager.instance.setInitialized();
         StorageService.instance.initServer();
     }

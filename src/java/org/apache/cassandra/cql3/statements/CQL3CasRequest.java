@@ -22,6 +22,7 @@ import java.util.*;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.*;
@@ -29,6 +30,7 @@ import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.service.CASRequest;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.Pair;
 
 /**
@@ -114,7 +116,7 @@ public class CQL3CasRequest implements CASRequest
         int toGroup = cfm.comparator.isDense() ? -1 : cfm.clusteringColumns().size();
         slices = ColumnSlice.deoverlapSlices(slices, cfm.comparator);
         assert ColumnSlice.validateSlices(slices, cfm.comparator, false);
-        return new SliceQueryFilter(slices, false, slices.length, toGroup);
+        return new SliceQueryFilter(slices, false, slices.length, toGroup, DatabaseDescriptor.instance, Tracing.instance);
     }
 
     public boolean appliesTo(ColumnFamily current) throws InvalidRequestException

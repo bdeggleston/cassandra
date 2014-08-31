@@ -371,7 +371,9 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                             Composites.EMPTY,
                                                             false,
                                                             pageSize,
-                                                            now);
+                                                            now,
+                                                            DatabaseDescriptor.instance,
+                                                            Tracing.instance);
 
             ColumnFamily hintsPage = ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter), (int) (now / 1000));
 
@@ -584,7 +586,9 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         // Get count # of columns...
         SliceQueryFilter predicate = new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY,
                                                           false,
-                                                          columnCount);
+                                                          columnCount,
+                                                          DatabaseDescriptor.instance,
+                                                          Tracing.instance);
 
         // From keys "" to ""...
         IPartitioner<?> partitioner = StorageService.instance.getPartitioner();

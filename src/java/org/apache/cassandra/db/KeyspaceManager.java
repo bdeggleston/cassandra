@@ -2,13 +2,19 @@ package org.apache.cassandra.db;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
+import org.apache.cassandra.config.KSMetaDataFactory;
 import org.apache.cassandra.config.Schema;
 
 import java.io.File;
 
 public class KeyspaceManager
 {
-    public static final KeyspaceManager instance = new KeyspaceManager();
+    public static final KeyspaceManager instance;
+    static
+    {
+        KSMetaDataFactory ksmdf = KSMetaDataFactory.instance;
+        instance = new KeyspaceManager();
+    }
 
     public final Function<String,Keyspace> keyspaceTransformer = new Function<String, Keyspace>()
     {

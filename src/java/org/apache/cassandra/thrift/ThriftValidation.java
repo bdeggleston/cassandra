@@ -20,6 +20,7 @@ package org.apache.cassandra.thrift;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -656,11 +657,13 @@ public class ThriftValidation
             filter = new SliceQueryFilter(comparator.fromByteBuffer(sr.start),
                                           comparator.fromByteBuffer(sr.finish),
                                           sr.reversed,
-                                          sr.count);
+                                          sr.count,
+                                          DatabaseDescriptor.instance,
+                                          Tracing.instance);
         }
 
         if (metadata.isSuper())
-            filter = SuperColumns.fromSCFilter(metadata.comparator, superColumn, filter);
+            filter = SuperColumns.fromSCFilter(metadata.comparator, superColumn, filter, DatabaseDescriptor.instance, Tracing.instance);
         return filter;
     }
 }

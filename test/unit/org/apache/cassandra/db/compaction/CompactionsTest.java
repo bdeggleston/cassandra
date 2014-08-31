@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.*;
@@ -47,6 +48,7 @@ import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
@@ -328,7 +330,7 @@ public class CompactionsTest
         assertEquals(1, cfs.getSSTables().size());
 
         // Now assert we do have the 4 keys
-        assertEquals(4, Util.getRangeSlice(cfs).size());
+        assertEquals(4, Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance).size());
     }
 
     @Test
@@ -439,10 +441,10 @@ public class CompactionsTest
         assertEquals(1, cfs.getSSTables().size());
 
         // Now assert we do have the 4 keys
-        assertEquals(4, Util.getRangeSlice(cfs).size());
+        assertEquals(4, Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance).size());
 
         ArrayList<DecoratedKey> k = new ArrayList<DecoratedKey>();
-        for (Row r : Util.getRangeSlice(cfs))
+        for (Row r : Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance))
         {
             k.add(r.key);
             assertEquals(ByteBufferUtil.bytes("a"),r.cf.getColumn(Util.cellname("a")).value());

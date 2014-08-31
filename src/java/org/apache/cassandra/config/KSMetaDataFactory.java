@@ -22,6 +22,15 @@ public class KSMetaDataFactory
 
     public static final KSMetaDataFactory instance = new KSMetaDataFactory();
 
+    public KSMetaDataFactory()
+    {
+        // Hardcoded system keyspaces
+        List<KSMetaData> systemKeyspaces = Arrays.asList(systemKeyspace());
+        assert systemKeyspaces.size() == Schema.systemKeyspaceNames.size();
+        for (KSMetaData ksmd : systemKeyspaces)
+            Schema.instance.load(ksmd);
+    }
+
     // For new user created keyspaces (through CQL)
     public KSMetaData newKeyspace(String name, String strategyName, Map<String, String> options, boolean durableWrites) throws ConfigurationException
     {

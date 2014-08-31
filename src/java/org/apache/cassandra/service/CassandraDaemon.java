@@ -221,6 +221,7 @@ public class CassandraDaemon
         // check the system keyspace to keep user from shooting self in foot by changing partitioner, cluster name, etc.
         // we do a one-off scrub of the system keyspace first; we can't load the list of the rest of the keyspaces,
         // until system keyspace is opened.
+        SystemKeyspace systemKeyspace = SystemKeyspace.instance;  // FIXME: forcing initialization before system keyspace access
         for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(Keyspace.SYSTEM_KS).values())
             ColumnFamilyStore.scrubDataDirectories(cfm);
         try

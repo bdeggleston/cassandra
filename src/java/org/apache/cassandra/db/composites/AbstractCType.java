@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.Cell;
 import org.apache.cassandra.db.DeletionInfo;
 import org.apache.cassandra.db.NativeCell;
@@ -35,6 +36,7 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.apache.cassandra.io.sstable.IndexHelper.IndexInfo;
@@ -117,7 +119,7 @@ public abstract class AbstractCType implements CType
 
         indexSerializer = new IndexInfo.Serializer(this);
         sliceSerializer = new ColumnSlice.Serializer(this);
-        sliceQueryFilterSerializer = new SliceQueryFilter.Serializer(this);
+        sliceQueryFilterSerializer = new SliceQueryFilter.Serializer(this, DatabaseDescriptor.instance, Tracing.instance);
         deletionInfoSerializer = new DeletionInfo.Serializer(this);
         rangeTombstoneSerializer = new RangeTombstone.Serializer(this);
         rowIndexEntrySerializer = new RowIndexEntry.Serializer(this);

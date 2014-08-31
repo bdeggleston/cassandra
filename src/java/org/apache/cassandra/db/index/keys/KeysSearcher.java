@@ -24,6 +24,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,7 +123,9 @@ public class KeysSearcher extends SecondaryIndexSearcher
                                                                              endKey,
                                                                              false,
                                                                              rowsPerQuery,
-                                                                             filter.timestamp);
+                                                                             filter.timestamp,
+                                                                             DatabaseDescriptor.instance,
+                                                                             Tracing.instance);
                         ColumnFamily indexRow = index.getIndexCfs().getColumnFamily(indexFilter);
                         logger.trace("fetched {}", indexRow);
                         if (indexRow == null)

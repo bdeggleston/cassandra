@@ -26,6 +26,8 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.github.jamm.MemoryMeter;
 
 import org.apache.cassandra.auth.Permission;
@@ -442,7 +444,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             // For distinct, we only care about fetching the beginning of each partition. If we don't have
             // static columns, we in fact only care about the first cell, so we query only that (we don't "group").
             // If we do have static columns, we do need to fetch the first full group (to have the static columns values).
-            return new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 1, selectsStaticColumns ? toGroup : -1);
+            return new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 1, selectsStaticColumns ? toGroup : -1, DatabaseDescriptor.instance, Tracing.instance);
         }
         else if (isColumnRange())
         {
@@ -543,7 +545,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
     private SliceQueryFilter sliceFilter(ColumnSlice[] slices, int limit, int toGroup)
     {
         assert ColumnSlice.validateSlices(slices, cfm.comparator, isReversed) : String.format("Invalid slices: " + Arrays.toString(slices) + (isReversed ? " (reversed)" : ""));
-        return new SliceQueryFilter(slices, isReversed, limit, toGroup);
+        return new SliceQueryFilter(slices, isReversed, limit, toGroup, DatabaseDescriptor.instance, Tracing.instance);
     }
 
     private int getLimit(QueryOptions options) throws InvalidRequestException

@@ -27,6 +27,7 @@ import java.io.IOException;
 
 import com.google.common.collect.Iterables;
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -112,7 +113,7 @@ public class KeyspaceTest
                 cf = cfStore.getColumnFamily(Util.namesQueryFilter(cfStore, TEST_KEY));
                 assertColumns(cf);
 
-                cf = cfStore.getColumnFamily(QueryFilter.getSliceFilter(TEST_KEY, "Standard3", Composites.EMPTY, Composites.EMPTY, false, 0, System.currentTimeMillis()));
+                cf = cfStore.getColumnFamily(QueryFilter.getSliceFilter(TEST_KEY, "Standard3", Composites.EMPTY, Composites.EMPTY, false, 0, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance));
                 assertColumns(cf);
 
                 cf = cfStore.getColumnFamily(Util.namesQueryFilter(cfStore, TEST_KEY, "col99"));

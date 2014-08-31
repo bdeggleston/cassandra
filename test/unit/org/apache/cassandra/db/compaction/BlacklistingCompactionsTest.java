@@ -26,6 +26,8 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -112,7 +114,7 @@ public class BlacklistingCompactionsTest
             }
             cfs.forceBlockingFlush();
             CompactionsTest.assertMaxTimestamp(cfs, maxTimestampExpected);
-            assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(cfs).size());
+            assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance).size());
         }
 
         Collection<SSTableReader> sstables = cfs.getSSTables();

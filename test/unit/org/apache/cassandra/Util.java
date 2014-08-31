@@ -34,6 +34,7 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.compaction.AbstractCompactionTask;
@@ -52,6 +53,7 @@ import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CounterId;
 
@@ -168,16 +170,16 @@ public class Util
         return bb;
     }
 
-    public static List<Row> getRangeSlice(ColumnFamilyStore cfs)
+    public static List<Row> getRangeSlice(ColumnFamilyStore cfs, DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
-        return getRangeSlice(cfs, null);
+        return getRangeSlice(cfs, null, databaseDescriptor, tracing);
     }
 
-    public static List<Row> getRangeSlice(ColumnFamilyStore cfs, ByteBuffer superColumn)
+    public static List<Row> getRangeSlice(ColumnFamilyStore cfs, ByteBuffer superColumn, DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
         IDiskAtomFilter filter = superColumn == null
                                ? new IdentityQueryFilter()
-                               : new SliceQueryFilter(SuperColumns.startOf(superColumn), SuperColumns.endOf(superColumn), false, Integer.MAX_VALUE);
+                               : new SliceQueryFilter(SuperColumns.startOf(superColumn), SuperColumns.endOf(superColumn), false, Integer.MAX_VALUE, databaseDescriptor, tracing);
 
         Token min = StorageService.instance.getPartitioner().getMinimumToken();
         return cfs.getRangeSlice(new Bounds<Token>(min, min).toRowBounds(), null, filter, 10000);

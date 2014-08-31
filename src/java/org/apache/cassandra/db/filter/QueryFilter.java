@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.Cell;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.DecoratedKey;
@@ -34,6 +35,8 @@ import org.apache.cassandra.db.columniterator.OnDiskAtomIterator;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.io.sstable.SSTableReader;
+import org.apache.cassandra.tracing.TraceState;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.MergeIterator;
 
 public class QueryFilter
@@ -213,9 +216,11 @@ public class QueryFilter
                                              Composite finish,
                                              boolean reversed,
                                              int limit,
-                                             long timestamp)
+                                             long timestamp,
+                                             DatabaseDescriptor databaseDescriptor,
+                                             Tracing tracing)
     {
-        return new QueryFilter(key, cfName, new SliceQueryFilter(start, finish, reversed, limit), timestamp);
+        return new QueryFilter(key, cfName, new SliceQueryFilter(start, finish, reversed, limit, databaseDescriptor, tracing), timestamp);
     }
 
     /**

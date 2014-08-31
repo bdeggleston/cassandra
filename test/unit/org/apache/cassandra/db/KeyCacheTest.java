@@ -24,7 +24,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.service.StorageServiceExecutors;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -153,7 +155,9 @@ public class KeyCacheTest
                                                        Composites.EMPTY,
                                                        false,
                                                        10,
-                                                       System.currentTimeMillis()));
+                                                       System.currentTimeMillis(),
+                                                       DatabaseDescriptor.instance,
+                                                       Tracing.instance));
 
         cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,
                                                        COLUMN_FAMILY1,
@@ -161,7 +165,9 @@ public class KeyCacheTest
                                                        Composites.EMPTY,
                                                        false,
                                                        10,
-                                                       System.currentTimeMillis()));
+                                                       System.currentTimeMillis(),
+                                                       DatabaseDescriptor.instance,
+                                                       Tracing.instance));
 
         assertKeyCacheSize(2, KEYSPACE1, COLUMN_FAMILY1);
 
@@ -191,7 +197,9 @@ public class KeyCacheTest
                                                        Composites.EMPTY,
                                                        false,
                                                        10,
-                                                       System.currentTimeMillis()));
+                                                       System.currentTimeMillis(),
+                                                       DatabaseDescriptor.instance,
+                                                       Tracing.instance));
 
         cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,
                                                        COLUMN_FAMILY1,
@@ -199,7 +207,9 @@ public class KeyCacheTest
                                                        Composites.EMPTY,
                                                        false,
                                                        10,
-                                                       System.currentTimeMillis()));
+                                                       System.currentTimeMillis(),
+                                                       DatabaseDescriptor.instance,
+                                                       Tracing.instance));
 
         assertKeyCacheSize(2, KEYSPACE1, COLUMN_FAMILY1);
     }

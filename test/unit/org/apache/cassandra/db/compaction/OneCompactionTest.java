@@ -26,6 +26,8 @@ import java.util.HashSet;
 
 import org.apache.cassandra.Util;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -74,7 +76,7 @@ public class OneCompactionTest
             rm.applyUnsafe();
             inserted.add(key);
             store.forceBlockingFlush();
-            assertEquals(inserted.size(), Util.getRangeSlice(store).size());
+            assertEquals(inserted.size(), Util.getRangeSlice(store, DatabaseDescriptor.instance, Tracing.instance).size());
         }
         CompactionManager.instance.performMaximal(store);
         assertEquals(1, store.getSSTables().size());

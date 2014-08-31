@@ -21,7 +21,9 @@ package org.apache.cassandra.dht;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.db.SystemKeyspace;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -32,6 +34,12 @@ public abstract class PartitionerTestCase<T extends Token>
     protected IPartitioner<T> partitioner;
 
     public abstract void initPartitioner();
+
+    @BeforeClass
+    public static void setupClass()
+    {
+        SystemKeyspace systemKeyspace = SystemKeyspace.instance;
+    }
 
     @Before
     public void clean()
