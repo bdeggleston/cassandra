@@ -51,7 +51,7 @@ public class ColumnFamilyStoreManager
                                                                    boolean loadSSTables)
     {
         // get the max generation number, to prevent generation conflicts
-        Directories directories = new Directories(metadata);
+        Directories directories = new Directories(metadata, DatabaseDescriptor.instance, StorageService.instance);
         Directories.SSTableLister lister = directories.sstableLister().includeBackups(true);
         List<Integer> generations = new ArrayList<Integer>();
         for (Map.Entry<Descriptor, Set<Component>> entry : lister.list().entrySet())
@@ -82,7 +82,7 @@ public class ColumnFamilyStoreManager
      */
     public void removeUnfinishedCompactionLeftovers(CFMetaData metadata, Map<Integer, UUID> unfinishedCompactions)
     {
-        Directories directories = new Directories(metadata);
+        Directories directories = new Directories(metadata, DatabaseDescriptor.instance, StorageService.instance);
 
         Set<Integer> allGenerations = new HashSet<>();
         for (Descriptor desc : directories.sstableLister().list().keySet())

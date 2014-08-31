@@ -30,6 +30,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.cassandra.service.StorageService;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -75,7 +76,7 @@ public class DirectoriesTest
     @AfterClass
     public static void afterClass()
     {
-        Directories.resetDataDirectoriesAfterTest();
+        Directories.resetDataDirectoriesAfterTest(DatabaseDescriptor.instance);
         FileUtils.deleteRecursive(tempDataDir);
     }
 
@@ -123,7 +124,7 @@ public class DirectoriesTest
     {
         for (CFMetaData cfm : CFM)
         {
-            Directories directories = new Directories(cfm);
+            Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance);
             assertEquals(cfDir(cfm), directories.getDirectoryForNewSSTables());
 
             Descriptor desc = new Descriptor(cfDir(cfm), KS, cfm.cfName, 1, Descriptor.Type.FINAL);
@@ -140,7 +141,7 @@ public class DirectoriesTest
     {
         for (CFMetaData cfm : CFM)
         {
-            Directories directories = new Directories(cfm);
+            Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance);
             Directories.SSTableLister lister;
             Set<File> listed;
 
@@ -199,7 +200,7 @@ public class DirectoriesTest
 
             // nested folders in /tmp is enough to fail on *nix but we need to pass the 255 char limit to get a failure on Windows and blacklist
             CFMetaData cfm = new CFMetaData(KS, "badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbad", ColumnFamilyType.Standard, null);
-            Directories dir = new Directories(cfm);
+            Directories dir = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance);
 
             for (File file : dir.getCFDirectories())
             {
@@ -223,7 +224,7 @@ public class DirectoriesTest
     {
         for (final CFMetaData cfm : CFM)
         {
-            final Directories directories = new Directories(cfm);
+            final Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance);
             assertEquals(cfDir(cfm), directories.getDirectoryForNewSSTables());
             final String n = Long.toString(System.nanoTime());
             Callable<File> directoryGetter = new Callable<File>() {

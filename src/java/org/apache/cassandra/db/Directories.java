@@ -172,6 +172,8 @@ public class Directories
 
     private final CFMetaData metadata;
     private final File[] dataPaths;
+    private final DatabaseDescriptor databaseDescriptor;
+    private final StorageService storageService;
 
     /**
      * Create Directories of given ColumnFamily.
@@ -179,10 +181,12 @@ public class Directories
      *
      * @param metadata metadata of ColumnFamily
      */
-    public Directories(CFMetaData metadata)
+    public Directories(CFMetaData metadata, DatabaseDescriptor databaseDescriptor, StorageService storageService)
     {
         this.metadata = metadata;
-        if (StorageService.instance.isClientMode())
+        this.databaseDescriptor = databaseDescriptor;
+        this.storageService = storageService;
+        if (this.storageService.isClientMode())
         {
             dataPaths = null;
             return;
@@ -232,7 +236,7 @@ public class Directories
             {
                 // don't just let the default exception handler do this, we need the create loop to continue
                 logger.error("Failed to create {} directory", dir);
-                FileUtils.handleFSError(e, DatabaseDescriptor.instance.getDiskFailurePolicy(), StorageService.instance);
+                FileUtils.handleFSError(e, this.databaseDescriptor.getDiskFailurePolicy(), this.storageService);
             }
         }
     }
@@ -269,11 +273,11 @@ public class Directories
 
         // Requesting GC has a chance to free space only if we're using mmap and a non SUN jvm
         if (path == null
-            && (DatabaseDescriptor.instance.getDiskAccessMode() == Config.DiskAccessMode.mmap || DatabaseDescriptor.instance.getIndexAccessMode() == Config.DiskAccessMode.mmap)
+            && (databaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap || databaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
             && !FileUtils.isCleanerAvailable())
         {
             logger.info("Forcing GC to free up disk space.  Upgrade to the Oracle JVM to avoid this");
-            StorageService.instance.requestGC();
+            storageService.requestGC();
             // retry after GCing has forced unmap of compacted SSTables so they can be deleted
             // Note: GCInspector will do this already, but only sun JVM supports GCInspector so far
             SSTableDeletingTask.rescheduleFailedTasks();
@@ -678,9 +682,9 @@ public class Directories
     }
 
     @VisibleForTesting
-    static void resetDataDirectoriesAfterTest()
+    static void resetDataDirectoriesAfterTest(DatabaseDescriptor databaseDescriptor)
     {
-        String[] locations = DatabaseDescriptor.instance.getAllDataFileLocations();
+        String[] locations = databaseDescriptor.getAllDataFileLocations();
         for (int i = 0; i < locations.length; ++i)
             dataDirectories[i] = new DataDirectory(new File(locations[i]));
     }

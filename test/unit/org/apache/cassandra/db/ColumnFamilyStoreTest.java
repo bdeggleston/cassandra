@@ -1757,7 +1757,7 @@ public class ColumnFamilyStoreTest
         String cf = CF_STANDARD3; // should be empty
 
         final CFMetaData cfmeta = Schema.instance.getCFMetaData(ks, cf);
-        Directories dir = new Directories(cfmeta);
+        Directories dir = new Directories(cfmeta, DatabaseDescriptor.instance, StorageService.instance);
         ByteBuffer key = bytes("key");
 
         // 1st sstable
@@ -1823,7 +1823,7 @@ public class ColumnFamilyStoreTest
         final String cf = CF_STANDARD4; // should be empty
 
         final CFMetaData cfmeta = Schema.instance.getCFMetaData(ks, cf);
-        Directories dir = new Directories(cfmeta);
+        Directories dir = new Directories(cfmeta, DatabaseDescriptor.instance, StorageService.instance);
         ByteBuffer key = bytes("key");
 
         // Write SSTable generation 3 that has ancestors 1 and 2
@@ -1878,7 +1878,7 @@ public class ColumnFamilyStoreTest
         SSTableDeletingTask.waitForDeletions();
 
         final CFMetaData cfmeta = Schema.instance.getCFMetaData(ks, cf);
-        Directories dir = new Directories(cfs.metadata);
+        Directories dir = new Directories(cfs.metadata, DatabaseDescriptor.instance, StorageService.instance);
 
         // clear old SSTables (probably left by CFS.clearUnsafe() calls in other tests)
         for (Map.Entry<Descriptor, Set<Component>> entry : dir.sstableLister().list().entrySet())

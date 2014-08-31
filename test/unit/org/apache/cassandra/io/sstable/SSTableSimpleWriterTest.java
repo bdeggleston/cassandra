@@ -20,6 +20,7 @@ package org.apache.cassandra.io.sstable;
 
 import java.io.File;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -60,7 +61,7 @@ public class SSTableSimpleWriterTest
         String cfname = "StandardInteger1";
 
         Keyspace t = KeyspaceManager.instance.open(keyspaceName); // make sure we create the directory
-        File dir = new Directories(Schema.instance.getCFMetaData(keyspaceName, cfname)).getDirectoryForNewSSTables();
+        File dir = new Directories(Schema.instance.getCFMetaData(keyspaceName, cfname), DatabaseDescriptor.instance, StorageService.instance).getDirectoryForNewSSTables();
         assert dir.exists();
 
         IPartitioner partitioner = StorageService.instance.getPartitioner();
