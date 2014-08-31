@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.apache.cassandra.config.Schema;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -135,14 +136,14 @@ public class CacheProviderTest
         UUID cfId = UUID.randomUUID();
 
         byte[] b1 = {1, 2, 3, 4};
-        RowCacheKey key1 = new RowCacheKey(cfId, ByteBuffer.wrap(b1));
+        RowCacheKey key1 = new RowCacheKey(cfId, ByteBuffer.wrap(b1), Schema.instance);
         byte[] b2 = {1, 2, 3, 4};
-        RowCacheKey key2 = new RowCacheKey(cfId, ByteBuffer.wrap(b2));
+        RowCacheKey key2 = new RowCacheKey(cfId, ByteBuffer.wrap(b2), Schema.instance);
         assertEquals(key1, key2);
         assertEquals(key1.hashCode(), key2.hashCode());
         
         byte[] b3 = {1, 2, 3, 5};
-        RowCacheKey key3 = new RowCacheKey(cfId, ByteBuffer.wrap(b3));
+        RowCacheKey key3 = new RowCacheKey(cfId, ByteBuffer.wrap(b3), Schema.instance);
         assertNotSame(key1, key3);
         assertNotSame(key1.hashCode(), key3.hashCode());
     }

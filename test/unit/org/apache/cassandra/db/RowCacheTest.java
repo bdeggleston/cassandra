@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 
+import org.apache.cassandra.config.Schema;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -195,7 +196,7 @@ public class RowCacheTest
 
         ByteBuffer key = ByteBufferUtil.bytes("rowcachekey");
         DecoratedKey dk = cachedStore.partitioner.decorateKey(key);
-        RowCacheKey rck = new RowCacheKey(cachedStore.metadata.cfId, dk);
+        RowCacheKey rck = new RowCacheKey(cachedStore.metadata.cfId, dk, Schema.instance);
         Mutation mutation = new Mutation(KEYSPACE_CACHED, key);
         for (int i = 0; i < 200; i++)
             mutation.add(cf, Util.cellname(i), ByteBufferUtil.bytes("val" + i), System.currentTimeMillis());

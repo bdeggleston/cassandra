@@ -32,24 +32,26 @@ public class RowCacheKey implements CacheKey, Comparable<RowCacheKey>
 {
     public final UUID cfId;
     public final byte[] key;
+    private final Schema schema;
 
-    private static final long EMPTY_SIZE = ObjectSizes.measure(new RowCacheKey(null, ByteBufferUtil.EMPTY_BYTE_BUFFER));
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new RowCacheKey(null, ByteBufferUtil.EMPTY_BYTE_BUFFER, null));
 
-    public RowCacheKey(UUID cfId, DecoratedKey key)
+    public RowCacheKey(UUID cfId, DecoratedKey key, Schema schema)
     {
-        this(cfId, key.getKey());
+        this(cfId, key.getKey(), schema);
     }
 
-    public RowCacheKey(UUID cfId, ByteBuffer key)
+    public RowCacheKey(UUID cfId, ByteBuffer key, Schema schema)
     {
         this.cfId = cfId;
         this.key = ByteBufferUtil.getArray(key);
+        this.schema = schema;
         assert this.key != null;
     }
 
     public PathInfo getPathInfo()
     {
-        Pair<String, String> cf = Schema.instance.getCF(cfId);
+        Pair<String, String> cf = schema.getCF(cfId);
         return new PathInfo(cf.left, cf.right, cfId);
     }
 
