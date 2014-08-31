@@ -25,6 +25,7 @@ import io.netty.util.concurrent.EventExecutorGroup;
 import io.netty.util.concurrent.Future;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 
 import static org.apache.cassandra.concurrent.JMXEnabledSharedExecutorPool.SHARED;
 
@@ -35,7 +36,8 @@ public class RequestThreadPoolExecutor extends AbstractEventExecutor
     private final TracingAwareExecutorService wrapped = SHARED.newExecutor(DatabaseDescriptor.instance.getNativeTransportMaxThreads(),
                                                                            MAX_QUEUED_REQUESTS,
                                                                            THREAD_FACTORY_ID,
-                                                                           "transport");
+                                                                           "transport",
+                                                                           Tracing.instance);
 
     public boolean isShuttingDown()
     {

@@ -22,11 +22,13 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.apache.cassandra.metrics.SEPMetrics;
+import org.apache.cassandra.tracing.Tracing;
 
 public class JMXEnabledSharedExecutorPool extends SharedExecutorPool
 {
 
     public static final JMXEnabledSharedExecutorPool SHARED = new JMXEnabledSharedExecutorPool("SharedPool");
+
 
     public JMXEnabledSharedExecutorPool(String poolName)
     {
@@ -43,9 +45,9 @@ public class JMXEnabledSharedExecutorPool extends SharedExecutorPool
         private final SEPMetrics metrics;
         private final String mbeanName;
 
-        public JMXEnabledSEPExecutor(int poolSize, int maxQueuedLength, String name, String jmxPath)
+        public JMXEnabledSEPExecutor(int poolSize, int maxQueuedLength, String name, String jmxPath, Tracing tracing)
         {
-            super(JMXEnabledSharedExecutorPool.this, poolSize, maxQueuedLength);
+            super(JMXEnabledSharedExecutorPool.this, poolSize, maxQueuedLength, tracing);
             metrics = new SEPMetrics(this, jmxPath, name);
 
             MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
@@ -104,9 +106,9 @@ public class JMXEnabledSharedExecutorPool extends SharedExecutorPool
         }
     }
 
-    public TracingAwareExecutorService newExecutor(int maxConcurrency, int maxQueuedTasks, String name, String jmxPath)
+    public TracingAwareExecutorService newExecutor(int maxConcurrency, int maxQueuedTasks, String name, String jmxPath, Tracing tracing)
     {
-        JMXEnabledSEPExecutor executor = new JMXEnabledSEPExecutor(maxConcurrency, maxQueuedTasks, name, jmxPath);
+        JMXEnabledSEPExecutor executor = new JMXEnabledSEPExecutor(maxConcurrency, maxQueuedTasks, name, jmxPath, tracing);
         executors.add(executor);
         return executor;
     }

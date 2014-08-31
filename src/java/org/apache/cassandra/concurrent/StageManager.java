@@ -93,7 +93,7 @@ public class StageManager
 
     private TracingAwareExecutorService multiThreadedLowSignalStage(Stage stage, int numThreads)
     {
-        return JMXEnabledSharedExecutorPool.SHARED.newExecutor(numThreads, Integer.MAX_VALUE, stage.getJmxName(), stage.getJmxType());
+        return JMXEnabledSharedExecutorPool.SHARED.newExecutor(numThreads, Integer.MAX_VALUE, stage.getJmxName(), stage.getJmxType(), Tracing.instance);
     }
 
     /**

@@ -40,6 +40,13 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
     protected abstract void addTask(FutureTask<?> futureTask);
     protected abstract void onCompletion();
 
+    private final Tracing tracing;
+
+    protected AbstractTracingAwareExecutorService(Tracing tracing)
+    {
+        this.tracing = tracing;
+    }
+
     /** Task Submission / Creation / Objects **/
 
     public <T> FutureTask<T> submit(Callable<T> task)
@@ -79,7 +86,7 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
 
     protected <T> FutureTask<T> newTaskFor(Runnable runnable, T result)
     {
-        return newTaskFor(runnable, result, Tracing.instance.get());
+        return newTaskFor(runnable, result, tracing.get());
     }
 
     protected <T> FutureTask<T> newTaskFor(Runnable runnable, T result, TraceState traceState)
@@ -97,11 +104,11 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
 
     protected <T> FutureTask<T> newTaskFor(Callable<T> callable)
     {
-        if (Tracing.instance.isTracing())
+        if (tracing.isTracing())
         {
             if (callable instanceof TraceSessionFutureTask)
                 return (TraceSessionFutureTask<T>) callable;
-            return new TraceSessionFutureTask<T>(callable, Tracing.instance.get());
+            return new TraceSessionFutureTask<T>(callable, tracing.get());
         }
         if (callable instanceof FutureTask)
             return (FutureTask<T>) callable;
@@ -126,15 +133,15 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
 
         public void run()
         {
-            TraceState oldState = Tracing.instance.get();
-            Tracing.instance.set(state);
+            TraceState oldState = tracing.get();
+            tracing.set(state);
             try
             {
                 super.run();
             }
             finally
             {
-                Tracing.instance.set(oldState);
+                tracing.set(oldState);
             }
         }
     }
