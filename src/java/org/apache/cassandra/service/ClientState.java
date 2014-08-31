@@ -213,7 +213,7 @@ public class ClientState
             throw new UnauthorizedException(keyspace + " keyspace is not user-modifiable.");
 
         // we want to allow altering AUTH_KS and TRACING_KS.
-        Set<String> allowAlter = Sets.newHashSet(Auth.instance.AUTH_KS, Tracing.TRACE_KS);
+        Set<String> allowAlter = Sets.newHashSet(Auth.AUTH_KS, Tracing.TRACE_KS);
         if (allowAlter.contains(keyspace.toLowerCase()) && !(resource.isKeyspaceLevel() && perm.equals(Permission.ALTER)))
             throw new UnauthorizedException(String.format("Cannot %s %s", perm, resource));
     }
@@ -233,7 +233,7 @@ public class ClientState
 
     public void ensureIsSuper(String message) throws UnauthorizedException
     {
-        if (DatabaseDescriptor.instance.getAuthenticator().requireAuthentication() && (user == null || !user.isSuper()))
+        if (DatabaseDescriptor.instance.getAuthenticator().requireAuthentication() && (user == null || !user.isSuper(Auth.instance)))
             throw new UnauthorizedException(message);
     }
 

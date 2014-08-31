@@ -60,7 +60,7 @@ public class AlterUserStatement extends AuthenticationStatement
     {
         AuthenticatedUser user = state.getUser();
 
-        boolean isSuper = user.isSuper();
+        boolean isSuper = user.isSuper(Auth.instance);
 
         if (superuser != null && user.getName().equals(username))
             throw new UnauthorizedException("You aren't allowed to alter your own superuser status");
@@ -68,7 +68,7 @@ public class AlterUserStatement extends AuthenticationStatement
         if (superuser != null && !isSuper)
             throw new UnauthorizedException("Only superusers are allowed to alter superuser status");
 
-        if (!user.isSuper() && !user.getName().equals(username))
+        if (!user.isSuper(Auth.instance) && !user.getName().equals(username))
             throw new UnauthorizedException("You aren't allowed to alter this user");
 
         if (!isSuper)

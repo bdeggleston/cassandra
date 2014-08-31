@@ -45,9 +45,9 @@ public class AuthenticatedUser
      * Im most cased, though not necessarily, a superuser will have Permission.ALL on every resource
      * (depends on IAuthorizer implementation).
      */
-    public boolean isSuper()
+    public boolean isSuper(Auth auth)
     {
-        return !isAnonymous() && Auth.instance.isSuperuser(name);
+        return !isAnonymous() && auth.isSuperuser(name);
     }
 
     /**

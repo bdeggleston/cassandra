@@ -55,7 +55,7 @@ public class CassandraAuthorizer implements IAuthorizer
                                                                       + "permissions set<text>,"
                                                                       + "PRIMARY KEY(username, resource)"
                                                                       + ") WITH gc_grace_seconds=%d",
-                                                                      Auth.instance.AUTH_KS,
+                                                                      Auth.AUTH_KS,
                                                                       PERMISSIONS_CF,
                                                                       90 * 24 * 60 * 60); // 3 months.
 
@@ -64,7 +64,7 @@ public class CassandraAuthorizer implements IAuthorizer
     // Returns every permission on the resource granted to the user.
     public Set<Permission> authorize(AuthenticatedUser user, IResource resource)
     {
-        if (user.isSuper())
+        if (user.isSuper(Auth.instance))
             return Permission.ALL;
 
         UntypedResultSet result;
@@ -126,7 +126,7 @@ public class CassandraAuthorizer implements IAuthorizer
     public Set<PermissionDetails> list(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, String of)
     throws RequestValidationException, RequestExecutionException
     {
-        if (!performer.isSuper() && !performer.getName().equals(of))
+        if (!performer.isSuper(Auth.instance) && !performer.getName().equals(of))
             throw new UnauthorizedException(String.format("You are not authorized to view %s's permissions",
                                                           of == null ? "everyone" : of));
 
