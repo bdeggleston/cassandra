@@ -33,6 +33,8 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import com.google.common.util.concurrent.Futures;
+import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.db.compaction.CompactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,7 +118,13 @@ public class CacheService implements CacheServiceMBean
         // where 48 = 40 bytes (average size of the key) + 8 bytes (size of value)
         ICache<KeyCacheKey, RowIndexEntry> kc;
         kc = ConcurrentLinkedHashCache.create(keyCacheInMemoryCapacity);
-        AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = new AutoSavingCache<>(kc, CacheType.KEY_CACHE, new KeyCacheSerializer());
+        AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = new AutoSavingCache<>(kc,
+                                                                                     CacheType.KEY_CACHE,
+                                                                                     new KeyCacheSerializer(),
+                                                                                     DatabaseDescriptor.instance,
+                                                                                     CompactionManager.instance,
+                                                                                     CFMetaDataFactory.instance,
+                                                                                     StorageServiceExecutors.instance.optionalTasks);
 
         int keyCacheKeysToSave = DatabaseDescriptor.instance.getKeyCacheKeysToSave();
 
@@ -136,7 +144,13 @@ public class CacheService implements CacheServiceMBean
 
         // cache object
         ICache<RowCacheKey, IRowCacheEntry> rc = new SerializingCacheProvider().create(rowCacheInMemoryCapacity);
-        AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache = new AutoSavingCache<>(rc, CacheType.ROW_CACHE, new RowCacheSerializer());
+        AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache = new AutoSavingCache<>(rc,
+                                                                                      CacheType.ROW_CACHE,
+                                                                                      new RowCacheSerializer(),
+                                                                                      DatabaseDescriptor.instance,
+                                                                                      CompactionManager.instance,
+                                                                                      CFMetaDataFactory.instance,
+                                                                                      StorageServiceExecutors.instance.optionalTasks);
 
         int rowCacheKeysToSave = DatabaseDescriptor.instance.getRowCacheKeysToSave();
 
@@ -154,7 +168,11 @@ public class CacheService implements CacheServiceMBean
         AutoSavingCache<CounterCacheKey, ClockAndCount> cache =
             new AutoSavingCache<>(ConcurrentLinkedHashCache.<CounterCacheKey, ClockAndCount>create(capacity),
                                   CacheType.COUNTER_CACHE,
-                                  new CounterCacheSerializer());
+                                  new CounterCacheSerializer(),
+                                  DatabaseDescriptor.instance,
+                                  CompactionManager.instance,
+                                  CFMetaDataFactory.instance,
+                                  StorageServiceExecutors.instance.optionalTasks);
 
         int keysToSave = DatabaseDescriptor.instance.getCounterCacheKeysToSave();
 

@@ -23,8 +23,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.apache.cassandra.config.CFMetaDataFactory;
-import org.apache.cassandra.service.StorageServiceExecutors;
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,23 +55,32 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
     protected final CacheService.CacheType cacheType;
 
     private CacheSerializer<K, V> cacheLoader;
+    private final DatabaseDescriptor databaseDescriptor;
+    private final CompactionManager compactionManager;
+    private final CFMetaDataFactory cfMetaDataFactory;
+    private final DebuggableScheduledThreadPoolExecutor optionalTaskExecutor;
+
     private static final String CURRENT_VERSION = "b";
 
-    public AutoSavingCache(ICache<K, V> cache, CacheService.CacheType cacheType, CacheSerializer<K, V> cacheloader)
+    public AutoSavingCache(ICache<K, V> cache, CacheService.CacheType cacheType, CacheSerializer<K, V> cacheloader, DatabaseDescriptor databaseDescriptor, CompactionManager compactionManager, CFMetaDataFactory cfMetaDataFactory, DebuggableScheduledThreadPoolExecutor optionalTaskExecutor)
     {
         super(cacheType.toString(), cache);
         this.cacheType = cacheType;
         this.cacheLoader = cacheloader;
+        this.databaseDescriptor = databaseDescriptor;
+        this.compactionManager = compactionManager;
+        this.cfMetaDataFactory = cfMetaDataFactory;
+        this.optionalTaskExecutor = optionalTaskExecutor;
     }
 
     public File getCachePath(String ksName, String cfName, UUID cfId, String version)
     {
-        return DatabaseDescriptor.instance.getSerializedCachePath(ksName, cfName, cfId, cacheType, version);
+        return databaseDescriptor.getSerializedCachePath(ksName, cfName, cfId, cacheType, version);
     }
 
     public Writer getWriter(int keysToSave)
     {
-        return new Writer(keysToSave);
+        return new Writer(keysToSave, cfMetaDataFactory);
     }
 
     public void scheduleSaving(int savePeriodInSeconds, final int keysToSave)
@@ -90,10 +99,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
                     submitWrite(keysToSave);
                 }
             };
-            saveTask = StorageServiceExecutors.instance.optionalTasks.scheduleWithFixedDelay(runnable,
-                                                                           savePeriodInSeconds,
-                                                                           savePeriodInSeconds,
-                                                                           TimeUnit.SECONDS);
+            saveTask = optionalTaskExecutor.scheduleWithFixedDelay(runnable, savePeriodInSeconds, savePeriodInSeconds, TimeUnit.SECONDS);
         }
     }
 
@@ -149,7 +155,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
 
     public Future<?> submitWrite(int keysToSave)
     {
-        return CompactionManager.instance.submitCacheWrite(getWriter(keysToSave));
+        return compactionManager.submitCacheWrite(getWriter(keysToSave));
     }
 
     public class Writer extends CompactionInfo.Holder
@@ -158,7 +164,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
         private final CompactionInfo info;
         private long keysWritten;
 
-        protected Writer(int keysToSave)
+        protected Writer(int keysToSave, CFMetaDataFactory cfMetaDataFactory)
         {
             if (keysToSave >= getKeySet().size())
                 keys = getKeySet();
@@ -175,7 +181,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
             else
                 type = OperationType.UNKNOWN;
 
-            info = new CompactionInfo(CFMetaDataFactory.instance.denseCFMetaData(Keyspace.SYSTEM_KS, cacheType.toString(), BytesType.instance),
+            info = new CompactionInfo(cfMetaDataFactory.denseCFMetaData(Keyspace.SYSTEM_KS, cacheType.toString(), BytesType.instance),
                                       type,
                                       0,
                                       keys.size(),
@@ -263,7 +269,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
 
         private void deleteOldCacheFiles()
         {
-            File savedCachesDir = new File(DatabaseDescriptor.instance.getSavedCachesLocation());
+            File savedCachesDir = new File(databaseDescriptor.getSavedCachesLocation());
             assert savedCachesDir.exists() && savedCachesDir.isDirectory();
             File[] files = savedCachesDir.listFiles();
             if (files != null)
