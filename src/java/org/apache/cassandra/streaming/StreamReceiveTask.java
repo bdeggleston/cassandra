@@ -30,6 +30,7 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.SSTableWriter;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 
@@ -40,7 +41,8 @@ public class StreamReceiveTask extends StreamTask
 {
     private static final ThreadPoolExecutor executor = DebuggableThreadPoolExecutor.createWithMaximumPoolSize("StreamReceiveTask",
                                                                                                               FBUtilities.getAvailableProcessors(),
-                                                                                                              60, TimeUnit.SECONDS);
+                                                                                                              60, TimeUnit.SECONDS,
+                                                                                                              Tracing.instance);
 
     // number of files to receive
     private final int totalFiles;

@@ -26,6 +26,7 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.apache.cassandra.metrics.ThreadPoolMetrics;
+import org.apache.cassandra.tracing.Tracing;
 
 /**
  * This is a wrapper class for the <i>ScheduledThreadPoolExecutor</i>. It provides an implementation
@@ -38,19 +39,19 @@ public class JMXEnabledThreadPoolExecutor extends DebuggableThreadPoolExecutor i
     private final String mbeanName;
     private final ThreadPoolMetrics metrics;
 
-    public JMXEnabledThreadPoolExecutor(String threadPoolName)
+    public JMXEnabledThreadPoolExecutor(String threadPoolName, Tracing tracing)
     {
-        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName), "internal");
+        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName), "internal", tracing);
     }
 
-    public JMXEnabledThreadPoolExecutor(String threadPoolName, String jmxPath)
+    public JMXEnabledThreadPoolExecutor(String threadPoolName, String jmxPath, Tracing tracing)
     {
-        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName), jmxPath);
+        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName), jmxPath, tracing);
     }
 
-    public JMXEnabledThreadPoolExecutor(String threadPoolName, int priority)
+    public JMXEnabledThreadPoolExecutor(String threadPoolName, int priority, Tracing tracing)
     {
-        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName, priority), "internal");
+        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName, priority), "internal", tracing);
     }
 
     public JMXEnabledThreadPoolExecutor(int corePoolSize,
@@ -58,9 +59,10 @@ public class JMXEnabledThreadPoolExecutor extends DebuggableThreadPoolExecutor i
             TimeUnit unit,
             BlockingQueue<Runnable> workQueue,
             NamedThreadFactory threadFactory,
-            String jmxPath)
+            String jmxPath,
+            Tracing tracing)
     {
-        this(corePoolSize, corePoolSize, keepAliveTime, unit, workQueue, threadFactory, jmxPath);
+        this(corePoolSize, corePoolSize, keepAliveTime, unit, workQueue, threadFactory, jmxPath, tracing);
     }
 
     public JMXEnabledThreadPoolExecutor(int corePoolSize,
@@ -69,9 +71,10 @@ public class JMXEnabledThreadPoolExecutor extends DebuggableThreadPoolExecutor i
                                         TimeUnit unit,
                                         BlockingQueue<Runnable> workQueue,
                                         NamedThreadFactory threadFactory,
-                                        String jmxPath)
+                                        String jmxPath,
+                                        Tracing tracing)
     {
-        super(corePoolSize, maxPoolSize, keepAliveTime, unit, workQueue, threadFactory);
+        super(corePoolSize, maxPoolSize, keepAliveTime, unit, workQueue, threadFactory, tracing);
         super.prestartAllCoreThreads();
 
         metrics = new ThreadPoolMetrics(this, jmxPath, threadFactory.id);
@@ -89,9 +92,9 @@ public class JMXEnabledThreadPoolExecutor extends DebuggableThreadPoolExecutor i
         }
     }
 
-    public JMXEnabledThreadPoolExecutor(Stage stage)
+    public JMXEnabledThreadPoolExecutor(Stage stage, Tracing tracing)
     {
-        this(stage.getJmxName(), stage.getJmxType());
+        this(stage.getJmxName(), stage.getJmxType(), tracing);
     }
 
     private void unregisterMBean()

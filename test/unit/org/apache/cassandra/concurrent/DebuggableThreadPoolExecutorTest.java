@@ -24,6 +24,7 @@ package org.apache.cassandra.concurrent;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.Test;
 
 import org.apache.cassandra.utils.WrappedRunnable;
@@ -38,7 +39,8 @@ public class DebuggableThreadPoolExecutorTest
                                                                                  Integer.MAX_VALUE,
                                                                                  TimeUnit.MILLISECONDS,
                                                                                  q,
-                                                                                 new NamedThreadFactory("TEST"));
+                                                                                 new NamedThreadFactory("TEST"),
+                                                                                 Tracing.instance);
         WrappedRunnable runnable = new WrappedRunnable()
         {
             public void runMayThrow() throws InterruptedException

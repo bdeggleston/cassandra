@@ -28,6 +28,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,7 +106,8 @@ public class ActiveRepairService
                                                          TimeUnit.SECONDS,
                                                          new LinkedBlockingQueue<Runnable>(),
                                                          new NamedThreadFactory("AntiEntropySessions"),
-                                                         "internal");
+                                                         "internal",
+                                                         Tracing.instance);
     }
 
     /**

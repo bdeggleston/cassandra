@@ -16,6 +16,7 @@ import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.CompactionMetadata;
 import org.apache.cassandra.io.sstable.metadata.MetadataType;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -207,19 +208,22 @@ public class ColumnFamilyStoreManager
                                                                                        TimeUnit.SECONDS,
                                                                                        new LinkedBlockingQueue<Runnable>(),
                                                                                        new NamedThreadFactory("MemtableFlushWriter"),
-                                                                                       "internal");
+                                                                                       "internal",
+                                                                                       Tracing.instance);
         // post-flush executor is single threaded to provide guarantee that any flush Future on a CF will never return until prior flushes have completed
         public final ExecutorService postFlushExecutor = new JMXEnabledThreadPoolExecutor(1,
                                                                                           StageManager.KEEPALIVE,
                                                                                           TimeUnit.SECONDS,
                                                                                           new LinkedBlockingQueue<Runnable>(),
                                                                                           new NamedThreadFactory("MemtablePostFlush"),
-                                                                                          "internal");
+                                                                                          "internal",
+                                                                                          Tracing.instance);
         public final ExecutorService reclaimExecutor = new JMXEnabledThreadPoolExecutor(1, StageManager.KEEPALIVE,
                                                                                         TimeUnit.SECONDS,
                                                                                         new LinkedBlockingQueue<Runnable>(),
                                                                                         new NamedThreadFactory("MemtableReclaimMemory"),
-                                                                                        "internal");
+                                                                                        "internal",
+                                                                                        Tracing.instance);
 
     }
 

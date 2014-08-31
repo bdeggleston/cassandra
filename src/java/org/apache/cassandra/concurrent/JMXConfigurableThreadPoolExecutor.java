@@ -17,6 +17,8 @@
  */
 package org.apache.cassandra.concurrent;
 
+import org.apache.cassandra.tracing.Tracing;
+
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -28,9 +30,10 @@ public class JMXConfigurableThreadPoolExecutor extends JMXEnabledThreadPoolExecu
                                              TimeUnit unit,
                                              BlockingQueue<Runnable> workQueue,
                                              NamedThreadFactory threadFactory,
-                                             String jmxPath)
+                                             String jmxPath,
+                                             Tracing tracing)
     {
-        super(corePoolSize, keepAliveTime, unit, workQueue, threadFactory, jmxPath);
+        super(corePoolSize, keepAliveTime, unit, workQueue, threadFactory, jmxPath, tracing);
     }
 
 }

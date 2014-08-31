@@ -33,6 +33,7 @@ import java.util.concurrent.*;
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.WrappedRunnable;
 
@@ -51,7 +52,7 @@ public class CommitLogArchiver
     }
 
     public final Map<String, Future<?>> archivePending = new ConcurrentHashMap<String, Future<?>>();
-    public final ExecutorService executor = new JMXEnabledThreadPoolExecutor("CommitLogArchiver");
+    public final ExecutorService executor = new JMXEnabledThreadPoolExecutor("CommitLogArchiver", Tracing.instance);
     private final String archiveCommand;
     private final String restoreCommand;
     private final String restoreDirectories;

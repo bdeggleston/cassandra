@@ -74,19 +74,22 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
         }
     };
 
-    public DebuggableThreadPoolExecutor(String threadPoolName, int priority)
+    private final Tracing tracing;
+
+    public DebuggableThreadPoolExecutor(String threadPoolName, int priority, Tracing tracing)
     {
-        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName, priority));
+        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName, priority), tracing);
     }
 
-    public DebuggableThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> queue, ThreadFactory factory)
+    public DebuggableThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> queue, ThreadFactory factory, Tracing tracing)
     {
-        this(corePoolSize, corePoolSize, keepAliveTime, unit, queue, factory);
+        this(corePoolSize, corePoolSize, keepAliveTime, unit, queue, factory, tracing);
     }
 
-    public DebuggableThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory)
+    public DebuggableThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory, Tracing tracing)
     {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory);
+        this.tracing = tracing;
         allowCoreThreadTimeOut(true);
 
         // block task submissions until queue has room.
@@ -105,9 +108,9 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
      * @param size the fixed number of threads for this executor
      * @return the new DebuggableThreadPoolExecutor
      */
-    public static DebuggableThreadPoolExecutor createWithFixedPoolSize(String threadPoolName, int size)
+    public static DebuggableThreadPoolExecutor createWithFixedPoolSize(String threadPoolName, int size, Tracing tracing)
     {
-        return createWithMaximumPoolSize(threadPoolName, size, Integer.MAX_VALUE, TimeUnit.SECONDS);
+        return createWithMaximumPoolSize(threadPoolName, size, Integer.MAX_VALUE, TimeUnit.SECONDS, tracing);
     }
 
     /**
@@ -120,9 +123,9 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
      * @param unit tht time unit for {@code keepAliveTime}
      * @return the new DebuggableThreadPoolExecutor
      */
-    public static DebuggableThreadPoolExecutor createWithMaximumPoolSize(String threadPoolName, int size, int keepAliveTime, TimeUnit unit)
+    public static DebuggableThreadPoolExecutor createWithMaximumPoolSize(String threadPoolName, int size, int keepAliveTime, TimeUnit unit, Tracing tracing)
     {
-        return new DebuggableThreadPoolExecutor(size, Integer.MAX_VALUE, keepAliveTime, unit, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName));
+        return new DebuggableThreadPoolExecutor(size, Integer.MAX_VALUE, keepAliveTime, unit, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName), tracing);
     }
 
     protected void onInitialRejection(Runnable task) {}
@@ -133,7 +136,7 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     {
         super.execute(state == null || command instanceof TraceSessionWrapper
                       ? command
-                      : new TraceSessionWrapper<Object>(command, state));
+                      : new TraceSessionWrapper<Object>(command, state, tracing));
     }
 
     public void maybeExecuteImmediately(Runnable command)
@@ -145,17 +148,17 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     @Override
     public void execute(Runnable command)
     {
-        super.execute(Tracing.instance.isTracing() && !(command instanceof TraceSessionWrapper)
-                      ? new TraceSessionWrapper<Object>(Executors.callable(command, null))
+        super.execute(tracing.isTracing() && !(command instanceof TraceSessionWrapper)
+                      ? new TraceSessionWrapper<Object>(Executors.callable(command, null), tracing)
                       : command);
     }
 
     @Override
     protected <T> RunnableFuture<T> newTaskFor(Runnable runnable, T result)
     {
-        if (Tracing.instance.isTracing() && !(runnable instanceof TraceSessionWrapper))
+        if (tracing.isTracing() && !(runnable instanceof TraceSessionWrapper))
         {
-            return new TraceSessionWrapper<T>(Executors.callable(runnable, result));
+            return new TraceSessionWrapper<T>(Executors.callable(runnable, result), tracing);
         }
         return super.newTaskFor(runnable, result);
     }
@@ -163,9 +166,9 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     @Override
     protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable)
     {
-        if (Tracing.instance.isTracing() && !(callable instanceof TraceSessionWrapper))
+        if (tracing.isTracing() && !(callable instanceof TraceSessionWrapper))
         {
-            return new TraceSessionWrapper<T>(callable);
+            return new TraceSessionWrapper<T>(callable, tracing);
         }
         return super.newTaskFor(callable);
     }
@@ -269,27 +272,30 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     private static class TraceSessionWrapper<T> extends FutureTask<T>
     {
         private final TraceState state;
+        private final Tracing tracing;
 
-        public TraceSessionWrapper(Callable<T> callable)
+        public TraceSessionWrapper(Callable<T> callable, Tracing tracing)
         {
             super(callable);
-            state = Tracing.instance.get();
+            this.tracing = tracing;
+            state = this.tracing.get();
         }
 
-        public TraceSessionWrapper(Runnable command, TraceState state)
+        public TraceSessionWrapper(Runnable command, TraceState state, Tracing tracing)
         {
             super(command, null);
+            this.tracing = tracing;
             this.state = state;
         }
 
         private void setupContext()
         {
-            Tracing.instance.set(state);
+            tracing.set(state);
         }
 
         private void reset()
         {
-            Tracing.instance.set(null);
+            tracing.set(null);
         }
     }
 }

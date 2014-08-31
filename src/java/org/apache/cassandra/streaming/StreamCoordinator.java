@@ -20,6 +20,7 @@ package org.apache.cassandra.streaming;
 import java.net.InetAddress;
 import java.util.*;
 
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +41,8 @@ public class StreamCoordinator
     // Executor strictly for establishing the initial connections. Once we're connected to the other end the rest of the
     // streaming is handled directly by the ConnectionHandler's incoming and outgoing threads.
     private static final DebuggableThreadPoolExecutor streamExecutor = DebuggableThreadPoolExecutor.createWithFixedPoolSize("StreamConnectionEstablisher",
-                                                                                                                            FBUtilities.getAvailableProcessors());
+                                                                                                                            FBUtilities.getAvailableProcessors(),
+                                                                                                                            Tracing.instance);
 
     private Map<InetAddress, HostStreamingData> peerSessions = new HashMap<>();
     private final int connectionsPerHost;
