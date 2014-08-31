@@ -28,28 +28,30 @@ import org.apache.cassandra.utils.*;
 
 public class CounterCacheKey implements CacheKey
 {
-    private static final long EMPTY_SIZE = ObjectSizes.measure(new CounterCacheKey(null, ByteBufferUtil.EMPTY_BYTE_BUFFER, CellNames.simpleDense(ByteBuffer.allocate(1))))
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new CounterCacheKey(null, ByteBufferUtil.EMPTY_BYTE_BUFFER, CellNames.simpleDense(ByteBuffer.allocate(1)), null))
                                            + ObjectSizes.measure(new UUID(0, 0));
 
     public final UUID cfId;
     public final byte[] partitionKey;
     public final byte[] cellName;
+    private final Schema schema;
 
-    private CounterCacheKey(UUID cfId, ByteBuffer partitionKey, CellName cellName)
+    private CounterCacheKey(UUID cfId, ByteBuffer partitionKey, CellName cellName, Schema schema)
     {
         this.cfId = cfId;
         this.partitionKey = ByteBufferUtil.getArray(partitionKey);
         this.cellName = ByteBufferUtil.getArray(cellName.toByteBuffer());
+        this.schema = schema;
     }
 
-    public static CounterCacheKey create(UUID cfId, ByteBuffer partitionKey, CellName cellName)
+    public static CounterCacheKey create(UUID cfId, ByteBuffer partitionKey, CellName cellName, Schema schema)
     {
-        return new CounterCacheKey(cfId, partitionKey, cellName);
+        return new CounterCacheKey(cfId, partitionKey, cellName, schema);
     }
 
     public PathInfo getPathInfo()
     {
-        Pair<String, String> cf = Schema.instance.getCF(cfId);
+        Pair<String, String> cf = schema.getCF(cfId);
         return new PathInfo(cf.left, cf.right, cfId);
     }
 
