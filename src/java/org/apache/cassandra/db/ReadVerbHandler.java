@@ -32,15 +32,28 @@ public class ReadVerbHandler implements IVerbHandler<ReadCommand>
 {
     private static final Logger logger = LoggerFactory.getLogger( ReadVerbHandler.class );
 
+    private final KeyspaceManager keyspaceManager;
+    private final MessagingService messagingService;
+    private final StorageService storageService;
+    private final Tracing tracing;
+
+    public ReadVerbHandler(KeyspaceManager keyspaceManager, MessagingService messagingService, StorageService storageService, Tracing tracing)
+    {
+        this.keyspaceManager = keyspaceManager;
+        this.messagingService = messagingService;
+        this.storageService = storageService;
+        this.tracing = tracing;
+    }
+
     public void doVerb(MessageIn<ReadCommand> message, int id)
     {
-        if (StorageService.instance.isBootstrapMode())
+        if (storageService.isBootstrapMode())
         {
             throw new RuntimeException("Cannot service reads while bootstrapping!");
         }
 
         ReadCommand command = message.payload;
-        Keyspace keyspace = KeyspaceManager.instance.open(command.ksName);
+        Keyspace keyspace = keyspaceManager.open(command.ksName);
         Row row;
         try
         {
@@ -55,8 +68,8 @@ public class ReadVerbHandler implements IVerbHandler<ReadCommand>
         MessageOut<ReadResponse> reply = new MessageOut<ReadResponse>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                       getResponse(command, row),
                                                                       ReadResponse.serializer);
-        Tracing.instance.trace("Enqueuing response to {}", message.from);
-        MessagingService.instance.sendReply(reply, id, message.from);
+        tracing.trace("Enqueuing response to {}", message.from);
+        messagingService.sendReply(reply, id, message.from);
     }
 
     public static ReadResponse getResponse(ReadCommand command, Row row)
