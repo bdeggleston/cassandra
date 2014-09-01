@@ -30,13 +30,24 @@ public class TruncateVerbHandler implements IVerbHandler<Truncation>
 {
     private static final Logger logger = LoggerFactory.getLogger(TruncateVerbHandler.class);
 
+    private final Tracing tracing;
+    private final KeyspaceManager keyspaceManager;
+    private final MessagingService messagingService;
+
+    public TruncateVerbHandler(Tracing tracing, KeyspaceManager keyspaceManager, MessagingService messagingService)
+    {
+        this.tracing = tracing;
+        this.keyspaceManager = keyspaceManager;
+        this.messagingService = messagingService;
+    }
+
     public void doVerb(MessageIn<Truncation> message, int id)
     {
         Truncation t = message.payload;
-        Tracing.instance.trace("Applying truncation of {}.{}", t.keyspace, t.columnFamily);
+        tracing.trace("Applying truncation of {}.{}", t.keyspace, t.columnFamily);
         try
         {
-            ColumnFamilyStore cfs = KeyspaceManager.instance.open(t.keyspace).getColumnFamilyStore(t.columnFamily);
+            ColumnFamilyStore cfs = keyspaceManager.open(t.keyspace).getColumnFamilyStore(t.columnFamily);
             cfs.truncateBlocking();
         }
         catch (Exception e)
@@ -47,16 +58,16 @@ public class TruncateVerbHandler implements IVerbHandler<Truncation>
             if (FSError.findNested(e) != null)
                 throw FSError.findNested(e);
         }
-        Tracing.instance.trace("Enqueuing response to truncate operation to {}", message.from);
+        tracing.trace("Enqueuing response to truncate operation to {}", message.from);
 
         TruncateResponse response = new TruncateResponse(t.keyspace, t.columnFamily, true);
         logger.trace("{} applied.  Enqueuing response to {}@{} ", new Object[]{ t, id, message.from });
-        MessagingService.instance.sendReply(response.createMessage(), id, message.from);
+        messagingService.sendReply(response.createMessage(), id, message.from);
     }
 
-    private static void respondError(Truncation t, MessageIn truncateRequestMessage)
+    private void respondError(Truncation t, MessageIn truncateRequestMessage)
     {
         TruncateResponse response = new TruncateResponse(t.keyspace, t.columnFamily, false);
-        MessagingService.instance.sendOneWay(response.createMessage(), truncateRequestMessage.from);
+        messagingService.sendOneWay(response.createMessage(), truncateRequestMessage.from);
     }
 }
