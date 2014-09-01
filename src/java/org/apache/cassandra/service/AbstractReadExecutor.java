@@ -55,18 +55,27 @@ public abstract class AbstractReadExecutor
     protected final List<InetAddress> targetReplicas;
     protected final RowDigestResolver resolver;
     protected final ReadCallback<ReadResponse, Row> handler;
+    protected final DatabaseDescriptor databaseDescriptor;
+    protected final MessagingService messagingService;
+    protected final Schema schema;
+    protected final StageManager stageManager;
 
-    AbstractReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel, List<InetAddress> targetReplicas)
+    AbstractReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel, List<InetAddress> targetReplicas,
+                         DatabaseDescriptor databaseDescriptor, MessagingService messagingService, Schema schema, StageManager stageManager, KeyspaceManager keyspaceManager)
     {
         this.command = command;
         this.targetReplicas = targetReplicas;
+        this.databaseDescriptor = databaseDescriptor;
+        this.messagingService = messagingService;
+        this.schema = schema;
+        this.stageManager = stageManager;
         resolver = new RowDigestResolver(command.ksName, command.key);
-        handler = new ReadCallback<>(resolver, consistencyLevel, command, targetReplicas, DatabaseDescriptor.instance, MessagingService.instance, StageManager.instance, KeyspaceManager.instance);
+        handler = new ReadCallback<>(resolver, consistencyLevel, command, targetReplicas, this.databaseDescriptor, this.messagingService, this.stageManager, keyspaceManager);
     }
 
     private boolean isLocalRequest(InetAddress replica)
     {
-        return replica.equals(DatabaseDescriptor.instance.getBroadcastAddress()) && StorageProxy.OPTIMIZE_LOCAL_REQUESTS;
+        return replica.equals(databaseDescriptor.getBroadcastAddress()) && StorageProxy.OPTIMIZE_LOCAL_REQUESTS;
     }
 
     protected void makeDataRequests(Iterable<InetAddress> endpoints)
@@ -81,13 +90,13 @@ public abstract class AbstractReadExecutor
             else
             {
                 logger.trace("reading data from {}", endpoint);
-                MessagingService.instance.sendRR(command.createMessage(), endpoint, handler);
+                messagingService.sendRR(command.createMessage(), endpoint, handler);
             }
         }
         if (readLocal)
         {
             logger.trace("reading data locally");
-            StageManager.instance.getStage(Stage.READ).maybeExecuteImmediately(new StorageProxy.LocalReadRunnable(command, handler));
+            stageManager.getStage(Stage.READ).maybeExecuteImmediately(new StorageProxy.LocalReadRunnable(command, handler));
         }
     }
 
@@ -101,12 +110,12 @@ public abstract class AbstractReadExecutor
             if (isLocalRequest(endpoint))
             {
                 logger.trace("reading digest locally");
-                StageManager.instance.getStage(Stage.READ).execute(new StorageProxy.LocalReadRunnable(digestCommand, handler));
+                stageManager.getStage(Stage.READ).execute(new StorageProxy.LocalReadRunnable(digestCommand, handler));
             }
             else
             {
                 logger.trace("reading digest from {}", endpoint);
-                MessagingService.instance.sendRR(message, endpoint, handler);
+                messagingService.sendRR(message, endpoint, handler);
             }
         }
     }
@@ -141,20 +150,21 @@ public abstract class AbstractReadExecutor
     /**
      * @return an executor appropriate for the configured speculative read policy
      */
-    public static AbstractReadExecutor getReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel) throws UnavailableException
+    public static AbstractReadExecutor getReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel, DatabaseDescriptor databaseDescriptor, MessagingService messagingService,
+                                                       Schema schema, StageManager stageManager, KeyspaceManager keyspaceManager, StorageProxy storageProxy, StorageService storageService) throws UnavailableException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(command.ksName);
-        List<InetAddress> allReplicas = StorageProxy.instance.getLiveSortedEndpoints(keyspace, command.key);
-        ReadRepairDecision repairDecision = Schema.instance.getCFMetaData(command.ksName, command.cfName).newReadRepairDecision();
-        List<InetAddress> targetReplicas = consistencyLevel.filterForQuery(keyspace, allReplicas, repairDecision, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch(), DatabaseDescriptor.instance.getLocalComparator());
+        Keyspace keyspace = keyspaceManager.open(command.ksName);
+        List<InetAddress> allReplicas = storageProxy.getLiveSortedEndpoints(keyspace, command.key);
+        ReadRepairDecision repairDecision = schema.getCFMetaData(command.ksName, command.cfName).newReadRepairDecision();
+        List<InetAddress> targetReplicas = consistencyLevel.filterForQuery(keyspace, allReplicas, repairDecision, databaseDescriptor.getLocalDataCenter(), databaseDescriptor.getEndpointSnitch(), databaseDescriptor.getLocalComparator());
 
         // Throw UAE early if we don't have enough replicas.
-        consistencyLevel.assureSufficientLiveNodes(keyspace, targetReplicas, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch());
+        consistencyLevel.assureSufficientLiveNodes(keyspace, targetReplicas, databaseDescriptor.getLocalDataCenter(), databaseDescriptor.getEndpointSnitch());
 
         // Fat client. Speculating read executors need access to cfs metrics and sampled latency, and fat clients
         // can't provide that. So, for now, fat clients will always use NeverSpeculatingReadExecutor.
-        if (StorageService.instance.isClientMode())
-            return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas);
+        if (storageService.isClientMode())
+            return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
 
         if (repairDecision != ReadRepairDecision.NONE)
             ReadRepairMetrics.attempted.mark();
@@ -163,15 +173,15 @@ public abstract class AbstractReadExecutor
         RetryType retryType = cfs.metadata.getSpeculativeRetry().type;
 
         // Speculative retry is disabled *OR* there are simply no extra replicas to speculate.
-        if (retryType == RetryType.NONE || consistencyLevel.blockFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter()) == allReplicas.size())
-            return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas);
+        if (retryType == RetryType.NONE || consistencyLevel.blockFor(keyspace, databaseDescriptor.getLocalDataCenter()) == allReplicas.size())
+            return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
 
         if (targetReplicas.size() == allReplicas.size())
         {
             // CL.ALL, RRD.GLOBAL or RRD.DC_LOCAL and a single-DC.
             // We are going to contact every node anyway, so ask for 2 full data requests instead of 1, for redundancy
             // (same amount of requests in total, but we turn 1 digest request into a full blown data request).
-            return new AlwaysSpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas);
+            return new AlwaysSpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
         }
 
         // RRD.NONE or RRD.DC_LOCAL w/ multiple DCs.
@@ -192,16 +202,17 @@ public abstract class AbstractReadExecutor
         targetReplicas.add(extraReplica);
 
         if (retryType == RetryType.ALWAYS)
-            return new AlwaysSpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas);
+            return new AlwaysSpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
         else // PERCENTILE or CUSTOM.
-            return new SpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas);
+            return new SpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
     }
 
     private static class NeverSpeculatingReadExecutor extends AbstractReadExecutor
     {
-        public NeverSpeculatingReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel, List<InetAddress> targetReplicas)
+        public NeverSpeculatingReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel, List<InetAddress> targetReplicas,
+                                            DatabaseDescriptor databaseDescriptor, MessagingService messagingService, Schema schema, StageManager stageManager, KeyspaceManager keyspaceManager)
         {
-            super(command, consistencyLevel, targetReplicas);
+            super(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
         }
 
         public void executeAsync()
@@ -230,9 +241,14 @@ public abstract class AbstractReadExecutor
         public SpeculatingReadExecutor(ColumnFamilyStore cfs,
                                        ReadCommand command,
                                        ConsistencyLevel consistencyLevel,
-                                       List<InetAddress> targetReplicas)
+                                       List<InetAddress> targetReplicas,
+                                       DatabaseDescriptor databaseDescriptor,
+                                       MessagingService messagingService,
+                                       Schema schema,
+                                       StageManager stageManager,
+                                       KeyspaceManager keyspaceManager)
         {
-            super(command, consistencyLevel, targetReplicas);
+            super(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
             this.cfs = cfs;
         }
 
@@ -279,7 +295,7 @@ public abstract class AbstractReadExecutor
 
                 InetAddress extraReplica = Iterables.getLast(targetReplicas);
                 logger.trace("speculating read retry on {}", extraReplica);
-                MessagingService.instance.sendRR(retryCommand.createMessage(), extraReplica, handler);
+                messagingService.sendRR(retryCommand.createMessage(), extraReplica, handler);
                 speculated = true;
 
                 cfs.metric.speculativeRetries.inc();
@@ -301,9 +317,14 @@ public abstract class AbstractReadExecutor
         public AlwaysSpeculatingReadExecutor(ColumnFamilyStore cfs,
                                              ReadCommand command,
                                              ConsistencyLevel consistencyLevel,
-                                             List<InetAddress> targetReplicas)
+                                             List<InetAddress> targetReplicas,
+                                             DatabaseDescriptor databaseDescriptor,
+                                             MessagingService messagingService,
+                                             Schema schema,
+                                             StageManager stageManager,
+                                             KeyspaceManager keyspaceManager)
         {
-            super(command, consistencyLevel, targetReplicas);
+            super(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
             this.cfs = cfs;
         }
 

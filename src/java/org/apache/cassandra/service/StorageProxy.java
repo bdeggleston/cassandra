@@ -1217,7 +1217,15 @@ public class StorageProxy implements StorageProxyMBean
                 ReadCommand command = commands.get(i);
                 assert !command.isDigestQuery();
 
-                AbstractReadExecutor exec = AbstractReadExecutor.getReadExecutor(command, consistencyLevel);
+                AbstractReadExecutor exec = AbstractReadExecutor.getReadExecutor(command,
+                                                                                 consistencyLevel,
+                                                                                 DatabaseDescriptor.instance,
+                                                                                 MessagingService.instance,
+                                                                                 Schema.instance,
+                                                                                 StageManager.instance,
+                                                                                 KeyspaceManager.instance,
+                                                                                 this,
+                                                                                 StorageService.instance);
                 exec.executeAsync();
                 readExecutors[i] = exec;
             }
