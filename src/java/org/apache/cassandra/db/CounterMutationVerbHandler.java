@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.db;
 
+import org.apache.cassandra.locator.IEndpointSnitch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,9 +28,24 @@ import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageProxy;
 
+import java.net.InetAddress;
+
 public class CounterMutationVerbHandler implements IVerbHandler<CounterMutation>
 {
     private static final Logger logger = LoggerFactory.getLogger(CounterMutationVerbHandler.class);
+
+    private final IEndpointSnitch snitch;
+    private final InetAddress broadcastAddress;
+    private final MessagingService messagingService;
+    private final StorageProxy storageProxy;
+
+    public CounterMutationVerbHandler(DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StorageProxy storageProxy)
+    {
+        this.snitch = databaseDescriptor.getEndpointSnitch();
+        this.broadcastAddress = databaseDescriptor.getBroadcastAddress();
+        this.messagingService = messagingService;
+        this.storageProxy = storageProxy;
+    }
 
     public void doVerb(final MessageIn<CounterMutation> message, final int id)
     {
@@ -38,7 +54,7 @@ public class CounterMutationVerbHandler implements IVerbHandler<CounterMutation>
             final CounterMutation cm = message.payload;
             logger.debug("Applying forwarded {}", cm);
 
-            String localDataCenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
+            String localDataCenter = snitch.getDatacenter(broadcastAddress);
             // We should not wait for the result of the write in this thread,
             // otherwise we could have a distributed deadlock between replicas
             // running this VerbHandler (see #4578).
@@ -46,11 +62,11 @@ public class CounterMutationVerbHandler implements IVerbHandler<CounterMutation>
             // will not be called if the request timeout, but this is ok
             // because the coordinator of the counter mutation will timeout on
             // it's own in that case.
-            StorageProxy.instance.applyCounterMutationOnLeader(cm, localDataCenter, new Runnable()
+            storageProxy.applyCounterMutationOnLeader(cm, localDataCenter, new Runnable()
             {
                 public void run()
                 {
-                    MessagingService.instance.sendReply(new WriteResponse().createMessage(), id, message.from);
+                    messagingService.sendReply(new WriteResponse().createMessage(), id, message.from);
                 }
             });
         }
