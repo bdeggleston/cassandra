@@ -158,7 +158,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
     public void addCounterColumn(ByteBuffer name, long value)
     {
         addColumn(new BufferCounterCell(metadata.comparator.cellFromByteBuffer(name),
-                                        CounterContext.instance().createGlobal(counterid, 1L, value),
+                                        CounterContext.createGlobal(counterid, 1L, value),
                                         System.currentTimeMillis()));
     }
 

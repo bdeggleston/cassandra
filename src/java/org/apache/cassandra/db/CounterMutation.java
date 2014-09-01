@@ -204,7 +204,7 @@ public class CounterMutation implements IMutation
             long count = currentValue.count + update.delta();
 
             resultCF.addColumn(new BufferCounterCell(update.name(),
-                                                     CounterContext.instance().createGlobal(CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()), clock, count),
+                                                     CounterContext.createGlobal(CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()), clock, count),
                                                      update.timestamp()));
         }
 
@@ -271,7 +271,7 @@ public class CounterMutation implements IMutation
             if (cell == null || !cell.isLive()) // absent or a tombstone.
                 currentValues[i] = ClockAndCount.BLANK;
             else
-                currentValues[i] = CounterContext.instance().getLocalClockAndCount(cell.value());
+                currentValues[i] = CounterContext.getLocalClockAndCount(cell.value(), SystemKeyspace.instance.getLocalHostId());
         }
     }
 
@@ -285,7 +285,7 @@ public class CounterMutation implements IMutation
             ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cf.id());
             for (Cell cell : cf)
                 if (cell instanceof CounterCell)
-                    cfs.putCachedCounter(key(), cell.name(), CounterContext.instance().getLocalClockAndCount(cell.value()));
+                    cfs.putCachedCounter(key(), cell.name(), CounterContext.getLocalClockAndCount(cell.value(), SystemKeyspace.instance.getLocalHostId()));
         }
     }
 

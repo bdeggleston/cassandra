@@ -254,7 +254,7 @@ public class ColumnFamilyTest
         CellName name = cellname("counter1");
 
         BufferCounterCell counter = new BufferCounterCell(name,
-                                                          CounterContext.instance().createGlobal(CounterId.fromInt(1), 1, 1),
+                                                          CounterContext.createGlobal(CounterId.fromInt(1), 1, 1),
                                                           timestamp);
         BufferDeletedCell tombstone = new BufferDeletedCell(name, (int) (System.currentTimeMillis() / 1000), 0L);
 

@@ -44,7 +44,7 @@ public class CounterColumnType extends AbstractType<Long>
     @Override
     public Long compose(ByteBuffer bytes)
     {
-        return CounterContext.instance().total(bytes);
+        return CounterContext.total(bytes);
     }
 
     @Override

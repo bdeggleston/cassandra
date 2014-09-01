@@ -180,7 +180,7 @@ public class CassandraServer implements Cassandra.Iface
     private CounterColumn thriftifySubCounter(Cell cell)
     {
         assert cell instanceof CounterCell;
-        return new CounterColumn(cell.name().toByteBuffer(), CounterContext.instance().total(cell.value()));
+        return new CounterColumn(cell.name().toByteBuffer(), CounterContext.total(cell.value()));
     }
 
     private List<ColumnOrSuperColumn> thriftifySuperColumns(Collection<Cell> cells,

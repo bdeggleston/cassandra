@@ -335,7 +335,6 @@ public class StreamingTransferTest
     {
         final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         final ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Counter1");
-        final CounterContext cc = new CounterContext();
 
         final Map<String, ColumnFamily> cleanedEntries = new HashMap<>();
 
@@ -353,7 +352,7 @@ public class StreamingTransferTest
                 state.writeRemote(CounterId.fromInt(6), 3L, 3L);
                 state.writeRemote(CounterId.fromInt(8), 2L, 4L);
                 cf.addColumn(new BufferCounterCell(cellname(col), state.context, timestamp));
-                cfCleaned.addColumn(new BufferCounterCell(cellname(col), cc.clearAllLocal(state.context), timestamp));
+                cfCleaned.addColumn(new BufferCounterCell(cellname(col), CounterContext.clearAllLocal(state.context), timestamp));
 
                 entries.put(key, cf);
                 cleanedEntries.put(key, cfCleaned);

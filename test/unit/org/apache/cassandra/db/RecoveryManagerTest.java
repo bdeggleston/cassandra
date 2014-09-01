@@ -26,6 +26,7 @@ import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.KSMetaData;
+import org.apache.cassandra.db.context.CounterContext;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.CounterColumnType;
 import org.apache.cassandra.exceptions.ConfigurationException;
@@ -115,7 +116,7 @@ public class RecoveryManagerTest
         for (int i = 0; i < 10; ++i)
         {
             cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Counter1");
-            cf.addColumn(BufferCounterCell.createLocal(cellname("col"), 1L, 1L, Long.MIN_VALUE));
+            cf.addColumn(BufferCounterCell.createLocal(cellname("col"), 1L, 1L, Long.MIN_VALUE, SystemKeyspace.instance.getLocalHostId()));
             rm = new Mutation(KEYSPACE1, dk.getKey(), cf);
             rm.apply();
         }

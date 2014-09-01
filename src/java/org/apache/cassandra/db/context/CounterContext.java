@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.cassandra.db.SystemKeyspace;
@@ -89,21 +90,27 @@ public class CounterContext
         EQUAL, GREATER_THAN, LESS_THAN, DISJOINT
     }
 
-    // lazy-load singleton
-    private static class LazyHolder
-    {
-        private static final CounterContext counterContext = new CounterContext();
-    }
+//    // lazy-load singleton
+//    private static class LazyHolder
+//    {
+//        private static final CounterContext counterContext = new CounterContext();
+//    }
+//
+//    public static CounterContext instance()
+//    {
+//        return LazyHolder.counterContext;
+//    }
 
-    public static CounterContext instance()
+
+    private CounterContext()
     {
-        return LazyHolder.counterContext;
+        throw new IllegalStateException("Don't instantiate CounterContext");
     }
 
     /**
      * Creates a counter context with a single global, 2.1+ shard (a result of increment).
      */
-    public ByteBuffer createGlobal(CounterId id, long clock, long count)
+    public static ByteBuffer createGlobal(CounterId id, long clock, long count)
     {
         ContextState state = ContextState.allocate(1, 0, 0);
         state.writeGlobal(id, clock, count);
@@ -114,10 +121,10 @@ public class CounterContext
      * Creates a counter context with a single local shard.
      * For use by tests of compatibility with pre-2.1 counters only.
      */
-    public ByteBuffer createLocal(long count)
+    public static ByteBuffer createLocal(long count, UUID hostId)
     {
         ContextState state = ContextState.allocate(0, 1, 0);
-        state.writeLocal(CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()), 1L, count);
+        state.writeLocal(CounterId.getLocalId(hostId), 1L, count);
         return state.context;
     }
 
@@ -125,7 +132,7 @@ public class CounterContext
      * Creates a counter context with a single remote shard.
      * For use by tests of compatibility with pre-2.1 counters only.
      */
-    public ByteBuffer createRemote(CounterId id, long clock, long count)
+    public static ByteBuffer createRemote(CounterId id, long clock, long count)
     {
         ContextState state = ContextState.allocate(0, 0, 1);
         state.writeRemote(id, clock, count);
@@ -156,7 +163,7 @@ public class CounterContext
      * @param right counter context.
      * @return the Relationship between the contexts.
      */
-    public Relationship diff(ByteBuffer left, ByteBuffer right)
+    public static Relationship diff(ByteBuffer left, ByteBuffer right)
     {
         Relationship relationship = Relationship.EQUAL;
         ContextState leftState = ContextState.wrap(left);
@@ -255,7 +262,7 @@ public class CounterContext
      * @param left counter context.
      * @param right counter context.
      */
-    public ByteBuffer merge(ByteBuffer left, ByteBuffer right)
+    public static ByteBuffer merge(ByteBuffer left, ByteBuffer right)
     {
         boolean leftIsSuperSet = true;
         boolean rightIsSuperSet = true;
@@ -359,7 +366,7 @@ public class CounterContext
         return merge(ContextState.allocate(globalCount, localCount, remoteCount), leftState, rightState);
     }
 
-    private ByteBuffer merge(ContextState mergedState, ContextState leftState, ContextState rightState)
+    private static ByteBuffer merge(ContextState mergedState, ContextState leftState, ContextState rightState)
     {
         while (leftState.hasRemaining() && rightState.hasRemaining())
         {
@@ -413,7 +420,7 @@ public class CounterContext
      * - EQUAL for two equal, non-local, shards
      * - DISJOINT for any two local shards
      */
-    private Relationship compare(ContextState leftState, ContextState rightState)
+    private static Relationship compare(ContextState leftState, ContextState rightState)
     {
         long leftClock = leftState.getClock();
         long leftCount = leftState.getCount();
@@ -499,7 +506,7 @@ public class CounterContext
      * @param context counter context.
      * @return a human-readable String of the context.
      */
-    public String toString(ByteBuffer context)
+    public static String toString(ByteBuffer context)
     {
         ContextState state = ContextState.wrap(context);
         StringBuilder sb = new StringBuilder();
@@ -531,7 +538,7 @@ public class CounterContext
      * @param context a counter context
      * @return the aggregated count represented by {@code context}
      */
-    public long total(ByteBuffer context)
+    public static long total(ByteBuffer context)
     {
         long total = 0L;
         // we could use a ContextState but it is easy enough that we avoid the object creation
@@ -540,7 +547,7 @@ public class CounterContext
         return total;
     }
 
-    public boolean shouldClearLocal(ByteBuffer context)
+    public static boolean shouldClearLocal(ByteBuffer context)
     {
         // #elt being negative means we have to clean local shards.
         return context.getShort(context.position()) < 0;
@@ -549,7 +556,7 @@ public class CounterContext
     /**
      * Detects whether or not the context has any legacy (local or remote) shards in it.
      */
-    public boolean hasLegacyShards(ByteBuffer context)
+    public static boolean hasLegacyShards(ByteBuffer context)
     {
         int totalCount = (context.remaining() - headerLength(context)) / STEP_LENGTH;
         int localAndGlobalCount = Math.abs(context.getShort(context.position()));
@@ -572,7 +579,7 @@ public class CounterContext
      * @param context a counter context
      * @return context that marked to delete local refs
      */
-    public ByteBuffer markLocalToBeCleared(ByteBuffer context)
+    public static ByteBuffer markLocalToBeCleared(ByteBuffer context)
     {
         short count = context.getShort(context.position());
         if (count <= 0)
@@ -607,7 +614,7 @@ public class CounterContext
      * @param context a counter context
      * @return a version of {@code context} where no shards are local.
      */
-    public ByteBuffer clearAllLocal(ByteBuffer context)
+    public static ByteBuffer clearAllLocal(ByteBuffer context)
     {
         int count = Math.abs(context.getShort(context.position()));
         if (count == 0)
@@ -641,7 +648,7 @@ public class CounterContext
         return cleared;
     }
 
-    public void validateContext(ByteBuffer context) throws MarshalException
+    public static void validateContext(ByteBuffer context) throws MarshalException
     {
         if ((context.remaining() - headerLength(context)) % STEP_LENGTH != 0)
             throw new MarshalException("Invalid size for a counter context");
@@ -654,7 +661,7 @@ public class CounterContext
      * nodes. This means in particular that we always have:
      *  updateDigest(ctx) == updateDigest(clearAllLocal(ctx))
      */
-    public void updateDigest(MessageDigest message, ByteBuffer context)
+    public static void updateDigest(MessageDigest message, ByteBuffer context)
     {
         ByteBuffer dup = context.duplicate();
         dup.position(context.position() + headerLength(context));
@@ -664,16 +671,16 @@ public class CounterContext
     /**
      * Returns the clock and the count associated with the local counter id, or (0, 0) if no such shard is present.
      */
-    public ClockAndCount getLocalClockAndCount(ByteBuffer context)
+    public static ClockAndCount getLocalClockAndCount(ByteBuffer context, UUID hostId)
     {
-        return getClockAndCountOf(context, CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()));
+        return getClockAndCountOf(context, CounterId.getLocalId(hostId));
     }
 
     /**
      * Returns the clock and the count associated with the given counter id, or (0, 0) if no such shard is present.
      */
     @VisibleForTesting
-    public ClockAndCount getClockAndCountOf(ByteBuffer context, CounterId id)
+    public static ClockAndCount getClockAndCountOf(ByteBuffer context, CounterId id)
     {
         int position = findPositionOf(context, id);
         if (position == -1)
@@ -688,7 +695,7 @@ public class CounterContext
      * Finds the position of a shard with the given id within the context (via binary search).
      */
     @VisibleForTesting
-    public int findPositionOf(ByteBuffer context, CounterId id)
+    public static int findPositionOf(ByteBuffer context, CounterId id)
     {
         int headerLength = headerLength(context);
         int offset = context.position() + headerLength;

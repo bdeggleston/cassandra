@@ -67,21 +67,21 @@ public class CounterMutationTest
         cells.addCounter(cellname(1), 1L);
         new CounterMutation(new Mutation(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         ColumnFamily current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis()));
-        assertEquals(1L, CounterContext.instance().total(current.getColumn(cellname(1)).value()));
+        assertEquals(1L, CounterContext.total(current.getColumn(cellname(1)).value()));
 
         // Make another increment (+2)
         cells = ArrayBackedSortedColumns.factory.create(cfs.metadata);
         cells.addCounter(cellname(1), 2L);
         new CounterMutation(new Mutation(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis()));
-        assertEquals(3L, CounterContext.instance().total(current.getColumn(cellname(1)).value()));
+        assertEquals(3L, CounterContext.total(current.getColumn(cellname(1)).value()));
 
         // Decrement to 0 (-3)
         cells = ArrayBackedSortedColumns.factory.create(cfs.metadata);
         cells.addCounter(cellname(1), -3L);
         new CounterMutation(new Mutation(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis()));
-        assertEquals(0L, CounterContext.instance().total(current.getColumn(cellname(1)).value()));
+        assertEquals(0L, CounterContext.total(current.getColumn(cellname(1)).value()));
         assertEquals(ClockAndCount.create(3L, 0L), cfs.getCachedCounter(bytes(1), cellname(1)));
     }
 
@@ -97,8 +97,8 @@ public class CounterMutationTest
         cells.addCounter(cellname(2), -1L);
         new CounterMutation(new Mutation(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         ColumnFamily current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis()));
-        assertEquals(1L, CounterContext.instance().total(current.getColumn(cellname(1)).value()));
-        assertEquals(-1L, CounterContext.instance().total(current.getColumn(cellname(2)).value()));
+        assertEquals(1L, CounterContext.total(current.getColumn(cellname(1)).value()));
+        assertEquals(-1L, CounterContext.total(current.getColumn(cellname(2)).value()));
 
         // Make another increment (+2, -2)
         cells = ArrayBackedSortedColumns.factory.create(cfs.metadata);
@@ -106,7 +106,7 @@ public class CounterMutationTest
         cells.addCounter(cellname(2), -2L);
         new CounterMutation(new Mutation(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis()));
-        assertEquals(3L, CounterContext.instance().total(current.getColumn(cellname(1)).value()));
+        assertEquals(3L, CounterContext.total(current.getColumn(cellname(1)).value()));
 
         // Decrement to 0 (-3, +3)
         cells = ArrayBackedSortedColumns.factory.create(cfs.metadata);
@@ -114,8 +114,8 @@ public class CounterMutationTest
         cells.addCounter(cellname(2), 3L);
         new CounterMutation(new Mutation(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis()));
-        assertEquals(0L, CounterContext.instance().total(current.getColumn(cellname(1)).value()));
-        assertEquals(0L, CounterContext.instance().total(current.getColumn(cellname(2)).value()));
+        assertEquals(0L, CounterContext.total(current.getColumn(cellname(1)).value()));
+        assertEquals(0L, CounterContext.total(current.getColumn(cellname(2)).value()));
 
         // Check the caches, separately
         assertEquals(ClockAndCount.create(3L, 0L), cfs.getCachedCounter(bytes(1), cellname(1)));
@@ -150,10 +150,10 @@ public class CounterMutationTest
         ColumnFamily current1 = cfs1.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis()));
         ColumnFamily current2 = cfs2.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF2, System.currentTimeMillis()));
 
-        assertEquals(1L, CounterContext.instance().total(current1.getColumn(cellname(1)).value()));
-        assertEquals(-1L, CounterContext.instance().total(current1.getColumn(cellname(2)).value()));
-        assertEquals(2L, CounterContext.instance().total(current2.getColumn(cellname(1)).value()));
-        assertEquals(-2L, CounterContext.instance().total(current2.getColumn(cellname(2)).value()));
+        assertEquals(1L, CounterContext.total(current1.getColumn(cellname(1)).value()));
+        assertEquals(-1L, CounterContext.total(current1.getColumn(cellname(2)).value()));
+        assertEquals(2L, CounterContext.total(current2.getColumn(cellname(1)).value()));
+        assertEquals(-2L, CounterContext.total(current2.getColumn(cellname(2)).value()));
 
         // Check the caches, separately
         assertEquals(ClockAndCount.create(1L, 1L), cfs1.getCachedCounter(bytes(1), cellname(1)));
@@ -174,8 +174,8 @@ public class CounterMutationTest
         cells.addCounter(cellname(2), 1L);
         new CounterMutation(new Mutation(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         ColumnFamily current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis()));
-        assertEquals(1L, CounterContext.instance().total(current.getColumn(cellname(1)).value()));
-        assertEquals(1L, CounterContext.instance().total(current.getColumn(cellname(2)).value()));
+        assertEquals(1L, CounterContext.total(current.getColumn(cellname(1)).value()));
+        assertEquals(1L, CounterContext.total(current.getColumn(cellname(2)).value()));
 
         // Remove the first counter, increment the second counter
         cells = ArrayBackedSortedColumns.factory.create(cfs.metadata);
@@ -184,7 +184,7 @@ public class CounterMutationTest
         new CounterMutation(new Mutation(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis()));
         assertNull(current.getColumn(cellname(1)));
-        assertEquals(2L, CounterContext.instance().total(current.getColumn(cellname(2)).value()));
+        assertEquals(2L, CounterContext.total(current.getColumn(cellname(2)).value()));
 
         // Increment the first counter, make sure it's still shadowed by the tombstone
         cells = ArrayBackedSortedColumns.factory.create(cfs.metadata);
@@ -226,8 +226,8 @@ public class CounterMutationTest
 
         ColumnFamily current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis()));
         ByteBuffer context = current.getColumn(cellname(1)).value();
-        assertEquals(10L, CounterContext.instance().total(context));
-        assertEquals(ClockAndCount.create(1L, 10L), CounterContext.instance().getLocalClockAndCount(context));
+        assertEquals(10L, CounterContext.total(context));
+        assertEquals(ClockAndCount.create(1L, 10L), CounterContext.getLocalClockAndCount(context, SystemKeyspace.instance.getLocalHostId()));
         assertEquals(ClockAndCount.create(1L, 10L), cfs.getCachedCounter(bytes(1), cellname(1)));
     }
 }

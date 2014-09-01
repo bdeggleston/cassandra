@@ -228,7 +228,7 @@ public class SSTableExportTest
         SSTableWriter writer = new SSTableWriter(tempSS.getPath(), 2, ActiveRepairService.UNREPAIRED_SSTABLE);
 
         // Add rowA
-        cfamily.addColumn(BufferCounterCell.createLocal(Util.cellname("colA"), 42, System.currentTimeMillis(), Long.MIN_VALUE));
+        cfamily.addColumn(BufferCounterCell.createLocal(Util.cellname("colA"), 42, System.currentTimeMillis(), Long.MIN_VALUE, SystemKeyspace.instance.getLocalHostId()));
         writer.append(Util.dk("rowA"), cfamily);
         cfamily.clear();
 

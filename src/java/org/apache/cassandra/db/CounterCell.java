@@ -28,8 +28,6 @@ import org.apache.cassandra.utils.memory.MemtableAllocator;
  */
 public interface CounterCell extends Cell
 {
-    static final CounterContext contextManager = CounterContext.instance();
-
     public long timestampOfLastDelete();
 
     public long total();

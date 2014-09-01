@@ -127,7 +127,7 @@ public class NativeCellTest
             test(test, buf, nat);
 
             // test CounterCell
-            buf = new BufferCounterCell(test.name, CounterContext.instance().createLocal(rand.nextLong()), rand.nextLong(),  rand.nextInt(100000));
+            buf = new BufferCounterCell(test.name, CounterContext.createLocal(rand.nextLong(), SystemKeyspace.instance.getLocalHostId()), rand.nextLong(),  rand.nextInt(100000));
             nat = buf.localCopy(metadata, nativeAllocator, group);
             test(test, buf, nat);
         }
@@ -196,10 +196,10 @@ public class NativeCellTest
 
 
             // test CounterCell
-            buf = new BufferCounterCell(test.name, CounterContext.instance().createLocal(rand.nextLong()), rand.nextLong(),  rand.nextInt(100000));
+            buf = new BufferCounterCell(test.name, CounterContext.createLocal(rand.nextLong(), SystemKeyspace.instance.getLocalHostId()), rand.nextLong(),  rand.nextInt(100000));
             nat = buf.localCopy(metadata, nativeAllocator, group);
 
-            buf2 = new BufferCounterCell(test.name, CounterContext.instance().createLocal(rand.nextLong()), rand.nextLong(),  rand.nextInt(100000));
+            buf2 = new BufferCounterCell(test.name, CounterContext.createLocal(rand.nextLong(), SystemKeyspace.instance.getLocalHostId()), rand.nextLong(),  rand.nextInt(100000));
             nat2 = buf2.localCopy(metadata, nativeAllocator, group);
 
             assert test.type.compare(buf.name(), nat.name()) == 0;

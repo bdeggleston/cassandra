@@ -40,8 +40,6 @@ import static org.junit.Assert.assertTrue;
 
 public class CounterContextTest
 {
-    private static final CounterContext cc = new CounterContext();
-
     private static final int headerSizeLength = 2;
     private static final int headerEltLength = 2;
     private static final int idLength = 16;
@@ -78,7 +76,7 @@ public class CounterContextTest
         left.writeRemote(CounterId.fromInt(9), 1L, 0L);
         right = ContextState.wrap(ByteBufferUtil.clone(left.context));
 
-        assertEquals(Relationship.EQUAL, cc.diff(left.context, right.context));
+        assertEquals(Relationship.EQUAL, CounterContext.diff(left.context, right.context));
 
         // greater than: left has superset of nodes (counts equal)
         left = ContextState.allocate(0, 0, 4);
@@ -92,7 +90,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(6), 2L, 0L);
         right.writeRemote(CounterId.fromInt(9), 1L, 0L);
 
-        assertEquals(Relationship.GREATER_THAN, cc.diff(left.context, right.context));
+        assertEquals(Relationship.GREATER_THAN, CounterContext.diff(left.context, right.context));
 
         // less than: left has subset of nodes (counts equal)
         left = ContextState.allocate(0, 0, 3);
@@ -106,7 +104,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(9),  1L, 0L);
         right.writeRemote(CounterId.fromInt(12), 0L, 0L);
 
-        assertEquals(Relationship.LESS_THAN, cc.diff(left.context, right.context));
+        assertEquals(Relationship.LESS_THAN, CounterContext.diff(left.context, right.context));
 
         // greater than: equal nodes, but left has higher counts
         left = ContextState.allocate(0, 0, 3);
@@ -119,7 +117,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(6), 2L, 0L);
         right.writeRemote(CounterId.fromInt(9), 1L, 0L);
 
-        assertEquals(Relationship.GREATER_THAN, cc.diff(left.context, right.context));
+        assertEquals(Relationship.GREATER_THAN, CounterContext.diff(left.context, right.context));
 
         // less than: equal nodes, but right has higher counts
         left = ContextState.allocate(0, 0, 3);
@@ -132,7 +130,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(6), 9L, 0L);
         right.writeRemote(CounterId.fromInt(9), 3L, 0L);
 
-        assertEquals(Relationship.LESS_THAN, cc.diff(left.context, right.context));
+        assertEquals(Relationship.LESS_THAN, CounterContext.diff(left.context, right.context));
 
         // disjoint: right and left have disjoint node sets
         left = ContextState.allocate(0, 0, 3);
@@ -145,7 +143,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(6), 1L, 0L);
         right.writeRemote(CounterId.fromInt(9), 1L, 0L);
 
-        assertEquals(Relationship.DISJOINT, cc.diff(left.context, right.context));
+        assertEquals(Relationship.DISJOINT, CounterContext.diff(left.context, right.context));
 
         left = ContextState.allocate(0, 0, 3);
         left.writeRemote(CounterId.fromInt(3), 1L, 0L);
@@ -157,7 +155,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(6),  1L, 0L);
         right.writeRemote(CounterId.fromInt(12), 1L, 0L);
 
-        assertEquals(Relationship.DISJOINT, cc.diff(left.context, right.context));
+        assertEquals(Relationship.DISJOINT, CounterContext.diff(left.context, right.context));
 
         // disjoint: equal nodes, but right and left have higher counts in differing nodes
         left = ContextState.allocate(0, 0, 3);
@@ -170,7 +168,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(6), 1L, 0L);
         right.writeRemote(CounterId.fromInt(9), 5L, 0L);
 
-        assertEquals(Relationship.DISJOINT, cc.diff(left.context, right.context));
+        assertEquals(Relationship.DISJOINT, CounterContext.diff(left.context, right.context));
 
         left = ContextState.allocate(0, 0, 3);
         left.writeRemote(CounterId.fromInt(3), 2L, 0L);
@@ -182,7 +180,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(6), 9L, 0L);
         right.writeRemote(CounterId.fromInt(9), 5L, 0L);
 
-        assertEquals(Relationship.DISJOINT, cc.diff(left.context, right.context));
+        assertEquals(Relationship.DISJOINT, CounterContext.diff(left.context, right.context));
 
         // disjoint: left has more nodes, but lower counts
         left = ContextState.allocate(0, 0, 4);
@@ -196,7 +194,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(6), 9L, 0L);
         right.writeRemote(CounterId.fromInt(9), 5L, 0L);
 
-        assertEquals(Relationship.DISJOINT, cc.diff(left.context, right.context));
+        assertEquals(Relationship.DISJOINT, CounterContext.diff(left.context, right.context));
 
         // disjoint: left has less nodes, but higher counts
         left = ContextState.allocate(0, 0, 3);
@@ -210,7 +208,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(9),  2L, 0L);
         right.writeRemote(CounterId.fromInt(12), 1L, 0L);
 
-        assertEquals(Relationship.DISJOINT, cc.diff(left.context, right.context));
+        assertEquals(Relationship.DISJOINT, CounterContext.diff(left.context, right.context));
 
         // disjoint: mixed nodes and counts
         left = ContextState.allocate(0, 0, 3);
@@ -224,7 +222,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(9),  2L, 0L);
         right.writeRemote(CounterId.fromInt(12), 1L, 0L);
 
-        assertEquals(Relationship.DISJOINT, cc.diff(left.context, right.context));
+        assertEquals(Relationship.DISJOINT, CounterContext.diff(left.context, right.context));
 
         left = ContextState.allocate(0, 0, 4);
         left.writeRemote(CounterId.fromInt(3), 5L, 0L);
@@ -237,7 +235,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(6), 3L, 0L);
         right.writeRemote(CounterId.fromInt(9), 2L, 0L);
 
-        assertEquals(Relationship.DISJOINT, cc.diff(left.context, right.context));
+        assertEquals(Relationship.DISJOINT, CounterContext.diff(left.context, right.context));
     }
 
     @Test
@@ -255,7 +253,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(5), 5L, 5L);
         right.writeLocal(CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()), 2L, 9L);
 
-        ByteBuffer merged = cc.merge(left.context, right.context);
+        ByteBuffer merged = CounterContext.merge(left.context, right.context);
         int hd = 4;
 
         assertEquals(hd + 5 * stepLength, merged.remaining());
@@ -294,9 +292,9 @@ public class CounterContextTest
         right.writeGlobal(CounterId.fromInt(4), 4L, 4L);
         right.writeGlobal(CounterId.fromInt(5), 5L, 5L);
 
-        merged = cc.merge(left.context, right.context);
+        merged = CounterContext.merge(left.context, right.context);
         assertEquals(headerSizeLength + 5 * headerEltLength + 5 * stepLength, merged.remaining());
-        assertEquals(18L, cc.total(merged));
+        assertEquals(18L, CounterContext.total(merged));
         assertEquals(5, merged.getShort(merged.position()));
 
         int headerLength = headerSizeLength + 5 * headerEltLength;
@@ -326,10 +324,10 @@ public class CounterContextTest
         right = ContextState.allocate(1, 0, 0);
         right.writeGlobal(CounterId.fromInt(1), 10L, 30L);
 
-        merged = cc.merge(left.context, right.context);
+        merged = CounterContext.merge(left.context, right.context);
         headerLength = headerSizeLength + headerEltLength;
         assertEquals(headerLength + stepLength, merged.remaining());
-        assertEquals(30L, cc.total(merged));
+        assertEquals(30L, CounterContext.total(merged));
         assertEquals(1, merged.getShort(merged.position()));
         assertTrue(Util.equalsCounterId(CounterId.fromInt(1), merged, headerLength));
         assertEquals(10L, merged.getLong(merged.position() + headerLength + idLength));
@@ -348,10 +346,10 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(2), 100L, 100L);
 
         // global shards should dominate local/remote, even with lower clock and value
-        merged = cc.merge(left.context, right.context);
+        merged = CounterContext.merge(left.context, right.context);
         headerLength = headerSizeLength + 2 * headerEltLength;
         assertEquals(headerLength + 2 * stepLength, merged.remaining());
-        assertEquals(2L, cc.total(merged));
+        assertEquals(2L, CounterContext.total(merged));
         assertEquals(2, merged.getShort(merged.position()));
         assertTrue(Util.equalsCounterId(CounterId.fromInt(1), merged, headerLength));
         assertEquals(1L, merged.getLong(merged.position() + headerLength + idLength));
@@ -370,13 +368,13 @@ public class CounterContextTest
         mixed.writeRemote(CounterId.fromInt(4), 4L, 4L);
         mixed.writeRemote(CounterId.fromInt(5), 5L, 5L);
         mixed.writeLocal(CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()), 12L, 12L);
-        assertEquals(24L, cc.total(mixed.context));
+        assertEquals(24L, CounterContext.total(mixed.context));
 
         ContextState global = ContextState.allocate(3, 0, 0);
         global.writeGlobal(CounterId.fromInt(1), 1L, 1L);
         global.writeGlobal(CounterId.fromInt(2), 2L, 2L);
         global.writeGlobal(CounterId.fromInt(3), 3L, 3L);
-        assertEquals(6L, cc.total(global.context));
+        assertEquals(6L, CounterContext.total(global.context));
     }
 
     @Test
@@ -390,26 +388,26 @@ public class CounterContextTest
         state = ContextState.allocate(0, 0, 1);
         state.writeRemote(CounterId.fromInt(1), 1L, 1L);
 
-        assertFalse(cc.shouldClearLocal(state.context));
-        marked = cc.markLocalToBeCleared(state.context);
+        assertFalse(CounterContext.shouldClearLocal(state.context));
+        marked = CounterContext.markLocalToBeCleared(state.context);
         assertEquals(0, marked.getShort(marked.position()));
         assertSame(state.context, marked); // should return the original context
 
-        cleared = cc.clearAllLocal(marked);
+        cleared = CounterContext.clearAllLocal(marked);
         assertSame(cleared, marked); // shouldn't alter anything either
 
         // a single local shard
         state = ContextState.allocate(0, 1, 0);
         state.writeLocal(CounterId.fromInt(1), 1L, 1L);
 
-        assertFalse(cc.shouldClearLocal(state.context));
-        marked = cc.markLocalToBeCleared(state.context);
-        assertTrue(cc.shouldClearLocal(marked));
+        assertFalse(CounterContext.shouldClearLocal(state.context));
+        marked = CounterContext.markLocalToBeCleared(state.context);
+        assertTrue(CounterContext.shouldClearLocal(marked));
         assertEquals(-1, marked.getShort(marked.position()));
         assertNotSame(state.context, marked); // shouldn't alter in place, as it used to do
 
-        cleared = cc.clearAllLocal(marked);
-        assertFalse(cc.shouldClearLocal(cleared));
+        cleared = CounterContext.clearAllLocal(marked);
+        assertFalse(CounterContext.shouldClearLocal(cleared));
         assertEquals(0, cleared.getShort(cleared.position()));
 
         // 2 global + 1 local shard
@@ -418,9 +416,9 @@ public class CounterContextTest
         state.writeGlobal(CounterId.fromInt(2), 2L, 2L);
         state.writeGlobal(CounterId.fromInt(3), 3L, 3L);
 
-        assertFalse(cc.shouldClearLocal(state.context));
-        marked = cc.markLocalToBeCleared(state.context);
-        assertTrue(cc.shouldClearLocal(marked));
+        assertFalse(CounterContext.shouldClearLocal(state.context));
+        marked = CounterContext.markLocalToBeCleared(state.context);
+        assertTrue(CounterContext.shouldClearLocal(marked));
 
         assertEquals(-3, marked.getShort(marked.position()));
         assertEquals(0, marked.getShort(marked.position() + headerSizeLength));
@@ -440,8 +438,8 @@ public class CounterContextTest
         assertEquals(3L, marked.getLong(marked.position() + headerLength + 2 * stepLength + idLength));
         assertEquals(3L, marked.getLong(marked.position() + headerLength + 2 * stepLength + idLength + clockLength));
 
-        cleared = cc.clearAllLocal(marked);
-        assertFalse(cc.shouldClearLocal(cleared));
+        cleared = CounterContext.clearAllLocal(marked);
+        assertFalse(CounterContext.shouldClearLocal(cleared));
 
         assertEquals(2, cleared.getShort(cleared.position())); // 2 global shards
         assertEquals(Short.MIN_VALUE + 1, cleared.getShort(marked.position() + headerEltLength));
@@ -464,12 +462,12 @@ public class CounterContextTest
         state = ContextState.allocate(1, 0, 0);
         state.writeGlobal(CounterId.fromInt(1), 1L, 1L);
 
-        assertFalse(cc.shouldClearLocal(state.context));
-        marked = cc.markLocalToBeCleared(state.context);
+        assertFalse(CounterContext.shouldClearLocal(state.context));
+        marked = CounterContext.markLocalToBeCleared(state.context);
         assertEquals(1, marked.getShort(marked.position()));
         assertSame(state.context, marked);
 
-        cleared = cc.clearAllLocal(marked);
+        cleared = CounterContext.clearAllLocal(marked);
         assertSame(cleared, marked);
     }
 
@@ -489,20 +487,20 @@ public class CounterContextTest
         state.writeLocal(CounterId.fromInt(9), 9L, 9L);
 
         int headerLength = headerSizeLength + 6 * headerEltLength;
-        assertEquals(headerLength, cc.findPositionOf(state.context, CounterId.fromInt(1)));
-        assertEquals(headerLength + stepLength, cc.findPositionOf(state.context, CounterId.fromInt(2)));
-        assertEquals(headerLength + 2 * stepLength, cc.findPositionOf(state.context, CounterId.fromInt(3)));
-        assertEquals(headerLength + 3 * stepLength, cc.findPositionOf(state.context, CounterId.fromInt(4)));
-        assertEquals(headerLength + 4 * stepLength, cc.findPositionOf(state.context, CounterId.fromInt(5)));
-        assertEquals(headerLength + 5 * stepLength, cc.findPositionOf(state.context, CounterId.fromInt(6)));
-        assertEquals(headerLength + 6 * stepLength, cc.findPositionOf(state.context, CounterId.fromInt(7)));
-        assertEquals(headerLength + 7 * stepLength, cc.findPositionOf(state.context, CounterId.fromInt(8)));
-        assertEquals(headerLength + 8 * stepLength, cc.findPositionOf(state.context, CounterId.fromInt(9)));
+        assertEquals(headerLength, CounterContext.findPositionOf(state.context, CounterId.fromInt(1)));
+        assertEquals(headerLength + stepLength, CounterContext.findPositionOf(state.context, CounterId.fromInt(2)));
+        assertEquals(headerLength + 2 * stepLength, CounterContext.findPositionOf(state.context, CounterId.fromInt(3)));
+        assertEquals(headerLength + 3 * stepLength, CounterContext.findPositionOf(state.context, CounterId.fromInt(4)));
+        assertEquals(headerLength + 4 * stepLength, CounterContext.findPositionOf(state.context, CounterId.fromInt(5)));
+        assertEquals(headerLength + 5 * stepLength, CounterContext.findPositionOf(state.context, CounterId.fromInt(6)));
+        assertEquals(headerLength + 6 * stepLength, CounterContext.findPositionOf(state.context, CounterId.fromInt(7)));
+        assertEquals(headerLength + 7 * stepLength, CounterContext.findPositionOf(state.context, CounterId.fromInt(8)));
+        assertEquals(headerLength + 8 * stepLength, CounterContext.findPositionOf(state.context, CounterId.fromInt(9)));
 
-        assertEquals(-1, cc.findPositionOf(state.context, CounterId.fromInt(0)));
-        assertEquals(-1, cc.findPositionOf(state.context, CounterId.fromInt(10)));
-        assertEquals(-1, cc.findPositionOf(state.context, CounterId.fromInt(15)));
-        assertEquals(-1, cc.findPositionOf(state.context, CounterId.fromInt(20)));
+        assertEquals(-1, CounterContext.findPositionOf(state.context, CounterId.fromInt(0)));
+        assertEquals(-1, CounterContext.findPositionOf(state.context, CounterId.fromInt(10)));
+        assertEquals(-1, CounterContext.findPositionOf(state.context, CounterId.fromInt(15)));
+        assertEquals(-1, CounterContext.findPositionOf(state.context, CounterId.fromInt(20)));
     }
 
     @Test
@@ -520,19 +518,19 @@ public class CounterContextTest
         state.writeRemote(CounterId.fromInt(8), 8L, 8L);
         state.writeLocal(CounterId.fromInt(9), 9L, 9L);
 
-        assertEquals(ClockAndCount.create(1L, 1L), cc.getClockAndCountOf(state.context, CounterId.fromInt(1)));
-        assertEquals(ClockAndCount.create(2L, 2L), cc.getClockAndCountOf(state.context, CounterId.fromInt(2)));
-        assertEquals(ClockAndCount.create(3L, 3L), cc.getClockAndCountOf(state.context, CounterId.fromInt(3)));
-        assertEquals(ClockAndCount.create(4L, 4L), cc.getClockAndCountOf(state.context, CounterId.fromInt(4)));
-        assertEquals(ClockAndCount.create(5L, 5L), cc.getClockAndCountOf(state.context, CounterId.fromInt(5)));
-        assertEquals(ClockAndCount.create(6L, 6L), cc.getClockAndCountOf(state.context, CounterId.fromInt(6)));
-        assertEquals(ClockAndCount.create(7L, 7L), cc.getClockAndCountOf(state.context, CounterId.fromInt(7)));
-        assertEquals(ClockAndCount.create(8L, 8L), cc.getClockAndCountOf(state.context, CounterId.fromInt(8)));
-        assertEquals(ClockAndCount.create(9L, 9L), cc.getClockAndCountOf(state.context, CounterId.fromInt(9)));
+        assertEquals(ClockAndCount.create(1L, 1L), CounterContext.getClockAndCountOf(state.context, CounterId.fromInt(1)));
+        assertEquals(ClockAndCount.create(2L, 2L), CounterContext.getClockAndCountOf(state.context, CounterId.fromInt(2)));
+        assertEquals(ClockAndCount.create(3L, 3L), CounterContext.getClockAndCountOf(state.context, CounterId.fromInt(3)));
+        assertEquals(ClockAndCount.create(4L, 4L), CounterContext.getClockAndCountOf(state.context, CounterId.fromInt(4)));
+        assertEquals(ClockAndCount.create(5L, 5L), CounterContext.getClockAndCountOf(state.context, CounterId.fromInt(5)));
+        assertEquals(ClockAndCount.create(6L, 6L), CounterContext.getClockAndCountOf(state.context, CounterId.fromInt(6)));
+        assertEquals(ClockAndCount.create(7L, 7L), CounterContext.getClockAndCountOf(state.context, CounterId.fromInt(7)));
+        assertEquals(ClockAndCount.create(8L, 8L), CounterContext.getClockAndCountOf(state.context, CounterId.fromInt(8)));
+        assertEquals(ClockAndCount.create(9L, 9L), CounterContext.getClockAndCountOf(state.context, CounterId.fromInt(9)));
 
-        assertEquals(ClockAndCount.create(0L, 0L), cc.getClockAndCountOf(state.context, CounterId.fromInt(0)));
-        assertEquals(ClockAndCount.create(0L, 0L), cc.getClockAndCountOf(state.context, CounterId.fromInt(10)));
-        assertEquals(ClockAndCount.create(0L, 0L), cc.getClockAndCountOf(state.context, CounterId.fromInt(15)));
-        assertEquals(ClockAndCount.create(0L, 0L), cc.getClockAndCountOf(state.context, CounterId.fromInt(20)));
+        assertEquals(ClockAndCount.create(0L, 0L), CounterContext.getClockAndCountOf(state.context, CounterId.fromInt(0)));
+        assertEquals(ClockAndCount.create(0L, 0L), CounterContext.getClockAndCountOf(state.context, CounterId.fromInt(10)));
+        assertEquals(ClockAndCount.create(0L, 0L), CounterContext.getClockAndCountOf(state.context, CounterId.fromInt(15)));
+        assertEquals(ClockAndCount.create(0L, 0L), CounterContext.getClockAndCountOf(state.context, CounterId.fromInt(20)));
     }
 }

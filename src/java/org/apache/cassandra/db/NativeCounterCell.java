@@ -21,6 +21,7 @@ import java.security.MessageDigest;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.composites.CellNameType;
+import org.apache.cassandra.db.context.CounterContext;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.ObjectSizes;
@@ -69,13 +70,13 @@ public class NativeCounterCell extends NativeCell implements CounterCell
     @Override
     public long total()
     {
-        return contextManager.total(value());
+        return CounterContext.total(value());
     }
 
     @Override
     public boolean hasLegacyShards()
     {
-        return contextManager.hasLegacyShards(value());
+        return CounterContext.hasLegacyShards(value());
     }
 
     @Override
@@ -121,7 +122,7 @@ public class NativeCounterCell extends NativeCell implements CounterCell
         validateName(metadata);
         // We cannot use the value validator as for other columns as the CounterColumnType validate a long,
         // which is not the internal representation of counters
-        contextManager.validateContext(value());
+        CounterContext.validateContext(value());
     }
 
     /*
@@ -136,7 +137,7 @@ public class NativeCounterCell extends NativeCell implements CounterCell
         updateWithName(digest);
 
         // We don't take the deltas into account in a digest
-        contextManager.updateDigest(digest, value());
+        CounterContext.updateDigest(digest, value());
 
         FBUtilities.updateWithLong(digest, timestamp());
         FBUtilities.updateWithByte(digest, serializationFlags());
@@ -149,7 +150,7 @@ public class NativeCounterCell extends NativeCell implements CounterCell
         return String.format("%s(%s:false:%s@%d!%d)",
                              getClass().getSimpleName(),
                              comparator.getString(name()),
-                             contextManager.toString(value()),
+                             CounterContext.toString(value()),
                              timestamp(),
                              timestampOfLastDelete());
     }

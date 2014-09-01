@@ -448,7 +448,7 @@ public class CacheService implements CacheServiceMBean
                     Cell cell = cf.getColumn(cellName);
                     if (cell == null || !cell.isLive(Long.MIN_VALUE))
                         return null;
-                    ClockAndCount clockAndCount = CounterContext.instance().getLocalClockAndCount(cell.value());
+                    ClockAndCount clockAndCount = CounterContext.getLocalClockAndCount(cell.value(), SystemKeyspace.instance.getLocalHostId());
                     return Pair.create(CounterCacheKey.create(cfs.metadata.cfId, partitionKey, cellName, Schema.instance), clockAndCount);
                 }
             });

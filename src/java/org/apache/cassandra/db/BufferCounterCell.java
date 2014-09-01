@@ -19,10 +19,12 @@ package org.apache.cassandra.db;
 
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
+import java.util.UUID;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
+import org.apache.cassandra.db.context.CounterContext;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.concurrent.OpOrder;
@@ -46,15 +48,15 @@ public class BufferCounterCell extends BufferCell implements CounterCell
 
     public static CounterCell create(CellName name, ByteBuffer value, long timestamp, long timestampOfLastDelete, ColumnSerializer.Flag flag)
     {
-        if (flag == ColumnSerializer.Flag.FROM_REMOTE || (flag == ColumnSerializer.Flag.LOCAL && contextManager.shouldClearLocal(value)))
-            value = contextManager.clearAllLocal(value);
+        if (flag == ColumnSerializer.Flag.FROM_REMOTE || (flag == ColumnSerializer.Flag.LOCAL && CounterContext.shouldClearLocal(value)))
+            value = CounterContext.clearAllLocal(value);
         return new BufferCounterCell(name, value, timestamp, timestampOfLastDelete);
     }
 
     // For use by tests of compatibility with pre-2.1 counter only.
-    public static CounterCell createLocal(CellName name, long value, long timestamp, long timestampOfLastDelete)
+    public static CounterCell createLocal(CellName name, long value, long timestamp, long timestampOfLastDelete, UUID hostId)
     {
-        return new BufferCounterCell(name, contextManager.createLocal(value), timestamp, timestampOfLastDelete);
+        return new BufferCounterCell(name, CounterContext.createLocal(value, hostId), timestamp, timestampOfLastDelete);
     }
 
     @Override
@@ -72,7 +74,7 @@ public class BufferCounterCell extends BufferCell implements CounterCell
     @Override
     public long total()
     {
-        return contextManager.total(value);
+        return CounterContext.total(value);
     }
 
     @Override
@@ -105,7 +107,7 @@ public class BufferCounterCell extends BufferCell implements CounterCell
     {
         digest.update(name().toByteBuffer().duplicate());
         // We don't take the deltas into account in a digest
-        contextManager.updateDigest(digest, value());
+        CounterContext.updateDigest(digest, value());
 
         FBUtilities.updateWithLong(digest, timestamp);
         FBUtilities.updateWithByte(digest, serializationFlags());
@@ -121,7 +123,7 @@ public class BufferCounterCell extends BufferCell implements CounterCell
     @Override
     public boolean hasLegacyShards()
     {
-        return contextManager.hasLegacyShards(value);
+        return CounterContext.hasLegacyShards(value);
     }
 
     @Override
@@ -141,7 +143,7 @@ public class BufferCounterCell extends BufferCell implements CounterCell
     {
         return String.format("%s:false:%s@%d!%d",
                              comparator.getString(name()),
-                             contextManager.toString(value()),
+                             CounterContext.toString(value()),
                              timestamp(),
                              timestampOfLastDelete);
     }
@@ -158,13 +160,13 @@ public class BufferCounterCell extends BufferCell implements CounterCell
         validateName(metadata);
         // We cannot use the value validator as for other columns as the CounterColumnType validate a long,
         // which is not the internal representation of counters
-        contextManager.validateContext(value());
+        CounterContext.validateContext(value());
     }
 
     @Override
     public Cell markLocalToBeCleared()
     {
-        ByteBuffer marked = contextManager.markLocalToBeCleared(value());
+        ByteBuffer marked = CounterContext.markLocalToBeCleared(value());
         return marked == value() ? this : new BufferCounterCell(name(), marked, timestamp(), timestampOfLastDelete);
     }
 

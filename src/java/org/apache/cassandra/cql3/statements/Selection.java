@@ -263,7 +263,7 @@ public abstract class Selection
     private static ByteBuffer value(Cell c)
     {
         return (c instanceof CounterCell)
-            ? ByteBufferUtil.bytes(CounterContext.instance().total(c.value()))
+            ? ByteBufferUtil.bytes(CounterContext.total(c.value()))
             : c.value();
     }
 

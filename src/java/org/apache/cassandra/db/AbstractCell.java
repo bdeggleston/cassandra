@@ -194,7 +194,7 @@ public abstract class AbstractCell implements Cell
         if (((CounterCell) this).timestampOfLastDelete() < ((CounterCell) cell).timestampOfLastDelete())
             return cell;
 
-        CounterContext.Relationship rel = CounterCell.contextManager.diff(cell.value(), value());
+        CounterContext.Relationship rel = CounterContext.diff(cell.value(), value());
         return (rel == CounterContext.Relationship.GREATER_THAN || rel == CounterContext.Relationship.DISJOINT) ? cell : null;
     }
 
@@ -220,7 +220,7 @@ public abstract class AbstractCell implements Cell
             return this;
 
         // live + live. return one of the cells if its context is a superset of the other's, or merge them otherwise
-        ByteBuffer context = CounterCell.contextManager.merge(value(), cell.value());
+        ByteBuffer context = CounterContext.merge(value(), cell.value());
         if (context == value() && timestamp() >= cell.timestamp() && timestampOfLastDelete >= ((CounterCell) cell).timestampOfLastDelete())
             return this;
         else if (context == cell.value() && cell.timestamp() >= timestamp() && ((CounterCell) cell).timestampOfLastDelete() >= timestampOfLastDelete)
