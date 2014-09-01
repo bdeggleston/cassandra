@@ -33,10 +33,19 @@ public class SchemaCheckVerbHandler implements IVerbHandler
 {
     private final Logger logger = LoggerFactory.getLogger(SchemaCheckVerbHandler.class);
 
+    private final Schema schema;
+    private final MessagingService messagingService;
+
+    public SchemaCheckVerbHandler(Schema schema, MessagingService messagingService)
+    {
+        this.schema = schema;
+        this.messagingService = messagingService;
+    }
+
     public void doVerb(MessageIn message, int id)
     {
         logger.debug("Received schema check request.");
-        MessageOut<UUID> response = new MessageOut<UUID>(MessagingService.Verb.INTERNAL_RESPONSE, Schema.instance.getVersion(), UUIDSerializer.serializer);
-        MessagingService.instance.sendReply(response, id, message.from);
+        MessageOut<UUID> response = new MessageOut<UUID>(MessagingService.Verb.INTERNAL_RESPONSE, schema.getVersion(), UUIDSerializer.serializer);
+        messagingService.sendReply(response, id, message.from);
     }
 }
