@@ -30,12 +30,21 @@ public class ReplicationFinishedVerbHandler implements IVerbHandler
 {
     private static final Logger logger = LoggerFactory.getLogger(ReplicationFinishedVerbHandler.class);
 
+    private final MessagingService messagingService;
+    private final StorageService storageService;
+
+    public ReplicationFinishedVerbHandler(MessagingService messagingService, StorageService storageService)
+    {
+        this.messagingService = messagingService;
+        this.storageService = storageService;
+    }
+
     public void doVerb(MessageIn msg, int id)
     {
-        StorageService.instance.confirmReplication(msg.from);
+        storageService.confirmReplication(msg.from);
         MessageOut response = new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE);
         if (logger.isDebugEnabled())
             logger.debug("Replying to {}@{}", id, msg.from);
-        MessagingService.instance.sendReply(response, id, msg.from);
+        messagingService.sendReply(response, id, msg.from);
     }
 }
