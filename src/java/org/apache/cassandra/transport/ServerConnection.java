@@ -21,6 +21,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import io.netty.channel.Channel;
 
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.auth.IAuthenticator;
 import org.apache.cassandra.auth.ISaslAwareAuthenticator;
 import org.apache.cassandra.auth.ISaslAwareAuthenticator.SaslAuthenticator;
@@ -44,7 +45,7 @@ public class ServerConnection extends Connection
     public ServerConnection(Channel channel, int version, Connection.Tracker tracker)
     {
         super(channel, version, tracker);
-        this.clientState = ClientState.forExternalCalls(channel.remoteAddress());
+        this.clientState = ClientState.forExternalCalls(channel.remoteAddress(), Auth.instance);
         this.state = State.UNINITIALIZED;
     }
 

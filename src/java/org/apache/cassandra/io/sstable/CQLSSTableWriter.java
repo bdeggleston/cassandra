@@ -29,6 +29,7 @@ import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
 
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.cql3.statements.*;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.*;
@@ -446,7 +447,7 @@ public class CQLSSTableWriter implements Closeable
         {
             try
             {
-                ClientState state = ClientState.forInternalCalls();
+                ClientState state = ClientState.forInternalCalls(Auth.instance);
                 ParsedStatement.Prepared prepared = QueryProcessor.instance.getStatement(query, state);
                 CQLStatement stmt = prepared.statement;
                 stmt.validate(state);

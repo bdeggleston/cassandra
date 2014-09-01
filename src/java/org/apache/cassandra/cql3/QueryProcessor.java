@@ -28,6 +28,8 @@ import com.google.common.primitives.Ints;
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 import com.googlecode.concurrentlinkedhashmap.EntryWeigher;
 import org.antlr.runtime.*;
+import org.apache.cassandra.auth.Auth;
+import org.apache.cassandra.config.Schema;
 import org.github.jamm.MemoryMeter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,10 +92,10 @@ public class QueryProcessor implements QueryHandler
         QueryState qs = queryState.get();
         if (qs == null)
         {
-            ClientState state = ClientState.forInternalCalls();
+            ClientState state = ClientState.forInternalCalls(Auth.instance);
             try
             {
-                state.setKeyspace(Keyspace.SYSTEM_KS);
+                state.setKeyspace(Keyspace.SYSTEM_KS, Schema.instance);
             }
             catch (InvalidRequestException e)
             {
@@ -208,7 +210,7 @@ public class QueryProcessor implements QueryHandler
     {
         try
         {
-            ResultMessage result = process(query, QueryState.forInternalCalls(Tracing.instance), QueryOptions.forInternalCalls(cl, Collections.<ByteBuffer>emptyList()));
+            ResultMessage result = process(query, QueryState.forInternalCalls(Tracing.instance, Auth.instance), QueryOptions.forInternalCalls(cl, Collections.<ByteBuffer>emptyList()));
             if (result instanceof ResultMessage.Rows)
                 return UntypedResultSet.create(((ResultMessage.Rows)result).result);
             else

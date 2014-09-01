@@ -1734,7 +1734,7 @@ public class CassandraServer implements Cassandra.Iface
     {
         try
         {
-            state().setKeyspace(keyspace);
+            state().setKeyspace(keyspace, Schema.instance);
         }
         catch (RequestValidationException e)
         {

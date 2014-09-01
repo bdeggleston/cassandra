@@ -19,6 +19,7 @@ package org.apache.cassandra.service;
 
 import java.util.UUID;
 
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -41,9 +42,9 @@ public class QueryState
     /**
      * @return a QueryState object for internal C* calls (not limited by any kind of auth).
      */
-    public static QueryState forInternalCalls(Tracing tracing)
+    public static QueryState forInternalCalls(Tracing tracing, Auth auth)
     {
-        return new QueryState(ClientState.forInternalCalls(), tracing);
+        return new QueryState(ClientState.forInternalCalls(auth), tracing);
     }
 
     public ClientState getClientState()

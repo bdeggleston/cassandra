@@ -71,7 +71,7 @@ public class CassandraAuthorizer implements IAuthorizer
         UntypedResultSet result;
         try
         {
-            ResultMessage.Rows rows = authorizeStatement.execute(QueryState.forInternalCalls(Tracing.instance),
+            ResultMessage.Rows rows = authorizeStatement.execute(QueryState.forInternalCalls(Tracing.instance, Auth.instance),
                                                                  QueryOptions.forInternalCalls(ConsistencyLevel.LOCAL_ONE,
                                                                                                Lists.newArrayList(ByteBufferUtil.bytes(user.getName()),
                                                                                                                   ByteBufferUtil.bytes(resource.getName()))));

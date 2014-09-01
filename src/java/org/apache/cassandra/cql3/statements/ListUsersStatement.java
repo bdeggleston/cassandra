@@ -41,8 +41,8 @@ public class ListUsersStatement extends AuthenticationStatement
 
     public ResultMessage execute(ClientState state) throws RequestValidationException, RequestExecutionException
     {
-        return QueryProcessor.instance.process(String.format("SELECT * FROM %s.%s", Auth.instance.AUTH_KS, Auth.instance.USERS_CF),
+        return QueryProcessor.instance.process(String.format("SELECT * FROM %s.%s", Auth.AUTH_KS, Auth.USERS_CF),
                                       ConsistencyLevel.QUORUM,
-                                      QueryState.forInternalCalls(Tracing.instance));
+                                      QueryState.forInternalCalls(Tracing.instance, Auth.instance));
     }
 }

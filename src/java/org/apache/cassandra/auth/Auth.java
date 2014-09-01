@@ -17,12 +17,20 @@
  */
 package org.apache.cassandra.auth;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.apache.cassandra.config.*;
+import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.utils.Pair;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,6 +72,30 @@ public class Auth
                                                                 90 * 24 * 60 * 60); // 3 months.
 
     private SelectStatement selectUserStatement;
+
+    private final Set<IResource> readableSystemResources = new HashSet<>();
+    private final Set<IResource> protectedAuthResources = new HashSet<>();
+
+    // User-level permissions cache.
+    private final LoadingCache<Pair<AuthenticatedUser, IResource>, Set<Permission>> permissionsCache;
+
+    public Auth()
+    {
+
+        // We want these system cfs to be always readable since many tools rely on them (nodetool, cqlsh, bulkloader, etc.)
+        String[] cfs =  new String[] { SystemKeyspace.LOCAL_CF,
+                SystemKeyspace.PEERS_CF,
+                SystemKeyspace.SCHEMA_KEYSPACES_CF,
+                SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF,
+                SystemKeyspace.SCHEMA_COLUMNS_CF,
+                SystemKeyspace.SCHEMA_USER_TYPES_CF};
+        for (String cf : cfs)
+            readableSystemResources.add(DataResource.columnFamily(Keyspace.SYSTEM_KS, cf));
+
+        protectedAuthResources.addAll(DatabaseDescriptor.instance.getAuthenticator().protectedResources());
+        protectedAuthResources.addAll(DatabaseDescriptor.instance.getAuthorizer().protectedResources());
+        permissionsCache = initPermissionsCache();
+    }
 
     public static long getSuperuserSetupDelay()
     {
@@ -257,7 +289,7 @@ public class Auth
     {
         try
         {
-            ResultMessage.Rows rows = selectUserStatement.execute(QueryState.forInternalCalls(Tracing.instance),
+            ResultMessage.Rows rows = selectUserStatement.execute(QueryState.forInternalCalls(Tracing.instance, this),
                                                                   QueryOptions.forInternalCalls(consistencyForUser(username),
                                                                                                 Lists.newArrayList(ByteBufferUtil.bytes(username))));
             return UntypedResultSet.create(rows.result);
@@ -270,6 +302,51 @@ public class Auth
         {
             throw new RuntimeException(e);
         }
+    }
+
+    public IAuthenticator getAuthenticator()
+    {
+        return DatabaseDescriptor.instance.getAuthenticator();
+    }
+
+    public IAuthorizer getAuthorizer()
+    {
+        return DatabaseDescriptor.instance.getAuthorizer();
+    }
+
+    private LoadingCache<Pair<AuthenticatedUser, IResource>, Set<Permission>> initPermissionsCache()
+    {
+        if (DatabaseDescriptor.instance.getAuthorizer() instanceof AllowAllAuthorizer)
+            return null;
+
+        int validityPeriod = DatabaseDescriptor.instance.getPermissionsValidity();
+        if (validityPeriod <= 0)
+            return null;
+
+        return CacheBuilder.newBuilder().expireAfterWrite(validityPeriod, TimeUnit.MILLISECONDS)
+                .build(new CacheLoader<Pair<AuthenticatedUser, IResource>, Set<Permission>>()
+                {
+                    public Set<Permission> load(Pair<AuthenticatedUser, IResource> userResource)
+                    {
+                        return DatabaseDescriptor.instance.getAuthorizer().authorize(userResource.left,
+                                                                                     userResource.right);
+                    }
+                });
+    }
+
+    public LoadingCache<Pair<AuthenticatedUser, IResource>, Set<Permission>> getPermissionsCache()
+    {
+        return permissionsCache;
+    }
+
+    public Set<IResource> getProtectedAuthResources()
+    {
+        return protectedAuthResources;
+    }
+
+    public Set<IResource> getReadableSystemResources()
+    {
+        return readableSystemResources;
     }
 
     /**

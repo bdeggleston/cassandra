@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.CQLStatement;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.exceptions.InvalidRequestException;
@@ -55,7 +56,7 @@ public class UseStatement extends ParsedStatement implements CQLStatement
 
     public ResultMessage execute(QueryState state, QueryOptions options) throws InvalidRequestException
     {
-        state.getClientState().setKeyspace(keyspace);
+        state.getClientState().setKeyspace(keyspace, Schema.instance);
         return new ResultMessage.SetKeyspace(keyspace);
     }
 

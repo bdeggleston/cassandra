@@ -20,11 +20,7 @@ package org.apache.cassandra.service;
 import java.net.SocketAddress;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +30,6 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.exceptions.AuthenticationException;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.UnauthorizedException;
@@ -51,27 +46,7 @@ public class ClientState
     private static final Logger logger = LoggerFactory.getLogger(ClientState.class);
     public static final SemanticVersion DEFAULT_CQL_VERSION = org.apache.cassandra.cql3.QueryProcessor.CQL_VERSION;
 
-    private static final Set<IResource> READABLE_SYSTEM_RESOURCES = new HashSet<>();
-    private static final Set<IResource> PROTECTED_AUTH_RESOURCES = new HashSet<>();
-
-    // User-level permissions cache.
-    private static final LoadingCache<Pair<AuthenticatedUser, IResource>, Set<Permission>> permissionsCache = initPermissionsCache();
-
-    static
-    {
-        // We want these system cfs to be always readable since many tools rely on them (nodetool, cqlsh, bulkloader, etc.)
-        String[] cfs =  new String[] { SystemKeyspace.LOCAL_CF,
-                                       SystemKeyspace.PEERS_CF,
-                                       SystemKeyspace.SCHEMA_KEYSPACES_CF,
-                                       SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF,
-                                       SystemKeyspace.SCHEMA_COLUMNS_CF,
-                                       SystemKeyspace.SCHEMA_USER_TYPES_CF};
-        for (String cf : cfs)
-            READABLE_SYSTEM_RESOURCES.add(DataResource.columnFamily(Keyspace.SYSTEM_KS, cf));
-
-        PROTECTED_AUTH_RESOURCES.addAll(DatabaseDescriptor.instance.getAuthenticator().protectedResources());
-        PROTECTED_AUTH_RESOURCES.addAll(DatabaseDescriptor.instance.getAuthorizer().protectedResources());
-    }
+    private final Auth auth;
 
     // Current user for the session
     private volatile AuthenticatedUser user;
@@ -87,34 +62,36 @@ public class ClientState
     /**
      * Construct a new, empty ClientState for internal calls.
      */
-    private ClientState()
+    private ClientState(Auth auth)
     {
+        this.auth = auth;
         this.isInternal = true;
         this.remoteAddress = null;
     }
 
-    protected ClientState(SocketAddress remoteAddress)
+    protected ClientState(SocketAddress remoteAddress, Auth auth)
     {
+        this.auth = auth;
         this.isInternal = false;
         this.remoteAddress = remoteAddress;
-        if (!DatabaseDescriptor.instance.getAuthenticator().requireAuthentication())
+        if (!auth.getAuthenticator().requireAuthentication())
             this.user = AuthenticatedUser.ANONYMOUS_USER;
     }
 
     /**
      * @return a ClientState object for internal C* calls (not limited by any kind of auth).
      */
-    public static ClientState forInternalCalls()
+    public static ClientState forInternalCalls(Auth auth)
     {
-        return new ClientState();
+        return new ClientState(auth);
     }
 
     /**
      * @return a ClientState object for external clients (thrift/native protocol users).
      */
-    public static ClientState forExternalCalls(SocketAddress remoteAddress)
+    public static ClientState forExternalCalls(SocketAddress remoteAddress, Auth auth)
     {
-        return new ClientState(remoteAddress);
+        return new ClientState(remoteAddress, auth);
     }
 
     public SocketAddress getRemoteAddress()
@@ -134,11 +111,11 @@ public class ClientState
         return keyspace;
     }
 
-    public void setKeyspace(String ks) throws InvalidRequestException
+    public void setKeyspace(String ks, Schema schema) throws InvalidRequestException
     {
         // Skip keyspace validation for non-authenticated users. Apparently, some client libraries
         // call set_keyspace() before calling login(), and we have to handle that.
-        if (user != null && Schema.instance.getKSMetaData(ks) == null)
+        if (user != null && schema.getKSMetaData(ks) == null)
             throw new InvalidRequestException("Keyspace '" + ks + "' does not exist");
         keyspace = ks;
     }
@@ -148,7 +125,7 @@ public class ClientState
      */
     public void login(AuthenticatedUser user) throws AuthenticationException
     {
-        if (!user.isAnonymous() && !Auth.instance.isExistingUser(user.getName()))
+        if (!user.isAnonymous() && !auth.isExistingUser(user.getName()))
            throw new AuthenticationException(String.format("User %s doesn't exist - create it with CREATE USER query first",
                                                            user.getName()));
         this.user = user;
@@ -182,9 +159,9 @@ public class ClientState
             return;
         validateLogin();
         preventSystemKSSchemaModification(keyspace, resource, perm);
-        if (perm.equals(Permission.SELECT) && READABLE_SYSTEM_RESOURCES.contains(resource))
+        if (perm.equals(Permission.SELECT) && auth.getReadableSystemResources().contains(resource))
             return;
-        if (PROTECTED_AUTH_RESOURCES.contains(resource))
+        if (auth.getProtectedAuthResources().contains(resource))
             if (perm.equals(Permission.CREATE) || perm.equals(Permission.ALTER) || perm.equals(Permission.DROP))
                 throw new UnauthorizedException(String.format("%s schema is protected", resource));
         ensureHasPermission(perm, resource);
@@ -233,7 +210,7 @@ public class ClientState
 
     public void ensureIsSuper(String message) throws UnauthorizedException
     {
-        if (DatabaseDescriptor.instance.getAuthenticator().requireAuthentication() && (user == null || !user.isSuper(Auth.instance)))
+        if (auth.getAuthenticator().requireAuthentication() && (user == null || !user.isSuper(auth)))
             throw new UnauthorizedException(message);
     }
 
@@ -253,35 +230,15 @@ public class ClientState
         return new SemanticVersion[]{ QueryProcessor.CQL_VERSION };
     }
 
-    private static LoadingCache<Pair<AuthenticatedUser, IResource>, Set<Permission>> initPermissionsCache()
-    {
-        if (DatabaseDescriptor.instance.getAuthorizer() instanceof AllowAllAuthorizer)
-            return null;
-
-        int validityPeriod = DatabaseDescriptor.instance.getPermissionsValidity();
-        if (validityPeriod <= 0)
-            return null;
-
-        return CacheBuilder.newBuilder().expireAfterWrite(validityPeriod, TimeUnit.MILLISECONDS)
-                                        .build(new CacheLoader<Pair<AuthenticatedUser, IResource>, Set<Permission>>()
-                                        {
-                                            public Set<Permission> load(Pair<AuthenticatedUser, IResource> userResource)
-                                            {
-                                                return DatabaseDescriptor.instance.getAuthorizer().authorize(userResource.left,
-                                                                                                    userResource.right);
-                                            }
-                                        });
-    }
-
     private Set<Permission> authorize(IResource resource)
     {
         // AllowAllAuthorizer or manually disabled caching.
-        if (permissionsCache == null)
-            return DatabaseDescriptor.instance.getAuthorizer().authorize(user, resource);
+        if (auth.getPermissionsCache() == null)
+            return auth.getAuthorizer().authorize(user, resource);
 
         try
         {
-            return permissionsCache.get(Pair.create(user, resource));
+            return auth.getPermissionsCache().get(Pair.create(user, resource));
         }
         catch (ExecutionException e)
         {
