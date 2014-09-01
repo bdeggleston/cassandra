@@ -166,6 +166,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
 
     private class AsyncRepairRunner implements Runnable
     {
+
         public void run()
         {
             // If the resolver is a RowDigestResolver, we need to do a full data read if there is a mismatch.
@@ -186,7 +187,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
                 
                 ReadCommand readCommand = (ReadCommand) command;
                 final RowDataResolver repairResolver = new RowDataResolver(readCommand.ksName, readCommand.key, readCommand.filter(), readCommand.timestamp);
-                AsyncRepairCallback repairHandler = new AsyncRepairCallback(repairResolver, endpoints.size());
+                AsyncRepairCallback repairHandler = new AsyncRepairCallback(repairResolver, endpoints.size(), StageManager.instance);
 
                 MessageOut<ReadCommand> message = ((ReadCommand) command).createMessage();
                 for (InetAddress endpoint : endpoints)

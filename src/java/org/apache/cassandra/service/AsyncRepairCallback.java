@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
+import org.apache.cassandra.concurrent.TracingAwareExecutorService;
 import org.apache.cassandra.db.ReadResponse;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
@@ -32,11 +33,13 @@ public class AsyncRepairCallback implements IAsyncCallback<ReadResponse>
     private final RowDataResolver repairResolver;
     private final int blockfor;
     protected final AtomicInteger received = new AtomicInteger(0);
+    protected final TracingAwareExecutorService readRepairStage;
 
-    public AsyncRepairCallback(RowDataResolver repairResolver, int blockfor)
+    public AsyncRepairCallback(RowDataResolver repairResolver, int blockfor, StageManager stageManager)
     {
         this.repairResolver = repairResolver;
         this.blockfor = blockfor;
+        readRepairStage = stageManager.getStage(Stage.READ_REPAIR);
     }
 
     public void response(MessageIn<ReadResponse> message)
@@ -44,7 +47,7 @@ public class AsyncRepairCallback implements IAsyncCallback<ReadResponse>
         repairResolver.preprocess(message);
         if (received.incrementAndGet() == blockfor)
         {
-            StageManager.instance.getStage(Stage.READ_REPAIR).execute(new WrappedRunnable()
+            readRepairStage.execute(new WrappedRunnable()
             {
                 protected void runMayThrow() throws DigestMismatchException, IOException
                 {
