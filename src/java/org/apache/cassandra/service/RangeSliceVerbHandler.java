@@ -27,18 +27,30 @@ import org.apache.cassandra.tracing.Tracing;
 
 public class RangeSliceVerbHandler implements IVerbHandler<AbstractRangeCommand>
 {
+
+    private final Tracing tracing;
+    private final MessagingService messagingService;
+    private final StorageService storageService;
+
+    public RangeSliceVerbHandler(Tracing tracing, MessagingService messagingService, StorageService storageService)
+    {
+        this.tracing = tracing;
+        this.messagingService = messagingService;
+        this.storageService = storageService;
+    }
+
     public void doVerb(MessageIn<AbstractRangeCommand> message, int id)
     {
         try
         {
-            if (StorageService.instance.isBootstrapMode())
+            if (storageService.isBootstrapMode())
             {
                 /* Don't service reads! */
                 throw new RuntimeException("Cannot service reads while bootstrapping!");
             }
             RangeSliceReply reply = new RangeSliceReply(message.payload.executeLocally());
-            Tracing.instance.trace("Enqueuing response to {}", message.from);
-            MessagingService.instance.sendReply(reply.createMessage(), id, message.from);
+            tracing.trace("Enqueuing response to {}", message.from);
+            messagingService.sendReply(reply.createMessage(), id, message.from);
         }
         catch (TombstoneOverwhelmingException e)
         {
