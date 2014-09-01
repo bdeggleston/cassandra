@@ -27,14 +27,23 @@ public class GossipShutdownVerbHandler implements IVerbHandler
 {
     private static final Logger logger = LoggerFactory.getLogger(GossipShutdownVerbHandler.class);
 
+    private final Gossiper gossiper;
+    private final IFailureDetector failureDetector;
+
+    public GossipShutdownVerbHandler(Gossiper gossiper, IFailureDetector failureDetector)
+    {
+        this.gossiper = gossiper;
+        this.failureDetector = failureDetector;
+    }
+
     public void doVerb(MessageIn message, int id)
     {
-        if (!Gossiper.instance.isEnabled())
+        if (!gossiper.isEnabled())
         {
             logger.debug("Ignoring shutdown message from {} because gossip is disabled", message.from);
             return;
         }
-        FailureDetector.instance.forceConviction(message.from);
+        failureDetector.forceConviction(message.from);
     }
 
 }
