@@ -30,6 +30,7 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.db.filter.QueryFilter;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.FBUtilities;
@@ -40,12 +41,14 @@ public class RowDataResolver extends AbstractRowResolver
     public List<AsyncOneResponse> repairResults = Collections.emptyList();
     private final IDiskAtomFilter filter;
     private final long timestamp;
+    private final MessagingService messagingService;
 
-    public RowDataResolver(String keyspaceName, ByteBuffer key, IDiskAtomFilter qFilter, long timestamp)
+    public RowDataResolver(String keyspaceName, ByteBuffer key, IDiskAtomFilter qFilter, IPartitioner partitioner, MessagingService messagingService, long timestamp)
     {
-        super(key, keyspaceName);
+        super(key, keyspaceName, partitioner);
         this.filter = qFilter;
         this.timestamp = timestamp;
+        this.messagingService = messagingService;
     }
 
     /*
@@ -88,7 +91,7 @@ public class RowDataResolver extends AbstractRowResolver
             // send updates to any replica that was missing part of the full row
             // (resolved can be null even if versions doesn't have all nulls because of the call to removeDeleted in resolveSuperSet)
             if (resolved != null)
-                repairResults = scheduleRepairs(resolved, keyspaceName, key, versions, endpoints, MessagingService.instance);
+                repairResults = scheduleRepairs(resolved, keyspaceName, key, versions, endpoints, messagingService);
         }
         else
         {
@@ -120,7 +123,7 @@ public class RowDataResolver extends AbstractRowResolver
             // use a separate verb here because we don't want these to be get the white glove hint-
             // on-timeout behavior that a "real" mutation gets
             results.add(messagingService.sendRR(mutation.createMessage(MessagingService.Verb.READ_REPAIR),
-                                                                       endpoints.get(i)));
+                                                endpoints.get(i)));
         }
 
         return results;

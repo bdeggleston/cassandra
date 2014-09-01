@@ -69,7 +69,7 @@ public abstract class AbstractReadExecutor
         this.messagingService = messagingService;
         this.schema = schema;
         this.stageManager = stageManager;
-        resolver = new RowDigestResolver(command.ksName, command.key);
+        resolver = new RowDigestResolver(command.ksName, command.key, this.databaseDescriptor.getPartitioner());
         handler = new ReadCallback<>(resolver, consistencyLevel, command, targetReplicas, this.databaseDescriptor, this.messagingService, this.stageManager, keyspaceManager);
     }
 

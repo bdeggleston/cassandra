@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.cassandra.dht.IPartitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,9 +40,9 @@ public abstract class AbstractRowResolver implements IResponseResolver<ReadRespo
     protected final List<MessageIn<ReadResponse>> replies = Collections.synchronizedList(new ArrayList<MessageIn<ReadResponse>>());
     protected final DecoratedKey key;
 
-    public AbstractRowResolver(ByteBuffer key, String keyspaceName)
+    public AbstractRowResolver(ByteBuffer key, String keyspaceName, IPartitioner partitioner)
     {
-        this.key = StorageService.instance.getPartitioner().decorateKey(key);
+        this.key = partitioner.decorateKey(key);
         this.keyspaceName = keyspaceName;
     }
 

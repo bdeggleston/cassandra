@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -61,6 +62,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
     private final Keyspace keyspace; // TODO push this into ConsistencyLevel?
     private final String localDc;
     private final InetAddress broadcastAddress;
+    private final IPartitioner partitioner;
     private final IEndpointSnitch snitch;
     private final MessagingService messagingService;
     private final StageManager stageManager;
@@ -88,6 +90,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
         this.endpoints = endpoints;
         this.localDc = databaseDescriptor.getLocalDataCenter();
         this.snitch = databaseDescriptor.getEndpointSnitch();
+        this.partitioner = databaseDescriptor.getPartitioner();
         this.broadcastAddress = databaseDescriptor.getBroadcastAddress();
         this.messagingService = messagingService;
         this.stageManager = stageManager;
@@ -197,7 +200,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
                 ReadRepairMetrics.repairedBackground.mark();
                 
                 ReadCommand readCommand = (ReadCommand) command;
-                final RowDataResolver repairResolver = new RowDataResolver(readCommand.ksName, readCommand.key, readCommand.filter(), readCommand.timestamp);
+                final RowDataResolver repairResolver = new RowDataResolver(readCommand.ksName, readCommand.key, readCommand.filter(), partitioner, messagingService, readCommand.timestamp);
                 AsyncRepairCallback repairHandler = new AsyncRepairCallback(repairResolver, endpoints.size(), stageManager);
 
                 MessageOut<ReadCommand> message = ((ReadCommand) command).createMessage();

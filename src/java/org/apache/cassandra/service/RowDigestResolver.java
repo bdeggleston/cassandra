@@ -23,13 +23,14 @@ import java.util.concurrent.TimeUnit;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ReadResponse;
 import org.apache.cassandra.db.Row;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.net.MessageIn;
 
 public class RowDigestResolver extends AbstractRowResolver
 {
-    public RowDigestResolver(String keyspaceName, ByteBuffer key)
+    public RowDigestResolver(String keyspaceName, ByteBuffer key, IPartitioner partitioner)
     {
-        super(key, keyspaceName);
+        super(key, keyspaceName, partitioner);
     }
 
     /**
