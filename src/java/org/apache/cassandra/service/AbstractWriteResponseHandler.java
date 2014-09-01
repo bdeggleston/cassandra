@@ -42,6 +42,7 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
     protected final Runnable callback;
     protected final Collection<InetAddress> pendingEndpoints;
     private final WriteType writeType;
+    protected final DatabaseDescriptor databaseDescriptor;
 
     /**
      * @param callback A callback to be called when the write is successful.
@@ -51,7 +52,8 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
                                            Collection<InetAddress> pendingEndpoints,
                                            ConsistencyLevel consistencyLevel,
                                            Runnable callback,
-                                           WriteType writeType)
+                                           WriteType writeType,
+                                           DatabaseDescriptor databaseDescriptor)
     {
         this.keyspace = keyspace;
         this.pendingEndpoints = pendingEndpoints;
@@ -60,13 +62,14 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
         this.naturalEndpoints = naturalEndpoints;
         this.callback = callback;
         this.writeType = writeType;
+        this.databaseDescriptor = databaseDescriptor;
     }
 
     public void get() throws WriteTimeoutException
     {
         long requestTimeout = writeType == WriteType.COUNTER
-                            ? DatabaseDescriptor.instance.getCounterWriteRpcTimeout()
-                            : DatabaseDescriptor.instance.getWriteRpcTimeout();
+                            ? databaseDescriptor.getCounterWriteRpcTimeout()
+                            : databaseDescriptor.getWriteRpcTimeout();
 
         long timeout = TimeUnit.MILLISECONDS.toNanos(requestTimeout) - (System.nanoTime() - start);
 
@@ -97,7 +100,7 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
     {
         // During bootstrap, we have to include the pending endpoints or we may fail the consistency level
         // guarantees (see #833)
-        return consistencyLevel.blockFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter()) + pendingEndpoints.size();
+        return consistencyLevel.blockFor(keyspace, databaseDescriptor.getLocalDataCenter()) + pendingEndpoints.size();
     }
 
     protected abstract int ackCount();
@@ -107,7 +110,7 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
 
     public void assureSufficientLiveNodes() throws UnavailableException
     {
-        consistencyLevel.assureSufficientLiveNodes(keyspace, Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), isAlive), DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch());
+        consistencyLevel.assureSufficientLiveNodes(keyspace, Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), isAlive), databaseDescriptor.getLocalDataCenter(), databaseDescriptor.getEndpointSnitch());
     }
 
     protected void signal()

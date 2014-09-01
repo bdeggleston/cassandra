@@ -625,7 +625,8 @@ public class StorageProxy implements StorageProxyMBean
                                                                         ConsistencyLevel.ONE,
                                                                         KeyspaceManager.instance.open(Keyspace.SYSTEM_KS),
                                                                         null,
-                                                                        WriteType.BATCH_LOG);
+                                                                        WriteType.BATCH_LOG,
+                                                                        DatabaseDescriptor.instance);
 
         MessageOut<Mutation> message = BatchlogManager.getBatchlogMutationFor(mutations, uuid, MessagingService.current_version)
                                                       .createMessage();
@@ -660,7 +661,8 @@ public class StorageProxy implements StorageProxyMBean
                                                                         ConsistencyLevel.ANY,
                                                                         KeyspaceManager.instance.open(Keyspace.SYSTEM_KS),
                                                                         null,
-                                                                        WriteType.SIMPLE);
+                                                                        WriteType.SIMPLE,
+                                                                        DatabaseDescriptor.instance);
         Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(uuid));
         mutation.delete(SystemKeyspace.BATCHLOG_CF, FBUtilities.timestampMicros());
         MessageOut<Mutation> message = mutation.createMessage();
@@ -1015,7 +1017,7 @@ public class StorageProxy implements StorageProxyMBean
             rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, cm.consistency(), null, WriteType.COUNTER).assureSufficientLiveNodes();
 
             // Forward the actual update to the chosen leader replica
-            AbstractWriteResponseHandler responseHandler = new WriteResponseHandler(endpoint, WriteType.COUNTER);
+            AbstractWriteResponseHandler responseHandler = new WriteResponseHandler(endpoint, WriteType.COUNTER, DatabaseDescriptor.instance);
 
             Tracing.instance.trace("Enqueuing counter update to {}", endpoint);
             MessagingService.instance.sendRR(cm.makeMutationMessage(), endpoint, responseHandler, false);

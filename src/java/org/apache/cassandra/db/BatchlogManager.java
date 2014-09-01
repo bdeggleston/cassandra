@@ -66,6 +66,7 @@ public class BatchlogManager implements BatchlogManagerMBean
     private static final long REPLAY_INTERVAL = 60 * 1000; // milliseconds
 
     private static final int PAGE_SIZE = 128; // same as HHOM, for now, w/out using any heuristics. TODO: set based on avg batch size.
+
     public static final BatchlogManager instance = new BatchlogManager();
 
     private final AtomicLong totalBatchesReplayed = new AtomicLong();
@@ -401,7 +402,7 @@ public class BatchlogManager implements BatchlogManagerMBean
             if (liveEndpoints.isEmpty())
                 return null;
 
-            ReplayWriteResponseHandler handler = new ReplayWriteResponseHandler(liveEndpoints);
+            ReplayWriteResponseHandler handler = new ReplayWriteResponseHandler(liveEndpoints, DatabaseDescriptor.instance);
             MessageOut<Mutation> message = mutation.createMessage();
             for (InetAddress endpoint : liveEndpoints)
                 MessagingService.instance.sendRR(message, endpoint, handler, false);
@@ -424,9 +425,9 @@ public class BatchlogManager implements BatchlogManagerMBean
         {
             private final Set<InetAddress> undelivered = Collections.newSetFromMap(new ConcurrentHashMap<InetAddress, Boolean>());
 
-            public ReplayWriteResponseHandler(Collection<InetAddress> writeEndpoints)
+            public ReplayWriteResponseHandler(Collection<InetAddress> writeEndpoints, DatabaseDescriptor databaseDescriptor)
             {
-                super(writeEndpoints, Collections.<InetAddress>emptySet(), null, null, null, WriteType.UNLOGGED_BATCH);
+                super(writeEndpoints, Collections.<InetAddress>emptySet(), null, null, null, WriteType.UNLOGGED_BATCH, databaseDescriptor);
                 undelivered.addAll(writeEndpoints);
             }
 

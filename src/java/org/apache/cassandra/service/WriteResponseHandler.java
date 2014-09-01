@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,20 +48,21 @@ public class WriteResponseHandler extends AbstractWriteResponseHandler
                                 ConsistencyLevel consistencyLevel,
                                 Keyspace keyspace,
                                 Runnable callback,
-                                WriteType writeType)
+                                WriteType writeType,
+                                DatabaseDescriptor databaseDescriptor)
     {
-        super(keyspace, writeEndpoints, pendingEndpoints, consistencyLevel, callback, writeType);
+        super(keyspace, writeEndpoints, pendingEndpoints, consistencyLevel, callback, writeType, databaseDescriptor);
         responses = totalBlockFor();
     }
 
-    public WriteResponseHandler(InetAddress endpoint, WriteType writeType, Runnable callback)
+    public WriteResponseHandler(InetAddress endpoint, WriteType writeType, Runnable callback, DatabaseDescriptor databaseDescriptor)
     {
-        this(Arrays.asList(endpoint), Collections.<InetAddress>emptyList(), ConsistencyLevel.ONE, null, callback, writeType);
+        this(Arrays.asList(endpoint), Collections.<InetAddress>emptyList(), ConsistencyLevel.ONE, null, callback, writeType, databaseDescriptor);
     }
 
-    public WriteResponseHandler(InetAddress endpoint, WriteType writeType)
+    public WriteResponseHandler(InetAddress endpoint, WriteType writeType, DatabaseDescriptor databaseDescriptor)
     {
-        this(endpoint, writeType, null);
+        this(endpoint, writeType, null, databaseDescriptor);
     }
 
     public void response(MessageIn m)
