@@ -28,20 +28,22 @@ import org.apache.cassandra.utils.FBUtilities;
 public class QueryState
 {
     private final ClientState clientState;
+    private final Tracing tracing;
     private volatile long clock;
     private volatile UUID preparedTracingSession;
 
-    public QueryState(ClientState clientState)
+    public QueryState(ClientState clientState, Tracing tracing)
     {
         this.clientState = clientState;
+        this.tracing = tracing;
     }
 
     /**
      * @return a QueryState object for internal C* calls (not limited by any kind of auth).
      */
-    public static QueryState forInternalCalls()
+    public static QueryState forInternalCalls(Tracing tracing)
     {
-        return new QueryState(ClientState.forInternalCalls());
+        return new QueryState(ClientState.forInternalCalls(), tracing);
     }
 
     public ClientState getClientState()
@@ -67,7 +69,7 @@ public class QueryState
             return true;
         }
 
-        double tracingProbability = StorageService.instance.getTracingProbability();
+        double tracingProbability = tracing.getTracingProbability();
         return tracingProbability != 0 && FBUtilities.threadLocalRandom().nextDouble() < tracingProbability;
     }
 
@@ -80,13 +82,13 @@ public class QueryState
     {
         if (this.preparedTracingSession == null)
         {
-            Tracing.instance.newSession();
+            tracing.newSession();
         }
         else
         {
             UUID session = this.preparedTracingSession;
             this.preparedTracingSession = null;
-            Tracing.instance.newSession(session);
+            tracing.newSession(session);
         }
     }
 }

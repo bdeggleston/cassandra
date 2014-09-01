@@ -22,6 +22,7 @@ import java.net.SocketAddress;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
+import org.apache.cassandra.tracing.Tracing;
 
 /**
  * ClientState used by thrift that also provide a QueryState.
@@ -37,7 +38,7 @@ public class ThriftClientState extends ClientState
     public ThriftClientState(SocketAddress remoteAddress)
     {
         super(remoteAddress);
-        this.queryState = new QueryState(this);
+        this.queryState = new QueryState(this, Tracing.instance);
     }
 
     public QueryState getQueryState()

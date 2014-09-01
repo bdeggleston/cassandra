@@ -99,7 +99,7 @@ public class QueryProcessor implements QueryHandler
             {
                 throw new RuntimeException(e);
             }
-            qs = new QueryState(state);
+            qs = new QueryState(state, Tracing.instance);
 
             if (!queryState.compareAndSet(null, qs))
                 qs = queryState.get();
@@ -208,7 +208,7 @@ public class QueryProcessor implements QueryHandler
     {
         try
         {
-            ResultMessage result = process(query, QueryState.forInternalCalls(), QueryOptions.forInternalCalls(cl, Collections.<ByteBuffer>emptyList()));
+            ResultMessage result = process(query, QueryState.forInternalCalls(Tracing.instance), QueryOptions.forInternalCalls(cl, Collections.<ByteBuffer>emptyList()));
             if (result instanceof ResultMessage.Rows)
                 return UntypedResultSet.create(((ResultMessage.Rows)result).result);
             else

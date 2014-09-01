@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.apache.cassandra.config.*;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -256,7 +257,7 @@ public class Auth
     {
         try
         {
-            ResultMessage.Rows rows = selectUserStatement.execute(QueryState.forInternalCalls(),
+            ResultMessage.Rows rows = selectUserStatement.execute(QueryState.forInternalCalls(Tracing.instance),
                                                                   QueryOptions.forInternalCalls(consistencyForUser(username),
                                                                                                 Lists.newArrayList(ByteBufferUtil.bytes(username))));
             return UntypedResultSet.create(rows.result);

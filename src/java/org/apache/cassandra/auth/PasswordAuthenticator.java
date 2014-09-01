@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import org.apache.cassandra.service.StorageServiceExecutors;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,7 +104,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
         UntypedResultSet result;
         try
         {
-            ResultMessage.Rows rows = authenticateStatement.execute(QueryState.forInternalCalls(),
+            ResultMessage.Rows rows = authenticateStatement.execute(QueryState.forInternalCalls(Tracing.instance),
                                                                     QueryOptions.forInternalCalls(consistencyForUser(username),
                                                                                                   Lists.newArrayList(ByteBufferUtil.bytes(username))));
             result = UntypedResultSet.create(rows.result);

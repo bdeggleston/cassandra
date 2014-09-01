@@ -28,6 +28,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
 
+import org.apache.cassandra.tracing.Tracing;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 
 public class ServerConnection extends Connection
@@ -53,7 +54,7 @@ public class ServerConnection extends Connection
         if (qState == null)
         {
             // In theory we shouldn't get any race here, but it never hurts to be careful
-            QueryState newState = new QueryState(clientState);
+            QueryState newState = new QueryState(clientState, Tracing.instance);
             if ((qState = queryStates.putIfAbsent(streamId, newState)) == null)
                 qState = newState;
         }

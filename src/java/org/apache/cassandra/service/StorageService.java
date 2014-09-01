@@ -157,9 +157,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private boolean initialized;
     private volatile boolean joined = false;
 
-    /* the probability for tracing any particular request, 0 disables tracing and 1 enables for all */
-    private double tracingProbability = 0.0;
-
     private static enum Mode { STARTING, NORMAL, CLIENT, JOINING, LEAVING, DECOMMISSIONED, MOVING, DRAINING, DRAINED }
     private Mode operationMode = Mode.STARTING;
 
@@ -3884,12 +3881,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void setTraceProbability(double probability)
     {
-        this.tracingProbability = probability;
+        Tracing.instance.setTracingProbability(probability);
     }
 
     public double getTracingProbability()
     {
-        return tracingProbability;
+        return Tracing.instance.getTracingProbability();
     }
 
     public void disableAutoCompaction(String ks, String... columnFamilies) throws IOException

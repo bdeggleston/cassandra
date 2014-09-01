@@ -168,6 +168,8 @@ public abstract class ExtendedFilter
                            Tracing tracing)
         {
             super(cfs, range, maxResults, countCQL3Rows, timestamp);
+            this.databaseDescriptor = databaseDescriptor;
+            this.tracing = tracing;
             assert clause != null;
             this.clause = clause;
             this.optimizedFilter = computeOptimizedFilter();

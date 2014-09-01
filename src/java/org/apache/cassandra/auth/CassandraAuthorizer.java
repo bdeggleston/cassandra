@@ -21,6 +21,7 @@ import java.util.*;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +71,7 @@ public class CassandraAuthorizer implements IAuthorizer
         UntypedResultSet result;
         try
         {
-            ResultMessage.Rows rows = authorizeStatement.execute(QueryState.forInternalCalls(),
+            ResultMessage.Rows rows = authorizeStatement.execute(QueryState.forInternalCalls(Tracing.instance),
                                                                  QueryOptions.forInternalCalls(ConsistencyLevel.LOCAL_ONE,
                                                                                                Lists.newArrayList(ByteBufferUtil.bytes(user.getName()),
                                                                                                                   ByteBufferUtil.bytes(resource.getName()))));

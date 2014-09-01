@@ -70,11 +70,24 @@ public class Tracing
 
     private final ConcurrentMap<UUID, TraceState> sessions = new ConcurrentHashMap<UUID, TraceState>();
 
+    /* the probability for tracing any particular request, 0 disables tracing and 1 enables for all */
+    private volatile double tracingProbability = 0.0;
+
     public static final Tracing instance = new Tracing();
 
     public Tracing()
     {
         localAddress = DatabaseDescriptor.instance.getLocalAddress();
+    }
+
+    public double getTracingProbability()
+    {
+        return tracingProbability;
+    }
+
+    public void setTracingProbability(double tracingProbability)
+    {
+        this.tracingProbability = tracingProbability;
     }
 
     public static void addColumn(ColumnFamily cf, CellName name, InetAddress address)
