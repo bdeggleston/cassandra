@@ -23,10 +23,18 @@ import org.apache.cassandra.net.MessagingService;
 
 public class ReadRepairVerbHandler implements IVerbHandler<Mutation>
 {
+
+    private final MessagingService messagingService;
+
+    public ReadRepairVerbHandler(MessagingService messagingService)
+    {
+        this.messagingService = messagingService;
+    }
+
     public void doVerb(MessageIn<Mutation> message, int id)
     {
         message.payload.apply();
         WriteResponse response = new WriteResponse();
-        MessagingService.instance.sendReply(response.createMessage(), id, message.from);
+        messagingService.sendReply(response.createMessage(), id, message.from);
     }
 }
