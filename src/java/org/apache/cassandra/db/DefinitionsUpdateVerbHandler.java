@@ -38,15 +38,24 @@ public class DefinitionsUpdateVerbHandler implements IVerbHandler<Collection<Mut
 {
     private static final Logger logger = LoggerFactory.getLogger(DefinitionsUpdateVerbHandler.class);
 
+    private final StageManager stageManager;
+    private final DefsTables defsTables;
+
+    public DefinitionsUpdateVerbHandler(StageManager stageManager, DefsTables defsTables)
+    {
+        this.stageManager = stageManager;
+        this.defsTables = defsTables;
+    }
+
     public void doVerb(final MessageIn<Collection<Mutation>> message, int id)
     {
         logger.debug("Received schema mutation push from {}", message.from);
 
-        StageManager.instance.getStage(Stage.MIGRATION).submit(new WrappedRunnable()
+        stageManager.getStage(Stage.MIGRATION).submit(new WrappedRunnable()
         {
             public void runMayThrow() throws Exception
             {
-                DefsTables.instance.mergeSchema(message.payload);
+                defsTables.mergeSchema(message.payload);
             }
         });
     }
