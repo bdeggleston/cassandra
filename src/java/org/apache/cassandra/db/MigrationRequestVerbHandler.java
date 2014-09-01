@@ -36,12 +36,21 @@ public class MigrationRequestVerbHandler implements IVerbHandler
 {
     private static final Logger logger = LoggerFactory.getLogger(MigrationRequestVerbHandler.class);
 
+    private final SystemKeyspace systemKeyspace;
+    private final MessagingService messagingService;
+
+    public MigrationRequestVerbHandler(SystemKeyspace systemKeyspace, MessagingService messagingService)
+    {
+        this.systemKeyspace = systemKeyspace;
+        this.messagingService = messagingService;
+    }
+
     public void doVerb(MessageIn message, int id)
     {
         logger.debug("Received migration request from {}.", message.from);
         MessageOut<Collection<Mutation>> response = new MessageOut<>(MessagingService.Verb.INTERNAL_RESPONSE,
-                                                                     SystemKeyspace.instance.serializeSchema(),
+                                                                     systemKeyspace.serializeSchema(),
                                                                      MigrationManager.MigrationsSerializer.instance);
-        MessagingService.instance.sendReply(response, id, message.from);
+        messagingService.sendReply(response, id, message.from);
     }
 }
