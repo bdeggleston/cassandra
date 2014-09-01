@@ -52,6 +52,22 @@ import org.apache.cassandra.utils.Pair;
 public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
 {
     private static final Logger logger = LoggerFactory.getLogger(RepairMessageVerbHandler.class);
+
+    private final KeyspaceManager keyspaceManager;
+    private final Schema schema;
+    private final ActiveRepairService activeRepairService;
+    private final CompactionManager compactionManager;
+    private final MessagingService messagingService;
+
+    public RepairMessageVerbHandler(KeyspaceManager keyspaceManager, Schema schema, ActiveRepairService activeRepairService, CompactionManager compactionManager, MessagingService messagingService)
+    {
+        this.keyspaceManager = keyspaceManager;
+        this.schema = schema;
+        this.activeRepairService = activeRepairService;
+        this.compactionManager = compactionManager;
+        this.messagingService = messagingService;
+    }
+
     public void doVerb(MessageIn<RepairMessage> message, int id)
     {
         // TODO add cancel/interrupt message
@@ -63,18 +79,18 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 List<ColumnFamilyStore> columnFamilyStores = new ArrayList<>(prepareMessage.cfIds.size());
                 for (UUID cfId : prepareMessage.cfIds)
                 {
-                    Pair<String, String> kscf = Schema.instance.getCF(cfId);
-                    ColumnFamilyStore columnFamilyStore = KeyspaceManager.instance.open(kscf.left).getColumnFamilyStore(kscf.right);
+                    Pair<String, String> kscf = schema.getCF(cfId);
+                    ColumnFamilyStore columnFamilyStore = keyspaceManager.open(kscf.left).getColumnFamilyStore(kscf.right);
                     columnFamilyStores.add(columnFamilyStore);
                 }
-                ActiveRepairService.instance.registerParentRepairSession(prepareMessage.parentRepairSession,
+                activeRepairService.registerParentRepairSession(prepareMessage.parentRepairSession,
                                                                          columnFamilyStores,
                                                                          prepareMessage.ranges);
-                MessagingService.instance.sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE), id, message.from);
+                messagingService.sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE), id, message.from);
                 break;
 
             case SNAPSHOT:
-                ColumnFamilyStore cfs = KeyspaceManager.instance.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
+                ColumnFamilyStore cfs = keyspaceManager.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
                 final Range<Token> repairingRange = desc.range;
                 cfs.snapshot(desc.sessionId.toString(), new Predicate<SSTableReader>()
                 {
@@ -85,16 +101,16 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 });
 
                 logger.debug("Enqueuing response to snapshot request {} to {}", desc.sessionId, message.from);
-                MessagingService.instance.sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE), id, message.from);
+                messagingService.sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE), id, message.from);
                 break;
 
             case VALIDATION_REQUEST:
                 ValidationRequest validationRequest = (ValidationRequest) message.payload;
                 // trigger read-only compaction
-                ColumnFamilyStore store = KeyspaceManager.instance.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
+                ColumnFamilyStore store = keyspaceManager.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
 
                 Validator validator = new Validator(desc, message.from, validationRequest.gcBefore);
-                CompactionManager.instance.submitValidation(store, validator);
+                compactionManager.submitValidation(store, validator);
                 break;
 
             case SYNC_REQUEST:
@@ -109,7 +125,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 AnticompactionRequest anticompactionRequest = (AnticompactionRequest) message.payload;
                 try
                 {
-                    List<Future<?>> futures = ActiveRepairService.instance.doAntiCompaction(anticompactionRequest.parentRepairSession);
+                    List<Future<?>> futures = activeRepairService.doAntiCompaction(anticompactionRequest.parentRepairSession);
                     FBUtilities.waitOnFutures(futures);
                 }
                 catch (Exception e)
@@ -120,7 +136,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 break;
 
             default:
-                ActiveRepairService.instance.handleMessage(message.from, message.payload);
+                activeRepairService.handleMessage(message.from, message.payload);
                 break;
         }
     }
