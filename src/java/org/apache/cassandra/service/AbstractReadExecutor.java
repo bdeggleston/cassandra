@@ -61,7 +61,7 @@ public abstract class AbstractReadExecutor
         this.command = command;
         this.targetReplicas = targetReplicas;
         resolver = new RowDigestResolver(command.ksName, command.key);
-        handler = new ReadCallback<>(resolver, consistencyLevel, command, targetReplicas);
+        handler = new ReadCallback<>(resolver, consistencyLevel, command, targetReplicas, DatabaseDescriptor.instance, MessagingService.instance, StageManager.instance, KeyspaceManager.instance);
     }
 
     private boolean isLocalRequest(InetAddress replica)

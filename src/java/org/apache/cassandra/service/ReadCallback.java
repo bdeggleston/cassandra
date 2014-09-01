@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,18 +59,25 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
             = AtomicIntegerFieldUpdater.newUpdater(ReadCallback.class, "received");
     private volatile int received = 0;
     private final Keyspace keyspace; // TODO push this into ConsistencyLevel?
+    private final String localDc;
+    private final InetAddress broadcastAddress;
+    private final IEndpointSnitch snitch;
+    private final MessagingService messagingService;
+    private final StageManager stageManager;
 
     /**
      * Constructor when response count has to be calculated and blocked for.
      */
-    public ReadCallback(IResponseResolver<TMessage, TResolved> resolver, ConsistencyLevel consistencyLevel, IReadCommand command, List<InetAddress> filteredEndpoints)
+    public ReadCallback(IResponseResolver<TMessage, TResolved> resolver, ConsistencyLevel consistencyLevel, IReadCommand command, List<InetAddress> filteredEndpoints,
+                        DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager, KeyspaceManager keyspaceManager)
     {
-        this(resolver, consistencyLevel, consistencyLevel.blockFor(KeyspaceManager.instance.open(command.getKeyspace()), DatabaseDescriptor.instance.getLocalDataCenter()), command, KeyspaceManager.instance.open(command.getKeyspace()), filteredEndpoints);
+        this(resolver, consistencyLevel, consistencyLevel.blockFor(keyspaceManager.open(command.getKeyspace()), databaseDescriptor.getLocalDataCenter()), command, keyspaceManager.open(command.getKeyspace()), filteredEndpoints, databaseDescriptor, messagingService, stageManager);
         if (logger.isTraceEnabled())
             logger.trace(String.format("Blockfor is %s; setting up requests to %s", blockfor, StringUtils.join(this.endpoints, ",")));
     }
 
-    public ReadCallback(IResponseResolver<TMessage, TResolved> resolver, ConsistencyLevel consistencyLevel, int blockfor, IReadCommand command, Keyspace keyspace, List<InetAddress> endpoints)
+    public ReadCallback(IResponseResolver<TMessage, TResolved> resolver, ConsistencyLevel consistencyLevel, int blockfor, IReadCommand command, Keyspace keyspace, List<InetAddress> endpoints,
+                        DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager)
     {
         this.command = command;
         this.keyspace = keyspace;
@@ -78,6 +86,11 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
         this.resolver = resolver;
         this.start = System.nanoTime();
         this.endpoints = endpoints;
+        this.localDc = databaseDescriptor.getLocalDataCenter();
+        this.snitch = databaseDescriptor.getEndpointSnitch();
+        this.broadcastAddress = databaseDescriptor.getBroadcastAddress();
+        this.messagingService = messagingService;
+        this.stageManager = stageManager;
         // we don't support read repair (or rapid read protection) for range scans yet (CASSANDRA-6897)
         assert !(resolver instanceof RangeSliceResponseResolver) || blockfor >= endpoints.size();
     }
@@ -122,7 +135,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
             // kick off a background digest comparison if this is a result that (may have) arrived after
             // the original resolve that get() kicks off as soon as the condition is signaled
             if (blockfor < endpoints.size() && n == endpoints.size())
-                StageManager.instance.getStage(Stage.READ_REPAIR).execute(new AsyncRepairRunner());
+                stageManager.getStage(Stage.READ_REPAIR).execute(new AsyncRepairRunner());
         }
     }
 
@@ -131,9 +144,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
      */
     private boolean waitingFor(MessageIn message)
     {
-        return consistencyLevel.isDatacenterLocal()
-             ? DatabaseDescriptor.instance.getLocalDataCenter().equals(DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(message.from))
-             : true;
+        return !consistencyLevel.isDatacenterLocal() || localDc.equals(snitch.getDatacenter(message.from));
     }
 
     /**
@@ -146,7 +157,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
 
     public void response(TMessage result)
     {
-        MessageIn<TMessage> message = MessageIn.create(DatabaseDescriptor.instance.getBroadcastAddress(),
+        MessageIn<TMessage> message = MessageIn.create(broadcastAddress,
                                                        result,
                                                        Collections.<String, byte[]>emptyMap(),
                                                        MessagingService.Verb.INTERNAL_RESPONSE,
@@ -156,7 +167,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
 
     public void assureSufficientLiveNodes() throws UnavailableException
     {
-        consistencyLevel.assureSufficientLiveNodes(keyspace, endpoints, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch());
+        consistencyLevel.assureSufficientLiveNodes(keyspace, endpoints, localDc, snitch);
     }
 
     public boolean isLatencyForSnitch()
@@ -187,11 +198,11 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
                 
                 ReadCommand readCommand = (ReadCommand) command;
                 final RowDataResolver repairResolver = new RowDataResolver(readCommand.ksName, readCommand.key, readCommand.filter(), readCommand.timestamp);
-                AsyncRepairCallback repairHandler = new AsyncRepairCallback(repairResolver, endpoints.size(), StageManager.instance);
+                AsyncRepairCallback repairHandler = new AsyncRepairCallback(repairResolver, endpoints.size(), stageManager);
 
                 MessageOut<ReadCommand> message = ((ReadCommand) command).createMessage();
                 for (InetAddress endpoint : endpoints)
-                    MessagingService.instance.sendRR(message, endpoint, repairHandler);
+                    messagingService.sendRR(message, endpoint, repairHandler);
             }
         }
     }
