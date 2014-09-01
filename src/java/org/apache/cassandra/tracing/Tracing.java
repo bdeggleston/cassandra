@@ -64,13 +64,18 @@ public class Tracing
 
     private static final Logger logger = LoggerFactory.getLogger(Tracing.class);
 
-    private final InetAddress localAddress = DatabaseDescriptor.instance.getLocalAddress();
+    private final InetAddress localAddress;
 
     private final ThreadLocal<TraceState> state = new ThreadLocal<TraceState>();
 
     private final ConcurrentMap<UUID, TraceState> sessions = new ConcurrentHashMap<UUID, TraceState>();
 
     public static final Tracing instance = new Tracing();
+
+    public Tracing()
+    {
+        localAddress = DatabaseDescriptor.instance.getLocalAddress();
+    }
 
     public static void addColumn(ColumnFamily cf, CellName name, InetAddress address)
     {
