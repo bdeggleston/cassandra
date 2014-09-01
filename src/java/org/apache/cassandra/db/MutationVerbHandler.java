@@ -32,6 +32,15 @@ public class MutationVerbHandler implements IVerbHandler<Mutation>
 {
     private static final Logger logger = LoggerFactory.getLogger(MutationVerbHandler.class);
 
+    private final Tracing tracing;
+    private final MessagingService messagingService;
+
+    public MutationVerbHandler(Tracing tracing, MessagingService messagingService)
+    {
+        this.tracing = tracing;
+        this.messagingService = messagingService;
+    }
+
     public void doVerb(MessageIn<Mutation> message, int id)
     {
         try
@@ -53,8 +62,8 @@ public class MutationVerbHandler implements IVerbHandler<Mutation>
 
             message.payload.apply();
             WriteResponse response = new WriteResponse();
-            Tracing.instance.trace("Enqueuing response to {}", replyTo);
-            MessagingService.instance.sendReply(response.createMessage(), id, replyTo);
+            tracing.trace("Enqueuing response to {}", replyTo);
+            messagingService.sendReply(response.createMessage(), id, replyTo);
         }
         catch (IOException e)
         {
@@ -78,8 +87,8 @@ public class MutationVerbHandler implements IVerbHandler<Mutation>
         {
             InetAddress address = CompactEndpointSerializationHelper.deserialize(in);
             int id = in.readInt();
-            Tracing.instance.trace("Enqueuing forwarded write to {}", address);
-            MessagingService.instance.sendOneWay(message, id, address);
+            tracing.trace("Enqueuing forwarded write to {}", address);
+            messagingService.sendOneWay(message, id, address);
         }
     }
 }
