@@ -33,12 +33,23 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
 {
     private static final Logger logger = LoggerFactory.getLogger(GossipDigestSynVerbHandler.class);
 
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Gossiper gossiper;
+    private final MessagingService messagingService;
+
+    public GossipDigestSynVerbHandler(DatabaseDescriptor databaseDescriptor, Gossiper gossiper, MessagingService messagingService)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+        this.gossiper = gossiper;
+        this.messagingService = messagingService;
+    }
+
     public void doVerb(MessageIn<GossipDigestSyn> message, int id)
     {
         InetAddress from = message.from;
         if (logger.isTraceEnabled())
             logger.trace("Received a GossipDigestSynMessage from {}", from);
-        if (!Gossiper.instance.isEnabled())
+        if (!gossiper.isEnabled())
         {
             if (logger.isTraceEnabled())
                 logger.trace("Ignoring GossipDigestSynMessage because gossip is disabled");
@@ -47,15 +58,15 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
 
         GossipDigestSyn gDigestMessage = message.payload;
         /* If the message is from a different cluster throw it away. */
-        if (!gDigestMessage.clusterId.equals(DatabaseDescriptor.instance.getClusterName()))
+        if (!gDigestMessage.clusterId.equals(databaseDescriptor.getClusterName()))
         {
-            logger.warn("ClusterName mismatch from {} {}!={}", from, gDigestMessage.clusterId, DatabaseDescriptor.instance.getClusterName());
+            logger.warn("ClusterName mismatch from {} {}!={}", from, gDigestMessage.clusterId, databaseDescriptor.getClusterName());
             return;
         }
 
-        if (gDigestMessage.partioner != null && !gDigestMessage.partioner.equals(DatabaseDescriptor.instance.getPartitionerName()))
+        if (gDigestMessage.partioner != null && !gDigestMessage.partioner.equals(databaseDescriptor.getPartitionerName()))
         {
-            logger.warn("Partitioner mismatch from {} {}!={}", from, gDigestMessage.partioner, DatabaseDescriptor.instance.getPartitionerName());
+            logger.warn("Partitioner mismatch from {} {}!={}", from, gDigestMessage.partioner, databaseDescriptor.getPartitionerName());
             return;
         }
 
@@ -75,14 +86,14 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
 
         List<GossipDigest> deltaGossipDigestList = new ArrayList<GossipDigest>();
         Map<InetAddress, EndpointState> deltaEpStateMap = new HashMap<InetAddress, EndpointState>();
-        Gossiper.instance.examineGossiper(gDigestList, deltaGossipDigestList, deltaEpStateMap);
+        gossiper.examineGossiper(gDigestList, deltaGossipDigestList, deltaEpStateMap);
         logger.trace("sending {} digests and {} deltas", deltaGossipDigestList.size(), deltaEpStateMap.size());
         MessageOut<GossipDigestAck> gDigestAckMessage = new MessageOut<GossipDigestAck>(MessagingService.Verb.GOSSIP_DIGEST_ACK,
                                                                                         new GossipDigestAck(deltaGossipDigestList, deltaEpStateMap),
                                                                                         GossipDigestAck.serializer);
         if (logger.isTraceEnabled())
             logger.trace("Sending a GossipDigestAckMessage to {}", from);
-        MessagingService.instance.sendOneWay(gDigestAckMessage, from);
+        messagingService.sendOneWay(gDigestAckMessage, from);
     }
 
     /*
@@ -109,8 +120,8 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
         for (GossipDigest gDigest : gDigestList)
         {
             InetAddress ep = gDigest.getEndpoint();
-            EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(ep);
-            int version = (epState != null) ? Gossiper.instance.getMaxEndpointStateVersion(epState) : 0;
+            EndpointState epState = gossiper.getEndpointStateForEndpoint(ep);
+            int version = (epState != null) ? gossiper.getMaxEndpointStateVersion(epState) : 0;
             int diffVersion = Math.abs(version - gDigest.getMaxVersion());
             diffDigests.add(new GossipDigest(ep, gDigest.getGeneration(), diffVersion));
         }
