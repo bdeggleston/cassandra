@@ -32,6 +32,15 @@ public class SnapshotVerbHandler implements IVerbHandler<SnapshotCommand>
 {
     private static final Logger logger = LoggerFactory.getLogger(SnapshotVerbHandler.class);
 
+    private final KeyspaceManager keyspaceManager;
+    private final MessagingService messagingService;
+
+    public SnapshotVerbHandler(KeyspaceManager keyspaceManager, MessagingService messagingService)
+    {
+        this.keyspaceManager = keyspaceManager;
+        this.messagingService = messagingService;
+    }
+
     public void doVerb(MessageIn<SnapshotCommand> message, int id)
     {
         SnapshotCommand command = message.payload;
@@ -40,8 +49,8 @@ public class SnapshotVerbHandler implements IVerbHandler<SnapshotCommand>
             Keyspace.clearSnapshot(command.snapshot_name, command.keyspace);
         }
         else
-            KeyspaceManager.instance.open(command.keyspace).getColumnFamilyStore(command.column_family).snapshot(command.snapshot_name);
+            keyspaceManager.open(command.keyspace).getColumnFamilyStore(command.column_family).snapshot(command.snapshot_name);
         logger.debug("Enqueuing response to snapshot request {} to {}", command.snapshot_name, message.from);
-        MessagingService.instance.sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE), id, message.from);
+        messagingService.sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE), id, message.from);
     }
 }

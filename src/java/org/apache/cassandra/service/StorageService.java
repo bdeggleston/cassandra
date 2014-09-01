@@ -233,7 +233,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.SCHEMA_CHECK, new SchemaCheckVerbHandler());
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.MIGRATION_REQUEST, new MigrationRequestVerbHandler());
 
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.SNAPSHOT, new SnapshotVerbHandler());
+        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.SNAPSHOT, new SnapshotVerbHandler(KeyspaceManager.instance, MessagingService.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.ECHO, new EchoVerbHandler(MessagingService.instance));
     }
 
