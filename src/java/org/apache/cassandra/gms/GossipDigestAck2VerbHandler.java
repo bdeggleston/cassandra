@@ -30,6 +30,13 @@ public class GossipDigestAck2VerbHandler implements IVerbHandler<GossipDigestAck
 {
     private static final Logger logger = LoggerFactory.getLogger(GossipDigestAck2VerbHandler.class);
 
+    private final Gossiper gossiper;
+
+    public GossipDigestAck2VerbHandler(Gossiper gossiper)
+    {
+        this.gossiper = gossiper;
+    }
+
     public void doVerb(MessageIn<GossipDigestAck2> message, int id)
     {
         if (logger.isTraceEnabled())
@@ -37,7 +44,7 @@ public class GossipDigestAck2VerbHandler implements IVerbHandler<GossipDigestAck
             InetAddress from = message.from;
             logger.trace("Received a GossipDigestAck2Message from {}", from);
         }
-        if (!Gossiper.instance.isEnabled())
+        if (!gossiper.isEnabled())
         {
             if (logger.isTraceEnabled())
                 logger.trace("Ignoring GossipDigestAck2Message because gossip is disabled");
@@ -45,7 +52,7 @@ public class GossipDigestAck2VerbHandler implements IVerbHandler<GossipDigestAck
         }
         Map<InetAddress, EndpointState> remoteEpStateMap = message.payload.getEndpointStateMap();
         /* Notify the Failure Detector */
-        Gossiper.instance.notifyFailureDetector(remoteEpStateMap);
-        Gossiper.instance.applyStateLocally(remoteEpStateMap);
+        gossiper.notifyFailureDetector(remoteEpStateMap);
+        gossiper.applyStateLocally(remoteEpStateMap);
     }
 }
