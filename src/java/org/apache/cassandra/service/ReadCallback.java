@@ -64,7 +64,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
      */
     public ReadCallback(IResponseResolver<TMessage, TResolved> resolver, ConsistencyLevel consistencyLevel, IReadCommand command, List<InetAddress> filteredEndpoints)
     {
-        this(resolver, consistencyLevel, consistencyLevel.blockFor(KeyspaceManager.instance.open(command.getKeyspace())), command, KeyspaceManager.instance.open(command.getKeyspace()), filteredEndpoints);
+        this(resolver, consistencyLevel, consistencyLevel.blockFor(KeyspaceManager.instance.open(command.getKeyspace()), DatabaseDescriptor.instance.getLocalDataCenter()), command, KeyspaceManager.instance.open(command.getKeyspace()), filteredEndpoints);
         if (logger.isTraceEnabled())
             logger.trace(String.format("Blockfor is %s; setting up requests to %s", blockfor, StringUtils.join(this.endpoints, ",")));
     }
@@ -156,7 +156,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
 
     public void assureSufficientLiveNodes() throws UnavailableException
     {
-        consistencyLevel.assureSufficientLiveNodes(keyspace, endpoints);
+        consistencyLevel.assureSufficientLiveNodes(keyspace, endpoints, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch());
     }
 
     public boolean isLatencyForSnitch()

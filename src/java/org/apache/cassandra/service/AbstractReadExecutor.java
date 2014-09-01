@@ -146,10 +146,10 @@ public abstract class AbstractReadExecutor
         Keyspace keyspace = KeyspaceManager.instance.open(command.ksName);
         List<InetAddress> allReplicas = StorageProxy.instance.getLiveSortedEndpoints(keyspace, command.key);
         ReadRepairDecision repairDecision = Schema.instance.getCFMetaData(command.ksName, command.cfName).newReadRepairDecision();
-        List<InetAddress> targetReplicas = consistencyLevel.filterForQuery(keyspace, allReplicas, repairDecision);
+        List<InetAddress> targetReplicas = consistencyLevel.filterForQuery(keyspace, allReplicas, repairDecision, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch(), DatabaseDescriptor.instance.getLocalComparator());
 
         // Throw UAE early if we don't have enough replicas.
-        consistencyLevel.assureSufficientLiveNodes(keyspace, targetReplicas);
+        consistencyLevel.assureSufficientLiveNodes(keyspace, targetReplicas, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch());
 
         // Fat client. Speculating read executors need access to cfs metrics and sampled latency, and fat clients
         // can't provide that. So, for now, fat clients will always use NeverSpeculatingReadExecutor.
@@ -163,7 +163,7 @@ public abstract class AbstractReadExecutor
         RetryType retryType = cfs.metadata.getSpeculativeRetry().type;
 
         // Speculative retry is disabled *OR* there are simply no extra replicas to speculate.
-        if (retryType == RetryType.NONE || consistencyLevel.blockFor(keyspace) == allReplicas.size())
+        if (retryType == RetryType.NONE || consistencyLevel.blockFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter()) == allReplicas.size())
             return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas);
 
         if (targetReplicas.size() == allReplicas.size())

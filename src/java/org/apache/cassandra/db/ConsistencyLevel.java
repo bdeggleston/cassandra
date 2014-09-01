@@ -18,14 +18,11 @@
 package org.apache.cassandra.db;
 
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import com.google.common.collect.Iterables;
 import net.nicoulaj.compilecommand.annotations.Inline;
+import org.apache.cassandra.locator.IEndpointSnitch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,7 +99,7 @@ public enum ConsistencyLevel
              : quorumFor(keyspace);
     }
 
-    public int blockFor(Keyspace keyspace)
+    public int blockFor(Keyspace keyspace, String localDc)
     {
         switch (this)
         {
@@ -122,7 +119,7 @@ public enum ConsistencyLevel
                 return keyspace.getReplicationStrategy().getReplicationFactor();
             case LOCAL_QUORUM:
             case LOCAL_SERIAL:
-                return localQuorumFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter());
+                return localQuorumFor(keyspace, localDc);
             case EACH_QUORUM:
                 if (keyspace.getReplicationStrategy() instanceof NetworkTopologyStrategy)
                 {
@@ -146,21 +143,21 @@ public enum ConsistencyLevel
         return isDCLocal;
     }
 
-    private boolean isLocal(InetAddress endpoint)
+    private boolean isLocal(InetAddress endpoint, String localDc, IEndpointSnitch snitch)
     {
-        return DatabaseDescriptor.instance.getLocalDataCenter().equals(DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(endpoint));
+        return localDc.equals(snitch.getDatacenter(endpoint));
     }
 
-    private int countLocalEndpoints(Iterable<InetAddress> liveEndpoints)
+    private int countLocalEndpoints(Iterable<InetAddress> liveEndpoints, String localDc, IEndpointSnitch snitch)
     {
         int count = 0;
         for (InetAddress endpoint : liveEndpoints)
-            if (isLocal(endpoint))
+            if (isLocal(endpoint, localDc, snitch))
                 count++;
         return count;
     }
 
-    private Map<String, Integer> countPerDCEndpoints(Keyspace keyspace, Iterable<InetAddress> liveEndpoints)
+    private Map<String, Integer> countPerDCEndpoints(Keyspace keyspace, Iterable<InetAddress> liveEndpoints, IEndpointSnitch snitch)
     {
         NetworkTopologyStrategy strategy = (NetworkTopologyStrategy) keyspace.getReplicationStrategy();
 
@@ -170,18 +167,18 @@ public enum ConsistencyLevel
 
         for (InetAddress endpoint : liveEndpoints)
         {
-            String dc = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(endpoint);
+            String dc = snitch.getDatacenter(endpoint);
             dcEndpoints.put(dc, dcEndpoints.get(dc) + 1);
         }
         return dcEndpoints;
     }
 
-    public List<InetAddress> filterForQuery(Keyspace keyspace, List<InetAddress> liveEndpoints)
+    public List<InetAddress> filterForQuery(Keyspace keyspace, List<InetAddress> liveEndpoints, String localDc, IEndpointSnitch snitch, Comparator<InetAddress> comparator)
     {
-        return filterForQuery(keyspace, liveEndpoints, ReadRepairDecision.NONE);
+        return filterForQuery(keyspace, liveEndpoints, ReadRepairDecision.NONE, localDc, snitch, comparator);
     }
 
-    public List<InetAddress> filterForQuery(Keyspace keyspace, List<InetAddress> liveEndpoints, ReadRepairDecision readRepair)
+    public List<InetAddress> filterForQuery(Keyspace keyspace, List<InetAddress> liveEndpoints, ReadRepairDecision readRepair, String localDc, IEndpointSnitch snitch, Comparator<InetAddress> comparator)
     {
         /*
          * Endpoints are expected to be restricted to live replicas, sorted by snitch preference.
@@ -190,12 +187,12 @@ public enum ConsistencyLevel
          * the blockFor first ones).
          */
         if (isDCLocal)
-            Collections.sort(liveEndpoints, DatabaseDescriptor.instance.getLocalComparator());
+            Collections.sort(liveEndpoints, comparator);
 
         switch (readRepair)
         {
             case NONE:
-                return liveEndpoints.subList(0, Math.min(liveEndpoints.size(), blockFor(keyspace)));
+                return liveEndpoints.subList(0, Math.min(liveEndpoints.size(), blockFor(keyspace, localDc)));
             case GLOBAL:
                 return liveEndpoints;
             case DC_LOCAL:
@@ -203,13 +200,13 @@ public enum ConsistencyLevel
                 List<InetAddress> other = new ArrayList<InetAddress>();
                 for (InetAddress add : liveEndpoints)
                 {
-                    if (isLocal(add))
+                    if (isLocal(add, localDc, snitch))
                         local.add(add);
                     else
                         other.add(add);
                 }
                 // check if blockfor more than we have localep's
-                int blockFor = blockFor(keyspace);
+                int blockFor = blockFor(keyspace, localDc);
                 if (local.size() < blockFor)
                     local.addAll(other.subList(0, Math.min(blockFor - local.size(), other.size())));
                 return local;
@@ -218,7 +215,7 @@ public enum ConsistencyLevel
         }
     }
 
-    public boolean isSufficientLiveNodes(Keyspace keyspace, Iterable<InetAddress> liveEndpoints)
+    public boolean isSufficientLiveNodes(Keyspace keyspace, Iterable<InetAddress> liveEndpoints, String localDc, IEndpointSnitch snitch)
     {
         switch (this)
         {
@@ -226,13 +223,13 @@ public enum ConsistencyLevel
                 // local hint is acceptable, and local node is always live
                 return true;
             case LOCAL_ONE:
-                return countLocalEndpoints(liveEndpoints) >= 1;
+                return countLocalEndpoints(liveEndpoints, localDc, snitch) >= 1;
             case LOCAL_QUORUM:
-                return countLocalEndpoints(liveEndpoints) >= blockFor(keyspace);
+                return countLocalEndpoints(liveEndpoints, localDc, snitch) >= blockFor(keyspace, localDc);
             case EACH_QUORUM:
                 if (keyspace.getReplicationStrategy() instanceof NetworkTopologyStrategy)
                 {
-                    for (Map.Entry<String, Integer> entry : countPerDCEndpoints(keyspace, liveEndpoints).entrySet())
+                    for (Map.Entry<String, Integer> entry : countPerDCEndpoints(keyspace, liveEndpoints, snitch).entrySet())
                     {
                         if (entry.getValue() < localQuorumFor(keyspace, entry.getKey()))
                             return false;
@@ -241,25 +238,25 @@ public enum ConsistencyLevel
                 }
                 // Fallthough on purpose for SimpleStrategy
             default:
-                return Iterables.size(liveEndpoints) >= blockFor(keyspace);
+                return Iterables.size(liveEndpoints) >= blockFor(keyspace, localDc);
         }
     }
 
     @Inline
-    public void assureSufficientLiveNodes(Keyspace keyspace, Iterable<InetAddress> liveEndpoints) throws UnavailableException
+    public void assureSufficientLiveNodes(Keyspace keyspace, Iterable<InetAddress> liveEndpoints, String localDc, IEndpointSnitch snitch) throws UnavailableException
     {
-        int blockFor = blockFor(keyspace);
+        int blockFor = blockFor(keyspace, localDc);
         switch (this)
         {
             case ANY:
                 // local hint is acceptable, and local node is always live
                 break;
             case LOCAL_ONE:
-                if (countLocalEndpoints(liveEndpoints) == 0)
+                if (countLocalEndpoints(liveEndpoints, localDc, snitch) == 0)
                     throw new UnavailableException(this, 1, 0);
                 break;
             case LOCAL_QUORUM:
-                int localLive = countLocalEndpoints(liveEndpoints);
+                int localLive = countLocalEndpoints(liveEndpoints, localDc, snitch);
                 if (localLive < blockFor)
                 {
                     if (logger.isDebugEnabled())
@@ -267,7 +264,7 @@ public enum ConsistencyLevel
                         StringBuilder builder = new StringBuilder("Local replicas [");
                         for (InetAddress endpoint : liveEndpoints)
                         {
-                            if (isLocal(endpoint))
+                            if (isLocal(endpoint, localDc, snitch))
                                 builder.append(endpoint).append(",");
                         }
                         builder.append("] are insufficient to satisfy LOCAL_QUORUM requirement of ").append(blockFor).append(" live nodes in '").append(DatabaseDescriptor.instance.getLocalDataCenter()).append("'");
@@ -279,7 +276,7 @@ public enum ConsistencyLevel
             case EACH_QUORUM:
                 if (keyspace.getReplicationStrategy() instanceof NetworkTopologyStrategy)
                 {
-                    for (Map.Entry<String, Integer> entry : countPerDCEndpoints(keyspace, liveEndpoints).entrySet())
+                    for (Map.Entry<String, Integer> entry : countPerDCEndpoints(keyspace, liveEndpoints, snitch).entrySet())
                     {
                         int dcBlockFor = localQuorumFor(keyspace, entry.getKey());
                         int dcLive = entry.getValue();
@@ -322,12 +319,12 @@ public enum ConsistencyLevel
     }
 
     // This is the same than validateForWrite really, but we include a slightly different error message for SERIAL/LOCAL_SERIAL
-    public void validateForCasCommit(String keyspaceName) throws InvalidRequestException
+    public void validateForCasCommit(Keyspace keyspace) throws InvalidRequestException
     {
         switch (this)
         {
             case EACH_QUORUM:
-                requireNetworkTopologyStrategy(keyspaceName);
+                requireNetworkTopologyStrategy(keyspace);
                 break;
             case SERIAL:
             case LOCAL_SERIAL:
@@ -355,9 +352,9 @@ public enum ConsistencyLevel
             throw new InvalidRequestException("Counter operations are inherently non-serializable");
     }
 
-    private void requireNetworkTopologyStrategy(String keyspaceName) throws InvalidRequestException
+    private void requireNetworkTopologyStrategy(Keyspace keyspace) throws InvalidRequestException
     {
-        AbstractReplicationStrategy strategy = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
+        AbstractReplicationStrategy strategy = keyspace.getReplicationStrategy();
         if (!(strategy instanceof NetworkTopologyStrategy))
             throw new InvalidRequestException(String.format("consistency level %s not compatible with replication strategy (%s)", this, strategy.getClass().getName()));
     }

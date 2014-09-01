@@ -212,7 +212,8 @@ public class StorageProxy implements StorageProxyMBean
     throws UnavailableException, IsBootstrappingException, ReadTimeoutException, WriteTimeoutException, InvalidRequestException
     {
         consistencyForPaxos.validateForCas();
-        consistencyForCommit.validateForCasCommit(keyspaceName);
+        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
+        consistencyForCommit.validateForCasCommit(keyspace);
 
         CFMetaData metadata = Schema.instance.getCFMetaData(keyspaceName, cfName);
 
@@ -267,7 +268,7 @@ public class StorageProxy implements StorageProxyMBean
             // continue to retry
         }
 
-        throw new WriteTimeoutException(WriteType.CAS, consistencyForPaxos, 0, consistencyForPaxos.blockFor(KeyspaceManager.instance.open(keyspaceName)));
+        throw new WriteTimeoutException(WriteType.CAS, consistencyForPaxos, 0, consistencyForPaxos.blockFor(KeyspaceManager.instance.open(keyspaceName), DatabaseDescriptor.instance.getLocalDataCenter()));
     }
 
     private Predicate<InetAddress> sameDCPredicateFor(final String dc)
@@ -374,7 +375,7 @@ public class StorageProxy implements StorageProxyMBean
             return ballot;
         }
 
-        throw new WriteTimeoutException(WriteType.CAS, consistencyForPaxos, 0, consistencyForPaxos.blockFor(KeyspaceManager.instance.open(metadata.ksName)));
+        throw new WriteTimeoutException(WriteType.CAS, consistencyForPaxos, 0, consistencyForPaxos.blockFor(KeyspaceManager.instance.open(metadata.ksName), DatabaseDescriptor.instance.getLocalDataCenter()));
     }
 
     /**
@@ -1039,7 +1040,7 @@ public class StorageProxy implements StorageProxyMBean
         List<InetAddress> endpoints = StorageService.instance.getLiveNaturalEndpoints(keyspace, key);
         if (endpoints.isEmpty())
             // TODO have a way to compute the consistency level
-            throw new UnavailableException(cl, cl.blockFor(keyspace), 0);
+            throw new UnavailableException(cl, cl.blockFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter()), 0);
 
         List<InetAddress> localEndpoints = new ArrayList<InetAddress>();
         for (InetAddress endpoint : endpoints)
@@ -1150,7 +1151,7 @@ public class StorageProxy implements StorageProxyMBean
                 }
                 catch (WriteTimeoutException e)
                 {
-                    throw new ReadTimeoutException(consistency_level, 0, consistency_level.blockFor(KeyspaceManager.instance.open(command.ksName)), false);
+                    throw new ReadTimeoutException(consistency_level, 0, consistency_level.blockFor(KeyspaceManager.instance.open(command.ksName), DatabaseDescriptor.instance.getLocalDataCenter()), false);
                 }
 
                 rows = fetchRows(commands, consistencyForCommitOrFetch);
@@ -1243,7 +1244,7 @@ public class StorageProxy implements StorageProxyMBean
                 }
                 catch (ReadTimeoutException ex)
                 {
-                    int blockFor = consistencyLevel.blockFor(KeyspaceManager.instance.open(exec.command.getKeyspace()));
+                    int blockFor = consistencyLevel.blockFor(KeyspaceManager.instance.open(exec.command.getKeyspace()), DatabaseDescriptor.instance.getLocalDataCenter());
                     int responseCount = exec.handler.getReceivedCount();
                     String gotData = responseCount > 0
                                    ? exec.resolver.isDataPresent() ? " (including data)" : " (only digests)"
@@ -1322,7 +1323,7 @@ public class StorageProxy implements StorageProxyMBean
                     catch (TimeoutException e)
                     {
                         Tracing.instance.trace("Timed out on digest mismatch retries");
-                        int blockFor = consistencyLevel.blockFor(KeyspaceManager.instance.open(command.getKeyspace()));
+                        int blockFor = consistencyLevel.blockFor(KeyspaceManager.instance.open(command.getKeyspace()), DatabaseDescriptor.instance.getLocalDataCenter());
                         throw new ReadTimeoutException(consistencyLevel, blockFor-1, blockFor, true);
                     }
 
@@ -1525,7 +1526,7 @@ public class StorageProxy implements StorageProxyMBean
                                                     ? getLiveSortedEndpoints(keyspace, range.right)
                                                     : nextEndpoints;
                     List<InetAddress> filteredEndpoints = nextFilteredEndpoints == null
-                                                        ? consistency_level.filterForQuery(keyspace, liveEndpoints)
+                                                        ? consistency_level.filterForQuery(keyspace, liveEndpoints, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch(), DatabaseDescriptor.instance.getLocalComparator())
                                                         : nextFilteredEndpoints;
                     ++i;
                     ++concurrentRequests;
@@ -1537,7 +1538,7 @@ public class StorageProxy implements StorageProxyMBean
                     {
                         nextRange = ranges.get(i);
                         nextEndpoints = getLiveSortedEndpoints(keyspace, nextRange.right);
-                        nextFilteredEndpoints = consistency_level.filterForQuery(keyspace, nextEndpoints);
+                        nextFilteredEndpoints = consistency_level.filterForQuery(keyspace, nextEndpoints, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch(), DatabaseDescriptor.instance.getLocalComparator());
 
                         // If the current range right is the min token, we should stop merging because CFS.getRangeSlice
                         // don't know how to deal with a wrapping range.
@@ -1550,10 +1551,10 @@ public class StorageProxy implements StorageProxyMBean
                         List<InetAddress> merged = intersection(liveEndpoints, nextEndpoints);
 
                         // Check if there is enough endpoint for the merge to be possible.
-                        if (!consistency_level.isSufficientLiveNodes(keyspace, merged))
+                        if (!consistency_level.isSufficientLiveNodes(keyspace, merged, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch()))
                             break;
 
-                        List<InetAddress> filteredMerged = consistency_level.filterForQuery(keyspace, merged);
+                        List<InetAddress> filteredMerged = consistency_level.filterForQuery(keyspace, merged, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch(), DatabaseDescriptor.instance.getLocalComparator());
 
                         // Estimate whether merging will be a win or not
                         if (!DatabaseDescriptor.instance.getEndpointSnitch().isWorthMergingForRangeQuery(filteredMerged, filteredEndpoints, nextFilteredEndpoints))
@@ -1570,7 +1571,7 @@ public class StorageProxy implements StorageProxyMBean
 
                     // collect replies and resolve according to consistency level
                     RangeSliceResponseResolver resolver = new RangeSliceResponseResolver(nodeCmd.keyspace, command.timestamp);
-                    List<InetAddress> minimalEndpoints = filteredEndpoints.subList(0, Math.min(filteredEndpoints.size(), consistency_level.blockFor(keyspace)));
+                    List<InetAddress> minimalEndpoints = filteredEndpoints.subList(0, Math.min(filteredEndpoints.size(), consistency_level.blockFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter())));
                     ReadCallback<RangeSliceReply, Iterable<Row>> handler = new ReadCallback<>(resolver, consistency_level, nodeCmd, minimalEndpoints);
                     handler.assureSufficientLiveNodes();
                     resolver.setSources(filteredEndpoints);
@@ -1613,7 +1614,7 @@ public class StorageProxy implements StorageProxyMBean
                     catch (ReadTimeoutException ex)
                     {
                         // we timed out waiting for responses
-                        int blockFor = consistency_level.blockFor(keyspace);
+                        int blockFor = consistency_level.blockFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter());
                         int responseCount = resolver.responses.size();
                         String gotData = responseCount > 0
                                          ? resolver.isDataPresent() ? " (including data)" : " (only digests)"
@@ -1652,7 +1653,7 @@ public class StorageProxy implements StorageProxyMBean
                 catch (TimeoutException ex)
                 {
                     // We got all responses, but timed out while repairing
-                    int blockFor = consistency_level.blockFor(keyspace);
+                    int blockFor = consistency_level.blockFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter());
                     if (Tracing.instance.isTracing())
                         Tracing.instance.trace("Timed out while read-repairing after receiving all {} data and digest responses", blockFor);
                     else
