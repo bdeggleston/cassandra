@@ -122,6 +122,9 @@ public class DatabaseDescriptor
     private String localDC;
     private Comparator<InetAddress> localComparator;
 
+    // delay after which we assume ring has stablized
+    private int ringDelay;
+
     static
     {
         DatabaseDescriptor databaseDescriptor = null;
@@ -156,6 +159,17 @@ public class DatabaseDescriptor
         assert FailureDetector.instance != null;
         assert DefsTables.instance != null;
         assert StorageService.instance != null;
+
+        try
+        {
+            instance.setUpSnitch();
+        }
+        catch (ConfigurationException e)
+        {
+            logger.error("Fatal configuration error", e);
+            System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
+            System.exit(1);
+        }
     }
 
     public static DatabaseDescriptor create() throws ConfigurationException
@@ -484,24 +498,6 @@ public class DatabaseDescriptor
         {
             throw new ConfigurationException("Missing endpoint_snitch directive");
         }
-        snitch = createEndpointSnitch(conf.endpoint_snitch);
-        EndpointSnitchInfo.create();
-
-        localDC = snitch.getDatacenter(getBroadcastAddress());
-        localComparator = new Comparator<InetAddress>()
-        {
-            public int compare(InetAddress endpoint1, InetAddress endpoint2)
-            {
-                boolean local1 = localDC.equals(snitch.getDatacenter(endpoint1));
-                boolean local2 = localDC.equals(snitch.getDatacenter(endpoint2));
-                if (local1 && !local2)
-                    return -1;
-                if (local2 && !local1)
-                    return 1;
-                return 0;
-            }
-        };
-
         /* Request Scheduler setup */
         requestSchedulerOptions = conf.request_scheduler_options;
         if (conf.request_scheduler != null)
@@ -675,6 +671,47 @@ public class DatabaseDescriptor
         }
         if (seedProvider.getSeeds().size() == 0)
             throw new ConfigurationException("The seed provider lists no seeds.");
+
+        ringDelay = calculateRingDelay();
+    }
+
+    public void setUpSnitch() throws ConfigurationException
+    {
+        snitch = createEndpointSnitch(conf.endpoint_snitch);
+        EndpointSnitchInfo.create();
+
+        localDC = snitch.getDatacenter(getBroadcastAddress());
+        localComparator = new Comparator<InetAddress>()
+        {
+            public int compare(InetAddress endpoint1, InetAddress endpoint2)
+            {
+                boolean local1 = localDC.equals(snitch.getDatacenter(endpoint1));
+                boolean local2 = localDC.equals(snitch.getDatacenter(endpoint2));
+                if (local1 && !local2)
+                    return -1;
+                if (local2 && !local1)
+                    return 1;
+                return 0;
+            }
+        };
+
+    }
+
+    private static int calculateRingDelay()
+    {
+        String newdelay = System.getProperty("cassandra.ring_delay_ms");
+        if (newdelay != null)
+        {
+            logger.info("Overriding RING_DELAY to {}ms", newdelay);
+            return Integer.parseInt(newdelay);
+        }
+        else
+            return 30 * 1000;
+    }
+
+    public int getRingDelay()
+    {
+        return ringDelay;
     }
 
     private IEndpointSnitch createEndpointSnitch(String snitchClassName) throws ConfigurationException

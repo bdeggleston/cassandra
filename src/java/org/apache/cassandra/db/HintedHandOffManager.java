@@ -278,8 +278,8 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         {
             Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
             waited += 1000;
-            if (waited > 2 * StorageService.instance.RING_DELAY)
-                throw new TimeoutException("Didin't receive gossiped schema from " + endpoint + " in " + 2 * StorageService.instance.RING_DELAY + "ms");
+            if (waited > 2 * DatabaseDescriptor.instance.getRingDelay())
+                throw new TimeoutException("Didin't receive gossiped schema from " + endpoint + " in " + 2 * DatabaseDescriptor.instance.getRingDelay() + "ms");
         }
         if (gossiper.getEndpointStateForEndpoint(endpoint) == null)
             throw new TimeoutException("Node " + endpoint + " vanished while waiting for agreement");
@@ -293,8 +293,8 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         {
             Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
             waited += 1000;
-            if (waited > 2 * StorageService.instance.RING_DELAY)
-                throw new TimeoutException("Could not reach schema agreement with " + endpoint + " in " + 2 * StorageService.instance.RING_DELAY + "ms");
+            if (waited > 2 * DatabaseDescriptor.instance.getRingDelay())
+                throw new TimeoutException("Could not reach schema agreement with " + endpoint + " in " + 2 * DatabaseDescriptor.instance.getRingDelay() + "ms");
         }
         if (gossiper.getEndpointStateForEndpoint(endpoint) == null)
             throw new TimeoutException("Node " + endpoint + " vanished while waiting for agreement");

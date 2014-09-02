@@ -28,6 +28,7 @@ import java.util.Arrays;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.Util;
@@ -56,6 +57,12 @@ public class CounterCellTest
         countLength   = 8; // size of long
 
         stepLength    = idLength + clockLength + countLength;
+    }
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
     }
 
     @Test

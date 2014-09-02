@@ -94,7 +94,7 @@ public class BatchlogManager implements BatchlogManagerMBean
             }
         };
 
-        batchlogTasks.scheduleWithFixedDelay(runnable, StorageService.instance.RING_DELAY, REPLAY_INTERVAL, TimeUnit.MILLISECONDS);
+        batchlogTasks.scheduleWithFixedDelay(runnable, DatabaseDescriptor.instance.getRingDelay(), REPLAY_INTERVAL, TimeUnit.MILLISECONDS);
     }
 
     public void shutdown() throws InterruptedException

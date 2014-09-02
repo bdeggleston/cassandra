@@ -102,22 +102,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 {
     private static final Logger logger = LoggerFactory.getLogger(StorageService.class);
 
-    public static final int RING_DELAY = getRingDelay(); // delay after which we assume ring has stablized
-
     /* JMX notification serial number counter */
     private final AtomicLong notificationSerialNumber = new AtomicLong();
-
-    private static int getRingDelay()
-    {
-        String newdelay = System.getProperty("cassandra.ring_delay_ms");
-        if (newdelay != null)
-        {
-            logger.info("Overriding RING_DELAY to {}ms", newdelay);
-            return Integer.parseInt(newdelay);
-        }
-        else
-            return 30 * 1000;
-    }
 
     /* This abstraction maintains the token/endpoint metadata information */
     private TokenMetadata tokenMetadata = new TokenMetadata();
@@ -483,7 +469,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public synchronized void initServer() throws ConfigurationException
     {
-        initServer(RING_DELAY);
+        initServer(DatabaseDescriptor.instance.getRingDelay());
     }
 
     public synchronized void initServer(int delay) throws ConfigurationException
@@ -772,7 +758,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 {
                     try
                     {
-                        Thread.sleep(RING_DELAY);
+                        Thread.sleep(DatabaseDescriptor.instance.getRingDelay());
                     }
                     catch (InterruptedException e)
                     {
@@ -968,8 +954,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS, valueFactory.tokens(tokens));
             Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,
                                                        valueFactory.bootstrapping(tokens));
-            setMode(Mode.JOINING, "sleeping " + RING_DELAY + " ms for pending range setup", true);
-            Uninterruptibles.sleepUninterruptibly(RING_DELAY, TimeUnit.MILLISECONDS);
+            setMode(Mode.JOINING, "sleeping " + DatabaseDescriptor.instance.getRingDelay() + " ms for pending range setup", true);
+            Uninterruptibles.sleepUninterruptibly(DatabaseDescriptor.instance.getRingDelay(), TimeUnit.MILLISECONDS);
         }
         else
         {
@@ -2949,8 +2935,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (logger.isDebugEnabled())
             logger.debug("DECOMMISSIONING");
         startLeaving();
-        setMode(Mode.LEAVING, "sleeping " + RING_DELAY + " ms for pending range setup", true);
-        Thread.sleep(RING_DELAY);
+        setMode(Mode.LEAVING, "sleeping " + DatabaseDescriptor.instance.getRingDelay() + " ms for pending range setup", true);
+        Thread.sleep(DatabaseDescriptor.instance.getRingDelay());
 
         Runnable finishLeaving = new Runnable()
         {
@@ -2974,7 +2960,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         PendingRangeCalculatorService.instance.update();
 
         Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.left(getLocalTokens(),Gossiper.computeExpireTime()));
-        int delay = Math.max(RING_DELAY, Gossiper.intervalInMillis * 2);
+        int delay = Math.max(DatabaseDescriptor.instance.getRingDelay(), Gossiper.intervalInMillis * 2);
         logger.info("Announcing that I have left the ring for {}ms", delay);
         Uninterruptibles.sleepUninterruptibly(delay, TimeUnit.MILLISECONDS);
     }
@@ -3104,8 +3090,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.moving(newToken));
         setMode(Mode.MOVING, String.format("Moving %s from %s to %s.", localAddress, getLocalTokens().iterator().next(), newToken), true);
 
-        setMode(Mode.MOVING, String.format("Sleeping %s ms before start streaming/fetching ranges", RING_DELAY), true);
-        Uninterruptibles.sleepUninterruptibly(RING_DELAY, TimeUnit.MILLISECONDS);
+        setMode(Mode.MOVING, String.format("Sleeping %s ms before start streaming/fetching ranges", DatabaseDescriptor.instance.getRingDelay()), true);
+        Uninterruptibles.sleepUninterruptibly(DatabaseDescriptor.instance.getRingDelay(), TimeUnit.MILLISECONDS);
 
         RangeRelocator relocator = new RangeRelocator(Collections.singleton(newToken), keyspacesToProcess);
 

@@ -226,6 +226,7 @@ public class CliTest
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
+        DatabaseDescriptor.init();
         SchemaLoader.prepareServer();
         SchemaLoader.startGossiper();
         SchemaLoader.createKeyspace(KEYSPACE1, true, false,
