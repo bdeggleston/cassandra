@@ -2006,7 +2006,7 @@ public class StorageProxy implements StorageProxyMBean
         Set<InetAddress> allEndpoints = Gossiper.instance.getLiveTokenOwners();
         
         int blockFor = allEndpoints.size();
-        final TruncateResponseHandler responseHandler = new TruncateResponseHandler(blockFor);
+        final TruncateResponseHandler responseHandler = new TruncateResponseHandler(blockFor, DatabaseDescriptor.instance.getTruncateRpcTimeout());
 
         // Send out the truncate calls and track the responses with the callbacks.
         Tracing.instance.trace("Enqueuing truncate messages to hosts {}", allEndpoints);

@@ -36,8 +36,9 @@ public class TruncateResponseHandler implements IAsyncCallback
     private final int responseCount;
     protected final AtomicInteger responses = new AtomicInteger(0);
     private final long start;
+    private final long rpcTimeout;
 
-    public TruncateResponseHandler(int responseCount)
+    public TruncateResponseHandler(int responseCount, long rpcTimeout)
     {
         // at most one node per range can bootstrap at a time, and these will be added to the write until
         // bootstrap finishes (at which point we no longer need to write to the old ones).
@@ -45,11 +46,12 @@ public class TruncateResponseHandler implements IAsyncCallback
 
         this.responseCount = responseCount;
         start = System.nanoTime();
+        this.rpcTimeout = rpcTimeout;
     }
 
     public void get() throws TimeoutException
     {
-        long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.instance.getTruncateRpcTimeout()) - (System.nanoTime() - start);
+        long timeout = TimeUnit.MILLISECONDS.toNanos(rpcTimeout) - (System.nanoTime() - start);
         boolean success;
         try
         {
