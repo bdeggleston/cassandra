@@ -35,6 +35,7 @@ import org.apache.cassandra.auth.IAuthenticator;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryOptions;
+import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.UTF8Type;
@@ -248,7 +249,11 @@ public class Client extends SimpleClient
         ClientEncryptionOptions encryptionOptions = new ClientEncryptionOptions();
         System.out.println("CQL binary protocol console " + host + "@" + port);
 
-        new Client(host, port, encryptionOptions, Message.Type.getCodecMap()).run();
+        Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(Tracing.instance,
+                                                                           DatabaseDescriptor.instance.getAuthenticator(),
+                                                                           QueryHandlerInstance.instance,
+                                                                           QueryProcessor.instance);
+        new Client(host, port, encryptionOptions, codecs).run();
         System.exit(0);
     }
 }

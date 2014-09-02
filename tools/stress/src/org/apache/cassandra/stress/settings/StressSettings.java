@@ -25,13 +25,17 @@ import java.io.Serializable;
 import java.util.*;
 
 import com.datastax.driver.core.Metadata;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.EncryptionOptions;
+import org.apache.cassandra.cql3.QueryHandlerInstance;
+import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.stress.util.JavaDriverClient;
 import org.apache.cassandra.stress.util.SimpleThriftClient;
 import org.apache.cassandra.stress.util.SmartThriftClient;
 import org.apache.cassandra.stress.util.ThriftClient;
 import org.apache.cassandra.thrift.Cassandra;
 import org.apache.cassandra.thrift.InvalidRequestException;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.transport.Message;
 import org.apache.cassandra.transport.SimpleClient;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -142,7 +146,10 @@ public class StressSettings implements Serializable
         try
         {
             String currentNode = node.randomNode();
-            SimpleClient client = new SimpleClient(currentNode, port.nativePort, Message.Type.getCodecMap());
+            SimpleClient client = new SimpleClient(currentNode, port.nativePort, Message.Type.getCodecMap(Tracing.instance,
+                                                                                                          DatabaseDescriptor.instance.getAuthenticator(),
+                                                                                                          QueryHandlerInstance.instance,
+                                                                                                          QueryProcessor.instance));
             client.connect(false);
             client.execute("USE \"" + schema.keyspace + "\";", org.apache.cassandra.db.ConsistencyLevel.ONE);
             return client;

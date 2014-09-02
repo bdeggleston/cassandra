@@ -28,8 +28,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.MessageToMessageEncoder;
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.cql3.QueryHandlerInstance;
+import org.apache.cassandra.auth.IAuthenticator;
+import org.apache.cassandra.cql3.QueryHandler;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
@@ -122,23 +122,23 @@ public abstract class Message
             return t;
         }
 
-        public static Map<Type, Codec> getCodecMap()
+        public static Map<Type, Codec> getCodecMap(Tracing tracing, IAuthenticator authenticator, QueryHandler queryHandler, QueryProcessor queryProcessor)
         {
             Map<Type, Codec> codecs = new EnumMap<>(Type.class);
             codecs.put(Type.ERROR, ErrorMessage.codec);
-            codecs.put(Type.STARTUP, new StartupMessage.Codec(DatabaseDescriptor.instance.getAuthenticator()));
+            codecs.put(Type.STARTUP, new StartupMessage.Codec(authenticator));
             codecs.put(Type.READY, ReadyMessage.codec);
             codecs.put(Type.AUTHENTICATE, AuthenticateMessage.codec);
-            codecs.put(Type.CREDENTIALS, new CredentialsMessage.Codec(DatabaseDescriptor.instance.getAuthenticator()));
+            codecs.put(Type.CREDENTIALS, new CredentialsMessage.Codec(authenticator));
             codecs.put(Type.OPTIONS, OptionsMessage.codec);
             codecs.put(Type.SUPPORTED, SupportedMessage.codec);
-            codecs.put(Type.QUERY, new QueryMessage.Codec(Tracing.instance, QueryHandlerInstance.instance));
+            codecs.put(Type.QUERY, new QueryMessage.Codec(tracing, queryHandler));
             codecs.put(Type.RESULT, ResultMessage.codec);
-            codecs.put(Type.PREPARE, new PrepareMessage.Codec(Tracing.instance, QueryHandlerInstance.instance));
-            codecs.put(Type.EXECUTE, new ExecuteMessage.Codec(Tracing.instance, QueryHandlerInstance.instance));
+            codecs.put(Type.PREPARE, new PrepareMessage.Codec(tracing, queryHandler));
+            codecs.put(Type.EXECUTE, new ExecuteMessage.Codec(tracing, queryHandler));
             codecs.put(Type.REGISTER, RegisterMessage.codec);
             codecs.put(Type.EVENT, EventMessage.codec);
-            codecs.put(Type.BATCH, new BatchMessage.Codec(Tracing.instance, QueryProcessor.instance, QueryHandlerInstance.instance));
+            codecs.put(Type.BATCH, new BatchMessage.Codec(tracing, queryProcessor, queryHandler));
             codecs.put(Type.AUTH_CHALLENGE, AuthChallenge.codec);
             codecs.put(Type.AUTH_RESPONSE, AuthResponse.codec);
             codecs.put(Type.AUTH_SUCCESS, AuthSuccess.codec);

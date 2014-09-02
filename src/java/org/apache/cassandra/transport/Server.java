@@ -29,6 +29,9 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
 import io.netty.util.Version;
+import org.apache.cassandra.cql3.QueryHandlerInstance;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,7 +82,10 @@ public class Server implements CassandraDaemon.Server
 
     private EventLoopGroup workerGroup;
     private EventExecutor eventExecutorGroup;
-    private final Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap();
+    private final Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(Tracing.instance,
+                                                                                     DatabaseDescriptor.instance.getAuthenticator(),
+                                                                                     QueryHandlerInstance.instance,
+                                                                                     QueryProcessor.instance);
 
     public Server(InetSocketAddress socket)
     {
