@@ -19,7 +19,6 @@ package org.apache.cassandra.streaming;
 
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.cassandra.concurrent.NamedThreadFactory;

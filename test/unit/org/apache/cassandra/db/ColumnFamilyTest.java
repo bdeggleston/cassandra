@@ -25,7 +25,6 @@ import java.nio.ByteBuffer;
 import java.util.TreeMap;
 
 import com.google.common.collect.Iterables;
-import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.junit.BeforeClass;
 import org.junit.Test;

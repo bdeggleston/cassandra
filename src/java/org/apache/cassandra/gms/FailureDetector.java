@@ -35,7 +35,6 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.utils.BoundedStatsDeque;
-import org.apache.cassandra.utils.FBUtilities;
 
 /**
  * This FailureDetector is an implementation of the paper titled

@@ -29,8 +29,6 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.service.StorageService;
 import org.junit.Test;
 
-import org.apache.cassandra.utils.FBUtilities;
-
 import static org.junit.Assert.assertEquals;
 
 public class DynamicEndpointSnitchTest

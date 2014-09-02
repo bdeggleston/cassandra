@@ -35,7 +35,7 @@ import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.locator.SimpleStrategy;
-import org.apache.cassandra.utils.FBUtilities;
+
 import static org.junit.Assert.assertEquals;
 import org.apache.cassandra.utils.ByteBufferUtil;
 

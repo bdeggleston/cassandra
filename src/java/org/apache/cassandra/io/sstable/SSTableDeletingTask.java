@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.db.DataTracker;
 import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 
 public class SSTableDeletingTask implements Runnable

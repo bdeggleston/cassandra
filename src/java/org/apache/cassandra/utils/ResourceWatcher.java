@@ -21,11 +21,8 @@ import java.io.File;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor;
-import org.apache.cassandra.service.StorageServiceExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.apache.cassandra.service.StorageService;
 
 public class ResourceWatcher
 {

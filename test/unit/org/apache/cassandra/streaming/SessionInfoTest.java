@@ -26,8 +26,6 @@ import java.util.UUID;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.Test;
 
-import org.apache.cassandra.utils.FBUtilities;
-
 public class SessionInfoTest
 {
     /**

@@ -19,9 +19,6 @@ package org.apache.cassandra.utils;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
-
-import org.apache.cassandra.db.SystemKeyspace;
 
 public class CounterId implements Comparable<CounterId>
 {

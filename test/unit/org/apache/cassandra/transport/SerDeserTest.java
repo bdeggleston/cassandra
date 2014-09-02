@@ -32,8 +32,6 @@ import org.apache.cassandra.serializers.CollectionSerializer;
 import org.apache.cassandra.transport.Event.TopologyChange;
 import org.apache.cassandra.transport.Event.SchemaChange;
 import org.apache.cassandra.transport.Event.StatusChange;
-import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 
 import static org.junit.Assert.assertEquals;

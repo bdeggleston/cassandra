@@ -24,7 +24,6 @@ package org.apache.cassandra.tracing;
 import java.util.UUID;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.utils.FBUtilities;
 
 public class ExpiredTraceState extends TraceState
 {

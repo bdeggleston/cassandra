@@ -31,7 +31,6 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.StorageServiceExecutors;
-import org.apache.cassandra.utils.FBUtilities;
 
 import com.yammer.metrics.stats.ExponentiallyDecayingSample;
 

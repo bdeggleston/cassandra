@@ -45,7 +45,6 @@ import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.HeapAllocator;
 import org.apache.cassandra.utils.memory.MemtableAllocator;
 import org.apache.cassandra.utils.memory.NativePool;
-import org.apache.hadoop.mapred.join.ResetableIterator;
 
 import static org.apache.cassandra.db.index.SecondaryIndexManager.Updater;
 

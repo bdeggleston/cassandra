@@ -27,7 +27,6 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.EncryptionOptions;
 import org.apache.cassandra.security.SSLFactory;
 import org.apache.cassandra.streaming.StreamConnectionFactory;
-import org.apache.cassandra.utils.FBUtilities;
 
 public class BulkLoadConnectionFactory implements StreamConnectionFactory
 {

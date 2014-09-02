@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.io.util.DataOutputStreamAndChannel;
 import org.apache.cassandra.streaming.messages.StreamInitMessage;
 import org.apache.cassandra.streaming.messages.StreamMessage;
-import org.apache.cassandra.utils.FBUtilities;
 
 /**
  * ConnectionHandler manages incoming/outgoing message exchange for the {@link StreamSession}.

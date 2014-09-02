@@ -26,7 +26,6 @@ import org.apache.cassandra.repair.messages.SyncComplete;
 import org.apache.cassandra.repair.messages.SyncRequest;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.streaming.*;
-import org.apache.cassandra.utils.FBUtilities;
 
 /**
  * Task that make two nodes exchange (stream) some ranges (for a given table/cf).

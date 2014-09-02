@@ -26,7 +26,6 @@ import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageProxy;
-import org.apache.cassandra.utils.FBUtilities;
 
 public class CounterMutationVerbHandler implements IVerbHandler<CounterMutation>
 {

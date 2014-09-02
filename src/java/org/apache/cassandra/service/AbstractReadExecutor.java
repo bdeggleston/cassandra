@@ -38,8 +38,6 @@ import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.service.StorageProxy.LocalReadRunnable;
-import org.apache.cassandra.utils.FBUtilities;
 
 /**
  * Sends a read request to the replicas needed to satisfy a given ConsistencyLevel.

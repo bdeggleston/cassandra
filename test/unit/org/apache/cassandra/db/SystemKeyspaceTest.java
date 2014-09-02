@@ -35,7 +35,6 @@ import org.junit.Test;
 import org.apache.cassandra.dht.BytesToken;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.FBUtilities;
 
 public class SystemKeyspaceTest
 {
