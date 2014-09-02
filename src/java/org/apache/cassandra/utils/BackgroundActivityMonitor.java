@@ -62,8 +62,13 @@ public class BackgroundActivityMonitor
     private RandomAccessFile statsFile;
     private long[] lastReading;
 
-    public BackgroundActivityMonitor()
+    private final Gossiper gossiper;
+    private final StorageService storageService;
+
+    public BackgroundActivityMonitor(Gossiper gossiper, StorageService storageService)
     {
+        this.gossiper = gossiper;
+        this.storageService = storageService;
         try
         {
             statsFile = new RandomAccessFile(PROC_STAT_PATH, "r");
@@ -137,7 +142,7 @@ public class BackgroundActivityMonitor
     public double getSeverity(InetAddress endpoint)
     {
         VersionedValue event;
-        EndpointState state = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+        EndpointState state = gossiper.getEndpointStateForEndpoint(endpoint);
         if (state != null && (event = state.getApplicationState(ApplicationState.SEVERITY)) != null)
             return Double.parseDouble(event.value);
         return 0.0;
@@ -161,11 +166,11 @@ public class BackgroundActivityMonitor
             if (report == -1d)
                 report = compaction_severity.get();
 
-            if (!Gossiper.instance.isEnabled())
+            if (!gossiper.isEnabled())
                 return;
             report += manual_severity.get(); // add manual severity setting.
-            VersionedValue updated = StorageService.instance.valueFactory.severity(report);
-            Gossiper.instance.addLocalApplicationState(ApplicationState.SEVERITY, updated);
+            VersionedValue updated = storageService.valueFactory.severity(report);
+            gossiper.addLocalApplicationState(ApplicationState.SEVERITY, updated);
         }
     }
 }

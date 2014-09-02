@@ -167,7 +167,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private final List<IEndpointLifecycleSubscriber> lifecycleSubscribers = new CopyOnWriteArrayList<>();
 
-    private final BackgroundActivityMonitor bgMonitor = new BackgroundActivityMonitor();
+    private final BackgroundActivityMonitor bgMonitor;
 
     private final ObjectName jmxObjectName;
 
@@ -205,6 +205,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             throw new RuntimeException(e);
         }
+
+        bgMonitor = new BackgroundActivityMonitor(Gossiper.instance, this);
 
         /* register the verb handlers */
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.MUTATION, new MutationVerbHandler(Tracing.instance, MessagingService.instance));
