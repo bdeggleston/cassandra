@@ -22,7 +22,7 @@ import java.util.UUID;
 import com.google.common.collect.ImmutableMap;
 import io.netty.buffer.ByteBuf;
 
-import org.apache.cassandra.cql3.QueryHandlerInstance;
+import org.apache.cassandra.cql3.QueryHandler;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.transport.*;
@@ -30,19 +30,31 @@ import org.apache.cassandra.utils.UUIDGen;
 
 public class PrepareMessage extends Message.Request
 {
-    public static final Message.Codec<PrepareMessage> codec = new Message.Codec<PrepareMessage>()
+    public static class Codec implements Message.Codec<PrepareMessage>
     {
+        private final Tracing tracing;
+        private final QueryHandler queryHandler;
+
+        public Codec(Tracing tracing, QueryHandler queryHandler)
+        {
+            this.tracing = tracing;
+            this.queryHandler = queryHandler;
+        }
+
+        @Override
         public PrepareMessage decode(ByteBuf body, int version)
         {
             String query = CBUtil.readLongString(body);
-            return new PrepareMessage(query);
+            return new PrepareMessage(query, tracing, queryHandler);
         }
 
+        @Override
         public void encode(PrepareMessage msg, ByteBuf dest, int version)
         {
             CBUtil.writeLongString(msg.query, dest);
         }
 
+        @Override
         public int encodedSize(PrepareMessage msg, int version)
         {
             return CBUtil.sizeOfLongString(msg.query);
@@ -50,11 +62,15 @@ public class PrepareMessage extends Message.Request
     };
 
     private final String query;
+    private final Tracing tracing;
+    private final QueryHandler queryHandler;
 
-    public PrepareMessage(String query)
+    public PrepareMessage(String query, Tracing tracing, QueryHandler queryHandler)
     {
         super(Message.Type.PREPARE);
         this.query = query;
+        this.tracing = tracing;
+        this.queryHandler = queryHandler;
     }
 
     public Message.Response execute(QueryState state)
@@ -71,10 +87,10 @@ public class PrepareMessage extends Message.Request
             if (state.traceNextQuery())
             {
                 state.createTracingSession();
-                Tracing.instance.begin("Preparing CQL3 query", ImmutableMap.of("query", query));
+                tracing.begin("Preparing CQL3 query", ImmutableMap.of("query", query));
             }
 
-            Message.Response response = QueryHandlerInstance.instance.prepare(query, state);
+            Message.Response response = queryHandler.prepare(query, state);
 
             if (tracingId != null)
                 response.setTracingId(tracingId);
@@ -87,7 +103,7 @@ public class PrepareMessage extends Message.Request
         }
         finally
         {
-            Tracing.instance.stopSession();
+            tracing.stopSession();
         }
     }
 

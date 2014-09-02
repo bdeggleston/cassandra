@@ -167,7 +167,7 @@ public class SimpleClient
 
     public ResultMessage.Prepared prepare(String query)
     {
-        Message.Response msg = execute(new PrepareMessage(query));
+        Message.Response msg = execute(new PrepareMessage(query, Tracing.instance, QueryHandlerInstance.instance));
         assert msg instanceof ResultMessage.Prepared;
         return (ResultMessage.Prepared)msg;
     }

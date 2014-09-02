@@ -136,7 +136,7 @@ public class Client extends SimpleClient
         else if (msgType.equals("PREPARE"))
         {
             String query = line.substring(8);
-            return new PrepareMessage(query);
+            return new PrepareMessage(query, Tracing.instance, QueryHandlerInstance.instance);
         }
         else if (msgType.equals("EXECUTE"))
         {

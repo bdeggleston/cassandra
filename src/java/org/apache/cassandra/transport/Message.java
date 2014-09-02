@@ -134,7 +134,7 @@ public abstract class Message
             codecs.put(Type.SUPPORTED, SupportedMessage.codec);
             codecs.put(Type.QUERY, QueryMessage.codec);
             codecs.put(Type.RESULT, ResultMessage.codec);
-            codecs.put(Type.PREPARE, PrepareMessage.codec);
+            codecs.put(Type.PREPARE, new PrepareMessage.Codec(Tracing.instance, QueryHandlerInstance.instance));
             codecs.put(Type.EXECUTE, new ExecuteMessage.Codec(Tracing.instance, QueryHandlerInstance.instance));
             codecs.put(Type.REGISTER, RegisterMessage.codec);
             codecs.put(Type.EVENT, EventMessage.codec);
