@@ -345,7 +345,7 @@ public class CassandraDaemon
             System.exit(1);
         }
 
-        Mx4jTool.maybeLoad();
+        Mx4jTool.maybeLoad(DatabaseDescriptor.instance.getBroadcastAddress());
 
         // Metrics
         String metricsReporterConfigFile = System.getProperty("cassandra.metricsReporterConfigFile");

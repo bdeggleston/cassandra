@@ -18,6 +18,7 @@
 package org.apache.cassandra.utils;
 
 import java.lang.management.ManagementFactory;
+import java.net.InetAddress;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
@@ -39,7 +40,7 @@ public class Mx4jTool
      * Starts a JMX over http interface if and mx4j-tools.jar is in the classpath.
      * @return true if successfully loaded.
      */
-    public static boolean maybeLoad()
+    public static boolean maybeLoad(InetAddress broadcastAddress)
     {
         try
         {
@@ -49,7 +50,7 @@ public class Mx4jTool
 
             Class<?> httpAdaptorClass = Class.forName("mx4j.tools.adaptor.http.HttpAdaptor");
             Object httpAdaptor = httpAdaptorClass.newInstance();
-            httpAdaptorClass.getMethod("setHost", String.class).invoke(httpAdaptor, getAddress());
+            httpAdaptorClass.getMethod("setHost", String.class).invoke(httpAdaptor, getAddress(broadcastAddress));
             httpAdaptorClass.getMethod("setPort", Integer.TYPE).invoke(httpAdaptor, getPort());
 
             ObjectName httpName = new ObjectName("system:name=http");
@@ -75,9 +76,9 @@ public class Mx4jTool
         return false;
     }
 
-    private static String getAddress()
+    private static String getAddress(InetAddress broadcastAddress)
     {
-        return System.getProperty("mx4jaddress", DatabaseDescriptor.instance.getBroadcastAddress().getHostAddress());
+        return System.getProperty("mx4jaddress", broadcastAddress.getHostAddress());
     }
 
     private static int getPort()
