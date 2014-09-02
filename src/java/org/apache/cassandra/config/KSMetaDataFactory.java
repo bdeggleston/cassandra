@@ -45,29 +45,29 @@ public class KSMetaDataFactory
 
     public KSMetaData systemKeyspace()
     {
-        List<CFMetaData> cfDefs = Arrays.asList(CFMetaData.BatchlogCf,
-                                                CFMetaData.RangeXfersCf,
-                                                CFMetaData.LocalCf,
-                                                CFMetaData.PeersCf,
-                                                CFMetaData.PeerEventsCf,
-                                                CFMetaData.HintsCf,
-                                                CFMetaData.IndexCf,
-                                                CFMetaData.SchemaKeyspacesCf,
-                                                CFMetaData.SchemaColumnFamiliesCf,
-                                                CFMetaData.SchemaColumnsCf,
-                                                CFMetaData.SchemaTriggersCf,
-                                                CFMetaData.SchemaUserTypesCf,
-                                                CFMetaData.SchemaFunctionsCf,
-                                                CFMetaData.CompactionLogCf,
-                                                CFMetaData.CompactionHistoryCf,
-                                                CFMetaData.PaxosCf,
-                                                CFMetaData.SSTableActivityCF);
+        List<CFMetaData> cfDefs = Arrays.asList(CFMetaDataFactory.instance.BatchlogCf,
+                                                CFMetaDataFactory.instance.RangeXfersCf,
+                                                CFMetaDataFactory.instance.LocalCf,
+                                                CFMetaDataFactory.instance.PeersCf,
+                                                CFMetaDataFactory.instance.PeerEventsCf,
+                                                CFMetaDataFactory.instance.HintsCf,
+                                                CFMetaDataFactory.instance.IndexCf,
+                                                CFMetaDataFactory.instance.SchemaKeyspacesCf,
+                                                CFMetaDataFactory.instance.SchemaColumnFamiliesCf,
+                                                CFMetaDataFactory.instance.SchemaColumnsCf,
+                                                CFMetaDataFactory.instance.SchemaTriggersCf,
+                                                CFMetaDataFactory.instance.SchemaUserTypesCf,
+                                                CFMetaDataFactory.instance.SchemaFunctionsCf,
+                                                CFMetaDataFactory.instance.CompactionLogCf,
+                                                CFMetaDataFactory.instance.CompactionHistoryCf,
+                                                CFMetaDataFactory.instance.PaxosCf,
+                                                CFMetaDataFactory.instance.SSTableActivityCF);
         return new KSMetaData(Keyspace.SYSTEM_KS, LocalStrategy.class, Collections.<String, String>emptyMap(), true, cfDefs);
     }
 
     public KSMetaData traceKeyspace()
     {
-        List<CFMetaData> cfDefs = Arrays.asList(CFMetaData.TraceSessionsCf, CFMetaData.TraceEventsCf);
+        List<CFMetaData> cfDefs = Arrays.asList(CFMetaDataFactory.instance.TraceSessionsCf, CFMetaDataFactory.instance.TraceEventsCf);
         return new KSMetaData(Tracing.TRACE_KS, SimpleStrategy.class, ImmutableMap.of("replication_factor", "2"), true, cfDefs);
     }
 

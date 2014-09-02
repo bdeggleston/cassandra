@@ -181,7 +181,7 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
                 knownCqlCfs.put(keyspace, cfs);
             }
             
-            CFMetaData metadata = CFMetaDataFactory.compile(cql, keyspace, QueryProcessor.instance);
+            CFMetaData metadata = CFMetaDataFactory.instance.compile(cql, keyspace, QueryProcessor.instance);
             cfs.put(metadata.cfName, metadata);
         }
         

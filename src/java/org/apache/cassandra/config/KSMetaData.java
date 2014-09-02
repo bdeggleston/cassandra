@@ -190,8 +190,8 @@ public final class KSMetaData
     public Mutation toSchema(long timestamp)
     {
         Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(name));
-        ColumnFamily cf = mutation.addOrGet(CFMetaData.SchemaKeyspacesCf);
-        CFRowAdder adder = new CFRowAdder(cf, CFMetaData.SchemaKeyspacesCf.comparator.builder().build(), timestamp);
+        ColumnFamily cf = mutation.addOrGet(CFMetaDataFactory.instance.SchemaKeyspacesCf);
+        CFRowAdder adder = new CFRowAdder(cf, CFMetaDataFactory.instance.SchemaKeyspacesCf.comparator.builder().build(), timestamp);
 
         adder.add("durable_writes", durableWrites);
         adder.add("strategy_class", strategyClass.getName());

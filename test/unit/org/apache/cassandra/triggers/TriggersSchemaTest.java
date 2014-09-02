@@ -50,7 +50,7 @@ public class TriggersSchemaTest
     public void newKsContainsCfWithTrigger() throws Exception
     {
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass);
-        CFMetaData cfm1 = CFMetaDataFactory.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
+        CFMetaData cfm1 = CFMetaDataFactory.instance.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
         cfm1.addTriggerDefinition(td);
         KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(ksName,
                                                 SimpleStrategy.class,
@@ -75,7 +75,7 @@ public class TriggersSchemaTest
                                                 Collections.EMPTY_LIST);
         MigrationManager.instance.announceNewKeyspace(ksm);
 
-        CFMetaData cfm1 = CFMetaDataFactory.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
+        CFMetaData cfm1 = CFMetaDataFactory.instance.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass);
         cfm1.addTriggerDefinition(td);
 
@@ -90,7 +90,7 @@ public class TriggersSchemaTest
     @Test
     public void addTriggerToCf() throws Exception
     {
-        CFMetaData cfm1 = CFMetaDataFactory.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
+        CFMetaData cfm1 = CFMetaDataFactory.instance.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
         KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(ksName,
                                                 SimpleStrategy.class,
                                                 Collections.singletonMap("replication_factor", "1"),
@@ -113,7 +113,7 @@ public class TriggersSchemaTest
     public void removeTriggerFromCf() throws Exception
     {
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass);
-        CFMetaData cfm1 = CFMetaDataFactory.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
+        CFMetaData cfm1 = CFMetaDataFactory.instance.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
         cfm1.addTriggerDefinition(td);
         KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(ksName,
                                                 SimpleStrategy.class,

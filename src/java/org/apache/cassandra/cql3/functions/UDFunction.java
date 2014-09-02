@@ -23,6 +23,7 @@ import java.security.MessageDigest;
 import java.util.*;
 
 import com.google.common.base.Objects;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,7 +135,7 @@ public abstract class UDFunction extends AbstractFunction
 
     private static Mutation makeSchemaMutation(FunctionName name)
     {
-        CompositeType kv = (CompositeType)CFMetaData.SchemaFunctionsCf.getKeyValidator();
+        CompositeType kv = (CompositeType) CFMetaDataFactory.instance.SchemaFunctionsCf.getKeyValidator();
         return new Mutation(Keyspace.SYSTEM_KS, kv.decompose(name.namespace, name.name));
     }
 
@@ -155,7 +156,7 @@ public abstract class UDFunction extends AbstractFunction
         Mutation mutation = makeSchemaMutation(name);
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_FUNCTIONS_CF);
 
-        Composite prefix = CFMetaData.SchemaFunctionsCf.comparator.make(computeSignature(argTypes));
+        Composite prefix = CFMetaDataFactory.instance.SchemaFunctionsCf.comparator.make(computeSignature(argTypes));
         CFRowAdder adder = new CFRowAdder(cf, prefix, timestamp);
 
         adder.resetCollection("argument_names");

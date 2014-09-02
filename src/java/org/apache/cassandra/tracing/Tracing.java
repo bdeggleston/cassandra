@@ -27,6 +27,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,7 +102,7 @@ public class Tracing
     {
         for (Map.Entry<String, String> entry : rawPayload.entrySet())
         {
-            cf.addColumn(new BufferExpiringCell(buildName(CFMetaData.TraceSessionsCf, "parameters", entry.getKey()),
+            cf.addColumn(new BufferExpiringCell(buildName(CFMetaDataFactory.instance.TraceSessionsCf, "parameters", entry.getKey()),
                                                 bytes(entry.getValue()), System.currentTimeMillis(), TTL));
         }
     }
@@ -166,7 +167,7 @@ public class Tracing
             {
                 public void run()
                 {
-                    CFMetaData cfMeta = CFMetaData.TraceSessionsCf;
+                    CFMetaData cfMeta = CFMetaDataFactory.instance.TraceSessionsCf;
                     ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta);
                     addColumn(cf, buildName(cfMeta, "duration"), elapsed);
                     mutateWithCatch(new Mutation(TRACE_KS, sessionIdBytes, cf));
@@ -204,7 +205,7 @@ public class Tracing
         {
             public void run()
             {
-                CFMetaData cfMeta = CFMetaData.TraceSessionsCf;
+                CFMetaData cfMeta = CFMetaDataFactory.instance.TraceSessionsCf;
                 ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta);
                 addColumn(cf, buildName(cfMeta, "coordinator"), DatabaseDescriptor.instance.getBroadcastAddress());
                 addParameterColumns(cf, parameters);

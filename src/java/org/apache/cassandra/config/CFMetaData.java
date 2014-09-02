@@ -119,233 +119,6 @@ public final class CFMetaData
         }
     };
 
-    public static final CFMetaData IndexCf = CFMetaDataFactory.compile("CREATE TABLE \"" + SystemKeyspace.INDEX_CF + "\" ("
-                                                     + "table_name text,"
-                                                     + "index_name text,"
-                                                     + "PRIMARY KEY (table_name, index_name)"
-                                                     + ") WITH COMPACT STORAGE AND COMMENT='indexes that have been completed'",
-                                                                                QueryProcessor.instance);
-
-    public static final CFMetaData SchemaKeyspacesCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.SCHEMA_KEYSPACES_CF + " ("
-                                                               + "keyspace_name text PRIMARY KEY,"
-                                                               + "durable_writes boolean,"
-                                                               + "strategy_class text,"
-                                                               + "strategy_options text"
-                                                               + ") WITH COMPACT STORAGE AND COMMENT='keyspace definitions' AND gc_grace_seconds=604800",
-                                                                                          QueryProcessor.instance);
-
-    public static final CFMetaData SchemaColumnFamiliesCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF + " ("
-                                                                    + "keyspace_name text,"
-                                                                    + "columnfamily_name text,"
-                                                                    + "cf_id uuid," // post-2.1 UUID cfid
-                                                                    + "type text,"
-                                                                    + "is_dense boolean,"
-                                                                    + "comparator text,"
-                                                                    + "subcomparator text,"
-                                                                    + "comment text,"
-                                                                    + "read_repair_chance double,"
-                                                                    + "local_read_repair_chance double,"
-                                                                    + "gc_grace_seconds int,"
-                                                                    + "default_validator text,"
-                                                                    + "key_validator text,"
-                                                                    + "min_compaction_threshold int,"
-                                                                    + "max_compaction_threshold int,"
-                                                                    + "memtable_flush_period_in_ms int,"
-                                                                    + "key_aliases text,"
-                                                                    + "bloom_filter_fp_chance double,"
-                                                                    + "caching text,"
-                                                                    + "default_time_to_live int,"
-                                                                    + "compaction_strategy_class text,"
-                                                                    + "compression_parameters text,"
-                                                                    + "value_alias text,"
-                                                                    + "column_aliases text,"
-                                                                    + "compaction_strategy_options text,"
-                                                                    + "speculative_retry text,"
-                                                                    + "index_interval int,"
-                                                                    + "min_index_interval int,"
-                                                                    + "max_index_interval int,"
-                                                                    + "dropped_columns map<text, bigint>,"
-                                                                    + "PRIMARY KEY (keyspace_name, columnfamily_name)"
-                                                                    + ") WITH COMMENT='ColumnFamily definitions' AND gc_grace_seconds=604800",
-                                                                                               QueryProcessor.instance);
-
-    public static final CFMetaData SchemaColumnsCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.SCHEMA_COLUMNS_CF + " ("
-                                                             + "keyspace_name text,"
-                                                             + "columnfamily_name text,"
-                                                             + "column_name text,"
-                                                             + "validator text,"
-                                                             + "index_type text,"
-                                                             + "index_options text,"
-                                                             + "index_name text,"
-                                                             + "component_index int,"
-                                                             + "type text,"
-                                                             + "PRIMARY KEY(keyspace_name, columnfamily_name, column_name)"
-                                                             + ") WITH COMMENT='ColumnFamily column attributes' AND gc_grace_seconds=604800",
-                                                                                        QueryProcessor.instance);
-
-    public static final CFMetaData SchemaTriggersCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.SCHEMA_TRIGGERS_CF + " ("
-                                                              + "keyspace_name text,"
-                                                              + "columnfamily_name text,"
-                                                              + "trigger_name text,"
-                                                              + "trigger_options map<text, text>,"
-                                                              + "PRIMARY KEY (keyspace_name, columnfamily_name, trigger_name)"
-                                                              + ") WITH COMMENT='triggers metadata table' AND gc_grace_seconds=604800",
-                                                                                         QueryProcessor.instance);
-
-    public static final CFMetaData SchemaUserTypesCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.SCHEMA_USER_TYPES_CF + " ("
-                                                               + "keyspace_name text,"
-                                                               + "type_name text,"
-                                                               + "field_names list<text>,"
-                                                               + "field_types list<text>,"
-                                                               + "PRIMARY KEY (keyspace_name, type_name)"
-                                                               + ") WITH COMMENT='Defined user types' AND gc_grace_seconds=604800",
-                                                                                          QueryProcessor.instance);
-
-    public static final CFMetaData SchemaFunctionsCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.SCHEMA_FUNCTIONS_CF + " ("
-                                                               + "namespace text,"
-                                                               + "name text,"
-                                                               + "signature blob,"
-                                                               + "argument_names list<text>,"
-                                                               + "argument_types list<text>,"
-                                                               + "return_type text,"
-                                                               + "deterministic boolean,"
-                                                               + "language text,"
-                                                               + "body text,"
-                                                               + "primary key ((namespace, name), signature)"
-                                                               + ") WITH COMMENT='user defined functions' AND gc_grace_seconds=604800",
-                                                                                          QueryProcessor.instance);
-
-    public static final CFMetaData HintsCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.HINTS_CF + " ("
-                                                     + "target_id uuid,"
-                                                     + "hint_id timeuuid,"
-                                                     + "message_version int,"
-                                                     + "mutation blob,"
-                                                     + "PRIMARY KEY (target_id, hint_id, message_version)"
-                                                     + ") WITH COMPACT STORAGE "
-                                                     + "AND COMPACTION={'class' : 'SizeTieredCompactionStrategy', 'enabled' : false} "
-                                                     + "AND COMMENT='hints awaiting delivery'"
-                                                     + "AND gc_grace_seconds=0",
-                                                                                QueryProcessor.instance);
-
-    public static final CFMetaData PeersCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.PEERS_CF + " ("
-                                                     + "peer inet PRIMARY KEY,"
-                                                     + "host_id uuid,"
-                                                     + "tokens set<varchar>,"
-                                                     + "schema_version uuid,"
-                                                     + "release_version text,"
-                                                     + "rpc_address inet,"
-                                                     + "preferred_ip inet,"
-                                                     + "data_center text,"
-                                                     + "rack text"
-                                                     + ") WITH COMMENT='known peers in the cluster'",
-                                                                                QueryProcessor.instance);
-
-    public static final CFMetaData PeerEventsCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.PEER_EVENTS_CF + " ("
-                                                          + "peer inet PRIMARY KEY,"
-                                                          + "hints_dropped map<uuid, int>"
-                                                          + ") WITH COMMENT='cf contains events related to peers'",
-                                                                                     QueryProcessor.instance);
-
-    public static final CFMetaData LocalCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.LOCAL_CF + " ("
-                                                     + "key text PRIMARY KEY,"
-                                                     + "tokens set<varchar>,"
-                                                     + "cluster_name text,"
-                                                     + "gossip_generation int,"
-                                                     + "bootstrapped text,"
-                                                     + "host_id uuid,"
-                                                     + "release_version text,"
-                                                     + "thrift_version text,"
-                                                     + "cql_version text,"
-                                                     + "native_protocol_version text,"
-                                                     + "data_center text,"
-                                                     + "rack text,"
-                                                     + "partitioner text,"
-                                                     + "schema_version uuid,"
-                                                     + "truncated_at map<uuid, blob>"
-                                                     + ") WITH COMMENT='information about the local node'",
-                                                                                QueryProcessor.instance);
-
-    public static final CFMetaData TraceSessionsCf = CFMetaDataFactory.compile("CREATE TABLE " + Tracing.SESSIONS_CF + " ("
-                                                             + "session_id uuid PRIMARY KEY,"
-                                                             + "coordinator inet,"
-                                                             + "request text,"
-                                                             + "started_at timestamp,"
-                                                             + "parameters map<text, text>,"
-                                                             + "duration int"
-                                                             + ") WITH COMMENT='traced sessions'",
-                                                             Tracing.TRACE_KS,
-                                                             QueryProcessor.instance);
-
-    public static final CFMetaData TraceEventsCf = CFMetaDataFactory.compile("CREATE TABLE " + Tracing.EVENTS_CF + " ("
-                                                           + "session_id uuid,"
-                                                           + "event_id timeuuid,"
-                                                           + "source inet,"
-                                                           + "thread text,"
-                                                           + "activity text,"
-                                                           + "source_elapsed int,"
-                                                           + "PRIMARY KEY (session_id, event_id)"
-                                                           + ")",
-                                                           Tracing.TRACE_KS,
-                                                           QueryProcessor.instance);
-
-    public static final CFMetaData BatchlogCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.BATCHLOG_CF + " ("
-                                                        + "id uuid PRIMARY KEY,"
-                                                        + "written_at timestamp,"
-                                                        + "data blob,"
-                                                        + "version int,"
-                                                        + ") WITH COMMENT='uncommited batches' AND gc_grace_seconds=0 "
-                                                        + "AND COMPACTION={'class' : 'SizeTieredCompactionStrategy', 'min_threshold' : 2}",
-                                                                                   QueryProcessor.instance);
-
-    public static final CFMetaData RangeXfersCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.RANGE_XFERS_CF + " ("
-                                                          + "token_bytes blob PRIMARY KEY,"
-                                                          + "requested_at timestamp"
-                                                          + ") WITH COMMENT='ranges requested for transfer here'",
-                                                                                     QueryProcessor.instance);
-
-    public static final CFMetaData CompactionLogCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.COMPACTION_LOG + " ("
-                                                             + "id uuid PRIMARY KEY,"
-                                                             + "keyspace_name text,"
-                                                             + "columnfamily_name text,"
-                                                             + "inputs set<int>"
-                                                             + ") WITH COMMENT='unfinished compactions'",
-                                                                                        QueryProcessor.instance);
-
-    public static final CFMetaData PaxosCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.PAXOS_CF + " ("
-                                                     + "row_key blob,"
-                                                     + "cf_id UUID,"
-                                                     + "in_progress_ballot timeuuid,"
-                                                     + "proposal_ballot timeuuid,"
-                                                     + "proposal blob,"
-                                                     + "most_recent_commit_at timeuuid,"
-                                                     + "most_recent_commit blob,"
-                                                     + "PRIMARY KEY (row_key, cf_id)"
-                                                     + ") WITH COMMENT='in-progress paxos proposals' "
-                                                     + "AND COMPACTION={'class' : 'LeveledCompactionStrategy'}",
-                                                                                QueryProcessor.instance);
-
-    public static final CFMetaData SSTableActivityCF = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.SSTABLE_ACTIVITY_CF + " ("
-                                                               + "keyspace_name text,"
-                                                               + "columnfamily_name text,"
-                                                               + "generation int,"
-                                                               + "rate_15m double,"
-                                                               + "rate_120m double,"
-                                                               + "PRIMARY KEY ((keyspace_name, columnfamily_name, generation))"
-                                                               + ") WITH COMMENT='historic sstable read rates'",
-                                                                                          QueryProcessor.instance);
-
-    public static final CFMetaData CompactionHistoryCf = CFMetaDataFactory.compile("CREATE TABLE " + SystemKeyspace.COMPACTION_HISTORY_CF + " ("
-                                                                 + "id uuid,"
-                                                                 + "keyspace_name text,"
-                                                                 + "columnfamily_name text,"
-                                                                 + "compacted_at timestamp,"
-                                                                 + "bytes_in bigint,"
-                                                                 + "bytes_out bigint,"
-                                                                 + "rows_merged map<int, bigint>,"
-                                                                 + "PRIMARY KEY (id)"
-                                                                 + ") WITH COMMENT='show all compaction history' AND DEFAULT_TIME_TO_LIVE=604800",
-                                                                                            QueryProcessor.instance);
-
     public static class SpeculativeRetry
     {
         public enum RetryType
@@ -1424,10 +1197,10 @@ public final class CFMetaData
     public Mutation dropFromSchema(long timestamp)
     {
         Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(ksName));
-        ColumnFamily cf = mutation.addOrGet(SchemaColumnFamiliesCf);
+        ColumnFamily cf = mutation.addOrGet(CFMetaDataFactory.instance.SchemaColumnFamiliesCf);
         int ldt = (int) (System.currentTimeMillis() / 1000);
 
-        Composite prefix = SchemaColumnFamiliesCf.comparator.make(cfName);
+        Composite prefix = CFMetaDataFactory.instance.SchemaColumnFamiliesCf.comparator.make(cfName);
         cf.addAtom(new RangeTombstone(prefix, prefix.end(), timestamp, ldt));
 
         for (ColumnDefinition cd : allColumns())
@@ -1438,7 +1211,7 @@ public final class CFMetaData
 
         for (String indexName : KeyspaceManager.instance.open(this.ksName).getColumnFamilyStore(this.cfName).getBuiltIndexes())
         {
-            ColumnFamily indexCf = mutation.addOrGet(IndexCf);
+            ColumnFamily indexCf = mutation.addOrGet(CFMetaDataFactory.instance.IndexCf);
             indexCf.addTombstone(indexCf.getComparator().makeCellName(indexName), ldt, timestamp);
         }
 
@@ -1470,8 +1243,8 @@ public final class CFMetaData
     {
         // For property that can be null (and can be changed), we insert tombstones, to make sure
         // we don't keep a property the user has removed
-        ColumnFamily cf = mutation.addOrGet(SchemaColumnFamiliesCf);
-        Composite prefix = SchemaColumnFamiliesCf.comparator.make(cfName);
+        ColumnFamily cf = mutation.addOrGet(CFMetaDataFactory.instance.SchemaColumnFamiliesCf);
+        Composite prefix = CFMetaDataFactory.instance.SchemaColumnFamiliesCf.comparator.make(cfName);
         CFRowAdder adder = new CFRowAdder(cf, prefix, timestamp);
 
         adder.add("cf_id", cfId);

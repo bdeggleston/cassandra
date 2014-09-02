@@ -675,7 +675,7 @@ public class SystemKeyspace
     public void setIndexRemoved(String keyspaceName, String indexName)
     {
         Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, ByteBufferUtil.bytes(keyspaceName));
-        mutation.delete(INDEX_CF, CFMetaData.IndexCf.comparator.makeCellName(indexName), FBUtilities.timestampMicros());
+        mutation.delete(INDEX_CF, CFMetaDataFactory.instance.IndexCf.comparator.makeCellName(indexName), FBUtilities.timestampMicros());
         mutation.apply();
     }
 

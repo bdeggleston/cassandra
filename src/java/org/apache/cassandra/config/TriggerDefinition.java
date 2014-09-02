@@ -82,7 +82,7 @@ public class TriggerDefinition
     {
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_TRIGGERS_CF);
 
-        CFMetaData cfm = CFMetaData.SchemaTriggersCf;
+        CFMetaData cfm = CFMetaDataFactory.instance.SchemaTriggersCf;
         Composite prefix = cfm.comparator.make(cfName, name);
         CFRowAdder adder = new CFRowAdder(cf, prefix, timestamp);
 
@@ -101,7 +101,7 @@ public class TriggerDefinition
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_TRIGGERS_CF);
         int ldt = (int) (System.currentTimeMillis() / 1000);
 
-        Composite prefix = CFMetaData.SchemaTriggersCf.comparator.make(cfName, name);
+        Composite prefix = CFMetaDataFactory.instance.SchemaTriggersCf.comparator.make(cfName, name);
         cf.addAtom(new RangeTombstone(prefix, prefix.end(), timestamp, ldt));
     }
 

@@ -32,6 +32,7 @@ import javax.management.ObjectName;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 import com.google.common.util.concurrent.RateLimiter;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,8 +128,8 @@ public class BatchlogManager implements BatchlogManagerMBean
     @VisibleForTesting
     static Mutation getBatchlogMutationFor(Collection<Mutation> mutations, UUID uuid, int version, long now)
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(CFMetaData.BatchlogCf);
-        CFRowAdder adder = new CFRowAdder(cf, CFMetaData.BatchlogCf.comparator.builder().build(), now);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(CFMetaDataFactory.instance.BatchlogCf);
+        CFRowAdder adder = new CFRowAdder(cf, CFMetaDataFactory.instance.BatchlogCf.comparator.builder().build(), now);
         adder.add("data", serializeMutations(mutations, version))
              .add("written_at", new Date(now / 1000))
              .add("version", version);

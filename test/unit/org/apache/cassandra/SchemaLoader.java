@@ -267,24 +267,24 @@ public class SchemaLoader
                                            opts_rf1,
 
                                            // Column Families
-                                           CFMetaDataFactory.compile("CREATE TABLE table1 ("
+                                           CFMetaDataFactory.instance.compile("CREATE TABLE table1 ("
                                                               + "k int PRIMARY KEY,"
                                                               + "v1 text,"
                                                               + "v2 int"
                                                               + ")", ks_cql, QueryProcessor.instance),
 
-                                           CFMetaDataFactory.compile("CREATE TABLE table2 ("
+                                           CFMetaDataFactory.instance.compile("CREATE TABLE table2 ("
                                                               + "k text,"
                                                               + "c text,"
                                                               + "v text,"
                                                               + "PRIMARY KEY (k, c))", ks_cql, QueryProcessor.instance),
-                                           CFMetaDataFactory.compile("CREATE TABLE foo ("
+                                           CFMetaDataFactory.instance.compile("CREATE TABLE foo ("
                                                    + "bar text, "
                                                    + "baz text, "
                                                    + "qux text, "
                                                    + "PRIMARY KEY(bar, baz) ) "
                                                    + "WITH COMPACT STORAGE", ks_cql, QueryProcessor.instance),
-                                           CFMetaDataFactory.compile("CREATE TABLE foofoo ("
+                                           CFMetaDataFactory.instance.compile("CREATE TABLE foofoo ("
                                                    + "bar text, "
                                                    + "baz text, "
                                                    + "qux text, "

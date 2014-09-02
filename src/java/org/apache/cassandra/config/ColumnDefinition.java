@@ -315,18 +315,18 @@ public class ColumnDefinition extends ColumnSpecification
      */
     public void deleteFromSchema(Mutation mutation, long timestamp)
     {
-        ColumnFamily cf = mutation.addOrGet(CFMetaData.SchemaColumnsCf);
+        ColumnFamily cf = mutation.addOrGet(CFMetaDataFactory.instance.SchemaColumnsCf);
         int ldt = (int) (System.currentTimeMillis() / 1000);
 
         // Note: we do want to use name.toString(), not name.bytes directly for backward compatibility (For CQL3, this won't make a difference).
-        Composite prefix = CFMetaData.SchemaColumnsCf.comparator.make(cfName, name.toString());
+        Composite prefix = CFMetaDataFactory.instance.SchemaColumnsCf.comparator.make(cfName, name.toString());
         cf.addAtom(new RangeTombstone(prefix, prefix.end(), timestamp, ldt));
     }
 
     public void toSchema(Mutation mutation, long timestamp)
     {
-        ColumnFamily cf = mutation.addOrGet(CFMetaData.SchemaColumnsCf);
-        Composite prefix = CFMetaData.SchemaColumnsCf.comparator.make(cfName, name.toString());
+        ColumnFamily cf = mutation.addOrGet(CFMetaDataFactory.instance.SchemaColumnsCf);
+        Composite prefix = CFMetaDataFactory.instance.SchemaColumnsCf.comparator.make(cfName, name.toString());
         CFRowAdder adder = new CFRowAdder(cf, prefix, timestamp);
 
         adder.add(TYPE, type.toString());

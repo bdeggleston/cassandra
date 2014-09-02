@@ -94,7 +94,7 @@ public final class UTMetaData
     {
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_USER_TYPES_CF);
 
-        Composite prefix = CFMetaData.SchemaUserTypesCf.comparator.make(newType.name);
+        Composite prefix = CFMetaDataFactory.instance.SchemaUserTypesCf.comparator.make(newType.name);
         CFRowAdder adder = new CFRowAdder(cf, prefix, timestamp);
 
         adder.resetCollection("field_names");
@@ -121,7 +121,7 @@ public final class UTMetaData
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_USER_TYPES_CF);
         int ldt = (int) (System.currentTimeMillis() / 1000);
 
-        Composite prefix = CFMetaData.SchemaUserTypesCf.comparator.make(droppedType.name);
+        Composite prefix = CFMetaDataFactory.instance.SchemaUserTypesCf.comparator.make(droppedType.name);
         cf.addAtom(new RangeTombstone(prefix, prefix.end(), timestamp, ldt));
 
         return mutation;

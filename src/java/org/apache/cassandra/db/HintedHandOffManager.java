@@ -35,6 +35,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.common.util.concurrent.Uninterruptibles;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -133,7 +134,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
         UUID hintId = UUIDGen.getTimeUUID();
         // serialize the hint with id and version as a composite column name
-        CellName name = CFMetaData.HintsCf.comparator.makeCellName(hintId, MessagingService.current_version);
+        CellName name = CFMetaDataFactory.instance.HintsCf.comparator.makeCellName(hintId, MessagingService.current_version);
         ByteBuffer value = ByteBuffer.wrap(FBUtilities.serialize(mutation, Mutation.serializer, MessagingService.current_version));
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(Schema.instance.getCFMetaData(Keyspace.SYSTEM_KS, SystemKeyspace.HINTS_CF));
         cf.addColumn(name, value, now, ttl);
