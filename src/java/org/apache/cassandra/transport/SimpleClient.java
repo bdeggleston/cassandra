@@ -146,7 +146,7 @@ public class SimpleClient
 
     public void login(Map<String, String> credentials)
     {
-        CredentialsMessage msg = new CredentialsMessage();
+        CredentialsMessage msg = new CredentialsMessage(DatabaseDescriptor.instance.getAuthenticator());
         msg.credentials.putAll(credentials);
         execute(msg);
     }

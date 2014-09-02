@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.cassandra.auth.AuthenticatedUser;
+import org.apache.cassandra.auth.IAuthenticator;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.transport.ProtocolException;
 import io.netty.buffer.ByteBuf;
@@ -35,8 +36,16 @@ import org.apache.cassandra.transport.Message;
  */
 public class CredentialsMessage extends Message.Request
 {
-    public static final Message.Codec<CredentialsMessage> codec = new Message.Codec<CredentialsMessage>()
+    public static class Codec implements Message.Codec<CredentialsMessage>
     {
+        private final IAuthenticator authenticator;
+
+        public Codec(IAuthenticator authenticator)
+        {
+            this.authenticator = authenticator;
+        }
+
+        @Override
         public CredentialsMessage decode(ByteBuf body, int version)
         {
             if (version > 1)
@@ -44,14 +53,16 @@ public class CredentialsMessage extends Message.Request
                         "protocol versions > 1. Please use SASL authentication via a SaslResponse message");
 
             Map<String, String> credentials = CBUtil.readStringMap(body);
-            return new CredentialsMessage(credentials);
+            return new CredentialsMessage(credentials, authenticator);
         }
 
+        @Override
         public void encode(CredentialsMessage msg, ByteBuf dest, int version)
         {
             CBUtil.writeStringMap(msg.credentials, dest);
         }
 
+        @Override
         public int encodedSize(CredentialsMessage msg, int version)
         {
             return CBUtil.sizeOfStringMap(msg.credentials);
@@ -60,22 +71,25 @@ public class CredentialsMessage extends Message.Request
 
     public final Map<String, String> credentials;
 
-    public CredentialsMessage()
+    private final IAuthenticator authenticator;
+
+    public CredentialsMessage(IAuthenticator authenticator)
     {
-        this(new HashMap<String, String>());
+        this(new HashMap<String, String>(), authenticator);
     }
 
-    private CredentialsMessage(Map<String, String> credentials)
+    private CredentialsMessage(Map<String, String> credentials, IAuthenticator authenticator)
     {
         super(Message.Type.CREDENTIALS);
         this.credentials = credentials;
+        this.authenticator = authenticator;
     }
 
     public Message.Response execute(QueryState state)
     {
         try
         {
-            AuthenticatedUser user = DatabaseDescriptor.instance.getAuthenticator().authenticate(credentials);
+            AuthenticatedUser user = authenticator.authenticate(credentials);
             state.getClientState().login(user);
             return new ReadyMessage();
         }

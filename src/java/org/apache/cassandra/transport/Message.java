@@ -129,7 +129,7 @@ public abstract class Message
             codecs.put(Type.STARTUP, new StartupMessage.Codec(DatabaseDescriptor.instance.getAuthenticator()));
             codecs.put(Type.READY, ReadyMessage.codec);
             codecs.put(Type.AUTHENTICATE, AuthenticateMessage.codec);
-            codecs.put(Type.CREDENTIALS, CredentialsMessage.codec);
+            codecs.put(Type.CREDENTIALS, new CredentialsMessage.Codec(DatabaseDescriptor.instance.getAuthenticator()));
             codecs.put(Type.OPTIONS, OptionsMessage.codec);
             codecs.put(Type.SUPPORTED, SupportedMessage.codec);
             codecs.put(Type.QUERY, QueryMessage.codec);

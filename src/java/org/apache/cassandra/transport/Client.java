@@ -171,7 +171,7 @@ public class Client extends SimpleClient
         else if (msgType.equals("CREDENTIALS"))
         {
             System.err.println("[WARN] CREDENTIALS command is deprecated, use AUTHENTICATE instead");
-            CredentialsMessage msg = new CredentialsMessage();
+            CredentialsMessage msg = new CredentialsMessage(DatabaseDescriptor.instance.getAuthenticator());
             msg.credentials.putAll(readCredentials(iter));
             return msg;
         }
