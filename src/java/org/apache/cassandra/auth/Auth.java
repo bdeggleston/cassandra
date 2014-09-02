@@ -48,7 +48,7 @@ public class Auth
 
     public static final String DEFAULT_SUPERUSER_NAME = "cassandra";
 
-    private final long superuserSetupDelay;
+    private static final long SUPERUSER_SETUP_DELAY = Long.getLong("cassandra.superuser_setup_delay_ms", 10000);
 
     public static final String AUTH_KS = "system_auth";
     public static final String USERS_CF = "users";
@@ -64,14 +64,9 @@ public class Auth
 
     private SelectStatement selectUserStatement;
 
-    public Auth()
+    public static long getSuperuserSetupDelay()
     {
-        superuserSetupDelay = Long.getLong("cassandra.superuser_setup_delay_ms", 10000);
-    }
-
-    public long getSuperuserSetupDelay()
-    {
-        return superuserSetupDelay;
+        return SUPERUSER_SETUP_DELAY;
     }
 
     /**
@@ -155,9 +150,7 @@ public class Auth
                                           {
                                               setupDefaultSuperuser();
                                           }
-                                      },
-                                                        superuserSetupDelay,
-                                      TimeUnit.MILLISECONDS);
+                                      }, SUPERUSER_SETUP_DELAY, TimeUnit.MILLISECONDS);
 
         try
         {

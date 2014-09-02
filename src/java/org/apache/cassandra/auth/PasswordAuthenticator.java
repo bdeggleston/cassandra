@@ -176,7 +176,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
                                               setupDefaultUser();
                                           }
                                       },
-                                      Auth.instance.getSuperuserSetupDelay(),
+                                      Auth.getSuperuserSetupDelay(),
                                       TimeUnit.MILLISECONDS);
 
         try
