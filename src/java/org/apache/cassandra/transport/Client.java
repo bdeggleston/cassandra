@@ -32,6 +32,7 @@ import java.util.Map;
 import com.google.common.base.Splitter;
 
 import org.apache.cassandra.auth.IAuthenticator;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.marshal.Int32Type;
@@ -107,7 +108,7 @@ public class Client extends SimpleClient
                    connection.setCompressor(FrameCompressor.SnappyCompressor.instance);
                }
             }
-            return new StartupMessage(options);
+            return new StartupMessage(options, DatabaseDescriptor.instance.getAuthenticator());
         }
         else if (msgType.equals("QUERY"))
         {

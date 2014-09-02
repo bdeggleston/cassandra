@@ -29,6 +29,7 @@ import java.util.concurrent.SynchronousQueue;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,7 +113,7 @@ public class SimpleClient
             options.put(StartupMessage.COMPRESSION, "snappy");
             connection.setCompressor(FrameCompressor.SnappyCompressor.instance);
         }
-        execute(new StartupMessage(options));
+        execute(new StartupMessage(options, DatabaseDescriptor.instance.getAuthenticator()));
     }
 
     protected void establishConnection() throws IOException

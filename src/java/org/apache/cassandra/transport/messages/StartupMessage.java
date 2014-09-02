@@ -22,6 +22,7 @@ import java.util.Map;
 
 import io.netty.buffer.ByteBuf;
 
+import org.apache.cassandra.auth.IAuthenticator;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.transport.*;
@@ -36,18 +37,28 @@ public class StartupMessage extends Message.Request
     public static final String CQL_VERSION = "CQL_VERSION";
     public static final String COMPRESSION = "COMPRESSION";
 
-    public static final Message.Codec<StartupMessage> codec = new Message.Codec<StartupMessage>()
+    public static class Codec implements Message.Codec<StartupMessage>
     {
-        public StartupMessage decode(ByteBuf body, int version)
+        private final IAuthenticator authenticator;
+
+        public Codec(IAuthenticator authenticator)
         {
-            return new StartupMessage(upperCaseKeys(CBUtil.readStringMap(body)));
+            this.authenticator = authenticator;
         }
 
+        @Override
+        public StartupMessage decode(ByteBuf body, int version)
+        {
+            return new StartupMessage(upperCaseKeys(CBUtil.readStringMap(body)), authenticator);
+        }
+
+        @Override
         public void encode(StartupMessage msg, ByteBuf dest, int version)
         {
             CBUtil.writeStringMap(msg.options, dest);
         }
 
+        @Override
         public int encodedSize(StartupMessage msg, int version)
         {
             return CBUtil.sizeOfStringMap(msg.options);
@@ -56,10 +67,13 @@ public class StartupMessage extends Message.Request
 
     public final Map<String, String> options;
 
-    public StartupMessage(Map<String, String> options)
+    private final IAuthenticator authenticator;
+
+    public StartupMessage(Map<String, String> options, IAuthenticator authenticator)
     {
         super(Message.Type.STARTUP);
         this.options = options;
+        this.authenticator = authenticator;
     }
 
     public Message.Response execute(QueryState state)
@@ -97,8 +111,8 @@ public class StartupMessage extends Message.Request
             }
         }
 
-        if (DatabaseDescriptor.instance.getAuthenticator().requireAuthentication())
-            return new AuthenticateMessage(DatabaseDescriptor.instance.getAuthenticator().getClass().getName());
+        if (authenticator.requireAuthentication())
+            return new AuthenticateMessage(authenticator.getClass().getName());
         else
             return new ReadyMessage();
     }

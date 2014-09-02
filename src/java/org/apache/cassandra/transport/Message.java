@@ -28,6 +28,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.MessageToMessageEncoder;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,7 +123,7 @@ public abstract class Message
         {
             Map<Type, Codec> codecs = new EnumMap<>(Type.class);
             codecs.put(Type.ERROR, ErrorMessage.codec);
-            codecs.put(Type.STARTUP, StartupMessage.codec);
+            codecs.put(Type.STARTUP, new StartupMessage.Codec(DatabaseDescriptor.instance.getAuthenticator()));
             codecs.put(Type.READY, ReadyMessage.codec);
             codecs.put(Type.AUTHENTICATE, AuthenticateMessage.codec);
             codecs.put(Type.CREDENTIALS, CredentialsMessage.codec);
