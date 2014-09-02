@@ -81,8 +81,6 @@ public class DatabaseDescriptor
 
     public static final DatabaseDescriptor instance;
 
-    private final boolean clientMode;
-
     /**
      * Tokens are serialized in a Gossip VersionedValue String.  VV are restricted to 64KB
      * when we send them over the wire, which works out to about 1700 tokens.
@@ -172,14 +170,12 @@ public class DatabaseDescriptor
 
     private DatabaseDescriptor(boolean clientMode, Config conf) throws ConfigurationException
     {
-        this.clientMode = clientMode;
-
         // In client mode, we use a default configuration. Note that the fields of this class will be
         // left unconfigured however (the partitioner or localDC will be null for instance) so this
         // should be used with care.
-        if (this.clientMode || conf == null)
+        if (clientMode || conf == null)
         {
-            conf = new Config();
+            this.conf = new Config();
             // at least we have to set memoryAllocator to open SSTable in client mode
             memoryAllocator = FBUtilities.newOffHeapAllocator(conf.memory_allocator);
         } else
