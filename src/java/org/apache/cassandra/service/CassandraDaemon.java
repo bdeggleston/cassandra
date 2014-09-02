@@ -34,6 +34,7 @@ import javax.management.StandardMBean;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.utils.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +56,6 @@ import org.apache.cassandra.metrics.StorageMetrics;
 import org.apache.cassandra.thrift.ThriftServer;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.CLibrary;
-import org.apache.cassandra.utils.Mx4jTool;
 import org.apache.cassandra.utils.Pair;
 
 /**
@@ -284,7 +284,7 @@ public class CassandraDaemon
 
         try
         {
-            GCInspector.register();
+            GCInspector.register(StatusLogger.instance);
         }
         catch (Throwable t)
         {

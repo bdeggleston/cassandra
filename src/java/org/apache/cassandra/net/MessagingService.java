@@ -881,7 +881,7 @@ public final class MessagingService implements MessagingServiceMBean
         }
 
         if (logTpstats)
-            StatusLogger.log();
+            StatusLogger.instance.log();
     }
 
     private static class SocketThread extends Thread

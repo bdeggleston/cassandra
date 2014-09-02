@@ -43,12 +43,13 @@ import org.apache.cassandra.service.CacheService;
 public class StatusLogger
 {
     private static final Logger logger = LoggerFactory.getLogger(StatusLogger.class);
+    public static final StatusLogger instance = new StatusLogger();
 
     public StatusLogger()
     {
     }
 
-    public static void log()
+    public void log()
     {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
 
