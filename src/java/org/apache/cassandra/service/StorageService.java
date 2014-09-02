@@ -103,7 +103,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 {
     private static final Logger logger = LoggerFactory.getLogger(StorageService.class);
 
-    public final int RING_DELAY = getRingDelay(); // delay after which we assume ring has stablized
+    public static final int RING_DELAY = getRingDelay(); // delay after which we assume ring has stablized
 
     /* JMX notification serial number counter */
     private final AtomicLong notificationSerialNumber = new AtomicLong();
@@ -559,7 +559,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 mutationStage.shutdown();
                 counterMutationStage.awaitTermination(3600, TimeUnit.SECONDS);
                 mutationStage.awaitTermination(3600, TimeUnit.SECONDS);
-                StorageProxy.instance.instance.verifyNoHintsInProgress();
+                StorageProxy.instance.verifyNoHintsInProgress();
 
                 List<Future<?>> flushes = new ArrayList<>();
                 for (Keyspace keyspace : KeyspaceManager.instance.all())
@@ -850,8 +850,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
         String dc = snitch.getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
         String rack = snitch.getRack(DatabaseDescriptor.instance.getBroadcastAddress());
-        Gossiper.instance.addLocalApplicationState(ApplicationState.DC, StorageService.instance.valueFactory.datacenter(dc));
-        Gossiper.instance.addLocalApplicationState(ApplicationState.RACK, StorageService.instance.valueFactory.rack(rack));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.DC, valueFactory.datacenter(dc));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.RACK, valueFactory.rack(rack));
     }
 
     public synchronized void joinRing() throws IOException
@@ -3023,7 +3023,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         FBUtilities.waitOnFuture(hintsCF.forceFlush());
 
         // gather all live nodes in the cluster that aren't also leaving
-        List<InetAddress> candidates = new ArrayList<>(StorageService.instance.getTokenMetadata().cloneAfterAllLeft().getAllEndpoints());
+        List<InetAddress> candidates = new ArrayList<>(getTokenMetadata().cloneAfterAllLeft().getAllEndpoints());
         candidates.remove(DatabaseDescriptor.instance.getBroadcastAddress());
         for (Iterator<InetAddress> iter = candidates.iterator(); iter.hasNext(); )
         {
@@ -3044,7 +3044,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             InetAddress hintsDestinationHost = candidates.get(0);
 
             // stream all hints -- range list will be a singleton of "the entire ring"
-            Token token = StorageService.instance.getPartitioner().getMinimumToken();
+            Token token = getPartitioner().getMinimumToken();
             List<Range<Token>> ranges = Collections.singletonList(new Range<>(token, token));
 
             return new StreamPlan("Hints").transferRanges(hintsDestinationHost,
@@ -3814,7 +3814,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 try
                 {
                     setPartitioner(DatabaseDescriptor.instance.getPartitioner());
-                    for (Map.Entry<Range<Token>, List<InetAddress>> entry : StorageService.instance.getRangeToAddressMap(keyspace).entrySet())
+                    for (Map.Entry<Range<Token>, List<InetAddress>> entry : getRangeToAddressMap(keyspace).entrySet())
                     {
                         Range<Token> range = entry.getKey();
                         for (InetAddress endpoint : entry.getValue())
