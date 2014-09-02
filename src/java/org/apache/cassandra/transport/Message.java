@@ -117,6 +117,29 @@ public abstract class Message
                                                           t));
             return t;
         }
+
+        public static Map<Type, Codec> getCodecMap()
+        {
+            Map<Type, Codec> codecs = new EnumMap<>(Type.class);
+            codecs.put(Type.ERROR, ErrorMessage.codec);
+            codecs.put(Type.STARTUP, StartupMessage.codec);
+            codecs.put(Type.READY, ReadyMessage.codec);
+            codecs.put(Type.AUTHENTICATE, AuthenticateMessage.codec);
+            codecs.put(Type.CREDENTIALS, CredentialsMessage.codec);
+            codecs.put(Type.OPTIONS, OptionsMessage.codec);
+            codecs.put(Type.SUPPORTED, SupportedMessage.codec);
+            codecs.put(Type.QUERY, QueryMessage.codec);
+            codecs.put(Type.RESULT, ResultMessage.codec);
+            codecs.put(Type.PREPARE, PrepareMessage.codec);
+            codecs.put(Type.EXECUTE, ExecuteMessage.codec);
+            codecs.put(Type.REGISTER, RegisterMessage.codec);
+            codecs.put(Type.EVENT, EventMessage.codec);
+            codecs.put(Type.BATCH, BatchMessage.codec);
+            codecs.put(Type.AUTH_CHALLENGE, AuthChallenge.codec);
+            codecs.put(Type.AUTH_RESPONSE, AuthResponse.codec);
+            codecs.put(Type.AUTH_SUCCESS, AuthSuccess.codec);
+            return codecs;
+        }
     }
 
     public final Type type;
@@ -213,26 +236,9 @@ public abstract class Message
     public static class ProtocolDecoder extends MessageToMessageDecoder<Frame>
     {
         private final Map<Type, Codec> codecs;
-        public ProtocolDecoder()
+        public ProtocolDecoder(Map<Type, Codec> codecs)
         {
-            codecs = new EnumMap<Type, Codec>(Type.class);
-            codecs.put(Type.ERROR, ErrorMessage.codec);
-            codecs.put(Type.STARTUP, StartupMessage.codec);
-            codecs.put(Type.READY, ReadyMessage.codec);
-            codecs.put(Type.AUTHENTICATE, AuthenticateMessage.codec);
-            codecs.put(Type.CREDENTIALS, CredentialsMessage.codec);
-            codecs.put(Type.OPTIONS, OptionsMessage.codec);
-            codecs.put(Type.SUPPORTED, SupportedMessage.codec);
-            codecs.put(Type.QUERY, QueryMessage.codec);
-            codecs.put(Type.RESULT, ResultMessage.codec);
-            codecs.put(Type.PREPARE, PrepareMessage.codec);
-            codecs.put(Type.EXECUTE, ExecuteMessage.codec);
-            codecs.put(Type.REGISTER, RegisterMessage.codec);
-            codecs.put(Type.EVENT, EventMessage.codec);
-            codecs.put(Type.BATCH, BatchMessage.codec);
-            codecs.put(Type.AUTH_CHALLENGE, AuthChallenge.codec);
-            codecs.put(Type.AUTH_RESPONSE, AuthResponse.codec);
-            codecs.put(Type.AUTH_SUCCESS, AuthSuccess.codec);
+            this.codecs = codecs;
         }
 
         public void decode(ChannelHandlerContext ctx, Frame frame, List results)
@@ -282,26 +288,9 @@ public abstract class Message
     {
         private final Map<Type, Codec> codecs;
 
-        public ProtocolEncoder()
+        public ProtocolEncoder(Map<Type, Codec> codecs)
         {
-            codecs = new EnumMap<Type, Codec>(Type.class);
-            codecs.put(Type.ERROR, ErrorMessage.codec);
-            codecs.put(Type.STARTUP, StartupMessage.codec);
-            codecs.put(Type.READY, ReadyMessage.codec);
-            codecs.put(Type.AUTHENTICATE, AuthenticateMessage.codec);
-            codecs.put(Type.CREDENTIALS, CredentialsMessage.codec);
-            codecs.put(Type.OPTIONS, OptionsMessage.codec);
-            codecs.put(Type.SUPPORTED, SupportedMessage.codec);
-            codecs.put(Type.QUERY, QueryMessage.codec);
-            codecs.put(Type.RESULT, ResultMessage.codec);
-            codecs.put(Type.PREPARE, PrepareMessage.codec);
-            codecs.put(Type.EXECUTE, ExecuteMessage.codec);
-            codecs.put(Type.REGISTER, RegisterMessage.codec);
-            codecs.put(Type.EVENT, EventMessage.codec);
-            codecs.put(Type.BATCH, BatchMessage.codec);
-            codecs.put(Type.AUTH_CHALLENGE, AuthChallenge.codec);
-            codecs.put(Type.AUTH_RESPONSE, AuthResponse.codec);
-            codecs.put(Type.AUTH_SUCCESS, AuthSuccess.codec);
+            this.codecs = codecs;
         }
 
         public void encode(ChannelHandlerContext ctx, Message message, List results)

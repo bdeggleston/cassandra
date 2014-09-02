@@ -44,9 +44,9 @@ import static org.apache.cassandra.config.EncryptionOptions.ClientEncryptionOpti
 
 public class Client extends SimpleClient
 {
-    public Client(String host, int port, ClientEncryptionOptions encryptionOptions)
+    public Client(String host, int port, ClientEncryptionOptions encryptionOptions, Map<Message.Type, Message.Codec> codecs)
     {
-        super(host, port, encryptionOptions);
+        super(host, port, encryptionOptions, codecs);
     }
 
     public void run() throws IOException
@@ -245,7 +245,7 @@ public class Client extends SimpleClient
         ClientEncryptionOptions encryptionOptions = new ClientEncryptionOptions();
         System.out.println("CQL binary protocol console " + host + "@" + port);
 
-        new Client(host, port, encryptionOptions).run();
+        new Client(host, port, encryptionOptions, Message.Type.getCodecMap()).run();
         System.exit(0);
     }
 }

@@ -32,6 +32,7 @@ import org.apache.cassandra.stress.util.SmartThriftClient;
 import org.apache.cassandra.stress.util.ThriftClient;
 import org.apache.cassandra.thrift.Cassandra;
 import org.apache.cassandra.thrift.InvalidRequestException;
+import org.apache.cassandra.transport.Message;
 import org.apache.cassandra.transport.SimpleClient;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TTransport;
@@ -141,7 +142,7 @@ public class StressSettings implements Serializable
         try
         {
             String currentNode = node.randomNode();
-            SimpleClient client = new SimpleClient(currentNode, port.nativePort);
+            SimpleClient client = new SimpleClient(currentNode, port.nativePort, Message.Type.getCodecMap());
             client.connect(false);
             client.execute("USE \"" + schema.keyspace + "\";", org.apache.cassandra.db.ConsistencyLevel.ONE);
             return client;

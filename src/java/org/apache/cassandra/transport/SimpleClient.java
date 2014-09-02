@@ -87,16 +87,18 @@ public class SimpleClient
         }
     };
 
-    public SimpleClient(String host, int port, ClientEncryptionOptions encryptionOptions)
+    public SimpleClient(String host, int port, ClientEncryptionOptions encryptionOptions, Map<Message.Type, Message.Codec> codecs)
     {
         this.host = host;
         this.port = port;
         this.encryptionOptions = encryptionOptions;
+        messageDecoder = new Message.ProtocolDecoder(codecs);
+        messageEncoder = new Message.ProtocolEncoder(codecs);
     }
 
-    public SimpleClient(String host, int port)
+    public SimpleClient(String host, int port, Map<Message.Type, Message.Codec> codecs)
     {
-        this(host, port, new ClientEncryptionOptions());
+        this(host, port, new ClientEncryptionOptions(), codecs);
     }
 
     public void connect(boolean useCompression) throws IOException
@@ -206,8 +208,8 @@ public class SimpleClient
     }
 
     // Stateless handlers
-    private static final Message.ProtocolDecoder messageDecoder = new Message.ProtocolDecoder();
-    private static final Message.ProtocolEncoder messageEncoder = new Message.ProtocolEncoder();
+    private final Message.ProtocolDecoder messageDecoder;
+    private final Message.ProtocolEncoder messageEncoder;
     private static final Frame.Decompressor frameDecompressor = new Frame.Decompressor();
     private static final Frame.Compressor frameCompressor = new Frame.Compressor();
     private static final Frame.Encoder frameEncoder = new Frame.Encoder();

@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.EnumMap;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.net.ssl.SSLContext;
@@ -78,6 +79,7 @@ public class Server implements CassandraDaemon.Server
 
     private EventLoopGroup workerGroup;
     private EventExecutor eventExecutorGroup;
+    private final Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap();
 
     public Server(InetSocketAddress socket)
     {
@@ -151,11 +153,11 @@ public class Server implements CassandraDaemon.Server
         if (clientEnc.enabled)
         {
             logger.info("Enabling encrypted CQL connections between client and server");
-            bootstrap.childHandler(new SecureInitializer(this, clientEnc));
+            bootstrap.childHandler(new SecureInitializer(this, clientEnc, codecs));
         }
         else
         {
-            bootstrap.childHandler(new Initializer(this));
+            bootstrap.childHandler(new Initializer(this, codecs));
         }
 
         // Bind and start to accept incoming connections.
@@ -243,8 +245,8 @@ public class Server implements CassandraDaemon.Server
     private static class Initializer extends ChannelInitializer
     {
         // Stateless handlers
-        private static final Message.ProtocolDecoder messageDecoder = new Message.ProtocolDecoder();
-        private static final Message.ProtocolEncoder messageEncoder = new Message.ProtocolEncoder();
+        private final Message.ProtocolDecoder messageDecoder;
+        private final Message.ProtocolEncoder messageEncoder;
         private static final Frame.Decompressor frameDecompressor = new Frame.Decompressor();
         private static final Frame.Compressor frameCompressor = new Frame.Compressor();
         private static final Frame.Encoder frameEncoder = new Frame.Encoder();
@@ -252,9 +254,11 @@ public class Server implements CassandraDaemon.Server
 
         private final Server server;
 
-        public Initializer(Server server)
+        public Initializer(Server server, Map<Message.Type, Message.Codec> codecs)
         {
             this.server = server;
+            messageDecoder = new Message.ProtocolDecoder(codecs);
+            messageEncoder = new Message.ProtocolEncoder(codecs);
         }
 
         protected void initChannel(Channel channel) throws Exception
@@ -281,9 +285,9 @@ public class Server implements CassandraDaemon.Server
         private final SSLContext sslContext;
         private final EncryptionOptions encryptionOptions;
 
-        public SecureInitializer(Server server, EncryptionOptions encryptionOptions)
+        public SecureInitializer(Server server, EncryptionOptions encryptionOptions, Map<Message.Type, Message.Codec> codecs)
         {
-            super(server);
+            super(server, codecs);
             this.encryptionOptions = encryptionOptions;
             try
             {
