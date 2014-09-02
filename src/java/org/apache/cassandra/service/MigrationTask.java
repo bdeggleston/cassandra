@@ -21,13 +21,13 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Collection;
 
+import org.apache.cassandra.gms.IFailureDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.db.DefsTables;
-import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
@@ -40,17 +40,23 @@ class MigrationTask extends WrappedRunnable
     private static final Logger logger = LoggerFactory.getLogger(MigrationTask.class);
 
     private final InetAddress endpoint;
+    private final DefsTables defsTables;
+    private final IFailureDetector failureDetector;
+    private final MessagingService messagingService;
 
-    MigrationTask(InetAddress endpoint)
+    MigrationTask(InetAddress endpoint, DefsTables defsTables, IFailureDetector failureDetector, MessagingService messagingService)
     {
         this.endpoint = endpoint;
+        this.defsTables = defsTables;
+        this.failureDetector = failureDetector;
+        this.messagingService = messagingService;
     }
 
     public void runMayThrow() throws Exception
     {
         MessageOut message = new MessageOut<>(MessagingService.Verb.MIGRATION_REQUEST, null, MigrationManager.MigrationsSerializer.instance);
 
-        if (!FailureDetector.instance.isAlive(endpoint))
+        if (!failureDetector.isAlive(endpoint))
         {
             logger.error("Can't send migration request: node {} is down.", endpoint);
             return;
@@ -63,7 +69,7 @@ class MigrationTask extends WrappedRunnable
             {
                 try
                 {
-                    DefsTables.instance.mergeSchema(message.payload);
+                    defsTables.mergeSchema(message.payload);
                 }
                 catch (IOException e)
                 {
@@ -81,6 +87,6 @@ class MigrationTask extends WrappedRunnable
                 return false;
             }
         };
-        MessagingService.instance.sendRR(message, endpoint, cb);
+        messagingService.sendRR(message, endpoint, cb);
     }
 }

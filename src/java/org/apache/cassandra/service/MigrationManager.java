@@ -135,7 +135,7 @@ public class MigrationManager
          * Do not de-ref the future because that causes distributed deadlock (CASSANDRA-3832) because we are
          * running in the gossip stage.
          */
-        return StageManager.instance.getStage(Stage.MIGRATION).submit(new MigrationTask(endpoint));
+        return StageManager.instance.getStage(Stage.MIGRATION).submit(new MigrationTask(endpoint, DefsTables.instance, FailureDetector.instance, MessagingService.instance));
     }
 
     private boolean shouldPullSchemaFrom(InetAddress endpoint)
