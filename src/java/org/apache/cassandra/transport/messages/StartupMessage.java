@@ -23,7 +23,6 @@ import java.util.Map;
 import io.netty.buffer.ByteBuf;
 
 import org.apache.cassandra.auth.IAuthenticator;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.transport.*;
 import org.apache.cassandra.utils.SemanticVersion;

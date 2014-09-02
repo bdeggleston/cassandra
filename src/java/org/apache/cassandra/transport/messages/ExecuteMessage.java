@@ -26,7 +26,6 @@ import io.netty.buffer.ByteBuf;
 
 import org.apache.cassandra.cql3.CQLStatement;
 import org.apache.cassandra.cql3.QueryHandler;
-import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.statements.ParsedStatement;
 import org.apache.cassandra.db.ConsistencyLevel;
@@ -39,8 +38,18 @@ import org.apache.cassandra.utils.UUIDGen;
 
 public class ExecuteMessage extends Message.Request
 {
-    public static final Message.Codec<ExecuteMessage> codec = new Message.Codec<ExecuteMessage>()
+    public static class Codec implements Message.Codec<ExecuteMessage>
     {
+        private final Tracing tracing;
+        private final QueryHandler queryHandler;
+
+        public Codec(Tracing tracing, QueryHandler queryHandler)
+        {
+            this.tracing = tracing;
+            this.queryHandler = queryHandler;
+        }
+
+        @Override
         public ExecuteMessage decode(ByteBuf body, int version)
         {
             byte[] id = CBUtil.readBytes(body);
@@ -48,14 +57,15 @@ public class ExecuteMessage extends Message.Request
             {
                 List<ByteBuffer> values = CBUtil.readValueList(body);
                 ConsistencyLevel consistency = CBUtil.readConsistencyLevel(body);
-                return new ExecuteMessage(MD5Digest.wrap(id), QueryOptions.fromProtocolV1(consistency, values));
+                return new ExecuteMessage(MD5Digest.wrap(id), QueryOptions.fromProtocolV1(consistency, values), tracing, queryHandler);
             }
             else
             {
-                return new ExecuteMessage(MD5Digest.wrap(id), QueryOptions.codec.decode(body, version));
+                return new ExecuteMessage(MD5Digest.wrap(id), QueryOptions.codec.decode(body, version), tracing, queryHandler);
             }
         }
 
+        @Override
         public void encode(ExecuteMessage msg, ByteBuf dest, int version)
         {
             CBUtil.writeBytes(msg.statementId.bytes, dest);
@@ -70,6 +80,7 @@ public class ExecuteMessage extends Message.Request
             }
         }
 
+        @Override
         public int encodedSize(ExecuteMessage msg, int version)
         {
             int size = 0;
@@ -90,19 +101,23 @@ public class ExecuteMessage extends Message.Request
     public final MD5Digest statementId;
     public final QueryOptions options;
 
-    public ExecuteMessage(MD5Digest statementId, QueryOptions options)
+    private final Tracing tracing;
+    private final QueryHandler queryHandler;
+
+    public ExecuteMessage(MD5Digest statementId, QueryOptions options, Tracing tracing, QueryHandler queryHandler)
     {
         super(Message.Type.EXECUTE);
         this.statementId = statementId;
         this.options = options;
+        this.tracing = tracing;
+        this.queryHandler = queryHandler;
     }
 
     public Message.Response execute(QueryState state)
     {
         try
         {
-            QueryHandler handler = QueryHandlerInstance.instance;
-            ParsedStatement.Prepared prepared = handler.getPrepared(statementId);
+            ParsedStatement.Prepared prepared = queryHandler.getPrepared(statementId);
             if (prepared == null)
                 throw new PreparedQueryNotFoundException(statementId);
 
@@ -128,10 +143,10 @@ public class ExecuteMessage extends Message.Request
                     builder.put("page_size", Integer.toString(options.getPageSize()));
 
                 // TODO we don't have [typed] access to CQL bind variables here.  CASSANDRA-4560 is open to add support.
-                Tracing.instance.begin("Execute CQL3 prepared query", builder.build());
+                tracing.begin("Execute CQL3 prepared query", builder.build());
             }
 
-            Message.Response response = handler.processPrepared(statement, state, options);
+            Message.Response response = queryHandler.processPrepared(statement, state, options);
             if (options.skipMetadata() && response instanceof ResultMessage.Rows)
                 ((ResultMessage.Rows)response).result.metadata.setSkipMetadata();
 
@@ -146,7 +161,7 @@ public class ExecuteMessage extends Message.Request
         }
         finally
         {
-            Tracing.instance.stopSession();
+            tracing.stopSession();
         }
     }
 

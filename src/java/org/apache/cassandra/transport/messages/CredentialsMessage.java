@@ -22,7 +22,6 @@ import java.util.Map;
 
 import org.apache.cassandra.auth.AuthenticatedUser;
 import org.apache.cassandra.auth.IAuthenticator;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.transport.ProtocolException;
 import io.netty.buffer.ByteBuf;
 
