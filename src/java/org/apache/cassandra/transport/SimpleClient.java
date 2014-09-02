@@ -160,7 +160,7 @@ public class SimpleClient
 
     public ResultMessage execute(String query, List<ByteBuffer> values, ConsistencyLevel consistencyLevel)
     {
-        Message.Response msg = execute(new QueryMessage(query, QueryOptions.forInternalCalls(consistencyLevel, values)));
+        Message.Response msg = execute(new QueryMessage(query, QueryOptions.forInternalCalls(consistencyLevel, values), Tracing.instance, QueryHandlerInstance.instance));
         assert msg instanceof ResultMessage;
         return (ResultMessage)msg;
     }

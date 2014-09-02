@@ -24,7 +24,7 @@ import java.util.UUID;
 import com.google.common.collect.ImmutableMap;
 import io.netty.buffer.ByteBuf;
 
-import org.apache.cassandra.cql3.QueryHandlerInstance;
+import org.apache.cassandra.cql3.QueryHandler;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.exceptions.*;
@@ -38,22 +38,33 @@ import org.apache.cassandra.utils.UUIDGen;
  */
 public class QueryMessage extends Message.Request
 {
-    public static final Message.Codec<QueryMessage> codec = new Message.Codec<QueryMessage>()
+    public static class Codec implements Message.Codec<QueryMessage>
     {
+        private final Tracing tracing;
+        private final QueryHandler queryHandler;
+
+        public Codec(Tracing tracing, QueryHandler queryHandler)
+        {
+            this.tracing = tracing;
+            this.queryHandler = queryHandler;
+        }
+
+        @Override
         public QueryMessage decode(ByteBuf body, int version)
         {
             String query = CBUtil.readLongString(body);
             if (version == 1)
             {
                 ConsistencyLevel consistency = CBUtil.readConsistencyLevel(body);
-                return new QueryMessage(query, QueryOptions.fromProtocolV1(consistency, Collections.<ByteBuffer>emptyList()));
+                return new QueryMessage(query, QueryOptions.fromProtocolV1(consistency, Collections.<ByteBuffer>emptyList()), tracing, queryHandler);
             }
             else
             {
-                return new QueryMessage(query, QueryOptions.codec.decode(body, version));
+                return new QueryMessage(query, QueryOptions.codec.decode(body, version), tracing, queryHandler);
             }
         }
 
+        @Override
         public void encode(QueryMessage msg, ByteBuf dest, int version)
         {
             CBUtil.writeLongString(msg.query, dest);
@@ -63,6 +74,7 @@ public class QueryMessage extends Message.Request
                 QueryOptions.codec.encode(msg.options, dest, version);
         }
 
+        @Override
         public int encodedSize(QueryMessage msg, int version)
         {
             int size = CBUtil.sizeOfLongString(msg.query);
@@ -81,12 +93,16 @@ public class QueryMessage extends Message.Request
 
     public final String query;
     public final QueryOptions options;
+    private final Tracing tracing;
+    private final QueryHandler queryHandler;
 
-    public QueryMessage(String query, QueryOptions options)
+    public QueryMessage(String query, QueryOptions options, Tracing tracing, QueryHandler queryHandler)
     {
         super(Type.QUERY);
         this.query = query;
         this.options = options;
+        this.tracing = tracing;
+        this.queryHandler = queryHandler;
     }
 
     public Message.Response execute(QueryState state)
@@ -112,10 +128,10 @@ public class QueryMessage extends Message.Request
                 if (options.getPageSize() > 0)
                     builder.put("page_size", Integer.toString(options.getPageSize()));
 
-                Tracing.instance.begin("Execute CQL3 query", builder.build());
+                tracing.begin("Execute CQL3 query", builder.build());
             }
 
-            Message.Response response = QueryHandlerInstance.instance.process(query, state, options);
+            Message.Response response = queryHandler.process(query, state, options);
             if (options.skipMetadata() && response instanceof ResultMessage.Rows)
                 ((ResultMessage.Rows)response).result.metadata.setSkipMetadata();
 
@@ -132,7 +148,7 @@ public class QueryMessage extends Message.Request
         }
         finally
         {
-            Tracing.instance.stopSession();
+            tracing.stopSession();
         }
     }
 

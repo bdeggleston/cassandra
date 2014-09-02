@@ -132,7 +132,7 @@ public abstract class Message
             codecs.put(Type.CREDENTIALS, new CredentialsMessage.Codec(DatabaseDescriptor.instance.getAuthenticator()));
             codecs.put(Type.OPTIONS, OptionsMessage.codec);
             codecs.put(Type.SUPPORTED, SupportedMessage.codec);
-            codecs.put(Type.QUERY, QueryMessage.codec);
+            codecs.put(Type.QUERY, new QueryMessage.Codec(Tracing.instance, QueryHandlerInstance.instance));
             codecs.put(Type.RESULT, ResultMessage.codec);
             codecs.put(Type.PREPARE, new PrepareMessage.Codec(Tracing.instance, QueryHandlerInstance.instance));
             codecs.put(Type.EXECUTE, new ExecuteMessage.Codec(Tracing.instance, QueryHandlerInstance.instance));
