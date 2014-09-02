@@ -30,10 +30,21 @@ import org.apache.cassandra.tracing.Tracing;
 
 public class PrepareVerbHandler implements IVerbHandler<Commit>
 {
+    private final Tracing tracing;
+    private final SystemKeyspace systemKeyspace;
+    private final MessagingService messagingService;
+
+    public PrepareVerbHandler(Tracing tracing, SystemKeyspace systemKeyspace, MessagingService messagingService)
+    {
+        this.tracing = tracing;
+        this.systemKeyspace = systemKeyspace;
+        this.messagingService = messagingService;
+    }
+
     public void doVerb(MessageIn<Commit> message, int id)
     {
-        PrepareResponse response = PaxosState.prepare(message.payload, Tracing.instance, SystemKeyspace.instance);
+        PrepareResponse response = PaxosState.prepare(message.payload, tracing, systemKeyspace);
         MessageOut<PrepareResponse> reply = new MessageOut<PrepareResponse>(MessagingService.Verb.REQUEST_RESPONSE, response, PrepareResponse.serializer);
-        MessagingService.instance.sendReply(reply, id, message.from);
+        messagingService.sendReply(reply, id, message.from);
     }
 }

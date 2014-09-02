@@ -214,7 +214,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAGED_RANGE, new RangeSliceVerbHandler(Tracing.instance, MessagingService.instance, this));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.COUNTER_MUTATION, new CounterMutationVerbHandler(DatabaseDescriptor.instance, MessagingService.instance, StorageProxy.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.TRUNCATE, new TruncateVerbHandler(Tracing.instance, KeyspaceManager.instance, MessagingService.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PREPARE, new PrepareVerbHandler());
+        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PREPARE, new PrepareVerbHandler(Tracing.instance, SystemKeyspace.instance, MessagingService.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PROPOSE, new ProposeVerbHandler(Tracing.instance, SystemKeyspace.instance, MessagingService.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_COMMIT, new CommitVerbHandler());
 
