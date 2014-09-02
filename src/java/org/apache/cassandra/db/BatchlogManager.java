@@ -72,7 +72,7 @@ public class BatchlogManager implements BatchlogManagerMBean
     private final AtomicLong totalBatchesReplayed = new AtomicLong();
     private final AtomicBoolean isReplaying = new AtomicBoolean();
 
-    public final ScheduledExecutorService batchlogTasks = new DebuggableScheduledThreadPoolExecutor("BatchlogTasks");
+    private final ScheduledExecutorService batchlogTasks = new DebuggableScheduledThreadPoolExecutor("BatchlogTasks");
 
     public void start()
     {
@@ -95,6 +95,12 @@ public class BatchlogManager implements BatchlogManagerMBean
         };
 
         batchlogTasks.scheduleWithFixedDelay(runnable, StorageService.instance.RING_DELAY, REPLAY_INTERVAL, TimeUnit.MILLISECONDS);
+    }
+
+    public void shutdown() throws InterruptedException
+    {
+        batchlogTasks.shutdown();
+        batchlogTasks.awaitTermination(60, TimeUnit.SECONDS);
     }
 
     public int countAllBatches()
