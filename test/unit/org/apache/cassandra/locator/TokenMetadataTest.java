@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import com.google.common.collect.Iterators;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -45,6 +46,7 @@ public class TokenMetadataTest
     @BeforeClass
     public static void beforeClass() throws Throwable
     {
+        DatabaseDescriptor.init();
         tmd = StorageService.instance.getTokenMetadata();
         tmd.updateNormalToken(token(ONE), InetAddress.getByName("127.0.0.1"));
         tmd.updateNormalToken(token(SIX), InetAddress.getByName("127.0.0.6"));

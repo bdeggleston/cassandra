@@ -22,7 +22,9 @@ package org.apache.cassandra.db.context;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.SystemKeyspace;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.Util;
@@ -40,6 +42,13 @@ import static org.junit.Assert.assertTrue;
 
 public class CounterContextTest
 {
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     private static final int headerSizeLength = 2;
     private static final int headerEltLength = 2;
     private static final int idLength = 16;

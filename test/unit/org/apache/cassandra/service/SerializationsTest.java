@@ -46,6 +46,7 @@ public class SerializationsTest extends AbstractSerializationsTester
     static
     {
         System.setProperty("cassandra.partitioner", "RandomPartitioner");
+        DatabaseDescriptor.init();
     }
 
     private static final UUID RANDOM_UUID = UUID.fromString("b5c3d033-75aa-4c2f-a819-947aac7a0c54");

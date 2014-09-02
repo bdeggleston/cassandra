@@ -63,6 +63,7 @@ public class RemoveTest
     public static void setupClass() throws ConfigurationException
     {
         System.setProperty("cassandra.ring_delay_ms", "2000");
+        DatabaseDescriptor.init();
         oldPartitioner = StorageService.instance.setPartitionerUnsafe(partitioner);
         SchemaLoader.loadSchema();
     }

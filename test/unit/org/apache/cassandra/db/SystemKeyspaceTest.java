@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.dht.BytesToken;
@@ -38,6 +39,13 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class SystemKeyspaceTest
 {
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     @Test
     public void testLocalTokens()
     {

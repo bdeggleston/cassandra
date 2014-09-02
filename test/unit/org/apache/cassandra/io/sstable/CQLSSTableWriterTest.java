@@ -46,7 +46,7 @@ public class CQLSSTableWriterTest
     @BeforeClass
     public static void setup() throws Exception
     {
-        assert Gossiper.instance != null;
+        DatabaseDescriptor.init();
         KeyspaceManager.instance.setInitialized();
         StorageService.instance.initServer();
     }

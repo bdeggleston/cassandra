@@ -25,7 +25,6 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -38,6 +37,14 @@ import java.util.UUID;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Longs;
+import org.apache.cassandra.concurrent.StageManager;
+import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.gms.FailureDetector;
+import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.cassandra.auth.AllowAllAuthenticator;
@@ -136,6 +143,19 @@ public class DatabaseDescriptor
         }
 
         instance = databaseDescriptor;
+        assert Gossiper.instance != null;
+        assert Tracing.instance != null;
+        assert MessagingService.instance != null;
+        assert DatabaseDescriptor.instance != null;
+        assert SystemKeyspace.instance != null;
+        assert StageManager.instance != null;
+        assert Schema.instance != null;
+        assert KeyspaceManager.instance != null;
+        assert ActiveRepairService.instance != null;
+        assert CompactionManager.instance != null;
+        assert FailureDetector.instance != null;
+        assert DefsTables.instance != null;
+        assert StorageService.instance != null;
     }
 
     public static DatabaseDescriptor create() throws ConfigurationException
@@ -152,6 +172,11 @@ public class DatabaseDescriptor
     public static DatabaseDescriptor create(boolean clientMode, Config conf) throws ConfigurationException
     {
         return new DatabaseDescriptor(clientMode, conf);
+    }
+
+    public static DatabaseDescriptor init()
+    {
+        return instance;
     }
 
     public static Config loadConfig() throws ConfigurationException

@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.Map;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -47,6 +48,7 @@ public class BootStrapperTest
     @BeforeClass
     public static void setup() throws ConfigurationException
     {
+        DatabaseDescriptor.init();
         SchemaLoader.startGossiper();
         SchemaLoader.prepareServer();
         SchemaLoader.schemaDefinition("BootStrapperTest");

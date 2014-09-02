@@ -1,5 +1,7 @@
 package org.apache.cassandra.service;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.exceptions.ConfigurationException;
@@ -25,6 +27,13 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 
 public class InitClientTest // extends CleanupHelper
 {
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     @Test
     public void testInitClientStartup() throws ConfigurationException
     {

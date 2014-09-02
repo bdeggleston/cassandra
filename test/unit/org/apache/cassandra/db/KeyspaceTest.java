@@ -56,8 +56,8 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class KeyspaceTest
 {
-    private static final DecoratedKey TEST_KEY = Util.dk("key1");
-    private static final DecoratedKey TEST_SLICE_KEY = Util.dk("key1-slicerange");
+    private static volatile DecoratedKey TEST_KEY;
+    private static volatile DecoratedKey TEST_SLICE_KEY;
 
     private static final String KEYSPACE1 = "Keyspace1";
     private static final String CF_STANDARD1 = "Standard1";
@@ -71,6 +71,9 @@ public class KeyspaceTest
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
+        DatabaseDescriptor.init();
+        TEST_KEY = Util.dk("key1");
+        TEST_SLICE_KEY = Util.dk("key1-slicerange");
         SchemaLoader.prepareServer();
         AbstractType<?> compositeMaxMin = CompositeType.getInstance(Arrays.asList(new AbstractType<?>[]{BytesType.instance, IntegerType.instance}));
         SchemaLoader.createKeyspace(KEYSPACE1,

@@ -24,7 +24,9 @@ import java.util.List;
 import java.util.Set;
 import static java.util.Arrays.asList;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.commons.lang3.StringUtils;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.db.RowPosition;
@@ -33,6 +35,13 @@ import static org.apache.cassandra.Util.range;
 
 public class RangeTest
 {
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     @Test
     public void testContains()
     {

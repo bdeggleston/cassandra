@@ -23,6 +23,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -55,6 +56,7 @@ public class LeaveAndBootstrapTest
     @BeforeClass
     public static void defineSchema() throws Exception
     {
+        DatabaseDescriptor.init();
         oldPartitioner = StorageService.instance.setPartitionerUnsafe(partitioner);
         SchemaLoader.loadSchema();
         SchemaLoader.schemaDefinition("LeaveAndBootstrapTest");

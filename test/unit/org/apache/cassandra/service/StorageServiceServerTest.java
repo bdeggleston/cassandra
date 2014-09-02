@@ -56,6 +56,7 @@ public class StorageServiceServerTest
     @BeforeClass
     public static void setUp() throws ConfigurationException
     {
+        DatabaseDescriptor.init();
         IEndpointSnitch snitch = new PropertyFileSnitch();
         DatabaseDescriptor.instance.setEndpointSnitch(snitch);
         KeyspaceManager.instance.setInitialized();

@@ -21,6 +21,7 @@ package org.apache.cassandra.dht;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -38,7 +39,7 @@ public abstract class PartitionerTestCase<T extends Token>
     @BeforeClass
     public static void setupClass()
     {
-        SystemKeyspace systemKeyspace = SystemKeyspace.instance;
+        DatabaseDescriptor.init();
     }
 
     @Before

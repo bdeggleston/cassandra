@@ -21,6 +21,7 @@ package org.apache.cassandra.service;
 import java.net.InetAddress;
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
@@ -83,6 +84,7 @@ public class StorageProxyTest
     @BeforeClass
     public static void beforeClass() throws Throwable
     {
+        DatabaseDescriptor.init();
         TokenMetadata tmd = StorageService.instance.getTokenMetadata();
         tmd.updateNormalToken(token("1"), InetAddress.getByName("127.0.0.1"));
         tmd.updateNormalToken(token("6"), InetAddress.getByName("127.0.0.6"));
