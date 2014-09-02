@@ -39,8 +39,20 @@ import org.apache.cassandra.utils.UUIDGen;
 
 public class BatchMessage extends Message.Request
 {
-    public static final Message.Codec<BatchMessage> codec = new Message.Codec<BatchMessage>()
+    public static class Codec implements Message.Codec<BatchMessage>
     {
+        private final Tracing tracing;
+        private final QueryProcessor queryProcessor;
+        private final QueryHandler queryHandler;
+
+        public Codec(Tracing tracing, QueryProcessor queryProcessor, QueryHandler queryHandler)
+        {
+            this.tracing = tracing;
+            this.queryProcessor = queryProcessor;
+            this.queryHandler = queryHandler;
+        }
+
+        @Override
         public BatchMessage decode(ByteBuf body, int version)
         {
             if (version == 1)
@@ -65,9 +77,10 @@ public class BatchMessage extends Message.Request
                                  ? QueryOptions.fromPreV3Batch(CBUtil.readConsistencyLevel(body))
                                  : QueryOptions.codec.decode(body, version);
 
-            return new BatchMessage(toType(type), queryOrIds, variables, options);
+            return new BatchMessage(toType(type), queryOrIds, variables, options, tracing, queryProcessor, queryHandler);
         }
 
+        @Override
         public void encode(BatchMessage msg, ByteBuf dest, int version)
         {
             int queries = msg.queryOrIdList.size();
@@ -93,6 +106,7 @@ public class BatchMessage extends Message.Request
                 QueryOptions.codec.encode(msg.options, dest, version);
         }
 
+        @Override
         public int encodedSize(BatchMessage msg, int version)
         {
             int size = 3; // type + nb queries
@@ -141,13 +155,20 @@ public class BatchMessage extends Message.Request
     public final List<List<ByteBuffer>> values;
     public final QueryOptions options;
 
-    public BatchMessage(BatchStatement.Type type, List<Object> queryOrIdList, List<List<ByteBuffer>> values, QueryOptions options)
+    private final Tracing tracing;
+    private final QueryProcessor queryProcessor;
+    private final QueryHandler queryHandler;
+
+    public BatchMessage(BatchStatement.Type type, List<Object> queryOrIdList, List<List<ByteBuffer>> values, QueryOptions options, Tracing tracing, QueryProcessor queryProcessor, QueryHandler queryHandler)
     {
         super(Message.Type.BATCH);
         this.batchType = type;
         this.queryOrIdList = queryOrIdList;
         this.values = values;
         this.options = options;
+        this.tracing = tracing;
+        this.queryProcessor = queryProcessor;
+        this.queryHandler = queryHandler;
     }
 
     public Message.Response execute(QueryState state)
@@ -165,10 +186,9 @@ public class BatchMessage extends Message.Request
             {
                 state.createTracingSession();
                 // TODO we don't have [typed] access to CQL bind variables here.  CASSANDRA-4560 is open to add support.
-                Tracing.instance.begin("Execute batch of CQL3 queries", Collections.<String, String>emptyMap());
+                tracing.begin("Execute batch of CQL3 queries", Collections.<String, String>emptyMap());
             }
 
-            QueryHandler handler = QueryHandlerInstance.instance;
             List<ParsedStatement.Prepared> prepared = new ArrayList<>(queryOrIdList.size());
             for (int i = 0; i < queryOrIdList.size(); i++)
             {
@@ -176,11 +196,11 @@ public class BatchMessage extends Message.Request
                 ParsedStatement.Prepared p;
                 if (query instanceof String)
                 {
-                    p = QueryProcessor.instance.parseStatement((String)query, state);
+                    p = queryProcessor.parseStatement((String)query, state);
                 }
                 else
                 {
-                    p = handler.getPrepared((MD5Digest)query);
+                    p = queryHandler.getPrepared((MD5Digest)query);
                     if (p == null)
                         throw new PreparedQueryNotFoundException((MD5Digest)query);
                 }
@@ -210,7 +230,7 @@ public class BatchMessage extends Message.Request
             // Note: It's ok at this point to pass a bogus value for the number of bound terms in the BatchState ctor
             // (and no value would be really correct, so we prefer passing a clearly wrong one).
             BatchStatement batch = new BatchStatement(-1, batchType, statements, Attributes.none());
-            Message.Response response = handler.processBatch(batch, state, batchOptions);
+            Message.Response response = queryHandler.processBatch(batch, state, batchOptions);
 
             if (tracingId != null)
                 response.setTracingId(tracingId);
@@ -223,7 +243,7 @@ public class BatchMessage extends Message.Request
         }
         finally
         {
-            Tracing.instance.stopSession();
+            tracing.stopSession();
         }
     }
 

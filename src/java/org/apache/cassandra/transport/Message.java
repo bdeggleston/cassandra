@@ -29,6 +29,9 @@ import io.netty.channel.*;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.cql3.QueryHandlerInstance;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,7 +138,7 @@ public abstract class Message
             codecs.put(Type.EXECUTE, ExecuteMessage.codec);
             codecs.put(Type.REGISTER, RegisterMessage.codec);
             codecs.put(Type.EVENT, EventMessage.codec);
-            codecs.put(Type.BATCH, BatchMessage.codec);
+            codecs.put(Type.BATCH, new BatchMessage.Codec(Tracing.instance, QueryProcessor.instance, QueryHandlerInstance.instance));
             codecs.put(Type.AUTH_CHALLENGE, AuthChallenge.codec);
             codecs.put(Type.AUTH_RESPONSE, AuthResponse.codec);
             codecs.put(Type.AUTH_SUCCESS, AuthSuccess.codec);
