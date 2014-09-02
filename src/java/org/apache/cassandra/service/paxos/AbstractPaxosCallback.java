@@ -35,11 +35,13 @@ public abstract class AbstractPaxosCallback<T> implements IAsyncCallback<T>
     protected final CountDownLatch latch;
     protected final int targets;
     private final ConsistencyLevel consistency;
+    private final long writeRpcTimeout;
 
-    public AbstractPaxosCallback(int targets, ConsistencyLevel consistency)
+    public AbstractPaxosCallback(int targets, ConsistencyLevel consistency, long writeRpcTimeout)
     {
         this.targets = targets;
         this.consistency = consistency;
+        this.writeRpcTimeout = writeRpcTimeout;
         latch = new CountDownLatch(targets);
     }
 
@@ -57,7 +59,7 @@ public abstract class AbstractPaxosCallback<T> implements IAsyncCallback<T>
     {
         try
         {
-            if (!latch.await(DatabaseDescriptor.instance.getWriteRpcTimeout(), TimeUnit.MILLISECONDS))
+            if (!latch.await(writeRpcTimeout, TimeUnit.MILLISECONDS))
                 throw new WriteTimeoutException(WriteType.CAS, consistency, getResponseCount(), targets);
         }
         catch (InterruptedException ex)
