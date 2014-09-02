@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.primitives.Ints;
 
@@ -83,20 +84,30 @@ public class QueryProcessor implements QueryHandler
     // bother with expiration on those.
     private final ConcurrentMap<String, ParsedStatement.Prepared> internalStatements = new ConcurrentHashMap<>();
 
+    private final AtomicReference<QueryState> queryState = new AtomicReference<>();
+
     private QueryState internalQueryState()
     {
-        ClientState state = ClientState.forInternalCalls();
-        try
+        QueryState qs = queryState.get();
+        if (qs == null)
         {
-            state.setKeyspace(Keyspace.SYSTEM_KS);
-        }
-        catch (InvalidRequestException e)
-        {
-            throw new RuntimeException(e);
-        }
-        return new QueryState(state);
-    }
+            ClientState state = ClientState.forInternalCalls();
+            try
+            {
+                state.setKeyspace(Keyspace.SYSTEM_KS);
+            }
+            catch (InvalidRequestException e)
+            {
+                throw new RuntimeException(e);
+            }
+            qs = new QueryState(state);
 
+            if (!queryState.compareAndSet(null, qs))
+                qs = queryState.get();
+        }
+
+        return qs;
+    }
 
     private QueryProcessor()
     {
@@ -108,17 +119,6 @@ public class QueryProcessor implements QueryHandler
                 .maximumWeightedCapacity(MAX_CACHE_PREPARED_MEMORY)
                 .weigher(thriftMemoryUsageWeigher)
                 .build();
-
-//        ClientState state = ClientState.forInternalCalls();
-//        try
-//        {
-//            state.setKeyspace(Keyspace.SYSTEM_KS);
-//        }
-//        catch (InvalidRequestException e)
-//        {
-//            throw new RuntimeException(e);
-//        }
-//        queryState = new QueryState(state);
     }
 
     public ParsedStatement.Prepared getPrepared(MD5Digest id)
