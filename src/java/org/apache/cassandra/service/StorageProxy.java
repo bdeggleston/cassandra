@@ -2087,7 +2087,7 @@ public class StorageProxy implements StorageProxyMBean
                         LocalMutationRunnable.this.runMayThrow();
                     }
                 };
-                StorageProxy.instance.submitHint(runnable);
+                storageProxy.submitHint(runnable);
                 return;
             }
 
@@ -2133,7 +2133,7 @@ public class StorageProxy implements StorageProxyMBean
             finally
             {
                 StorageMetrics.totalHintsInProgress.dec();
-                StorageProxy.instance.getHintsInProgressFor(target).decrementAndGet();
+                storageProxy.getHintsInProgressFor(target).decrementAndGet();
             }
         }
 
