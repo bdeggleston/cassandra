@@ -20,12 +20,10 @@ package org.apache.cassandra.triggers;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.*;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.config.TriggerDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.marshal.CompositeType;
@@ -39,6 +37,13 @@ import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
 
 public class TriggerExecutorTest
 {
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     @Test
     public void sameKeySameCfColumnFamilies() throws ConfigurationException, InvalidRequestException
     {

@@ -18,7 +18,9 @@
 */
 package org.apache.cassandra.config;
 
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -36,6 +38,13 @@ import static org.junit.Assert.assertNull;
 @RunWith(OrderedJUnit4ClassRunner.class)
 public class DatabaseDescriptorTest
 {
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     @Test
     public void testCFMetaDataSerialization() throws Exception
     {
@@ -56,6 +65,8 @@ public class DatabaseDescriptorTest
     {
         for (KSMetaData ksm : Schema.instance.getKeyspaceDefinitions())
         {
+            if (ksm.name.equals(Keyspace.SYSTEM_KS))
+                continue;
             // Not testing round-trip on the KsDef via serDe() because maps
             KSMetaData ksmDupe = KSMetaData.fromThrift(ksm.toThrift());
             assertNotNull(ksmDupe);

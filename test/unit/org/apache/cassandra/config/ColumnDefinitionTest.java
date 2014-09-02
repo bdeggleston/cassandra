@@ -21,6 +21,7 @@ package org.apache.cassandra.config;
  */
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.config.CFMetaData;
@@ -29,6 +30,13 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class ColumnDefinitionTest
 {
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     @Test
     public void testSerializeDeserialize() throws Exception
     {
