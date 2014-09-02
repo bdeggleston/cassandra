@@ -31,12 +31,25 @@ import org.apache.cassandra.tracing.Tracing;
 
 public class CommitVerbHandler implements IVerbHandler<Commit>
 {
+    private final Tracing tracing;
+    private final SystemKeyspace systemKeyspace;
+    private final KeyspaceManager keyspaceManager;
+    private final MessagingService messagingService;
+
+    public CommitVerbHandler(Tracing tracing, SystemKeyspace systemKeyspace, KeyspaceManager keyspaceManager, MessagingService messagingService)
+    {
+        this.tracing = tracing;
+        this.systemKeyspace = systemKeyspace;
+        this.keyspaceManager = keyspaceManager;
+        this.messagingService = messagingService;
+    }
+
     public void doVerb(MessageIn<Commit> message, int id)
     {
-        PaxosState.commit(message.payload, Tracing.instance, SystemKeyspace.instance, KeyspaceManager.instance);
+        PaxosState.commit(message.payload, tracing, systemKeyspace, keyspaceManager);
 
         WriteResponse response = new WriteResponse();
-        Tracing.instance.trace("Enqueuing acknowledge to {}", message.from);
-        MessagingService.instance.sendReply(response.createMessage(), id, message.from);
+        tracing.trace("Enqueuing acknowledge to {}", message.from);
+        messagingService.sendReply(response.createMessage(), id, message.from);
     }
 }
