@@ -23,8 +23,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.locator.SimpleStrategy;
 
+import org.apache.cassandra.service.StorageService;
 import org.junit.Test;
 
 import static org.junit.Assert.assertTrue;
@@ -43,7 +46,12 @@ public class KSMetaDataTest
                                             SimpleStrategy.class,
                                             options,
                                             true,
-                                            Collections.<CFMetaData>emptyList());
+                                            Collections.<CFMetaData>emptyList(),
+                                            DatabaseDescriptor.instance,
+                                            QueryProcessor.instance,
+                                            StorageService.instance,
+                                            SystemKeyspace.instance,
+                                            CFMetaDataFactory.instance);
 
         assertTrue(ksMeta.toString().contains(options.toString()));
     }

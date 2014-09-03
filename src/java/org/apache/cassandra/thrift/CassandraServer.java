@@ -1592,7 +1592,7 @@ public class CassandraServer implements Cassandra.Iface
 
                 cfDefs.add(cfm);
             }
-            MigrationManager.instance.announceNewKeyspace(KSMetaData.fromThrift(ks_def, cfDefs.toArray(new CFMetaData[cfDefs.size()])));
+            MigrationManager.instance.announceNewKeyspace(KSMetaDataFactory.instance.fromThrift(ks_def, cfDefs.toArray(new CFMetaData[cfDefs.size()])));
             return Schema.instance.getVersion().toString();
         }
         catch (RequestValidationException e)
@@ -1636,7 +1636,7 @@ public class CassandraServer implements Cassandra.Iface
             if (ks_def.getCf_defs() != null && ks_def.getCf_defs().size() > 0)
                 throw new InvalidRequestException("Keyspace update must not contain any table definitions.");
 
-            MigrationManager.instance.announceKeyspaceUpdate(KSMetaData.fromThrift(ks_def));
+            MigrationManager.instance.announceKeyspaceUpdate(KSMetaDataFactory.instance.fromThrift(ks_def));
             return Schema.instance.getVersion().toString();
         }
         catch (RequestValidationException e)

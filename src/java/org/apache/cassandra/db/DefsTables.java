@@ -280,7 +280,7 @@ public class DefsTables
 
             if (cfAttrs.hasColumns())
             {
-               Map<String, CFMetaData> cfDefs = KSMetaData.deserializeColumnFamilies(new Row(entry.getKey(), cfAttrs));
+               Map<String, CFMetaData> cfDefs = KSMetaDataFactory.instance.deserializeColumnFamilies(new Row(entry.getKey(), cfAttrs));
 
                 for (CFMetaData cfDef : cfDefs.values())
                     addColumnFamily(cfDef);
@@ -301,12 +301,12 @@ public class DefsTables
 
             if (!prevValue.hasColumns()) // whole keyspace was deleted and now it's re-created
             {
-                for (CFMetaData cfm : KSMetaData.deserializeColumnFamilies(newRow).values())
+                for (CFMetaData cfm : KSMetaDataFactory.instance.deserializeColumnFamilies(newRow).values())
                     addColumnFamily(cfm);
             }
             else if (!newValue.hasColumns()) // whole keyspace is deleted
             {
-                for (CFMetaData cfm : KSMetaData.deserializeColumnFamilies(new Row(keyspace, prevValue)).values())
+                for (CFMetaData cfm : KSMetaDataFactory.instance.deserializeColumnFamilies(new Row(keyspace, prevValue)).values())
                     dropColumnFamily(cfm.ksName, cfm.cfName);
             }
             else // has modifications in the nested ColumnFamilies, need to perform nested diff to determine what was really changed
@@ -317,7 +317,7 @@ public class DefsTables
                 for (CFMetaData cfm : Schema.instance.getKSMetaData(ksName).cfMetaData().values())
                     oldCfDefs.put(cfm.cfName, cfm);
 
-                Map<String, CFMetaData> newCfDefs = KSMetaData.deserializeColumnFamilies(newRow);
+                Map<String, CFMetaData> newCfDefs = KSMetaDataFactory.instance.deserializeColumnFamilies(newRow);
 
                 MapDifference<String, CFMetaData> cfDefDiff = Maps.difference(oldCfDefs, newCfDefs);
 

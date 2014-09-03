@@ -68,7 +68,7 @@ public class DatabaseDescriptorTest
             if (ksm.name.equals(Keyspace.SYSTEM_KS))
                 continue;
             // Not testing round-trip on the KsDef via serDe() because maps
-            KSMetaData ksmDupe = KSMetaData.fromThrift(ksm.toThrift());
+            KSMetaData ksmDupe = KSMetaDataFactory.instance.fromThrift(ksm.toThrift());
             assertNotNull(ksmDupe);
             assertEquals(ksm, ksmDupe);
         }
