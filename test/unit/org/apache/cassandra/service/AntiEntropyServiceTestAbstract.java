@@ -25,7 +25,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.Sets;
+import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.repair.RepairJobDesc;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
