@@ -143,7 +143,7 @@ public abstract class UDFunction extends AbstractFunction
         Mutation mutation = makeSchemaMutation(name);
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_FUNCTIONS_CF);
 
-        Composite prefix = CFMetaData.SchemaFunctionsCf.comparator.make(computeSignature(argTypes));
+        Composite prefix = CFMetaDataFactory.instance.SchemaFunctionsCf.comparator.make(computeSignature(argTypes));
         int ldt = (int) (System.currentTimeMillis() / 1000);
         cf.addAtom(new RangeTombstone(prefix, prefix.end(), timestamp, ldt));
 
