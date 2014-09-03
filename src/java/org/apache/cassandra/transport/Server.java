@@ -29,6 +29,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
 import io.netty.util.Version;
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.tracing.Tracing;
@@ -73,7 +74,8 @@ public class Server implements CassandraDaemon.Server
     {
         public Connection newConnection(Channel channel, int version)
         {
-            return new ServerConnection(channel, version, connectionTracker);
+            return new ServerConnection(channel, version, connectionTracker,
+                                        Tracing.instance, DatabaseDescriptor.instance.getAuthenticator(), Auth.instance);
         }
     };
 

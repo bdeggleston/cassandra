@@ -25,7 +25,6 @@ import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.auth.IAuthenticator;
 import org.apache.cassandra.auth.ISaslAwareAuthenticator;
 import org.apache.cassandra.auth.ISaslAwareAuthenticator.SaslAuthenticator;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
 
@@ -42,11 +41,16 @@ public class ServerConnection extends Connection
 
     private final ConcurrentMap<Integer, QueryState> queryStates = new NonBlockingHashMap<Integer, QueryState>();
 
-    public ServerConnection(Channel channel, int version, Connection.Tracker tracker)
+    private final Tracing tracing;
+    private final IAuthenticator authenticator;
+
+    public ServerConnection(Channel channel, int version, Connection.Tracker tracker, Tracing tracing, IAuthenticator authenticator, Auth auth)
     {
         super(channel, version, tracker);
-        this.clientState = ClientState.forExternalCalls(channel.remoteAddress(), Auth.instance);
+        this.clientState = ClientState.forExternalCalls(channel.remoteAddress(), auth);
         this.state = State.UNINITIALIZED;
+        this.tracing = tracing;
+        this.authenticator = authenticator;
     }
 
     private QueryState getQueryState(int streamId)
@@ -55,7 +59,7 @@ public class ServerConnection extends Connection
         if (qState == null)
         {
             // In theory we shouldn't get any race here, but it never hurts to be careful
-            QueryState newState = new QueryState(clientState, Tracing.instance);
+            QueryState newState = new QueryState(clientState, tracing);
             if ((qState = queryStates.putIfAbsent(streamId, newState)) == null)
                 qState = newState;
         }
@@ -120,7 +124,6 @@ public class ServerConnection extends Connection
     {
         if (saslAuthenticator == null)
         {
-            IAuthenticator authenticator = DatabaseDescriptor.instance.getAuthenticator();
             assert authenticator instanceof ISaslAwareAuthenticator : "Configured IAuthenticator does not support SASL authentication";
             saslAuthenticator = ((ISaslAwareAuthenticator)authenticator).newAuthenticator();
         }
