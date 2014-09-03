@@ -18,6 +18,7 @@
 package org.apache.cassandra.streaming;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
@@ -33,7 +34,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,11 +58,11 @@ public class ConnectionHandler
     private IncomingMessageHandler incoming;
     private OutgoingMessageHandler outgoing;
 
-    ConnectionHandler(StreamSession session)
+    ConnectionHandler(StreamSession session, InetAddress broadcastAddress)
     {
         this.session = session;
-        this.incoming = new IncomingMessageHandler(session);
-        this.outgoing = new OutgoingMessageHandler(session);
+        this.incoming = new IncomingMessageHandler(session, broadcastAddress);
+        this.outgoing = new OutgoingMessageHandler(session, broadcastAddress);
     }
 
     /**
@@ -140,15 +140,17 @@ public class ConnectionHandler
     abstract static class MessageHandler implements Runnable
     {
         protected final StreamSession session;
+        protected final InetAddress broadcastAddress;
 
         protected int protocolVersion;
         protected Socket socket;
 
         private final AtomicReference<SettableFuture<?>> closeFuture = new AtomicReference<>();
 
-        protected MessageHandler(StreamSession session)
+        protected MessageHandler(StreamSession session, InetAddress broadcastAddress)
         {
             this.session = session;
+            this.broadcastAddress = broadcastAddress;
         }
 
         protected abstract String name();
@@ -174,7 +176,7 @@ public class ConnectionHandler
         public void sendInitMessage(Socket socket, boolean isForOutgoing) throws IOException
         {
             StreamInitMessage message = new StreamInitMessage(
-                    DatabaseDescriptor.instance.getBroadcastAddress(),
+                    broadcastAddress,
                     session.sessionIndex(),
                     session.planId(),
                     session.description(),
@@ -223,9 +225,9 @@ public class ConnectionHandler
      */
     static class IncomingMessageHandler extends MessageHandler
     {
-        IncomingMessageHandler(StreamSession session)
+        IncomingMessageHandler(StreamSession session, InetAddress broadcastAddress)
         {
-            super(session);
+            super(session, broadcastAddress);
         }
 
         protected String name()
@@ -286,9 +288,9 @@ public class ConnectionHandler
             }
         });
 
-        OutgoingMessageHandler(StreamSession session)
+        OutgoingMessageHandler(StreamSession session, InetAddress broadcastAddress)
         {
-            super(session);
+            super(session, broadcastAddress);
         }
 
         protected String name()

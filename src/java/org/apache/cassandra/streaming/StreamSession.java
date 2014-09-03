@@ -158,7 +158,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         this.peer = peer;
         this.index = index;
         this.factory = factory;
-        this.handler = new ConnectionHandler(this);
+        this.handler = new ConnectionHandler(this, DatabaseDescriptor.instance.getBroadcastAddress());
         this.metrics = StreamingMetrics.get(peer);
     }
 
