@@ -21,6 +21,7 @@ import java.net.InetAddress;
 import java.util.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
@@ -238,7 +239,9 @@ public class StreamCoordinator
                                                           streamSessions.size(),
                                                           DatabaseDescriptor.instance.getBroadcastAddress(),
                                                           DatabaseDescriptor.instance.getMaxStreamingRetries(),
-                                                          KeyspaceManager.instance);
+                                                          Schema.instance,
+                                                          KeyspaceManager.instance,
+                                                          StreamManager.instance);
                 streamSessions.put(++lastReturned, session);
                 return session;
             }
@@ -275,7 +278,9 @@ public class StreamCoordinator
                                             id,
                                             DatabaseDescriptor.instance.getBroadcastAddress(),
                                             DatabaseDescriptor.instance.getMaxStreamingRetries(),
-                                            KeyspaceManager.instance);
+                                            Schema.instance,
+                                            KeyspaceManager.instance,
+                                            StreamManager.instance);
                 streamSessions.put(id, session);
             }
             return session;

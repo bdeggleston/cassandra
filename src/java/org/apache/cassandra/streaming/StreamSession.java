@@ -25,6 +25,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.collect.*;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,7 +135,9 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     private AtomicBoolean isAborted = new AtomicBoolean(false);
 
     private final int maxRetries;
+    private final Schema schema;
     private final KeyspaceManager keyspaceManager;
+    private final StreamManager streamManager;
 
     public static enum State
     {
@@ -155,7 +158,8 @@ public class StreamSession implements IEndpointStateChangeSubscriber
      * @param peer Address of streaming peer
      * @param factory is used for establishing connection
      */
-    public StreamSession(InetAddress peer, StreamConnectionFactory factory, int index, InetAddress broadcastAddress, int maxRetries, KeyspaceManager keyspaceManager)
+    public StreamSession(InetAddress peer, StreamConnectionFactory factory, int index, InetAddress broadcastAddress, int maxRetries,
+                         Schema schema, KeyspaceManager keyspaceManager, StreamManager streamManager)
     {
         this.peer = peer;
         this.index = index;
@@ -163,7 +167,9 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         this.handler = new ConnectionHandler(this, broadcastAddress);
         this.metrics = StreamingMetrics.get(peer);
         this.maxRetries = maxRetries;
+        this.schema = schema;
         this.keyspaceManager = keyspaceManager;
+        this.streamManager = streamManager;
     }
 
     public UUID planId()
@@ -670,7 +676,10 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     private void prepareReceiving(StreamSummary summary)
     {
         if (summary.files > 0)
-            receivers.put(summary.cfId, new StreamReceiveTask(this, summary.cfId, summary.files, summary.totalSize));
+            receivers.put(summary.cfId, new StreamReceiveTask(this, summary.cfId, summary.files, summary.totalSize,
+                                                              schema,
+                                                              keyspaceManager,
+                                                              streamManager.getReceiveTaskExecutor()));
     }
 
     private void startStreamingFiles()

@@ -21,6 +21,8 @@ import java.net.InetAddress;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import javax.management.ListenerNotFoundException;
 import javax.management.MBeanNotificationInfo;
@@ -34,6 +36,9 @@ import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.RateLimiter;
 
+import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
+import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.utils.FBUtilities;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.streaming.management.StreamEventJMXNotifier;
@@ -48,6 +53,10 @@ public class StreamManager implements StreamManagerMBean
 {
     public static final StreamManager instance = new StreamManager();
 
+    private final ThreadPoolExecutor receiveTaskExecutor = DebuggableThreadPoolExecutor.createWithMaximumPoolSize("StreamReceiveTask",
+                                                                                                                  FBUtilities.getAvailableProcessors(),
+                                                                                                                  60, TimeUnit.SECONDS,
+                                                                                                                  Tracing.instance);
     /**
      * Gets streaming rate limiter.
      * When stream_throughput_outbound_megabits_per_sec is 0, this returns rate limiter
@@ -154,6 +163,11 @@ public class StreamManager implements StreamManagerMBean
     public StreamResultFuture getReceivingStream(UUID planId)
     {
         return receivingStreams.get(planId);
+    }
+
+    public ThreadPoolExecutor getReceiveTaskExecutor()
+    {
+        return receiveTaskExecutor;
     }
 
     public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback)

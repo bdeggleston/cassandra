@@ -24,6 +24,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -67,7 +68,9 @@ public class StreamTransferTaskTest
                                                   0,
                                                   DatabaseDescriptor.instance.getBroadcastAddress(),
                                                   DatabaseDescriptor.instance.getMaxStreamingRetries(),
-                                                  KeyspaceManager.instance);
+                                                  Schema.instance,
+                                                  KeyspaceManager.instance,
+                                                  StreamManager.instance);
         ColumnFamilyStore cfs = KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf);
 
         // create two sstables

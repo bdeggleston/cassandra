@@ -22,16 +22,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
-import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.SSTableWriter;
-import org.apache.cassandra.tracing.Tracing;
-import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 
 /**
@@ -39,11 +35,6 @@ import org.apache.cassandra.utils.Pair;
  */
 public class StreamReceiveTask extends StreamTask
 {
-    private static final ThreadPoolExecutor executor = DebuggableThreadPoolExecutor.createWithMaximumPoolSize("StreamReceiveTask",
-                                                                                                              FBUtilities.getAvailableProcessors(),
-                                                                                                              60, TimeUnit.SECONDS,
-                                                                                                              Tracing.instance);
-
     // number of files to receive
     private final int totalFiles;
     // total size of files to receive
@@ -55,12 +46,20 @@ public class StreamReceiveTask extends StreamTask
     //  holds references to SSTables received
     protected Collection<SSTableWriter> sstables;
 
-    public StreamReceiveTask(StreamSession session, UUID cfId, int totalFiles, long totalSize)
+    private final Schema schema;
+    private final KeyspaceManager keyspaceManager;
+    private final ThreadPoolExecutor executor;
+
+    public StreamReceiveTask(StreamSession session, UUID cfId, int totalFiles, long totalSize,
+                             Schema schema, KeyspaceManager keyspaceManager, ThreadPoolExecutor executor)
     {
         super(session, cfId);
         this.totalFiles = totalFiles;
         this.totalSize = totalSize;
         this.sstables = new ArrayList<>(totalFiles);
+        this.schema = schema;
+        this.keyspaceManager = keyspaceManager;
+        this.executor = executor;
     }
 
     /**
@@ -104,8 +103,8 @@ public class StreamReceiveTask extends StreamTask
 
         public void run()
         {
-            Pair<String, String> kscf = Schema.instance.getCF(task.cfId);
-            ColumnFamilyStore cfs = KeyspaceManager.instance.open(kscf.left).getColumnFamilyStore(kscf.right);
+            Pair<String, String> kscf = task.schema.getCF(task.cfId);
+            ColumnFamilyStore cfs = task.keyspaceManager.open(kscf.left).getColumnFamilyStore(kscf.right);
 
             StreamLockfile lockfile = new StreamLockfile(cfs.directories.getWriteableLocationAsFile(), UUID.randomUUID());
             lockfile.create(task.sstables);
