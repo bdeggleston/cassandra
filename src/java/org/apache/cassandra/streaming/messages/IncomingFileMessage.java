@@ -22,6 +22,9 @@ import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.io.util.DataOutputStreamAndChannel;
 import org.apache.cassandra.streaming.StreamReader;
@@ -39,8 +42,9 @@ public class IncomingFileMessage extends StreamMessage
         {
             DataInputStream input = new DataInputStream(Channels.newInputStream(in));
             FileMessageHeader header = FileMessageHeader.serializer.deserialize(input, version);
-            StreamReader reader = header.compressionInfo == null ? new StreamReader(header, session)
-                    : new CompressedStreamReader(header, session);
+            StreamReader reader = header.compressionInfo == null ?
+                    new StreamReader(header, session, KeyspaceManager.instance, Schema.instance, DatabaseDescriptor.instance.getPartitioner())
+                    : new CompressedStreamReader(header, session, KeyspaceManager.instance, Schema.instance, DatabaseDescriptor.instance.getPartitioner());
 
             try
             {

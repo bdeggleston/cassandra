@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import com.google.common.base.Throwables;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.dht.IPartitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +38,6 @@ import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTableWriter;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.streaming.messages.FileMessageHeader;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.BytesReadTracker;
@@ -55,10 +55,14 @@ public class StreamReader
     protected final StreamSession session;
     protected final Descriptor.Version inputVersion;
     protected final long repairedAt;
+    protected final KeyspaceManager keyspaceManager;
+    protected final Schema schema;
+    protected final IPartitioner partitioner;
 
     protected Descriptor desc;
 
-    public StreamReader(FileMessageHeader header, StreamSession session)
+    public StreamReader(FileMessageHeader header, StreamSession session, KeyspaceManager keyspaceManager,
+                        Schema schema, IPartitioner partitioner)
     {
         this.session = session;
         this.cfId = header.cfId;
@@ -66,6 +70,9 @@ public class StreamReader
         this.sections = header.sections;
         this.inputVersion = new Descriptor.Version(header.version);
         this.repairedAt = header.repairedAt;
+        this.keyspaceManager = keyspaceManager;
+        this.schema = schema;
+        this.partitioner = partitioner;
     }
 
     /**
@@ -78,8 +85,8 @@ public class StreamReader
         logger.debug("reading file from {}, repairedAt = {}", session.peer, repairedAt);
         long totalSize = totalSize();
 
-        Pair<String, String> kscf = Schema.instance.getCF(cfId);
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(kscf.left).getColumnFamilyStore(kscf.right);
+        Pair<String, String> kscf = schema.getCF(cfId);
+        ColumnFamilyStore cfs = keyspaceManager.open(kscf.left).getColumnFamilyStore(kscf.right);
 
         SSTableWriter writer = createWriter(cfs, totalSize, repairedAt);
         DataInputStream dis = new DataInputStream(new LZFInputStream(Channels.newInputStream(channel)));
@@ -144,7 +151,7 @@ public class StreamReader
 
     protected void writeRow(SSTableWriter writer, DataInput in, ColumnFamilyStore cfs) throws IOException
     {
-        DecoratedKey key = StorageService.instance.getPartitioner().decorateKey(ByteBufferUtil.readWithShortLength(in));
+        DecoratedKey key = partitioner.decorateKey(ByteBufferUtil.readWithShortLength(in));
         writer.appendFromStream(key, cfs.metadata, in, inputVersion);
         cfs.invalidateCachedRow(key);
     }

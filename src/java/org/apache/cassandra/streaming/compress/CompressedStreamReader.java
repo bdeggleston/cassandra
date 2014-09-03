@@ -25,6 +25,7 @@ import java.nio.channels.ReadableByteChannel;
 import com.google.common.base.Throwables;
 
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.dht.IPartitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,9 +49,10 @@ public class CompressedStreamReader extends StreamReader
 
     protected final CompressionInfo compressionInfo;
 
-    public CompressedStreamReader(FileMessageHeader header, StreamSession session)
+    public CompressedStreamReader(FileMessageHeader header, StreamSession session, KeyspaceManager keyspaceManager,
+                                  Schema schema, IPartitioner partitioner)
     {
-        super(header, session);
+        super(header, session, keyspaceManager, schema, partitioner);
         this.compressionInfo = header.compressionInfo;
     }
 
@@ -64,8 +66,8 @@ public class CompressedStreamReader extends StreamReader
         logger.debug("reading file from {}, repairedAt = {}", session.peer, repairedAt);
         long totalSize = totalSize();
 
-        Pair<String, String> kscf = Schema.instance.getCF(cfId);
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(kscf.left).getColumnFamilyStore(kscf.right);
+        Pair<String, String> kscf = schema.getCF(cfId);
+        ColumnFamilyStore cfs = keyspaceManager.open(kscf.left).getColumnFamilyStore(kscf.right);
 
         SSTableWriter writer = createWriter(cfs, totalSize, repairedAt);
 
