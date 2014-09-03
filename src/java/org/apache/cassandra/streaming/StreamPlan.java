@@ -41,7 +41,7 @@ public class StreamPlan
     private final long repairedAt;
     private final StreamCoordinator coordinator;
 
-    private StreamConnectionFactory connectionFactory = new DefaultConnectionFactory(DatabaseDescriptor.instance);
+    private final StreamConnectionFactory connectionFactory;
 
     private boolean flushBeforeTransfer = true;
 
@@ -50,21 +50,17 @@ public class StreamPlan
      *
      * @param description Stream type that describes this StreamPlan
      */
-    public StreamPlan(String description)
+    public StreamPlan(String description, DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, StreamManager streamManager)
     {
-        this(description, ActiveRepairService.UNREPAIRED_SSTABLE, 1);
+        this(description, ActiveRepairService.UNREPAIRED_SSTABLE, 1, databaseDescriptor, schema, keyspaceManager, streamManager);
     }
 
-    public StreamPlan(String description, long repairedAt, int connectionsPerHost)
+    public StreamPlan(String description, long repairedAt, int connectionsPerHost, DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, StreamManager streamManager)
     {
         this.description = description;
         this.repairedAt = repairedAt;
-        this.coordinator = new StreamCoordinator(connectionsPerHost,
-                                                 connectionFactory,
-                                                 DatabaseDescriptor.instance,
-                                                 KeyspaceManager.instance,
-                                                 Schema.instance,
-                                                 StreamManager.instance);
+        this.connectionFactory = new DefaultConnectionFactory(databaseDescriptor);
+        this.coordinator = new StreamCoordinator(connectionsPerHost, connectionFactory, databaseDescriptor, keyspaceManager, schema, streamManager);
     }
 
     /**

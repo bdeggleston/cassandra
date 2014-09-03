@@ -24,8 +24,10 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.gms.EndpointState;
+import org.apache.cassandra.streaming.StreamManager;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,7 +110,7 @@ public class RangeStreamer
         this.tokens = tokens;
         this.address = address;
         this.description = description;
-        this.streamPlan = new StreamPlan(description);
+        this.streamPlan = new StreamPlan(description, DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, StreamManager.instance);
     }
 
     public RangeStreamer(TokenMetadata metadata, InetAddress address, String description)
@@ -117,7 +119,7 @@ public class RangeStreamer
         this.tokens = null;
         this.address = address;
         this.description = description;
-        this.streamPlan = new StreamPlan(description);
+        this.streamPlan = new StreamPlan(description, DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, StreamManager.instance);
     }
 
     public void addSourceFilter(ISourceFilter filter)
