@@ -21,6 +21,8 @@ import java.net.InetAddress;
 import java.util.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.service.ActiveRepairService;
@@ -57,7 +59,12 @@ public class StreamPlan
     {
         this.description = description;
         this.repairedAt = repairedAt;
-        this.coordinator = new StreamCoordinator(connectionsPerHost, connectionFactory);
+        this.coordinator = new StreamCoordinator(connectionsPerHost,
+                                                 connectionFactory,
+                                                 DatabaseDescriptor.instance,
+                                                 KeyspaceManager.instance,
+                                                 Schema.instance,
+                                                 StreamManager.instance);
     }
 
     /**

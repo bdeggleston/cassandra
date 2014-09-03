@@ -23,12 +23,10 @@ import java.util.*;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.KeyspaceManager;
-import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
-import org.apache.cassandra.utils.FBUtilities;
 
 /**
  * {@link StreamCoordinator} is a helper class that abstracts away maintaining multiple
@@ -43,18 +41,26 @@ public class StreamCoordinator
 
     // Executor strictly for establishing the initial connections. Once we're connected to the other end the rest of the
     // streaming is handled directly by the ConnectionHandler's incoming and outgoing threads.
-    private static final DebuggableThreadPoolExecutor streamExecutor = DebuggableThreadPoolExecutor.createWithFixedPoolSize("StreamConnectionEstablisher",
-                                                                                                                            FBUtilities.getAvailableProcessors(),
-                                                                                                                            Tracing.instance);
+    private final DebuggableThreadPoolExecutor streamExecutor;
 
     private Map<InetAddress, HostStreamingData> peerSessions = new HashMap<>();
     private final int connectionsPerHost;
     private StreamConnectionFactory factory;
 
-    public StreamCoordinator(int connectionsPerHost, StreamConnectionFactory factory)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final KeyspaceManager keyspaceManager;
+    private final Schema schema;
+    private final StreamManager streamManager;
+
+    public StreamCoordinator(int connectionsPerHost, StreamConnectionFactory factory, DatabaseDescriptor databaseDescriptor, KeyspaceManager keyspaceManager, Schema schema, StreamManager streamManager)
     {
         this.connectionsPerHost = connectionsPerHost;
+        this.databaseDescriptor = databaseDescriptor;
+        this.keyspaceManager = keyspaceManager;
+        this.schema = schema;
+        this.streamManager = streamManager;
         this.factory = factory;
+        this.streamExecutor = this.streamManager.getStreamExecutor();
     }
 
     public void setConnectionFactory(StreamConnectionFactory factory)
@@ -237,11 +243,11 @@ public class StreamCoordinator
                 StreamSession session = new StreamSession(peer,
                                                           factory,
                                                           streamSessions.size(),
-                                                          DatabaseDescriptor.instance.getBroadcastAddress(),
-                                                          DatabaseDescriptor.instance.getMaxStreamingRetries(),
-                                                          Schema.instance,
-                                                          KeyspaceManager.instance,
-                                                          StreamManager.instance);
+                                                          databaseDescriptor.getBroadcastAddress(),
+                                                          databaseDescriptor.getMaxStreamingRetries(),
+                                                          schema,
+                                                          keyspaceManager,
+                                                          streamManager);
                 streamSessions.put(++lastReturned, session);
                 return session;
             }
@@ -276,11 +282,11 @@ public class StreamCoordinator
                 session = new StreamSession(peer,
                                             factory,
                                             id,
-                                            DatabaseDescriptor.instance.getBroadcastAddress(),
-                                            DatabaseDescriptor.instance.getMaxStreamingRetries(),
-                                            Schema.instance,
-                                            KeyspaceManager.instance,
-                                            StreamManager.instance);
+                                            databaseDescriptor.getBroadcastAddress(),
+                                            databaseDescriptor.getMaxStreamingRetries(),
+                                            schema,
+                                            keyspaceManager,
+                                            streamManager);
                 streamSessions.put(id, session);
             }
             return session;
