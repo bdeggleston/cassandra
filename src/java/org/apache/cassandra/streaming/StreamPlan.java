@@ -20,6 +20,7 @@ package org.apache.cassandra.streaming;
 import java.net.InetAddress;
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.service.ActiveRepairService;
@@ -38,7 +39,7 @@ public class StreamPlan
     private final long repairedAt;
     private final StreamCoordinator coordinator;
 
-    private StreamConnectionFactory connectionFactory = new DefaultConnectionFactory();
+    private StreamConnectionFactory connectionFactory = new DefaultConnectionFactory(DatabaseDescriptor.instance);
 
     private boolean flushBeforeTransfer = true;
 

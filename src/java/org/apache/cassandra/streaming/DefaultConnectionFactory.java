@@ -33,6 +33,13 @@ public class DefaultConnectionFactory implements StreamConnectionFactory
 
     private static final int MAX_CONNECT_ATTEMPTS = 3;
 
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public DefaultConnectionFactory(DatabaseDescriptor databaseDescriptor)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+    }
+
     /**
      * Connect to peer and start exchanging message.
      * When connect attempt fails, this retries for maximum of MAX_CONNECT_ATTEMPTS times.
@@ -49,8 +56,8 @@ public class DefaultConnectionFactory implements StreamConnectionFactory
         {
             try
             {
-                Socket socket = OutboundTcpConnectionPool.newSocket(peer, DatabaseDescriptor.instance);
-                socket.setSoTimeout(DatabaseDescriptor.instance.getStreamingSocketTimeout());
+                Socket socket = OutboundTcpConnectionPool.newSocket(peer, databaseDescriptor);
+                socket.setSoTimeout(databaseDescriptor.getStreamingSocketTimeout());
                 socket.setKeepAlive(true);
                 return socket;
             }
@@ -59,7 +66,7 @@ public class DefaultConnectionFactory implements StreamConnectionFactory
                 if (++attempts >= MAX_CONNECT_ATTEMPTS)
                     throw e;
 
-                long waitms = DatabaseDescriptor.instance.getRpcTimeout() * (long)Math.pow(2, attempts);
+                long waitms = databaseDescriptor.getRpcTimeout() * (long)Math.pow(2, attempts);
                 logger.warn("Failed attempt " + attempts + " to connect to " + peer + ". Retrying in " + waitms + " ms. (" + e + ")");
                 try
                 {

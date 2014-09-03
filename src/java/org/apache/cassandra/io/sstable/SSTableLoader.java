@@ -255,7 +255,7 @@ public class SSTableLoader implements StreamEventHandler
          */
         public StreamConnectionFactory getConnectionFactory()
         {
-            return new DefaultConnectionFactory();
+            return new DefaultConnectionFactory(DatabaseDescriptor.instance);
         }
 
         /**

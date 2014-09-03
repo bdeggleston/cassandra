@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,7 +72,7 @@ public final class StreamResultFuture extends AbstractFuture<StreamState>
 
     private StreamResultFuture(UUID planId, String description)
     {
-        this(planId, description, new StreamCoordinator(0, new DefaultConnectionFactory()));
+        this(planId, description, new StreamCoordinator(0, new DefaultConnectionFactory(DatabaseDescriptor.instance)));
     }
 
     static StreamResultFuture init(UUID planId, String description, Collection<StreamEventHandler> listeners, StreamCoordinator coordinator)
