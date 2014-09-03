@@ -40,6 +40,7 @@ public class StreamPlan
     private final List<StreamEventHandler> handlers = new ArrayList<>();
     private final long repairedAt;
     private final StreamCoordinator coordinator;
+    private final StreamManager streamManager;
 
     private final StreamConnectionFactory connectionFactory;
 
@@ -61,6 +62,7 @@ public class StreamPlan
         this.repairedAt = repairedAt;
         this.connectionFactory = new DefaultConnectionFactory(databaseDescriptor);
         this.coordinator = new StreamCoordinator(connectionsPerHost, connectionFactory, databaseDescriptor, keyspaceManager, schema, streamManager);
+        this.streamManager = streamManager;
     }
 
     /**
@@ -171,7 +173,7 @@ public class StreamPlan
      */
     public StreamResultFuture execute()
     {
-        return StreamResultFuture.init(planId, description, handlers, coordinator);
+        return StreamResultFuture.init(planId, description, handlers, coordinator, streamManager);
     }
 
     /**

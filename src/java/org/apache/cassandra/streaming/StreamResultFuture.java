@@ -72,19 +72,24 @@ public final class StreamResultFuture extends AbstractFuture<StreamState>
             set(getCurrentState());
     }
 
-    private StreamResultFuture(UUID planId, String description)
+    private StreamResultFuture(UUID planId, String description, DatabaseDescriptor databaseDescriptor,
+                               KeyspaceManager keyspaceManager, Schema schema, StreamManager streamManager)
     {
         this(planId, description, new StreamCoordinator(0,
-                                                        new DefaultConnectionFactory(DatabaseDescriptor.instance),
-                                                        DatabaseDescriptor.instance,
-                                                        KeyspaceManager.instance,
-                                                        Schema.instance,
-                                                        StreamManager.instance));
+                                                        new DefaultConnectionFactory(databaseDescriptor),
+                                                        databaseDescriptor,
+                                                        keyspaceManager,
+                                                        schema,
+                                                        streamManager));
     }
 
-    static StreamResultFuture init(UUID planId, String description, Collection<StreamEventHandler> listeners, StreamCoordinator coordinator)
+    static StreamResultFuture init(UUID planId,
+                                   String description,
+                                   Collection<StreamEventHandler> listeners,
+                                   StreamCoordinator coordinator,
+                                   StreamManager streamManager)
     {
-        StreamResultFuture future = createAndRegister(planId, description, coordinator);
+        StreamResultFuture future = createAndRegister(planId, description, coordinator, streamManager);
         if (listeners != null)
         {
             for (StreamEventHandler listener : listeners)
@@ -109,26 +114,30 @@ public final class StreamResultFuture extends AbstractFuture<StreamState>
                                                                     InetAddress from,
                                                                     Socket socket,
                                                                     boolean isForOutgoing,
-                                                                    int version) throws IOException
+                                                                    int version,
+                                                                    DatabaseDescriptor databaseDescriptor,
+                                                                    KeyspaceManager keyspaceManager,
+                                                                    Schema schema,
+                                                                    StreamManager streamManager) throws IOException
     {
-        StreamResultFuture future = StreamManager.instance.getReceivingStream(planId);
+        StreamResultFuture future = streamManager.getReceivingStream(planId);
         if (future == null)
         {
             logger.info("[Stream #{} ID#{}] Creating new streaming plan for {}", planId, sessionIndex, description);
 
             // The main reason we create a StreamResultFuture on the receiving side is for JMX exposure.
-            future = new StreamResultFuture(planId, description);
-            StreamManager.instance.registerReceiving(future);
+            future = new StreamResultFuture(planId, description, databaseDescriptor, keyspaceManager, schema, streamManager);
+            streamManager.registerReceiving(future);
         }
         future.attachSocket(from, sessionIndex, socket, isForOutgoing, version);
         logger.info("[Stream #{}, ID#{}] Received streaming plan for {}", planId, sessionIndex, description);
         return future;
     }
 
-    private static StreamResultFuture createAndRegister(UUID planId, String description, StreamCoordinator coordinator)
+    private static StreamResultFuture createAndRegister(UUID planId, String description, StreamCoordinator coordinator, StreamManager streamManager)
     {
         StreamResultFuture future = new StreamResultFuture(planId, description, coordinator);
-        StreamManager.instance.register(future);
+        streamManager.register(future);
         return future;
     }
 
