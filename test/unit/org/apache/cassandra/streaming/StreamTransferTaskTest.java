@@ -62,7 +62,12 @@ public class StreamTransferTaskTest
         String ks = KEYSPACE1;
         String cf = "Standard1";
 
-        StreamSession session = new StreamSession(DatabaseDescriptor.instance.getBroadcastAddress(), null, 0);
+        StreamSession session = new StreamSession(DatabaseDescriptor.instance.getBroadcastAddress(),
+                                                  null,
+                                                  0,
+                                                  DatabaseDescriptor.instance.getBroadcastAddress(),
+                                                  DatabaseDescriptor.instance.getMaxStreamingRetries(),
+                                                  KeyspaceManager.instance);
         ColumnFamilyStore cfs = KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf);
 
         // create two sstables

@@ -20,6 +20,8 @@ package org.apache.cassandra.streaming;
 import java.net.InetAddress;
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -231,7 +233,12 @@ public class StreamCoordinator
             // create
             if (streamSessions.size() < connectionsPerHost)
             {
-                StreamSession session = new StreamSession(peer, factory, streamSessions.size());
+                StreamSession session = new StreamSession(peer,
+                                                          factory,
+                                                          streamSessions.size(),
+                                                          DatabaseDescriptor.instance.getBroadcastAddress(),
+                                                          DatabaseDescriptor.instance.getMaxStreamingRetries(),
+                                                          KeyspaceManager.instance);
                 streamSessions.put(++lastReturned, session);
                 return session;
             }
@@ -263,7 +270,12 @@ public class StreamCoordinator
             StreamSession session = streamSessions.get(id);
             if (session == null)
             {
-                session = new StreamSession(peer, factory, id);
+                session = new StreamSession(peer,
+                                            factory,
+                                            id,
+                                            DatabaseDescriptor.instance.getBroadcastAddress(),
+                                            DatabaseDescriptor.instance.getMaxStreamingRetries(),
+                                            KeyspaceManager.instance);
                 streamSessions.put(id, session);
             }
             return session;

@@ -29,7 +29,6 @@ import org.apache.cassandra.db.KeyspaceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.dht.AbstractBounds;
@@ -134,6 +133,9 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     private AtomicBoolean isAborted = new AtomicBoolean(false);
 
+    private final int maxRetries;
+    private final KeyspaceManager keyspaceManager;
+
     public static enum State
     {
         INITIALIZED,
@@ -153,13 +155,15 @@ public class StreamSession implements IEndpointStateChangeSubscriber
      * @param peer Address of streaming peer
      * @param factory is used for establishing connection
      */
-    public StreamSession(InetAddress peer, StreamConnectionFactory factory, int index)
+    public StreamSession(InetAddress peer, StreamConnectionFactory factory, int index, InetAddress broadcastAddress, int maxRetries, KeyspaceManager keyspaceManager)
     {
         this.peer = peer;
         this.index = index;
         this.factory = factory;
-        this.handler = new ConnectionHandler(this, DatabaseDescriptor.instance.getBroadcastAddress());
+        this.handler = new ConnectionHandler(this, broadcastAddress);
         this.metrics = StreamingMetrics.get(peer);
+        this.maxRetries = maxRetries;
+        this.keyspaceManager = keyspaceManager;
     }
 
     public UUID planId()
@@ -263,12 +267,12 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         // if columnfamilies are not specified, we add all cf under the keyspace
         if (columnFamilies.isEmpty())
         {
-            stores.addAll(KeyspaceManager.instance.open(keyspace).getColumnFamilyStores());
+            stores.addAll(keyspaceManager.open(keyspace).getColumnFamilyStores());
         }
         else
         {
             for (String cf : columnFamilies)
-                stores.add(KeyspaceManager.instance.open(keyspace).getColumnFamilyStore(cf));
+                stores.add(keyspaceManager.open(keyspace).getColumnFamilyStore(cf));
         }
         return stores;
     }
@@ -578,7 +582,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         logger.warn("[Stream #{}] Retrying for following error", planId(), e);
         // retry
         retries++;
-        if (retries > DatabaseDescriptor.instance.getMaxStreamingRetries())
+        if (retries > maxRetries)
             onError(new IOException("Too many retries for " + header, e));
         else
             handler.sendMessage(new RetryMessage(header.cfId, header.sequenceNumber));
