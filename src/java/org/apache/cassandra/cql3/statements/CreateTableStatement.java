@@ -20,6 +20,10 @@ package org.apache.cassandra.cql3.statements;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.db.ColumnFamilyStoreManager;
+import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.exceptions.*;
 import org.apache.commons.lang3.StringUtils;
 import com.google.common.collect.HashMultiset;
@@ -140,7 +144,12 @@ public class CreateTableStatement extends SchemaAlteringStatement
         newCFMD = new CFMetaData(keyspace(),
                                  columnFamily(),
                                  ColumnFamilyType.Standard,
-                                 comparator);
+                                 comparator,
+                                 SystemKeyspace.instance,
+                                 Schema.instance,
+                                 ColumnFamilyStoreManager.instance,
+                                 KeyspaceManager.instance,
+                                 CFMetaDataFactory.instance);
         applyPropertiesTo(newCFMD);
         return newCFMD;
     }

@@ -27,6 +27,8 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.Schema;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -88,7 +90,15 @@ public class NativeCellTest
                               new Name(compositeSparse(bytess("b", "c"), new ColumnIdentifier("a", true), true), new CompoundSparseCellNameType(Arrays.<AbstractType<?>>asList(UTF8Type.instance, UTF8Type.instance)))
                           };
 
-    private static final CFMetaData metadata = new CFMetaData("", "", ColumnFamilyType.Standard, null);
+    private static final CFMetaData metadata = new CFMetaData("",
+                                                              "",
+                                                              ColumnFamilyType.Standard,
+                                                              null,
+                                                              SystemKeyspace.instance,
+                                                              Schema.instance,
+                                                              ColumnFamilyStoreManager.instance,
+                                                              KeyspaceManager.instance,
+                                                              CFMetaDataFactory.instance);
     static
     {
         try

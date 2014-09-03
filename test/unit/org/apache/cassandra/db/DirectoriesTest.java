@@ -30,6 +30,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.service.StorageService;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -61,7 +63,15 @@ public class DirectoriesTest
     {
         for (String cf : CFS)
         {
-            CFM.add(new CFMetaData(KS, cf, ColumnFamilyType.Standard, null));
+            CFM.add(new CFMetaData(KS,
+                                   cf,
+                                   ColumnFamilyType.Standard,
+                                   null,
+                                   SystemKeyspace.instance,
+                                   Schema.instance,
+                                   ColumnFamilyStoreManager.instance,
+                                   KeyspaceManager.instance,
+                                   CFMetaDataFactory.instance));
         }
 
         tempDataDir = File.createTempFile("cassandra", "unittest");
@@ -199,7 +209,15 @@ public class DirectoriesTest
             }
 
             // nested folders in /tmp is enough to fail on *nix but we need to pass the 255 char limit to get a failure on Windows and blacklist
-            CFMetaData cfm = new CFMetaData(KS, "badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbad", ColumnFamilyType.Standard, null);
+            CFMetaData cfm = new CFMetaData(KS,
+                                            "badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbad",
+                                            ColumnFamilyType.Standard,
+                                            null,
+                                            SystemKeyspace.instance,
+                                            Schema.instance,
+                                            ColumnFamilyStoreManager.instance,
+                                            KeyspaceManager.instance,
+                                            CFMetaDataFactory.instance);
             Directories dir = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance);
 
             for (File file : dir.getCFDirectories())

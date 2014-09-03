@@ -263,6 +263,11 @@ public final class CFMetaData
     public CFMetaData triggers(Map<String, TriggerDefinition> prop) {triggers = prop; return this;}
     public CFMetaData setDense(Boolean prop) {isDense = prop; return this;}
 
+    private final SystemKeyspace systemKeyspace;
+    private final Schema schema;
+    private final ColumnFamilyStoreManager columnFamilyStoreManager;
+    private final KeyspaceManager keyspaceManager;
+    private final CFMetaDataFactory cfMetaDataFactory;
     /**
      * Create new ColumnFamily metadata with generated random ID.
      * When loading from existing schema, use CFMetaData
@@ -271,23 +276,26 @@ public final class CFMetaData
      * @param name column family name
      * @param comp default comparator
      */
-    public CFMetaData(String keyspace, String name, ColumnFamilyType type, CellNameType comp)
+    public CFMetaData(String keyspace, String name, ColumnFamilyType type, CellNameType comp, SystemKeyspace systemKeyspace,
+                      Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, KeyspaceManager keyspaceManager, CFMetaDataFactory cfMetaDataFactory)
     {
-        this(keyspace, name, type, comp, UUIDGen.getTimeUUID());
+        this(keyspace, name, type, comp, UUIDGen.getTimeUUID(), systemKeyspace, schema, columnFamilyStoreManager, keyspaceManager, cfMetaDataFactory);
     }
 
-    CFMetaData(String keyspace, String name, ColumnFamilyType type, CellNameType comp, UUID id)
+    CFMetaData(String keyspace, String name, ColumnFamilyType type, CellNameType comp, UUID id,
+               SystemKeyspace systemKeyspace, Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, KeyspaceManager keyspaceManager, CFMetaDataFactory cfMetaDataFactory)
     {
         cfId = id;
         ksName = keyspace;
         cfName = name;
         cfType = type;
         comparator = comp;
-    }
 
-    static AbstractType<?> makeRawAbstractType(AbstractType<?> comparator, AbstractType<?> subComparator)
-    {
-        return subComparator == null ? comparator : CompositeType.getInstance(Arrays.asList(comparator, subComparator));
+        this.systemKeyspace = systemKeyspace;
+        this.schema = schema;
+        this.columnFamilyStoreManager = columnFamilyStoreManager;
+        this.keyspaceManager = keyspaceManager;
+        this.cfMetaDataFactory = cfMetaDataFactory;
     }
 
     public Map<String, TriggerDefinition> getTriggers()
@@ -318,7 +326,7 @@ public final class CFMetaData
 
     public CFMetaData copy()
     {
-        return copyOpts(new CFMetaData(ksName, cfName, cfType, comparator, cfId), this);
+        return copyOpts(new CFMetaData(ksName, cfName, cfType, comparator, cfId, systemKeyspace, schema, columnFamilyStoreManager, keyspaceManager, cfMetaDataFactory), this);
     }
 
     /**
@@ -329,7 +337,7 @@ public final class CFMetaData
      */
     public CFMetaData copy(UUID newCfId)
     {
-        return copyOpts(new CFMetaData(ksName, cfName, cfType, comparator, newCfId), this);
+        return copyOpts(new CFMetaData(ksName, cfName, cfType, comparator, newCfId, systemKeyspace, schema, columnFamilyStoreManager, keyspaceManager, cfMetaDataFactory), this);
     }
 
     static CFMetaData copyOpts(CFMetaData newCFMD, CFMetaData oldCFMD)
@@ -688,14 +696,14 @@ public final class CFMetaData
 
     public void reload()
     {
-        Row cfDefRow = SystemKeyspace.instance.readSchemaRow(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF, ksName, cfName);
+        Row cfDefRow = systemKeyspace.readSchemaRow(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF, ksName, cfName);
 
         if (cfDefRow.cf == null || !cfDefRow.cf.hasColumns())
             throw new RuntimeException(String.format("%s not found in the schema definitions keyspace.", ksName + ":" + cfName));
 
         try
         {
-            apply(CFMetaDataFactory.instance.fromSchema(cfDefRow));
+            apply(cfMetaDataFactory.fromSchema(cfDefRow));
         }
         catch (ConfigurationException e)
         {
@@ -948,10 +956,10 @@ public final class CFMetaData
     public void addDefaultIndexNames() throws ConfigurationException
     {
         // if this is ColumnFamily update we need to add previously defined index names to the existing columns first
-        UUID cfId = Schema.instance.getId(ksName, cfName);
+        UUID cfId = schema.getId(ksName, cfName);
         if (cfId != null)
         {
-            CFMetaData cfm = Schema.instance.getCFMetaData(cfId);
+            CFMetaData cfm = schema.getCFMetaData(cfId);
 
             for (ColumnDefinition newDef : allColumns())
             {
@@ -1093,7 +1101,7 @@ public final class CFMetaData
     private Set<String> existingIndexNames(String cfToExclude)
     {
         Set<String> indexNames = new HashSet<>();
-        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
+        for (ColumnFamilyStore cfs : columnFamilyStoreManager.all())
             if (cfToExclude == null || !cfs.name.equals(cfToExclude))
                 for (ColumnDefinition cd : cfs.metadata.allColumns())
                     indexNames.add(cd.getIndexName());
@@ -1137,7 +1145,7 @@ public final class CFMetaData
      */
     public Mutation toSchemaUpdate(CFMetaData newState, long modificationTimestamp, boolean fromThrift)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(ksName));
+        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(ksName));
 
         newState.toSchemaNoColumnsNoTriggers(mutation, modificationTimestamp);
 
@@ -1187,11 +1195,11 @@ public final class CFMetaData
      */
     public Mutation dropFromSchema(long timestamp)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(ksName));
-        ColumnFamily cf = mutation.addOrGet(CFMetaDataFactory.instance.SchemaColumnFamiliesCf);
+        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(ksName));
+        ColumnFamily cf = mutation.addOrGet(cfMetaDataFactory.SchemaColumnFamiliesCf);
         int ldt = (int) (System.currentTimeMillis() / 1000);
 
-        Composite prefix = CFMetaDataFactory.instance.SchemaColumnFamiliesCf.comparator.make(cfName);
+        Composite prefix = cfMetaDataFactory.SchemaColumnFamiliesCf.comparator.make(cfName);
         cf.addAtom(new RangeTombstone(prefix, prefix.end(), timestamp, ldt));
 
         for (ColumnDefinition cd : allColumns())
@@ -1200,9 +1208,9 @@ public final class CFMetaData
         for (TriggerDefinition td : triggers.values())
             td.deleteFromSchema(mutation, cfName, timestamp);
 
-        for (String indexName : KeyspaceManager.instance.open(this.ksName).getColumnFamilyStore(this.cfName).getBuiltIndexes())
+        for (String indexName : keyspaceManager.open(this.ksName).getColumnFamilyStore(this.cfName).getBuiltIndexes())
         {
-            ColumnFamily indexCf = mutation.addOrGet(CFMetaDataFactory.instance.IndexCf);
+            ColumnFamily indexCf = mutation.addOrGet(cfMetaDataFactory.IndexCf);
             indexCf.addTombstone(indexCf.getComparator().makeCellName(indexName), ldt, timestamp);
         }
 
@@ -1234,8 +1242,8 @@ public final class CFMetaData
     {
         // For property that can be null (and can be changed), we insert tombstones, to make sure
         // we don't keep a property the user has removed
-        ColumnFamily cf = mutation.addOrGet(CFMetaDataFactory.instance.SchemaColumnFamiliesCf);
-        Composite prefix = CFMetaDataFactory.instance.SchemaColumnFamiliesCf.comparator.make(cfName);
+        ColumnFamily cf = mutation.addOrGet(cfMetaDataFactory.SchemaColumnFamiliesCf);
+        Composite prefix = cfMetaDataFactory.SchemaColumnFamiliesCf.comparator.make(cfName);
         CFRowAdder adder = new CFRowAdder(cf, prefix, timestamp);
 
         adder.add("cf_id", cfId);
@@ -1286,98 +1294,6 @@ public final class CFMetaData
         adder.add("value_alias", compactValueColumn == null ? null : compactValueColumn.name.toString());
     }
 
-    // Package protected for use by tests
-    static CFMetaData fromSchemaNoTriggers(UntypedResultSet.Row result, UntypedResultSet serializedColumnDefinitions)
-    {
-        try
-        {
-            String ksName = result.getString("keyspace_name");
-            String cfName = result.getString("columnfamily_name");
-
-            AbstractType<?> rawComparator = TypeParser.parse(result.getString("comparator"));
-            AbstractType<?> subComparator = result.has("subcomparator") ? TypeParser.parse(result.getString("subcomparator")) : null;
-            ColumnFamilyType cfType = ColumnFamilyType.valueOf(result.getString("type"));
-
-            AbstractType<?> fullRawComparator = makeRawAbstractType(rawComparator, subComparator);
-
-            List<ColumnDefinition> columnDefs = ColumnDefinition.fromSchema(serializedColumnDefinitions,
-                                                                            ksName,
-                                                                            cfName,
-                                                                            fullRawComparator,
-                                                                            cfType == ColumnFamilyType.Super);
-
-            boolean isDense = result.has("is_dense")
-                            ? result.getBoolean("is_dense")
-                            : isDense(fullRawComparator, columnDefs);
-
-            CellNameType comparator = CellNames.fromAbstractType(fullRawComparator, isDense);
-
-            // if we are upgrading, we use id generated from names initially
-            UUID cfId = result.has("cf_id")
-                      ? result.getUUID("cf_id")
-                      : generateLegacyCfId(ksName, cfName);
-
-            CFMetaData cfm = new CFMetaData(ksName, cfName, cfType, comparator, cfId);
-            cfm.setDense(isDense);
-
-            cfm.readRepairChance(result.getDouble("read_repair_chance"));
-            cfm.dcLocalReadRepairChance(result.getDouble("local_read_repair_chance"));
-            cfm.gcGraceSeconds(result.getInt("gc_grace_seconds"));
-            cfm.defaultValidator(TypeParser.parse(result.getString("default_validator")));
-            cfm.keyValidator(TypeParser.parse(result.getString("key_validator")));
-            cfm.minCompactionThreshold(result.getInt("min_compaction_threshold"));
-            cfm.maxCompactionThreshold(result.getInt("max_compaction_threshold"));
-            if (result.has("comment"))
-                cfm.comment(result.getString("comment"));
-            if (result.has("bloom_filter_fp_chance"))
-                cfm.bloomFilterFpChance(result.getDouble("bloom_filter_fp_chance"));
-            if (result.has("memtable_flush_period_in_ms"))
-                cfm.memtableFlushPeriod(result.getInt("memtable_flush_period_in_ms"));
-            cfm.caching(CachingOptions.fromString(result.getString("caching")));
-            if (result.has("default_time_to_live"))
-                cfm.defaultTimeToLive(result.getInt("default_time_to_live"));
-            if (result.has("speculative_retry"))
-                cfm.speculativeRetry(SpeculativeRetry.fromString(result.getString("speculative_retry")));
-            cfm.compactionStrategyClass(createCompactionStrategy(result.getString("compaction_strategy_class")));
-            cfm.compressionParameters(CompressionParameters.create(fromJsonMap(result.getString("compression_parameters"))));
-            cfm.compactionStrategyOptions(fromJsonMap(result.getString("compaction_strategy_options")));
-
-            // migrate old index_interval values to min_index_interval, if present
-            if (result.has("min_index_interval"))
-                cfm.minIndexInterval(result.getInt("min_index_interval"));
-            else if (result.has("index_interval"))
-                cfm.minIndexInterval(result.getInt("index_interval"));
-            if (result.has("max_index_interval"))
-                cfm.maxIndexInterval(result.getInt("max_index_interval"));
-
-            /*
-             * The info previously hold by key_aliases, column_aliases and value_alias is now stored in columnMetadata (because 1) this
-             * make more sense and 2) this allow to store indexing information).
-             * However, for upgrade sake we need to still be able to read those old values. Moreover, we cannot easily
-             * remove those old columns once "converted" to columnMetadata because that would screw up nodes that may
-             * not have upgraded. So for now we keep the both info and in sync, even though its redundant.
-             */
-            if (result.has("key_aliases"))
-                cfm.addColumnMetadataFromAliases(aliasesFromStrings(fromJsonList(result.getString("key_aliases"))), cfm.keyValidator, ColumnDefinition.Kind.PARTITION_KEY);
-            if (result.has("column_aliases"))
-                cfm.addColumnMetadataFromAliases(aliasesFromStrings(fromJsonList(result.getString("column_aliases"))), cfm.comparator.asAbstractType(), ColumnDefinition.Kind.CLUSTERING_COLUMN);
-            if (result.has("value_alias"))
-                cfm.addColumnMetadataFromAliases(Collections.singletonList(result.getBytes("value_alias")), cfm.defaultValidator, ColumnDefinition.Kind.COMPACT_VALUE);
-
-            if (result.has("dropped_columns"))
-                cfm.droppedColumns(convertDroppedColumns(result.getMap("dropped_columns", UTF8Type.instance, LongType.instance)));
-
-            for (ColumnDefinition cd : columnDefs)
-                cfm.addOrReplaceColumnDefinition(cd);
-
-            return cfm.rebuild();
-        }
-        catch (SyntaxException | ConfigurationException e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
-
     public void addColumnMetadataFromAliases(List<ByteBuffer> aliases, AbstractType<?> comparator, ColumnDefinition.Kind kind)
     {
         if (comparator instanceof CompositeType)
@@ -1410,22 +1326,6 @@ public final class CFMetaData
         return json(aliases);
     }
 
-    private static List<ByteBuffer> aliasesFromStrings(List<String> aliases)
-    {
-        List<ByteBuffer> rawAliases = new ArrayList<>(aliases.size());
-        for (String alias : aliases)
-            rawAliases.add(UTF8Type.instance.decompose(alias));
-        return rawAliases;
-    }
-
-    private static Map<ColumnIdentifier, Long> convertDroppedColumns(Map<String, Long> raw)
-    {
-        Map<ColumnIdentifier, Long> converted = Maps.newHashMap();
-        for (Map.Entry<String, Long> entry : raw.entrySet())
-            converted.put(new ColumnIdentifier(entry.getKey(), true), entry.getValue());
-        return converted;
-    }
-
     /**
      * Convert current metadata into schema mutation
      *
@@ -1437,7 +1337,7 @@ public final class CFMetaData
      */
     public Mutation toSchema(long timestamp) throws ConfigurationException
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, SystemKeyspace.instance.getSchemaKSKey(ksName));
+        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(ksName));
         toSchema(mutation, timestamp);
         return mutation;
     }

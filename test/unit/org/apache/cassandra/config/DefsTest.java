@@ -83,7 +83,12 @@ public class DefsTest
         CFMetaData cfm = new CFMetaData(KEYSPACE1,
                                         "TestApplyCFM_CF",
                                         ColumnFamilyType.Standard,
-                                        new SimpleDenseCellNameType(BytesType.instance));
+                                        new SimpleDenseCellNameType(BytesType.instance),
+                                        SystemKeyspace.instance,
+                                        Schema.instance,
+                                        ColumnFamilyStoreManager.instance,
+                                        KeyspaceManager.instance,
+                                        CFMetaDataFactory.instance);
 
         for (int i = 0; i < 5; i++)
         {
@@ -474,7 +479,15 @@ public class DefsTest
         Assert.assertEquals(UTF8Type.instance, Schema.instance.getCFMetaData(cf.ksName, cf.cfName).getDefaultValidator());
 
         // Change cfId
-        newCfm = new CFMetaData(cf.ksName, cf.cfName, cf.cfType, cf.comparator);
+        newCfm = new CFMetaData(cf.ksName,
+                                cf.cfName,
+                                cf.cfType,
+                                cf.comparator,
+                                SystemKeyspace.instance,
+                                Schema.instance,
+                                ColumnFamilyStoreManager.instance,
+                                KeyspaceManager.instance,
+                                CFMetaDataFactory.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -484,7 +497,15 @@ public class DefsTest
         catch (ConfigurationException expected) {}
 
         // Change cfName
-        newCfm = new CFMetaData(cf.ksName, cf.cfName + "_renamed", cf.cfType, cf.comparator);
+        newCfm = new CFMetaData(cf.ksName,
+                                cf.cfName + "_renamed",
+                                cf.cfType,
+                                cf.comparator,
+                                SystemKeyspace.instance,
+                                Schema.instance,
+                                ColumnFamilyStoreManager.instance,
+                                KeyspaceManager.instance,
+                                CFMetaDataFactory.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -494,7 +515,15 @@ public class DefsTest
         catch (ConfigurationException expected) {}
 
         // Change ksName
-        newCfm = new CFMetaData(cf.ksName + "_renamed", cf.cfName, cf.cfType, cf.comparator);
+        newCfm = new CFMetaData(cf.ksName + "_renamed",
+                                cf.cfName,
+                                cf.cfType,
+                                cf.comparator,
+                                SystemKeyspace.instance,
+                                Schema.instance,
+                                ColumnFamilyStoreManager.instance,
+                                KeyspaceManager.instance,
+                                CFMetaDataFactory.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -504,7 +533,15 @@ public class DefsTest
         catch (ConfigurationException expected) {}
 
         // Change cf type
-        newCfm = new CFMetaData(cf.ksName, cf.cfName, ColumnFamilyType.Super, cf.comparator);
+        newCfm = new CFMetaData(cf.ksName,
+                                cf.cfName,
+                                ColumnFamilyType.Super,
+                                cf.comparator,
+                                SystemKeyspace.instance,
+                                Schema.instance,
+                                ColumnFamilyStoreManager.instance,
+                                KeyspaceManager.instance,
+                                CFMetaDataFactory.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -514,7 +551,15 @@ public class DefsTest
         catch (ConfigurationException expected) {}
 
         // Change comparator
-        newCfm = new CFMetaData(cf.ksName, cf.cfName, cf.cfType, new SimpleDenseCellNameType(TimeUUIDType.instance));
+        newCfm = new CFMetaData(cf.ksName,
+                                cf.cfName,
+                                cf.cfType,
+                                new SimpleDenseCellNameType(TimeUUIDType.instance),
+                                SystemKeyspace.instance,
+                                Schema.instance,
+                                ColumnFamilyStoreManager.instance,
+                                KeyspaceManager.instance,
+                                CFMetaDataFactory.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -555,7 +600,15 @@ public class DefsTest
 
     private CFMetaData addTestCF(String ks, String cf, String comment)
     {
-        CFMetaData newCFMD = new CFMetaData(ks, cf, ColumnFamilyType.Standard, new SimpleDenseCellNameType(UTF8Type.instance));
+        CFMetaData newCFMD = new CFMetaData(ks,
+                                            cf,
+                                            ColumnFamilyType.Standard,
+                                            new SimpleDenseCellNameType(UTF8Type.instance),
+                                            SystemKeyspace.instance,
+                                            Schema.instance,
+                                            ColumnFamilyStoreManager.instance,
+                                            KeyspaceManager.instance,
+                                            CFMetaDataFactory.instance);
         newCFMD.comment(comment)
                .readRepairChance(0.0);
 

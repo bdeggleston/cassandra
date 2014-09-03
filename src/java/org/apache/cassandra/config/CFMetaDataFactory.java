@@ -1,14 +1,14 @@
 package org.apache.cassandra.config;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Maps;
 import org.apache.cassandra.cache.CachingOptions;
+import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.cql3.statements.CFStatement;
 import org.apache.cassandra.cql3.statements.CreateTableStatement;
-import org.apache.cassandra.db.ColumnFamilyType;
-import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.Row;
-import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.composites.CellNames;
 import org.apache.cassandra.db.marshal.*;
@@ -22,6 +22,7 @@ import org.apache.cassandra.thrift.CqlResult;
 import org.apache.cassandra.thrift.CqlRow;
 import org.apache.cassandra.thrift.InvalidRequestException;
 import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.UUIDGen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -264,14 +265,16 @@ public class CFMetaDataFactory
 
     public CFMetaData denseCFMetaData(String keyspace, String name, AbstractType<?> comp, AbstractType<?> subcc)
     {
-        CellNameType cellNameType = CellNames.fromAbstractType(CFMetaData.makeRawAbstractType(comp, subcc), true);
-        return new CFMetaData(keyspace, name, subcc == null ? ColumnFamilyType.Standard : ColumnFamilyType.Super, cellNameType);
+        CellNameType cellNameType = CellNames.fromAbstractType(makeRawAbstractType(comp, subcc), true);
+        return new CFMetaData(keyspace, name, subcc == null ? ColumnFamilyType.Standard : ColumnFamilyType.Super, cellNameType,
+                              SystemKeyspace.instance, Schema.instance, ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this);
     }
 
     public CFMetaData sparseCFMetaData(String keyspace, String name, AbstractType<?> comp)
     {
         CellNameType cellNameType = CellNames.fromAbstractType(comp, false);
-        return new CFMetaData(keyspace, name, ColumnFamilyType.Standard, cellNameType);
+        return new CFMetaData(keyspace, name, ColumnFamilyType.Standard, cellNameType,
+                              SystemKeyspace.instance, Schema.instance, ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this);
     }
 
     public CFMetaData denseCFMetaData(String keyspace, String name, AbstractType<?> comp)
@@ -301,9 +304,10 @@ public class CFMetaDataFactory
         }
     }
 
-    private static CFMetaData newSystemMetadata(String keyspace, String cfName, String comment, CellNameType comparator)
+    private CFMetaData newSystemMetadata(String keyspace, String cfName, String comment, CellNameType comparator)
     {
-        return new CFMetaData(keyspace, cfName, ColumnFamilyType.Standard, comparator, CFMetaData.generateLegacyCfId(keyspace, cfName))
+        return new CFMetaData(keyspace, cfName, ColumnFamilyType.Standard, comparator, CFMetaData.generateLegacyCfId(keyspace, cfName),
+                              SystemKeyspace.instance, Schema.instance, ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this)
                 .comment(comment)
                 .readRepairChance(0)
                 .dcLocalReadRepairChance(0)
@@ -328,7 +332,8 @@ public class CFMetaDataFactory
                 ? CachingOptions.KEYS_ONLY
                 : CachingOptions.NONE;
 
-        return new CFMetaData(parent.ksName, parent.indexColumnFamilyName(info), ColumnFamilyType.Standard, indexComparator, parent.cfId)
+        return new CFMetaData(parent.ksName, parent.indexColumnFamilyName(info), ColumnFamilyType.Standard, indexComparator, parent.cfId,
+                              SystemKeyspace.instance, Schema.instance, ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this)
                 .keyValidator(info.type)
                 .readRepairChance(0.0)
                 .dcLocalReadRepairChance(0.0)
@@ -367,7 +372,7 @@ public class CFMetaDataFactory
                     ? null
                     : cf_def.subcomparator_type == null ? BytesType.instance : TypeParser.parse(cf_def.subcomparator_type);
 
-            AbstractType<?> fullRawComparator = CFMetaData.makeRawAbstractType(rawComparator, subComparator);
+            AbstractType<?> fullRawComparator = makeRawAbstractType(rawComparator, subComparator);
 
             AbstractType<?> keyValidator = cf_def.isSetKey_validation_class() ? TypeParser.parse(cf_def.key_validation_class) : null;
 
@@ -399,7 +404,8 @@ public class CFMetaDataFactory
             if (cfId == null)
                 cfId = UUIDGen.getTimeUUID();
 
-            CFMetaData newCFMD = new CFMetaData(cf_def.keyspace, cf_def.name, cfType, comparator, cfId);
+            CFMetaData newCFMD = new CFMetaData(cf_def.keyspace, cf_def.name, cfType, comparator, cfId,
+                                                SystemKeyspace.instance, Schema.instance, ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this);
 
             newCFMD.addAllColumnDefinitions(defs);
 
@@ -470,7 +476,7 @@ public class CFMetaDataFactory
             cols.add(convertThriftCqlRow(row));
         UntypedResultSet colsRow = UntypedResultSet.create(cols);
 
-        return CFMetaData.fromSchemaNoTriggers(cfRow, colsRow);
+        return fromSchemaNoTriggers(cfRow, colsRow);
     }
 
     /**
@@ -484,7 +490,7 @@ public class CFMetaDataFactory
         String cfName = result.getString("columnfamily_name");
 
         Row serializedColumns = SystemKeyspace.instance.readSchemaRow(SystemKeyspace.SCHEMA_COLUMNS_CF, ksName, cfName);
-        CFMetaData cfm = CFMetaData.fromSchemaNoTriggers(result, ColumnDefinition.resultify(serializedColumns));
+        CFMetaData cfm = fromSchemaNoTriggers(result, ColumnDefinition.resultify(serializedColumns));
 
         Row serializedTriggers = SystemKeyspace.instance.readSchemaRow(SystemKeyspace.SCHEMA_TRIGGERS_CF, ksName, cfName);
         CFMetaData.addTriggerDefinitionsFromSchema(cfm, serializedTriggers, QueryProcessor.instance);
@@ -497,5 +503,122 @@ public class CFMetaDataFactory
         UntypedResultSet.Row result = QueryProcessor.instance.resultify("SELECT * FROM system.schema_columnfamilies", row).one();
         return fromSchema(result);
     }
+
+    // Package protected for use by tests
+    @VisibleForTesting
+    CFMetaData fromSchemaNoTriggers(UntypedResultSet.Row result, UntypedResultSet serializedColumnDefinitions)
+    {
+        try
+        {
+            String ksName = result.getString("keyspace_name");
+            String cfName = result.getString("columnfamily_name");
+
+            AbstractType<?> rawComparator = TypeParser.parse(result.getString("comparator"));
+            AbstractType<?> subComparator = result.has("subcomparator") ? TypeParser.parse(result.getString("subcomparator")) : null;
+            ColumnFamilyType cfType = ColumnFamilyType.valueOf(result.getString("type"));
+
+            AbstractType<?> fullRawComparator = makeRawAbstractType(rawComparator, subComparator);
+
+            List<ColumnDefinition> columnDefs = ColumnDefinition.fromSchema(serializedColumnDefinitions,
+                                                                            ksName,
+                                                                            cfName,
+                                                                            fullRawComparator,
+                                                                            cfType == ColumnFamilyType.Super);
+
+            boolean isDense = result.has("is_dense")
+                    ? result.getBoolean("is_dense")
+                    : CFMetaData.isDense(fullRawComparator, columnDefs);
+
+            CellNameType comparator = CellNames.fromAbstractType(fullRawComparator, isDense);
+
+            // if we are upgrading, we use id generated from names initially
+            UUID cfId = result.has("cf_id")
+                    ? result.getUUID("cf_id")
+                    : CFMetaData.generateLegacyCfId(ksName, cfName);
+
+            CFMetaData cfm = new CFMetaData(ksName, cfName, cfType, comparator, cfId, SystemKeyspace.instance, Schema.instance,
+                                            ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this);
+            cfm.setDense(isDense);
+
+            cfm.readRepairChance(result.getDouble("read_repair_chance"));
+            cfm.dcLocalReadRepairChance(result.getDouble("local_read_repair_chance"));
+            cfm.gcGraceSeconds(result.getInt("gc_grace_seconds"));
+            cfm.defaultValidator(TypeParser.parse(result.getString("default_validator")));
+            cfm.keyValidator(TypeParser.parse(result.getString("key_validator")));
+            cfm.minCompactionThreshold(result.getInt("min_compaction_threshold"));
+            cfm.maxCompactionThreshold(result.getInt("max_compaction_threshold"));
+            if (result.has("comment"))
+                cfm.comment(result.getString("comment"));
+            if (result.has("bloom_filter_fp_chance"))
+                cfm.bloomFilterFpChance(result.getDouble("bloom_filter_fp_chance"));
+            if (result.has("memtable_flush_period_in_ms"))
+                cfm.memtableFlushPeriod(result.getInt("memtable_flush_period_in_ms"));
+            cfm.caching(CachingOptions.fromString(result.getString("caching")));
+            if (result.has("default_time_to_live"))
+                cfm.defaultTimeToLive(result.getInt("default_time_to_live"));
+            if (result.has("speculative_retry"))
+                cfm.speculativeRetry(CFMetaData.SpeculativeRetry.fromString(result.getString("speculative_retry")));
+            cfm.compactionStrategyClass(CFMetaData.createCompactionStrategy(result.getString("compaction_strategy_class")));
+            cfm.compressionParameters(CompressionParameters.create(FBUtilities.fromJsonMap(result.getString("compression_parameters"))));
+            cfm.compactionStrategyOptions(FBUtilities.fromJsonMap(result.getString("compaction_strategy_options")));
+
+            // migrate old index_interval values to min_index_interval, if present
+            if (result.has("min_index_interval"))
+                cfm.minIndexInterval(result.getInt("min_index_interval"));
+            else if (result.has("index_interval"))
+                cfm.minIndexInterval(result.getInt("index_interval"));
+            if (result.has("max_index_interval"))
+                cfm.maxIndexInterval(result.getInt("max_index_interval"));
+
+            /*
+             * The info previously hold by key_aliases, column_aliases and value_alias is now stored in columnMetadata (because 1) this
+             * make more sense and 2) this allow to store indexing information).
+             * However, for upgrade sake we need to still be able to read those old values. Moreover, we cannot easily
+             * remove those old columns once "converted" to columnMetadata because that would screw up nodes that may
+             * not have upgraded. So for now we keep the both info and in sync, even though its redundant.
+             */
+            if (result.has("key_aliases"))
+                cfm.addColumnMetadataFromAliases(aliasesFromStrings(FBUtilities.fromJsonList(result.getString("key_aliases"))), cfm.getKeyValidator(), ColumnDefinition.Kind.PARTITION_KEY);
+            if (result.has("column_aliases"))
+                cfm.addColumnMetadataFromAliases(aliasesFromStrings(FBUtilities.fromJsonList(result.getString("column_aliases"))), cfm.comparator.asAbstractType(), ColumnDefinition.Kind.CLUSTERING_COLUMN);
+            if (result.has("value_alias"))
+                cfm.addColumnMetadataFromAliases(Collections.singletonList(result.getBytes("value_alias")), cfm.getDefaultValidator(), ColumnDefinition.Kind.COMPACT_VALUE);
+
+            if (result.has("dropped_columns"))
+                cfm.droppedColumns(convertDroppedColumns(result.getMap("dropped_columns", UTF8Type.instance, LongType.instance)));
+
+            for (ColumnDefinition cd : columnDefs)
+                cfm.addOrReplaceColumnDefinition(cd);
+
+            return cfm.rebuild();
+        }
+        catch (SyntaxException | ConfigurationException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static AbstractType<?> makeRawAbstractType(AbstractType<?> comparator, AbstractType<?> subComparator)
+    {
+        return subComparator == null ? comparator : CompositeType.getInstance(Arrays.asList(comparator, subComparator));
+    }
+
+    private static List<ByteBuffer> aliasesFromStrings(List<String> aliases)
+    {
+        List<ByteBuffer> rawAliases = new ArrayList<>(aliases.size());
+        for (String alias : aliases)
+            rawAliases.add(UTF8Type.instance.decompose(alias));
+        return rawAliases;
+    }
+
+    private static Map<ColumnIdentifier, Long> convertDroppedColumns(Map<String, Long> raw)
+    {
+        Map<ColumnIdentifier, Long> converted = Maps.newHashMap();
+        for (Map.Entry<String, Long> entry : raw.entrySet())
+            converted.put(new ColumnIdentifier(entry.getKey(), true), entry.getValue());
+        return converted;
+    }
+
+
 
 }

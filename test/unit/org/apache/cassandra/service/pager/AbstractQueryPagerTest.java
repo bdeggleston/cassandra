@@ -136,7 +136,15 @@ public class AbstractQueryPagerTest
 
     private CFMetaData createMetadata()
     {
-        return new CFMetaData("ks", "cf", ColumnFamilyType.Standard, CellNames.fromAbstractType(Int32Type.instance, false));
+        return new CFMetaData("ks",
+                              "cf",
+                              ColumnFamilyType.Standard,
+                              CellNames.fromAbstractType(Int32Type.instance, false),
+                              SystemKeyspace.instance,
+                              Schema.instance,
+                              ColumnFamilyStoreManager.instance,
+                              KeyspaceManager.instance,
+                              CFMetaDataFactory.instance);
     }
 
     private static ByteBuffer bb(int i)
