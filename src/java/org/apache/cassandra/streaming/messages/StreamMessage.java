@@ -20,7 +20,12 @@ package org.apache.cassandra.streaming.messages;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
+import java.util.EnumMap;
+import java.util.Map;
 
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.util.DataOutputStreamAndChannel;
 import org.apache.cassandra.streaming.StreamSession;
 
@@ -34,24 +39,27 @@ public abstract class StreamMessage
     /** Streaming protocol version */
     public static final int CURRENT_VERSION = 2;
 
-    public static void serialize(StreamMessage message, DataOutputStreamAndChannel out, int version, StreamSession session) throws IOException
+    @SuppressWarnings("unchecked")
+    public static void serialize(StreamMessage message, DataOutputStreamAndChannel out, int version, StreamSession session, Map<Type, Serializer> serializers) throws IOException
     {
         ByteBuffer buff = ByteBuffer.allocate(1);
         // message type
         buff.put(message.type.type);
         buff.flip();
         out.write(buff);
-        message.type.outSerializer.serialize(message, out, version, session);
+        Serializer serializer = serializers.get(message.type);
+        serializer.serialize(message, out, version, session);
     }
 
-    public static StreamMessage deserialize(ReadableByteChannel in, int version, StreamSession session) throws IOException
+    public static StreamMessage deserialize(ReadableByteChannel in, int version, StreamSession session, Map<Type, Serializer> serializers) throws IOException
     {
         ByteBuffer buff = ByteBuffer.allocate(1);
         if (in.read(buff) > 0)
         {
             buff.flip();
             Type type = Type.get(buff.get());
-            return type.inSerializer.deserialize(in, version, session);
+            Serializer serializer = serializers.get(type);
+            return serializer.deserialize(in, version, session);
         }
         else
         {
@@ -71,12 +79,12 @@ public abstract class StreamMessage
     /** StreamMessage types */
     public static enum Type
     {
-        PREPARE(1, 5, PrepareMessage.serializer),
-        FILE(2, 0, IncomingFileMessage.serializer, OutgoingFileMessage.serializer),
-        RECEIVED(3, 4, ReceivedMessage.serializer),
-        RETRY(4, 4, RetryMessage.serializer),
-        COMPLETE(5, 1, CompleteMessage.serializer),
-        SESSION_FAILED(6, 5, SessionFailedMessage.serializer);
+        PREPARE(1, 5),
+        FILE(2, 0),
+        RECEIVED(3, 4),
+        RETRY(4, 4),
+        COMPLETE(5, 1),
+        SESSION_FAILED(6, 5);
 
         public static Type get(byte type)
         {
@@ -90,23 +98,37 @@ public abstract class StreamMessage
 
         private final byte type;
         public final int priority;
-        public final Serializer<StreamMessage> inSerializer;
-        public final Serializer<StreamMessage> outSerializer;
 
-        @SuppressWarnings("unchecked")
-        private Type(int type, int priority, Serializer serializer)
-        {
-            this(type, priority, serializer, serializer);
-        }
-
-        @SuppressWarnings("unchecked")
-        private Type(int type, int priority, Serializer inSerializer, Serializer outSerializer)
+        private Type(int type, int priority)
         {
             this.type = (byte) type;
             this.priority = priority;
-            this.inSerializer = inSerializer;
-            this.outSerializer = outSerializer;
         }
+
+        public static Map<Type, Serializer> getInputSerializers(KeyspaceManager keyspaceManager, Schema schema, IPartitioner partitioner)
+        {
+            Map<Type, Serializer> serializers = new EnumMap<>(Type.class);
+            serializers.put(PREPARE, PrepareMessage.serializer);
+            serializers.put(FILE, new IncomingFileMessage.MsgSerializer(keyspaceManager, schema, partitioner));
+            serializers.put(RECEIVED, ReceivedMessage.serializer);
+            serializers.put(RETRY, RetryMessage.serializer);
+            serializers.put(COMPLETE, CompleteMessage.serializer);
+            serializers.put(SESSION_FAILED, SessionFailedMessage.serializer);
+            return serializers;
+        }
+
+        public static Map<Type, Serializer> getOutputSerializers()
+        {
+            Map<Type, Serializer> serializers = new EnumMap<>(Type.class);
+            serializers.put(PREPARE, PrepareMessage.serializer);
+            serializers.put(FILE, OutgoingFileMessage.serializer);
+            serializers.put(RECEIVED, ReceivedMessage.serializer);
+            serializers.put(RETRY, RetryMessage.serializer);
+            serializers.put(COMPLETE, CompleteMessage.serializer);
+            serializers.put(SESSION_FAILED, SessionFailedMessage.serializer);
+            return serializers;
+        }
+
     }
 
     public final Type type;

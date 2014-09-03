@@ -22,9 +22,9 @@ import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.io.util.DataOutputStreamAndChannel;
 import org.apache.cassandra.streaming.StreamReader;
@@ -36,15 +36,25 @@ import org.apache.cassandra.streaming.compress.CompressedStreamReader;
  */
 public class IncomingFileMessage extends StreamMessage
 {
-    public static Serializer<IncomingFileMessage> serializer = new Serializer<IncomingFileMessage>()
+    public static class MsgSerializer implements Serializer<IncomingFileMessage>
     {
+        private final KeyspaceManager keyspaceManager;
+        private final Schema schema;
+        private final IPartitioner partitioner;
+
+        public MsgSerializer(KeyspaceManager keyspaceManager, Schema schema, IPartitioner partitioner)
+        {
+            this.keyspaceManager = keyspaceManager;
+            this.schema = schema;
+            this.partitioner = partitioner;
+        }
+
         public IncomingFileMessage deserialize(ReadableByteChannel in, int version, StreamSession session) throws IOException
         {
             DataInputStream input = new DataInputStream(Channels.newInputStream(in));
             FileMessageHeader header = FileMessageHeader.serializer.deserialize(input, version);
-            StreamReader reader = header.compressionInfo == null ?
-                    new StreamReader(header, session, KeyspaceManager.instance, Schema.instance, DatabaseDescriptor.instance.getPartitioner())
-                    : new CompressedStreamReader(header, session, KeyspaceManager.instance, Schema.instance, DatabaseDescriptor.instance.getPartitioner());
+            StreamReader reader = header.compressionInfo == null ? new StreamReader(header, session, keyspaceManager, schema, partitioner)
+                    : new CompressedStreamReader(header, session, keyspaceManager, schema, partitioner);
 
             try
             {

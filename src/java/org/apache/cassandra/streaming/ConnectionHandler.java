@@ -27,6 +27,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -58,11 +59,11 @@ public class ConnectionHandler
     private IncomingMessageHandler incoming;
     private OutgoingMessageHandler outgoing;
 
-    ConnectionHandler(StreamSession session, InetAddress broadcastAddress)
+    ConnectionHandler(StreamSession session, InetAddress broadcastAddress, Map<StreamMessage.Type, StreamMessage.Serializer> inputSerializers, Map<StreamMessage.Type, StreamMessage.Serializer> outputSerializers)
     {
         this.session = session;
-        this.incoming = new IncomingMessageHandler(session, broadcastAddress);
-        this.outgoing = new OutgoingMessageHandler(session, broadcastAddress);
+        this.incoming = new IncomingMessageHandler(session, broadcastAddress, inputSerializers);
+        this.outgoing = new OutgoingMessageHandler(session, broadcastAddress, outputSerializers);
     }
 
     /**
@@ -146,11 +147,13 @@ public class ConnectionHandler
         protected Socket socket;
 
         private final AtomicReference<SettableFuture<?>> closeFuture = new AtomicReference<>();
+        protected final Map<StreamMessage.Type, StreamMessage.Serializer> serializers;
 
-        protected MessageHandler(StreamSession session, InetAddress broadcastAddress)
+        protected MessageHandler(StreamSession session, InetAddress broadcastAddress, Map<StreamMessage.Type, StreamMessage.Serializer> serializers)
         {
             this.session = session;
             this.broadcastAddress = broadcastAddress;
+            this.serializers = serializers;
         }
 
         protected abstract String name();
@@ -225,9 +228,9 @@ public class ConnectionHandler
      */
     static class IncomingMessageHandler extends MessageHandler
     {
-        IncomingMessageHandler(StreamSession session, InetAddress broadcastAddress)
+        IncomingMessageHandler(StreamSession session, InetAddress broadcastAddress, Map<StreamMessage.Type, StreamMessage.Serializer> serializers)
         {
-            super(session, broadcastAddress);
+            super(session, broadcastAddress, serializers);
         }
 
         protected String name()
@@ -243,7 +246,7 @@ public class ConnectionHandler
                 while (!isClosed())
                 {
                     // receive message
-                    StreamMessage message = StreamMessage.deserialize(in, protocolVersion, session);
+                    StreamMessage message = StreamMessage.deserialize(in, protocolVersion, session, serializers);
                     // Might be null if there is an error during streaming (see FileMessage.deserialize). It's ok
                     // to ignore here since we'll have asked for a retry.
                     if (message != null)
@@ -288,9 +291,9 @@ public class ConnectionHandler
             }
         });
 
-        OutgoingMessageHandler(StreamSession session, InetAddress broadcastAddress)
+        OutgoingMessageHandler(StreamSession session, InetAddress broadcastAddress, Map<StreamMessage.Type, StreamMessage.Serializer> serializers)
         {
-            super(session, broadcastAddress);
+            super(session, broadcastAddress, serializers);
         }
 
         protected String name()
@@ -343,7 +346,7 @@ public class ConnectionHandler
         {
             try
             {
-                StreamMessage.serialize(message, out, protocolVersion, session);
+                StreamMessage.serialize(message, out, protocolVersion, session, serializers);
             }
             catch (SocketException e)
             {

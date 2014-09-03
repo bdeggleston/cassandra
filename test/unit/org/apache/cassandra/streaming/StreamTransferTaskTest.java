@@ -70,7 +70,8 @@ public class StreamTransferTaskTest
                                                   DatabaseDescriptor.instance.getMaxStreamingRetries(),
                                                   Schema.instance,
                                                   KeyspaceManager.instance,
-                                                  StreamManager.instance);
+                                                  StreamManager.instance,
+                                                  DatabaseDescriptor.instance.getPartitioner());
         ColumnFamilyStore cfs = KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf);
 
         // create two sstables

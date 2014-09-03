@@ -20,6 +20,7 @@ package org.apache.cassandra.cql3;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.BufferCell;
 import org.apache.cassandra.db.Cell;
 import org.apache.cassandra.db.composites.*;
@@ -27,6 +28,7 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.serializers.Int32Serializer;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -64,6 +66,12 @@ public class ColumnConditionTest
             isSatisfiedBy(bound, conditionValue, columnValue);
             fail("Expected InvalidRequestException was not thrown");
         } catch (InvalidRequestException e) { }
+    }
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
     }
 
     @Test

@@ -247,7 +247,8 @@ public class StreamCoordinator
                                                           databaseDescriptor.getMaxStreamingRetries(),
                                                           schema,
                                                           keyspaceManager,
-                                                          streamManager);
+                                                          streamManager,
+                                                          databaseDescriptor.getPartitioner());
                 streamSessions.put(++lastReturned, session);
                 return session;
             }
@@ -286,7 +287,8 @@ public class StreamCoordinator
                                             databaseDescriptor.getMaxStreamingRetries(),
                                             schema,
                                             keyspaceManager,
-                                            streamManager);
+                                            streamManager,
+                                            databaseDescriptor.getPartitioner());
                 streamSessions.put(id, session);
             }
             return session;

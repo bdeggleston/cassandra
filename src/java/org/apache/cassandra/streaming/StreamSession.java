@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.common.collect.*;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.dht.IPartitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,12 +160,14 @@ public class StreamSession implements IEndpointStateChangeSubscriber
      * @param factory is used for establishing connection
      */
     public StreamSession(InetAddress peer, StreamConnectionFactory factory, int index, InetAddress broadcastAddress, int maxRetries,
-                         Schema schema, KeyspaceManager keyspaceManager, StreamManager streamManager)
+                         Schema schema, KeyspaceManager keyspaceManager, StreamManager streamManager, IPartitioner partitioner)
     {
         this.peer = peer;
         this.index = index;
         this.factory = factory;
-        this.handler = new ConnectionHandler(this, broadcastAddress);
+        Map<StreamMessage.Type, StreamMessage.Serializer> inputSerializers = StreamMessage.Type.getInputSerializers(keyspaceManager, schema, partitioner);
+        Map<StreamMessage.Type, StreamMessage.Serializer> outputSerializers = StreamMessage.Type.getOutputSerializers();
+        this.handler = new ConnectionHandler(this, broadcastAddress, inputSerializers, outputSerializers);
         this.metrics = StreamingMetrics.get(peer);
         this.maxRetries = maxRetries;
         this.schema = schema;
