@@ -143,7 +143,7 @@ public class Frame
 
     public static class Decoder extends ByteToMessageDecoder
     {
-        private static final int MAX_FRAME_LENGTH = DatabaseDescriptor.instance.getNativeTransportMaxFrameSize();
+        private final int maxFrameLength;
 
         private boolean discardingTooLongFrame;
         private long tooLongFrameLength;
@@ -152,9 +152,10 @@ public class Frame
 
         private final Connection.Factory factory;
 
-        public Decoder(Connection.Factory factory)
+        public Decoder(Connection.Factory factory, int maxFrameLength)
         {
             this.factory = factory;
+            this.maxFrameLength = maxFrameLength;
         }
 
         @Override
@@ -216,7 +217,7 @@ public class Frame
             }
 
             long frameLength = bodyLength + headerLength;
-            if (frameLength > MAX_FRAME_LENGTH)
+            if (frameLength > maxFrameLength)
             {
                 // Enter the discard mode and discard everything received so far.
                 discardingTooLongFrame = true;
@@ -259,7 +260,7 @@ public class Frame
             long tooLongFrameLength = this.tooLongFrameLength;
             this.tooLongFrameLength = 0;
             discardingTooLongFrame = false;
-            String msg = String.format("Request is too big: length %d exceeds maximum allowed length %d.", tooLongFrameLength,  MAX_FRAME_LENGTH);
+            String msg = String.format("Request is too big: length %d exceeds maximum allowed length %d.", tooLongFrameLength, maxFrameLength);
             throw ErrorMessage.wrap(new InvalidRequestException(msg), tooLongStreamId);
         }
     }

@@ -228,7 +228,8 @@ public class SimpleClient
         protected void initChannel(Channel channel) throws Exception
         {
             ChannelPipeline pipeline = channel.pipeline();
-            pipeline.addLast("frameDecoder", new Frame.Decoder(connectionFactory));
+            pipeline.addLast("frameDecoder", new Frame.Decoder(connectionFactory,
+                                                               DatabaseDescriptor.instance.getNativeTransportMaxFrameSize()));
             pipeline.addLast("frameEncoder", frameEncoder);
 
             pipeline.addLast("frameDecompressor", frameDecompressor);
