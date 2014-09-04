@@ -41,15 +41,18 @@ public class TriggerDefinition
     // Proper trigger parametrization will be added later.
     public final String classOption;
 
-    TriggerDefinition(String name, String classOption)
+    private final CFMetaDataFactory cfMetaDataFactory;
+
+    TriggerDefinition(String name, String classOption, CFMetaDataFactory cfMetaDataFactory)
     {
         this.name = name;
         this.classOption = classOption;
+        this.cfMetaDataFactory = cfMetaDataFactory;
     }
 
-    public static TriggerDefinition create(String name, String classOption)
+    public static TriggerDefinition create(String name, String classOption, CFMetaDataFactory cfMetaDataFactory)
     {
-        return new TriggerDefinition(name, classOption);
+        return new TriggerDefinition(name, classOption, cfMetaDataFactory);
     }
 
     /**
@@ -58,7 +61,7 @@ public class TriggerDefinition
      * @param serializedTriggers storage-level partition containing the trigger definitions
      * @return the list of processed TriggerDefinitions
      */
-    public static List<TriggerDefinition> fromSchema(Row serializedTriggers, QueryProcessor queryProcessor)
+    public static List<TriggerDefinition> fromSchema(Row serializedTriggers, QueryProcessor queryProcessor, CFMetaDataFactory cfMetaDataFactory)
     {
         List<TriggerDefinition> triggers = new ArrayList<>();
         String query = String.format("SELECT * FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_TRIGGERS_CF);
@@ -66,7 +69,7 @@ public class TriggerDefinition
         {
             String name = row.getString(TRIGGER_NAME);
             String classOption = row.getMap(TRIGGER_OPTIONS, UTF8Type.instance, UTF8Type.instance).get(CLASS);
-            triggers.add(new TriggerDefinition(name, classOption));
+            triggers.add(new TriggerDefinition(name, classOption, cfMetaDataFactory));
         }
         return triggers;
     }
@@ -82,7 +85,7 @@ public class TriggerDefinition
     {
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_TRIGGERS_CF);
 
-        CFMetaData cfm = CFMetaDataFactory.instance.SchemaTriggersCf;
+        CFMetaData cfm = cfMetaDataFactory.SchemaTriggersCf;
         Composite prefix = cfm.comparator.make(cfName, name);
         CFRowAdder adder = new CFRowAdder(cf, prefix, timestamp);
 
@@ -101,13 +104,13 @@ public class TriggerDefinition
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_TRIGGERS_CF);
         int ldt = (int) (System.currentTimeMillis() / 1000);
 
-        Composite prefix = CFMetaDataFactory.instance.SchemaTriggersCf.comparator.make(cfName, name);
+        Composite prefix = cfMetaDataFactory.SchemaTriggersCf.comparator.make(cfName, name);
         cf.addAtom(new RangeTombstone(prefix, prefix.end(), timestamp, ldt));
     }
 
-    public static TriggerDefinition fromThrift(TriggerDef thriftDef)
+    public static TriggerDefinition fromThrift(TriggerDef thriftDef, CFMetaDataFactory cfMetaDataFactory)
     {
-        return new TriggerDefinition(thriftDef.getName(), thriftDef.getOptions().get(CLASS));
+        return new TriggerDefinition(thriftDef.getName(), thriftDef.getOptions().get(CLASS), cfMetaDataFactory);
     }
 
     public TriggerDef toThrift()
@@ -118,11 +121,11 @@ public class TriggerDefinition
         return td;
     }
 
-    public static Map<String, TriggerDefinition> fromThrift(List<TriggerDef> thriftDefs)
+    public static Map<String, TriggerDefinition> fromThrift(List<TriggerDef> thriftDefs, CFMetaDataFactory cfMetaDataFactory)
     {
         Map<String, TriggerDefinition> triggerDefinitions = new HashMap<>();
         for (TriggerDef thriftDef : thriftDefs)
-            triggerDefinitions.put(thriftDef.getName(), fromThrift(thriftDef));
+            triggerDefinitions.put(thriftDef.getName(), fromThrift(thriftDef, cfMetaDataFactory));
         return triggerDefinitions;
     }
 

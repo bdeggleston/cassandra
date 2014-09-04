@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.config.TriggerDefinition;
 import org.apache.cassandra.db.ColumnFamily;
@@ -101,14 +102,14 @@ public class CreateTriggerStatementTest extends CQLTester
     {
         CFMetaData cfm = Schema.instance.getCFMetaData(keyspace(), currentTable()).copy();
         assertTrue("the trigger does not exist", cfm.containsTriggerDefinition(TriggerDefinition.create(name,
-                clazz.getName())));
+                clazz.getName(), CFMetaDataFactory.instance)));
     }
 
     private void assertTriggerDoesNotExists(String name, Class<?> clazz)
     {
         CFMetaData cfm = Schema.instance.getCFMetaData(keyspace(), currentTable()).copy();
         assertFalse("the trigger exists", cfm.containsTriggerDefinition(TriggerDefinition.create(name,
-                clazz.getName())));
+                clazz.getName(), CFMetaDataFactory.instance)));
     }
 
     public static class TestTrigger implements ITrigger

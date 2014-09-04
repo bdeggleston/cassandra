@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +73,7 @@ public class CreateTriggerStatement extends SchemaAlteringStatement
     {
         CFMetaData cfm = Schema.instance.getCFMetaData(keyspace(), columnFamily()).copy();
 
-        TriggerDefinition triggerDefinition = TriggerDefinition.create(triggerName, triggerClass);
+        TriggerDefinition triggerDefinition = TriggerDefinition.create(triggerName, triggerClass, CFMetaDataFactory.instance);
 
         if (!ifNotExists || !cfm.containsTriggerDefinition(triggerDefinition))
         {

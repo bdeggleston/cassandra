@@ -1398,12 +1398,6 @@ public final class CFMetaData
         return columnMetadata.remove(def.name.bytes) != null;
     }
 
-    static void addTriggerDefinitionsFromSchema(CFMetaData cfDef, Row serializedTriggerDefinitions, QueryProcessor queryProcessor)
-    {
-        for (TriggerDefinition td : TriggerDefinition.fromSchema(serializedTriggerDefinitions, queryProcessor))
-            cfDef.triggers.put(td.name, td);
-    }
-
     public void addTriggerDefinition(TriggerDefinition def) throws InvalidRequestException
     {
         if (containsTriggerDefinition(def))

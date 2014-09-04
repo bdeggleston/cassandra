@@ -49,7 +49,7 @@ public class TriggersSchemaTest
     @Test
     public void newKsContainsCfWithTrigger() throws Exception
     {
-        TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass);
+        TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass, CFMetaDataFactory.instance);
         CFMetaData cfm1 = CFMetaDataFactory.instance.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
         cfm1.addTriggerDefinition(td);
         KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(ksName,
@@ -76,7 +76,7 @@ public class TriggersSchemaTest
         MigrationManager.instance.announceNewKeyspace(ksm);
 
         CFMetaData cfm1 = CFMetaDataFactory.instance.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
-        TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass);
+        TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass, CFMetaDataFactory.instance);
         cfm1.addTriggerDefinition(td);
 
         MigrationManager.instance.announceNewColumnFamily(cfm1);
@@ -99,7 +99,7 @@ public class TriggersSchemaTest
         MigrationManager.instance.announceNewKeyspace(ksm);
 
         CFMetaData cfm2 = Schema.instance.getCFMetaData(ksName, cfName).copy();
-        TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass);
+        TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass, CFMetaDataFactory.instance);
         cfm2.addTriggerDefinition(td);
         MigrationManager.instance.announceColumnFamilyUpdate(cfm2, false);
 
@@ -112,7 +112,7 @@ public class TriggersSchemaTest
     @Test
     public void removeTriggerFromCf() throws Exception
     {
-        TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass);
+        TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass, CFMetaDataFactory.instance);
         CFMetaData cfm1 = CFMetaDataFactory.instance.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName, QueryProcessor.instance);
         cfm1.addTriggerDefinition(td);
         KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(ksName,

@@ -440,7 +440,7 @@ public class CFMetaDataFactory
             if (cf_def.isSetSpeculative_retry())
                 newCFMD.speculativeRetry(CFMetaData.SpeculativeRetry.fromString(cf_def.speculative_retry));
             if (cf_def.isSetTriggers())
-                newCFMD.triggers(TriggerDefinition.fromThrift(cf_def.triggers));
+                newCFMD.triggers(TriggerDefinition.fromThrift(cf_def.triggers, this));
 
             return newCFMD.comment(cf_def.comment)
                     .defaultValidator(TypeParser.parse(cf_def.default_validation_class))
@@ -493,7 +493,7 @@ public class CFMetaDataFactory
         CFMetaData cfm = fromSchemaNoTriggers(result, ColumnDefinition.resultify(serializedColumns));
 
         Row serializedTriggers = SystemKeyspace.instance.readSchemaRow(SystemKeyspace.SCHEMA_TRIGGERS_CF, ksName, cfName);
-        CFMetaData.addTriggerDefinitionsFromSchema(cfm, serializedTriggers, QueryProcessor.instance);
+        addTriggerDefinitionsFromSchema(cfm, serializedTriggers, QueryProcessor.instance);
 
         return cfm;
     }
@@ -619,6 +619,10 @@ public class CFMetaDataFactory
         return converted;
     }
 
-
+    void addTriggerDefinitionsFromSchema(CFMetaData cfDef, Row serializedTriggerDefinitions, QueryProcessor queryProcessor)
+    {
+        for (TriggerDefinition td : TriggerDefinition.fromSchema(serializedTriggerDefinitions, queryProcessor, this))
+            cfDef.getTriggers().put(td.name, td);
+    }
 
 }
