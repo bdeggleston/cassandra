@@ -65,7 +65,7 @@ public class RecoveryManagerTruncateTest
 		// add a single cell
         cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
 		cf.addColumn(column("col1", "val1", 1L));
-        rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes("keymulti"), cf);
+        rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("keymulti"), cf);
 		rm.applyUnsafe();
 
 		// Make sure data was written

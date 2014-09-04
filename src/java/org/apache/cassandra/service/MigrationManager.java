@@ -494,7 +494,7 @@ public class MigrationManager
         {
             out.writeInt(schema.size());
             for (Mutation mutation : schema)
-                Mutation.serializer.serialize(mutation, out, version);
+                MutationFactory.instance.serializer.serialize(mutation, out, version);
         }
 
         public Collection<Mutation> deserialize(DataInput in, int version) throws IOException
@@ -503,7 +503,7 @@ public class MigrationManager
             Collection<Mutation> schema = new ArrayList<Mutation>(count);
 
             for (int i = 0; i < count; i++)
-                schema.add(Mutation.serializer.deserialize(in, version));
+                schema.add(MutationFactory.instance.serializer.deserialize(in, version));
 
             return schema;
         }
@@ -512,7 +512,7 @@ public class MigrationManager
         {
             int size = TypeSizes.NATIVE.sizeof(schema.size());
             for (Mutation mutation : schema)
-                size += Mutation.serializer.serializedSize(mutation, version);
+                size += MutationFactory.instance.serializer.serializedSize(mutation, version);
             return size;
         }
     }

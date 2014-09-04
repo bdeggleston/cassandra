@@ -71,7 +71,7 @@ public class OneCompactionTest
         Set<DecoratedKey> inserted = new HashSet<DecoratedKey>();
         for (int j = 0; j < insertsPerTable; j++) {
             DecoratedKey key = Util.dk(String.valueOf(j));
-            Mutation rm = new Mutation(KEYSPACE1, key.getKey());
+            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
             rm.add(columnFamilyName, Util.cellname("0"), ByteBufferUtil.EMPTY_BYTE_BUFFER, j);
             rm.applyUnsafe();
             inserted.add(key);

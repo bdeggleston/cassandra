@@ -673,7 +673,7 @@ public class CassandraServer implements Cassandra.Iface
 
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cState.getKeyspace(), column_parent.column_family, Schema.instance, DBConfig.instance);
             cf.addColumn(name, column.value, column.timestamp, column.ttl);
-            mutation = new org.apache.cassandra.db.Mutation(cState.getKeyspace(), key, cf);
+            mutation = MutationFactory.instance.create(cState.getKeyspace(), key, cf);
         }
         catch (MarshalException e)
         {
@@ -835,12 +835,12 @@ public class CassandraServer implements Cassandra.Iface
                 if (metadata.isCounter())
                 {
                     ThriftConversion.fromThrift(consistency_level).validateCounterForWrite(metadata);
-                    counterMutation = counterMutation == null ? new org.apache.cassandra.db.Mutation(keyspace, key) : counterMutation;
+                    counterMutation = counterMutation == null ? MutationFactory.instance.create(keyspace, key) : counterMutation;
                     mutation = counterMutation;
                 }
                 else
                 {
-                    standardMutation = standardMutation == null ? new org.apache.cassandra.db.Mutation(keyspace, key) : standardMutation;
+                    standardMutation = standardMutation == null ? MutationFactory.instance.create(keyspace, key) : standardMutation;
                     mutation = standardMutation;
                 }
 
@@ -1019,7 +1019,7 @@ public class CassandraServer implements Cassandra.Iface
         if (isCommutativeOp)
             ThriftConversion.fromThrift(consistency_level).validateCounterForWrite(metadata);
 
-        org.apache.cassandra.db.Mutation mutation = new org.apache.cassandra.db.Mutation(keyspace, key);
+        org.apache.cassandra.db.Mutation mutation = MutationFactory.instance.create(keyspace, key);
         if (column_path.super_column == null && column_path.column == null)
             mutation.delete(column_path.column_family, timestamp);
         else if (column_path.super_column == null)
@@ -1784,7 +1784,7 @@ public class CassandraServer implements Cassandra.Iface
 
             ThriftValidation.validateColumnNames(metadata, column_parent, Arrays.asList(column.name));
 
-            org.apache.cassandra.db.Mutation mutation = new org.apache.cassandra.db.Mutation(keyspace, key);
+            org.apache.cassandra.db.Mutation mutation = MutationFactory.instance.create(keyspace, key);
             try
             {
                 if (metadata.isSuper())

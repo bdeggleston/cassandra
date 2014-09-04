@@ -137,10 +137,10 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         UUID hintId = UUIDGen.getTimeUUID();
         // serialize the hint with id and version as a composite column name
         CellName name = CFMetaDataFactory.instance.HintsCf.comparator.makeCellName(hintId, MessagingService.current_version);
-        ByteBuffer value = ByteBuffer.wrap(FBUtilities.serialize(mutation, Mutation.serializer, MessagingService.current_version));
+        ByteBuffer value = ByteBuffer.wrap(FBUtilities.serialize(mutation, MutationFactory.instance.serializer, MessagingService.current_version));
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(Schema.instance.getCFMetaData(Keyspace.SYSTEM_KS, SystemKeyspace.HINTS_CF), DBConfig.instance);
         cf.addColumn(name, value, now, ttl);
-        return new Mutation(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(targetId), cf);
+        return MutationFactory.instance.create(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(targetId), cf);
     }
 
     /*
@@ -183,7 +183,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     private static void deleteHint(ByteBuffer tokenBytes, CellName columnName, long timestamp)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, tokenBytes);
+        Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, tokenBytes);
         mutation.delete(SystemKeyspace.HINTS_CF, columnName, timestamp);
         mutation.applyUnsafe(); // don't bother with commitlog since we're going to flush as soon as we're done with delivery
     }
@@ -208,7 +208,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
             return;
         UUID hostId = LocatorConfig.instance.getTokenMetadata().getHostId(endpoint);
         ByteBuffer hostIdBytes = ByteBuffer.wrap(UUIDGen.decompose(hostId));
-        final Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, hostIdBytes);
+        final Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, hostIdBytes);
         mutation.delete(SystemKeyspace.HINTS_CF, System.currentTimeMillis());
 
         // execute asynchronously to avoid blocking caller (which may be processing gossip)
@@ -417,7 +417,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                 Mutation mutation;
                 try
                 {
-                    mutation = Mutation.serializer.deserialize(in, version);
+                    mutation = MutationFactory.instance.serializer.deserialize(in, version);
                 }
                 catch (UnknownColumnFamilyException e)
                 {

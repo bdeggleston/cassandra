@@ -71,7 +71,7 @@ public class TriggerExecutorTest
     public void noTriggerMutations() throws ConfigurationException, InvalidRequestException
     {
         CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", NoOpTrigger.class.getName(), CFMetaDataFactory.instance));
-        Mutation rm = new Mutation(bytes("k1"), makeCf(metadata, "v1", null));
+        Mutation rm = MutationFactory.instance.create(bytes("k1"), makeCf(metadata, "v1", null));
         assertNull(TriggerExecutor.instance.execute(Collections.singletonList(rm)));
     }
 
@@ -81,8 +81,8 @@ public class TriggerExecutorTest
         CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeySameCfTrigger.class.getName(), CFMetaDataFactory.instance));
         ColumnFamily cf1 = makeCf(metadata, "k1v1", null);
         ColumnFamily cf2 = makeCf(metadata, "k2v1", null);
-        Mutation rm1 = new Mutation(bytes("k1"), cf1);
-        Mutation rm2 = new Mutation(bytes("k2"), cf2);
+        Mutation rm1 = MutationFactory.instance.create(bytes("k1"), cf1);
+        Mutation rm2 = MutationFactory.instance.create(bytes("k2"), cf2);
 
         List<? extends IMutation> tmutations = new ArrayList<>(TriggerExecutor.instance.execute(Arrays.asList(rm1, rm2)));
         assertEquals(2, tmutations.size());
@@ -105,8 +105,8 @@ public class TriggerExecutorTest
         CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeySameCfPartialTrigger.class.getName(), CFMetaDataFactory.instance));
         ColumnFamily cf1 = makeCf(metadata, "k1v1", null);
         ColumnFamily cf2 = makeCf(metadata, "k2v1", null);
-        Mutation rm1 = new Mutation(bytes("k1"), cf1);
-        Mutation rm2 = new Mutation(bytes("k2"), cf2);
+        Mutation rm1 = MutationFactory.instance.create(bytes("k1"), cf1);
+        Mutation rm2 = MutationFactory.instance.create(bytes("k2"), cf2);
 
         List<? extends IMutation> tmutations = new ArrayList<>(TriggerExecutor.instance.execute(Arrays.asList(rm1, rm2)));
         assertEquals(2, tmutations.size());
@@ -129,8 +129,8 @@ public class TriggerExecutorTest
         CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeyDifferentCfTrigger.class.getName(), CFMetaDataFactory.instance));
         ColumnFamily cf1 = makeCf(metadata, "k1v1", null);
         ColumnFamily cf2 = makeCf(metadata, "k2v1", null);
-        Mutation rm1 = new Mutation(bytes("k1"), cf1);
-        Mutation rm2 = new Mutation(bytes("k2"), cf2);
+        Mutation rm1 = MutationFactory.instance.create(bytes("k1"), cf1);
+        Mutation rm2 = MutationFactory.instance.create(bytes("k2"), cf2);
 
         List<? extends IMutation> tmutations = new ArrayList<>(TriggerExecutor.instance.execute(Arrays.asList(rm1, rm2)));
         assertEquals(2, tmutations.size());
@@ -161,8 +161,8 @@ public class TriggerExecutorTest
         CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeyDifferentKsTrigger.class.getName(), CFMetaDataFactory.instance));
         ColumnFamily cf1 = makeCf(metadata, "k1v1", null);
         ColumnFamily cf2 = makeCf(metadata, "k2v1", null);
-        Mutation rm1 = new Mutation(bytes("k1"), cf1);
-        Mutation rm2 = new Mutation(bytes("k2"), cf2);
+        Mutation rm1 = MutationFactory.instance.create(bytes("k1"), cf1);
+        Mutation rm2 = MutationFactory.instance.create(bytes("k2"), cf2);
 
         List<? extends IMutation> tmutations = new ArrayList<>(TriggerExecutor.instance.execute(Arrays.asList(rm1, rm2)));
         assertEquals(4, tmutations.size());
@@ -194,7 +194,7 @@ public class TriggerExecutorTest
     {
         CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", DifferentKeyTrigger.class.getName(), CFMetaDataFactory.instance));
         ColumnFamily cf = makeCf(metadata, "v1", null);
-        Mutation rm = new Mutation(UTF8Type.instance.fromString("k1"), cf);
+        Mutation rm = MutationFactory.instance.create(UTF8Type.instance.fromString("k1"), cf);
 
         List<? extends IMutation> tmutations = new ArrayList<>(TriggerExecutor.instance.execute(Arrays.asList(rm)));
         assertEquals(2, tmutations.size());
@@ -277,7 +277,7 @@ public class TriggerExecutorTest
         {
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(update.metadata(), DBConfig.instance);
             cf.addColumn(new BufferCell(getColumnName(update.metadata(), "c2"), bytes("trigger")));
-            return Collections.singletonList(new Mutation(update.metadata().ksName, key, cf));
+            return Collections.singletonList(MutationFactory.instance.create(update.metadata().ksName, key, cf));
         }
     }
 
@@ -290,7 +290,7 @@ public class TriggerExecutorTest
 
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(update.metadata(), DBConfig.instance);
             cf.addColumn(new BufferCell(getColumnName(update.metadata(), "c2"), bytes("trigger")));
-            return Collections.singletonList(new Mutation(update.metadata().ksName, key, cf));
+            return Collections.singletonList(MutationFactory.instance.create(update.metadata().ksName, key, cf));
         }
     }
 
@@ -300,7 +300,7 @@ public class TriggerExecutorTest
         {
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(makeCfMetaData(update.metadata().ksName, "otherCf", null), DBConfig.instance);
             cf.addColumn(new BufferCell(getColumnName(update.metadata(), "c2"), bytes("trigger")));
-            return Collections.singletonList(new Mutation(cf.metadata().ksName, key, cf));
+            return Collections.singletonList(MutationFactory.instance.create(cf.metadata().ksName, key, cf));
         }
     }
 
@@ -310,7 +310,7 @@ public class TriggerExecutorTest
         {
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(makeCfMetaData("otherKs", "otherCf", null), DBConfig.instance);
             cf.addColumn(new BufferCell(getColumnName(update.metadata(), "c2"), bytes("trigger")));
-            return Collections.singletonList(new Mutation(cf.metadata().ksName, key, cf));
+            return Collections.singletonList(MutationFactory.instance.create(cf.metadata().ksName, key, cf));
         }
     }
 
@@ -320,7 +320,7 @@ public class TriggerExecutorTest
         {
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(update.metadata(), DBConfig.instance);
             cf.addColumn(new BufferCell(getColumnName(update.metadata(), "c2"), bytes("trigger")));
-            return Collections.singletonList(new Mutation(cf.metadata().ksName, bytes("otherKey"), cf));
+            return Collections.singletonList(MutationFactory.instance.create(cf.metadata().ksName, bytes("otherKey"), cf));
         }
     }
 

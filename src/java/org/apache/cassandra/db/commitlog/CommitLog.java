@@ -203,7 +203,7 @@ public class CommitLog implements CommitLogMBean
     {
         assert mutation != null;
 
-        long size = Mutation.serializer.serializedSize(mutation, MessagingService.current_version);
+        long size = MutationFactory.instance.serializer.serializedSize(mutation, MessagingService.current_version);
 
         long totalSize = size + ENTRY_OVERHEAD_SIZE;
         if (totalSize > MAX_MUTATION_SIZE)
@@ -226,7 +226,7 @@ public class CommitLog implements CommitLogMBean
 
             int start = buffer.position();
             // checksummed mutation
-            Mutation.serializer.serialize(mutation, dos, MessagingService.current_version);
+            MutationFactory.instance.serializer.serialize(mutation, dos, MessagingService.current_version);
             checksum.update(buffer, start, (int) size);
             buffer.putInt(checksum.getCrc());
         }

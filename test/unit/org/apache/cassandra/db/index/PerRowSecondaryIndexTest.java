@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.cassandra.db.*;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -34,13 +35,6 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
-import org.apache.cassandra.db.Cell;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.IndexExpression;
-import org.apache.cassandra.db.Mutation;
-import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.filter.QueryFilter;
@@ -89,7 +83,7 @@ public class PerRowSecondaryIndexTest
     {
         // create a row then test that the configured index instance was able to read the row
         Mutation rm;
-        rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes("k1"));
+        rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("k1"));
         rm.add("Indexed1", Util.cellname("indexed"), ByteBufferUtil.bytes("foo"), 1);
         rm.applyUnsafe();
 
@@ -98,7 +92,7 @@ public class PerRowSecondaryIndexTest
         assertEquals(ByteBufferUtil.bytes("foo"), indexedRow.getColumn(Util.cellname("indexed")).value());
 
         // update the row and verify what was indexed
-        rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes("k1"));
+        rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("k1"));
         rm.add("Indexed1", Util.cellname("indexed"), ByteBufferUtil.bytes("bar"), 2);
         rm.applyUnsafe();
 
@@ -113,7 +107,7 @@ public class PerRowSecondaryIndexTest
     {
         // issue a column delete and test that the configured index instance was notified to update
         Mutation rm;
-        rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes("k2"));
+        rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("k2"));
         rm.delete("Indexed1", Util.cellname("indexed"), 1);
         rm.applyUnsafe();
 
@@ -131,7 +125,7 @@ public class PerRowSecondaryIndexTest
     {
         // issue a row level delete and test that the configured index instance was notified to update
         Mutation rm;
-        rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes("k3"));
+        rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("k3"));
         rm.delete("Indexed1", 1);
         rm.applyUnsafe();
 
@@ -147,7 +141,7 @@ public class PerRowSecondaryIndexTest
     public void testInvalidSearch() throws IOException
     {
         Mutation rm;
-        rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes("k4"));
+        rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("k4"));
         rm.add("Indexed1", Util.cellname("indexed"), ByteBufferUtil.bytes("foo"), 1);
         rm.apply();
         

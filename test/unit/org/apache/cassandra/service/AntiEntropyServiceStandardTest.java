@@ -39,7 +39,7 @@ public class AntiEntropyServiceStandardTest extends AntiEntropyServiceTestAbstra
     {
         List<IMutation> rms = new LinkedList<IMutation>();
         Mutation rm;
-        rm = new Mutation(keyspaceName, ByteBufferUtil.bytes("key1"));
+        rm = MutationFactory.instance.create(keyspaceName, ByteBufferUtil.bytes("key1"));
         rm.add(cfname, Util.cellname("Column1"), ByteBufferUtil.bytes("asdfasdf"), 0);
         rms.add(rm);
         return rms;

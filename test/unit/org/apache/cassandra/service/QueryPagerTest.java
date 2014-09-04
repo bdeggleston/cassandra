@@ -107,7 +107,7 @@ public class QueryPagerTest
          */
         for (int i = 0; i < nbKeys; i++)
         {
-            Mutation rm = new Mutation(KEYSPACE1, bytes("k" + i));
+            Mutation rm = MutationFactory.instance.create(KEYSPACE1, bytes("k" + i));
             ColumnFamily cf = rm.addOrGet(CF_STANDARD);
 
             for (int j = 0; j < nbCols; j++)

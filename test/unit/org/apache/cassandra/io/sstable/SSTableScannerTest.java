@@ -88,7 +88,7 @@ public class SSTableScannerTest
     {
         long timestamp = System.currentTimeMillis();
         DecoratedKey decoratedKey = Util.dk(toKey(key));
-        Mutation rm = new Mutation(KEYSPACE, decoratedKey.getKey());
+        Mutation rm = MutationFactory.instance.create(KEYSPACE, decoratedKey.getKey());
         rm.add(TABLE, Util.cellname("col"), ByteBufferUtil.EMPTY_BYTE_BUFFER, timestamp, 1000);
         rm.applyUnsafe();
     }

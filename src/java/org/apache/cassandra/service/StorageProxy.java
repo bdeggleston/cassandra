@@ -660,7 +660,7 @@ public class StorageProxy implements StorageProxyMBean
                                                                         null,
                                                                         WriteType.SIMPLE,
                                                                         DatabaseDescriptor.instance);
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(uuid));
+        Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(uuid));
         mutation.delete(SystemKeyspace.BATCHLOG_CF, FBUtilities.timestampMicros());
         MessageOut<Mutation> message = mutation.createMessage();
         for (InetAddress target : endpoints)

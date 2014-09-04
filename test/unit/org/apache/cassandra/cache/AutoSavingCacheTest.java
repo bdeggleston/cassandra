@@ -53,7 +53,7 @@ public class AutoSavingCacheTest
         ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD1);
         for (int i = 0; i < 2; i++)
         {
-            Mutation rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes("key1"));
+            Mutation rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("key1"));
             rm.add(CF_STANDARD1, Util.cellname("c1"), ByteBufferUtil.bytes(i), 0);
             rm.applyUnsafe();
             cfs.forceBlockingFlush();

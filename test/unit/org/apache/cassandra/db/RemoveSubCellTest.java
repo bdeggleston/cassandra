@@ -65,14 +65,14 @@ public class RemoveSubCellTest
         DecoratedKey dk = Util.dk("key1");
 
         // add data
-        rm = new Mutation(KEYSPACE1, dk.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey());
         Util.addMutation(rm, "Super1", "SC1", 1, "asdf", 0);
         rm.applyUnsafe();
         store.forceBlockingFlush();
 
         CellName cname = CellNames.compositeDense(ByteBufferUtil.bytes("SC1"), getBytes(1L));
         // remove
-        rm = new Mutation(KEYSPACE1, dk.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey());
         rm.delete("Super1", cname, 1);
         rm.applyUnsafe();
 
@@ -90,7 +90,7 @@ public class RemoveSubCellTest
         DecoratedKey dk = Util.dk("key2");
 
         // add data
-        rm = new Mutation(KEYSPACE1, dk.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey());
         Util.addMutation(rm, "Super1", "SC1", 1, "asdf", 0);
         rm.applyUnsafe();
         store.forceBlockingFlush();
@@ -98,7 +98,7 @@ public class RemoveSubCellTest
         // remove the SC
         ByteBuffer scName = ByteBufferUtil.bytes("SC1");
         CellName cname = CellNames.compositeDense(scName, getBytes(1L));
-        rm = new Mutation(KEYSPACE1, dk.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey());
         rm.deleteRange("Super1", SuperColumns.startOf(scName), SuperColumns.endOf(scName), 1);
         rm.applyUnsafe();
 
@@ -108,7 +108,7 @@ public class RemoveSubCellTest
         Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
 
         // remove the column itself
-        rm = new Mutation(KEYSPACE1, dk.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey());
         rm.delete("Super1", cname, 2);
         rm.applyUnsafe();
 

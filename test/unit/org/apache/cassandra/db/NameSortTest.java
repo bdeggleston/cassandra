@@ -86,7 +86,7 @@ public class NameSortTest
             for (int j = 0; j < 8; ++j)
             {
                 ByteBuffer bytes = j % 2 == 0 ? ByteBufferUtil.bytes("a") : ByteBufferUtil.bytes("b");
-                rm = new Mutation(KEYSPACE1, key);
+                rm = MutationFactory.instance.create(KEYSPACE1, key);
                 rm.add("Standard1", Util.cellname("Cell-" + j), bytes, j);
                 rm.applyUnsafe();
             }
@@ -94,7 +94,7 @@ public class NameSortTest
             // super
             for (int j = 0; j < 8; ++j)
             {
-                rm = new Mutation(KEYSPACE1, key);
+                rm = MutationFactory.instance.create(KEYSPACE1, key);
                 for (int k = 0; k < 4; ++k)
                 {
                     String value = (j + k) % 2 == 0 ? "a" : "b";

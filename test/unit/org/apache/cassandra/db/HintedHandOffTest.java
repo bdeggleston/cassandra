@@ -76,7 +76,7 @@ public class HintedHandOffTest
         hintStore.disableAutoCompaction();
 
         // insert 1 hint
-        Mutation rm = new Mutation(KEYSPACE4, ByteBufferUtil.bytes(1));
+        Mutation rm = MutationFactory.instance.create(KEYSPACE4, ByteBufferUtil.bytes(1));
         rm.add(STANDARD1_CF, Util.cellname(COLUMN1), ByteBufferUtil.EMPTY_BYTE_BUFFER, System.currentTimeMillis());
 
         HintedHandOffManager.instance.hintFor(rm,
@@ -119,7 +119,7 @@ public class HintedHandOffTest
         hintStore.clearUnsafe();
 
         // insert 1 hint
-        Mutation rm = new Mutation(KEYSPACE4, ByteBufferUtil.bytes(1));
+        Mutation rm = MutationFactory.instance.create(KEYSPACE4, ByteBufferUtil.bytes(1));
         rm.add(STANDARD1_CF, Util.cellname(COLUMN1), ByteBufferUtil.EMPTY_BYTE_BUFFER, System.currentTimeMillis());
 
         HintedHandOffManager.instance.hintFor(rm,

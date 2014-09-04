@@ -200,7 +200,7 @@ public class RowCacheTest
         ByteBuffer key = ByteBufferUtil.bytes("rowcachekey");
         DecoratedKey dk = cachedStore.partitioner.decorateKey(key);
         RowCacheKey rck = new RowCacheKey(cachedStore.metadata.cfId, dk, Schema.instance);
-        Mutation mutation = new Mutation(KEYSPACE_CACHED, key);
+        Mutation mutation = MutationFactory.instance.create(KEYSPACE_CACHED, key);
         for (int i = 0; i < 200; i++)
             mutation.add(cf, Util.cellname(i), ByteBufferUtil.bytes("val" + i), System.currentTimeMillis());
         mutation.applyUnsafe();

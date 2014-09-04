@@ -154,7 +154,7 @@ public class CollationController
                 && cfs.getCompactionStrategy() instanceof SizeTieredCompactionStrategy)
             {
                 Tracing.instance.trace("Defragmenting requested data");
-                Mutation mutation = new Mutation(cfs.keyspace.getName(), filter.key.getKey(), returnCF.cloneMe());
+                Mutation mutation = MutationFactory.instance.create(cfs.keyspace.getName(), filter.key.getKey(), returnCF.cloneMe());
                 // skipping commitlog and index updates is fine since we're just de-fragmenting existing data
                 KeyspaceManager.instance.open(mutation.getKeyspaceName()).apply(mutation, false, false);
             }

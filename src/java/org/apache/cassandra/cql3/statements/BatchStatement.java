@@ -220,7 +220,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
             Mutation mut;
             if (mutation == null)
             {
-                mut = new Mutation(ksName, key);
+                mut = MutationFactory.instance.create(ksName, key);
                 mutation = statement.cfm.isCounter() ? new CounterMutation(mut, options.getConsistency()) : mut;
                 ksMap.put(key, mutation);
             }

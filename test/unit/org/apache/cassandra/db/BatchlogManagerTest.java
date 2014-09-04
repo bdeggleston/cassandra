@@ -87,7 +87,7 @@ public class BatchlogManagerTest
         CellNameType comparator = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Standard1").metadata.comparator;
         for (int i = 0; i < 1000; i++)
         {
-            Mutation mutation = new Mutation(KEYSPACE1, bytes(i));
+            Mutation mutation = MutationFactory.instance.create(KEYSPACE1, bytes(i));
             mutation.add("Standard1", comparator.makeCellName(bytes(i)), bytes(i), System.currentTimeMillis());
 
             long timestamp = i < 500
@@ -144,9 +144,9 @@ public class BatchlogManagerTest
         // In the middle of the process, 'truncate' Standard2.
         for (int i = 0; i < 1000; i++)
         {
-            Mutation mutation1 = new Mutation(KEYSPACE1, bytes(i));
+            Mutation mutation1 = MutationFactory.instance.create(KEYSPACE1, bytes(i));
             mutation1.add("Standard2", comparator2.makeCellName(bytes(i)), bytes(i), 0);
-            Mutation mutation2 = new Mutation(KEYSPACE1, bytes(i));
+            Mutation mutation2 = MutationFactory.instance.create(KEYSPACE1, bytes(i));
             mutation2.add("Standard3", comparator3.makeCellName(bytes(i)), bytes(i), 0);
             List<Mutation> mutations = Lists.newArrayList(mutation1, mutation2);
 

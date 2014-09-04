@@ -188,7 +188,7 @@ public final class KSMetaData
 
     public Mutation dropFromSchema(long timestamp)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(name));
+        Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(name));
 
         mutation.delete(SystemKeyspace.SCHEMA_KEYSPACES_CF, timestamp);
         mutation.delete(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF, timestamp);
@@ -202,7 +202,7 @@ public final class KSMetaData
 
     public Mutation toSchema(long timestamp)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(name));
+        Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(name));
         ColumnFamily cf = mutation.addOrGet(cfMetaDataFactory.SchemaKeyspacesCf);
         CFRowAdder adder = new CFRowAdder(cf, cfMetaDataFactory.SchemaKeyspacesCf.comparator.builder().build(), timestamp);
 

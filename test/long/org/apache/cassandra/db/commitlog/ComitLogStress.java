@@ -33,6 +33,7 @@ import org.apache.cassandra.Util;
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
 import org.apache.cassandra.db.Mutation;
+import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
@@ -87,7 +88,7 @@ public class ComitLogStress
         public void run() {
             String ks = "Keyspace1";
             ByteBuffer key = ByteBufferUtil.bytes(keyString);
-            Mutation mutation = new Mutation(ks, key);
+            Mutation mutation = MutationFactory.instance.create(ks, key);
             mutation.add("Standard1", Util.cellname("name"), ByteBufferUtil.bytes("value"),
                     System.currentTimeMillis());
             CommitLog.instance.add(mutation);

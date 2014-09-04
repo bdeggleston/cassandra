@@ -105,7 +105,7 @@ public class KeyspaceTest
 
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1","val1", 1L));
-        Mutation rm = new Mutation(KEYSPACE2, TEST_KEY.getKey(), cf);
+        Mutation rm = MutationFactory.instance.create(KEYSPACE2, TEST_KEY.getKey(), cf);
         rm.applyUnsafe();
 
         Runnable verify = new WrappedRunnable()
@@ -137,7 +137,7 @@ public class KeyspaceTest
         cf.addColumn(column("col1","val1", 1L));
         cf.addColumn(column("col2","val2", 1L));
         cf.addColumn(column("col3","val3", 1L));
-        Mutation rm = new Mutation(KEYSPACE1, TEST_KEY.getKey(), cf);
+        Mutation rm = MutationFactory.instance.create(KEYSPACE1, TEST_KEY.getKey(), cf);
         rm.applyUnsafe();
 
         Runnable verify = new WrappedRunnable()
@@ -167,7 +167,7 @@ public class KeyspaceTest
         cf.addColumn(column("a", "val1", 1L));
         cf.addColumn(column("b", "val2", 1L));
         cf.addColumn(column("c", "val3", 1L));
-        Mutation rm = new Mutation(KEYSPACE1, key.getKey(), cf);
+        Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey(), cf);
         rm.applyUnsafe();
 
         cf = cfStore.getColumnFamily(key, cellname("b"), cellname("c"), false, 100, System.currentTimeMillis());
@@ -186,7 +186,7 @@ public class KeyspaceTest
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard2", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1));
-        Mutation rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes("row1000"), cf);
+        Mutation rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("row1000"), cf);
         rm.applyUnsafe();
 
         validateGetSliceNoMatch(keyspace);
@@ -213,7 +213,7 @@ public class KeyspaceTest
         // so if we go to 300, we'll get at least 4 blocks, which is plenty for testing.
         for (int i = 0; i < 300; i++)
             cf.addColumn(column("col" + fmt.format(i), "omg!thisisthevalue!"+i, 1L));
-        Mutation rm = new Mutation(KEYSPACE1, ROW.getKey(), cf);
+        Mutation rm = MutationFactory.instance.create(KEYSPACE1, ROW.getKey(), cf);
         rm.applyUnsafe();
 
         Runnable verify = new WrappedRunnable()
@@ -268,7 +268,7 @@ public class KeyspaceTest
         {
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "StandardLong1", Schema.instance, DBConfig.instance);
             cf.addColumn(new BufferCell(cellname((long)i), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0));
-            Mutation rm = new Mutation(KEYSPACE1, ROW.getKey(), cf);
+            Mutation rm = MutationFactory.instance.create(KEYSPACE1, ROW.getKey(), cf);
             rm.applyUnsafe();
         }
 
@@ -278,7 +278,7 @@ public class KeyspaceTest
         {
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "StandardLong1", Schema.instance, DBConfig.instance);
             cf.addColumn(new BufferCell(cellname((long)i), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0));
-            Mutation rm = new Mutation(KEYSPACE1, ROW.getKey(), cf);
+            Mutation rm = MutationFactory.instance.create(KEYSPACE1, ROW.getKey(), cf);
             rm.applyUnsafe();
 
             cf = cfs.getColumnFamily(ROW, Composites.EMPTY, Composites.EMPTY, true, 1, System.currentTimeMillis());
@@ -316,10 +316,10 @@ public class KeyspaceTest
         cf.addColumn(column("col5", "val5", 1L));
         cf.addColumn(column("col7", "val7", 1L));
         cf.addColumn(column("col9", "val9", 1L));
-        Mutation rm = new Mutation(KEYSPACE1, ROW.getKey(), cf);
+        Mutation rm = MutationFactory.instance.create(KEYSPACE1, ROW.getKey(), cf);
         rm.applyUnsafe();
 
-        rm = new Mutation(KEYSPACE1, ROW.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE1, ROW.getKey());
         rm.delete("Standard1", cellname("col4"), 2L);
         rm.applyUnsafe();
 
@@ -368,7 +368,7 @@ public class KeyspaceTest
         cf.addColumn(column("col1", "val1", 1L));
         cf.addColumn(expiringColumn("col2", "val2", 1L, 60)); // long enough not to be tombstoned
         cf.addColumn(column("col3", "val3", 1L));
-        Mutation rm = new Mutation(KEYSPACE1, ROW.getKey(), cf);
+        Mutation rm = MutationFactory.instance.create(KEYSPACE1, ROW.getKey(), cf);
         rm.applyUnsafe();
 
         Runnable verify = new WrappedRunnable()
@@ -405,7 +405,7 @@ public class KeyspaceTest
         cf.addColumn(column("col4", "val4", 1L));
         cf.addColumn(column("col5", "val5", 1L));
         cf.addColumn(column("col6", "val6", 1L));
-        Mutation rm = new Mutation(KEYSPACE1, ROW.getKey(), cf);
+        Mutation rm = MutationFactory.instance.create(KEYSPACE1, ROW.getKey(), cf);
         rm.applyUnsafe();
         cfStore.forceBlockingFlush();
 
@@ -413,7 +413,7 @@ public class KeyspaceTest
         cf.addColumn(column("col1", "valx", 2L));
         cf.addColumn(column("col2", "valx", 2L));
         cf.addColumn(column("col3", "valx", 2L));
-        rm = new Mutation(KEYSPACE1, ROW.getKey(), cf);
+        rm = MutationFactory.instance.create(KEYSPACE1, ROW.getKey(), cf);
         rm.applyUnsafe();
 
         Runnable verify = new WrappedRunnable()
@@ -449,7 +449,7 @@ public class KeyspaceTest
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         for (int i = 1000; i < 2000; i++)
             cf.addColumn(column("col" + i, ("v" + i), 1L));
-        Mutation rm = new Mutation(KEYSPACE1, key.getKey(), cf);
+        Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey(), cf);
         rm.applyUnsafe();
         cfStore.forceBlockingFlush();
 
@@ -482,7 +482,7 @@ public class KeyspaceTest
             {
                 cf.addColumn(column("col" + i, ("v" + i), i));
             }
-            Mutation rm = new Mutation(KEYSPACE1, key.getKey(), cf);
+            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey(), cf);
             rm.applyUnsafe();
             cfStore.forceBlockingFlush();
         }
@@ -546,7 +546,7 @@ public class KeyspaceTest
         {
             for (int i = 0; i < 10; i++)
             {
-                Mutation rm = new Mutation(KEYSPACE1, key.getKey());
+                Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
                 CellName colName = type.makeCellName(ByteBufferUtil.bytes("a" + i), ByteBufferUtil.bytes(j*10 + i));
                 rm.add("StandardComposite2", colName, ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
                 rm.applyUnsafe();

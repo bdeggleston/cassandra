@@ -675,12 +675,12 @@ public class SystemKeyspace
     {
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(Keyspace.SYSTEM_KS, INDEX_CF, Schema.instance, DBConfig.instance);
         cf.addColumn(new BufferCell(cf.getComparator().makeCellName(indexName), ByteBufferUtil.EMPTY_BYTE_BUFFER, FBUtilities.timestampMicros()));
-        new Mutation(Keyspace.SYSTEM_KS, ByteBufferUtil.bytes(keyspaceName), cf).apply();
+        MutationFactory.instance.create(Keyspace.SYSTEM_KS, ByteBufferUtil.bytes(keyspaceName), cf).apply();
     }
 
     public void setIndexRemoved(String keyspaceName, String indexName)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, ByteBufferUtil.bytes(keyspaceName));
+        Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, ByteBufferUtil.bytes(keyspaceName));
         mutation.delete(INDEX_CF, CFMetaDataFactory.instance.IndexCf.comparator.makeCellName(indexName), FBUtilities.timestampMicros());
         mutation.apply();
     }
@@ -779,7 +779,7 @@ public class SystemKeyspace
             Mutation mutation = mutationMap.get(schemaRow.key);
             if (mutation == null)
             {
-                mutation = new Mutation(Keyspace.SYSTEM_KS, schemaRow.key.getKey());
+                mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, schemaRow.key.getKey());
                 mutationMap.put(schemaRow.key, mutation);
             }
 

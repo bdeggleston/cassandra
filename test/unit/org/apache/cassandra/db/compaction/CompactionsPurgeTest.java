@@ -101,7 +101,7 @@ public class CompactionsPurgeTest
         Mutation rm;
 
         // inserts
-        rm = new Mutation(KEYSPACE1, key.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
         for (int i = 0; i < 10; i++)
         {
             rm.add(cfName, cellname(String.valueOf(i)), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
@@ -112,14 +112,14 @@ public class CompactionsPurgeTest
         // deletes
         for (int i = 0; i < 10; i++)
         {
-            rm = new Mutation(KEYSPACE1, key.getKey());
+            rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
             rm.delete(cfName, cellname(String.valueOf(i)), 1);
             rm.applyUnsafe();
         }
         cfs.forceBlockingFlush();
 
         // resurrect one column
-        rm = new Mutation(KEYSPACE1, key.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
         rm.add(cfName, cellname(String.valueOf(5)), ByteBufferUtil.EMPTY_BYTE_BUFFER, 2);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
@@ -146,7 +146,7 @@ public class CompactionsPurgeTest
             DecoratedKey key = Util.dk("key" + k);
 
             // inserts
-            rm = new Mutation(KEYSPACE2, key.getKey());
+            rm = MutationFactory.instance.create(KEYSPACE2, key.getKey());
             for (int i = 0; i < 10; i++)
             {
                 rm.add(cfName, cellname(String.valueOf(i)), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
@@ -157,7 +157,7 @@ public class CompactionsPurgeTest
             // deletes
             for (int i = 0; i < 10; i++)
             {
-                rm = new Mutation(KEYSPACE2, key.getKey());
+                rm = MutationFactory.instance.create(KEYSPACE2, key.getKey());
                 rm.delete(cfName, cellname(String.valueOf(i)), 1);
                 rm.applyUnsafe();
             }
@@ -171,7 +171,7 @@ public class CompactionsPurgeTest
         // for first key. Then submit minor compaction on remembered sstables.
         cfs.forceBlockingFlush();
         Collection<SSTableReader> sstablesIncomplete = cfs.getSSTables();
-        rm = new Mutation(KEYSPACE2, key1.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE2, key1.getKey());
         rm.add(cfName, cellname(String.valueOf(5)), ByteBufferUtil.EMPTY_BYTE_BUFFER, 2);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
@@ -203,20 +203,20 @@ public class CompactionsPurgeTest
         DecoratedKey key3 = Util.dk("key3");
 
         // inserts
-        rm = new Mutation(KEYSPACE2, key3.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE2, key3.getKey());
         rm.add(cfName, cellname("c1"), ByteBufferUtil.EMPTY_BYTE_BUFFER, 8);
         rm.add(cfName, cellname("c2"), ByteBufferUtil.EMPTY_BYTE_BUFFER, 8);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
         // delete c1
-        rm = new Mutation(KEYSPACE2, key3.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE2, key3.getKey());
         rm.delete(cfName, cellname("c1"), 10);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
         Collection<SSTableReader> sstablesIncomplete = cfs.getSSTables();
 
         // delete c2 so we have new delete in a diffrent SSTable
-        rm = new Mutation(KEYSPACE2, key3.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE2, key3.getKey());
         rm.delete(cfName, cellname("c2"), 9);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
@@ -244,7 +244,7 @@ public class CompactionsPurgeTest
         Mutation rm;
 
         // inserts
-        rm = new Mutation(KEYSPACE1, key.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
         for (int i = 0; i < 5; i++)
         {
             rm.add(cfName, cellname(String.valueOf(i)), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
@@ -254,7 +254,7 @@ public class CompactionsPurgeTest
         // deletes
         for (int i = 0; i < 5; i++)
         {
-            rm = new Mutation(KEYSPACE1, key.getKey());
+            rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
             rm.delete(cfName, cellname(String.valueOf(i)), 1);
             rm.applyUnsafe();
         }
@@ -282,7 +282,7 @@ public class CompactionsPurgeTest
         Mutation rm;
 
         // inserts
-        rm = new Mutation(keyspaceName, key.getKey());
+        rm = MutationFactory.instance.create(keyspaceName, key.getKey());
         for (int i = 0; i < 10; i++)
         {
             rm.add(cfName, cellname(String.valueOf(i)), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
@@ -293,7 +293,7 @@ public class CompactionsPurgeTest
         cfs.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis()));
 
         // deletes row
-        rm = new Mutation(keyspaceName, key.getKey());
+        rm = MutationFactory.instance.create(keyspaceName, key.getKey());
         rm.delete(cfName, 1);
         rm.applyUnsafe();
 
@@ -302,7 +302,7 @@ public class CompactionsPurgeTest
         Util.compactAll(cfs, Integer.MAX_VALUE).get();
 
         // re-inserts with timestamp lower than delete
-        rm = new Mutation(keyspaceName, key.getKey());
+        rm = MutationFactory.instance.create(keyspaceName, key.getKey());
         for (int i = 0; i < 10; i++)
         {
             rm.add(cfName, cellname(String.valueOf(i)), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
@@ -330,13 +330,13 @@ public class CompactionsPurgeTest
         QueryFilter filter = QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis());
 
         // inserts
-        rm = new Mutation(keyspaceName, key.getKey());
+        rm = MutationFactory.instance.create(keyspaceName, key.getKey());
         for (int i = 0; i < 10; i++)
             rm.add(cfName, cellname(String.valueOf(i)), ByteBufferUtil.EMPTY_BYTE_BUFFER, i);
         rm.applyUnsafe();
 
         // deletes row with timestamp such that not all columns are deleted
-        rm = new Mutation(keyspaceName, key.getKey());
+        rm = MutationFactory.instance.create(keyspaceName, key.getKey());
         rm.delete(cfName, 4);
         rm.applyUnsafe();
         ColumnFamily cf = cfs.getColumnFamily(filter);
@@ -348,7 +348,7 @@ public class CompactionsPurgeTest
         assertFalse(cfs.getColumnFamily(filter).isMarkedForDelete());
 
         // re-inserts with timestamp lower than delete
-        rm = new Mutation(keyspaceName, key.getKey());
+        rm = MutationFactory.instance.create(keyspaceName, key.getKey());
         for (int i = 0; i < 5; i++)
             rm.add(cfName, cellname(String.valueOf(i)), ByteBufferUtil.EMPTY_BYTE_BUFFER, i);
         rm.applyUnsafe();

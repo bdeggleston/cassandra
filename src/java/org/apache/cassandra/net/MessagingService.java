@@ -198,8 +198,8 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.REQUEST_RESPONSE, CallbackDeterminedSerializer.instance);
         put(Verb.INTERNAL_RESPONSE, CallbackDeterminedSerializer.instance);
 
-        put(Verb.MUTATION, Mutation.serializer);
-        put(Verb.READ_REPAIR, Mutation.serializer);
+        put(Verb.MUTATION, MutationFactory.instance.serializer);
+        put(Verb.READ_REPAIR, MutationFactory.instance.serializer);
         put(Verb.READ, ReadCommand.serializer);
         put(Verb.RANGE_SLICE, RangeSliceCommand.serializer);
         put(Verb.PAGED_RANGE, PagedRangeCommand.serializer);

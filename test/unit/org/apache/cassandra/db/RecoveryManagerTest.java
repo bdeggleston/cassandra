@@ -87,12 +87,12 @@ public class RecoveryManagerTest
 
         cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1L));
-        rm = new Mutation(KEYSPACE1, dk.getKey(), cf);
+        rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey(), cf);
         rm.apply();
 
         cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col2", "val2", 1L));
-        rm = new Mutation(KEYSPACE2, dk.getKey(), cf);
+        rm = MutationFactory.instance.create(KEYSPACE2, dk.getKey(), cf);
         rm.apply();
 
         keyspace1.getColumnFamilyStore("Standard1").clearUnsafe();
@@ -118,7 +118,7 @@ public class RecoveryManagerTest
         {
             cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Counter1", Schema.instance, DBConfig.instance);
             cf.addColumn(BufferCounterCell.createLocal(cellname("col"), 1L, 1L, Long.MIN_VALUE, SystemKeyspace.instance.getLocalHostId()));
-            rm = new Mutation(KEYSPACE1, dk.getKey(), cf);
+            rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey(), cf);
             rm.apply();
         }
 
@@ -149,7 +149,7 @@ public class RecoveryManagerTest
             long ts = TimeUnit.MILLISECONDS.toMicros(timeMS + (i * 1000));
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
             cf.addColumn(column("name-" + i, "value", ts));
-            Mutation rm = new Mutation(KEYSPACE1, dk.getKey(), cf);
+            Mutation rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey(), cf);
             rm.apply();
         }
         keyspace1.getColumnFamilyStore("Standard1").clearUnsafe();
@@ -181,7 +181,7 @@ public class RecoveryManagerTest
 
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
             cf.addColumn(column("name-" + i, "value", ts));
-            Mutation rm = new Mutation(KEYSPACE1, dk.getKey(), cf);
+            Mutation rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey(), cf);
             rm.apply();
         }
 

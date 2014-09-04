@@ -34,6 +34,10 @@ import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
+import org.apache.cassandra.db.ArrayBackedSortedColumns;
+import org.apache.cassandra.db.BufferCell;
+import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.service.StorageService;
@@ -323,7 +327,7 @@ public class TriggersTest
         {
             ColumnFamily extraUpdate = update.cloneMeShallow(ArrayBackedSortedColumns.factory, false);
             extraUpdate.addColumn(new BufferCell(update.metadata().comparator.makeCellName(bytes("v2")), bytes(999)));
-            return Collections.singletonList(new Mutation(ksName, key, extraUpdate));
+            return Collections.singletonList(MutationFactory.instance.create(ksName, key, extraUpdate));
         }
     }
 
@@ -335,7 +339,7 @@ public class TriggersTest
             extraUpdate.addColumn(new BufferCell(update.metadata().comparator.makeCellName(bytes("v2")), bytes(999)));
 
             int newKey = toInt(key) + 1000;
-            return Collections.singletonList(new Mutation(ksName, bytes(newKey), extraUpdate));
+            return Collections.singletonList(MutationFactory.instance.create(ksName, bytes(newKey), extraUpdate));
         }
     }
 
@@ -345,7 +349,7 @@ public class TriggersTest
         {
             ColumnFamily extraUpdate = ArrayBackedSortedColumns.factory.create(ksName, otherCf, Schema.instance, DBConfig.instance);
             extraUpdate.addColumn(new BufferCell(extraUpdate.metadata().comparator.makeCellName(bytes("v2")), bytes(999)));
-            return Collections.singletonList(new Mutation(ksName, key, extraUpdate));
+            return Collections.singletonList(MutationFactory.instance.create(ksName, key, extraUpdate));
         }
     }
 }

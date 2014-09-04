@@ -1145,7 +1145,7 @@ public final class CFMetaData
      */
     public Mutation toSchemaUpdate(CFMetaData newState, long modificationTimestamp, boolean fromThrift)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(ksName));
+        Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(ksName));
 
         newState.toSchemaNoColumnsNoTriggers(mutation, modificationTimestamp);
 
@@ -1195,7 +1195,7 @@ public final class CFMetaData
      */
     public Mutation dropFromSchema(long timestamp)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(ksName));
+        Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(ksName));
         ColumnFamily cf = mutation.addOrGet(cfMetaDataFactory.SchemaColumnFamiliesCf);
         int ldt = (int) (System.currentTimeMillis() / 1000);
 
@@ -1337,7 +1337,7 @@ public final class CFMetaData
      */
     public Mutation toSchema(long timestamp) throws ConfigurationException
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(ksName));
+        Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(ksName));
         toSchema(mutation, timestamp);
         return mutation;
     }

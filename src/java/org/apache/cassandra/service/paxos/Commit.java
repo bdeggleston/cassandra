@@ -83,7 +83,7 @@ public class Commit
     public Mutation makeMutation()
     {
         assert update != null;
-        return new Mutation(key, update);
+        return MutationFactory.instance.create(key, update);
     }
 
     @Override

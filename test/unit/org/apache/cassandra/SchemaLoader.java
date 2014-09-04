@@ -53,6 +53,7 @@ public class SchemaLoader
     @BeforeClass
     public static void loadSchema() throws ConfigurationException
     {
+        DatabaseDescriptor.init();
         prepareServer();
 
         // Migrations aren't happy if gossiper is not started.  Even if we don't use migrations though,
@@ -458,7 +459,7 @@ public class SchemaLoader
         for (int i = offset; i < offset + numberOfRows; i++)
         {
             ByteBuffer key = ByteBufferUtil.bytes("key" + i);
-            Mutation mutation = new Mutation(keyspace, key);
+            Mutation mutation = MutationFactory.instance.create(keyspace, key);
             mutation.add(columnFamily, Util.cellname("col" + i), ByteBufferUtil.bytes("val" + i), System.currentTimeMillis());
             mutation.applyUnsafe();
         }

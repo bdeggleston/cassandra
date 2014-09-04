@@ -190,7 +190,7 @@ public class DynamicCompositeTypeTest
         ByteBuffer cname5 = createDynamicCompositeKey("test2", uuids[1], 42, false);
 
         ByteBuffer key = ByteBufferUtil.bytes("k");
-        Mutation rm = new Mutation(KEYSPACE1, key);
+        Mutation rm = MutationFactory.instance.create(KEYSPACE1, key);
         addColumn(rm, cname5);
         addColumn(rm, cname1);
         addColumn(rm, cname4);

@@ -112,7 +112,7 @@ public class ReadMessageTest
         DecoratedKey dk = Util.dk("key1");
 
         // add data
-        rm = new Mutation(KEYSPACE1, dk.getKey());
+        rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey());
         rm.add("Standard1", Util.cellname("Column1"), ByteBufferUtil.bytes("abcd"), 0);
         rm.apply();
 
@@ -125,11 +125,11 @@ public class ReadMessageTest
     @Test
     public void testNoCommitLog() throws Exception
     {
-        Mutation rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes("row"));
+        Mutation rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("row"));
         rm.add("Standard1", Util.cellname("commit1"), ByteBufferUtil.bytes("abcd"), 0);
         rm.apply();
 
-        rm = new Mutation(KEYSPACENOCOMMIT, ByteBufferUtil.bytes("row"));
+        rm = MutationFactory.instance.create(KEYSPACENOCOMMIT, ByteBufferUtil.bytes("row"));
         rm.add("Standard1", Util.cellname("commit2"), ByteBufferUtil.bytes("abcd"), 0);
         rm.apply();
 

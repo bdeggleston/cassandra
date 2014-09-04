@@ -167,7 +167,7 @@ public class ScrubTest
 
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF2, Schema.instance, DBConfig.instance);
         cf.delete(new DeletionInfo(0, 1)); // expired tombstone
-        Mutation rm = new Mutation(KEYSPACE, ByteBufferUtil.bytes(1), cf);
+        Mutation rm = MutationFactory.instance.create(KEYSPACE, ByteBufferUtil.bytes(1), cf);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
@@ -282,7 +282,7 @@ public class ScrubTest
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF, Schema.instance, DBConfig.instance);
             cf.addColumn(column("c1", "1", 1L));
             cf.addColumn(column("c2", "2", 1L));
-            Mutation rm = new Mutation(KEYSPACE, ByteBufferUtil.bytes(key), cf);
+            Mutation rm = MutationFactory.instance.create(KEYSPACE, ByteBufferUtil.bytes(key), cf);
             rm.applyUnsafe();
         }
 
@@ -295,7 +295,7 @@ public class ScrubTest
         {
             String key = String.valueOf(i);
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, COUNTER_CF, Schema.instance, DBConfig.instance);
-            Mutation rm = new Mutation(KEYSPACE, ByteBufferUtil.bytes(key), cf);
+            Mutation rm = MutationFactory.instance.create(KEYSPACE, ByteBufferUtil.bytes(key), cf);
             rm.addCounter(COUNTER_CF, cellname("Column1"), 100);
             CounterMutation cm = new CounterMutation(rm, ConsistencyLevel.ONE);
             cm.apply();
@@ -328,7 +328,7 @@ public class ScrubTest
 
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF_UUID, Schema.instance, DBConfig.instance);
         cf.addColumn(column(CFMetaData.DEFAULT_KEY_ALIAS, "not a uuid", 1L));
-        Mutation mutation = new Mutation(KEYSPACE, ByteBufferUtil.bytes(UUIDGen.getTimeUUID()), cf);
+        Mutation mutation = MutationFactory.instance.create(KEYSPACE, ByteBufferUtil.bytes(UUIDGen.getTimeUUID()), cf);
         mutation.applyUnsafe();
         cfs.forceBlockingFlush();
         CompactionManager.instance.performScrub(cfs, false);

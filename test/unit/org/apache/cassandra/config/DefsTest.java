@@ -205,7 +205,7 @@ public class DefsTest
         // now read and write to it.
         CellName col0 = cellname("col0");
         DecoratedKey dk = Util.dk("key0");
-        Mutation rm = new Mutation(ks, dk.getKey());
+        Mutation rm = MutationFactory.instance.create(ks, dk.getKey());
         rm.add(cf, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();
         ColumnFamilyStore store = KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf);
@@ -229,7 +229,7 @@ public class DefsTest
         Assert.assertNotNull(cfm);
 
         // write some data, force a flush, then verify that files exist on disk.
-        Mutation rm = new Mutation(ks.name, dk.getKey());
+        Mutation rm = MutationFactory.instance.create(ks.name, dk.getKey());
         for (int i = 0; i < 100; i++)
             rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.applyUnsafe();
@@ -243,7 +243,7 @@ public class DefsTest
         Assert.assertFalse(Schema.instance.getKSMetaData(ks.name).cfMetaData().containsKey(cfm.cfName));
 
         // any write should fail.
-        rm = new Mutation(ks.name, dk.getKey());
+        rm = MutationFactory.instance.create(ks.name, dk.getKey());
         boolean success = true;
         try
         {
@@ -279,7 +279,7 @@ public class DefsTest
 
         // test reads and writes.
         CellName col0 = cellname("col0");
-        Mutation rm = new Mutation(newCf.ksName, dk.getKey());
+        Mutation rm = MutationFactory.instance.create(newCf.ksName, dk.getKey());
         rm.add(newCf.cfName, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();
         ColumnFamilyStore store = KeyspaceManager.instance.open(newCf.ksName).getColumnFamilyStore(newCf.cfName);
@@ -303,7 +303,7 @@ public class DefsTest
         Assert.assertNotNull(cfm);
 
         // write some data, force a flush, then verify that files exist on disk.
-        Mutation rm = new Mutation(ks.name, dk.getKey());
+        Mutation rm = MutationFactory.instance.create(ks.name, dk.getKey());
         for (int i = 0; i < 100; i++)
             rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.applyUnsafe();
@@ -317,7 +317,7 @@ public class DefsTest
         Assert.assertNull(Schema.instance.getKSMetaData(ks.name));
 
         // write should fail.
-        rm = new Mutation(ks.name, dk.getKey());
+        rm = MutationFactory.instance.create(ks.name, dk.getKey());
         boolean success = true;
         try
         {
@@ -354,7 +354,7 @@ public class DefsTest
         Assert.assertNotNull(cfm);
 
         // write some data
-        Mutation rm = new Mutation(ks.name, dk.getKey());
+        Mutation rm = MutationFactory.instance.create(ks.name, dk.getKey());
         for (int i = 0; i < 100; i++)
             rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.applyUnsafe();
@@ -388,7 +388,7 @@ public class DefsTest
         // now read and write to it.
         CellName col0 = cellname("col0");
         DecoratedKey dk = Util.dk("key0");
-        Mutation rm = new Mutation(newKs.name, dk.getKey());
+        Mutation rm = MutationFactory.instance.create(newKs.name, dk.getKey());
         rm.add(newCf.cfName, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();
         ColumnFamilyStore store = KeyspaceManager.instance.open(newKs.name).getColumnFamilyStore(newCf.cfName);
@@ -577,7 +577,7 @@ public class DefsTest
         ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE6).getColumnFamilyStore("Indexed1");
 
         // insert some data.  save the sstable descriptor so we can make sure it's marked for delete after the drop
-        Mutation rm = new Mutation(KEYSPACE6, ByteBufferUtil.bytes("k1"));
+        Mutation rm = MutationFactory.instance.create(KEYSPACE6, ByteBufferUtil.bytes("k1"));
         rm.add("Indexed1", cellname("notbirthdate"), ByteBufferUtil.bytes(1L), 0);
         rm.add("Indexed1", cellname("birthdate"), ByteBufferUtil.bytes(1L), 0);
         rm.applyUnsafe();

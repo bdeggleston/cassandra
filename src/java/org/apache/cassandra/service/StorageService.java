@@ -176,7 +176,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         bgMonitor = new BackgroundActivityMonitor(Gossiper.instance, this);
 
         /* register the verb handlers */
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.MUTATION, new MutationVerbHandler(Tracing.instance, MessagingService.instance));
+        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.MUTATION, new MutationVerbHandler(Tracing.instance, MessagingService.instance, MutationFactory.instance.serializer));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.READ_REPAIR, new ReadRepairVerbHandler(MessagingService.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.READ, new ReadVerbHandler(KeyspaceManager.instance, MessagingService.instance, this, Tracing.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.RANGE_SLICE, new RangeSliceVerbHandler(Tracing.instance, MessagingService.instance, this));

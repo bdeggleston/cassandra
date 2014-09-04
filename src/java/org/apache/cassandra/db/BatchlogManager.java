@@ -140,7 +140,7 @@ public class BatchlogManager implements BatchlogManagerMBean
         adder.add("data", serializeMutations(mutations, version))
              .add("written_at", new Date(now / 1000))
              .add("version", version);
-        return new Mutation(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(uuid), cf);
+        return MutationFactory.instance.create(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(uuid), cf);
     }
 
     private static ByteBuffer serializeMutations(Collection<Mutation> mutations, int version)
@@ -151,7 +151,7 @@ public class BatchlogManager implements BatchlogManagerMBean
         {
             buf.writeInt(mutations.size());
             for (Mutation mutation : mutations)
-                Mutation.serializer.serialize(mutation, buf, version);
+                MutationFactory.instance.serializer.serialize(mutation, buf, version);
         }
         catch (IOException e)
         {
@@ -207,7 +207,7 @@ public class BatchlogManager implements BatchlogManagerMBean
 
     private void deleteBatch(UUID id)
     {
-        Mutation mutation = new Mutation(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(id));
+        Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(id));
         mutation.delete(SystemKeyspace.BATCHLOG_CF, FBUtilities.timestampMicros());
         mutation.apply();
     }
@@ -324,7 +324,7 @@ public class BatchlogManager implements BatchlogManagerMBean
             List<Mutation> mutations = new ArrayList<>(size);
             for (int i = 0; i < size; i++)
             {
-                Mutation mutation = Mutation.serializer.deserialize(in, version);
+                Mutation mutation = MutationFactory.instance.serializer.deserialize(in, version);
 
                 // Remove CFs that have been truncated since. writtenAt and SystemTable#getTruncatedAt() both return millis.
                 // We don't abort the replay entirely b/c this can be considered a success (truncated is same as delivered then

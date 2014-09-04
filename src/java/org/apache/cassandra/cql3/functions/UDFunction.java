@@ -135,7 +135,7 @@ public abstract class UDFunction extends AbstractFunction
     private static Mutation makeSchemaMutation(FunctionName name)
     {
         CompositeType kv = (CompositeType) CFMetaDataFactory.instance.SchemaFunctionsCf.getKeyValidator();
-        return new Mutation(Keyspace.SYSTEM_KS, kv.decompose(name.namespace, name.name));
+        return MutationFactory.instance.create(Keyspace.SYSTEM_KS, kv.decompose(name.namespace, name.name));
     }
 
     public Mutation toSchemaDrop(long timestamp)

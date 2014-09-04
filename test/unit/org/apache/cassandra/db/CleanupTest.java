@@ -192,7 +192,7 @@ public class CleanupTest
             String key = String.valueOf(i);
             // create a row and update the birthdate value, test that the index query fetches the new version
             Mutation rm;
-            rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes(key));
+            rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes(key));
             rm.add(cfs.name, Util.cellname(COLUMN), VALUE, System.currentTimeMillis());
             rm.applyUnsafe();
         }

@@ -41,50 +41,58 @@ import org.slf4j.LoggerFactory;
 // which is less-efficient since we have to keep a mutable HashMap around
 public class Mutation implements IMutation
 {
-    public static final MutationSerializer serializer = new MutationSerializer();
     private static final Logger logger = LoggerFactory.getLogger(Mutation.class);
 
     public static final String FORWARD_TO = "FWD_TO";
     public static final String FORWARD_FROM = "FWD_FRM";
 
     // todo this is redundant
-    // when we remove it, also restore SerializationsTest.testMutationRead to not regenerate new Mutations each test
+    // when we remove it, also restore SerializationsTest.testMutationRead to not regenerate MutationFactory.instance.creates each test
     private final String keyspaceName;
 
     private final ByteBuffer key;
     // map of column family id to mutations for that column family.
     private final Map<UUID, ColumnFamily> modifications;
 
-    public Mutation(String keyspaceName, ByteBuffer key)
+    private final long writeRpcTimeout;
+    private final Schema schema;
+    private final KeyspaceManager keyspaceManager;
+    private final Serializer serializer;
+
+    Mutation(String keyspaceName, ByteBuffer key, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer)
     {
-        this(keyspaceName, key, new HashMap<UUID, ColumnFamily>());
+        this(keyspaceName, key, new HashMap<UUID, ColumnFamily>(), writeRpcTimeout, schema, keyspaceManager, serializer);
     }
 
-    public Mutation(String keyspaceName, ByteBuffer key, ColumnFamily cf)
+    Mutation(String keyspaceName, ByteBuffer key, ColumnFamily cf, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer)
     {
-        this(keyspaceName, key, Collections.singletonMap(cf.id(), cf));
+        this(keyspaceName, key, Collections.singletonMap(cf.id(), cf), writeRpcTimeout, schema, keyspaceManager, serializer);
     }
 
-    public Mutation(String keyspaceName, Row row)
+    Mutation(String keyspaceName, Row row, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer)
     {
-        this(keyspaceName, row.key.getKey(), row.cf);
+        this(keyspaceName, row.key.getKey(), row.cf, writeRpcTimeout, schema, keyspaceManager, serializer);
     }
 
-    protected Mutation(String keyspaceName, ByteBuffer key, Map<UUID, ColumnFamily> modifications)
+    Mutation(String keyspaceName, ByteBuffer key, Map<UUID, ColumnFamily> modifications, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer)
     {
         this.keyspaceName = keyspaceName;
         this.key = key;
         this.modifications = modifications;
+        this.writeRpcTimeout = writeRpcTimeout;
+        this.schema = schema;
+        this.keyspaceManager = keyspaceManager;
+        this.serializer = serializer;
     }
 
-    public Mutation(ByteBuffer key, ColumnFamily cf)
+    Mutation(ByteBuffer key, ColumnFamily cf, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer)
     {
-        this(cf.metadata().ksName, key, cf);
+        this(cf.metadata().ksName, key, cf, writeRpcTimeout, schema, keyspaceManager, serializer);
     }
 
     public Mutation copy()
     {
-        Mutation copy = new Mutation(keyspaceName, key, new HashMap<>(modifications));
+        Mutation copy = new Mutation(keyspaceName, key, new HashMap<>(modifications), writeRpcTimeout, schema, keyspaceManager, serializer);
         return copy;
     }
 
@@ -133,7 +141,7 @@ public class Mutation implements IMutation
      */
     public ColumnFamily addOrGet(String cfName)
     {
-        return addOrGet(Schema.instance.getCFMetaData(keyspaceName, cfName));
+        return addOrGet(schema.getCFMetaData(keyspaceName, cfName));
     }
 
     public ColumnFamily addOrGet(CFMetaData cfm)
@@ -210,13 +218,13 @@ public class Mutation implements IMutation
      */
     public void apply()
     {
-        Keyspace ks = KeyspaceManager.instance.open(keyspaceName);
+        Keyspace ks = keyspaceManager.open(keyspaceName);
         ks.apply(this, ks.metadata.durableWrites);
     }
 
     public void applyUnsafe()
     {
-        KeyspaceManager.instance.open(keyspaceName).apply(this, false);
+        keyspaceManager.open(keyspaceName).apply(this, false);
     }
 
     public MessageOut<Mutation> createMessage()
@@ -231,7 +239,7 @@ public class Mutation implements IMutation
 
     public long getTimeout()
     {
-        return DatabaseDescriptor.instance.getWriteRpcTimeout();
+        return writeRpcTimeout;
     }
 
     public String toString()
@@ -250,7 +258,7 @@ public class Mutation implements IMutation
             List<String> cfnames = new ArrayList<String>(modifications.size());
             for (UUID cfid : modifications.keySet())
             {
-                CFMetaData cfm = Schema.instance.getCFMetaData(cfid);
+                CFMetaData cfm = schema.getCFMetaData(cfid);
                 cfnames.add(cfm == null ? "-dropped-" : cfm.cfName);
             }
             buff.append(StringUtils.join(cfnames, ", "));
@@ -262,15 +270,27 @@ public class Mutation implements IMutation
 
     public Mutation without(UUID cfId)
     {
-        Mutation mutation = new Mutation(keyspaceName, key);
+        Mutation mutation = new Mutation(keyspaceName, key, writeRpcTimeout, schema, keyspaceManager, serializer);
         for (Map.Entry<UUID, ColumnFamily> entry : modifications.entrySet())
             if (!entry.getKey().equals(cfId))
                 mutation.add(entry.getValue());
         return mutation;
     }
 
-    public static class MutationSerializer implements IVersionedSerializer<Mutation>
+    public static class Serializer implements IVersionedSerializer<Mutation>
     {
+
+        private final long writeRpcTimeout;
+        private final Schema schema;
+        private final KeyspaceManager keyspaceManager;
+
+        public Serializer(long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager)
+        {
+            this.writeRpcTimeout = writeRpcTimeout;
+            this.schema = schema;
+            this.keyspaceManager = keyspaceManager;
+        }
+
         public void serialize(Mutation mutation, DataOutputPlus out, int version) throws IOException
         {
             if (version < MessagingService.VERSION_20)
@@ -314,7 +334,7 @@ public class Mutation implements IMutation
                 }
             }
 
-            return new Mutation(keyspaceName, key, modifications);
+            return new Mutation(keyspaceName, key, modifications, writeRpcTimeout, schema, keyspaceManager, this);
         }
 
         private ColumnFamily deserializeOneCf(DataInput in, int version, ColumnSerializer.Flag flag) throws IOException

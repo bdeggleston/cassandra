@@ -59,26 +59,26 @@ public class CollationControllerTest
         DecoratedKey dk = Util.dk("key1");
         
         // add data
-        rm = new Mutation(keyspace.getName(), dk.getKey());
+        rm = MutationFactory.instance.create(keyspace.getName(), dk.getKey());
         rm.add(cfs.name, Util.cellname("Column1"), ByteBufferUtil.bytes("asdf"), 0);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
         
         // remove
-        rm = new Mutation(keyspace.getName(), dk.getKey());
+        rm = MutationFactory.instance.create(keyspace.getName(), dk.getKey());
         rm.delete(cfs.name, 10);
         rm.applyUnsafe();
         
         // add another mutation because sstable maxtimestamp isn't set
         // correctly during flush if the most recent mutation is a row delete
-        rm = new Mutation(keyspace.getName(), Util.dk("key2").getKey());
+        rm = MutationFactory.instance.create(keyspace.getName(), Util.dk("key2").getKey());
         rm.add(cfs.name, Util.cellname("Column1"), ByteBufferUtil.bytes("zxcv"), 20);
         rm.applyUnsafe();
         
         cfs.forceBlockingFlush();
 
         // add yet one more mutation
-        rm = new Mutation(keyspace.getName(), dk.getKey());
+        rm = MutationFactory.instance.create(keyspace.getName(), dk.getKey());
         rm.add(cfs.name, Util.cellname("Column1"), ByteBufferUtil.bytes("foobar"), 30);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
@@ -111,13 +111,13 @@ public class CollationControllerTest
         CellName cellName = Util.cellname("Column1");
 
         // add data
-        rm = new Mutation(keyspace.getName(), dk.getKey());
+        rm = MutationFactory.instance.create(keyspace.getName(), dk.getKey());
         rm.add(cfs.name, cellName, ByteBufferUtil.bytes("asdf"), 0);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
         // remove
-        rm = new Mutation(keyspace.getName(), dk.getKey());
+        rm = MutationFactory.instance.create(keyspace.getName(), dk.getKey());
         rm.delete(cfs.name, cellName, 0);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();

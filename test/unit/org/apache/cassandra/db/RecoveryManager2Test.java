@@ -92,7 +92,7 @@ public class RecoveryManager2Test
     {
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, cfname, Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1L));
-        Mutation rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes(key), cf);
+        Mutation rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes(key), cf);
         rm.apply();
     }
 }

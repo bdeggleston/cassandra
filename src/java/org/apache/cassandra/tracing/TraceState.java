@@ -27,6 +27,7 @@ import com.google.common.base.Stopwatch;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.db.MutationFactory;
 import org.slf4j.helpers.MessageFormatter;
 
 import org.apache.cassandra.concurrent.Stage;
@@ -34,7 +35,6 @@ import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 import org.apache.cassandra.utils.WrappedRunnable;
@@ -118,7 +118,7 @@ public class TraceState
                 if (elapsed >= 0)
                     Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("source_elapsed")), elapsed);
                 Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("thread")), threadName);
-                Tracing.instance.mutateWithCatch(new Mutation(Tracing.TRACE_KS, sessionIdBytes, cf));
+                Tracing.instance.mutateWithCatch(MutationFactory.instance.create(Tracing.TRACE_KS, sessionIdBytes, cf));
             }
         });
     }

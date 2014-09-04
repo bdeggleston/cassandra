@@ -108,7 +108,7 @@ public class CounterMutation implements IMutation
      */
     public Mutation apply() throws WriteTimeoutException
     {
-        Mutation result = new Mutation(getKeyspaceName(), key());
+        Mutation result = MutationFactory.instance.create(getKeyspaceName(), key());
         Keyspace keyspace = KeyspaceManager.instance.open(getKeyspaceName());
 
         int count = 0;
@@ -317,20 +317,20 @@ public class CounterMutation implements IMutation
     {
         public void serialize(CounterMutation cm, DataOutputPlus out, int version) throws IOException
         {
-            Mutation.serializer.serialize(cm.mutation, out, version);
+            MutationFactory.instance.serializer.serialize(cm.mutation, out, version);
             out.writeUTF(cm.consistency.name());
         }
 
         public CounterMutation deserialize(DataInput in, int version) throws IOException
         {
-            Mutation m = Mutation.serializer.deserialize(in, version);
+            Mutation m = MutationFactory.instance.serializer.deserialize(in, version);
             ConsistencyLevel consistency = Enum.valueOf(ConsistencyLevel.class, in.readUTF());
             return new CounterMutation(m, consistency);
         }
 
         public long serializedSize(CounterMutation cm, int version)
         {
-            return Mutation.serializer.serializedSize(cm.mutation, version)
+            return MutationFactory.instance.serializer.serializedSize(cm.mutation, version)
                  + TypeSizes.NATIVE.sizeof(cm.consistency.name());
         }
     }

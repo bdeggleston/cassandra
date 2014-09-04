@@ -102,7 +102,7 @@ public class KeyCollisionTest
     private void insert(String key)
     {
         Mutation rm;
-        rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes(key));
+        rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes(key));
         rm.add(CF, Util.cellname("column"), ByteBufferUtil.bytes("asdf"), 0);
         rm.applyUnsafe();
     }

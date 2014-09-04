@@ -74,12 +74,12 @@ public class RecoveryManager3Test
 
         cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1L));
-        rm = new Mutation(KEYSPACE1, dk.getKey(), cf);
+        rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey(), cf);
         rm.apply();
 
         cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col2", "val2", 1L));
-        rm = new Mutation(KEYSPACE2, dk.getKey(), cf);
+        rm = MutationFactory.instance.create(KEYSPACE2, dk.getKey(), cf);
         rm.apply();
 
         keyspace1.getColumnFamilyStore("Standard1").clearUnsafe();

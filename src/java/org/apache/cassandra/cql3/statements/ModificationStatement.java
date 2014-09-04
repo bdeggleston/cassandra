@@ -660,7 +660,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
             ThriftValidation.validateKey(cfm, key);
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfm, DBConfig.instance);
             addUpdateForKey(cf, key, clusteringPrefix, params);
-            Mutation mut = new Mutation(cfm.ksName, key, cf);
+            Mutation mut = MutationFactory.instance.create(cfm.ksName, key, cf);
 
             mutations.add(isCounter() ? new CounterMutation(mut, options.getConsistency()) : mut);
         }

@@ -334,7 +334,7 @@ public class CommitLogReplayer
                     final Mutation mutation;
                     try
                     {
-                        mutation = Mutation.serializer.deserialize(new DataInputStream(bufIn),
+                        mutation = MutationFactory.instance.serializer.deserialize(new DataInputStream(bufIn),
                                                                    desc.getMessagingVersion(),
                                                                    ColumnSerializer.Flag.LOCAL);
                         // doublecheck that what we read is [still] valid for the current schema
@@ -407,7 +407,7 @@ public class CommitLogReplayer
                                 if (segmentId > rp.segment || (segmentId == rp.segment && entryLocation > rp.position))
                                 {
                                     if (newMutation == null)
-                                        newMutation = new Mutation(mutation.getKeyspaceName(), mutation.key());
+                                        newMutation = MutationFactory.instance.create(mutation.getKeyspaceName(), mutation.key());
                                     newMutation.add(columnFamily);
                                     replayedCount.incrementAndGet();
                                 }
