@@ -66,6 +66,7 @@ public class Keyspace
     // proper directories here as well as in CassandraDaemon.
     static
     {
+        // TODO: move to KeyspaceManager
         if (!StorageService.instance.isClientMode())
             DatabaseDescriptor.instance.createAllDirectories();
     }
@@ -76,11 +77,6 @@ public class Keyspace
     /* ColumnFamilyStore per column family */
     private final ConcurrentMap<UUID, ColumnFamilyStore> columnFamilyStores = new ConcurrentHashMap<UUID, ColumnFamilyStore>();
     private volatile AbstractReplicationStrategy replicationStrategy;
-
-    public static Keyspace clear(String keyspaceName)
-    {
-        return clear(keyspaceName, Schema.instance);
-    }
 
     public static Keyspace clear(String keyspaceName, Schema schema)
     {
@@ -104,7 +100,7 @@ public class Keyspace
 
     public ColumnFamilyStore getColumnFamilyStore(String cfName)
     {
-        UUID id = Schema.instance.getId(getName(), cfName);
+        UUID id = schema.getId(getName(), cfName);
         if (id == null)
             throw new IllegalArgumentException(String.format("Unknown keyspace/cf pair (%s.%s)", getName(), cfName));
         return getColumnFamilyStore(id);
@@ -197,10 +193,24 @@ public class Keyspace
         return list;
     }
 
-    Keyspace(String keyspaceName, boolean loadSSTables)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Tracing tracing;
+    private final Schema schema;
+    private final ColumnFamilyStoreManager columnFamilyStoreManager;
+    private final StorageService storageService;
+    private final CommitLog commitLog;
+
+    Keyspace(String keyspaceName, boolean loadSSTables, DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, StorageService storageService, CommitLog commitLog)
     {
-        metadata = Schema.instance.getKSMetaData(keyspaceName);
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
+        this.schema = schema;
+        this.columnFamilyStoreManager = columnFamilyStoreManager;
+        this.storageService = storageService;
+        this.commitLog = commitLog;
+        metadata = schema.getKSMetaData(keyspaceName);
         assert metadata != null : "Unknown keyspace " + keyspaceName;
+
         createReplicationStrategy(metadata);
 
         this.metric = new KeyspaceMetrics(this);
@@ -215,8 +225,8 @@ public class Keyspace
     {
         replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(ksm.name,
                                                                                     ksm.strategyClass,
-                                                                                    StorageService.instance.getTokenMetadata(),
-                                                                                    DatabaseDescriptor.instance.getEndpointSnitch(),
+                                                                                    storageService.getTokenMetadata(),
+                                                                                    databaseDescriptor.getEndpointSnitch(),
                                                                                     ksm.strategyOptions);
     }
 
@@ -254,7 +264,7 @@ public class Keyspace
             // CFS being created for the first time, either on server startup or new CF being added.
             // We don't worry about races here; startup is safe, and adding multiple idential CFs
             // simultaneously is a "don't do that" scenario.
-            ColumnFamilyStore oldCfs = columnFamilyStores.putIfAbsent(cfId, ColumnFamilyStoreManager.instance.createColumnFamilyStore(this, cfName, loadSSTables));
+            ColumnFamilyStore oldCfs = columnFamilyStores.putIfAbsent(cfId, columnFamilyStoreManager.createColumnFamilyStore(this, cfName, loadSSTables));
             // CFS mbean instantiation will error out before we hit this, but in case that changes...
             if (oldCfs != null)
                 throw new IllegalStateException("added multiple mappings for cf id " + cfId);
@@ -297,11 +307,11 @@ public class Keyspace
             ReplayPosition replayPosition = null;
             if (writeCommitLog)
             {
-                Tracing.instance.trace("Appending to commitlog");
-                replayPosition = CommitLog.instance.add(mutation);
+                tracing.trace("Appending to commitlog");
+                replayPosition = commitLog.add(mutation);
             }
 
-            DecoratedKey key = StorageService.instance.getPartitioner().decorateKey(mutation.key());
+            DecoratedKey key = storageService.getPartitioner().decorateKey(mutation.key());
             for (ColumnFamily cf : mutation.getColumnFamilies())
             {
                 ColumnFamilyStore cfs = columnFamilyStores.get(cf.id());
@@ -311,7 +321,7 @@ public class Keyspace
                     continue;
                 }
 
-                Tracing.instance.trace("Adding to {} memtable", cf.metadata().cfName);
+                tracing.trace("Adding to {} memtable", cf.metadata().cfName);
                 SecondaryIndexManager.Updater updater = updateIndexes
                                                       ? cfs.indexManager.updaterFor(key, cf, opGroup)
                                                       : SecondaryIndexManager.nullUpdater;

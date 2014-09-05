@@ -117,7 +117,7 @@ public class StorageServiceServerTest
         configOptions.put("DC1", "1");
         configOptions.put("DC2", "1");
 
-        Keyspace.clear("Keyspace1");
+        Keyspace.clear("Keyspace1", Schema.instance);
         KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
@@ -153,7 +153,7 @@ public class StorageServiceServerTest
         Map<String, String> configOptions = new HashMap<String, String>();
         configOptions.put("DC2", "2");
 
-        Keyspace.clear("Keyspace1");
+        Keyspace.clear("Keyspace1", Schema.instance);
         KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
@@ -203,7 +203,7 @@ public class StorageServiceServerTest
         Map<String, String> configOptions = new HashMap<String, String>();
         configOptions.put("DC2", "2");
 
-        Keyspace.clear("Keyspace1");
+        Keyspace.clear("Keyspace1", Schema.instance);
         KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
@@ -251,7 +251,7 @@ public class StorageServiceServerTest
         Map<String, String> configOptions = new HashMap<String, String>();
         configOptions.put("replication_factor", "2");
 
-        Keyspace.clear("Keyspace1");
+        Keyspace.clear("Keyspace1", Schema.instance);
         KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "SimpleStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 

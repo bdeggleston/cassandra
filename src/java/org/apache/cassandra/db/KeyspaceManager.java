@@ -2,8 +2,12 @@ package org.apache.cassandra.db;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaDataFactory;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.commitlog.CommitLog;
+import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 
 import java.io.File;
 
@@ -34,18 +38,18 @@ public class KeyspaceManager
     public Keyspace open(String keyspaceName)
     {
         assert initialized || keyspaceName.equals(Keyspace.SYSTEM_KS);
-        return open(keyspaceName, Schema.instance, true);
+        return open(keyspaceName, true);
     }
 
     // to only be used by org.apache.cassandra.tools.Standalone* classes
     public Keyspace openWithoutSSTables(String keyspaceName)
     {
-        return open(keyspaceName, Schema.instance, false);
+        return open(keyspaceName, false);
     }
 
-    private Keyspace open(String keyspaceName, Schema schema, boolean loadSSTables)
+    private Keyspace open(String keyspaceName, boolean loadSSTables)
     {
-        Keyspace keyspaceInstance = schema.getKeyspaceInstance(keyspaceName);
+        Keyspace keyspaceInstance = Schema.instance.getKeyspaceInstance(keyspaceName);
 
         if (keyspaceInstance == null)
         {
@@ -53,12 +57,19 @@ public class KeyspaceManager
             // per keyspace, so we synchronize and re-check before doing it.
             synchronized (Keyspace.class)
             {
-                keyspaceInstance = schema.getKeyspaceInstance(keyspaceName);
+                keyspaceInstance = Schema.instance.getKeyspaceInstance(keyspaceName);
                 if (keyspaceInstance == null)
                 {
                     // open and store the keyspace
-                    keyspaceInstance = new Keyspace(keyspaceName, loadSSTables);
-                    schema.storeKeyspaceInstance(keyspaceInstance);
+                    keyspaceInstance = new Keyspace(keyspaceName,
+                                                    loadSSTables,
+                                                    DatabaseDescriptor.instance,
+                                                    Tracing.instance,
+                                                    Schema.instance,
+                                                    ColumnFamilyStoreManager.instance,
+                                                    StorageService.instance,
+                                                    CommitLog.instance);
+                    Schema.instance.storeKeyspaceInstance(keyspaceInstance);
 
                     // keyspace has to be constructed and in the cache before cacheRow can be called
                     for (ColumnFamilyStore cfs : keyspaceInstance.getColumnFamilyStores())

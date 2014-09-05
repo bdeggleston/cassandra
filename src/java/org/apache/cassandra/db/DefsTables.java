@@ -567,7 +567,7 @@ public class DefsTables
         }
 
         // remove the keyspace from the static instances.
-        Keyspace.clear(ksm.name);
+        Keyspace.clear(ksm.name, Schema.instance);
         Schema.instance.clearKeyspaceDefinition(ksm);
 
         keyspace.writeOrder.awaitNewBarrier();

@@ -1127,7 +1127,7 @@ public class ColumnFamilyStoreTest
         Cell cell = cf.getColumn(cname);
         assert cell.value().equals(ByteBufferUtil.bytes("a")) : "expecting a, got " + ByteBufferUtil.string(cell.value());
 
-        Keyspace.clear(KEYSPACE1); // CASSANDRA-7195
+        Keyspace.clear(KEYSPACE1, Schema.instance); // CASSANDRA-7195
     }
 
     private static void assertTotalColCount(Collection<Row> rows, int expectedCount)
