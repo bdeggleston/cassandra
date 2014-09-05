@@ -51,16 +51,16 @@ public class CompactionMetrics implements CompactionManager.CompactionExecutorSt
     /** Total number of bytes compacted since server [re]start */
     public final Counter bytesCompacted;
 
-    public CompactionMetrics(final ThreadPoolExecutor... collectors)
+    public CompactionMetrics(final Schema schema, final KeyspaceManager keyspaceManager, final ThreadPoolExecutor... collectors)
     {
         pendingTasks = Metrics.newGauge(factory.createMetricName("PendingTasks"), new Gauge<Integer>()
         {
             public Integer value()
             {
                 int n = 0;
-                for (String keyspaceName : Schema.instance.getKeyspaces())
+                for (String keyspaceName : schema.getKeyspaces())
                 {
-                    for (ColumnFamilyStore cfs : KeyspaceManager.instance.open(keyspaceName).getColumnFamilyStores())
+                    for (ColumnFamilyStore cfs : keyspaceManager.open(keyspaceName).getColumnFamilyStores())
                         n += cfs.getCompactionStrategy().getEstimatedRemainingTasks();
                 }
                 for (ThreadPoolExecutor collector : collectors)
