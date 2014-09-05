@@ -254,7 +254,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         this.partitioner = partitioner;
         this.directories = directories;
         this.indexManager = new SecondaryIndexManager(this);
-        this.metric = new ColumnFamilyMetrics(this);
+        this.metric = new ColumnFamilyMetrics(this, KeyspaceManager.instance);
         fileIndexGenerator.set(generation);
         sampleLatencyNanos = DatabaseDescriptor.instance.getReadRpcTimeout() / 2;
 

@@ -139,13 +139,13 @@ public class ColumnFamilyMetrics
      * Stores all metric names created that can be used when unregistering
      */
     public final static Set<String> all = Sets.newHashSet();
-    
+
     /**
      * Creates metrics for given {@link ColumnFamilyStore}.
      *
      * @param cfs ColumnFamilyStore to measure metrics
      */
-    public ColumnFamilyMetrics(final ColumnFamilyStore cfs)
+    public ColumnFamilyMetrics(final ColumnFamilyStore cfs, final KeyspaceManager keyspaceManager)
     {
         factory = new ColumnFamilyMetricNameFactory(cfs);
 
@@ -259,7 +259,7 @@ public class ColumnFamilyMetrics
             {
                 double sum = 0;
                 int total = 0;
-                for (Keyspace keyspace : KeyspaceManager.instance.all())
+                for (Keyspace keyspace : keyspaceManager.all())
                 {
                     for (SSTableReader sstable : keyspace.getAllSSTables())
                     {
@@ -361,7 +361,7 @@ public class ColumnFamilyMetrics
             {
                 long sum = 0;
                 long count = 0;
-                for (Keyspace keyspace : KeyspaceManager.instance.all())
+                for (Keyspace keyspace : keyspaceManager.all())
                 {
                     for (SSTableReader sstable : keyspace.getAllSSTables())
                     {
@@ -414,7 +414,7 @@ public class ColumnFamilyMetrics
             {
                 long falseCount = 0L;
                 long trueCount = 0L;
-                for (Keyspace keyspace : KeyspaceManager.instance.all())
+                for (Keyspace keyspace : keyspaceManager.all())
                 {
                     for (SSTableReader sstable : keyspace.getAllSSTables())
                     {
@@ -448,7 +448,7 @@ public class ColumnFamilyMetrics
             {
                 long falseCount = 0L;
                 long trueCount = 0L;
-                for (Keyspace keyspace : KeyspaceManager.instance.all())
+                for (Keyspace keyspace : keyspaceManager.all())
                 {
                     for (SSTableReader sstable : keyspace.getAllSSTables())
                     {
