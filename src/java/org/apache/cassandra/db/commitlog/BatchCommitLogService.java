@@ -21,9 +21,9 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 
 class BatchCommitLogService extends AbstractCommitLogService
 {
-    public BatchCommitLogService(CommitLog commitLog)
+    public BatchCommitLogService(CommitLog commitLog, DatabaseDescriptor databaseDescriptor)
     {
-        super(commitLog, "COMMIT-LOG-WRITER", (int) DatabaseDescriptor.instance.getCommitLogSyncBatchWindow());
+        super(commitLog, "COMMIT-LOG-WRITER", (int) databaseDescriptor.getCommitLogSyncBatchWindow());
     }
 
     protected void maybeWaitForSync(CommitLogSegment.Allocation alloc)

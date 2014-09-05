@@ -66,8 +66,8 @@ public class CommitLog implements CommitLogMBean
         allocator = new CommitLogSegmentManager();
 
         executor = DatabaseDescriptor.instance.getCommitLogSync() == Config.CommitLogSync.batch
-                 ? new BatchCommitLogService(this)
-                 : new PeriodicCommitLogService(this);
+                 ? new BatchCommitLogService(this, DatabaseDescriptor.instance)
+                 : new PeriodicCommitLogService(this, DatabaseDescriptor.instance);
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
