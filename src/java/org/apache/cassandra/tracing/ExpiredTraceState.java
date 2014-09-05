@@ -21,15 +21,18 @@
 
 package org.apache.cassandra.tracing;
 
+import java.net.InetAddress;
 import java.util.UUID;
 
+import org.apache.cassandra.concurrent.StageManager;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 
 public class ExpiredTraceState extends TraceState
 {
-    public ExpiredTraceState(UUID sessionId)
+    public ExpiredTraceState(UUID sessionId, InetAddress coordinator, StageManager stageManager, CFMetaDataFactory cfMetaDataFactory, Tracing tracing)
     {
-        super(DatabaseDescriptor.instance.getBroadcastAddress(), sessionId);
+        super(coordinator, sessionId, coordinator, stageManager, cfMetaDataFactory, tracing);
     }
 
     public int elapsed()

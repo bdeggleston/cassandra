@@ -152,7 +152,7 @@ public class Tracing
     {
         assert state.get() == null;
 
-        TraceState ts = new TraceState(localAddress, sessionId);
+        TraceState ts = new TraceState(localAddress, sessionId, DatabaseDescriptor.instance.getBroadcastAddress(), StageManager.instance, CFMetaDataFactory.instance, this);
         state.set(ts);
         sessions.put(sessionId, ts);
 
@@ -255,11 +255,11 @@ public class Tracing
         if (message.verb == MessagingService.Verb.REQUEST_RESPONSE)
         {
             // received a message for a session we've already closed out.  see CASSANDRA-5668
-            return new ExpiredTraceState(sessionId);
+            return new ExpiredTraceState(sessionId, DatabaseDescriptor.instance.getBroadcastAddress(), StageManager.instance, CFMetaDataFactory.instance, this);
         }
         else
         {
-            ts = new TraceState(message.from, sessionId);
+            ts = new TraceState(message.from, sessionId, DatabaseDescriptor.instance.getBroadcastAddress(), StageManager.instance, CFMetaDataFactory.instance, this);
             sessions.put(sessionId, ts);
             return ts;
         }
@@ -299,6 +299,17 @@ public class Tracing
             return;
 
         state.trace(format, args);
+    }
+
+    public void trace(UUID sessionId, final String message, final int elapsed)
+    {
+        TraceState.trace(ByteBufferUtil.bytes(sessionId),
+                         message,
+                         elapsed,
+                         DatabaseDescriptor.instance.getBroadcastAddress(),
+                         StageManager.instance,
+                         CFMetaDataFactory.instance,
+                         this);
     }
 
     void mutateWithCatch(Mutation mutation)

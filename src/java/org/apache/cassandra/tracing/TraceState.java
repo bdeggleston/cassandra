@@ -54,13 +54,24 @@ public class TraceState
     // See CASSANDRA-7626 for more details.
     private final AtomicInteger references = new AtomicInteger(1);
 
-    public TraceState(InetAddress coordinator, UUID sessionId)
+    private final InetAddress broadcastAddress;
+    private final StageManager stageManager;
+    private final CFMetaDataFactory cfMetaDataFactory;
+    private final Tracing tracing;
+
+    public TraceState(InetAddress coordinator, UUID sessionId, InetAddress broadcastAddress, StageManager stageManager, CFMetaDataFactory cfMetaDataFactory, Tracing tracing)
     {
         assert coordinator != null;
         assert sessionId != null;
 
         this.coordinator = coordinator;
         this.sessionId = sessionId;
+
+        this.broadcastAddress = broadcastAddress;
+        this.stageManager = stageManager;
+        this.cfMetaDataFactory = cfMetaDataFactory;
+        this.tracing = tracing;
+
         sessionIdBytes = ByteBufferUtil.bytes(sessionId);
         watch = Stopwatch.createStarted();
     }
@@ -88,10 +99,10 @@ public class TraceState
 
     public void trace(String message)
     {
-        TraceState.trace(sessionIdBytes, message, elapsed());
+        TraceState.trace(sessionIdBytes, message, elapsed(), broadcastAddress, stageManager,  cfMetaDataFactory, tracing);
     }
 
-    public static void trace(final ByteBuffer sessionIdBytes, final String message, final int elapsed)
+    public static void trace(final ByteBuffer sessionIdBytes, final String message, final int elapsed, InetAddress broadcastAddress, StageManager stageManager, CFMetaDataFactory cfMetaDataFactory, Tracing tracing)
     {
         final ByteBuffer eventId = ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes());
         final String threadName = Thread.currentThread().getName();
