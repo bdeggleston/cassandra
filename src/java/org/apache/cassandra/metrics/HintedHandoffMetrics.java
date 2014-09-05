@@ -40,6 +40,12 @@ public class HintedHandoffMetrics
     private static final Logger logger = LoggerFactory.getLogger(HintedHandoffMetrics.class);
 
     private final MetricNameFactory factory = new DefaultNameFactory("HintedHandOffManager");
+    private final SystemKeyspace systemKeyspace;
+
+    public HintedHandoffMetrics(SystemKeyspace systemKeyspace)
+    {
+        this.systemKeyspace = systemKeyspace;
+    }
 
     /** Total number of hints which are not stored, This is not a cache. */
     private final LoadingCache<InetAddress, DifferencingCounter> notStored = CacheBuilder.newBuilder().build(new CacheLoader<InetAddress, DifferencingCounter>()
@@ -77,7 +83,7 @@ public class HintedHandoffMetrics
             if (difference == 0)
                 continue;
             logger.warn("{} has {} dropped hints, because node is down past configured hint window.", entry.getKey(), difference);
-            SystemKeyspace.instance.updateHintsDropped(entry.getKey(), UUIDGen.getTimeUUID(), (int) difference);
+            systemKeyspace.updateHintsDropped(entry.getKey(), UUIDGen.getTimeUUID(), (int) difference);
         }
     }
 

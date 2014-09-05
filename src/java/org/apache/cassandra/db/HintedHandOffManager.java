@@ -100,7 +100,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
     private static final int PAGE_SIZE = 128;
     private static final int LARGE_NUMBER = 65536; // 64k nodes ought to be enough for anybody.
 
-    public final HintedHandoffMetrics metrics = new HintedHandoffMetrics();
+    public final HintedHandoffMetrics metrics = new HintedHandoffMetrics(SystemKeyspace.instance);
 
     private volatile boolean hintedHandOffPaused = false;
 
