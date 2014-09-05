@@ -602,6 +602,6 @@ public class MoveTest
 
     private Range<Token> generateRange(int left, int right)
     {
-        return new Range<Token>(new BigIntegerToken(String.valueOf(left)), new BigIntegerToken(String.valueOf(right)));
+        return new Range<Token>(new BigIntegerToken(String.valueOf(left)), new BigIntegerToken(String.valueOf(right)), StorageService.instance.getPartitioner());
     }
 }

@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.apache.cassandra.db.RowPosition;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.Pair;
 
 /**
@@ -29,12 +28,7 @@ import org.apache.cassandra.utils.Pair;
  */
 public class IncludingExcludingBounds<T extends RingPosition> extends AbstractBounds<T>
 {
-    public IncludingExcludingBounds(T left, T right)
-    {
-        this(left, right, StorageService.instance.getPartitioner());
-    }
-
-    IncludingExcludingBounds(T left, T right, IPartitioner partitioner)
+    public IncludingExcludingBounds(T left, T right, IPartitioner partitioner)
     {
         super(left, right, partitioner);
         // unlike a Range, an IncludingExcludingBounds may not wrap, nor have
@@ -106,6 +100,6 @@ public class IncludingExcludingBounds<T extends RingPosition> extends AbstractBo
 
     public AbstractBounds<T> withNewRight(T newRight)
     {
-        return new IncludingExcludingBounds<T>(left, newRight);
+        return new IncludingExcludingBounds<T>(left, newRight, partitioner);
     }
 }

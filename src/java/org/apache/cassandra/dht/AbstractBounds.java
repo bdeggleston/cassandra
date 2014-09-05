@@ -28,6 +28,7 @@ import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.Pair;
 
 public abstract class AbstractBounds<T extends RingPosition> implements Serializable
@@ -173,8 +174,8 @@ public abstract class AbstractBounds<T extends RingPosition> implements Serializ
             }
 
             if (kind == Type.RANGE.ordinal())
-                return new Range(left, right);
-            return new Bounds(left, right);
+                return new Range(left, right, StorageService.instance.getPartitioner());
+            return new Bounds(left, right, StorageService.instance.getPartitioner());
         }
 
         public long serializedSize(AbstractBounds<?> ab, int version)

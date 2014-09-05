@@ -625,7 +625,7 @@ public class TokenMetadata
     {
         Collection<Range<Token>> ranges = new ArrayList<Range<Token>>(tokens.size());
         for (Token right : tokens)
-            ranges.add(new Range<Token>(getPredecessor(right), right));
+            ranges.add(new Range<Token>(getPredecessor(right), right, StorageService.instance.getPartitioner()));
         return ranges;
     }
 

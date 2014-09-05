@@ -751,7 +751,7 @@ public class SystemKeyspace
     {
         Token minToken = StorageService.instance.getPartitioner().getMinimumToken();
 
-        return schemaCFS(schemaCfName).getRangeSlice(new Range<RowPosition>(minToken.minKeyBound(), minToken.maxKeyBound()),
+        return schemaCFS(schemaCfName).getRangeSlice(new Range<RowPosition>(minToken.minKeyBound(), minToken.maxKeyBound(), StorageService.instance.getPartitioner()),
                                                      null,
                                                      new IdentityQueryFilter(),
                                                      Integer.MAX_VALUE,

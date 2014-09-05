@@ -43,22 +43,22 @@ public class StorageProxyTest
 {
     private static Range<RowPosition> range(RowPosition left, RowPosition right)
     {
-        return new Range<RowPosition>(left, right);
+        return new Range<RowPosition>(left, right, StorageService.instance.getPartitioner());
     }
 
     private static Bounds<RowPosition> bounds(RowPosition left, RowPosition right)
     {
-        return new Bounds<RowPosition>(left, right);
+        return new Bounds<RowPosition>(left, right, StorageService.instance.getPartitioner());
     }
 
     private static ExcludingBounds<RowPosition> exBounds(RowPosition left, RowPosition right)
     {
-        return new ExcludingBounds<RowPosition>(left, right);
+        return new ExcludingBounds<RowPosition>(left, right, StorageService.instance.getPartitioner());
     }
 
     private static IncludingExcludingBounds<RowPosition> incExBounds(RowPosition left, RowPosition right)
     {
-        return new IncludingExcludingBounds<RowPosition>(left, right);
+        return new IncludingExcludingBounds<RowPosition>(left, right, StorageService.instance.getPartitioner());
     }
 
     private static RowPosition startOf(String key)
@@ -73,12 +73,12 @@ public class StorageProxyTest
 
     private static Range<Token> tokenRange(String left, String right)
     {
-        return new Range<Token>(token(left), token(right));
+        return new Range<Token>(token(left), token(right), StorageService.instance.getPartitioner());
     }
 
     private static Bounds<Token> tokenBounds(String left, String right)
     {
-        return new Bounds<Token>(token(left), token(right));
+        return new Bounds<Token>(token(left), token(right), StorageService.instance.getPartitioner());
     }
 
     @BeforeClass

@@ -398,7 +398,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             RowPosition start = includeStart ? startToken.minKeyBound() : startToken.maxKeyBound();
             RowPosition end = includeEnd ? endToken.maxKeyBound() : endToken.minKeyBound();
 
-            return new Range<RowPosition>(start, end);
+            return new Range<RowPosition>(start, end, StorageService.instance.getPartitioner());
         }
         else
         {
@@ -414,14 +414,14 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             if (includeKeyBound(Bound.START))
             {
                 return includeKeyBound(Bound.END)
-                     ? new Bounds<RowPosition>(startKey, finishKey)
-                     : new IncludingExcludingBounds<RowPosition>(startKey, finishKey);
+                     ? new Bounds<RowPosition>(startKey, finishKey, StorageService.instance.getPartitioner())
+                     : new IncludingExcludingBounds<RowPosition>(startKey, finishKey, StorageService.instance.getPartitioner());
             }
             else
             {
                 return includeKeyBound(Bound.END)
-                     ? new Range<RowPosition>(startKey, finishKey)
-                     : new ExcludingBounds<RowPosition>(startKey, finishKey);
+                     ? new Range<RowPosition>(startKey, finishKey, StorageService.instance.getPartitioner())
+                     : new ExcludingBounds<RowPosition>(startKey, finishKey, StorageService.instance.getPartitioner());
             }
         }
     }

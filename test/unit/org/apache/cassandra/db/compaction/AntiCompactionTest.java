@@ -27,6 +27,7 @@ import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.locator.SimpleStrategy;
+import org.apache.cassandra.service.StorageService;
 import org.junit.BeforeClass;
 import org.junit.After;
 import org.junit.Test;
@@ -90,7 +91,7 @@ public class AntiCompactionTest
         store.forceBlockingFlush();
         Collection<SSTableReader> sstables = store.getUnrepairedSSTables();
         assertEquals(store.getSSTables().size(), sstables.size());
-        Range<Token> range = new Range<Token>(new BytesToken("0".getBytes()), new BytesToken("4".getBytes()));
+        Range<Token> range = new Range<Token>(new BytesToken("0".getBytes()), new BytesToken("4".getBytes()), StorageService.instance.getPartitioner());
         List<Range<Token>> ranges = Arrays.asList(range);
 
         SSTableReader.acquireReferences(sstables);
@@ -164,7 +165,7 @@ public class AntiCompactionTest
         Collection<SSTableReader> sstables = store.getUnrepairedSSTables();
         assertEquals(store.getSSTables().size(), sstables.size());
 
-        Range<Token> range = new Range<Token>(new BytesToken("0".getBytes()), new BytesToken("4".getBytes()));
+        Range<Token> range = new Range<Token>(new BytesToken("0".getBytes()), new BytesToken("4".getBytes()), StorageService.instance.getPartitioner());
         List<Range<Token>> ranges = Arrays.asList(range);
 
         SSTableReader.acquireReferences(sstables);

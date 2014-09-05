@@ -131,17 +131,17 @@ public class Util
 
     public static Range<RowPosition> range(String left, String right)
     {
-        return new Range<RowPosition>(rp(left), rp(right));
+        return new Range<RowPosition>(rp(left), rp(right), StorageService.instance.getPartitioner());
     }
 
     public static Range<RowPosition> range(IPartitioner p, String left, String right)
     {
-        return new Range<RowPosition>(rp(left, p), rp(right, p));
+        return new Range<RowPosition>(rp(left, p), rp(right, p), StorageService.instance.getPartitioner());
     }
 
     public static Bounds<RowPosition> bounds(String left, String right)
     {
-        return new Bounds<RowPosition>(rp(left), rp(right));
+        return new Bounds<RowPosition>(rp(left), rp(right), StorageService.instance.getPartitioner());
     }
 
     public static void addMutation(Mutation rm, String columnFamilyName, String superColumnName, long columnName, String value, long timestamp)
@@ -182,7 +182,7 @@ public class Util
                                : new SliceQueryFilter(SuperColumns.startOf(superColumn), SuperColumns.endOf(superColumn), false, Integer.MAX_VALUE, databaseDescriptor, tracing);
 
         Token min = StorageService.instance.getPartitioner().getMinimumToken();
-        return cfs.getRangeSlice(new Bounds<Token>(min, min).toRowBounds(), null, filter, 10000);
+        return cfs.getRangeSlice(new Bounds<Token>(min, min, StorageService.instance.getPartitioner()).toRowBounds(), null, filter, 10000);
     }
 
     /**

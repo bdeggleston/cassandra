@@ -118,13 +118,13 @@ public class SSTableReaderTest
 
         List<Range<Token>> ranges = new ArrayList<Range<Token>>();
         // 1 key
-        ranges.add(new Range<Token>(t(0), t(1)));
+        ranges.add(new Range<Token>(t(0), t(1), StorageService.instance.getPartitioner()));
         // 2 keys
-        ranges.add(new Range<Token>(t(2), t(4)));
+        ranges.add(new Range<Token>(t(2), t(4), StorageService.instance.getPartitioner()));
         // wrapping range from key to end
-        ranges.add(new Range<Token>(t(6), StorageService.instance.getPartitioner().getMinimumToken()));
+        ranges.add(new Range<Token>(t(6), StorageService.instance.getPartitioner().getMinimumToken(), StorageService.instance.getPartitioner()));
         // empty range (should be ignored)
-        ranges.add(new Range<Token>(t(9), t(91)));
+        ranges.add(new Range<Token>(t(9), t(91), StorageService.instance.getPartitioner()));
 
         // confirm that positions increase continuously
         SSTableReader sstable = store.getSSTables().iterator().next();
@@ -362,7 +362,7 @@ public class SSTableReaderTest
         // construct a range which is present in the sstable, but whose
         // keys are not found in the first segment of the index.
         List<Range<Token>> ranges = new ArrayList<Range<Token>>();
-        ranges.add(new Range<Token>(t(98), t(99)));
+        ranges.add(new Range<Token>(t(98), t(99), StorageService.instance.getPartitioner()));
 
         SSTableReader sstable = store.getSSTables().iterator().next();
         List<Pair<Long,Long>> sections = sstable.getPositionsForRanges(ranges);
@@ -419,7 +419,7 @@ public class SSTableReaderTest
                 public void run()
                 {
                     Iterable<DecoratedKey> results = store.keySamples(
-                            new Range<>(sstable.partitioner.getMinimumToken(), sstable.partitioner.getToken(key)));
+                            new Range<>(sstable.partitioner.getMinimumToken(), sstable.partitioner.getToken(key), sstable.partitioner));
                     assertTrue(results.iterator().hasNext());
                 }
             }));
@@ -451,7 +451,7 @@ public class SSTableReaderTest
 
     private List<Range<Token>> makeRanges(Token left, Token right)
     {
-        return Arrays.asList(new Range<>(left, right));
+        return Arrays.asList(new Range<>(left, right, StorageService.instance.getPartitioner()));
     }
 
     private DecoratedKey k(int i)

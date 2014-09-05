@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.After;
 import org.junit.BeforeClass;
@@ -59,6 +60,7 @@ public class DifferencerTest
     @BeforeClass
     public static void defineSchema() throws Exception
     {
+        DatabaseDescriptor.init();
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     SimpleStrategy.class,
@@ -101,7 +103,7 @@ public class DifferencerTest
                 return null;
             }
         });
-        Range<Token> range = new Range<>(partirioner.getMinimumToken(), partirioner.getRandomToken());
+        Range<Token> range = new Range<>(partirioner.getMinimumToken(), partirioner.getRandomToken(), partirioner);
         RepairJobDesc desc = new RepairJobDesc(UUID.randomUUID(), UUID.randomUUID(), KEYSPACE1, "Standard1", range);
 
         MerkleTree tree1 = createInitialTree(desc);
@@ -120,7 +122,7 @@ public class DifferencerTest
     @Test
     public void testDifference() throws Throwable
     {
-        Range<Token> range = new Range<>(partirioner.getMinimumToken(), partirioner.getRandomToken());
+        Range<Token> range = new Range<>(partirioner.getMinimumToken(), partirioner.getRandomToken(), partirioner);
         UUID parentRepairSession = UUID.randomUUID();
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Standard1");

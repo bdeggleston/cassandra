@@ -135,8 +135,8 @@ public class StreamingTransferTest
         // requesting empty data should succeed
         IPartitioner p = StorageService.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1"))));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken()));
+        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1")), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken(), StorageService.instance.getPartitioner()));
 
         StreamResultFuture futureResult = new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, Schema.instance,
                                                          KeyspaceManager.instance, StreamManager.instance)
@@ -221,8 +221,8 @@ public class StreamingTransferTest
     {
         IPartitioner p = StorageService.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1"))));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken()));
+        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1")), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken(), StorageService.instance.getPartitioner()));
         transfer(sstable, ranges);
     }
 
@@ -231,7 +231,7 @@ public class StreamingTransferTest
         IPartitioner p = StorageService.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
         // wrapped range
-        ranges.add(new Range<Token>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key0"))));
+        ranges.add(new Range<Token>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key0")), StorageService.instance.getPartitioner()));
         new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, Schema.instance,
                        KeyspaceManager.instance, StreamManager.instance).transferRanges(LOCAL, cfs.keyspace.getName(), ranges, cfs.getColumnFamilyName()).execute().get();
     }
@@ -407,8 +407,8 @@ public class StreamingTransferTest
         // transfer the first and last key
         IPartitioner p = StorageService.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("test"))));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("transfer2")), p.getMinimumToken()));
+        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("test")), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("transfer2")), p.getMinimumToken(), StorageService.instance.getPartitioner()));
         // Acquiring references, transferSSTables needs it
         sstable.acquireReference();
         sstable2.acquireReference();
@@ -459,9 +459,9 @@ public class StreamingTransferTest
         Map.Entry<DecoratedKey,String> last = keys.lastEntry();
         Map.Entry<DecoratedKey,String> secondtolast = keys.lowerEntry(last.getKey());
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), first.getKey().getToken()));
+        ranges.add(new Range<>(p.getMinimumToken(), first.getKey().getToken(), StorageService.instance.getPartitioner()));
         // the left hand side of the range is exclusive, so we transfer from the second-to-last token
-        ranges.add(new Range<>(secondtolast.getKey().getToken(), p.getMinimumToken()));
+        ranges.add(new Range<>(secondtolast.getKey().getToken(), p.getMinimumToken(), StorageService.instance.getPartitioner()));
 
         // Acquiring references, transferSSTables needs it
         if (!SSTableReader.acquireReferences(ssTableReaders))
@@ -507,9 +507,9 @@ public class StreamingTransferTest
 
         IPartitioner p = StorageService.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key1000"))));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key5")), p.getToken(ByteBufferUtil.bytes("key500"))));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key9")), p.getToken(ByteBufferUtil.bytes("key900"))));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key1000")), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key5")), p.getToken(ByteBufferUtil.bytes("key500")), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key9")), p.getToken(ByteBufferUtil.bytes("key900")), StorageService.instance.getPartitioner()));
         transfer(sstable, ranges);
         assertEquals(1, cfs.getSSTables().size());
         assertEquals(7, Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance).size());

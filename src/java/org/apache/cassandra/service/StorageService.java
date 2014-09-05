@@ -2506,12 +2506,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         Token previous = tokenMetadata.getPredecessor(TokenMetadata.firstToken(tokenMetadata.sortedTokens(), parsedEndToken));
         while (parsedBeginToken.compareTo(previous) < 0)
         {
-            repairingRange.addFirst(new Range<>(previous, parsedEndToken));
+            repairingRange.addFirst(new Range<>(previous, parsedEndToken, StorageService.instance.getPartitioner()));
 
             parsedEndToken = previous;
             previous = tokenMetadata.getPredecessor(previous);
         }
-        repairingRange.addFirst(new Range<>(parsedBeginToken, parsedEndToken));
+        repairingRange.addFirst(new Range<>(parsedBeginToken, parsedEndToken, StorageService.instance.getPartitioner()));
 
         return repairingRange;
     }
@@ -2688,7 +2688,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             List<InetAddress> endpoints = strategy.calculateNaturalEndpoints(token, metadata);
             if (endpoints.size() > 0 && endpoints.get(0).equals(ep))
-                primaryRanges.add(new Range<>(metadata.getPredecessor(token), token));
+                primaryRanges.add(new Range<>(metadata.getPredecessor(token), token, StorageService.instance.getPartitioner()));
         }
         return primaryRanges;
     }
@@ -2737,10 +2737,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         List<Range<Token>> ranges = new ArrayList<>(size + 1);
         for (int i = 1; i < size; ++i)
         {
-            Range<Token> range = new Range<>(sortedTokens.get(i - 1), sortedTokens.get(i));
+            Range<Token> range = new Range<>(sortedTokens.get(i - 1), sortedTokens.get(i), StorageService.instance.getPartitioner());
             ranges.add(range);
         }
-        Range<Token> range = new Range<>(sortedTokens.get(size - 1), sortedTokens.get(0));
+        Range<Token> range = new Range<>(sortedTokens.get(size - 1), sortedTokens.get(0), StorageService.instance.getPartitioner());
         ranges.add(range);
 
         return ranges;
@@ -2882,7 +2882,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             int index = (int) Math.round(i * step);
             Token token = tokens.get(index);
-            Range<Token> range = new Range<>(prevToken, token);
+            Range<Token> range = new Range<>(prevToken, token, StorageService.instance.getPartitioner());
             // always return an estimate > 0 (see CASSANDRA-7322)
             splits.add(Pair.create(range, Math.max(cfs.metadata.getMinIndexInterval(), cfs.estimatedKeysForRange(range))));
             prevToken = token;
@@ -3030,7 +3030,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
             // stream all hints -- range list will be a singleton of "the entire ring"
             Token token = getPartitioner().getMinimumToken();
-            List<Range<Token>> ranges = Collections.singletonList(new Range<>(token, token));
+            List<Range<Token>> ranges = Collections.singletonList(new Range<>(token, token, StorageService.instance.getPartitioner()));
 
             return new StreamPlan("Hints", DatabaseDescriptor.instance, Schema.instance,
                                   KeyspaceManager.instance, StreamManager.instance).transferRanges(hintsDestinationHost,

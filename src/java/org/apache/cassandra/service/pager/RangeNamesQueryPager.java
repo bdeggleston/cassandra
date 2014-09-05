@@ -103,11 +103,11 @@ public class RangeNamesQueryPager extends AbstractQueryPager
         AbstractBounds<RowPosition> bounds = command.keyRange;
         if (bounds instanceof Range || bounds instanceof Bounds)
         {
-            return new Range<RowPosition>(lastReturnedKey, bounds.right);
+            return new Range<RowPosition>(lastReturnedKey, bounds.right, StorageService.instance.getPartitioner());
         }
         else
         {
-            return new ExcludingBounds<RowPosition>(lastReturnedKey, bounds.right);
+            return new ExcludingBounds<RowPosition>(lastReturnedKey, bounds.right, StorageService.instance.getPartitioner());
         }
     }
 }

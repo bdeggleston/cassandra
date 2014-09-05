@@ -29,11 +29,6 @@ import org.apache.cassandra.utils.Pair;
  */
 public class Bounds<T extends RingPosition> extends AbstractBounds<T>
 {
-    public Bounds(T left, T right)
-    {
-        this(left, right, StorageService.instance.getPartitioner());
-    }
-
     public Bounds(T left, T right, IPartitioner partitioner)
     {
         super(left, right, partitioner);
@@ -118,6 +113,6 @@ public class Bounds<T extends RingPosition> extends AbstractBounds<T>
 
     public AbstractBounds<T> withNewRight(T newRight)
     {
-        return new Bounds<T>(left, newRight);
+        return new Bounds<T>(left, newRight, partitioner);
     }
 }

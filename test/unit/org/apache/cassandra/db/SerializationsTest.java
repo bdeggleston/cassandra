@@ -80,7 +80,7 @@ public class SerializationsTest extends AbstractSerializationsTester
     private void testRangeSliceCommandWrite() throws IOException
     {
         IPartitioner part = StorageService.instance.getPartitioner();
-        AbstractBounds<RowPosition> bounds = new Range<Token>(part.getRandomToken(), part.getRandomToken()).toRowBounds();
+        AbstractBounds<RowPosition> bounds = new Range<Token>(part.getRandomToken(), part.getRandomToken(), StorageService.instance.getPartitioner()).toRowBounds();
 
         RangeSliceCommand namesCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, namesPred, bounds, 100);
         MessageOut<RangeSliceCommand> namesCmdMsg = namesCmd.createMessage();

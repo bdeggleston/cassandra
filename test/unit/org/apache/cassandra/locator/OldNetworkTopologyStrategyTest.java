@@ -222,12 +222,12 @@ public class OldNetworkTopologyStrategyTest
 
         // build expected ranges
         Range[] toStreamExpected = new Range[2];
-        toStreamExpected[0] = new Range(getToken(movingNodeIdx - 2, tokens), getToken(movingNodeIdx - 1, tokens));
-        toStreamExpected[1] = new Range(getToken(movingNodeIdx - 1, tokens), getToken(movingNodeIdx, tokens));
+        toStreamExpected[0] = new Range(getToken(movingNodeIdx - 2, tokens), getToken(movingNodeIdx - 1, tokens), StorageService.instance.getPartitioner());
+        toStreamExpected[1] = new Range(getToken(movingNodeIdx - 1, tokens), getToken(movingNodeIdx, tokens), StorageService.instance.getPartitioner());
         Arrays.sort(toStreamExpected);
         Range[] toFetchExpected = new Range[2];
-        toFetchExpected[0] = new Range(getToken(movingNodeIdxAfterMove - 1, tokens), getToken(movingNodeIdxAfterMove, tokens));
-        toFetchExpected[1] = new Range(getToken(movingNodeIdxAfterMove, tokensAfterMove), getToken(movingNodeIdx, tokensAfterMove));
+        toFetchExpected[0] = new Range(getToken(movingNodeIdxAfterMove - 1, tokens), getToken(movingNodeIdxAfterMove, tokens), StorageService.instance.getPartitioner());
+        toFetchExpected[1] = new Range(getToken(movingNodeIdxAfterMove, tokensAfterMove), getToken(movingNodeIdx, tokensAfterMove), StorageService.instance.getPartitioner());
         Arrays.sort(toFetchExpected);
 
         assertEquals(Arrays.equals(toStream, toStreamExpected), true);
@@ -255,11 +255,11 @@ public class OldNetworkTopologyStrategyTest
 
         // build expected ranges
         Range[] toStreamExpected = new Range[1];
-        toStreamExpected[0] = new Range(getToken(movingNodeIdx - 2, tokens), getToken(movingNodeIdx - 1, tokens));
+        toStreamExpected[0] = new Range(getToken(movingNodeIdx - 2, tokens), getToken(movingNodeIdx - 1, tokens), StorageService.instance.getPartitioner());
         Arrays.sort(toStreamExpected);
         Range[] toFetchExpected = new Range[2];
-        toFetchExpected[0] = new Range(getToken(movingNodeIdxAfterMove - 1, tokens), getToken(movingNodeIdxAfterMove, tokens));
-        toFetchExpected[1] = new Range(getToken(movingNodeIdxAfterMove, tokensAfterMove), getToken(movingNodeIdx, tokensAfterMove));
+        toFetchExpected[0] = new Range(getToken(movingNodeIdxAfterMove - 1, tokens), getToken(movingNodeIdxAfterMove, tokens), StorageService.instance.getPartitioner());
+        toFetchExpected[1] = new Range(getToken(movingNodeIdxAfterMove, tokensAfterMove), getToken(movingNodeIdx, tokensAfterMove), StorageService.instance.getPartitioner());
         Arrays.sort(toFetchExpected);
 
         assertEquals(Arrays.equals(toStream, toStreamExpected), true);
@@ -284,11 +284,11 @@ public class OldNetworkTopologyStrategyTest
         Arrays.sort(toFetch);
 
         Range[] toStreamExpected = new Range[2];
-        toStreamExpected[0] = new Range(getToken(movingNodeIdx, tokensAfterMove), getToken(movingNodeIdx - 1, tokensAfterMove));
-        toStreamExpected[1] = new Range(getToken(movingNodeIdx - 1, tokens), getToken(movingNodeIdx, tokens));
+        toStreamExpected[0] = new Range(getToken(movingNodeIdx, tokensAfterMove), getToken(movingNodeIdx - 1, tokensAfterMove), StorageService.instance.getPartitioner());
+        toStreamExpected[1] = new Range(getToken(movingNodeIdx - 1, tokens), getToken(movingNodeIdx, tokens), StorageService.instance.getPartitioner());
         Arrays.sort(toStreamExpected);
         Range[] toFetchExpected = new Range[1];
-        toFetchExpected[0] = new Range(getToken(movingNodeIdxAfterMove - 1, tokens), getToken(movingNodeIdxAfterMove, tokens));
+        toFetchExpected[0] = new Range(getToken(movingNodeIdxAfterMove - 1, tokens), getToken(movingNodeIdxAfterMove, tokens), StorageService.instance.getPartitioner());
         Arrays.sort(toFetchExpected);
 
         System.out.println("toStream : " + Arrays.toString(toStream));

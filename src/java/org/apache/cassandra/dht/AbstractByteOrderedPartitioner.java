@@ -188,7 +188,7 @@ public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner
         for (Token node : sortedTokens)
         {
             allTokens.put(node, new Float(0.0));
-            sortedRanges.add(new Range<Token>(lastToken, node));
+            sortedRanges.add(new Range<Token>(lastToken, node, StorageService.instance.getPartitioner()));
             lastToken = node;
         }
 

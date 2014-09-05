@@ -25,6 +25,7 @@ import java.util.concurrent.Future;
 
 import com.google.common.base.Predicate;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,7 +97,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 {
                     public boolean apply(SSTableReader sstable)
                     {
-                        return sstable != null && new Bounds<>(sstable.first.getToken(), sstable.last.getToken()).intersects(Collections.singleton(repairingRange));
+                        return sstable != null && new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), StorageService.instance.getPartitioner()).intersects(Collections.singleton(repairingRange));
                     }
                 });
 

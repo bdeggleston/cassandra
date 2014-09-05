@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.service.StorageService;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -169,7 +170,7 @@ public class LeveledCompactionStrategyTest
         assert strategy.getLevelSize(1) > 0;
         assert strategy.getLevelSize(2) > 0;
 
-        Range<Token> range = new Range<>(Util.token(""), Util.token(""));
+        Range<Token> range = new Range<>(Util.token(""), Util.token(""), StorageService.instance.getPartitioner());
         int gcBefore = keyspace.getColumnFamilyStore(CF_STANDARDDLEVELED).gcBefore(System.currentTimeMillis());
         UUID parentRepSession = UUID.randomUUID();
         ActiveRepairService.instance.registerParentRepairSession(parentRepSession, Arrays.asList(cfs), Arrays.asList(range));

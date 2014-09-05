@@ -302,7 +302,7 @@ public class ActiveRepairService
             Set<SSTableReader> sstables = new HashSet<>();
             for (SSTableReader sstable : cfs.getSSTables())
             {
-                if (new Bounds<>(sstable.first.getToken(), sstable.last.getToken()).intersects(ranges))
+                if (new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), StorageService.instance.getPartitioner()).intersects(ranges))
                 {
                     if (!sstable.isRepaired())
                     {

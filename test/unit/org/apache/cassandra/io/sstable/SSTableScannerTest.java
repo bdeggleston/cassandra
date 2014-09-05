@@ -21,6 +21,7 @@ package org.apache.cassandra.io.sstable;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import org.apache.cassandra.service.StorageService;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -62,14 +63,16 @@ public class SSTableScannerTest
     private static Bounds<RowPosition> boundsFor(int start, int end)
     {
         return new Bounds<RowPosition>(new BytesToken(toKey(start).getBytes()).minKeyBound(),
-                                       new BytesToken(toKey(end).getBytes()).maxKeyBound());
+                                       new BytesToken(toKey(end).getBytes()).maxKeyBound(),
+                                       StorageService.instance.getPartitioner());
     }
 
 
     private static Range<Token> rangeFor(int start, int end)
     {
         return new Range<Token>(new BytesToken(toKey(start).getBytes()),
-                                new BytesToken(toKey(end).getBytes()));
+                                new BytesToken(toKey(end).getBytes()),
+                                StorageService.instance.getPartitioner());
     }
 
     private static Collection<Range<Token>> makeRanges(int ... keys)

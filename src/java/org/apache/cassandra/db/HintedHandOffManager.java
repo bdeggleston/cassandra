@@ -593,7 +593,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         // From keys "" to ""...
         IPartitioner<?> partitioner = StorageService.instance.getPartitioner();
         RowPosition minPos = partitioner.getMinimumToken().minKeyBound();
-        Range<RowPosition> range = new Range<RowPosition>(minPos, minPos);
+        Range<RowPosition> range = new Range<RowPosition>(minPos, minPos, StorageService.instance.getPartitioner());
 
         try
         {

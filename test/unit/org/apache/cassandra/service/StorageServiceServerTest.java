@@ -123,19 +123,19 @@ public class StorageServiceServerTest
 
         Collection<Range<Token>> primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("A")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("A"), StorageService.instance.getPartitioner()));
 
         primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C"), StorageService.instance.getPartitioner()));
 
         primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B"), StorageService.instance.getPartitioner()));
 
         primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D"), StorageService.instance.getPartitioner()));
     }
 
     @Test
@@ -167,13 +167,13 @@ public class StorageServiceServerTest
         // endpoints in DC2 should have primary ranges which also cover DC1
         primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
         assert primaryRanges.size() == 2;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("A")));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("A"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B"), StorageService.instance.getPartitioner()));
 
         primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
         assert primaryRanges.size() == 2;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D")));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C"), StorageService.instance.getPartitioner()));
     }
 
     @Test
@@ -217,26 +217,26 @@ public class StorageServiceServerTest
         // endpoints in DC2 should have primary ranges which also cover DC1
         primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
         assert primaryRanges.size() == 4;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B")));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("F"), new StringToken("G")));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("K"), new StringToken("L")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("F"), new StringToken("G"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("K"), new StringToken("L"), StorageService.instance.getPartitioner()));
         // because /127.0.0.4 holds token "B" which is the next to token "A" from /127.0.0.1,
         // the node covers range (L, A]
-        assert primaryRanges.contains(new Range<Token>(new StringToken("L"), new StringToken("A")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("L"), new StringToken("A"), StorageService.instance.getPartitioner()));
 
         primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
         assert primaryRanges.size() == 8;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D")));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("E"), new StringToken("F")));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("J"), new StringToken("K")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("E"), new StringToken("F"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("J"), new StringToken("K"), StorageService.instance.getPartitioner()));
         // ranges from /127.0.0.1
-        assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("E")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("E"), StorageService.instance.getPartitioner()));
         // the next token to "H" in DC2 is "K" in /127.0.0.5, so (G, H] goes to /127.0.0.5
-        assert primaryRanges.contains(new Range<Token>(new StringToken("G"), new StringToken("H")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("G"), new StringToken("H"), StorageService.instance.getPartitioner()));
         // ranges from /127.0.0.2
-        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C")));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("H"), new StringToken("I")));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("I"), new StringToken("J")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("H"), new StringToken("I"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("I"), new StringToken("J"), StorageService.instance.getPartitioner()));
     }
     @Test
     public void testPrimaryRangesWithSimpleStrategy() throws Exception
@@ -257,14 +257,14 @@ public class StorageServiceServerTest
 
         Collection<Range<Token>> primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("A")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("A"), StorageService.instance.getPartitioner()));
 
         primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B"), StorageService.instance.getPartitioner()));
 
         primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.3"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C")));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C"), StorageService.instance.getPartitioner()));
     }
 }

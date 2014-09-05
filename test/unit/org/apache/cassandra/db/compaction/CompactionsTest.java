@@ -193,7 +193,7 @@ public class CompactionsTest
 
         // check that the shadowed column is gone
         SSTableReader sstable = cfs.getSSTables().iterator().next();
-        Range keyRange = new Range<RowPosition>(key, sstable.partitioner.getMinimumToken().maxKeyBound());
+        Range keyRange = new Range<RowPosition>(key, sstable.partitioner.getMinimumToken().maxKeyBound(), sstable.partitioner);
         SSTableScanner scanner = sstable.getScanner(DataRange.forKeyRange(keyRange));
         OnDiskAtomIterator iter = scanner.next();
         assertEquals(key, iter.getKey());
@@ -542,7 +542,8 @@ public class CompactionsTest
     private static Range<Token> rangeFor(int start, int end)
     {
         return new Range<Token>(new BytesToken(String.format("%03d", start).getBytes()),
-                                new BytesToken(String.format("%03d", end).getBytes()));
+                                new BytesToken(String.format("%03d", end).getBytes()),
+                                StorageService.instance.getPartitioner());
     }
 
     private static Collection<Range<Token>> makeRanges(int ... keys)

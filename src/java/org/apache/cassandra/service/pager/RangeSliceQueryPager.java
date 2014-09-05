@@ -120,11 +120,11 @@ public class RangeSliceQueryPager extends AbstractQueryPager
         AbstractBounds<RowPosition> bounds = command.keyRange;
         if (bounds instanceof Range || bounds instanceof Bounds)
         {
-            return new Bounds<RowPosition>(lastReturnedKey, bounds.right);
+            return new Bounds<RowPosition>(lastReturnedKey, bounds.right, StorageService.instance.getPartitioner());
         }
         else
         {
-            return new IncludingExcludingBounds<RowPosition>(lastReturnedKey, bounds.right);
+            return new IncludingExcludingBounds<RowPosition>(lastReturnedKey, bounds.right, StorageService.instance.getPartitioner());
         }
     }
 }
