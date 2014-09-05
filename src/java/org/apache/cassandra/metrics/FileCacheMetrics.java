@@ -38,7 +38,7 @@ public class FileCacheMetrics
     /** Total size of file cache, in bytes */
     public final Gauge<Long> size;
 
-    public FileCacheMetrics()
+    public FileCacheMetrics(final FileCacheService fileCacheService)
     {
         hits = Metrics.newMeter(factory.createMetricName("Hits"), "hits", TimeUnit.SECONDS);
         requests = Metrics.newMeter(factory.createMetricName("Requests"), "requests", TimeUnit.SECONDS);
@@ -58,7 +58,7 @@ public class FileCacheMetrics
         {
             public Long value()
             {
-                return FileCacheService.instance.sizeInBytes();
+                return fileCacheService.sizeInBytes();
             }
         });
     }

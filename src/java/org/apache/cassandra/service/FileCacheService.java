@@ -72,7 +72,7 @@ public class FileCacheService
     private static final AtomicInteger memoryUsage = new AtomicInteger();
 
     private final Cache<CacheKey, CacheBucket> cache;
-    private final FileCacheMetrics metrics = new FileCacheMetrics();
+    private final FileCacheMetrics metrics = new FileCacheMetrics(FileCacheService.instance);
 
     private static final class CacheBucket
     {
