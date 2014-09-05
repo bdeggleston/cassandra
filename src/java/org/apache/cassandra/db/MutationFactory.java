@@ -19,9 +19,13 @@ public class MutationFactory
 
     public MutationFactory()
     {
+        assert Schema.instance != null;
+        assert KeyspaceManager.instance != null;
+        assert DBConfig.instance != null;
         serializer = new Mutation.Serializer(DatabaseDescriptor.instance.getWriteRpcTimeout(),
                                              Schema.instance,
-                                             KeyspaceManager.instance);
+                                             KeyspaceManager.instance,
+                                             DBConfig.instance);
     }
 
     public Mutation create(String keyspaceName, ByteBuffer key)
@@ -32,7 +36,8 @@ public class MutationFactory
                             DatabaseDescriptor.instance.getWriteRpcTimeout(),
                             Schema.instance,
                             KeyspaceManager.instance,
-                            serializer);
+                            serializer,
+                            DBConfig.instance);
     }
 
     public Mutation create(String keyspaceName, ByteBuffer key, ColumnFamily cf)
@@ -43,7 +48,8 @@ public class MutationFactory
                             DatabaseDescriptor.instance.getWriteRpcTimeout(),
                             Schema.instance,
                             KeyspaceManager.instance,
-                            serializer);
+                            serializer,
+                            DBConfig.instance);
     }
 
     public Mutation create(String keyspaceName, Row row)
@@ -54,7 +60,8 @@ public class MutationFactory
                             DatabaseDescriptor.instance.getWriteRpcTimeout(),
                             Schema.instance,
                             KeyspaceManager.instance,
-                            serializer);
+                            serializer,
+                            DBConfig.instance);
     }
 
     protected Mutation create(String keyspaceName, ByteBuffer key, Map<UUID, ColumnFamily> modifications)
@@ -65,7 +72,8 @@ public class MutationFactory
                             DatabaseDescriptor.instance.getWriteRpcTimeout(),
                             Schema.instance,
                             KeyspaceManager.instance,
-                            serializer);
+                            serializer,
+                            DBConfig.instance);
     }
 
     public Mutation create(ByteBuffer key, ColumnFamily cf)
@@ -76,6 +84,7 @@ public class MutationFactory
                             DatabaseDescriptor.instance.getWriteRpcTimeout(),
                             Schema.instance,
                             KeyspaceManager.instance,
-                            serializer);
+                            serializer,
+                            DBConfig.instance);
     }
 }

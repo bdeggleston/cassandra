@@ -46,6 +46,7 @@ public final class KSMetaData
     private final LocatorConfig locatorConfig;
     private final SystemKeyspace systemKeyspace;
     private final CFMetaDataFactory cfMetaDataFactory;
+    private final MutationFactory mutationFactory;
 
     KSMetaData(String name,
                Class<? extends AbstractReplicationStrategy> strategyClass,
@@ -56,10 +57,11 @@ public final class KSMetaData
                QueryProcessor queryProcessor,
                LocatorConfig locatorConfig,
                SystemKeyspace systemKeyspace,
-               CFMetaDataFactory cfMetaDataFactory)
+               CFMetaDataFactory cfMetaDataFactory,
+               MutationFactory mutationFactory)
     {
         this(name, strategyClass, strategyOptions, durableWrites, cfDefs, new UTMetaData(),
-             databaseDescriptor, queryProcessor, locatorConfig, systemKeyspace, cfMetaDataFactory);
+             databaseDescriptor, queryProcessor, locatorConfig, systemKeyspace, cfMetaDataFactory, mutationFactory);
     }
 
     KSMetaData(String name,
@@ -72,7 +74,8 @@ public final class KSMetaData
                QueryProcessor queryProcessor,
                LocatorConfig locatorConfig,
                SystemKeyspace systemKeyspace,
-               CFMetaDataFactory cfMetaDataFactory)
+               CFMetaDataFactory cfMetaDataFactory,
+               MutationFactory mutationFactory)
     {
         this.name = name;
         this.strategyClass = strategyClass == null ? NetworkTopologyStrategy.class : strategyClass;
@@ -89,6 +92,7 @@ public final class KSMetaData
         this.locatorConfig = locatorConfig;
         this.systemKeyspace = systemKeyspace;
         this.cfMetaDataFactory = cfMetaDataFactory;
+        this.mutationFactory = mutationFactory;
     }
 
     @Override
@@ -239,7 +243,8 @@ public final class KSMetaData
                                   queryProcessor,
                                   locatorConfig,
                                   systemKeyspace,
-                                  cfMetaDataFactory);
+                                  cfMetaDataFactory,
+                                  mutationFactory);
         }
         catch (ConfigurationException e)
         {

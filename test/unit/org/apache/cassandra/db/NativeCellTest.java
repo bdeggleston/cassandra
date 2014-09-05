@@ -98,7 +98,8 @@ public class NativeCellTest
                                                               Schema.instance,
                                                               ColumnFamilyStoreManager.instance,
                                                               KeyspaceManager.instance,
-                                                              CFMetaDataFactory.instance);
+                                                              CFMetaDataFactory.instance,
+                                                              MutationFactory.instance);
     static
     {
         try

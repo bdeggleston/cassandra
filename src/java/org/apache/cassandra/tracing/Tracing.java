@@ -152,7 +152,14 @@ public class Tracing
     {
         assert state.get() == null;
 
-        TraceState ts = new TraceState(localAddress, sessionId, DatabaseDescriptor.instance.getBroadcastAddress(), StageManager.instance, CFMetaDataFactory.instance, this);
+        TraceState ts = new TraceState(localAddress,
+                                       sessionId,
+                                       DatabaseDescriptor.instance.getBroadcastAddress(),
+                                       StageManager.instance,
+                                       CFMetaDataFactory.instance,
+                                       this,
+                                       MutationFactory.instance,
+                                       DBConfig.instance);
         state.set(ts);
         sessions.put(sessionId, ts);
 
@@ -255,11 +262,11 @@ public class Tracing
         if (message.verb == MessagingService.Verb.REQUEST_RESPONSE)
         {
             // received a message for a session we've already closed out.  see CASSANDRA-5668
-            return new ExpiredTraceState(sessionId, DatabaseDescriptor.instance.getBroadcastAddress(), StageManager.instance, CFMetaDataFactory.instance, this);
+            return new ExpiredTraceState(sessionId, DatabaseDescriptor.instance.getBroadcastAddress(), StageManager.instance, CFMetaDataFactory.instance, this, MutationFactory.instance, DBConfig.instance);
         }
         else
         {
-            ts = new TraceState(message.from, sessionId, DatabaseDescriptor.instance.getBroadcastAddress(), StageManager.instance, CFMetaDataFactory.instance, this);
+            ts = new TraceState(message.from, sessionId, DatabaseDescriptor.instance.getBroadcastAddress(), StageManager.instance, CFMetaDataFactory.instance, this, MutationFactory.instance, DBConfig.instance);
             sessions.put(sessionId, ts);
             return ts;
         }
@@ -309,7 +316,9 @@ public class Tracing
                          DatabaseDescriptor.instance.getBroadcastAddress(),
                          StageManager.instance,
                          CFMetaDataFactory.instance,
-                         this);
+                         this,
+                         MutationFactory.instance,
+                         DBConfig.instance);
     }
 
     void mutateWithCatch(Mutation mutation)

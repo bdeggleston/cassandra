@@ -144,7 +144,8 @@ public class AbstractQueryPagerTest
                               Schema.instance,
                               ColumnFamilyStoreManager.instance,
                               KeyspaceManager.instance,
-                              CFMetaDataFactory.instance);
+                              CFMetaDataFactory.instance,
+                              MutationFactory.instance);
     }
 
     private static ByteBuffer bb(int i)

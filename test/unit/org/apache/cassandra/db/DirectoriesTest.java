@@ -61,6 +61,7 @@ public class DirectoriesTest
     @BeforeClass
     public static void beforeClass() throws IOException
     {
+        DatabaseDescriptor.init();
         for (String cf : CFS)
         {
             CFM.add(new CFMetaData(KS,
@@ -71,7 +72,8 @@ public class DirectoriesTest
                                    Schema.instance,
                                    ColumnFamilyStoreManager.instance,
                                    KeyspaceManager.instance,
-                                   CFMetaDataFactory.instance));
+                                   CFMetaDataFactory.instance,
+                                   MutationFactory.instance));
         }
 
         tempDataDir = File.createTempFile("cassandra", "unittest");
@@ -217,7 +219,8 @@ public class DirectoriesTest
                                             Schema.instance,
                                             ColumnFamilyStoreManager.instance,
                                             KeyspaceManager.instance,
-                                            CFMetaDataFactory.instance);
+                                            CFMetaDataFactory.instance,
+                                            MutationFactory.instance);
             Directories dir = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance);
 
             for (File file : dir.getCFDirectories())

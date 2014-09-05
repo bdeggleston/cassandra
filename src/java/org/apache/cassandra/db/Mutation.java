@@ -25,7 +25,6 @@ import java.util.*;
 import org.apache.commons.lang3.StringUtils;
 
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.Composite;
@@ -58,23 +57,24 @@ public class Mutation implements IMutation
     private final Schema schema;
     private final KeyspaceManager keyspaceManager;
     private final Serializer serializer;
+    private final DBConfig dbConfig;
 
-    Mutation(String keyspaceName, ByteBuffer key, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer)
+    Mutation(String keyspaceName, ByteBuffer key, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer, DBConfig dbConfig)
     {
-        this(keyspaceName, key, new HashMap<UUID, ColumnFamily>(), writeRpcTimeout, schema, keyspaceManager, serializer);
+        this(keyspaceName, key, new HashMap<UUID, ColumnFamily>(), writeRpcTimeout, schema, keyspaceManager, serializer, dbConfig);
     }
 
-    Mutation(String keyspaceName, ByteBuffer key, ColumnFamily cf, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer)
+    Mutation(String keyspaceName, ByteBuffer key, ColumnFamily cf, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer, DBConfig dbConfig)
     {
-        this(keyspaceName, key, Collections.singletonMap(cf.id(), cf), writeRpcTimeout, schema, keyspaceManager, serializer);
+        this(keyspaceName, key, Collections.singletonMap(cf.id(), cf), writeRpcTimeout, schema, keyspaceManager, serializer, dbConfig);
     }
 
-    Mutation(String keyspaceName, Row row, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer)
+    Mutation(String keyspaceName, Row row, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer, DBConfig dbConfig)
     {
-        this(keyspaceName, row.key.getKey(), row.cf, writeRpcTimeout, schema, keyspaceManager, serializer);
+        this(keyspaceName, row.key.getKey(), row.cf, writeRpcTimeout, schema, keyspaceManager, serializer, dbConfig);
     }
 
-    Mutation(String keyspaceName, ByteBuffer key, Map<UUID, ColumnFamily> modifications, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer)
+    Mutation(String keyspaceName, ByteBuffer key, Map<UUID, ColumnFamily> modifications, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer, DBConfig dbConfig)
     {
         this.keyspaceName = keyspaceName;
         this.key = key;
@@ -83,16 +83,17 @@ public class Mutation implements IMutation
         this.schema = schema;
         this.keyspaceManager = keyspaceManager;
         this.serializer = serializer;
+        this.dbConfig = dbConfig;
     }
 
-    Mutation(ByteBuffer key, ColumnFamily cf, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer)
+    Mutation(ByteBuffer key, ColumnFamily cf, long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, Serializer serializer, DBConfig dbConfig)
     {
-        this(cf.metadata().ksName, key, cf, writeRpcTimeout, schema, keyspaceManager, serializer);
+        this(cf.metadata().ksName, key, cf, writeRpcTimeout, schema, keyspaceManager, serializer, dbConfig);
     }
 
     public Mutation copy()
     {
-        Mutation copy = new Mutation(keyspaceName, key, new HashMap<>(modifications), writeRpcTimeout, schema, keyspaceManager, serializer);
+        Mutation copy = new Mutation(keyspaceName, key, new HashMap<>(modifications), writeRpcTimeout, schema, keyspaceManager, serializer, dbConfig);
         return copy;
     }
 
@@ -270,7 +271,7 @@ public class Mutation implements IMutation
 
     public Mutation without(UUID cfId)
     {
-        Mutation mutation = new Mutation(keyspaceName, key, writeRpcTimeout, schema, keyspaceManager, serializer);
+        Mutation mutation = new Mutation(keyspaceName, key, writeRpcTimeout, schema, keyspaceManager, serializer, dbConfig);
         for (Map.Entry<UUID, ColumnFamily> entry : modifications.entrySet())
             if (!entry.getKey().equals(cfId))
                 mutation.add(entry.getValue());
@@ -283,12 +284,14 @@ public class Mutation implements IMutation
         private final long writeRpcTimeout;
         private final Schema schema;
         private final KeyspaceManager keyspaceManager;
+        private final DBConfig dbConfig;
 
-        public Serializer(long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager)
+        public Serializer(long writeRpcTimeout, Schema schema, KeyspaceManager keyspaceManager, DBConfig dbConfig)
         {
             this.writeRpcTimeout = writeRpcTimeout;
             this.schema = schema;
             this.keyspaceManager = keyspaceManager;
+            this.dbConfig = dbConfig;
         }
 
         public void serialize(Mutation mutation, DataOutputPlus out, int version) throws IOException
@@ -334,7 +337,7 @@ public class Mutation implements IMutation
                 }
             }
 
-            return new Mutation(keyspaceName, key, modifications, writeRpcTimeout, schema, keyspaceManager, this);
+            return new Mutation(keyspaceName, key, modifications, writeRpcTimeout, schema, keyspaceManager, this, dbConfig);
         }
 
         private ColumnFamily deserializeOneCf(DataInput in, int version, ColumnSerializer.Flag flag) throws IOException

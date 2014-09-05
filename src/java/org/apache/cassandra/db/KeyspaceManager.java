@@ -17,8 +17,8 @@ public class KeyspaceManager
     public static final KeyspaceManager instance;
     static
     {
-        KSMetaDataFactory ksmdf = KSMetaDataFactory.instance;
         instance = new KeyspaceManager();
+        assert KSMetaDataFactory.instance != null;
     }
 
     public final Function<String,Keyspace> keyspaceTransformer = new Function<String, Keyspace>()

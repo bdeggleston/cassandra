@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
+import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.exceptions.ConfigurationException;
@@ -43,14 +44,14 @@ public class KSMetaDataFactory
 
     public KSMetaData newKeyspace(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> options, boolean durablesWrites, Iterable<CFMetaData> cfDefs)
     {
-        return new KSMetaData(name, strategyClass, options, durablesWrites, cfDefs, new UTMetaData(),
-                              DatabaseDescriptor.instance, QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
+        return new KSMetaData(name, strategyClass, options, durablesWrites, cfDefs, new UTMetaData(), DatabaseDescriptor.instance, QueryProcessor.instance,
+                              LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance, MutationFactory.instance);
     }
 
     public KSMetaData cloneWith(KSMetaData ksm, Iterable<CFMetaData> cfDefs)
     {
-        return new KSMetaData(ksm.name, ksm.strategyClass, ksm.strategyOptions, ksm.durableWrites, cfDefs, ksm.userTypes,
-                              DatabaseDescriptor.instance, QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
+        return new KSMetaData(ksm.name, ksm.strategyClass, ksm.strategyOptions, ksm.durableWrites, cfDefs, ksm.userTypes, DatabaseDescriptor.instance,
+                              QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance, MutationFactory.instance);
     }
 
     public KSMetaData systemKeyspace()
@@ -72,27 +73,27 @@ public class KSMetaDataFactory
                                                 CFMetaDataFactory.instance.CompactionHistoryCf,
                                                 CFMetaDataFactory.instance.PaxosCf,
                                                 CFMetaDataFactory.instance.SSTableActivityCF);
-        return new KSMetaData(Keyspace.SYSTEM_KS, LocalStrategy.class, Collections.<String, String>emptyMap(), true, cfDefs,
-                              DatabaseDescriptor.instance, QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
+        return new KSMetaData(Keyspace.SYSTEM_KS, LocalStrategy.class, Collections.<String, String>emptyMap(), true, cfDefs, DatabaseDescriptor.instance,
+                              QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance, MutationFactory.instance);
     }
 
     public KSMetaData traceKeyspace()
     {
         List<CFMetaData> cfDefs = Arrays.asList(CFMetaDataFactory.instance.TraceSessionsCf, CFMetaDataFactory.instance.TraceEventsCf);
-        return new KSMetaData(Tracing.TRACE_KS, SimpleStrategy.class, ImmutableMap.of("replication_factor", "2"), true, cfDefs,
-                              DatabaseDescriptor.instance, QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
+        return new KSMetaData(Tracing.TRACE_KS, SimpleStrategy.class, ImmutableMap.of("replication_factor", "2"), true, cfDefs, DatabaseDescriptor.instance,
+                              QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance, MutationFactory.instance);
     }
 
     public KSMetaData testMetadata(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> strategyOptions, CFMetaData... cfDefs)
     {
-        return new KSMetaData(name, strategyClass, strategyOptions, true, Arrays.asList(cfDefs),
-                              DatabaseDescriptor.instance, QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
+        return new KSMetaData(name, strategyClass, strategyOptions, true, Arrays.asList(cfDefs), DatabaseDescriptor.instance, QueryProcessor.instance,
+                              LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance, MutationFactory.instance);
     }
 
     public KSMetaData testMetadataNotDurable(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> strategyOptions, CFMetaData... cfDefs)
     {
-        return new KSMetaData(name, strategyClass, strategyOptions, false, Arrays.asList(cfDefs),
-                              DatabaseDescriptor.instance, QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
+        return new KSMetaData(name, strategyClass, strategyOptions, false, Arrays.asList(cfDefs), DatabaseDescriptor.instance, QueryProcessor.instance,
+                              LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance, MutationFactory.instance);
     }
 
     /**
@@ -117,7 +118,8 @@ public class KSMetaDataFactory
                                   QueryProcessor.instance,
                                   LocatorConfig.instance,
                                   SystemKeyspace.instance,
-                                  CFMetaDataFactory.instance);
+                                  CFMetaDataFactory.instance,
+                                  MutationFactory.instance);
         }
         catch (ConfigurationException e)
         {
@@ -155,7 +157,8 @@ public class KSMetaDataFactory
                               QueryProcessor.instance,
                               LocatorConfig.instance,
                               SystemKeyspace.instance,
-                              CFMetaDataFactory.instance);
+                              CFMetaDataFactory.instance,
+                              MutationFactory.instance);
     }
 
     /**

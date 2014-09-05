@@ -27,12 +27,14 @@ import java.util.UUID;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.db.MutationFactory;
 
 public class ExpiredTraceState extends TraceState
 {
-    public ExpiredTraceState(UUID sessionId, InetAddress coordinator, StageManager stageManager, CFMetaDataFactory cfMetaDataFactory, Tracing tracing)
+    public ExpiredTraceState(UUID sessionId, InetAddress coordinator, StageManager stageManager, CFMetaDataFactory cfMetaDataFactory, Tracing tracing, MutationFactory mutationFactory, DBConfig dbConfig)
     {
-        super(coordinator, sessionId, coordinator, stageManager, cfMetaDataFactory, tracing);
+        super(coordinator, sessionId, coordinator, stageManager, cfMetaDataFactory, tracing, mutationFactory, dbConfig);
     }
 
     public int elapsed()

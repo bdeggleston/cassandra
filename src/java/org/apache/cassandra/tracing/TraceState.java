@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Stopwatch;
 import org.apache.cassandra.config.CFMetaDataFactory;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.MutationFactory;
 import org.slf4j.helpers.MessageFormatter;
@@ -58,8 +57,10 @@ public class TraceState
     private final StageManager stageManager;
     private final CFMetaDataFactory cfMetaDataFactory;
     private final Tracing tracing;
+    private final MutationFactory mutationFactory;
+    private final DBConfig dbConfig;
 
-    public TraceState(InetAddress coordinator, UUID sessionId, InetAddress broadcastAddress, StageManager stageManager, CFMetaDataFactory cfMetaDataFactory, Tracing tracing)
+    public TraceState(InetAddress coordinator, UUID sessionId, InetAddress broadcastAddress, StageManager stageManager, CFMetaDataFactory cfMetaDataFactory, Tracing tracing, MutationFactory mutationFactory, DBConfig dbConfig)
     {
         assert coordinator != null;
         assert sessionId != null;
@@ -71,6 +72,8 @@ public class TraceState
         this.stageManager = stageManager;
         this.cfMetaDataFactory = cfMetaDataFactory;
         this.tracing = tracing;
+        this.mutationFactory = mutationFactory;
+        this.dbConfig = dbConfig;
 
         sessionIdBytes = ByteBufferUtil.bytes(sessionId);
         watch = Stopwatch.createStarted();
@@ -99,26 +102,34 @@ public class TraceState
 
     public void trace(String message)
     {
-        TraceState.trace(sessionIdBytes, message, elapsed(), broadcastAddress, stageManager,  cfMetaDataFactory, tracing);
+        TraceState.trace(sessionIdBytes, message, elapsed(), broadcastAddress, stageManager,  cfMetaDataFactory, tracing, mutationFactory, dbConfig);
     }
 
-    public static void trace(final ByteBuffer sessionIdBytes, final String message, final int elapsed, InetAddress broadcastAddress, StageManager stageManager, CFMetaDataFactory cfMetaDataFactory, Tracing tracing)
+    public static void trace(final ByteBuffer sessionIdBytes,
+                             final String message,
+                             final int elapsed,
+                             final InetAddress broadcastAddress,
+                             StageManager stageManager,
+                             final CFMetaDataFactory cfMetaDataFactory,
+                             final Tracing tracing,
+                             final MutationFactory mutationFactory,
+                             final DBConfig dbConfig)
     {
         final ByteBuffer eventId = ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes());
         final String threadName = Thread.currentThread().getName();
 
-        StageManager.instance.getStage(Stage.TRACING).execute(new WrappedRunnable()
+        stageManager.getStage(Stage.TRACING).execute(new WrappedRunnable()
         {
             public void runMayThrow()
             {
-                CFMetaData cfMeta = CFMetaDataFactory.instance.TraceEventsCf;
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta, DBConfig.instance);
+                CFMetaData cfMeta = cfMetaDataFactory.TraceEventsCf;
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta, dbConfig);
                 Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("activity")), message);
-                Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("source")), DatabaseDescriptor.instance.getBroadcastAddress());
+                Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("source")), broadcastAddress);
                 if (elapsed >= 0)
                     Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("source_elapsed")), elapsed);
                 Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("thread")), threadName);
-                Tracing.instance.mutateWithCatch(MutationFactory.instance.create(Tracing.TRACE_KS, sessionIdBytes, cf));
+                tracing.mutateWithCatch(mutationFactory.create(Tracing.TRACE_KS, sessionIdBytes, cf));
             }
         });
     }

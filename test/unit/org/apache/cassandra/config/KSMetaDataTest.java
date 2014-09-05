@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.locator.SimpleStrategy;
@@ -52,7 +53,8 @@ public class KSMetaDataTest
                                             QueryProcessor.instance,
                                             LocatorConfig.instance,
                                             SystemKeyspace.instance,
-                                            CFMetaDataFactory.instance);
+                                            CFMetaDataFactory.instance,
+                                            MutationFactory.instance);
 
         assertTrue(ksMeta.toString().contains(options.toString()));
     }

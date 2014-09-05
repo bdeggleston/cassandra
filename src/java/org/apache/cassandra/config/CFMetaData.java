@@ -268,6 +268,7 @@ public final class CFMetaData
     private final ColumnFamilyStoreManager columnFamilyStoreManager;
     private final KeyspaceManager keyspaceManager;
     private final CFMetaDataFactory cfMetaDataFactory;
+    private final MutationFactory mutationFactory;
     /**
      * Create new ColumnFamily metadata with generated random ID.
      * When loading from existing schema, use CFMetaData
@@ -277,13 +278,25 @@ public final class CFMetaData
      * @param comp default comparator
      */
     public CFMetaData(String keyspace, String name, ColumnFamilyType type, CellNameType comp, SystemKeyspace systemKeyspace,
-                      Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, KeyspaceManager keyspaceManager, CFMetaDataFactory cfMetaDataFactory)
+                      Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, KeyspaceManager keyspaceManager,
+                      CFMetaDataFactory cfMetaDataFactory, MutationFactory mutationFactory)
     {
-        this(keyspace, name, type, comp, UUIDGen.getTimeUUID(), systemKeyspace, schema, columnFamilyStoreManager, keyspaceManager, cfMetaDataFactory);
+        this(keyspace,
+             name,
+             type,
+             comp,
+             UUIDGen.getTimeUUID(),
+             systemKeyspace,
+             schema,
+             columnFamilyStoreManager,
+             keyspaceManager,
+             cfMetaDataFactory,
+             mutationFactory);
     }
 
     CFMetaData(String keyspace, String name, ColumnFamilyType type, CellNameType comp, UUID id,
-               SystemKeyspace systemKeyspace, Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, KeyspaceManager keyspaceManager, CFMetaDataFactory cfMetaDataFactory)
+               SystemKeyspace systemKeyspace, Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager,
+               KeyspaceManager keyspaceManager, CFMetaDataFactory cfMetaDataFactory, MutationFactory mutationFactory)
     {
         cfId = id;
         ksName = keyspace;
@@ -296,6 +309,7 @@ public final class CFMetaData
         this.columnFamilyStoreManager = columnFamilyStoreManager;
         this.keyspaceManager = keyspaceManager;
         this.cfMetaDataFactory = cfMetaDataFactory;
+        this.mutationFactory = mutationFactory;
     }
 
     public Map<String, TriggerDefinition> getTriggers()
@@ -326,7 +340,7 @@ public final class CFMetaData
 
     public CFMetaData copy()
     {
-        return copyOpts(new CFMetaData(ksName, cfName, cfType, comparator, cfId, systemKeyspace, schema, columnFamilyStoreManager, keyspaceManager, cfMetaDataFactory), this);
+        return copyOpts(new CFMetaData(ksName, cfName, cfType, comparator, cfId, systemKeyspace, schema, columnFamilyStoreManager, keyspaceManager, cfMetaDataFactory, mutationFactory), this);
     }
 
     /**
@@ -337,7 +351,17 @@ public final class CFMetaData
      */
     public CFMetaData copy(UUID newCfId)
     {
-        return copyOpts(new CFMetaData(ksName, cfName, cfType, comparator, newCfId, systemKeyspace, schema, columnFamilyStoreManager, keyspaceManager, cfMetaDataFactory), this);
+        return copyOpts(new CFMetaData(ksName,
+                                       cfName,
+                                       cfType,
+                                       comparator,
+                                       newCfId,
+                                       systemKeyspace,
+                                       schema,
+                                       columnFamilyStoreManager,
+                                       keyspaceManager,
+                                       cfMetaDataFactory,
+                                       mutationFactory), this);
     }
 
     static CFMetaData copyOpts(CFMetaData newCFMD, CFMetaData oldCFMD)

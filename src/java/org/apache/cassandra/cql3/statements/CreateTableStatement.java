@@ -21,9 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.apache.cassandra.config.CFMetaDataFactory;
-import org.apache.cassandra.db.ColumnFamilyStoreManager;
-import org.apache.cassandra.db.KeyspaceManager;
-import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.exceptions.*;
 import org.apache.commons.lang3.StringUtils;
 import com.google.common.collect.HashMultiset;
@@ -35,7 +33,6 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.db.composites.*;
-import org.apache.cassandra.db.ColumnFamilyType;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.AlreadyExistsException;
 import org.apache.cassandra.io.compress.CompressionParameters;
@@ -149,7 +146,8 @@ public class CreateTableStatement extends SchemaAlteringStatement
                                  Schema.instance,
                                  ColumnFamilyStoreManager.instance,
                                  KeyspaceManager.instance,
-                                 CFMetaDataFactory.instance);
+                                 CFMetaDataFactory.instance,
+                                 MutationFactory.instance);
         applyPropertiesTo(newCFMD);
         return newCFMD;
     }
