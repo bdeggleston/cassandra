@@ -211,7 +211,7 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.DEFINITIONS_UPDATE, MigrationManager.MigrationsSerializer.instance);
         put(Verb.TRUNCATE, Truncation.serializer);
         put(Verb.REPLICATION_FINISHED, null);
-        put(Verb.COUNTER_MUTATION, CounterMutation.serializer);
+        put(Verb.COUNTER_MUTATION, CounterMutationFactory.instance.serializer);
         put(Verb.SNAPSHOT, SnapshotCommand.serializer);
         put(Verb.ECHO, EchoMessage.serializer);
         put(Verb.PAXOS_PREPARE, Commit.serializer);

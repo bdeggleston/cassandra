@@ -662,7 +662,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
             addUpdateForKey(cf, key, clusteringPrefix, params);
             Mutation mut = MutationFactory.instance.create(cfm.ksName, key, cf);
 
-            mutations.add(isCounter() ? new CounterMutation(mut, options.getConsistency()) : mut);
+            mutations.add(isCounter() ? CounterMutationFactory.instance.create(mut, options.getConsistency()) : mut);
         }
         return mutations;
     }

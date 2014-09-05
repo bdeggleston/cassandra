@@ -41,7 +41,7 @@ public class AntiEntropyServiceCounterTest extends AntiEntropyServiceTestAbstrac
         List<IMutation> rms = new LinkedList<IMutation>();
         Mutation rm = MutationFactory.instance.create(keyspaceName, ByteBufferUtil.bytes("key1"));
         rm.addCounter(cfname, CellNames.simpleDense(ByteBufferUtil.bytes("Column1")), 42);
-        rms.add(new CounterMutation(rm, ConsistencyLevel.ONE));
+        rms.add(CounterMutationFactory.instance.create(rm, ConsistencyLevel.ONE));
         return rms;
     }
 }

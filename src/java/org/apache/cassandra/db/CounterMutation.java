@@ -44,17 +44,33 @@ import org.apache.cassandra.utils.*;
 
 public class CounterMutation implements IMutation
 {
-    public static final CounterMutationSerializer serializer = new CounterMutationSerializer();
-
-    private static final Striped<Lock> LOCKS = Striped.lazyWeakLock(DatabaseDescriptor.instance.getConcurrentCounterWriters() * 1024);
-
     private final Mutation mutation;
     private final ConsistencyLevel consistency;
 
-    public CounterMutation(Mutation mutation, ConsistencyLevel consistency)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final CacheService cacheService;
+    private final KeyspaceManager keyspaceManager;
+    private final MutationFactory mutationFactory;
+    private final SystemKeyspace systemKeyspace;
+    private final Tracing tracing;
+    private final Serializer serializer;
+    private final Striped<Lock> locks;
+
+    CounterMutation(Mutation mutation, ConsistencyLevel consistency, DatabaseDescriptor databaseDescriptor,
+                    CacheService cacheService, KeyspaceManager keyspaceManager, MutationFactory mutationFactory,
+                    SystemKeyspace systemKeyspace, Tracing tracing, Serializer serializer, Striped<Lock> locks)
     {
         this.mutation = mutation;
         this.consistency = consistency;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.cacheService = cacheService;
+        this.keyspaceManager = keyspaceManager;
+        this.mutationFactory = mutationFactory;
+        this.systemKeyspace = systemKeyspace;
+        this.tracing = tracing;
+        this.serializer = serializer;
+        this.locks = locks;
     }
 
     public String getKeyspaceName()
@@ -108,15 +124,15 @@ public class CounterMutation implements IMutation
      */
     public Mutation apply() throws WriteTimeoutException
     {
-        Mutation result = MutationFactory.instance.create(getKeyspaceName(), key());
-        Keyspace keyspace = KeyspaceManager.instance.open(getKeyspaceName());
+        Mutation result = mutationFactory.create(getKeyspaceName(), key());
+        Keyspace keyspace = keyspaceManager.open(getKeyspaceName());
 
         int count = 0;
         for (ColumnFamily cf : getColumnFamilies())
             count += cf.getColumnCount();
 
         List<Lock> locks = new ArrayList<>(count);
-        Tracing.instance.trace("Acquiring {} counter locks", count);
+        tracing.trace("Acquiring {} counter locks", count);
         try
         {
             grabCounterLocks(keyspace, locks);
@@ -133,22 +149,22 @@ public class CounterMutation implements IMutation
         }
     }
 
-    private void grabCounterLocks(Keyspace keyspace, List<Lock> locks) throws WriteTimeoutException
+    private void grabCounterLocks(Keyspace keyspace, List<Lock> counterLocks) throws WriteTimeoutException
     {
         long startTime = System.nanoTime();
 
-        for (Lock lock : LOCKS.bulkGet(getCounterLockKeys()))
+        for (Lock lock : this.locks.bulkGet(getCounterLockKeys()))
         {
             long timeout = TimeUnit.MILLISECONDS.toNanos(getTimeout()) - (System.nanoTime() - startTime);
             try
             {
                 if (!lock.tryLock(timeout, TimeUnit.NANOSECONDS))
-                    throw new WriteTimeoutException(WriteType.COUNTER, consistency(), 0, consistency().blockFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter()));
-                locks.add(lock);
+                    throw new WriteTimeoutException(WriteType.COUNTER, consistency(), 0, consistency().blockFor(keyspace, databaseDescriptor.getLocalDataCenter()));
+                counterLocks.add(lock);
             }
             catch (InterruptedException e)
             {
-                throw new WriteTimeoutException(WriteType.COUNTER, consistency(), 0, consistency().blockFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter()));
+                throw new WriteTimeoutException(WriteType.COUNTER, consistency(), 0, consistency().blockFor(keyspace, databaseDescriptor.getLocalDataCenter()));
             }
         }
     }
@@ -178,7 +194,7 @@ public class CounterMutation implements IMutation
     // Replaces all the CounterUpdateCell-s with updated regular CounterCell-s
     private ColumnFamily processModifications(ColumnFamily changesCF)
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(getKeyspaceName()).getColumnFamilyStore(changesCF.id());
+        ColumnFamilyStore cfs = keyspaceManager.open(getKeyspaceName()).getColumnFamilyStore(changesCF.id());
 
         ColumnFamily resultCF = changesCF.cloneMeShallow();
 
@@ -204,7 +220,7 @@ public class CounterMutation implements IMutation
             long count = currentValue.count + update.delta();
 
             resultCF.addColumn(new BufferCounterCell(update.name(),
-                                                     CounterContext.createGlobal(CounterId.getLocalId(SystemKeyspace.instance.getLocalHostId()), clock, count),
+                                                     CounterContext.createGlobal(CounterId.getLocalId(systemKeyspace.getLocalHostId()), clock, count),
                                                      update.timestamp()));
         }
 
@@ -217,15 +233,15 @@ public class CounterMutation implements IMutation
         ClockAndCount[] currentValues = new ClockAndCount[counterUpdateCells.size()];
         int remaining = counterUpdateCells.size();
 
-        if (CacheService.instance.counterCache.getCapacity() != 0)
+        if (cacheService.counterCache.getCapacity() != 0)
         {
-            Tracing.instance.trace("Fetching {} counter values from cache", counterUpdateCells.size());
+            tracing.trace("Fetching {} counter values from cache", counterUpdateCells.size());
             remaining = getCurrentValuesFromCache(counterUpdateCells, cfs, currentValues);
             if (remaining == 0)
                 return currentValues;
         }
 
-        Tracing.instance.trace("Reading {} counter values from the CF", remaining);
+        tracing.trace("Reading {} counter values from the CF", remaining);
         getCurrentValuesFromCFS(counterUpdateCells, cfs, currentValues);
 
         return currentValues;
@@ -271,13 +287,13 @@ public class CounterMutation implements IMutation
             if (cell == null || !cell.isLive()) // absent or a tombstone.
                 currentValues[i] = ClockAndCount.BLANK;
             else
-                currentValues[i] = CounterContext.getLocalClockAndCount(cell.value(), SystemKeyspace.instance.getLocalHostId());
+                currentValues[i] = CounterContext.getLocalClockAndCount(cell.value(), systemKeyspace.getLocalHostId());
         }
     }
 
     private void updateCounterCache(Mutation applied, Keyspace keyspace)
     {
-        if (CacheService.instance.counterCache.getCapacity() == 0)
+        if (cacheService.counterCache.getCapacity() == 0)
             return;
 
         for (ColumnFamily cf : applied.getColumnFamilies())
@@ -285,7 +301,7 @@ public class CounterMutation implements IMutation
             ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cf.id());
             for (Cell cell : cf)
                 if (cell instanceof CounterCell)
-                    cfs.putCachedCounter(key(), cell.name(), CounterContext.getLocalClockAndCount(cell.value(), SystemKeyspace.instance.getLocalHostId()));
+                    cfs.putCachedCounter(key(), cell.name(), CounterContext.getLocalClockAndCount(cell.value(), systemKeyspace.getLocalHostId()));
         }
     }
 
@@ -299,7 +315,7 @@ public class CounterMutation implements IMutation
 
     public long getTimeout()
     {
-        return DatabaseDescriptor.instance.getCounterWriteRpcTimeout();
+        return databaseDescriptor.getCounterWriteRpcTimeout();
     }
 
     @Override
@@ -313,24 +329,31 @@ public class CounterMutation implements IMutation
         return String.format("CounterMutation(%s, %s)", mutation.toString(shallow), consistency);
     }
 
-    public static class CounterMutationSerializer implements IVersionedSerializer<CounterMutation>
+    public static class Serializer implements IVersionedSerializer<CounterMutation>
     {
+        private final MutationFactory mutationFactory;
+
+        public Serializer(MutationFactory mutationFactory)
+        {
+            this.mutationFactory = mutationFactory;
+        }
+
         public void serialize(CounterMutation cm, DataOutputPlus out, int version) throws IOException
         {
-            MutationFactory.instance.serializer.serialize(cm.mutation, out, version);
+            mutationFactory.serializer.serialize(cm.mutation, out, version);
             out.writeUTF(cm.consistency.name());
         }
 
         public CounterMutation deserialize(DataInput in, int version) throws IOException
         {
-            Mutation m = MutationFactory.instance.serializer.deserialize(in, version);
+            Mutation m = mutationFactory.serializer.deserialize(in, version);
             ConsistencyLevel consistency = Enum.valueOf(ConsistencyLevel.class, in.readUTF());
-            return new CounterMutation(m, consistency);
+            return CounterMutationFactory.instance.create(m, consistency);
         }
 
         public long serializedSize(CounterMutation cm, int version)
         {
-            return MutationFactory.instance.serializer.serializedSize(cm.mutation, version)
+            return mutationFactory.serializer.serializedSize(cm.mutation, version)
                  + TypeSizes.NATIVE.sizeof(cm.consistency.name());
         }
     }

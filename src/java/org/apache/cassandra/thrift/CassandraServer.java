@@ -864,7 +864,7 @@ public class CassandraServer implements Cassandra.Iface
             if (counterMutation != null && !counterMutation.isEmpty())
             {
                 if (allowCounterMutations)
-                    mutations.add(new CounterMutation(counterMutation, ThriftConversion.fromThrift(consistency_level)));
+                    mutations.add(CounterMutationFactory.instance.create(counterMutation, ThriftConversion.fromThrift(consistency_level)));
                 else
                     throw new org.apache.cassandra.exceptions.InvalidRequestException("Counter mutations are not allowed in atomic batches");
             }
@@ -1030,7 +1030,7 @@ public class CassandraServer implements Cassandra.Iface
             mutation.delete(column_path.column_family, metadata.comparator.makeCellName(column_path.super_column, column_path.column), timestamp);
 
         if (isCommutativeOp)
-            doInsert(consistency_level, Arrays.asList(new CounterMutation(mutation, ThriftConversion.fromThrift(consistency_level))));
+            doInsert(consistency_level, Arrays.asList(CounterMutationFactory.instance.create(mutation, ThriftConversion.fromThrift(consistency_level))));
         else
             doInsert(consistency_level, Arrays.asList(mutation));
     }
@@ -1796,7 +1796,7 @@ public class CassandraServer implements Cassandra.Iface
             {
                 throw new InvalidRequestException(e.getMessage());
             }
-            doInsert(consistency_level, Arrays.asList(new CounterMutation(mutation, ThriftConversion.fromThrift(consistency_level))));
+            doInsert(consistency_level, Arrays.asList(CounterMutationFactory.instance.create(mutation, ThriftConversion.fromThrift(consistency_level))));
         }
         catch (RequestValidationException e)
         {
