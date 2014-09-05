@@ -296,7 +296,7 @@ public class SSTableMetadataTest
         state.writeGlobal(CounterId.fromInt(1), 1L, 1L);
         state.writeLocal(CounterId.fromInt(2), 1L, 1L);
         state.writeRemote(CounterId.fromInt(3), 1L, 1L);
-        ColumnFamily cells = ArrayBackedSortedColumns.factory.create(cfs.metadata);
+        ColumnFamily cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addColumn(new BufferCounterCell(cellname("col"), state.context, 1L, Long.MIN_VALUE));
         new Mutation(Util.dk("k").getKey(), cells).applyUnsafe();
         cfs.forceBlockingFlush();
@@ -307,7 +307,7 @@ public class SSTableMetadataTest
         state = CounterContext.ContextState.allocate(0, 1, 1);
         state.writeLocal(CounterId.fromInt(2), 1L, 1L);
         state.writeRemote(CounterId.fromInt(3), 1L, 1L);
-        cells = ArrayBackedSortedColumns.factory.create(cfs.metadata);
+        cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addColumn(new BufferCounterCell(cellname("col"), state.context, 1L, Long.MIN_VALUE));
         new Mutation(Util.dk("k").getKey(), cells).applyUnsafe();
         cfs.forceBlockingFlush();
@@ -318,7 +318,7 @@ public class SSTableMetadataTest
         state = CounterContext.ContextState.allocate(1, 1, 0);
         state.writeGlobal(CounterId.fromInt(1), 1L, 1L);
         state.writeLocal(CounterId.fromInt(2), 1L, 1L);
-        cells = ArrayBackedSortedColumns.factory.create(cfs.metadata);
+        cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addColumn(new BufferCounterCell(cellname("col"), state.context, 1L, Long.MIN_VALUE));
         new Mutation(Util.dk("k").getKey(), cells).applyUnsafe();
         cfs.forceBlockingFlush();
@@ -328,7 +328,7 @@ public class SSTableMetadataTest
         // A cell with global only
         state = CounterContext.ContextState.allocate(1, 0, 0);
         state.writeGlobal(CounterId.fromInt(1), 1L, 1L);
-        cells = ArrayBackedSortedColumns.factory.create(cfs.metadata);
+        cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addColumn(new BufferCounterCell(cellname("col"), state.context, 1L, Long.MIN_VALUE));
         new Mutation(Util.dk("k").getKey(), cells).applyUnsafe();
         cfs.forceBlockingFlush();

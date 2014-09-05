@@ -128,7 +128,7 @@ public class AbstractQueryPagerTest
 
     private ColumnFamily createCF(int nbCol)
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(createMetadata());
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(createMetadata(), DBConfig.instance);
         for (int i = 0; i < nbCol; i++)
             cf.addColumn(CellNames.simpleDense(bb(i)), bb(i), 0);
         return cf;

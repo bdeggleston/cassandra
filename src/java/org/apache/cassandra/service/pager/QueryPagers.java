@@ -153,7 +153,7 @@ public class QueryPagers
                 {
                     List<Row> rows = pager.fetchPage(pageSize);
                     ColumnFamily cf = rows.isEmpty() ? null : rows.get(0).cf;
-                    return cf == null ? ArrayBackedSortedColumns.factory.create(cfs.metadata) : cf;
+                    return cf == null ? ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance) : cf;
                 }
                 catch (Exception e)
                 {

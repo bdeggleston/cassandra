@@ -238,7 +238,7 @@ public class StorageProxy implements StorageProxyMBean
             {
                 Tracing.instance.trace("CAS precondition does not match current values {}", current);
                 // We should not return null as this means success
-                return current == null ? ArrayBackedSortedColumns.factory.create(metadata) : current;
+                return current == null ? ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance) : current;
             }
 
             // finish the paxos round w/ the desired updates

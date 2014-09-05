@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.google.common.base.Stopwatch;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.slf4j.helpers.MessageFormatter;
 
 import org.apache.cassandra.concurrent.Stage;
@@ -100,7 +101,7 @@ public class TraceState
             public void runMayThrow()
             {
                 CFMetaData cfMeta = CFMetaDataFactory.instance.TraceEventsCf;
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta);
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta, DBConfig.instance);
                 Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("activity")), message);
                 Tracing.addColumn(cf, Tracing.buildName(cfMeta, eventId, ByteBufferUtil.bytes("source")), DatabaseDescriptor.instance.getBroadcastAddress());
                 if (elapsed >= 0)

@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -115,7 +116,7 @@ public class CacheProviderTest
 
     private ColumnFamily createCF()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, Schema.instance, DBConfig.instance);
         cf.addColumn(column("vijay", "great", 1));
         cf.addColumn(column("awesome", "vijay", 1));
         return cf;

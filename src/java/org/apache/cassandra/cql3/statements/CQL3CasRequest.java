@@ -131,7 +131,7 @@ public class CQL3CasRequest implements CASRequest
 
     public ColumnFamily makeUpdates(ColumnFamily current) throws InvalidRequestException
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfm);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfm, DBConfig.instance);
         for (RowUpdate upd : updates)
             upd.applyUpdates(current, cf);
 

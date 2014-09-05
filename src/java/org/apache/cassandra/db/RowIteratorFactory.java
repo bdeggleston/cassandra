@@ -77,7 +77,7 @@ public class RowIteratorFactory
             @Override
             protected void onKeyChange()
             {
-                this.returnCF = ArrayBackedSortedColumns.factory.create(cfs.metadata, range.columnFilter.isReversed());
+                this.returnCF = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance, range.columnFilter.isReversed());
             }
 
             public void reduce(OnDiskAtomIterator current)

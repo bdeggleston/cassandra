@@ -26,6 +26,7 @@ import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.KSMetaData;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.context.CounterContext;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.CounterColumnType;
@@ -84,12 +85,12 @@ public class RecoveryManagerTest
         DecoratedKey dk = Util.dk("keymulti");
         ColumnFamily cf;
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1L));
         rm = new Mutation(KEYSPACE1, dk.getKey(), cf);
         rm.apply();
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3");
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col2", "val2", 1L));
         rm = new Mutation(KEYSPACE2, dk.getKey(), cf);
         rm.apply();
@@ -115,7 +116,7 @@ public class RecoveryManagerTest
 
         for (int i = 0; i < 10; ++i)
         {
-            cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Counter1");
+            cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Counter1", Schema.instance, DBConfig.instance);
             cf.addColumn(BufferCounterCell.createLocal(cellname("col"), 1L, 1L, Long.MIN_VALUE, SystemKeyspace.instance.getLocalHostId()));
             rm = new Mutation(KEYSPACE1, dk.getKey(), cf);
             rm.apply();
@@ -146,7 +147,7 @@ public class RecoveryManagerTest
         for (int i = 0; i < 10; ++i)
         {
             long ts = TimeUnit.MILLISECONDS.toMicros(timeMS + (i * 1000));
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
             cf.addColumn(column("name-" + i, "value", ts));
             Mutation rm = new Mutation(KEYSPACE1, dk.getKey(), cf);
             rm.apply();
@@ -178,7 +179,7 @@ public class RecoveryManagerTest
             else
                 ts = TimeUnit.MILLISECONDS.toMicros(timeMS + (i * 1000));
 
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
             cf.addColumn(column("name-" + i, "value", ts));
             Mutation rm = new Mutation(KEYSPACE1, dk.getKey(), cf);
             rm.apply();

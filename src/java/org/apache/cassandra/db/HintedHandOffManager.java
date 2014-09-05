@@ -137,7 +137,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         // serialize the hint with id and version as a composite column name
         CellName name = CFMetaDataFactory.instance.HintsCf.comparator.makeCellName(hintId, MessagingService.current_version);
         ByteBuffer value = ByteBuffer.wrap(FBUtilities.serialize(mutation, Mutation.serializer, MessagingService.current_version));
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(Schema.instance.getCFMetaData(Keyspace.SYSTEM_KS, SystemKeyspace.HINTS_CF));
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(Schema.instance.getCFMetaData(Keyspace.SYSTEM_KS, SystemKeyspace.HINTS_CF), DBConfig.instance);
         cf.addColumn(name, value, now, ttl);
         return new Mutation(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(targetId), cf);
     }

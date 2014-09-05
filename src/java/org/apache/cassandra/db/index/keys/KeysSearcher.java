@@ -180,7 +180,7 @@ public class KeysSearcher extends SecondaryIndexSearcher
                         ColumnFamily data = baseCfs.getColumnFamily(new QueryFilter(dk, baseCfs.name, filter.columnFilter(lastSeenKey.toByteBuffer()), filter.timestamp));
                         // While the column family we'll get in the end should contains the primary clause cell, the initialFilter may not have found it and can thus be null
                         if (data == null)
-                            data = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
+                            data = ArrayBackedSortedColumns.factory.create(baseCfs.metadata, DBConfig.instance);
 
                         // as in CFS.filter - extend the filter to ensure we include the columns
                         // from the index expressions, just in case they weren't included in the initialFilter

@@ -72,7 +72,7 @@ public class CollationController
     @Inline
     private ColumnFamily collectTimeOrderedData(boolean copyOnHeap)
     {
-        final ColumnFamily container = ArrayBackedSortedColumns.factory.create(cfs.metadata, filter.filter.isReversed());
+        final ColumnFamily container = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance, filter.filter.isReversed());
         List<OnDiskAtomIterator> iterators = new ArrayList<>();
         boolean isEmpty = true;
         Tracing.instance.trace("Acquiring sstable references");
@@ -196,7 +196,7 @@ public class CollationController
         Tracing.instance.trace("Acquiring sstable references");
         ColumnFamilyStore.ViewFragment view = cfs.select(cfs.viewFilter(filter.key));
         List<Iterator<? extends OnDiskAtom>> iterators = new ArrayList<>(Iterables.size(view.memtables) + view.sstables.size());
-        ColumnFamily returnCF = ArrayBackedSortedColumns.factory.create(cfs.metadata, filter.filter.isReversed());
+        ColumnFamily returnCF = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance, filter.filter.isReversed());
         DeletionInfo returnDeletionInfo = returnCF.deletionInfo();
         try
         {

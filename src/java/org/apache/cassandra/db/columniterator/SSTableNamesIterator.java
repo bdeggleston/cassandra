@@ -118,7 +118,7 @@ public class SSTableNamesIterator extends AbstractIterator<OnDiskAtom> implement
             ColumnFamilySerializer serializer = ColumnFamily.serializer;
             try
             {
-                cf = ArrayBackedSortedColumns.factory.create(sstable.metadata);
+                cf = ArrayBackedSortedColumns.factory.create(sstable.metadata, DBConfig.instance);
                 cf.delete(DeletionTime.serializer.deserialize(file));
             }
             catch (Exception e)
@@ -128,7 +128,7 @@ public class SSTableNamesIterator extends AbstractIterator<OnDiskAtom> implement
         }
         else
         {
-            cf = ArrayBackedSortedColumns.factory.create(sstable.metadata);
+            cf = ArrayBackedSortedColumns.factory.create(sstable.metadata, DBConfig.instance);
             cf.delete(indexEntry.deletionTime());
         }
 

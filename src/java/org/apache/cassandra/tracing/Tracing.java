@@ -185,7 +185,7 @@ public class Tracing
                 public void run()
                 {
                     CFMetaData cfMeta = CFMetaDataFactory.instance.TraceSessionsCf;
-                    ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta);
+                    ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta, DBConfig.instance);
                     addColumn(cf, buildName(cfMeta, "duration"), elapsed);
                     mutateWithCatch(new Mutation(TRACE_KS, sessionIdBytes, cf));
                 }
@@ -223,7 +223,7 @@ public class Tracing
             public void run()
             {
                 CFMetaData cfMeta = CFMetaDataFactory.instance.TraceSessionsCf;
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta);
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta, DBConfig.instance);
                 addColumn(cf, buildName(cfMeta, "coordinator"), DatabaseDescriptor.instance.getBroadcastAddress());
                 addParameterColumns(cf, parameters);
                 addColumn(cf, buildName(cfMeta, bytes("request")), request);

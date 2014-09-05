@@ -27,6 +27,7 @@ import java.io.IOException;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.KSMetaData;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.locator.SimpleStrategy;
@@ -62,7 +63,7 @@ public class RecoveryManagerTruncateTest
 		ColumnFamily cf;
 
 		// add a single cell
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
 		cf.addColumn(column("col1", "val1", 1L));
         rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes("keymulti"), cf);
 		rm.applyUnsafe();

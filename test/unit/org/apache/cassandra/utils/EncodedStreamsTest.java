@@ -28,8 +28,10 @@ import java.io.IOException;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.KSMetaData;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.CounterColumnType;
@@ -114,7 +116,7 @@ public class EncodedStreamsTest
 
     private ColumnFamily createCF()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD, Schema.instance, DBConfig.instance);
         cf.addColumn(column("vijay", "try", 1));
         cf.addColumn(column("to", "be_nice", 1));
         return cf;
@@ -122,7 +124,7 @@ public class EncodedStreamsTest
 
     private ColumnFamily createCounterCF()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER, Schema.instance, DBConfig.instance);
         cf.addCounter(cellname("vijay"), 1);
         cf.addCounter(cellname("wants"), 1000000);
         return cf;

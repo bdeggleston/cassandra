@@ -27,6 +27,7 @@ import java.io.IOException;
 
 import com.google.common.collect.Iterables;
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.BeforeClass;
@@ -102,7 +103,7 @@ public class KeyspaceTest
         final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE2);
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard3");
 
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3");
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1","val1", 1L));
         Mutation rm = new Mutation(KEYSPACE2, TEST_KEY.getKey(), cf);
         rm.applyUnsafe();
@@ -132,7 +133,7 @@ public class KeyspaceTest
         final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
 
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1","val1", 1L));
         cf.addColumn(column("col2","val2", 1L));
         cf.addColumn(column("col3","val3", 1L));
@@ -161,7 +162,7 @@ public class KeyspaceTest
         DecoratedKey key = TEST_SLICE_KEY;
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         // First write "a", "b", "c"
         cf.addColumn(column("a", "val1", 1L));
         cf.addColumn(column("b", "val2", 1L));
@@ -183,7 +184,7 @@ public class KeyspaceTest
     public void testGetSliceNoMatch() throws Throwable
     {
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard2");
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard2", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1));
         Mutation rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes("row1000"), cf);
         rm.applyUnsafe();
@@ -207,7 +208,7 @@ public class KeyspaceTest
         final DecoratedKey ROW = Util.dk("row4");
         final NumberFormat fmt = new DecimalFormat("000");
 
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         // at this rate, we're getting 78-79 cos/block, assuming the blocks are set to be about 4k.
         // so if we go to 300, we'll get at least 4 blocks, which is plenty for testing.
         for (int i = 0; i < 300; i++)
@@ -265,7 +266,7 @@ public class KeyspaceTest
 
         for (int i = 0; i < 10; i++)
         {
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "StandardLong1");
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "StandardLong1", Schema.instance, DBConfig.instance);
             cf.addColumn(new BufferCell(cellname((long)i), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0));
             Mutation rm = new Mutation(KEYSPACE1, ROW.getKey(), cf);
             rm.applyUnsafe();
@@ -275,7 +276,7 @@ public class KeyspaceTest
 
         for (int i = 10; i < 20; i++)
         {
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "StandardLong1");
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "StandardLong1", Schema.instance, DBConfig.instance);
             cf.addColumn(new BufferCell(cellname((long)i), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0));
             Mutation rm = new Mutation(KEYSPACE1, ROW.getKey(), cf);
             rm.applyUnsafe();
@@ -308,7 +309,7 @@ public class KeyspaceTest
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
         final DecoratedKey ROW = Util.dk("row1");
 
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1L));
         cf.addColumn(column("col3", "val3", 1L));
         cf.addColumn(column("col4", "val4", 1L));
@@ -363,7 +364,7 @@ public class KeyspaceTest
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
         final DecoratedKey ROW = Util.dk("row5");
 
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1L));
         cf.addColumn(expiringColumn("col2", "val2", 1L, 60)); // long enough not to be tombstoned
         cf.addColumn(column("col3", "val3", 1L));
@@ -397,7 +398,7 @@ public class KeyspaceTest
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
         final DecoratedKey ROW = Util.dk("row2");
 
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1L));
         cf.addColumn(column("col2", "val2", 1L));
         cf.addColumn(column("col3", "val3", 1L));
@@ -408,7 +409,7 @@ public class KeyspaceTest
         rm.applyUnsafe();
         cfStore.forceBlockingFlush();
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1", "valx", 2L));
         cf.addColumn(column("col2", "valx", 2L));
         cf.addColumn(column("col3", "valx", 2L));
@@ -445,7 +446,7 @@ public class KeyspaceTest
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
         DecoratedKey key = Util.dk("row3");
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         for (int i = 1000; i < 2000; i++)
             cf.addColumn(column("col" + i, ("v" + i), 1L));
         Mutation rm = new Mutation(KEYSPACE1, key.getKey(), cf);
@@ -476,7 +477,7 @@ public class KeyspaceTest
         DecoratedKey key = Util.dk("row_maxmin");
         for (int j = 0; j < 10; j++)
         {
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
             for (int i = 1000 + (j*100); i < 1000 + ((j+1)*100); i++)
             {
                 cf.addColumn(column("col" + i, ("v" + i), i));

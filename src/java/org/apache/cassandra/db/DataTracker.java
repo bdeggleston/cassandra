@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.*;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -108,7 +109,7 @@ public class DataTracker
      */
     public Memtable switchMemtable(boolean truncating)
     {
-        Memtable newMemtable = new Memtable(cfstore);
+        Memtable newMemtable = new Memtable(cfstore, CommitLog.instance, DBConfig.instance);
         Memtable toFlushMemtable;
         View currentView, newView;
         do
@@ -341,7 +342,7 @@ public class DataTracker
     void init()
     {
         view.set(new View(
-                         ImmutableList.of(new Memtable(cfstore)),
+                         ImmutableList.of(new Memtable(cfstore, CommitLog.instance, DBConfig.instance)),
                          ImmutableList.<Memtable>of(),
                          Collections.<SSTableReader>emptySet(),
                          Collections.<SSTableReader>emptySet(),

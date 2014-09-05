@@ -670,7 +670,7 @@ public class CassandraServer implements Cassandra.Iface
                           ? metadata.comparator.makeCellName(column_parent.super_column, column.name)
                           : metadata.comparator.cellFromByteBuffer(column.name);
 
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cState.getKeyspace(), column_parent.column_family);
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cState.getKeyspace(), column_parent.column_family, Schema.instance, DBConfig.instance);
             cf.addColumn(name, column.value, column.timestamp, column.ttl);
             mutation = new org.apache.cassandra.db.Mutation(cState.getKeyspace(), key, cf);
         }
@@ -757,7 +757,7 @@ public class CassandraServer implements Cassandra.Iface
                 ThriftValidation.validateColumnData(metadata, null, column);
 
             CFMetaData cfm = Schema.instance.getCFMetaData(cState.getKeyspace(), column_family);
-            ColumnFamily cfUpdates = ArrayBackedSortedColumns.factory.create(cfm);
+            ColumnFamily cfUpdates = ArrayBackedSortedColumns.factory.create(cfm, DBConfig.instance);
             for (Column column : updates)
                 cfUpdates.addColumn(cfm.comparator.cellFromByteBuffer(column.name), column.value, column.timestamp);
 
@@ -768,7 +768,7 @@ public class CassandraServer implements Cassandra.Iface
             }
             else
             {
-                cfExpected = ArrayBackedSortedColumns.factory.create(cfm);
+                cfExpected = ArrayBackedSortedColumns.factory.create(cfm, DBConfig.instance);
                 for (Column column : expected)
                     cfExpected.addColumn(cfm.comparator.cellFromByteBuffer(column.name), column.value, column.timestamp);
             }

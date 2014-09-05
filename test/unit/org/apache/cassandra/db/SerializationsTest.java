@@ -23,6 +23,7 @@ import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -379,8 +380,8 @@ public class SerializationsTest extends AbstractSerializationsTester
 
         private final long readTs = 1369935512292L;
 
-        private final ColumnFamily StandardCf = ArrayBackedSortedColumns.factory.create(KS, StandardCF);
-        private final ColumnFamily SuperCf = ArrayBackedSortedColumns.factory.create(KS, SuperCF);
+        private final ColumnFamily StandardCf = ArrayBackedSortedColumns.factory.create(KS, StandardCF, Schema.instance, DBConfig.instance);
+        private final ColumnFamily SuperCf = ArrayBackedSortedColumns.factory.create(KS, SuperCF, Schema.instance, DBConfig.instance);
 
         private final Row StandardRow = new Row(Util.dk("key0"), StandardCf);
         private final Row SuperRow = new Row(Util.dk("key1"), SuperCf);

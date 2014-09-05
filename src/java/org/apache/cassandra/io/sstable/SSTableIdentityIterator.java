@@ -84,7 +84,7 @@ public class SSTableIdentityIterator implements Comparable<SSTableIdentityIterat
 
         Descriptor.Version dataVersion = sstable == null ? Descriptor.Version.CURRENT : sstable.descriptor.version;
         int expireBefore = (int) (System.currentTimeMillis() / 1000);
-        columnFamily = ArrayBackedSortedColumns.factory.create(metadata);
+        columnFamily = ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance);
 
         try
         {

@@ -30,6 +30,7 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.dht.IPartitioner;
@@ -112,7 +113,7 @@ public class SSTableSimpleUnsortedWriter extends AbstractSSTableSimpleWriter
         // If the CF already exist in memory, we'll just continue adding to it
         if (previous == null)
         {
-            previous = ArrayBackedSortedColumns.factory.create(metadata);
+            previous = ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance);
             buffer.put(currentKey, previous);
         }
         else

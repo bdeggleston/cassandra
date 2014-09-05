@@ -81,7 +81,7 @@ public class LazilyCompactedRow extends AbstractCompactedRow
         // containing `key` outside of the set of sstables involved in this compaction.
         maxPurgeableTimestamp = controller.maxPurgeableTimestamp(key);
 
-        emptyColumnFamily = ArrayBackedSortedColumns.factory.create(controller.cfs.metadata);
+        emptyColumnFamily = ArrayBackedSortedColumns.factory.create(controller.cfs.metadata, DBConfig.instance);
         emptyColumnFamily.delete(maxRowTombstone);
         if (maxRowTombstone.markedForDeleteAt < maxPurgeableTimestamp)
             emptyColumnFamily.purgeTombstones(controller.gcBefore);
@@ -188,7 +188,7 @@ public class LazilyCompactedRow extends AbstractCompactedRow
         // all columns reduced together will have the same name, so there will only be one column
         // in the container; we just want to leverage the conflict resolution code from CF.
         // (Note that we add the row tombstone in getReduced.)
-        ColumnFamily container = ArrayBackedSortedColumns.factory.create(emptyColumnFamily.metadata());
+        ColumnFamily container = ArrayBackedSortedColumns.factory.create(emptyColumnFamily.metadata(), DBConfig.instance);
 
         // tombstone reference; will be reconciled w/ column during getReduced.  Note that the top-level (row) tombstone
         // is held by LCR.deletionInfo.
@@ -263,7 +263,7 @@ public class LazilyCompactedRow extends AbstractCompactedRow
                 if (!iter.hasNext())
                 {
                     // don't call clear() because that resets the deletion time. See CASSANDRA-7808.
-                    container = ArrayBackedSortedColumns.factory.create(emptyColumnFamily.metadata());
+                    container = ArrayBackedSortedColumns.factory.create(emptyColumnFamily.metadata(), DBConfig.instance);
                     return null;
                 }
 
@@ -272,7 +272,7 @@ public class LazilyCompactedRow extends AbstractCompactedRow
                     tombstones.update(localDeletionTime);
 
                 Cell reduced = iter.next();
-                container = ArrayBackedSortedColumns.factory.create(emptyColumnFamily.metadata());
+                container = ArrayBackedSortedColumns.factory.create(emptyColumnFamily.metadata(), DBConfig.instance);
 
                 // removeDeleted have only checked the top-level CF deletion times,
                 // not the range tombstone. For that we use the columnIndexer tombstone tracker.

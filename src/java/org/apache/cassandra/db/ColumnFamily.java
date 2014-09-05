@@ -68,7 +68,7 @@ public abstract class ColumnFamily implements Iterable<Cell>, IRowCacheEntry
 
     public <T extends ColumnFamily> T cloneMeShallow(ColumnFamily.Factory<T> factory, boolean reversedInsertOrder)
     {
-        T cf = factory.create(metadata, reversedInsertOrder);
+        T cf = factory.create(metadata, DBConfig.instance, reversedInsertOrder);
         cf.delete(this);
         return cf;
     }
@@ -286,7 +286,7 @@ public abstract class ColumnFamily implements Iterable<Cell>, IRowCacheEntry
     public ColumnFamily diff(ColumnFamily cfComposite)
     {
         assert cfComposite.id().equals(id());
-        ColumnFamily cfDiff = ArrayBackedSortedColumns.factory.create(metadata);
+        ColumnFamily cfDiff = ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance);
         cfDiff.delete(cfComposite.deletionInfo());
 
         // (don't need to worry about cfNew containing Columns that are shadowed by
@@ -516,21 +516,21 @@ public abstract class ColumnFamily implements Iterable<Cell>, IRowCacheEntry
          * allow optimizing for both forward and reversed slices. This does not matter for ThreadSafeSortedColumns.
          * Note that this is only an hint on how we expect to do insertion, this does not change the map sorting.
          */
-        public abstract T create(CFMetaData metadata, boolean insertReversed, int initialCapacity);
+        public abstract T create(CFMetaData metadata, DBConfig dbConfig, boolean insertReversed, int initialCapacity);
 
-        public T create(CFMetaData metadata, boolean insertReversed)
+        public T create(CFMetaData metadata, DBConfig dbConfig, boolean insertReversed)
         {
-            return create(metadata, insertReversed, 0);
+            return create(metadata, dbConfig, insertReversed, 0);
         }
 
-        public T create(CFMetaData metadata)
+        public T create(CFMetaData metadata, DBConfig dbConfig)
         {
-            return create(metadata, false);
+            return create(metadata, dbConfig, false);
         }
 
-        public T create(String keyspace, String cfName)
+        public T create(String keyspace, String cfName, Schema schema, DBConfig dbConfig)
         {
-            return create(Schema.instance.getCFMetaData(keyspace, cfName));
+            return create(schema.getCFMetaData(keyspace, cfName), dbConfig);
         }
     }
 

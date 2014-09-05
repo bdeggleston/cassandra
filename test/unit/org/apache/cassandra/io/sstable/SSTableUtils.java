@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.columniterator.OnDiskAtomIterator;
 import org.apache.cassandra.service.ActiveRepairService;
@@ -51,7 +52,7 @@ public class SSTableUtils
 
     public static ColumnFamily createCF(String ksname, String cfname, long mfda, int ldt, Cell... cols)
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(ksname, cfname);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(ksname, cfname, Schema.instance, DBConfig.instance);
         cf.delete(new DeletionInfo(mfda, ldt));
         for (Cell col : cols)
             cf.addColumn(col);
@@ -175,7 +176,7 @@ public class SSTableUtils
             Map<String, ColumnFamily> map = new HashMap<String, ColumnFamily>();
             for (String key : keys)
             {
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(ksname, cfname);
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(ksname, cfname, Schema.instance, DBConfig.instance);
                 cf.addColumn(new BufferCell(Util.cellname(key), ByteBufferUtil.bytes(key), 0));
                 map.put(key, cf);
             }

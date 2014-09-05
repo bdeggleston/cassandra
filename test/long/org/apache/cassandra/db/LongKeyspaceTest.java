@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.db;
 
+import org.apache.cassandra.config.Schema;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -54,7 +55,7 @@ public class LongKeyspaceTest
         for (int i = 1; i < 5000; i += 100)
         {
             Mutation rm = new Mutation(KEYSPACE1, Util.dk("key" + i).getKey());
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
             for (int j = 0; j < i; j++)
                 cf.addColumn(column("c" + j, "v" + j, 1L));
             rm.add(cf);

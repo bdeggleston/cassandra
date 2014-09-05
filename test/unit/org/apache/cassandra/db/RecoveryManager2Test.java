@@ -21,6 +21,7 @@ package org.apache.cassandra.db;
  */
 
 
+import org.apache.cassandra.config.Schema;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -89,7 +90,7 @@ public class RecoveryManager2Test
 
     private void insertRow(String cfname, String key) 
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, cfname);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, cfname, Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1L));
         Mutation rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes(key), cf);
         rm.apply();

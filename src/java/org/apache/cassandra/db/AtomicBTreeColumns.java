@@ -44,6 +44,7 @@ import org.apache.cassandra.utils.btree.UpdateFunction;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.HeapAllocator;
 import org.apache.cassandra.utils.memory.MemtableAllocator;
+import org.apache.cassandra.utils.memory.MemtablePool;
 import org.apache.cassandra.utils.memory.NativePool;
 
 import static org.apache.cassandra.db.index.SecondaryIndexManager.Updater;
@@ -72,11 +73,11 @@ public class AtomicBTreeColumns extends ColumnFamily
 
     public static final Factory<AtomicBTreeColumns> factory = new Factory<AtomicBTreeColumns>()
     {
-        public AtomicBTreeColumns create(CFMetaData metadata, boolean insertReversed, int initialCapacity)
+        public AtomicBTreeColumns create(CFMetaData metadata, DBConfig dbConfig, boolean insertReversed, int initialCapacity)
         {
             if (insertReversed)
                 throw new IllegalArgumentException();
-            return new AtomicBTreeColumns(metadata);
+            return new AtomicBTreeColumns(metadata, dbConfig.getMemtablePool());
         }
     };
 
@@ -89,15 +90,18 @@ public class AtomicBTreeColumns extends ColumnFamily
 
     private static final AtomicReferenceFieldUpdater<AtomicBTreeColumns, Holder> refUpdater = AtomicReferenceFieldUpdater.newUpdater(AtomicBTreeColumns.class, Holder.class, "ref");
 
-    private AtomicBTreeColumns(CFMetaData metadata)
+    private final MemtablePool memtablePool;
+
+    private AtomicBTreeColumns(CFMetaData metadata, MemtablePool memtablePool)
     {
-        this(metadata, EMPTY);
+        this(metadata, EMPTY, memtablePool);
     }
 
-    private AtomicBTreeColumns(CFMetaData metadata, Holder holder)
+    private AtomicBTreeColumns(CFMetaData metadata, Holder holder, MemtablePool memtablePool)
     {
         super(metadata);
         this.ref = holder;
+        this.memtablePool = memtablePool;
     }
 
     public Factory getFactory()
@@ -107,7 +111,7 @@ public class AtomicBTreeColumns extends ColumnFamily
 
     public ColumnFamily cloneMe()
     {
-        return new AtomicBTreeColumns(metadata, ref);
+        return new AtomicBTreeColumns(metadata, ref, memtablePool);
     }
 
     public DeletionInfo deletionInfo()
@@ -196,7 +200,7 @@ public class AtomicBTreeColumns extends ColumnFamily
                 deletionInfo = current.deletionInfo;
             }
 
-            Object[] tree = BTree.update(current.tree, metadata.comparator.columnComparator(Memtable.MEMORY_POOL instanceof NativePool), cm, cm.getColumnCount(), true, updater);
+            Object[] tree = BTree.update(current.tree, metadata.comparator.columnComparator(memtablePool instanceof NativePool), cm, cm.getColumnCount(), true, updater);
 
             if (tree != null && refUpdater.compareAndSet(this, current, new Holder(tree, deletionInfo)))
             {
@@ -236,7 +240,7 @@ public class AtomicBTreeColumns extends ColumnFamily
 
     private Comparator<Object> asymmetricComparator()
     {
-        return metadata.comparator.asymmetricColumnComparator(Memtable.MEMORY_POOL instanceof NativePool);
+        return metadata.comparator.asymmetricColumnComparator(memtablePool instanceof NativePool);
     }
 
     public Iterable<CellName> getColumnNames()

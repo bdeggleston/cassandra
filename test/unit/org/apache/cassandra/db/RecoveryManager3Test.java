@@ -24,6 +24,7 @@ package org.apache.cassandra.db;
 import java.io.File;
 import java.io.IOException;
 
+import org.apache.cassandra.config.Schema;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -71,12 +72,12 @@ public class RecoveryManager3Test
         DecoratedKey dk = Util.dk("keymulti");
         ColumnFamily cf;
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1L));
         rm = new Mutation(KEYSPACE1, dk.getKey(), cf);
         rm.apply();
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3");
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3", Schema.instance, DBConfig.instance);
         cf.addColumn(column("col2", "val2", 1L));
         rm = new Mutation(KEYSPACE2, dk.getKey(), cf);
         rm.apply();

@@ -88,6 +88,6 @@ public class SSTableSimpleWriter extends AbstractSSTableSimpleWriter
 
     protected ColumnFamily getColumnFamily()
     {
-        return ArrayBackedSortedColumns.factory.create(metadata);
+        return ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance);
     }
 }

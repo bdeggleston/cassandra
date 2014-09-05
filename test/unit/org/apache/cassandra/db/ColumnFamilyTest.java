@@ -26,6 +26,7 @@ import java.util.TreeMap;
 
 import com.google.common.collect.Iterables;
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.Schema;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -78,7 +79,7 @@ public class ColumnFamilyTest
     {
         ColumnFamily cf;
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, Schema.instance, DBConfig.instance);
         cf.addColumn(column("C", "v", 1));
         DataOutputBuffer bufOut = new DataOutputBuffer();
         ColumnFamily.serializer.serialize(cf, bufOut, version);
@@ -102,7 +103,7 @@ public class ColumnFamilyTest
         }
 
         // write
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, Schema.instance, DBConfig.instance);
         DataOutputBuffer bufOut = new DataOutputBuffer();
         for (String cName : map.navigableKeySet())
         {
@@ -124,7 +125,7 @@ public class ColumnFamilyTest
     @Test
     public void testGetColumnCount()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, Schema.instance, DBConfig.instance);
 
         cf.addColumn(column("col1", "", 1));
         cf.addColumn(column("col2", "", 2));
@@ -137,8 +138,8 @@ public class ColumnFamilyTest
     @Test
     public void testDigest()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1);
-        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, Schema.instance, DBConfig.instance);
+        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, Schema.instance, DBConfig.instance);
 
         ByteBuffer digest = ColumnFamily.digest(cf);
 
@@ -179,7 +180,7 @@ public class ColumnFamilyTest
     @Test
     public void testTimestamp()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, Schema.instance, DBConfig.instance);
 
         cf.addColumn(column("col1", "val1", 2));
         cf.addColumn(column("col1", "val2", 2)); // same timestamp, new value
@@ -191,9 +192,9 @@ public class ColumnFamilyTest
     @Test
     public void testMergeAndAdd()
     {
-        ColumnFamily cf_new = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1);
-        ColumnFamily cf_old = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1);
-        ColumnFamily cf_result = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1);
+        ColumnFamily cf_new = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, Schema.instance, DBConfig.instance);
+        ColumnFamily cf_old = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, Schema.instance, DBConfig.instance);
+        ColumnFamily cf_result = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, Schema.instance, DBConfig.instance);
         ByteBuffer val = ByteBufferUtil.bytes("sample value");
         ByteBuffer val2 = ByteBufferUtil.bytes("x value ");
 
@@ -229,7 +230,7 @@ public class ColumnFamilyTest
         long timestamp = System.currentTimeMillis();
         int localDeletionTime = (int) (System.currentTimeMillis() / 1000);
 
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, Schema.instance, DBConfig.instance);
         cf.delete(new DeletionInfo(timestamp, localDeletionTime));
         ColumnStats stats = cf.getColumnStats();
         assertEquals(timestamp, stats.maxTimestamp);
@@ -262,14 +263,14 @@ public class ColumnFamilyTest
         assertTrue(counter.reconcile(tombstone) == tombstone);
 
         // check that a range tombstone overrides the counter cell, even with a lower timestamp than the counter
-        ColumnFamily cf0 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER1);
+        ColumnFamily cf0 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER1, Schema.instance, DBConfig.instance);
         cf0.addColumn(counter);
         cf0.delete(new RangeTombstone(cellname("counter0"), cellname("counter2"), 0L, (int) (System.currentTimeMillis() / 1000)));
         assertTrue(cf0.deletionInfo().isDeleted(counter));
         assertTrue(cf0.deletionInfo().inOrderTester(false).isDeleted(counter));
 
         // check that a top-level deletion info overrides the counter cell, even with a lower timestamp than the counter
-        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER1);
+        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER1, Schema.instance, DBConfig.instance);
         cf1.addColumn(counter);
         cf1.delete(new DeletionInfo(0L, (int) (System.currentTimeMillis() / 1000)));
         assertTrue(cf1.deletionInfo().isDeleted(counter));

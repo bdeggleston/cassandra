@@ -57,7 +57,7 @@ public class ArrayBackedSortedColumns extends ColumnFamily
 
     public static final ColumnFamily.Factory<ArrayBackedSortedColumns> factory = new Factory<ArrayBackedSortedColumns>()
     {
-        public ArrayBackedSortedColumns create(CFMetaData metadata, boolean insertReversed, int initialCapacity)
+        public ArrayBackedSortedColumns create(CFMetaData metadata, DBConfig dbConfig, boolean insertReversed, int initialCapacity)
         {
             return new ArrayBackedSortedColumns(metadata, insertReversed, initialCapacity == 0 ? EMPTY_ARRAY : new Cell[initialCapacity], 0, 0);
         }

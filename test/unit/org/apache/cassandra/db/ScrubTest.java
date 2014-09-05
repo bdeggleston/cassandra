@@ -165,7 +165,7 @@ public class ScrubTest
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF2);
         cfs.clearUnsafe();
 
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF2);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF2, Schema.instance, DBConfig.instance);
         cf.delete(new DeletionInfo(0, 1)); // expired tombstone
         Mutation rm = new Mutation(KEYSPACE, ByteBufferUtil.bytes(1), cf);
         rm.applyUnsafe();
@@ -279,7 +279,7 @@ public class ScrubTest
         {
             String key = String.valueOf(i);
             // create a row and update the birthdate value, test that the index query fetches the new version
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF);
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF, Schema.instance, DBConfig.instance);
             cf.addColumn(column("c1", "1", 1L));
             cf.addColumn(column("c2", "2", 1L));
             Mutation rm = new Mutation(KEYSPACE, ByteBufferUtil.bytes(key), cf);
@@ -294,7 +294,7 @@ public class ScrubTest
         for (int i = 0; i < rowsPerSSTable; i++)
         {
             String key = String.valueOf(i);
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, COUNTER_CF);
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, COUNTER_CF, Schema.instance, DBConfig.instance);
             Mutation rm = new Mutation(KEYSPACE, ByteBufferUtil.bytes(key), cf);
             rm.addCounter(COUNTER_CF, cellname("Column1"), 100);
             CounterMutation cm = new CounterMutation(rm, ConsistencyLevel.ONE);
@@ -326,7 +326,7 @@ public class ScrubTest
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_UUID);
 
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF_UUID);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF_UUID, Schema.instance, DBConfig.instance);
         cf.addColumn(column(CFMetaData.DEFAULT_KEY_ALIAS, "not a uuid", 1L));
         Mutation mutation = new Mutation(KEYSPACE, ByteBufferUtil.bytes(UUIDGen.getTimeUUID()), cf);
         mutation.applyUnsafe();

@@ -22,6 +22,9 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Collections;
 
+import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.Mutation;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -31,11 +34,6 @@ import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
-import org.apache.cassandra.db.ArrayBackedSortedColumns;
-import org.apache.cassandra.db.BufferCell;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ConsistencyLevel;
-import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.service.StorageService;
@@ -345,7 +343,7 @@ public class TriggersTest
     {
         public Collection<Mutation> augment(ByteBuffer key, ColumnFamily update)
         {
-            ColumnFamily extraUpdate = ArrayBackedSortedColumns.factory.create(ksName, otherCf);
+            ColumnFamily extraUpdate = ArrayBackedSortedColumns.factory.create(ksName, otherCf, Schema.instance, DBConfig.instance);
             extraUpdate.addColumn(new BufferCell(extraUpdate.metadata().comparator.makeCellName(bytes("v2")), bytes(999)));
             return Collections.singletonList(new Mutation(ksName, key, extraUpdate));
         }

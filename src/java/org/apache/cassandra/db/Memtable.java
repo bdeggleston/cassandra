@@ -31,28 +31,21 @@ import com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
-import org.apache.cassandra.dht.LongToken;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.util.DiskAwareRunnable;
 import org.apache.cassandra.service.ActiveRepairService;
-import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.*;
 
 public class Memtable
 {
     private static final Logger logger = LoggerFactory.getLogger(Memtable.class);
-
-    static final MemtablePool MEMORY_POOL = DatabaseDescriptor.instance.getMemtableAllocatorPool();
-    private static final int ROW_OVERHEAD_HEAP_SIZE = estimateRowOverhead(Integer.valueOf(System.getProperty("cassandra.memtable_row_overhead_computation_step", "100000")));
 
     private final MemtableAllocator allocator;
     private final AtomicLong liveDataSize = new AtomicLong(0);
@@ -63,7 +56,7 @@ public class Memtable
     // the last ReplayPosition owned by this Memtable; all ReplayPositions lower are owned by this or an earlier Memtable
     private final AtomicReference<ReplayPosition> lastReplayPosition = new AtomicReference<>();
     // the "first" ReplayPosition owned by this Memtable; this is inaccurate, and only used as a convenience to prevent CLSM flushing wantonly
-    private final ReplayPosition minReplayPosition = CommitLog.instance.getContext();
+    private final ReplayPosition minReplayPosition;
 
     // We index the memtable by RowPosition only for the purpose of being able
     // to select key range using Token.KeyBound. However put() ensures that we
@@ -78,10 +71,16 @@ public class Memtable
     // memtable was created with the new or old comparator.
     public final CellNameType initialComparator;
 
-    public Memtable(ColumnFamilyStore cfs)
+    private final MemtablePool pool;
+    private final DBConfig dbConfig;
+
+    public Memtable(ColumnFamilyStore cfs, CommitLog commitLog, DBConfig dbConfig)
     {
         this.cfs = cfs;
-        this.allocator = MEMORY_POOL.newAllocator();
+        this.dbConfig = dbConfig;
+        pool = this.dbConfig.getMemtablePool();
+        this.allocator = pool.newAllocator();
+        minReplayPosition = commitLog.getContext();
         this.initialComparator = cfs.metadata.comparator;
         this.cfs.scheduleFlush();
     }
@@ -179,7 +178,7 @@ public class Memtable
                 previous = empty;
                 // allocate the row overhead after the fact; this saves over allocating and having to free after, but
                 // means we can overshoot our declared limit.
-                int overhead = (int) (cfs.partitioner.getHeapSizeOf(key.getToken()) + ROW_OVERHEAD_HEAP_SIZE);
+                int overhead = (int) (cfs.partitioner.getHeapSizeOf(key.getToken()) + dbConfig.getMemtableRowOverhead());
                 allocator.onHeap().allocate(overhead, opGroup);
             }
             else
@@ -240,7 +239,7 @@ public class Memtable
                 Map.Entry<? extends RowPosition, ? extends ColumnFamily> entry = iter.next();
                 // Actual stored key should be true DecoratedKey
                 assert entry.getKey() instanceof DecoratedKey;
-                if (MEMORY_POOL.needToCopyOnHeap())
+                if (pool.needToCopyOnHeap())
                 {
                     DecoratedKey key = (DecoratedKey) entry.getKey();
                     key = new BufferDecoratedKey(key.getToken(), HeapAllocator.instance.clone(key.getKey()));
@@ -383,24 +382,5 @@ public class Memtable
                                      cfs.partitioner,
                                      sstableMetadataCollector);
         }
-    }
-
-    private static int estimateRowOverhead(final int count)
-    {
-        // calculate row overhead
-        final OpOrder.Group group = new OpOrder().start();
-        int rowOverhead;
-        MemtableAllocator allocator = MEMORY_POOL.newAllocator();
-        ConcurrentNavigableMap<RowPosition, Object> rows = new ConcurrentSkipListMap<>();
-        final Object val = new Object();
-        for (int i = 0 ; i < count ; i++)
-            rows.put(allocator.clone(new BufferDecoratedKey(new LongToken((long) i), ByteBufferUtil.EMPTY_BYTE_BUFFER), group), val);
-        double avgSize = ObjectSizes.measureDeep(rows) / (double) count;
-        rowOverhead = (int) ((avgSize - Math.floor(avgSize)) < 0.05 ? Math.floor(avgSize) : Math.ceil(avgSize));
-        rowOverhead -= ObjectSizes.measureDeep(new LongToken((long) 0));
-        rowOverhead += AtomicBTreeColumns.EMPTY_SIZE;
-        allocator.setDiscarding();
-        allocator.setDiscarded();
-        return rowOverhead;
     }
 }

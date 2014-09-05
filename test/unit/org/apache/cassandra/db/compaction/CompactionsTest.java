@@ -402,7 +402,7 @@ public class CompactionsTest
             keys.add(Util.dk(""+i));
         }
 
-        ArrayBackedSortedColumns cf = ArrayBackedSortedColumns.factory.create(cfmeta);
+        ArrayBackedSortedColumns cf = ArrayBackedSortedColumns.factory.create(cfmeta, DBConfig.instance);
         cf.addColumn(Util.column("01", "a", 1)); // this must not resurrect
         cf.addColumn(Util.column("a", "a", 3));
         cf.deletionInfo().add(new RangeTombstone(Util.cellname("0"), Util.cellname("b"), 2, (int) (System.currentTimeMillis()/1000)),cfmeta.comparator);

@@ -20,6 +20,8 @@ package org.apache.cassandra.utils.memory;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.Memtable;
 import org.apache.cassandra.utils.concurrent.WaitQueue;
 
 

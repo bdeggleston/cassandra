@@ -66,7 +66,7 @@ class SimpleSliceReader extends AbstractIterator<OnDiskAtom> implements OnDiskAt
             // Skip key and data size
             ByteBufferUtil.skipShortLength(file);
 
-            emptyColumnFamily = ArrayBackedSortedColumns.factory.create(sstable.metadata);
+            emptyColumnFamily = ArrayBackedSortedColumns.factory.create(sstable.metadata, DBConfig.instance);
             emptyColumnFamily.delete(DeletionTime.serializer.deserialize(file));
             atomIterator = emptyColumnFamily.metadata().getOnDiskIterator(file, sstable.descriptor.version);
         }

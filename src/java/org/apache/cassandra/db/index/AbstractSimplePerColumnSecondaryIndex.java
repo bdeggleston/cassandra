@@ -100,7 +100,7 @@ public abstract class AbstractSimplePerColumnSecondaryIndex extends PerColumnSec
 
         DecoratedKey valueKey = getIndexKeyFor(getIndexedValue(rowKey, cell));
         int localDeletionTime = (int) (System.currentTimeMillis() / 1000);
-        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, false, 1);
+        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, DBConfig.instance, false, 1);
         cfi.addTombstone(makeIndexColumnName(rowKey, cell), localDeletionTime, cell.timestamp());
         indexCfs.apply(valueKey, cfi, SecondaryIndexManager.nullUpdater, opGroup, null);
         if (logger.isDebugEnabled())
@@ -110,7 +110,7 @@ public abstract class AbstractSimplePerColumnSecondaryIndex extends PerColumnSec
     public void insert(ByteBuffer rowKey, Cell cell, OpOrder.Group opGroup)
     {
         DecoratedKey valueKey = getIndexKeyFor(getIndexedValue(rowKey, cell));
-        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, false, 1);
+        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, DBConfig.instance, false, 1);
         CellName name = makeIndexColumnName(rowKey, cell);
         if (cell instanceof ExpiringCell)
         {

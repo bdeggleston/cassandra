@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.cassandra.config.Schema;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -56,10 +57,10 @@ public class RowTest
     @Test
     public void testDiffColumnFamily()
     {
-        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf1.addColumn(column("one", "onev", 0));
 
-        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         DeletionInfo delInfo = new DeletionInfo(0, 0);
         cf2.delete(delInfo);
 
@@ -103,10 +104,10 @@ public class RowTest
     @Test
     public void testResolve()
     {
-        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf1.addColumn(column("one", "A", 0));
 
-        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1");
+        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf2.addColumn(column("one", "B", 1));
         cf2.addColumn(column("two", "C", 1));
 

@@ -134,7 +134,7 @@ public class BatchlogManager implements BatchlogManagerMBean
     @VisibleForTesting
     static Mutation getBatchlogMutationFor(Collection<Mutation> mutations, UUID uuid, int version, long now)
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(CFMetaDataFactory.instance.BatchlogCf);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(CFMetaDataFactory.instance.BatchlogCf, DBConfig.instance);
         CFRowAdder adder = new CFRowAdder(cf, CFMetaDataFactory.instance.BatchlogCf.comparator.builder().build(), now);
         adder.add("data", serializeMutations(mutations, version))
              .add("written_at", new Date(now / 1000))

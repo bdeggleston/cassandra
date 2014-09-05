@@ -264,7 +264,7 @@ public class StreamingTransferTest
             public void mutate(String key, String col, long timestamp) throws Exception
             {
                 long val = key.hashCode();
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(keyspace.getName(), cfs.name);
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(keyspace.getName(), cfs.name, Schema.instance, DBConfig.instance);
                 cf.addColumn(column(col, "v", timestamp));
                 cf.addColumn(new BufferCell(cellname("birthdate"), ByteBufferUtil.bytes(val), timestamp));
                 Mutation rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes(key), cf);
@@ -349,8 +349,8 @@ public class StreamingTransferTest
             public void mutate(String key, String col, long timestamp) throws Exception
             {
                 Map<String, ColumnFamily> entries = new HashMap<>();
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfs.metadata);
-                ColumnFamily cfCleaned = ArrayBackedSortedColumns.factory.create(cfs.metadata);
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
+                ColumnFamily cfCleaned = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
                 CounterContext.ContextState state = CounterContext.ContextState.allocate(0, 1, 3);
                 state.writeLocal(CounterId.fromInt(2), 9L, 3L);
                 state.writeRemote(CounterId.fromInt(4), 4L, 2L);
@@ -489,7 +489,7 @@ public class StreamingTransferTest
         {
             public void mutate(String key, String colName, long timestamp) throws Exception
             {
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(keyspace.getName(), cfs.name);
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(keyspace.getName(), cfs.name, Schema.instance, DBConfig.instance);
                 cf.addColumn(column(colName, "value", timestamp));
                 cf.addColumn(new BufferCell(cellname("birthdate"), ByteBufferUtil.bytes(new Date(timestamp).toString()), timestamp));
                 Mutation rm = new Mutation(KEYSPACE1, ByteBufferUtil.bytes(key), cf);

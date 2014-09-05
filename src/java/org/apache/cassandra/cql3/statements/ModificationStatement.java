@@ -658,7 +658,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         for (ByteBuffer key: keys)
         {
             ThriftValidation.validateKey(cfm, key);
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfm);
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfm, DBConfig.instance);
             addUpdateForKey(cf, key, clusteringPrefix, params);
             Mutation mut = new Mutation(cfm.ksName, key, cf);
 

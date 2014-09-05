@@ -32,22 +32,13 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.Sets;
+import org.apache.cassandra.db.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.ArrayBackedSortedColumns;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ColumnIndex;
-import org.apache.cassandra.db.ColumnSerializer;
-import org.apache.cassandra.db.CounterCell;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.DeletionTime;
-import org.apache.cassandra.db.OnDiskAtom;
-import org.apache.cassandra.db.RangeTombstone;
-import org.apache.cassandra.db.RowIndexEntry;
 import org.apache.cassandra.db.compaction.AbstractCompactedRow;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.FSWriteError;
@@ -253,7 +244,7 @@ public class SSTableWriter extends SSTable
         StreamingHistogram tombstones = new StreamingHistogram(TOMBSTONE_HISTOGRAM_BIN_SIZE);
         boolean hasLegacyCounterShards = false;
 
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(metadata);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance);
         cf.delete(DeletionTime.serializer.deserialize(in));
 
         ColumnIndex.Builder columnIndexer = new ColumnIndex.Builder(cf, key.getKey(), dataFile.stream);

@@ -132,7 +132,7 @@ public abstract class CompositesIndex extends AbstractSimplePerColumnSecondaryIn
     public void delete(IndexedEntry entry, OpOrder.Group opGroup)
     {
         int localDeletionTime = (int) (System.currentTimeMillis() / 1000);
-        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata);
+        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, DBConfig.instance);
         cfi.addTombstone(entry.indexEntry, localDeletionTime, entry.timestamp);
         indexCfs.apply(entry.indexValue, cfi, SecondaryIndexManager.nullUpdater, opGroup, null);
         if (logger.isDebugEnabled())

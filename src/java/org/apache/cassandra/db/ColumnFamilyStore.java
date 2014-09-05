@@ -1699,7 +1699,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         ColumnFamily columns;
         try (OpOrder.Group op = readOrdering.start())
         {
-            columns = controller.getTopLevelColumns(Memtable.MEMORY_POOL.needToCopyOnHeap());
+            columns = controller.getTopLevelColumns(DBConfig.instance.getMemtablePool().needToCopyOnHeap());
         }
         metric.updateSSTableIterated(controller.getSstablesIterated());
         return columns;
