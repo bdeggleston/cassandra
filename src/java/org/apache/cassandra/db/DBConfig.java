@@ -54,4 +54,9 @@ public class DBConfig
     {
         return memtableRowOverhead;
     }
+
+    public boolean isIncrementalBackupsEnabled()
+    {
+        return DatabaseDescriptor.instance.isIncrementalBackupsEnabled();
+    }
 }

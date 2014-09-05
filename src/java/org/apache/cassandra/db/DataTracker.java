@@ -46,11 +46,15 @@ public class DataTracker
     public final Collection<INotificationConsumer> subscribers = new CopyOnWriteArrayList<>();
     public final ColumnFamilyStore cfstore;
     private final AtomicReference<View> view;
+    private final DBConfig dbConfig;
+    private final CommitLog commitLog;
 
-    public DataTracker(ColumnFamilyStore cfstore)
+    public DataTracker(ColumnFamilyStore cfstore, DBConfig dbConfig, CommitLog commitLog)
     {
         this.cfstore = cfstore;
         this.view = new AtomicReference<>();
+        this.dbConfig = dbConfig;
+        this.commitLog = commitLog;
         this.init();
     }
 
@@ -109,7 +113,7 @@ public class DataTracker
      */
     public Memtable switchMemtable(boolean truncating)
     {
-        Memtable newMemtable = new Memtable(cfstore, CommitLog.instance, DBConfig.instance);
+        Memtable newMemtable = new Memtable(cfstore, commitLog, dbConfig);
         Memtable toFlushMemtable;
         View currentView, newView;
         do
@@ -176,7 +180,7 @@ public class DataTracker
 
     public void maybeIncrementallyBackup(final SSTableReader sstable)
     {
-        if (!DatabaseDescriptor.instance.isIncrementalBackupsEnabled())
+        if (!dbConfig.isIncrementalBackupsEnabled())
             return;
 
         File backupsDir = Directories.getBackupsDirectory(sstable.descriptor);
@@ -342,7 +346,7 @@ public class DataTracker
     void init()
     {
         view.set(new View(
-                         ImmutableList.of(new Memtable(cfstore, CommitLog.instance, DBConfig.instance)),
+                         ImmutableList.of(new Memtable(cfstore, commitLog, dbConfig)),
                          ImmutableList.<Memtable>of(),
                          Collections.<SSTableReader>emptySet(),
                          Collections.<SSTableReader>emptySet(),

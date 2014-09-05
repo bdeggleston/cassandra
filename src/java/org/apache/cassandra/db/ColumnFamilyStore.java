@@ -263,7 +263,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         logger.info("Initializing {}.{}", keyspace.getName(), name);
 
         // scan for sstables corresponding to this cf and load them
-        data = new DataTracker(this);
+        data = new DataTracker(this, DBConfig.instance, CommitLog.instance);
 
         if (loadSSTables)
         {
