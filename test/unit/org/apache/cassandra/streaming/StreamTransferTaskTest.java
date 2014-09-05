@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -87,7 +88,7 @@ public class StreamTransferTaskTest
         for (SSTableReader sstable : cfs.getSSTables())
         {
             List<Range<Token>> ranges = new ArrayList<>();
-            ranges.add(new Range<>(sstable.first.getToken(), sstable.last.getToken(), StorageService.instance.getPartitioner()));
+            ranges.add(new Range<>(sstable.first.getToken(), sstable.last.getToken(), LocatorConfig.instance.getPartitioner()));
             task.addTransferFile(sstable, 1, sstable.getPositionsForRanges(ranges), 0);
         }
         assertEquals(2, task.getTotalNumberOfFiles());

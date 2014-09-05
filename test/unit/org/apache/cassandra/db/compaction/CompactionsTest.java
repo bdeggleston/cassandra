@@ -46,6 +46,7 @@ import org.apache.cassandra.io.sstable.SSTableScanner;
 import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
@@ -411,7 +412,7 @@ public class CompactionsTest
                                                  0,
                                                  0,
                                                  cfs.metadata,
-                                                 StorageService.instance.getPartitioner(),
+                                                 LocatorConfig.instance.getPartitioner(),
                                                  new MetadataCollector(cfs.metadata.comparator));
 
 
@@ -424,7 +425,7 @@ public class CompactionsTest
                                    0,
                                    0,
                                    cfs.metadata,
-                                   StorageService.instance.getPartitioner(),
+                                   LocatorConfig.instance.getPartitioner(),
                                    new MetadataCollector(cfs.metadata.comparator));
 
         writer.append(Util.dk("0"), cf);
@@ -543,7 +544,7 @@ public class CompactionsTest
     {
         return new Range<Token>(new BytesToken(String.format("%03d", start).getBytes()),
                                 new BytesToken(String.format("%03d", end).getBytes()),
-                                StorageService.instance.getPartitioner());
+                                LocatorConfig.instance.getPartitioner());
     }
 
     private static Collection<Range<Token>> makeRanges(int ... keys)

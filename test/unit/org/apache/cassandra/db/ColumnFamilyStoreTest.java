@@ -43,6 +43,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -243,7 +244,7 @@ public class ColumnFamilyStoreTest
     {
         ColumnFamilyStore cfs = insertKey1Key2();
 
-        IPartitioner<?> p = StorageService.instance.getPartitioner();
+        IPartitioner<?> p = LocatorConfig.instance.getPartitioner();
         List<Row> result = cfs.getRangeSlice(Util.range(p, "key1", "key2"),
                                              null,
                                              Util.namesFilter(cfs, "asdf"),
@@ -1298,7 +1299,7 @@ public class ColumnFamilyStoreTest
 
         sp.getSlice_range().setStart(ByteBufferUtil.getArray(ByteBufferUtil.bytes("c2")));
         filter = ThriftValidation.asIFilter(sp, cfs.metadata, null);
-        rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(ka, min, StorageService.instance.getPartitioner()), filter, null, 3, true, true, System.currentTimeMillis()));
+        rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(ka, min, LocatorConfig.instance.getPartitioner()), filter, null, 3, true, true, System.currentTimeMillis()));
         assert rows.size() == 2 : "Expected 2 rows, got " + toString(rows);
         Iterator<Row> iter = rows.iterator();
         row1 = iter.next();
@@ -1308,14 +1309,14 @@ public class ColumnFamilyStoreTest
 
         sp.getSlice_range().setStart(ByteBufferUtil.getArray(ByteBufferUtil.bytes("c0")));
         filter = ThriftValidation.asIFilter(sp, cfs.metadata, null);
-        rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(row2.key, min, StorageService.instance.getPartitioner()), filter, null, 3, true, true, System.currentTimeMillis()));
+        rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(row2.key, min, LocatorConfig.instance.getPartitioner()), filter, null, 3, true, true, System.currentTimeMillis()));
         assert rows.size() == 1 : "Expected 1 row, got " + toString(rows);
         row = rows.iterator().next();
         assertColumnNames(row, "c0", "c1", "c2");
 
         sp.getSlice_range().setStart(ByteBufferUtil.getArray(ByteBufferUtil.bytes("c2")));
         filter = ThriftValidation.asIFilter(sp, cfs.metadata, null);
-        rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(row.key, min, StorageService.instance.getPartitioner()), filter, null, 3, true, true, System.currentTimeMillis()));
+        rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(row.key, min, LocatorConfig.instance.getPartitioner()), filter, null, 3, true, true, System.currentTimeMillis()));
         assert rows.size() == 2 : "Expected 2 rows, got " + toString(rows);
         iter = rows.iterator();
         row1 = iter.next();
@@ -1330,7 +1331,7 @@ public class ColumnFamilyStoreTest
                                                    0,
                                                    DatabaseDescriptor.instance,
                                                    Tracing.instance);
-        rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(ka, kc, StorageService.instance.getPartitioner()), sf, cellname("c2"), cellname("c1"), null, 2, true, System.currentTimeMillis()));
+        rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(ka, kc, LocatorConfig.instance.getPartitioner()), sf, cellname("c2"), cellname("c1"), null, 2, true, System.currentTimeMillis()));
         assert rows.size() == 2 : "Expected 2 rows, got " + toString(rows);
         iter = rows.iterator();
         row1 = iter.next();
@@ -1338,7 +1339,7 @@ public class ColumnFamilyStoreTest
         assertColumnNames(row1, "c2");
         assertColumnNames(row2, "c1");
 
-        rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(kb, kc, StorageService.instance.getPartitioner()), sf, cellname("c1"), cellname("c1"), null, 10, true, System.currentTimeMillis()));
+        rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(kb, kc, LocatorConfig.instance.getPartitioner()), sf, cellname("c1"), cellname("c1"), null, 10, true, System.currentTimeMillis()));
         assert rows.size() == 2 : "Expected 2 rows, got " + toString(rows);
         iter = rows.iterator();
         row1 = iter.next();
@@ -1424,25 +1425,25 @@ public class ColumnFamilyStoreTest
         List<Row> rows;
 
         // Start and end inclusive
-        rows = cfs.getRangeSlice(new Bounds<RowPosition>(rp("2"), rp("7"), StorageService.instance.getPartitioner()), null, qf, 100);
+        rows = cfs.getRangeSlice(new Bounds<RowPosition>(rp("2"), rp("7"), LocatorConfig.instance.getPartitioner()), null, qf, 100);
         assert rows.size() == 6;
         assert rows.get(0).key.equals(idk(2));
         assert rows.get(rows.size() - 1).key.equals(idk(7));
 
         // Start and end excluded
-        rows = cfs.getRangeSlice(new ExcludingBounds<RowPosition>(rp("2"), rp("7"), StorageService.instance.getPartitioner()), null, qf, 100);
+        rows = cfs.getRangeSlice(new ExcludingBounds<RowPosition>(rp("2"), rp("7"), LocatorConfig.instance.getPartitioner()), null, qf, 100);
         assert rows.size() == 4;
         assert rows.get(0).key.equals(idk(3));
         assert rows.get(rows.size() - 1).key.equals(idk(6));
 
         // Start excluded, end included
-        rows = cfs.getRangeSlice(new Range<RowPosition>(rp("2"), rp("7"), StorageService.instance.getPartitioner()), null, qf, 100);
+        rows = cfs.getRangeSlice(new Range<RowPosition>(rp("2"), rp("7"), LocatorConfig.instance.getPartitioner()), null, qf, 100);
         assert rows.size() == 5;
         assert rows.get(0).key.equals(idk(3));
         assert rows.get(rows.size() - 1).key.equals(idk(7));
 
         // Start included, end excluded
-        rows = cfs.getRangeSlice(new IncludingExcludingBounds<RowPosition>(rp("2"), rp("7"), StorageService.instance.getPartitioner()), null, qf, 100);
+        rows = cfs.getRangeSlice(new IncludingExcludingBounds<RowPosition>(rp("2"), rp("7"), LocatorConfig.instance.getPartitioner()), null, qf, 100);
         assert rows.size() == 5;
         assert rows.get(0).key.equals(idk(2));
         assert rows.get(rows.size() - 1).key.equals(idk(6));
@@ -1765,7 +1766,7 @@ public class ColumnFamilyStoreTest
         ByteBuffer key = bytes("key");
 
         // 1st sstable
-        SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(), cfmeta, StorageService.instance.getPartitioner());
+        SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(), cfmeta, LocatorConfig.instance.getPartitioner());
         writer.newRow(key);
         writer.addColumn(bytes("col"), bytes("val"), 1);
         writer.close();
@@ -1778,7 +1779,7 @@ public class ColumnFamilyStoreTest
 
         // simulate incomplete compaction
         writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                         cfmeta, StorageService.instance.getPartitioner())
+                                         cfmeta, LocatorConfig.instance.getPartitioner())
         {
             protected SSTableWriter getWriter()
             {
@@ -1788,7 +1789,7 @@ public class ColumnFamilyStoreTest
                                          0,
                                          ActiveRepairService.UNREPAIRED_SSTABLE,
                                          metadata,
-                                         StorageService.instance.getPartitioner(),
+                                         LocatorConfig.instance.getPartitioner(),
                                          collector);
             }
         };
@@ -1833,7 +1834,7 @@ public class ColumnFamilyStoreTest
         // Write SSTable generation 3 that has ancestors 1 and 2
         final Set<Integer> ancestors = Sets.newHashSet(1, 2);
         SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                                cfmeta, StorageService.instance.getPartitioner())
+                                                cfmeta, LocatorConfig.instance.getPartitioner())
         {
             protected SSTableWriter getWriter()
             {
@@ -1845,7 +1846,7 @@ public class ColumnFamilyStoreTest
                                          0,
                                          ActiveRepairService.UNREPAIRED_SSTABLE,
                                          metadata,
-                                         StorageService.instance.getPartitioner(),
+                                         LocatorConfig.instance.getPartitioner(),
                                          collector);
             }
         };
@@ -1900,13 +1901,13 @@ public class ColumnFamilyStoreTest
         ByteBuffer key = bytes("key");
 
         SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                                             cfmeta, StorageService.instance.getPartitioner());
+                                                             cfmeta, LocatorConfig.instance.getPartitioner());
         writer.newRow(key);
         writer.addColumn(bytes("col"), bytes("val"), 1);
         writer.close();
 
         writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                         cfmeta, StorageService.instance.getPartitioner());
+                                         cfmeta, LocatorConfig.instance.getPartitioner());
         writer.newRow(key);
         writer.addColumn(bytes("col"), bytes("val"), 1);
         writer.close();
@@ -2185,7 +2186,7 @@ public class ColumnFamilyStoreTest
     private void findRowGetSlicesAndAssertColsFound(ColumnFamilyStore cfs, SliceQueryFilter filter, String rowKey,
             String... colNames)
     {
-        List<Row> rows = cfs.getRangeSlice(new Bounds<RowPosition>(rp(rowKey), rp(rowKey), StorageService.instance.getPartitioner()),
+        List<Row> rows = cfs.getRangeSlice(new Bounds<RowPosition>(rp(rowKey), rp(rowKey), LocatorConfig.instance.getPartitioner()),
                                            null,
                                            filter,
                                            Integer.MAX_VALUE,

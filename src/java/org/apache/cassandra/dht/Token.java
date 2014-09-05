@@ -27,7 +27,7 @@ import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
@@ -85,14 +85,14 @@ public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
     {
         public void serialize(Token token, DataOutputPlus out) throws IOException
         {
-            IPartitioner p = StorageService.instance.getPartitioner();
+            IPartitioner p = LocatorConfig.instance.getPartitioner();
             ByteBuffer b = p.getTokenFactory().toByteArray(token);
             ByteBufferUtil.writeWithLength(b, out);
         }
 
         public Token deserialize(DataInput in) throws IOException
         {
-            IPartitioner p = StorageService.instance.getPartitioner();
+            IPartitioner p = LocatorConfig.instance.getPartitioner();
             int size = in.readInt();
             byte[] bytes = new byte[size];
             in.readFully(bytes);
@@ -101,7 +101,7 @@ public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
 
         public long serializedSize(Token object, TypeSizes typeSizes)
         {
-            IPartitioner p = StorageService.instance.getPartitioner();
+            IPartitioner p = LocatorConfig.instance.getPartitioner();
             ByteBuffer b = p.getTokenFactory().toByteArray(object);
             return TypeSizes.NATIVE.sizeof(b.remaining()) + b.remaining();
         }
@@ -119,7 +119,7 @@ public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
 
     public boolean isMinimum()
     {
-        return isMinimum(StorageService.instance.getPartitioner());
+        return isMinimum(LocatorConfig.instance.getPartitioner());
     }
 
     /*
@@ -162,7 +162,7 @@ public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
 
     public KeyBound maxKeyBound()
     {
-        return maxKeyBound(StorageService.instance.getPartitioner());
+        return maxKeyBound(LocatorConfig.instance.getPartitioner());
     }
 
     public <R extends RingPosition> R upperBound(Class<R> klass)
@@ -211,7 +211,7 @@ public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
 
         public boolean isMinimum()
         {
-            return isMinimum(StorageService.instance.getPartitioner());
+            return isMinimum(LocatorConfig.instance.getPartitioner());
         }
 
         public RowPosition.Kind kind()

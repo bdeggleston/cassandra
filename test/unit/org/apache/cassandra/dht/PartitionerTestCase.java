@@ -23,6 +23,7 @@ import java.util.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -74,7 +75,7 @@ public abstract class PartitionerTestCase<T extends Token>
     private void assertMidpoint(Token left, Token right, Random rand, int depth)
     {
         Token mid = partitioner.midpoint(left, right);
-        assert new Range<Token>(left, right, StorageService.instance.getPartitioner()).contains(mid)
+        assert new Range<Token>(left, right, LocatorConfig.instance.getPartitioner()).contains(mid)
                 : "For " + left + "," + right + ": range did not contain mid:" + mid;
         if (depth < 1)
             return;

@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
@@ -43,7 +44,7 @@ public class Row
 
     public Row(ByteBuffer key, ColumnFamily updates)
     {
-        this(StorageService.instance.getPartitioner().decorateKey(key), updates);
+        this(LocatorConfig.instance.getPartitioner().decorateKey(key), updates);
     }
 
     @Override
@@ -70,7 +71,7 @@ public class Row
 
         public Row deserialize(DataInput in, int version, ColumnSerializer.Flag flag) throws IOException
         {
-            return new Row(StorageService.instance.getPartitioner().decorateKey(ByteBufferUtil.readWithShortLength(in)),
+            return new Row(LocatorConfig.instance.getPartitioner().decorateKey(ByteBufferUtil.readWithShortLength(in)),
                            ColumnFamily.serializer.deserialize(in, flag, version));
         }
 

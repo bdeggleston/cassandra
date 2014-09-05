@@ -29,6 +29,7 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.gms.VersionedValue;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
@@ -189,7 +190,7 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
         for (Token node : sortedTokens)
         {
             allTokens.put(node, new Float(0.0));
-            sortedRanges.add(new Range<Token>(lastToken, node, StorageService.instance.getPartitioner()));
+            sortedRanges.add(new Range<Token>(lastToken, node, LocatorConfig.instance.getPartitioner()));
             lastToken = node;
         }
 

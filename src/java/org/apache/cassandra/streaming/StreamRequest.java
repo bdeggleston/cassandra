@@ -29,7 +29,7 @@ import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.locator.LocatorConfig;
 
 public class StreamRequest
 {
@@ -74,7 +74,7 @@ public class StreamRequest
             {
                 Token left = Token.serializer.deserialize(in);
                 Token right = Token.serializer.deserialize(in);
-                ranges.add(new Range<>(left, right, StorageService.instance.getPartitioner()));
+                ranges.add(new Range<>(left, right, LocatorConfig.instance.getPartitioner()));
             }
             int cfCount = in.readInt();
             List<String> columnFamilies = new ArrayList<>(cfCount);

@@ -24,6 +24,7 @@ import java.util.Collection;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -162,7 +163,7 @@ public class RowCacheTest
         assertEquals(CacheService.instance.rowCache.getKeySet().size(), 100);
         store.cleanupCache();
         assertEquals(CacheService.instance.rowCache.getKeySet().size(), 100);
-        TokenMetadata tmd = StorageService.instance.getTokenMetadata();
+        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         byte[] tk1, tk2;
         tk1 = "key1000".getBytes();
         tk2 = "key1050".getBytes();

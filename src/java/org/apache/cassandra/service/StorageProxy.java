@@ -32,6 +32,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.collect.*;
 import com.google.common.util.concurrent.Uninterruptibles;
 import net.nicoulaj.compilecommand.annotations.Inline;
+import org.apache.cassandra.locator.*;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,10 +54,6 @@ import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.io.util.DataOutputBuffer;
-import org.apache.cassandra.locator.AbstractReplicationStrategy;
-import org.apache.cassandra.locator.IEndpointSnitch;
-import org.apache.cassandra.locator.LocalStrategy;
-import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.metrics.ClientRequestMetrics;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
 import org.apache.cassandra.metrics.StorageMetrics;
@@ -285,9 +282,9 @@ public class StorageProxy implements StorageProxyMBean
 
     private Pair<List<InetAddress>, Integer> getPaxosParticipants(String keyspaceName, ByteBuffer key, ConsistencyLevel consistencyForPaxos) throws UnavailableException
     {
-        Token tk = StorageService.instance.getPartitioner().getToken(key);
-        List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
-        Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspaceName);
+        Token tk = LocatorConfig.instance.getPartitioner().getToken(key);
+        List<InetAddress> naturalEndpoints = LocatorConfig.instance.getNaturalEndpoints(keyspaceName, tk);
+        Collection<InetAddress> pendingEndpoints = LocatorConfig.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspaceName);
         if (consistencyForPaxos == ConsistencyLevel.LOCAL_SERIAL)
         {
             // Restrict naturalEndpoints and pendingEndpoints to node in the local DC only
@@ -423,9 +420,9 @@ public class StorageProxy implements StorageProxyMBean
         boolean shouldBlock = consistencyLevel != ConsistencyLevel.ANY;
         Keyspace keyspace = KeyspaceManager.instance.open(proposal.update.metadata().ksName);
 
-        Token tk = StorageService.instance.getPartitioner().getToken(proposal.key);
-        List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspace.getName(), tk);
-        Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspace.getName());
+        Token tk = LocatorConfig.instance.getPartitioner().getToken(proposal.key);
+        List<InetAddress> naturalEndpoints = LocatorConfig.instance.getNaturalEndpoints(keyspace.getName(), tk);
+        Collection<InetAddress> pendingEndpoints = LocatorConfig.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspace.getName());
 
         AbstractWriteResponseHandler responseHandler = null;
         if (shouldBlock)
@@ -501,9 +498,9 @@ public class StorageProxy implements StorageProxyMBean
                     if (mutation instanceof CounterMutation)
                         continue;
 
-                    Token tk = StorageService.instance.getPartitioner().getToken(mutation.key());
-                    List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(mutation.getKeyspaceName(), tk);
-                    Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk, mutation.getKeyspaceName());
+                    Token tk = LocatorConfig.instance.getPartitioner().getToken(mutation.key());
+                    List<InetAddress> naturalEndpoints = LocatorConfig.instance.getNaturalEndpoints(mutation.getKeyspaceName(), tk);
+                    Collection<InetAddress> pendingEndpoints = LocatorConfig.instance.getTokenMetadata().pendingEndpointsFor(tk, mutation.getKeyspaceName());
                     for (InetAddress target : Iterables.concat(naturalEndpoints, pendingEndpoints))
                     {
                         // local writes can timeout, but cannot be dropped (see LocalMutationRunnable and
@@ -713,9 +710,9 @@ public class StorageProxy implements StorageProxyMBean
         String keyspaceName = mutation.getKeyspaceName();
         AbstractReplicationStrategy rs = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
 
-        Token tk = StorageService.instance.getPartitioner().getToken(mutation.key());
-        List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
-        Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspaceName);
+        Token tk = LocatorConfig.instance.getPartitioner().getToken(mutation.key());
+        List<InetAddress> naturalEndpoints = LocatorConfig.instance.getNaturalEndpoints(keyspaceName, tk);
+        Collection<InetAddress> pendingEndpoints = LocatorConfig.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspaceName);
 
         AbstractWriteResponseHandler responseHandler = rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, callback, writeType);
 
@@ -731,9 +728,9 @@ public class StorageProxy implements StorageProxyMBean
     {
         AbstractReplicationStrategy rs = KeyspaceManager.instance.open(mutation.getKeyspaceName()).getReplicationStrategy();
         String keyspaceName = mutation.getKeyspaceName();
-        Token tk = StorageService.instance.getPartitioner().getToken(mutation.key());
-        List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
-        Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspaceName);
+        Token tk = LocatorConfig.instance.getPartitioner().getToken(mutation.key());
+        List<InetAddress> naturalEndpoints = LocatorConfig.instance.getNaturalEndpoints(keyspaceName, tk);
+        Collection<InetAddress> pendingEndpoints = LocatorConfig.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspaceName);
         AbstractWriteResponseHandler responseHandler = rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, null, writeType);
         return new WriteResponseHandlerWrapper(responseHandler, mutation);
     }
@@ -761,7 +758,7 @@ public class StorageProxy implements StorageProxyMBean
     private Collection<InetAddress> getBatchlogEndpoints(String localDataCenter, ConsistencyLevel consistencyLevel)
     throws UnavailableException
     {
-        TokenMetadata.Topology topology = StorageService.instance.getTokenMetadata().cachedOnlyTokenMap().getTopology();
+        TokenMetadata.Topology topology = LocatorConfig.instance.getTokenMetadata().cachedOnlyTokenMap().getTopology();
         Multimap<String, InetAddress> localEndpoints = HashMultimap.create(topology.getDatacenterRacks().get(localDataCenter));
         String localRack = DatabaseDescriptor.instance.getEndpointSnitch().getRack(DatabaseDescriptor.instance.getBroadcastAddress());
 
@@ -925,7 +922,7 @@ public class StorageProxy implements StorageProxyMBean
     public void writeHintForMutation(Mutation mutation, long now, int ttl, InetAddress target)
     {
         assert ttl > 0;
-        UUID hostId = StorageService.instance.getTokenMetadata().getHostId(target);
+        UUID hostId = LocatorConfig.instance.getTokenMetadata().getHostId(target);
         assert hostId != null : "Missing host ID for " + target.getHostAddress();
         HintedHandOffManager.instance.hintFor(mutation, now, ttl, hostId).apply();
         StorageMetrics.totalHints.inc();
@@ -1010,9 +1007,9 @@ public class StorageProxy implements StorageProxyMBean
             // Exit now if we can't fulfill the CL here instead of forwarding to the leader replica
             String keyspaceName = cm.getKeyspaceName();
             AbstractReplicationStrategy rs = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
-            Token tk = StorageService.instance.getPartitioner().getToken(cm.key());
-            List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
-            Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspaceName);
+            Token tk = LocatorConfig.instance.getPartitioner().getToken(cm.key());
+            List<InetAddress> naturalEndpoints = LocatorConfig.instance.getNaturalEndpoints(keyspaceName, tk);
+            Collection<InetAddress> pendingEndpoints = LocatorConfig.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspaceName);
 
             rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, cm.consistency(), null, WriteType.COUNTER).assureSufficientLiveNodes();
 
@@ -1039,7 +1036,7 @@ public class StorageProxy implements StorageProxyMBean
     {
         Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
         IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
-        List<InetAddress> endpoints = StorageService.instance.getLiveNaturalEndpoints(keyspace, key);
+        List<InetAddress> endpoints = LocatorConfig.instance.getLiveNaturalEndpoints(keyspace, key);
         if (endpoints.isEmpty())
             // TODO have a way to compute the consistency level
             throw new UnavailableException(cl, cl.blockFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter()), 0);
@@ -1414,12 +1411,12 @@ public class StorageProxy implements StorageProxyMBean
 
     public List<InetAddress> getLiveSortedEndpoints(Keyspace keyspace, ByteBuffer key)
     {
-        return getLiveSortedEndpoints(keyspace, StorageService.instance.getPartitioner().decorateKey(key));
+        return getLiveSortedEndpoints(keyspace, LocatorConfig.instance.getPartitioner().decorateKey(key));
     }
 
     private List<InetAddress> getLiveSortedEndpoints(Keyspace keyspace, RingPosition pos)
     {
-        List<InetAddress> liveEndpoints = StorageService.instance.getLiveNaturalEndpoints(keyspace, pos);
+        List<InetAddress> liveEndpoints = LocatorConfig.instance.getLiveNaturalEndpoints(keyspace, pos);
         DatabaseDescriptor.instance.getEndpointSnitch().sortByProximity(DatabaseDescriptor.instance.getBroadcastAddress(), liveEndpoints);
         return liveEndpoints;
     }
@@ -1809,16 +1806,16 @@ public class StorageProxy implements StorageProxyMBean
     <T extends RingPosition> List<AbstractBounds<T>> getRestrictedRanges(final AbstractBounds<T> queryRange)
     {
         // special case for bounds containing exactly 1 (non-minimum) token
-        if (queryRange instanceof Bounds && queryRange.left.equals(queryRange.right) && !queryRange.left.isMinimum(StorageService.instance.getPartitioner()))
+        if (queryRange instanceof Bounds && queryRange.left.equals(queryRange.right) && !queryRange.left.isMinimum(LocatorConfig.instance.getPartitioner()))
         {
             return Collections.singletonList(queryRange);
         }
 
-        TokenMetadata tokenMetadata = StorageService.instance.getTokenMetadata();
+        TokenMetadata tokenMetadata = LocatorConfig.instance.getTokenMetadata();
 
         List<AbstractBounds<T>> ranges = new ArrayList<AbstractBounds<T>>();
         // divide the queryRange into pieces delimited by the ring and minimum tokens
-        Iterator<Token> ringIter = TokenMetadata.ringIterator(tokenMetadata.sortedTokens(), queryRange.left.getToken(), true, StorageService.instance.getPartitioner());
+        Iterator<Token> ringIter = TokenMetadata.ringIterator(tokenMetadata.sortedTokens(), queryRange.left.getToken(), true, LocatorConfig.instance.getPartitioner());
         AbstractBounds<T> remainder = queryRange;
         while (ringIter.hasNext())
         {

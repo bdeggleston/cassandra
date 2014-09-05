@@ -23,6 +23,7 @@ import java.security.MessageDigest;
 import java.util.UUID;
 
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -54,7 +55,7 @@ public class ValidatorTest
 {
     private static final String keyspace = "ValidatorTest";
     private static final String columnFamily = "Standard1";
-    private final IPartitioner partitioner = StorageService.instance.getPartitioner();
+    private final IPartitioner partitioner = LocatorConfig.instance.getPartitioner();
 
     @BeforeClass
     public static void defineSchema() throws Exception

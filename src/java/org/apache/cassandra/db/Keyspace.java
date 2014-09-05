@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -197,16 +198,16 @@ public class Keyspace
     private final Tracing tracing;
     private final Schema schema;
     private final ColumnFamilyStoreManager columnFamilyStoreManager;
-    private final StorageService storageService;
+    private final LocatorConfig locatorConfig;
     private final CommitLog commitLog;
 
-    Keyspace(String keyspaceName, boolean loadSSTables, DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, StorageService storageService, CommitLog commitLog)
+    Keyspace(String keyspaceName, boolean loadSSTables, DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, LocatorConfig locatorConfig, CommitLog commitLog)
     {
         this.databaseDescriptor = databaseDescriptor;
         this.tracing = tracing;
         this.schema = schema;
         this.columnFamilyStoreManager = columnFamilyStoreManager;
-        this.storageService = storageService;
+        this.locatorConfig = locatorConfig;
         this.commitLog = commitLog;
         metadata = schema.getKSMetaData(keyspaceName);
         assert metadata != null : "Unknown keyspace " + keyspaceName;
@@ -225,7 +226,7 @@ public class Keyspace
     {
         replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(ksm.name,
                                                                                     ksm.strategyClass,
-                                                                                    storageService.getTokenMetadata(),
+                                                                                    locatorConfig.getTokenMetadata(),
                                                                                     databaseDescriptor.getEndpointSnitch(),
                                                                                     ksm.strategyOptions);
     }
@@ -311,7 +312,7 @@ public class Keyspace
                 replayPosition = commitLog.add(mutation);
             }
 
-            DecoratedKey key = storageService.getPartitioner().decorateKey(mutation.key());
+            DecoratedKey key = locatorConfig.getPartitioner().decorateKey(mutation.key());
             for (ColumnFamily cf : mutation.getColumnFamilies())
             {
                 ColumnFamilyStore cfs = columnFamilyStores.get(cf.id());

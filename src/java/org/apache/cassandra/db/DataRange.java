@@ -27,7 +27,6 @@ import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.dht.*;
-import org.apache.cassandra.service.StorageService;
 
 /**
  * Groups key range and column filter for range queries.
@@ -66,7 +65,7 @@ public class DataRange
 
     public static DataRange allData(IPartitioner partitioner)
     {
-        return forKeyRange(new Range<Token>(partitioner.getMinimumToken(), partitioner.getMinimumToken(), StorageService.instance.getPartitioner()));
+        return forKeyRange(new Range<Token>(partitioner.getMinimumToken(), partitioner.getMinimumToken(), partitioner));
     }
 
     public static DataRange forKeyRange(Range<Token> keyRange)

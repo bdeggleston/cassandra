@@ -37,6 +37,7 @@ import com.google.common.collect.Sets;
 import org.apache.cassandra.cache.CachingOptions;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -79,7 +80,7 @@ public class SSTableReaderTest
 
     static Token t(int i)
     {
-        return StorageService.instance.getPartitioner().getToken(ByteBufferUtil.bytes(String.valueOf(i)));
+        return LocatorConfig.instance.getPartitioner().getToken(ByteBufferUtil.bytes(String.valueOf(i)));
     }
 
     @BeforeClass
@@ -118,13 +119,13 @@ public class SSTableReaderTest
 
         List<Range<Token>> ranges = new ArrayList<Range<Token>>();
         // 1 key
-        ranges.add(new Range<Token>(t(0), t(1), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<Token>(t(0), t(1), LocatorConfig.instance.getPartitioner()));
         // 2 keys
-        ranges.add(new Range<Token>(t(2), t(4), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<Token>(t(2), t(4), LocatorConfig.instance.getPartitioner()));
         // wrapping range from key to end
-        ranges.add(new Range<Token>(t(6), StorageService.instance.getPartitioner().getMinimumToken(), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<Token>(t(6), LocatorConfig.instance.getPartitioner().getMinimumToken(), LocatorConfig.instance.getPartitioner()));
         // empty range (should be ignored)
-        ranges.add(new Range<Token>(t(9), t(91), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<Token>(t(9), t(91), LocatorConfig.instance.getPartitioner()));
 
         // confirm that positions increase continuously
         SSTableReader sstable = store.getSSTables().iterator().next();
@@ -362,7 +363,7 @@ public class SSTableReaderTest
         // construct a range which is present in the sstable, but whose
         // keys are not found in the first segment of the index.
         List<Range<Token>> ranges = new ArrayList<Range<Token>>();
-        ranges.add(new Range<Token>(t(98), t(99), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<Token>(t(98), t(99), LocatorConfig.instance.getPartitioner()));
 
         SSTableReader sstable = store.getSSTables().iterator().next();
         List<Pair<Long,Long>> sections = sstable.getPositionsForRanges(ranges);
@@ -451,7 +452,7 @@ public class SSTableReaderTest
 
     private List<Range<Token>> makeRanges(Token left, Token right)
     {
-        return Arrays.asList(new Range<>(left, right, StorageService.instance.getPartitioner()));
+        return Arrays.asList(new Range<>(left, right, LocatorConfig.instance.getPartitioner()));
     }
 
     private DecoratedKey k(int i)

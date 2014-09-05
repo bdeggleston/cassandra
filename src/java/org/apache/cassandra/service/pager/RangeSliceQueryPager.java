@@ -25,8 +25,8 @@ import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.exceptions.RequestExecutionException;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageProxy;
-import org.apache.cassandra.service.StorageService;
 
 /**
  * Pages a RangeSliceCommand whose predicate is a slice query.
@@ -54,7 +54,7 @@ public class RangeSliceQueryPager extends AbstractQueryPager
 
         if (state != null)
         {
-            lastReturnedKey = StorageService.instance.getPartitioner().decorateKey(state.partitionKey);
+            lastReturnedKey = LocatorConfig.instance.getPartitioner().decorateKey(state.partitionKey);
             lastReturnedName = cfm.comparator.cellFromByteBuffer(state.cellName);
             restoreState(state.remaining, true);
         }
@@ -120,11 +120,11 @@ public class RangeSliceQueryPager extends AbstractQueryPager
         AbstractBounds<RowPosition> bounds = command.keyRange;
         if (bounds instanceof Range || bounds instanceof Bounds)
         {
-            return new Bounds<RowPosition>(lastReturnedKey, bounds.right, StorageService.instance.getPartitioner());
+            return new Bounds<RowPosition>(lastReturnedKey, bounds.right, LocatorConfig.instance.getPartitioner());
         }
         else
         {
-            return new IncludingExcludingBounds<RowPosition>(lastReturnedKey, bounds.right, StorageService.instance.getPartitioner());
+            return new IncludingExcludingBounds<RowPosition>(lastReturnedKey, bounds.right, LocatorConfig.instance.getPartitioner());
         }
     }
 }

@@ -26,12 +26,12 @@ import org.apache.cassandra.db.composites.CBuilder;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.exceptions.InvalidRequestException;
-import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.locator.LocatorConfig;
 
 public class TokenFct extends NativeFunction
 {
     // The actual token function depends on the partitioner used
-    private static final IPartitioner partitioner = StorageService.instance.getPartitioner();
+    private static final IPartitioner partitioner = LocatorConfig.instance.getPartitioner();
 
     private final CFMetaData cfm;
 

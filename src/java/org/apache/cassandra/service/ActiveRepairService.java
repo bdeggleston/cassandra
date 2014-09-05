@@ -28,6 +28,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -171,10 +172,9 @@ public class ActiveRepairService
      */
     public Set<InetAddress> getNeighbors(String keyspaceName, Range<Token> toRepair, Collection<String> dataCenters, Collection<String> hosts)
     {
-        StorageService ss = StorageService.instance;
-        Map<Range<Token>, List<InetAddress>> replicaSets = ss.getRangeToAddressMap(keyspaceName);
+        Map<Range<Token>, List<InetAddress>> replicaSets = StorageService.instance.getRangeToAddressMap(keyspaceName);
         Range<Token> rangeSuperSet = null;
-        for (Range<Token> range : ss.getLocalRanges(keyspaceName))
+        for (Range<Token> range : LocatorConfig.instance.getLocalRanges(keyspaceName))
         {
             if (range.contains(toRepair))
             {
@@ -194,7 +194,7 @@ public class ActiveRepairService
 
         if (dataCenters != null)
         {
-            TokenMetadata.Topology topology = ss.getTokenMetadata().cloneOnlyTokenMap().getTopology();
+            TokenMetadata.Topology topology = LocatorConfig.instance.getTokenMetadata().cloneOnlyTokenMap().getTopology();
             Set<InetAddress> dcEndpoints = Sets.newHashSet();
             Multimap<String,InetAddress> dcEndpointsMap = topology.getDatacenterEndpoints();
             for (String dc : dataCenters)
@@ -302,7 +302,7 @@ public class ActiveRepairService
             Set<SSTableReader> sstables = new HashSet<>();
             for (SSTableReader sstable : cfs.getSSTables())
             {
-                if (new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), StorageService.instance.getPartitioner()).intersects(ranges))
+                if (new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), LocatorConfig.instance.getPartitioner()).intersects(ranges))
                 {
                     if (!sstable.isRepaired())
                     {

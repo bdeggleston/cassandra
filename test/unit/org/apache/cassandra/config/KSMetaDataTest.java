@@ -25,6 +25,7 @@ import java.util.Map;
 
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.locator.SimpleStrategy;
 
 import org.apache.cassandra.service.StorageService;
@@ -49,7 +50,7 @@ public class KSMetaDataTest
                                             Collections.<CFMetaData>emptyList(),
                                             DatabaseDescriptor.instance,
                                             QueryProcessor.instance,
-                                            StorageService.instance,
+                                            LocatorConfig.instance,
                                             SystemKeyspace.instance,
                                             CFMetaDataFactory.instance);
 

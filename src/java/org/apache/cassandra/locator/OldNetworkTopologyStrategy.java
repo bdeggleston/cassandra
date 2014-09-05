@@ -27,7 +27,6 @@ import java.util.Map;
 
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.dht.Token;
-import org.apache.cassandra.service.StorageService;
 
 /**
  * This Replication Strategy returns the nodes responsible for a given
@@ -52,7 +51,7 @@ public class OldNetworkTopologyStrategy extends AbstractReplicationStrategy
         if (tokens.isEmpty())
             return endpoints;
 
-        Iterator<Token> iter = TokenMetadata.ringIterator(tokens, token, false, StorageService.instance.getPartitioner());
+        Iterator<Token> iter = TokenMetadata.ringIterator(tokens, token, false, LocatorConfig.instance.getPartitioner());
         Token primaryToken = iter.next();
         endpoints.add(metadata.getEndpoint(primaryToken));
 
@@ -90,7 +89,7 @@ public class OldNetworkTopologyStrategy extends AbstractReplicationStrategy
         // loop through the list and add until we have N nodes.
         if (endpoints.size() < replicas)
         {
-            iter = TokenMetadata.ringIterator(tokens, token, false, StorageService.instance.getPartitioner());
+            iter = TokenMetadata.ringIterator(tokens, token, false, LocatorConfig.instance.getPartitioner());
             while (endpoints.size() < replicas && iter.hasNext())
             {
                 Token t = iter.next();

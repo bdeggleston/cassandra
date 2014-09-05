@@ -26,9 +26,9 @@ import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.RequestValidationException;
 import org.apache.cassandra.exceptions.UnauthorizedException;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.MigrationManager;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.thrift.ThriftValidation;
 import org.apache.cassandra.transport.Event;
 
@@ -92,7 +92,7 @@ public class CreateKeyspaceStatement extends SchemaAlteringStatement
         // so doing proper validation here.
         AbstractReplicationStrategy.validateReplicationStrategy(name,
                                                                 AbstractReplicationStrategy.getClass(attrs.getReplicationStrategyClass()),
-                                                                StorageService.instance.getTokenMetadata(),
+                                                                LocatorConfig.instance.getTokenMetadata(),
                                                                 DatabaseDescriptor.instance.getEndpointSnitch(),
                                                                 attrs.getReplicationOptions());
     }

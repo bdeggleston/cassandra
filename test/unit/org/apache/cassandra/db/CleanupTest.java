@@ -41,6 +41,7 @@ import org.apache.cassandra.dht.BytesToken;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.sstable.SSTableReader;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.service.StorageService;
@@ -77,7 +78,7 @@ public class CleanupTest
     @Test
     public void testCleanup() throws ExecutionException, InterruptedException
     {
-        StorageService.instance.getTokenMetadata().clearUnsafe();
+        LocatorConfig.instance.getTokenMetadata().clearUnsafe();
 
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF2);
@@ -132,7 +133,7 @@ public class CleanupTest
 
         // we don't allow cleanup when the local host has no range to avoid wipping up all data when a node has not join the ring.
         // So to make sure cleanup erase everything here, we give the localhost the tiniest possible range.
-        TokenMetadata tmd = StorageService.instance.getTokenMetadata();
+        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         byte[] tk1 = new byte[1], tk2 = new byte[1];
         tk1[0] = 2;
         tk2[0] = 1;
@@ -156,7 +157,7 @@ public class CleanupTest
     @Test
     public void testCleanupWithNewToken() throws ExecutionException, InterruptedException, UnknownHostException
     {
-        StorageService.instance.getTokenMetadata().clearUnsafe();
+        LocatorConfig.instance.getTokenMetadata().clearUnsafe();
 
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF2);
@@ -169,7 +170,7 @@ public class CleanupTest
         rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance);
 
         assertEquals(LOOPS, rows.size());
-        TokenMetadata tmd = StorageService.instance.getTokenMetadata();
+        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
 
         byte[] tk1 = new byte[1], tk2 = new byte[1];
         tk1[0] = 2;

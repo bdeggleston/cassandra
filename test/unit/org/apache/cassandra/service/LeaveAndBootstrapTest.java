@@ -24,6 +24,7 @@ import java.net.UnknownHostException;
 import java.util.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -79,7 +80,7 @@ public class LeaveAndBootstrapTest
         final int RING_SIZE = 6;
         final int LEAVING_NODE = 3;
 
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
@@ -97,7 +98,7 @@ public class LeaveAndBootstrapTest
             for (Token token : keyTokens)
             {
                 List<InetAddress> endpoints = new ArrayList<InetAddress>();
-                Iterator<Token> tokenIter = TokenMetadata.ringIterator(tmd.sortedTokens(), token, false, StorageService.instance.getPartitioner());
+                Iterator<Token> tokenIter = TokenMetadata.ringIterator(tmd.sortedTokens(), token, false, LocatorConfig.instance.getPartitioner());
                 while (tokenIter.hasNext())
                 {
                     endpoints.add(tmd.getEndpoint(tokenIter.next()));
@@ -150,7 +151,7 @@ public class LeaveAndBootstrapTest
     {
         StorageService ss = StorageService.instance;
         final int RING_SIZE = 10;
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
@@ -450,7 +451,7 @@ public class LeaveAndBootstrapTest
     public void testStateJumpToBootstrap() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
@@ -527,7 +528,7 @@ public class LeaveAndBootstrapTest
     public void testStateJumpToNormal() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
@@ -569,7 +570,7 @@ public class LeaveAndBootstrapTest
     public void testStateJumpToLeaving() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
@@ -619,7 +620,7 @@ public class LeaveAndBootstrapTest
     public void testStateJumpToLeft() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);

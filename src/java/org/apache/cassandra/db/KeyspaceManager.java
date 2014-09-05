@@ -6,6 +6,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaDataFactory;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.commitlog.CommitLog;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 
@@ -67,7 +68,7 @@ public class KeyspaceManager
                                                     Tracing.instance,
                                                     Schema.instance,
                                                     ColumnFamilyStoreManager.instance,
-                                                    StorageService.instance,
+                                                    LocatorConfig.instance,
                                                     CommitLog.instance);
                     Schema.instance.storeKeyspaceInstance(keyspaceInstance);
 

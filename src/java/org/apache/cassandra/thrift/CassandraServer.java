@@ -37,6 +37,7 @@ import com.google.common.collect.Maps;
 import com.google.common.primitives.Longs;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -267,7 +268,7 @@ public class CassandraServer implements Cassandra.Iface
         Map<ByteBuffer, List<ColumnOrSuperColumn>> columnFamiliesMap = new HashMap<ByteBuffer, List<ColumnOrSuperColumn>>();
         for (ReadCommand command: commands)
         {
-            ColumnFamily cf = columnFamilies.get(StorageService.instance.getPartitioner().decorateKey(command.key));
+            ColumnFamily cf = columnFamilies.get(LocatorConfig.instance.getPartitioner().decorateKey(command.key));
             boolean reverseOrder = command instanceof SliceFromReadCommand && ((SliceFromReadCommand)command).filter.reversed;
             List<ColumnOrSuperColumn> thriftifiedColumns = thriftifyColumnFamily(cf, subColumnsOnly, reverseOrder, command.timestamp);
             columnFamiliesMap.put(command.key, thriftifiedColumns);
@@ -495,7 +496,7 @@ public class CassandraServer implements Cassandra.Iface
 
             Map<DecoratedKey, ColumnFamily> cfamilies = readColumnFamily(Arrays.asList(command), consistencyLevel);
 
-            ColumnFamily cf = cfamilies.get(StorageService.instance.getPartitioner().decorateKey(command.key));
+            ColumnFamily cf = cfamilies.get(LocatorConfig.instance.getPartitioner().decorateKey(command.key));
 
             if (cf == null)
                 throw new NotFoundException();
@@ -1153,7 +1154,7 @@ public class CassandraServer implements Cassandra.Iface
 
             List<Row> rows = null;
 
-            IPartitioner<?> p = StorageService.instance.getPartitioner();
+            IPartitioner<?> p = LocatorConfig.instance.getPartitioner();
             AbstractBounds<RowPosition> bounds;
             if (range.start_key == null)
             {
@@ -1167,7 +1168,7 @@ public class CassandraServer implements Cassandra.Iface
                 RowPosition end = range.end_key == null
                                 ? p.getTokenFactory().fromString(range.end_token).maxKeyBound(p)
                                 : RowPosition.ForKey.get(range.end_key, p);
-                bounds = new Bounds<RowPosition>(RowPosition.ForKey.get(range.start_key, p), end, StorageService.instance.getPartitioner());
+                bounds = new Bounds<RowPosition>(RowPosition.ForKey.get(range.start_key, p), end, LocatorConfig.instance.getPartitioner());
             }
             long now = System.currentTimeMillis();
             schedule(DatabaseDescriptor.instance.getRangeRpcTimeout());
@@ -1240,7 +1241,7 @@ public class CassandraServer implements Cassandra.Iface
 
             SlicePredicate predicate = new SlicePredicate().setSlice_range(new SliceRange(start_column, ByteBufferUtil.EMPTY_BYTE_BUFFER, false, -1));
 
-            IPartitioner p = StorageService.instance.getPartitioner();
+            IPartitioner p = LocatorConfig.instance.getPartitioner();
             AbstractBounds<RowPosition> bounds;
             if (range.start_key == null)
             {
@@ -1255,7 +1256,7 @@ public class CassandraServer implements Cassandra.Iface
                 RowPosition end = range.end_key == null
                                 ? p.getTokenFactory().fromString(range.end_token).maxKeyBound(p)
                                 : RowPosition.ForKey.get(range.end_key, p);
-                bounds = new Bounds<RowPosition>(RowPosition.ForKey.get(range.start_key, p), end, StorageService.instance.getPartitioner());
+                bounds = new Bounds<RowPosition>(RowPosition.ForKey.get(range.start_key, p), end, LocatorConfig.instance.getPartitioner());
             }
 
             if (range.row_filter != null && !range.row_filter.isEmpty())
@@ -1336,10 +1337,10 @@ public class CassandraServer implements Cassandra.Iface
             org.apache.cassandra.db.ConsistencyLevel consistencyLevel = ThriftConversion.fromThrift(consistency_level);
             consistencyLevel.validateForRead(keyspace);
 
-            IPartitioner p = StorageService.instance.getPartitioner();
+            IPartitioner p = LocatorConfig.instance.getPartitioner();
             AbstractBounds<RowPosition> bounds = new Bounds<RowPosition>(RowPosition.ForKey.get(index_clause.start_key, p),
                                                                          p.getMinimumToken().minKeyBound(),
-                                                                         StorageService.instance.getPartitioner());
+                                                                         LocatorConfig.instance.getPartitioner());
 
             IDiskAtomFilter filter = ThriftValidation.asIFilter(column_predicate, metadata, column_parent.super_column);
             long now = System.currentTimeMillis();
@@ -1434,7 +1435,7 @@ public class CassandraServer implements Cassandra.Iface
 
     public String describe_partitioner() throws TException
     {
-        return StorageService.instance.getPartitioner().getClass().getName();
+        return LocatorConfig.instance.getPartitioner().getClass().getName();
     }
 
     public String describe_snitch() throws TException
@@ -1463,8 +1464,8 @@ public class CassandraServer implements Cassandra.Iface
     {
         try
         {
-            Token.TokenFactory tf = StorageService.instance.getPartitioner().getTokenFactory();
-            Range<Token> tr = new Range<Token>(tf.fromString(start_token), tf.fromString(end_token), StorageService.instance.getPartitioner());
+            Token.TokenFactory tf = LocatorConfig.instance.getPartitioner().getTokenFactory();
+            Range<Token> tr = new Range<Token>(tf.fromString(start_token), tf.fromString(end_token), LocatorConfig.instance.getPartitioner());
             List<Pair<Range<Token>, Long>> splits =
                     StorageService.instance.getSplits(state().getKeyspace(), cfName, tr, keys_per_split);
             List<CfSplit> result = new ArrayList<CfSplit>(splits.size());

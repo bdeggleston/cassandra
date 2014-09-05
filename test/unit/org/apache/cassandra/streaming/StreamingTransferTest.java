@@ -28,6 +28,7 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -133,10 +134,10 @@ public class StreamingTransferTest
     public void testRequestEmpty() throws Exception
     {
         // requesting empty data should succeed
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = LocatorConfig.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1")), StorageService.instance.getPartitioner()));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken(), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1")), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken(), LocatorConfig.instance.getPartitioner()));
 
         StreamResultFuture futureResult = new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, Schema.instance,
                                                          KeyspaceManager.instance, StreamManager.instance)
@@ -219,19 +220,19 @@ public class StreamingTransferTest
 
     private void transferSSTables(SSTableReader sstable) throws Exception
     {
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = LocatorConfig.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1")), StorageService.instance.getPartitioner()));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken(), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1")), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken(), LocatorConfig.instance.getPartitioner()));
         transfer(sstable, ranges);
     }
 
     private void transferRanges(ColumnFamilyStore cfs) throws Exception
     {
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = LocatorConfig.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
         // wrapped range
-        ranges.add(new Range<Token>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key0")), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<Token>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key0")), LocatorConfig.instance.getPartitioner()));
         new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, Schema.instance,
                        KeyspaceManager.instance, StreamManager.instance).transferRanges(LOCAL, cfs.keyspace.getName(), ranges, cfs.getColumnFamilyName()).execute().get();
     }
@@ -405,10 +406,10 @@ public class StreamingTransferTest
         SSTableReader sstable2 = SSTableUtils.prepare().write(content);
 
         // transfer the first and last key
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = LocatorConfig.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("test")), StorageService.instance.getPartitioner()));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("transfer2")), p.getMinimumToken(), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("test")), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("transfer2")), p.getMinimumToken(), LocatorConfig.instance.getPartitioner()));
         // Acquiring references, transferSSTables needs it
         sstable.acquireReference();
         sstable2.acquireReference();
@@ -435,7 +436,7 @@ public class StreamingTransferTest
     public void testTransferOfMultipleColumnFamilies() throws Exception
     {
         String keyspace = KEYSPACE_CACHEKEY;
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = LocatorConfig.instance.getPartitioner();
         String[] columnFamilies = new String[] { "Standard1", "Standard2", "Standard3" };
         List<SSTableReader> ssTableReaders = new ArrayList<>();
 
@@ -459,9 +460,9 @@ public class StreamingTransferTest
         Map.Entry<DecoratedKey,String> last = keys.lastEntry();
         Map.Entry<DecoratedKey,String> secondtolast = keys.lowerEntry(last.getKey());
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), first.getKey().getToken(), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getMinimumToken(), first.getKey().getToken(), LocatorConfig.instance.getPartitioner()));
         // the left hand side of the range is exclusive, so we transfer from the second-to-last token
-        ranges.add(new Range<>(secondtolast.getKey().getToken(), p.getMinimumToken(), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<>(secondtolast.getKey().getToken(), p.getMinimumToken(), LocatorConfig.instance.getPartitioner()));
 
         // Acquiring references, transferSSTables needs it
         if (!SSTableReader.acquireReferences(ssTableReaders))
@@ -505,11 +506,11 @@ public class StreamingTransferTest
         SSTableReader sstable = cfs.getSSTables().iterator().next();
         cfs.clearUnsafe();
 
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = LocatorConfig.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key1000")), StorageService.instance.getPartitioner()));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key5")), p.getToken(ByteBufferUtil.bytes("key500")), StorageService.instance.getPartitioner()));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key9")), p.getToken(ByteBufferUtil.bytes("key900")), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key1000")), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key5")), p.getToken(ByteBufferUtil.bytes("key500")), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key9")), p.getToken(ByteBufferUtil.bytes("key900")), LocatorConfig.instance.getPartitioner()));
         transfer(sstable, ranges);
         assertEquals(1, cfs.getSSTables().size());
         assertEquals(7, Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance).size());

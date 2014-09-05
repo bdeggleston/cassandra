@@ -27,6 +27,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.github.jamm.MemoryMeter;
 
@@ -371,7 +372,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
 
     private AbstractBounds<RowPosition> getKeyBounds(QueryOptions options) throws InvalidRequestException
     {
-        IPartitioner<?> p = StorageService.instance.getPartitioner();
+        IPartitioner<?> p = LocatorConfig.instance.getPartitioner();
 
         if (onToken)
         {
@@ -398,7 +399,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             RowPosition start = includeStart ? startToken.minKeyBound() : startToken.maxKeyBound();
             RowPosition end = includeEnd ? endToken.maxKeyBound() : endToken.minKeyBound();
 
-            return new Range<RowPosition>(start, end, StorageService.instance.getPartitioner());
+            return new Range<RowPosition>(start, end, LocatorConfig.instance.getPartitioner());
         }
         else
         {
@@ -414,14 +415,14 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             if (includeKeyBound(Bound.START))
             {
                 return includeKeyBound(Bound.END)
-                     ? new Bounds<RowPosition>(startKey, finishKey, StorageService.instance.getPartitioner())
-                     : new IncludingExcludingBounds<RowPosition>(startKey, finishKey, StorageService.instance.getPartitioner());
+                     ? new Bounds<RowPosition>(startKey, finishKey, LocatorConfig.instance.getPartitioner())
+                     : new IncludingExcludingBounds<RowPosition>(startKey, finishKey, LocatorConfig.instance.getPartitioner());
             }
             else
             {
                 return includeKeyBound(Bound.END)
-                     ? new Range<RowPosition>(startKey, finishKey, StorageService.instance.getPartitioner())
-                     : new ExcludingBounds<RowPosition>(startKey, finishKey, StorageService.instance.getPartitioner());
+                     ? new Range<RowPosition>(startKey, finishKey, LocatorConfig.instance.getPartitioner())
+                     : new ExcludingBounds<RowPosition>(startKey, finishKey, LocatorConfig.instance.getPartitioner());
             }
         }
     }
@@ -1647,7 +1648,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                 receiver = new ColumnSpecification(def.ksName,
                                                    def.cfName,
                                                    new ColumnIdentifier("partition key token", true),
-                                                   StorageService.instance.getPartitioner().getTokenValidator());
+                                                   LocatorConfig.instance.getPartitioner().getTokenValidator());
             }
 
             // We don't support relations against entire collections, like "numbers = {1, 2, 3}"

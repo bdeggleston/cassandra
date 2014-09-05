@@ -31,6 +31,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.config.*;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,7 +111,7 @@ public class SystemKeyspace
 
     private DecoratedKey decorate(ByteBuffer key)
     {
-        return StorageService.instance.getPartitioner().decorateKey(key);
+        return LocatorConfig.instance.getPartitioner().decorateKey(key);
     }
 
     public void finishStartup()
@@ -421,7 +422,7 @@ public class SystemKeyspace
 
     private Set<String> tokensAsSet(Collection<Token> tokens)
     {
-        Token.TokenFactory factory = StorageService.instance.getPartitioner().getTokenFactory();
+        Token.TokenFactory factory = LocatorConfig.instance.getPartitioner().getTokenFactory();
         Set<String> s = new HashSet<>(tokens.size());
         for (Token tk : tokens)
             s.add(factory.toString(tk));
@@ -430,7 +431,7 @@ public class SystemKeyspace
 
     private Collection<Token> deserializeTokens(Collection<String> tokensStrings)
     {
-        Token.TokenFactory factory = StorageService.instance.getPartitioner().getTokenFactory();
+        Token.TokenFactory factory = LocatorConfig.instance.getPartitioner().getTokenFactory();
         List<Token> tokens = new ArrayList<Token>(tokensStrings.size());
         for (String tk : tokensStrings)
             tokens.add(factory.fromString(tk));
@@ -749,9 +750,9 @@ public class SystemKeyspace
      */
     public List<Row> serializedSchema(String schemaCfName)
     {
-        Token minToken = StorageService.instance.getPartitioner().getMinimumToken();
+        Token minToken = LocatorConfig.instance.getPartitioner().getMinimumToken();
 
-        return schemaCFS(schemaCfName).getRangeSlice(new Range<RowPosition>(minToken.minKeyBound(), minToken.maxKeyBound(), StorageService.instance.getPartitioner()),
+        return schemaCFS(schemaCfName).getRangeSlice(new Range<RowPosition>(minToken.minKeyBound(), minToken.maxKeyBound(), LocatorConfig.instance.getPartitioner()),
                                                      null,
                                                      new IdentityQueryFilter(),
                                                      Integer.MAX_VALUE,
@@ -824,7 +825,7 @@ public class SystemKeyspace
      */
     public Row readSchemaRow(String schemaCfName, String ksName)
     {
-        DecoratedKey key = StorageService.instance.getPartitioner().decorateKey(getSchemaKSKey(ksName));
+        DecoratedKey key = LocatorConfig.instance.getPartitioner().decorateKey(getSchemaKSKey(ksName));
 
         ColumnFamilyStore schemaCFS = schemaCFS(schemaCfName);
         ColumnFamily result = schemaCFS.getColumnFamily(QueryFilter.getIdentityFilter(key, schemaCfName, System.currentTimeMillis()));
@@ -842,7 +843,7 @@ public class SystemKeyspace
      */
     public Row readSchemaRow(String schemaCfName, String ksName, String cfName)
     {
-        DecoratedKey key = StorageService.instance.getPartitioner().decorateKey(getSchemaKSKey(ksName));
+        DecoratedKey key = LocatorConfig.instance.getPartitioner().decorateKey(getSchemaKSKey(ksName));
         ColumnFamilyStore schemaCFS = schemaCFS(schemaCfName);
         Composite prefix = schemaCFS.getComparator().make(cfName);
         ColumnFamily cf = schemaCFS.getColumnFamily(key,

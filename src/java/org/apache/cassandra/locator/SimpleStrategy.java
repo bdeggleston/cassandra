@@ -27,7 +27,6 @@ import java.util.Map;
 
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.dht.Token;
-import org.apache.cassandra.service.StorageService;
 
 
 /**
@@ -53,7 +52,7 @@ public class SimpleStrategy extends AbstractReplicationStrategy
             return endpoints;
 
         // Add the token at the index by default
-        Iterator<Token> iter = TokenMetadata.ringIterator(tokens, token, false, StorageService.instance.getPartitioner());
+        Iterator<Token> iter = TokenMetadata.ringIterator(tokens, token, false, LocatorConfig.instance.getPartitioner());
         while (endpoints.size() < replicas && iter.hasNext())
         {
             InetAddress ep = metadata.getEndpoint(iter.next());

@@ -28,7 +28,7 @@ import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
-import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -463,10 +463,10 @@ public class LeveledManifest
                             max = candidate.last;
                     }
                     Set<SSTableReader> compacting = cfs.getDataTracker().getCompacting();
-                    Range<RowPosition> boundaries = new Range<>(min, max, StorageService.instance.getPartitioner());
+                    Range<RowPosition> boundaries = new Range<>(min, max, LocatorConfig.instance.getPartitioner());
                     for (SSTableReader sstable : getLevel(i))
                     {
-                        Range<RowPosition> r = new Range<RowPosition>(sstable.first, sstable.last, StorageService.instance.getPartitioner());
+                        Range<RowPosition> r = new Range<RowPosition>(sstable.first, sstable.last, LocatorConfig.instance.getPartitioner());
                         if (boundaries.contains(r) && !compacting.contains(sstable))
                         {
                             logger.info("Adding high-level (L{}) {} to candidates", sstable.getSSTableLevel(), sstable);
@@ -562,10 +562,10 @@ public class LeveledManifest
     {
         assert start.compareTo(end) <= 0;
         Set<SSTableReader> overlapped = new HashSet<SSTableReader>();
-        Bounds<Token> promotedBounds = new Bounds<Token>(start, end, StorageService.instance.getPartitioner());
+        Bounds<Token> promotedBounds = new Bounds<Token>(start, end, LocatorConfig.instance.getPartitioner());
         for (SSTableReader candidate : sstables)
         {
-            Bounds<Token> candidateBounds = new Bounds<Token>(candidate.first.getToken(), candidate.last.getToken(), StorageService.instance.getPartitioner());
+            Bounds<Token> candidateBounds = new Bounds<Token>(candidate.first.getToken(), candidate.last.getToken(), LocatorConfig.instance.getPartitioner());
             if (candidateBounds.intersects(promotedBounds))
                 overlapped.add(candidate);
         }

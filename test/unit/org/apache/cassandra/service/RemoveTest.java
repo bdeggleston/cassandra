@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.*;
 
 import org.apache.cassandra.SchemaLoader;
@@ -78,7 +79,7 @@ public class RemoveTest
     public void setup() throws IOException, ConfigurationException
     {
         ss = StorageService.instance;
-        tmd = ss.getTokenMetadata();
+        tmd = LocatorConfig.instance.getTokenMetadata();
         tmd.clearUnsafe();
 
         // create a ring of 5 nodes

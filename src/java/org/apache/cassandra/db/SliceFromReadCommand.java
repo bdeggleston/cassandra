@@ -30,8 +30,8 @@ import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.RowDataResolver;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class SliceFromReadCommand extends ReadCommand
@@ -55,7 +55,7 @@ public class SliceFromReadCommand extends ReadCommand
 
     public Row getRow(Keyspace keyspace)
     {
-        DecoratedKey dk = StorageService.instance.getPartitioner().decorateKey(key);
+        DecoratedKey dk = LocatorConfig.instance.getPartitioner().decorateKey(key);
         return keyspace.getRow(new QueryFilter(dk, cfName, filter, timestamp));
     }
 

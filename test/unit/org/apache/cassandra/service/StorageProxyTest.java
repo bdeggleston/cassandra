@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import java.util.List;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
@@ -43,49 +44,49 @@ public class StorageProxyTest
 {
     private static Range<RowPosition> range(RowPosition left, RowPosition right)
     {
-        return new Range<RowPosition>(left, right, StorageService.instance.getPartitioner());
+        return new Range<RowPosition>(left, right, LocatorConfig.instance.getPartitioner());
     }
 
     private static Bounds<RowPosition> bounds(RowPosition left, RowPosition right)
     {
-        return new Bounds<RowPosition>(left, right, StorageService.instance.getPartitioner());
+        return new Bounds<RowPosition>(left, right, LocatorConfig.instance.getPartitioner());
     }
 
     private static ExcludingBounds<RowPosition> exBounds(RowPosition left, RowPosition right)
     {
-        return new ExcludingBounds<RowPosition>(left, right, StorageService.instance.getPartitioner());
+        return new ExcludingBounds<RowPosition>(left, right, LocatorConfig.instance.getPartitioner());
     }
 
     private static IncludingExcludingBounds<RowPosition> incExBounds(RowPosition left, RowPosition right)
     {
-        return new IncludingExcludingBounds<RowPosition>(left, right, StorageService.instance.getPartitioner());
+        return new IncludingExcludingBounds<RowPosition>(left, right, LocatorConfig.instance.getPartitioner());
     }
 
     private static RowPosition startOf(String key)
     {
-        return StorageService.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key)).minKeyBound();
+        return LocatorConfig.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key)).minKeyBound();
     }
 
     private static RowPosition endOf(String key)
     {
-        return StorageService.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key)).maxKeyBound();
+        return LocatorConfig.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key)).maxKeyBound();
     }
 
     private static Range<Token> tokenRange(String left, String right)
     {
-        return new Range<Token>(token(left), token(right), StorageService.instance.getPartitioner());
+        return new Range<Token>(token(left), token(right), LocatorConfig.instance.getPartitioner());
     }
 
     private static Bounds<Token> tokenBounds(String left, String right)
     {
-        return new Bounds<Token>(token(left), token(right), StorageService.instance.getPartitioner());
+        return new Bounds<Token>(token(left), token(right), LocatorConfig.instance.getPartitioner());
     }
 
     @BeforeClass
     public static void beforeClass() throws Throwable
     {
         DatabaseDescriptor.init();
-        TokenMetadata tmd = StorageService.instance.getTokenMetadata();
+        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         tmd.updateNormalToken(token("1"), InetAddress.getByName("127.0.0.1"));
         tmd.updateNormalToken(token("6"), InetAddress.getByName("127.0.0.6"));
     }

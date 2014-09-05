@@ -151,7 +151,7 @@ public class SimpleStrategyTest
         {
             strategy = getStrategy(keyspaceName, tmd);
 
-            PendingRangeCalculatorService.calculatePendingRanges(strategy, keyspaceName, StorageService.instance.getTokenMetadata());
+            PendingRangeCalculatorService.calculatePendingRanges(strategy, keyspaceName, LocatorConfig.instance.getTokenMetadata());
 
             int replicationFactor = strategy.getReplicationFactor();
 

@@ -28,6 +28,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import org.apache.cassandra.config.KSMetaDataFactory;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -104,7 +105,7 @@ public class StorageServiceServerTest
     @Test
     public void testPrimaryRangesWithNetworkTopologyStrategy() throws Exception
     {
-        TokenMetadata metadata = StorageService.instance.getTokenMetadata();
+        TokenMetadata metadata = LocatorConfig.instance.getTokenMetadata();
         metadata.clearUnsafe();
         // DC1
         metadata.updateNormalToken(new StringToken("A"), InetAddress.getByName("127.0.0.1"));
@@ -121,27 +122,27 @@ public class StorageServiceServerTest
         KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
-        Collection<Range<Token>> primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
+        Collection<Range<Token>> primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("A"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("A"), LocatorConfig.instance.getPartitioner()));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
+        primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C"), LocatorConfig.instance.getPartitioner()));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
+        primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B"), LocatorConfig.instance.getPartitioner()));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
+        primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D"), LocatorConfig.instance.getPartitioner()));
     }
 
     @Test
     public void testPrimaryRangesWithNetworkTopologyStrategyOneDCOnly() throws Exception
     {
-        TokenMetadata metadata = StorageService.instance.getTokenMetadata();
+        TokenMetadata metadata = LocatorConfig.instance.getTokenMetadata();
         metadata.clearUnsafe();
         // DC1
         metadata.updateNormalToken(new StringToken("A"), InetAddress.getByName("127.0.0.1"));
@@ -158,28 +159,28 @@ public class StorageServiceServerTest
         Schema.instance.setKeyspaceDefinition(meta);
 
         // endpoints in DC1 should not have primary range
-        Collection<Range<Token>> primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
+        Collection<Range<Token>> primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
         assert primaryRanges.isEmpty();
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
+        primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
         assert primaryRanges.isEmpty();
 
         // endpoints in DC2 should have primary ranges which also cover DC1
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
+        primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
         assert primaryRanges.size() == 2;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("A"), StorageService.instance.getPartitioner()));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("A"), LocatorConfig.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B"), LocatorConfig.instance.getPartitioner()));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
+        primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
         assert primaryRanges.size() == 2;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D"), StorageService.instance.getPartitioner()));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D"), LocatorConfig.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C"), LocatorConfig.instance.getPartitioner()));
     }
 
     @Test
     public void testPrimaryRangesWithVnodes() throws Exception
     {
-        TokenMetadata metadata = StorageService.instance.getTokenMetadata();
+        TokenMetadata metadata = LocatorConfig.instance.getTokenMetadata();
         metadata.clearUnsafe();
         // DC1
         Multimap<InetAddress, Token> dc1 = HashMultimap.create();
@@ -208,40 +209,40 @@ public class StorageServiceServerTest
         Schema.instance.setKeyspaceDefinition(meta);
 
         // endpoints in DC1 should not have primary range
-        Collection<Range<Token>> primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
+        Collection<Range<Token>> primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
         assert primaryRanges.isEmpty();
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
+        primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
         assert primaryRanges.isEmpty();
 
         // endpoints in DC2 should have primary ranges which also cover DC1
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
+        primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.4"));
         assert primaryRanges.size() == 4;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B"), StorageService.instance.getPartitioner()));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("F"), new StringToken("G"), StorageService.instance.getPartitioner()));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("K"), new StringToken("L"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B"), LocatorConfig.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("F"), new StringToken("G"), LocatorConfig.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("K"), new StringToken("L"), LocatorConfig.instance.getPartitioner()));
         // because /127.0.0.4 holds token "B" which is the next to token "A" from /127.0.0.1,
         // the node covers range (L, A]
-        assert primaryRanges.contains(new Range<Token>(new StringToken("L"), new StringToken("A"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("L"), new StringToken("A"), LocatorConfig.instance.getPartitioner()));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
+        primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.5"));
         assert primaryRanges.size() == 8;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D"), StorageService.instance.getPartitioner()));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("E"), new StringToken("F"), StorageService.instance.getPartitioner()));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("J"), new StringToken("K"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("D"), LocatorConfig.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("E"), new StringToken("F"), LocatorConfig.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("J"), new StringToken("K"), LocatorConfig.instance.getPartitioner()));
         // ranges from /127.0.0.1
-        assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("E"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("D"), new StringToken("E"), LocatorConfig.instance.getPartitioner()));
         // the next token to "H" in DC2 is "K" in /127.0.0.5, so (G, H] goes to /127.0.0.5
-        assert primaryRanges.contains(new Range<Token>(new StringToken("G"), new StringToken("H"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("G"), new StringToken("H"), LocatorConfig.instance.getPartitioner()));
         // ranges from /127.0.0.2
-        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C"), StorageService.instance.getPartitioner()));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("H"), new StringToken("I"), StorageService.instance.getPartitioner()));
-        assert primaryRanges.contains(new Range<Token>(new StringToken("I"), new StringToken("J"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C"), LocatorConfig.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("H"), new StringToken("I"), LocatorConfig.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("I"), new StringToken("J"), LocatorConfig.instance.getPartitioner()));
     }
     @Test
     public void testPrimaryRangesWithSimpleStrategy() throws Exception
     {
-        TokenMetadata metadata = StorageService.instance.getTokenMetadata();
+        TokenMetadata metadata = LocatorConfig.instance.getTokenMetadata();
         metadata.clearUnsafe();
 
         metadata.updateNormalToken(new StringToken("A"), InetAddress.getByName("127.0.0.1"));
@@ -255,16 +256,16 @@ public class StorageServiceServerTest
         KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "SimpleStrategy", configOptions, false);
         Schema.instance.setKeyspaceDefinition(meta);
 
-        Collection<Range<Token>> primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
+        Collection<Range<Token>> primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("A"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("C"), new StringToken("A"), LocatorConfig.instance.getPartitioner()));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
+        primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.2"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("A"), new StringToken("B"), LocatorConfig.instance.getPartitioner()));
 
-        primaryRanges = StorageService.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.3"));
+        primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.3"));
         assert primaryRanges.size() == 1;
-        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C"), StorageService.instance.getPartitioner()));
+        assert primaryRanges.contains(new Range<Token>(new StringToken("B"), new StringToken("C"), LocatorConfig.instance.getPartitioner()));
     }
 }

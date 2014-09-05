@@ -23,6 +23,7 @@ import java.util.*;
 
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.BufferDecoratedKey;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.commons.lang3.ArrayUtils;
 
@@ -188,7 +189,7 @@ public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner
         for (Token node : sortedTokens)
         {
             allTokens.put(node, new Float(0.0));
-            sortedRanges.add(new Range<Token>(lastToken, node, StorageService.instance.getPartitioner()));
+            sortedRanges.add(new Range<Token>(lastToken, node, LocatorConfig.instance.getPartitioner()));
             lastToken = node;
         }
 

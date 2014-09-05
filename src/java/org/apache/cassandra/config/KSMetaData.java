@@ -26,7 +26,6 @@ import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.locator.*;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.thrift.CfDef;
 import org.apache.cassandra.thrift.KsDef;
 
@@ -44,7 +43,7 @@ public final class KSMetaData
 
     private final DatabaseDescriptor databaseDescriptor;
     private final QueryProcessor queryProcessor;
-    private final StorageService storageService;
+    private final LocatorConfig locatorConfig;
     private final SystemKeyspace systemKeyspace;
     private final CFMetaDataFactory cfMetaDataFactory;
 
@@ -55,12 +54,12 @@ public final class KSMetaData
                Iterable<CFMetaData> cfDefs,
                DatabaseDescriptor databaseDescriptor,
                QueryProcessor queryProcessor,
-               StorageService storageService,
+               LocatorConfig locatorConfig,
                SystemKeyspace systemKeyspace,
                CFMetaDataFactory cfMetaDataFactory)
     {
         this(name, strategyClass, strategyOptions, durableWrites, cfDefs, new UTMetaData(),
-             databaseDescriptor, queryProcessor, storageService, systemKeyspace, cfMetaDataFactory);
+             databaseDescriptor, queryProcessor, locatorConfig, systemKeyspace, cfMetaDataFactory);
     }
 
     KSMetaData(String name,
@@ -71,7 +70,7 @@ public final class KSMetaData
                UTMetaData userTypes,
                DatabaseDescriptor databaseDescriptor,
                QueryProcessor queryProcessor,
-               StorageService storageService,
+               LocatorConfig locatorConfig,
                SystemKeyspace systemKeyspace,
                CFMetaDataFactory cfMetaDataFactory)
     {
@@ -87,7 +86,7 @@ public final class KSMetaData
 
         this.databaseDescriptor = databaseDescriptor;
         this.queryProcessor = queryProcessor;
-        this.storageService = storageService;
+        this.locatorConfig = locatorConfig;
         this.systemKeyspace = systemKeyspace;
         this.cfMetaDataFactory = cfMetaDataFactory;
     }
@@ -167,7 +166,7 @@ public final class KSMetaData
             throw new ConfigurationException(String.format("Keyspace name must not be empty, more than %s characters long, or contain non-alphanumeric-underscore characters (got \"%s\")", Schema.NAME_LENGTH, name));
 
         // Attempt to instantiate the ARS, which will throw a ConfigException if the strategy_options aren't fully formed
-        TokenMetadata tmd = storageService.getTokenMetadata();
+        TokenMetadata tmd = locatorConfig.getTokenMetadata();
         IEndpointSnitch eps = databaseDescriptor.getEndpointSnitch();
         AbstractReplicationStrategy.validateReplicationStrategy(name, strategyClass, tmd, eps, strategyOptions);
 
@@ -238,7 +237,7 @@ public final class KSMetaData
                                   userTypes,
                                   databaseDescriptor,
                                   queryProcessor,
-                                  storageService,
+                                  locatorConfig,
                                   systemKeyspace,
                                   cfMetaDataFactory);
         }

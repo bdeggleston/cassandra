@@ -26,6 +26,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -70,7 +71,7 @@ public class CQLSSTableWriterTest
         CQLSSTableWriter writer = CQLSSTableWriter.builder()
                                                   .inDirectory(dataDir)
                                                   .forTable(schema)
-                                                  .withPartitioner(StorageService.instance.getPartitioner())
+                                                  .withPartitioner(LocatorConfig.instance.getPartitioner())
                                                   .using(insert).build();
 
         writer.addRow(0, "test1", 24);
@@ -83,9 +84,9 @@ public class CQLSSTableWriterTest
         {
             public void init(String keyspace)
             {
-                for (Range<Token> range : StorageService.instance.getLocalRanges("cql_keyspace"))
+                for (Range<Token> range : LocatorConfig.instance.getLocalRanges("cql_keyspace"))
                     addRangeForEndpoint(range, DatabaseDescriptor.instance.getBroadcastAddress());
-                setPartitioner(StorageService.instance.getPartitioner());
+                setPartitioner(LocatorConfig.instance.getPartitioner());
             }
 
             public CFMetaData getCFMetaData(String keyspace, String cfName)

@@ -9,8 +9,8 @@ import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.LocalStrategy;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.locator.SimpleStrategy;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.thrift.KsDef;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
@@ -44,13 +44,13 @@ public class KSMetaDataFactory
     public KSMetaData newKeyspace(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> options, boolean durablesWrites, Iterable<CFMetaData> cfDefs)
     {
         return new KSMetaData(name, strategyClass, options, durablesWrites, cfDefs, new UTMetaData(),
-                              DatabaseDescriptor.instance, QueryProcessor.instance, StorageService.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
+                              DatabaseDescriptor.instance, QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
     }
 
     public KSMetaData cloneWith(KSMetaData ksm, Iterable<CFMetaData> cfDefs)
     {
         return new KSMetaData(ksm.name, ksm.strategyClass, ksm.strategyOptions, ksm.durableWrites, cfDefs, ksm.userTypes,
-                              DatabaseDescriptor.instance, QueryProcessor.instance, StorageService.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
+                              DatabaseDescriptor.instance, QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
     }
 
     public KSMetaData systemKeyspace()
@@ -73,26 +73,26 @@ public class KSMetaDataFactory
                                                 CFMetaDataFactory.instance.PaxosCf,
                                                 CFMetaDataFactory.instance.SSTableActivityCF);
         return new KSMetaData(Keyspace.SYSTEM_KS, LocalStrategy.class, Collections.<String, String>emptyMap(), true, cfDefs,
-                              DatabaseDescriptor.instance, QueryProcessor.instance, StorageService.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
+                              DatabaseDescriptor.instance, QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
     }
 
     public KSMetaData traceKeyspace()
     {
         List<CFMetaData> cfDefs = Arrays.asList(CFMetaDataFactory.instance.TraceSessionsCf, CFMetaDataFactory.instance.TraceEventsCf);
         return new KSMetaData(Tracing.TRACE_KS, SimpleStrategy.class, ImmutableMap.of("replication_factor", "2"), true, cfDefs,
-                              DatabaseDescriptor.instance, QueryProcessor.instance, StorageService.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
+                              DatabaseDescriptor.instance, QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
     }
 
     public KSMetaData testMetadata(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> strategyOptions, CFMetaData... cfDefs)
     {
         return new KSMetaData(name, strategyClass, strategyOptions, true, Arrays.asList(cfDefs),
-                              DatabaseDescriptor.instance, QueryProcessor.instance, StorageService.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
+                              DatabaseDescriptor.instance, QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
     }
 
     public KSMetaData testMetadataNotDurable(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> strategyOptions, CFMetaData... cfDefs)
     {
         return new KSMetaData(name, strategyClass, strategyOptions, false, Arrays.asList(cfDefs),
-                              DatabaseDescriptor.instance, QueryProcessor.instance, StorageService.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
+                              DatabaseDescriptor.instance, QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance);
     }
 
     /**
@@ -115,7 +115,7 @@ public class KSMetaDataFactory
                                   userTypes,
                                   DatabaseDescriptor.instance,
                                   QueryProcessor.instance,
-                                  StorageService.instance,
+                                  LocatorConfig.instance,
                                   SystemKeyspace.instance,
                                   CFMetaDataFactory.instance);
         }
@@ -153,7 +153,7 @@ public class KSMetaDataFactory
                               Arrays.asList(cfDefs),
                               DatabaseDescriptor.instance,
                               QueryProcessor.instance,
-                              StorageService.instance,
+                              LocatorConfig.instance,
                               SystemKeyspace.instance,
                               CFMetaDataFactory.instance);
     }

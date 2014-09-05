@@ -29,6 +29,7 @@ import java.util.Set;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.streaming.StreamManager;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -125,10 +126,10 @@ public class LegacySSTableTest
     private void testStreaming(String version) throws Exception
     {
         SSTableReader sstable = SSTableReader.open(getDescriptor(version));
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = LocatorConfig.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("100")), StorageService.instance.getPartitioner()));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("100")), p.getMinimumToken(), StorageService.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("100")), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("100")), p.getMinimumToken(), LocatorConfig.instance.getPartitioner()));
         ArrayList<StreamSession.SSTableStreamingSections> details = new ArrayList<>();
         details.add(new StreamSession.SSTableStreamingSections(sstable,
                                                                sstable.getPositionsForRanges(ranges),

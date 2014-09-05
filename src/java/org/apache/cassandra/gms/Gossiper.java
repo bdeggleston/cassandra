@@ -30,6 +30,7 @@ import javax.management.ObjectName;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.Uninterruptibles;
 
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -250,7 +251,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         for (InetAddress member : getLiveMembers())
         {
             EndpointState epState = endpointStateMap.get(member);
-            if (epState != null && !isDeadState(epState) && StorageService.instance.getTokenMetadata().isMember(member))
+            if (epState != null && !isDeadState(epState) && LocatorConfig.instance.getTokenMetadata().isMember(member))
                 tokenOwners.add(member);
         }
         return tokenOwners;
@@ -272,7 +273,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         Set<InetAddress> tokenOwners = new HashSet<>();
         for (InetAddress endpoint : unreachableEndpoints.keySet())
         {
-            if (StorageService.instance.getTokenMetadata().isMember(endpoint))
+            if (LocatorConfig.instance.getTokenMetadata().isMember(endpoint))
                 tokenOwners.add(endpoint);
         }
 
@@ -495,13 +496,13 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         {
             try
             {
-                tokens = StorageService.instance.getTokenMetadata().getTokens(endpoint);
+                tokens = LocatorConfig.instance.getTokenMetadata().getTokens(endpoint);
             }
             catch (Throwable th)
             {
                 // TODO this is broken
                 logger.warn("Unable to calculate tokens for {}.  Will use a random one", address);
-                tokens = Collections.singletonList(StorageService.instance.getPartitioner().getRandomToken());
+                tokens = Collections.singletonList(LocatorConfig.instance.getPartitioner().getRandomToken());
             }
             int generation = epState.getHeartBeatState().getGeneration();
             logger.info("Sleeping for {}ms to ensure {} does not change", DatabaseDescriptor.instance.getRingDelay(), endpoint);
@@ -613,7 +614,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         {
             return false;
         }
-        return !isDeadState(epState) && !StorageService.instance.getTokenMetadata().isMember(endpoint);
+        return !isDeadState(epState) && !LocatorConfig.instance.getTokenMetadata().isMember(endpoint);
     }
 
     private void doStatusCheck()
@@ -662,7 +663,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
                 // check for dead state removal
                 long expireTime = getExpireTimeForEndpoint(endpoint);
                 if (!epState.isAlive() && (now > expireTime)
-                    && (!StorageService.instance.getTokenMetadata().isMember(endpoint)))
+                    && (!LocatorConfig.instance.getTokenMetadata().isMember(endpoint)))
                 {
                     if (logger.isDebugEnabled())
                     {

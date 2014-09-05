@@ -51,6 +51,7 @@ import com.google.common.collect.Ordering;
 import com.google.common.primitives.Longs;
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.cassandra.config.*;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageServiceExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,7 +100,6 @@ import org.apache.cassandra.metrics.RestorableMeter;
 import org.apache.cassandra.metrics.StorageMetrics;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.service.CacheService;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CLibrary;
@@ -282,7 +282,7 @@ public class SSTableReader extends SSTable
     {
         IPartitioner p = desc.cfname.contains(SECONDARY_INDEX_NAME_SEPARATOR)
                        ? new LocalPartitioner(metadata.getKeyValidator())
-                       : StorageService.instance.getPartitioner();
+                       : LocatorConfig.instance.getPartitioner();
         return open(desc, componentsFor(desc), metadata, p);
     }
 
@@ -293,7 +293,7 @@ public class SSTableReader extends SSTable
 
     public static SSTableReader openNoValidation(Descriptor descriptor, Set<Component> components, CFMetaData metadata) throws IOException
     {
-        return open(descriptor, components, metadata, StorageService.instance.getPartitioner(), false);
+        return open(descriptor, components, metadata, LocatorConfig.instance.getPartitioner(), false);
     }
 
     /**

@@ -31,6 +31,7 @@ import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.compress.*;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.thrift.CfDef;
@@ -130,7 +131,7 @@ public class CFMetaDataTest
 
     private void checkInverses(CFMetaData cfm) throws Exception
     {
-        DecoratedKey k = StorageService.instance.getPartitioner().decorateKey(ByteBufferUtil.bytes(cfm.ksName));
+        DecoratedKey k = LocatorConfig.instance.getPartitioner().decorateKey(ByteBufferUtil.bytes(cfm.ksName));
 
         // Test thrift conversion
         CFMetaData before = cfm;

@@ -25,7 +25,8 @@ import java.util.concurrent.Future;
 
 import com.google.common.base.Predicate;
 import org.apache.cassandra.db.KeyspaceManager;
-import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,14 +60,16 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
     private final ActiveRepairService activeRepairService;
     private final CompactionManager compactionManager;
     private final MessagingService messagingService;
+    private final IPartitioner partitioner;
 
-    public RepairMessageVerbHandler(KeyspaceManager keyspaceManager, Schema schema, ActiveRepairService activeRepairService, CompactionManager compactionManager, MessagingService messagingService)
+    public RepairMessageVerbHandler(KeyspaceManager keyspaceManager, Schema schema, ActiveRepairService activeRepairService, CompactionManager compactionManager, MessagingService messagingService, IPartitioner partitioner)
     {
         this.keyspaceManager = keyspaceManager;
         this.schema = schema;
         this.activeRepairService = activeRepairService;
         this.compactionManager = compactionManager;
         this.messagingService = messagingService;
+        this.partitioner = partitioner;
     }
 
     public void doVerb(MessageIn<RepairMessage> message, int id)
@@ -97,7 +100,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 {
                     public boolean apply(SSTableReader sstable)
                     {
-                        return sstable != null && new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), StorageService.instance.getPartitioner()).intersects(Collections.singleton(repairingRange));
+                        return sstable != null && new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), LocatorConfig.instance.getPartitioner()).intersects(Collections.singleton(repairingRange));
                     }
                 });
 

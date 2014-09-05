@@ -47,7 +47,7 @@ public class TokenMetadataTest
     public static void beforeClass() throws Throwable
     {
         DatabaseDescriptor.init();
-        tmd = StorageService.instance.getTokenMetadata();
+        tmd = LocatorConfig.instance.getTokenMetadata();
         tmd.updateNormalToken(token(ONE), InetAddress.getByName("127.0.0.1"));
         tmd.updateNormalToken(token(SIX), InetAddress.getByName("127.0.0.6"));
     }
@@ -55,7 +55,7 @@ public class TokenMetadataTest
     private void testRingIterator(ArrayList<Token> ring, String start, boolean includeMin, String... expected)
     {
         ArrayList<Token> actual = new ArrayList<Token>();
-        Iterators.addAll(actual, TokenMetadata.ringIterator(ring, token(start), includeMin, StorageService.instance.getPartitioner()));
+        Iterators.addAll(actual, TokenMetadata.ringIterator(ring, token(start), includeMin, LocatorConfig.instance.getPartitioner()));
         assertEquals(actual.toString(), expected.length, actual.size());
         for (int i = 0; i < expected.length; i++)
             assertEquals("Mismatch at index " + i + ": " + actual, token(expected[i]), actual.get(i));

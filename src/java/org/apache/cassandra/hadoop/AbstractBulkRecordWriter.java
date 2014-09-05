@@ -40,7 +40,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.sstable.SSTableLoader;
-import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.streaming.StreamState;
 import org.apache.cassandra.thrift.AuthenticationRequest;
 import org.apache.cassandra.thrift.Cassandra;
@@ -212,7 +212,7 @@ implements org.apache.hadoop.mapred.RecordWriter<K, V>
 
                     for (TokenRange tr : tokenRanges)
                     {
-                        Range<Token> range = new Range<Token>(tkFactory.fromString(tr.start_token), tkFactory.fromString(tr.end_token), StorageService.instance.getPartitioner());
+                        Range<Token> range = new Range<Token>(tkFactory.fromString(tr.start_token), tkFactory.fromString(tr.end_token), LocatorConfig.instance.getPartitioner());
                         for (String ep : tr.endpoints)
                         {
                             addRangeForEndpoint(range, InetAddress.getByName(ep));

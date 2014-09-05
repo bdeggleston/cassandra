@@ -34,6 +34,7 @@ import com.google.common.collect.*;
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -170,7 +171,7 @@ public class BatchlogManager implements BatchlogManagerMBean
 
         // rate limit is in bytes per second. Uses Double.MAX_VALUE if disabled (set to 0 in cassandra.yaml).
         // max rate is scaled by the number of nodes in the cluster (same as for HHOM - see CASSANDRA-5272).
-        int throttleInKB = DatabaseDescriptor.instance.getBatchlogReplayThrottleInKB() / StorageService.instance.getTokenMetadata().getAllEndpoints().size();
+        int throttleInKB = DatabaseDescriptor.instance.getBatchlogReplayThrottleInKB() / LocatorConfig.instance.getTokenMetadata().getAllEndpoints().size();
         RateLimiter rateLimiter = RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
 
         try
@@ -386,10 +387,10 @@ public class BatchlogManager implements BatchlogManagerMBean
         {
             Set<InetAddress> liveEndpoints = new HashSet<>();
             String ks = mutation.getKeyspaceName();
-            Token<?> tk = StorageService.instance.getPartitioner().getToken(mutation.key());
+            Token<?> tk = LocatorConfig.instance.getPartitioner().getToken(mutation.key());
 
-            for (InetAddress endpoint : Iterables.concat(StorageService.instance.getNaturalEndpoints(ks, tk),
-                                                         StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk, ks)))
+            for (InetAddress endpoint : Iterables.concat(LocatorConfig.instance.getNaturalEndpoints(ks, tk),
+                                                         LocatorConfig.instance.getTokenMetadata().pendingEndpointsFor(tk, ks)))
             {
                 if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
                     mutation.apply();

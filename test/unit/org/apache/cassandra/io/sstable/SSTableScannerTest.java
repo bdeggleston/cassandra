@@ -21,6 +21,7 @@ package org.apache.cassandra.io.sstable;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -64,7 +65,7 @@ public class SSTableScannerTest
     {
         return new Bounds<RowPosition>(new BytesToken(toKey(start).getBytes()).minKeyBound(),
                                        new BytesToken(toKey(end).getBytes()).maxKeyBound(),
-                                       StorageService.instance.getPartitioner());
+                                       LocatorConfig.instance.getPartitioner());
     }
 
 
@@ -72,7 +73,7 @@ public class SSTableScannerTest
     {
         return new Range<Token>(new BytesToken(toKey(start).getBytes()),
                                 new BytesToken(toKey(end).getBytes()),
-                                StorageService.instance.getPartitioner());
+                                LocatorConfig.instance.getPartitioner());
     }
 
     private static Collection<Range<Token>> makeRanges(int ... keys)

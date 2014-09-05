@@ -33,6 +33,7 @@ import com.google.common.collect.*;
 import com.google.common.util.concurrent.*;
 import com.google.common.util.concurrent.Futures;
 import org.apache.cassandra.io.FSWriteError;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageServiceExecutors;
 import org.json.simple.*;
 import org.slf4j.Logger;
@@ -1143,7 +1144,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
         // cleanup size estimation only counts bytes for keys local to this node
         long expectedFileSize = 0;
-        Collection<Range<Token>> ranges = StorageService.instance.getLocalRanges(keyspace.getName());
+        Collection<Range<Token>> ranges = LocatorConfig.instance.getLocalRanges(keyspace.getName());
         for (SSTableReader sstable : sstables)
         {
             List<Pair<Long, Long>> positions = sstable.getPositionsForRanges(ranges);
@@ -1707,7 +1708,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     public void cleanupCache()
     {
-        Collection<Range<Token>> ranges = StorageService.instance.getLocalRanges(keyspace.getName());
+        Collection<Range<Token>> ranges = LocatorConfig.instance.getLocalRanges(keyspace.getName());
 
         for (RowCacheKey key : CacheService.instance.rowCache.getKeySet())
         {

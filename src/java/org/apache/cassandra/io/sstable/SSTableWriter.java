@@ -33,6 +33,7 @@ import java.util.Set;
 
 import com.google.common.collect.Sets;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +54,6 @@ import org.apache.cassandra.io.util.FileMark;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.io.util.SegmentedFile;
 import org.apache.cassandra.io.util.SequentialWriter;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FilterFactory;
 import org.apache.cassandra.utils.IFilter;
@@ -81,7 +81,7 @@ public class SSTableWriter extends SSTable
              keyCount,
              repairedAt,
              Schema.instance.getCFMetaData(Descriptor.fromFilename(filename)),
-             StorageService.instance.getPartitioner(),
+             LocatorConfig.instance.getPartitioner(),
              new MetadataCollector(Schema.instance.getCFMetaData(Descriptor.fromFilename(filename)).comparator));
     }
 

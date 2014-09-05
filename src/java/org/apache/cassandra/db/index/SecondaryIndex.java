@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,9 +65,9 @@ public abstract class SecondaryIndex
 
     public static final String CUSTOM_INDEX_OPTION_NAME = "class_name";
 
-    public static final AbstractType<?> keyComparator = StorageService.instance.getPartitioner().preservesOrder()
+    public static final AbstractType<?> keyComparator = LocatorConfig.instance.getPartitioner().preservesOrder()
                                                       ? BytesType.instance
-                                                      : new LocalByPartionerType(StorageService.instance.getPartitioner());
+                                                      : new LocalByPartionerType(LocatorConfig.instance.getPartitioner());
 
     /**
      * Base CF that has many indexes

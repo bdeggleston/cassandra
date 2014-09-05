@@ -52,6 +52,7 @@ import org.apache.cassandra.gms.VersionedValue;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.DataOutputBuffer;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -65,22 +66,22 @@ public class Util
 
     public static DecoratedKey dk(String key)
     {
-        return StorageService.instance.getPartitioner().decorateKey(ByteBufferUtil.bytes(key));
+        return LocatorConfig.instance.getPartitioner().decorateKey(ByteBufferUtil.bytes(key));
     }
 
     public static DecoratedKey dk(String key, AbstractType type)
     {
-        return StorageService.instance.getPartitioner().decorateKey(type.fromString(key));
+        return LocatorConfig.instance.getPartitioner().decorateKey(type.fromString(key));
     }
 
     public static DecoratedKey dk(ByteBuffer key)
     {
-        return StorageService.instance.getPartitioner().decorateKey(key);
+        return LocatorConfig.instance.getPartitioner().decorateKey(key);
     }
 
     public static RowPosition rp(String key)
     {
-        return rp(key, StorageService.instance.getPartitioner());
+        return rp(key, LocatorConfig.instance.getPartitioner());
     }
 
     public static RowPosition rp(String key, IPartitioner partitioner)
@@ -126,22 +127,22 @@ public class Util
 
     public static Token token(String key)
     {
-        return StorageService.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key));
+        return LocatorConfig.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key));
     }
 
     public static Range<RowPosition> range(String left, String right)
     {
-        return new Range<RowPosition>(rp(left), rp(right), StorageService.instance.getPartitioner());
+        return new Range<RowPosition>(rp(left), rp(right), LocatorConfig.instance.getPartitioner());
     }
 
     public static Range<RowPosition> range(IPartitioner p, String left, String right)
     {
-        return new Range<RowPosition>(rp(left, p), rp(right, p), StorageService.instance.getPartitioner());
+        return new Range<RowPosition>(rp(left, p), rp(right, p), LocatorConfig.instance.getPartitioner());
     }
 
     public static Bounds<RowPosition> bounds(String left, String right)
     {
-        return new Bounds<RowPosition>(rp(left), rp(right), StorageService.instance.getPartitioner());
+        return new Bounds<RowPosition>(rp(left), rp(right), LocatorConfig.instance.getPartitioner());
     }
 
     public static void addMutation(Mutation rm, String columnFamilyName, String superColumnName, long columnName, String value, long timestamp)
@@ -181,8 +182,8 @@ public class Util
                                ? new IdentityQueryFilter()
                                : new SliceQueryFilter(SuperColumns.startOf(superColumn), SuperColumns.endOf(superColumn), false, Integer.MAX_VALUE, databaseDescriptor, tracing);
 
-        Token min = StorageService.instance.getPartitioner().getMinimumToken();
-        return cfs.getRangeSlice(new Bounds<Token>(min, min, StorageService.instance.getPartitioner()).toRowBounds(), null, filter, 10000);
+        Token min = LocatorConfig.instance.getPartitioner().getMinimumToken();
+        return cfs.getRangeSlice(new Bounds<Token>(min, min, LocatorConfig.instance.getPartitioner()).toRowBounds(), null, filter, 10000);
     }
 
     /**
@@ -274,7 +275,7 @@ public class Util
 
         // check that all nodes are in token metadata
         for (int i=0; i<endpointTokens.size(); ++i)
-            assertTrue(ss.getTokenMetadata().isMember(hosts.get(i)));
+            assertTrue(LocatorConfig.instance.getTokenMetadata().isMember(hosts.get(i)));
     }
 
     public static Future<?> compactAll(ColumnFamilyStore cfs, int gcBefore)

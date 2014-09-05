@@ -20,6 +20,7 @@ package org.apache.cassandra.thrift;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +39,6 @@ import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.serializers.MarshalException;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -517,7 +517,7 @@ public class ThriftValidation
         if (range.start_token != null && range.end_key != null)
             throw new org.apache.cassandra.exceptions.InvalidRequestException("start token + end key is not a supported key range");
 
-        IPartitioner p = StorageService.instance.getPartitioner();
+        IPartitioner p = LocatorConfig.instance.getPartitioner();
 
         if (range.start_key != null && range.end_key != null)
         {

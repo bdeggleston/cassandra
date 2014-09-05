@@ -27,6 +27,7 @@ import java.util.Map;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -38,7 +39,6 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.gms.IFailureDetectionEventListener;
 import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.locator.TokenMetadata;
-import org.apache.cassandra.service.StorageService;
 
 import static org.junit.Assert.*;
 
@@ -69,13 +69,12 @@ public class BootStrapperTest
 
     private RangeStreamer testSourceTargetComputation(String keyspaceName, int numOldNodes, int replicationFactor) throws UnknownHostException
     {
-        StorageService ss = StorageService.instance;
 
         generateFakeEndpoints(numOldNodes);
-        Token myToken = StorageService.instance.getPartitioner().getRandomToken();
+        Token myToken = LocatorConfig.instance.getPartitioner().getRandomToken();
         InetAddress myEndpoint = InetAddress.getByName("127.0.0.1");
 
-        TokenMetadata tmd = ss.getTokenMetadata();
+        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         assertEquals(numOldNodes, tmd.sortedTokens().size());
         RangeStreamer s = new RangeStreamer(tmd, myEndpoint, "Bootstrap");
         IFailureDetector mockFailureDetector = new IFailureDetector()
@@ -113,9 +112,9 @@ public class BootStrapperTest
 
     private void generateFakeEndpoints(int numOldNodes) throws UnknownHostException
     {
-        TokenMetadata tmd = StorageService.instance.getTokenMetadata();
+        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         tmd.clearUnsafe();
-        IPartitioner<?> p = StorageService.instance.getPartitioner();
+        IPartitioner<?> p = LocatorConfig.instance.getPartitioner();
 
         for (int i = 1; i <= numOldNodes; i++)
         {

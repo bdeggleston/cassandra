@@ -22,7 +22,6 @@ import java.util.Comparator;
 
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Token;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 /**
@@ -104,7 +103,7 @@ public abstract class DecoratedKey implements RowPosition
     public boolean isMinimum()
     {
         // A DecoratedKey can never be the minimum position on the ring
-        //return isMinimum(StorageService.instance.getPartitioner());
+        //return isMinimum(LocatorConfig.instance.getPartitioner());
         return false;
     }
 

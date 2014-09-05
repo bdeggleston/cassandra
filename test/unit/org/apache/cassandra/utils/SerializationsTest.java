@@ -20,6 +20,7 @@ package org.apache.cassandra.utils;
 
 import org.apache.cassandra.AbstractSerializationsTester;
 import org.apache.cassandra.io.util.DataOutputStreamAndChannel;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
 
 import org.junit.Test;
@@ -35,7 +36,7 @@ public class SerializationsTest extends AbstractSerializationsTester
     {
         IFilter bf = FilterFactory.getFilter(1000000, 0.0001, offheap);
         for (int i = 0; i < 100; i++)
-            bf.add(StorageService.instance.getPartitioner().getTokenFactory().toByteArray(StorageService.instance.getPartitioner().getRandomToken()));
+            bf.add(LocatorConfig.instance.getPartitioner().getTokenFactory().toByteArray(LocatorConfig.instance.getPartitioner().getRandomToken()));
         DataOutputStreamAndChannel out = getOutput("utils.BloomFilter.bin");
         FilterFactory.serialize(bf, out);
         out.close();

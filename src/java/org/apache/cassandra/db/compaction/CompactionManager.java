@@ -54,6 +54,7 @@ import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.RateLimiter;
 
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -341,7 +342,7 @@ public class CompactionManager implements CompactionManagerMBean
     {
         assert !cfStore.isIndex();
         Keyspace keyspace = cfStore.keyspace;
-        final Collection<Range<Token>> ranges = StorageService.instance.getLocalRanges(keyspace.getName());
+        final Collection<Range<Token>> ranges = LocatorConfig.instance.getLocalRanges(keyspace.getName());
         if (ranges.isEmpty())
         {
             logger.info("Cleanup cannot run before a node has joined the ring");
@@ -652,7 +653,7 @@ public class CompactionManager implements CompactionManagerMBean
     {
         assert !cfs.isIndex();
 
-        if (!hasIndexes && !new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), StorageService.instance.getPartitioner()).intersects(ranges))
+        if (!hasIndexes && !new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), LocatorConfig.instance.getPartitioner()).intersects(ranges))
         {
             cfs.getDataTracker().markCompactedSSTablesReplaced(Arrays.asList(sstable), Collections.<SSTableReader>emptyList(), OperationType.CLEANUP);
             return;

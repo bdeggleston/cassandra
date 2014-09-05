@@ -36,7 +36,6 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.gms.FailureDetector;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.BiMultiValMap;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.SortedBiMultiValMap;
@@ -625,7 +624,7 @@ public class TokenMetadata
     {
         Collection<Range<Token>> ranges = new ArrayList<Range<Token>>(tokens.size());
         for (Token right : tokens)
-            ranges.add(new Range<Token>(getPredecessor(right), right, StorageService.instance.getPartitioner()));
+            ranges.add(new Range<Token>(getPredecessor(right), right, LocatorConfig.instance.getPartitioner()));
         return ranges;
     }
 
@@ -1077,7 +1076,7 @@ public class TokenMetadata
      */
     public Topology getTopology()
     {
-        assert this != StorageService.instance.getTokenMetadata();
+        assert this != LocatorConfig.instance.getTokenMetadata();
         return topology;
     }
 
