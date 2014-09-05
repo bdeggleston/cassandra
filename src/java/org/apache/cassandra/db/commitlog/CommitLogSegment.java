@@ -63,6 +63,7 @@ public class CommitLogSegment
     private final static AtomicInteger nextId = new AtomicInteger(1);
     static
     {
+        // TODO: move to CommitLog
         long maxId = Long.MIN_VALUE;
         for (File file : new File(DatabaseDescriptor.instance.getCommitLogLocation()).listFiles())
         {
@@ -114,9 +115,9 @@ public class CommitLogSegment
     /**
      * @return a newly minted segment file
      */
-    static CommitLogSegment freshSegment()
+    static CommitLogSegment freshSegment(DatabaseDescriptor databaseDescriptor, Schema schema, CommitLog commitLog)
     {
-        return new CommitLogSegment(null);
+        return new CommitLogSegment(null, databaseDescriptor, schema, commitLog);
     }
 
     static long getNextId()
@@ -124,16 +125,24 @@ public class CommitLogSegment
         return idBase + nextId.getAndIncrement();
     }
 
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+    private final CommitLog commitLog;
+
     /**
      * Constructs a new segment file.
      *
      * @param filePath  if not null, recycles the existing file by renaming it and truncating it to CommitLog.SEGMENT_SIZE.
      */
-    CommitLogSegment(String filePath)
+    CommitLogSegment(String filePath, DatabaseDescriptor databaseDescriptor, Schema schema, CommitLog commitLog)
     {
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.commitLog = commitLog;
+
         id = getNextId();
         descriptor = new CommitLogDescriptor(id);
-        logFile = new File(DatabaseDescriptor.instance.getCommitLogLocation(), descriptor.fileName());
+        logFile = new File(databaseDescriptor.getCommitLogLocation(), descriptor.fileName());
         boolean isCreating = true;
 
         try
@@ -160,10 +169,10 @@ public class CommitLogSegment
             // Map the segment, extending or truncating it to the standard segment size.
             // (We may have restarted after a segment size configuration change, leaving "incorrectly"
             // sized segments on disk.)
-            logFileAccessor.setLength(DatabaseDescriptor.instance.getCommitLogSegmentSize());
+            logFileAccessor.setLength(databaseDescriptor.getCommitLogSegmentSize());
             fd = CLibrary.getfd(logFileAccessor.getFD());
 
-            buffer = logFileAccessor.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, DatabaseDescriptor.instance.getCommitLogSegmentSize());
+            buffer = logFileAccessor.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, databaseDescriptor.getCommitLogSegmentSize());
             // write the header
             CommitLogDescriptor.writeHeader(buffer, descriptor);
             // mark the initial sync marker as uninitialised
@@ -362,7 +371,7 @@ public class CommitLogSegment
 
         close();
 
-        return new CommitLogSegment(getPath());
+        return new CommitLogSegment(getPath(), databaseDescriptor, schema, commitLog);
     }
 
     /**
@@ -551,7 +560,7 @@ public class CommitLogSegment
         StringBuilder sb = new StringBuilder();
         for (UUID cfId : getDirtyCFIDs())
         {
-            CFMetaData m = Schema.instance.getCFMetaData(cfId);
+            CFMetaData m = schema.getCFMetaData(cfId);
             sb.append(m == null ? "<deleted>" : m.cfName).append(" (").append(cfId).append("), ");
         }
         return sb.toString();
@@ -615,7 +624,7 @@ public class CommitLogSegment
         {
             while (segment.lastSyncedOffset < position)
             {
-                WaitQueue.Signal signal = segment.syncComplete.register(CommitLog.instance.metrics.waitingOnCommit.time());
+                WaitQueue.Signal signal = segment.syncComplete.register(segment.commitLog.metrics.waitingOnCommit.time());
                 if (segment.lastSyncedOffset < position)
                     signal.awaitUninterruptibly();
                 else

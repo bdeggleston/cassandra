@@ -116,7 +116,7 @@ public class CommitLogSegmentManager
                                 logger.debug("No segments in reserve; creating a fresh one");
                                 size.addAndGet(DatabaseDescriptor.instance.getCommitLogSegmentSize());
                                 // TODO : some error handling in case we fail to create a new segment
-                                availableSegments.add(CommitLogSegment.freshSegment());
+                                availableSegments.add(CommitLogSegment.freshSegment(DatabaseDescriptor.instance, Schema.instance, CommitLog.instance));
                                 hasAvailableSegments.signalAll();
                             }
 
@@ -394,7 +394,7 @@ public class CommitLogSegmentManager
         {
             public CommitLogSegment call()
             {
-                return new CommitLogSegment(file.getPath());
+                return new CommitLogSegment(file.getPath(), DatabaseDescriptor.instance, Schema.instance, CommitLog.instance);
             }
         });
     }
