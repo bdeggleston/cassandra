@@ -143,6 +143,10 @@ public abstract class AbstractCommitLogService
         };
 
         thread = new Thread(runnable, name);
+    }
+
+    void start()
+    {
         thread.start();
     }
 

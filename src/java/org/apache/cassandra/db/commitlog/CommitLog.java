@@ -25,6 +25,7 @@ import java.util.*;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import org.apache.cassandra.config.Schema;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +64,7 @@ public class CommitLog implements CommitLogMBean
     {
         DatabaseDescriptor.instance.createAllDirectories();
 
-        allocator = new CommitLogSegmentManager();
+        allocator = new CommitLogSegmentManager(DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, this);
 
         executor = DatabaseDescriptor.instance.getCommitLogSync() == Config.CommitLogSync.batch
                  ? new BatchCommitLogService(this, DatabaseDescriptor.instance)
@@ -81,6 +82,8 @@ public class CommitLog implements CommitLogMBean
 
         // register metrics
         metrics = new CommitLogMetrics(executor, allocator);
+        allocator.start();
+        executor.start();
     }
 
     /**

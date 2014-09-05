@@ -96,8 +96,18 @@ public class CommitLogSegmentManager
     private final Thread managerThread;
     private volatile boolean run = true;
 
-    public CommitLogSegmentManager()
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+    private final KeyspaceManager keyspaceManager;
+    private final CommitLog commitLog;
+
+    public CommitLogSegmentManager(DatabaseDescriptor databaseDescriptor1, Schema schema1, KeyspaceManager keyspaceManager1, CommitLog commitLog1)
     {
+        this.databaseDescriptor = databaseDescriptor1;
+        this.schema = schema1;
+        this.keyspaceManager = keyspaceManager1;
+        this.commitLog = commitLog1;
+
         // The run loop for the manager thread
         Runnable runnable = new WrappedRunnable()
         {
@@ -114,9 +124,9 @@ public class CommitLogSegmentManager
                             if (availableSegments.isEmpty() && (activeSegments.isEmpty() || createReserveSegments))
                             {
                                 logger.debug("No segments in reserve; creating a fresh one");
-                                size.addAndGet(DatabaseDescriptor.instance.getCommitLogSegmentSize());
+                                size.addAndGet(databaseDescriptor.getCommitLogSegmentSize());
                                 // TODO : some error handling in case we fail to create a new segment
-                                availableSegments.add(CommitLogSegment.freshSegment(DatabaseDescriptor.instance, Schema.instance, CommitLog.instance));
+                                availableSegments.add(CommitLogSegment.freshSegment(databaseDescriptor, schema, commitLog));
                                 hasAvailableSegments.signalAll();
                             }
 
@@ -131,7 +141,7 @@ public class CommitLogSegmentManager
                                     if (segment == allocatingFrom)
                                         break;
                                     segmentsToRecycle.add(segment);
-                                    spaceToReclaim += DatabaseDescriptor.instance.getCommitLogSegmentSize();
+                                    spaceToReclaim += databaseDescriptor.getCommitLogSegmentSize();
                                     if (spaceToReclaim + unused >= 0)
                                         break;
                                 }
@@ -160,7 +170,7 @@ public class CommitLogSegmentManager
                     }
                     catch (Throwable t)
                     {
-                        if (!CommitLog.instance.handleCommitError("Failed managing commit log segments", t))
+                        if (!commitLog.handleCommitError("Failed managing commit log segments", t))
                             return;
                         // sleep some arbitrary period to avoid spamming CL
                         Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
@@ -170,6 +180,10 @@ public class CommitLogSegmentManager
         };
 
         managerThread = new Thread(runnable, "COMMIT-LOG-ALLOCATOR");
+    }
+
+    void start()
+    {
         managerThread.start();
     }
 
@@ -234,19 +248,19 @@ public class CommitLogSegmentManager
                 {
                     // Now we can run the user defined command just after switching to the new commit log.
                     // (Do this here instead of in the recycle call so we can get a head start on the archive.)
-                    CommitLog.instance.archiver.maybeArchive(old);
+                    commitLog.archiver.maybeArchive(old);
 
                     // ensure we don't continue to use the old file; not strictly necessary, but cleaner to enforce it
                     old.discardUnusedTail();
                 }
 
                 // request that the CL be synced out-of-band, as we've finished a segment
-                CommitLog.instance.requestExtraSync();
+                commitLog.requestExtraSync();
                 return;
             }
 
             // no more segments, so register to receive a signal when not empty
-            WaitQueue.Signal signal = hasAvailableSegments.register(CommitLog.instance.metrics.waitingOnSegmentAllocation.time());
+            WaitQueue.Signal signal = hasAvailableSegments.register(commitLog.metrics.waitingOnSegmentAllocation.time());
 
             // trigger the management thread; this must occur after registering
             // the signal to ensure we are woken by any new segment creation
@@ -304,7 +318,7 @@ public class CommitLogSegmentManager
         Set<Keyspace> keyspaces = new HashSet<>();
         for (UUID cfId : last.getDirtyCFIDs())
         {
-            ColumnFamilyStore cfs = Schema.instance.getColumnFamilyStoreInstance(cfId);
+            ColumnFamilyStore cfs = schema.getColumnFamilyStoreInstance(cfId);
             if (cfs != null)
                 keyspaces.add(cfs.keyspace);
         }
@@ -346,7 +360,7 @@ public class CommitLogSegmentManager
      */
     void recycleSegment(final CommitLogSegment segment)
     {
-        boolean archiveSuccess = CommitLog.instance.archiver.maybeWaitForArchiving(segment.getName());
+        boolean archiveSuccess = commitLog.archiver.maybeWaitForArchiving(segment.getName());
         activeSegments.remove(segment);
         if (!archiveSuccess)
         {
@@ -389,12 +403,12 @@ public class CommitLogSegmentManager
 
         logger.debug("Recycling {}", file);
         // this wasn't previously a live segment, so add it to the managed size when we make it live
-        size.addAndGet(DatabaseDescriptor.instance.getCommitLogSegmentSize());
+        size.addAndGet(databaseDescriptor.getCommitLogSegmentSize());
         segmentManagementTasks.add(new Callable<CommitLogSegment>()
         {
             public CommitLogSegment call()
             {
-                return new CommitLogSegment(file.getPath(), DatabaseDescriptor.instance, Schema.instance, CommitLog.instance);
+                return new CommitLogSegment(file.getPath(), databaseDescriptor, schema, commitLog);
             }
         });
     }
@@ -407,7 +421,7 @@ public class CommitLogSegmentManager
     private void discardSegment(final CommitLogSegment segment, final boolean deleteFile)
     {
         logger.debug("Segment {} is no longer active and will be deleted {}", segment, deleteFile ? "now" : "by the archive script");
-        size.addAndGet(-DatabaseDescriptor.instance.getCommitLogSegmentSize());
+        size.addAndGet(-databaseDescriptor.getCommitLogSegmentSize());
 
         segmentManagementTasks.add(new Callable<CommitLogSegment>()
         {
@@ -455,7 +469,7 @@ public class CommitLogSegmentManager
     {
         long currentSize = size.get();
         logger.debug("Total active commitlog segment space used is {}", currentSize);
-        return DatabaseDescriptor.instance.getTotalCommitlogSpaceInMB() * 1024 * 1024 - currentSize;
+        return databaseDescriptor.getTotalCommitlogSpaceInMB() * 1024 * 1024 - currentSize;
     }
 
     /**
@@ -486,7 +500,7 @@ public class CommitLogSegmentManager
         {
             for (UUID dirtyCFId : segment.getDirtyCFIDs())
             {
-                Pair<String,String> pair = Schema.instance.getCF(dirtyCFId);
+                Pair<String,String> pair = schema.getCF(dirtyCFId);
                 if (pair == null)
                 {
                     // even though we remove the schema entry before a final flush when dropping a CF,
@@ -497,7 +511,7 @@ public class CommitLogSegmentManager
                 else if (!flushes.containsKey(dirtyCFId))
                 {
                     String keyspace = pair.left;
-                    final ColumnFamilyStore cfs = KeyspaceManager.instance.open(keyspace).getColumnFamilyStore(dirtyCFId);
+                    final ColumnFamilyStore cfs = keyspaceManager.open(keyspace).getColumnFamilyStore(dirtyCFId);
                     // can safely call forceFlush here as we will only ever block (briefly) for other attempts to flush,
                     // no deadlock possibility since switchLock removal
                     flushes.put(dirtyCFId, force ? cfs.forceFlush() : cfs.forceFlush(maxReplayPosition));
