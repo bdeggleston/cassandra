@@ -740,7 +740,7 @@ dropKeyspaceStatement returns [DropKeyspaceStatement ksp]
  */
 dropTableStatement returns [DropTableStatement stmt]
     @init { boolean ifExists = false; }
-    : K_DROP K_COLUMNFAMILY (K_IF K_EXISTS { ifExists = true; } )? cf=columnFamilyName { $stmt = new DropTableStatement(cf, ifExists); }
+    : K_DROP K_COLUMNFAMILY (K_IF K_EXISTS { ifExists = true; } )? cf=columnFamilyName { $stmt = new DropTableStatement(cf, ifExists, MigrationManager.instance); }
     ;
 
 /**

@@ -29,11 +29,13 @@ import org.apache.cassandra.transport.Event;
 public class DropTableStatement extends SchemaAlteringStatement
 {
     private final boolean ifExists;
+    private final MigrationManager migrationManager;
 
-    public DropTableStatement(CFName name, boolean ifExists)
+    public DropTableStatement(CFName name, boolean ifExists, MigrationManager migrationManager)
     {
         super(name);
         this.ifExists = ifExists;
+        this.migrationManager = migrationManager;
     }
 
     public void checkAccess(ClientState state) throws UnauthorizedException, InvalidRequestException
@@ -58,7 +60,7 @@ public class DropTableStatement extends SchemaAlteringStatement
     {
         try
         {
-            MigrationManager.instance.announceColumnFamilyDrop(keyspace(), columnFamily(), isLocalOnly);
+            migrationManager.announceColumnFamilyDrop(keyspace(), columnFamily(), isLocalOnly);
             return true;
         }
         catch (ConfigurationException e)
