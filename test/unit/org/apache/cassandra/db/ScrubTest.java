@@ -138,7 +138,7 @@ public class ScrubTest
         file.close();
 
         // with skipCorrupted == false, the scrub is expected to fail
-        Scrubber scrubber = new Scrubber(cfs, sstable, false, false);
+        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, false, false);
         try
         {
             scrubber.scrub();
@@ -147,7 +147,7 @@ public class ScrubTest
         catch (IOError err) {}
 
         // with skipCorrupted == true, the corrupt row will be skipped
-        scrubber = new Scrubber(cfs, sstable, true, false);
+        scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, true, false);
         scrubber.scrub();
         scrubber.close();
         assertEquals(1, cfs.getSSTables().size());
@@ -252,7 +252,7 @@ public class ScrubTest
         components.add(Component.TOC);
         SSTableReader sstable = SSTableReader.openNoValidation(desc, components, metadata);
 
-        Scrubber scrubber = new Scrubber(cfs, sstable, false, true);
+        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, false, true);
         scrubber.scrub();
 
         cfs.loadNewSSTables();

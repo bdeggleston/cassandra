@@ -575,7 +575,7 @@ public class CompactionManager implements CompactionManagerMBean
 
     private void scrubOne(ColumnFamilyStore cfs, SSTableReader sstable, boolean skipCorrupted) throws IOException
     {
-        Scrubber scrubber = new Scrubber(cfs, sstable, skipCorrupted, false);
+        Scrubber scrubber = new Scrubber(cfs, sstable, this, skipCorrupted, false);
 
         CompactionInfo.Holder scrubInfo = scrubber.getScrubInfo();
         metrics.beginCompaction(scrubInfo);

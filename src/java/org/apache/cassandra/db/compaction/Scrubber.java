@@ -66,12 +66,13 @@ public class Scrubber implements Closeable
     };
     private final SortedSet<Row> outOfOrderRows = new TreeSet<>(rowComparator);
 
-    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, boolean skipCorrupted, boolean isOffline) throws IOException
+
+    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, CompactionManager compactionManager, boolean skipCorrupted, boolean isOffline) throws IOException
     {
-        this(cfs, sstable, skipCorrupted, new OutputHandler.LogOutput(), isOffline);
+        this(cfs, sstable, compactionManager, skipCorrupted, new OutputHandler.LogOutput(), isOffline);
     }
 
-    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, boolean skipCorrupted, OutputHandler outputHandler, boolean isOffline) throws IOException
+    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, CompactionManager compactionManager, boolean skipCorrupted, OutputHandler outputHandler, boolean isOffline) throws IOException
     {
         this.cfs = cfs;
         this.sstable = sstable;
@@ -98,7 +99,7 @@ public class Scrubber implements Closeable
         // "ahead" of the data file.)
         this.dataFile = isOffline
                         ? sstable.openDataReader()
-                        : sstable.openDataReader(CompactionManager.instance.getRateLimiter());
+                        : sstable.openDataReader(compactionManager.getRateLimiter());
         this.indexFile = RandomAccessReader.open(new File(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX)));
         this.scrubInfo = new ScrubInfo(dataFile, sstable);
     }

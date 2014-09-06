@@ -22,6 +22,7 @@ import java.io.File;
 import java.util.*;
 
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -108,7 +109,7 @@ public class StandaloneScrubber
                 {
                     try
                     {
-                        Scrubber scrubber = new Scrubber(cfs, sstable, options.skipCorrupted, handler, true);
+                        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, options.skipCorrupted, handler, true);
                         try
                         {
                             scrubber.scrub();
