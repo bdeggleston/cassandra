@@ -32,11 +32,14 @@ public class DropKeyspaceStatement extends SchemaAlteringStatement
     private final String keyspace;
     private final boolean ifExists;
 
-    public DropKeyspaceStatement(String keyspace, boolean ifExists)
+    private final MigrationManager migrationManager;
+
+    public DropKeyspaceStatement(String keyspace, boolean ifExists, MigrationManager migrationManager)
     {
         super();
         this.keyspace = keyspace;
         this.ifExists = ifExists;
+        this.migrationManager = migrationManager;
     }
 
     public void checkAccess(ClientState state) throws UnauthorizedException, InvalidRequestException
@@ -59,7 +62,7 @@ public class DropKeyspaceStatement extends SchemaAlteringStatement
     {
         try
         {
-            MigrationManager.instance.announceKeyspaceDrop(keyspace, isLocalOnly);
+            migrationManager.announceKeyspaceDrop(keyspace, isLocalOnly);
             return true;
         }
         catch(ConfigurationException e)

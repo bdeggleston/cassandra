@@ -732,7 +732,7 @@ alterTypeStatement returns [AlterTypeStatement expr]
  */
 dropKeyspaceStatement returns [DropKeyspaceStatement ksp]
     @init { boolean ifExists = false; }
-    : K_DROP K_KEYSPACE (K_IF K_EXISTS { ifExists = true; } )? ks=keyspaceName { $ksp = new DropKeyspaceStatement(ks, ifExists); }
+    : K_DROP K_KEYSPACE (K_IF K_EXISTS { ifExists = true; } )? ks=keyspaceName { $ksp = new DropKeyspaceStatement(ks, ifExists, MigrationManager.instance); }
     ;
 
 /**
