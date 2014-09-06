@@ -807,7 +807,7 @@ dropIndexStatement returns [DropIndexStatement expr]
   * TRUNCATE <CF>;
   */
 truncateStatement returns [TruncateStatement stmt]
-    : K_TRUNCATE cf=columnFamilyName { $stmt = new TruncateStatement(cf); }
+    : K_TRUNCATE cf=columnFamilyName { $stmt = new TruncateStatement(cf, StorageProxy.instance); }
     ;
 
 /**

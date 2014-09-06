@@ -31,9 +31,12 @@ import org.apache.cassandra.thrift.ThriftValidation;
 
 public class TruncateStatement extends CFStatement implements CQLStatement
 {
-    public TruncateStatement(CFName name)
+    private final StorageProxy storageProxy;
+
+    public TruncateStatement(CFName name, StorageProxy storageProxy)
     {
         super(name);
+        this.storageProxy = storageProxy;
     }
 
     public int getBoundTerms()
@@ -60,7 +63,7 @@ public class TruncateStatement extends CFStatement implements CQLStatement
     {
         try
         {
-            StorageProxy.instance.truncateBlocking(keyspace(), columnFamily());
+            storageProxy.truncateBlocking(keyspace(), columnFamily());
         }
         catch (UnavailableException e)
         {
