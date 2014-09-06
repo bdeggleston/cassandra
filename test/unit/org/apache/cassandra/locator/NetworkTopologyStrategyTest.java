@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.cassandra.gms.FailureDetector;
 import org.junit.Assert;
 
 import org.junit.BeforeClass;
@@ -60,7 +61,7 @@ public class NetworkTopologyStrategyTest
     {
         IEndpointSnitch snitch = new PropertyFileSnitch();
         DatabaseDescriptor.instance.setEndpointSnitch(snitch);
-        TokenMetadata metadata = new TokenMetadata();
+        TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
         createDummyTokens(metadata, true);
 
         Map<String, String> configOptions = new HashMap<String, String>();
@@ -84,7 +85,7 @@ public class NetworkTopologyStrategyTest
     {
         IEndpointSnitch snitch = new PropertyFileSnitch();
         DatabaseDescriptor.instance.setEndpointSnitch(snitch);
-        TokenMetadata metadata = new TokenMetadata();
+        TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
         createDummyTokens(metadata, false);
 
         Map<String, String> configOptions = new HashMap<String, String>();
@@ -112,7 +113,7 @@ public class NetworkTopologyStrategyTest
 
         IEndpointSnitch snitch = new RackInferringSnitch();
         DatabaseDescriptor.instance.setEndpointSnitch(snitch);
-        TokenMetadata metadata = new TokenMetadata();
+        TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
         Map<String, String> configOptions = new HashMap<String, String>();
         Multimap<InetAddress, Token> tokens = HashMultimap.create();
 

@@ -24,7 +24,7 @@ public class LocatorConfig
 
     public LocatorConfig()
     {
-        this.tokenMetadata = new TokenMetadata();
+        this.tokenMetadata = new TokenMetadata(FailureDetector.instance, this);
     }
 
     public IPartitioner getPartitioner()
@@ -164,5 +164,9 @@ public class LocatorConfig
         return liveEps;
     }
 
+    public IEndpointSnitch getEndpointSnitch()
+    {
+        return DatabaseDescriptor.instance.getEndpointSnitch();
+    }
 
 }

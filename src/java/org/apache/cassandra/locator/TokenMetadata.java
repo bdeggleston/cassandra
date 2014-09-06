@@ -28,11 +28,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.google.common.collect.*;
 import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.gms.FailureDetector;
@@ -104,15 +104,22 @@ public class TokenMetadata
     // signals replication strategies that nodes have joined or left the ring and they need to recompute ownership
     private volatile long ringVersion = 0;
 
-    public TokenMetadata()
+    private final IFailureDetector failureDetector;
+    private final LocatorConfig locatorConfig;
+
+    public TokenMetadata(IFailureDetector failureDetector, LocatorConfig locatorConfig)
     {
-        this(SortedBiMultiValMap.<Token, InetAddress>create(null, inetaddressCmp),
+        this(failureDetector,
+             locatorConfig,
+             SortedBiMultiValMap.<Token, InetAddress>create(null, inetaddressCmp),
              HashBiMap.<InetAddress, UUID>create(),
-             new Topology());
+             new Topology(locatorConfig.getEndpointSnitch()));
     }
 
-    private TokenMetadata(BiMultiValMap<Token, InetAddress> tokenToEndpointMap, BiMap<InetAddress, UUID> endpointsMap, Topology topology)
+    private TokenMetadata(IFailureDetector failureDetector, LocatorConfig locatorConfig, BiMultiValMap<Token, InetAddress> tokenToEndpointMap, BiMap<InetAddress, UUID> endpointsMap, Topology topology)
     {
+        this.failureDetector = failureDetector;
+        this.locatorConfig = locatorConfig;
         this.tokenToEndpointMap = tokenToEndpointMap;
         this.topology = topology;
         endpointToHostIdMap = endpointsMap;
@@ -519,9 +526,11 @@ public class TokenMetadata
         lock.readLock().lock();
         try
         {
-            return new TokenMetadata(SortedBiMultiValMap.<Token, InetAddress>create(tokenToEndpointMap, null, inetaddressCmp),
+            return new TokenMetadata(failureDetector,
+                                     locatorConfig,
+                                     SortedBiMultiValMap.<Token, InetAddress>create(tokenToEndpointMap, null, inetaddressCmp),
                                      HashBiMap.create(endpointToHostIdMap),
-                                     new Topology(topology));
+                                     new Topology(topology, locatorConfig.getEndpointSnitch()));
         }
         finally
         {
@@ -1104,11 +1113,14 @@ public class TokenMetadata
         /** reverse-lookup map for endpoint to current known dc/rack assignment */
         private final Map<InetAddress, Pair<String, String>> currentLocations;
 
-        protected Topology()
+        private final IEndpointSnitch endpointSnitch;
+
+        protected Topology(IEndpointSnitch endpointSnitch)
         {
             dcEndpoints = HashMultimap.create();
             dcRacks = new HashMap<String, Multimap<String, InetAddress>>();
             currentLocations = new HashMap<InetAddress, Pair<String, String>>();
+            this.endpointSnitch = endpointSnitch;
         }
 
         protected void clear()
@@ -1121,13 +1133,14 @@ public class TokenMetadata
         /**
          * construct deep-copy of other
          */
-        protected Topology(Topology other)
+        protected Topology(Topology other, IEndpointSnitch endpointSnitch)
         {
             dcEndpoints = HashMultimap.create(other.dcEndpoints);
             dcRacks = new HashMap<String, Multimap<String, InetAddress>>();
             for (String dc : other.dcRacks.keySet())
                 dcRacks.put(dc, HashMultimap.create(other.dcRacks.get(dc)));
             currentLocations = new HashMap<InetAddress, Pair<String, String>>(other.currentLocations);
+            this.endpointSnitch = endpointSnitch;
         }
 
         /**
@@ -1135,9 +1148,8 @@ public class TokenMetadata
          */
         protected void addEndpoint(InetAddress ep)
         {
-            IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
-            String dc = snitch.getDatacenter(ep);
-            String rack = snitch.getRack(ep);
+            String dc = endpointSnitch.getDatacenter(ep);
+            String rack = endpointSnitch.getRack(ep);
             Pair<String, String> current = currentLocations.get(ep);
             if (current != null)
             {

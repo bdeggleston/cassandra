@@ -23,6 +23,7 @@ import java.net.InetAddress;
 import java.util.*;
 
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.gms.FailureDetector;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -51,7 +52,7 @@ public class ReplicationStrategyEndpointCacheTest
 
     public void setup(Class stratClass, Map<String, String> strategyOptions) throws Exception
     {
-        tmd = new TokenMetadata();
+        tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
         searchToken = new BigIntegerToken(String.valueOf(15));
 
         strategy = getStrategyWithNewTokenMetadata(KeyspaceManager.instance.open(KEYSPACE).getReplicationStrategy(), tmd);

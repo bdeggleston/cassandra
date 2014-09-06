@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.service.StorageService;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -94,7 +95,7 @@ public class SimpleStrategyTest
         AbstractReplicationStrategy strategy;
         for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
         {
-            tmd = new TokenMetadata();
+            tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
             strategy = getStrategy(keyspaceName, tmd);
             List<InetAddress> hosts = new ArrayList<InetAddress>();
             for (int i = 0; i < endpointTokens.length; i++)
@@ -121,7 +122,7 @@ public class SimpleStrategyTest
     {
         // the token difference will be RING_SIZE * 2.
         final int RING_SIZE = 10;
-        TokenMetadata tmd = new TokenMetadata();
+        TokenMetadata tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
         TokenMetadata oldTmd = StorageServiceAccessor.setTokenMetadata(tmd, StorageService.instance);
 
         Token[] endpointTokens = new Token[RING_SIZE];

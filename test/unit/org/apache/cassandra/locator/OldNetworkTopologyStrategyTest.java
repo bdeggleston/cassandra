@@ -35,6 +35,7 @@ import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.dht.BigIntegerToken;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.Pair;
 import org.junit.Before;
@@ -50,7 +51,7 @@ public class OldNetworkTopologyStrategyTest
     public void init()
     {
         keyTokens = new ArrayList<Token>();
-        tmd = new TokenMetadata();
+        tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
         expectedResults = new HashMap<String, ArrayList<InetAddress>>();
     }
 
@@ -326,7 +327,7 @@ public class OldNetworkTopologyStrategyTest
     private TokenMetadata initTokenMetadata(BigIntegerToken[] tokens)
             throws UnknownHostException
     {
-        TokenMetadata tokenMetadataCurrent = new TokenMetadata();
+        TokenMetadata tokenMetadataCurrent = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
 
         int lastIPPart = 1;
         for (BigIntegerToken token : tokens)
