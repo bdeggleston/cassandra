@@ -40,11 +40,16 @@ public class DropTriggerStatement extends SchemaAlteringStatement
 
     private final boolean ifExists;
 
-    public DropTriggerStatement(CFName name, String triggerName, boolean ifExists)
+    private final Schema schema;
+    private final MigrationManager migrationManager;
+
+    public DropTriggerStatement(CFName name, String triggerName, boolean ifExists, Schema schema, MigrationManager migrationManager)
     {
         super(name);
         this.triggerName = triggerName;
         this.ifExists = ifExists;
+        this.schema = schema;
+        this.migrationManager = migrationManager;
     }
 
     public void checkAccess(ClientState state) throws UnauthorizedException
@@ -59,11 +64,11 @@ public class DropTriggerStatement extends SchemaAlteringStatement
 
     public boolean announceMigration(boolean isLocalOnly) throws ConfigurationException, InvalidRequestException
     {
-        CFMetaData cfm = Schema.instance.getCFMetaData(keyspace(), columnFamily()).copy();
+        CFMetaData cfm = schema.getCFMetaData(keyspace(), columnFamily()).copy();
         if (cfm.removeTrigger(triggerName))
         {
             logger.info("Dropping trigger with name {}", triggerName);
-            MigrationManager.instance.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
+            migrationManager.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
             return true;
         }
         if (!ifExists)
