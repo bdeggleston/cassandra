@@ -34,12 +34,15 @@ public class CreateUserStatement extends AuthenticationStatement
     private final boolean superuser;
     private final boolean ifNotExists;
 
-    public CreateUserStatement(String username, UserOptions opts, boolean superuser, boolean ifNotExists)
+    private final Auth auth;
+
+    public CreateUserStatement(String username, UserOptions opts, boolean superuser, boolean ifNotExists, Auth auth)
     {
         this.username = username;
         this.opts = opts;
         this.superuser = superuser;
         this.ifNotExists = ifNotExists;
+        this.auth = auth;
     }
 
     public void validate(ClientState state) throws RequestValidationException
@@ -52,24 +55,24 @@ public class CreateUserStatement extends AuthenticationStatement
         // validate login here before checkAccess to avoid leaking user existence to anonymous users.
         state.ensureNotAnonymous();
 
-        if (!ifNotExists && Auth.instance.isExistingUser(username))
+        if (!ifNotExists && auth.isExistingUser(username))
             throw new InvalidRequestException(String.format("User %s already exists", username));
     }
 
     public void checkAccess(ClientState state) throws UnauthorizedException
     {
-        if (!state.getUser().isSuper(Auth.instance))
+        if (!state.getUser().isSuper(auth))
             throw new UnauthorizedException("Only superusers are allowed to perform CREATE USER queries");
     }
 
     public ResultMessage execute(ClientState state) throws RequestValidationException, RequestExecutionException
     {
         // not rejected in validate()
-        if (ifNotExists && Auth.instance.isExistingUser(username))
+        if (ifNotExists && auth.isExistingUser(username))
             return null;
 
-        DatabaseDescriptor.instance.getAuthenticator().create(username, opts.getOptions());
-        Auth.instance.insertUser(username, superuser);
+        auth.getAuthenticator().create(username, opts.getOptions());
+        auth.insertUser(username, superuser);
         return null;
     }
 }

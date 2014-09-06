@@ -840,7 +840,7 @@ createUserStatement returns [CreateUserStatement stmt]
     : K_CREATE K_USER (K_IF K_NOT K_EXISTS { ifNotExists = true; })? username
       ( K_WITH userOptions[opts] )?
       ( K_SUPERUSER { superuser = true; } | K_NOSUPERUSER { superuser = false; } )?
-      { $stmt = new CreateUserStatement($username.text, opts, superuser, ifNotExists); }
+      { $stmt = new CreateUserStatement($username.text, opts, superuser, ifNotExists, Auth.instance); }
     ;
 
 /**
