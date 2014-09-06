@@ -34,10 +34,15 @@ public abstract class AlterTypeStatement extends SchemaAlteringStatement
 {
     protected final UTName name;
 
-    protected AlterTypeStatement(UTName name)
+    private final Schema schema;
+    private final MigrationManager migrationManager;
+
+    protected AlterTypeStatement(UTName name, Schema schema, MigrationManager migrationManager)
     {
         super();
         this.name = name;
+        this.schema = schema;
+        this.migrationManager = migrationManager;
     }
 
     @Override
@@ -52,19 +57,19 @@ public abstract class AlterTypeStatement extends SchemaAlteringStatement
 
     protected abstract UserType makeUpdatedType(UserType toUpdate) throws InvalidRequestException;
 
-    public static AlterTypeStatement addition(UTName name, ColumnIdentifier fieldName, CQL3Type.Raw type)
+    public static AlterTypeStatement addition(UTName name, ColumnIdentifier fieldName, CQL3Type.Raw type, Schema schema, MigrationManager migrationManager)
     {
-        return new AddOrAlter(name, true, fieldName, type);
+        return new AddOrAlter(name, true, fieldName, type, schema, migrationManager);
     }
 
-    public static AlterTypeStatement alter(UTName name, ColumnIdentifier fieldName, CQL3Type.Raw type)
+    public static AlterTypeStatement alter(UTName name, ColumnIdentifier fieldName, CQL3Type.Raw type, Schema schema, MigrationManager migrationManager)
     {
-        return new AddOrAlter(name, false, fieldName, type);
+        return new AddOrAlter(name, false, fieldName, type, schema, migrationManager);
     }
 
-    public static AlterTypeStatement renames(UTName name, Map<ColumnIdentifier, ColumnIdentifier> renames)
+    public static AlterTypeStatement renames(UTName name, Map<ColumnIdentifier, ColumnIdentifier> renames, Schema schema, MigrationManager migrationManager)
     {
-        return new Renames(name, renames);
+        return new Renames(name, renames, schema, migrationManager);
     }
 
     public void checkAccess(ClientState state) throws UnauthorizedException, InvalidRequestException
@@ -91,7 +96,7 @@ public abstract class AlterTypeStatement extends SchemaAlteringStatement
 
     public boolean announceMigration(boolean isLocalOnly) throws InvalidRequestException, ConfigurationException
     {
-        KSMetaData ksm = Schema.instance.getKSMetaData(name.getKeyspace());
+        KSMetaData ksm = schema.getKSMetaData(name.getKeyspace());
         if (ksm == null)
             throw new InvalidRequestException(String.format("Cannot alter type in unknown keyspace %s", name.getKeyspace()));
 
@@ -104,9 +109,9 @@ public abstract class AlterTypeStatement extends SchemaAlteringStatement
 
         // Now, we need to announce the type update to basically change it for new tables using this type,
         // but we also need to find all existing user types and CF using it and change them.
-        MigrationManager.instance.announceTypeUpdate(updated, isLocalOnly);
+        migrationManager.announceTypeUpdate(updated, isLocalOnly);
 
-        for (KSMetaData ksm2 : Schema.instance.getKeyspaceDefinitions())
+        for (KSMetaData ksm2 : schema.getKeyspaceDefinitions())
         {
             for (CFMetaData cfm : ksm2.cfMetaData().values())
             {
@@ -115,7 +120,7 @@ public abstract class AlterTypeStatement extends SchemaAlteringStatement
                 for (ColumnDefinition def : copy.allColumns())
                     modified |= updateDefinition(copy, def, toUpdate.keyspace, toUpdate.name, updated);
                 if (modified)
-                    MigrationManager.instance.announceColumnFamilyUpdate(copy, false, isLocalOnly);
+                    migrationManager.announceColumnFamilyUpdate(copy, false, isLocalOnly);
             }
 
             // Other user types potentially using the updated type
@@ -126,12 +131,12 @@ public abstract class AlterTypeStatement extends SchemaAlteringStatement
                 if (ut.keyspace.equals(toUpdate.keyspace) && ut.name.equals(toUpdate.name))
                 {
                     if (!ut.keyspace.equals(updated.keyspace) || !ut.name.equals(updated.name))
-                        MigrationManager.instance.announceTypeDrop(ut);
+                        migrationManager.announceTypeDrop(ut);
                     continue;
                 }
                 AbstractType<?> upd = updateWith(ut, toUpdate.keyspace, toUpdate.name, updated);
                 if (upd != null)
-                    MigrationManager.instance.announceTypeUpdate((UserType)upd, isLocalOnly);
+                    migrationManager.announceTypeUpdate((UserType)upd, isLocalOnly);
             }
         }
         return true;
@@ -263,9 +268,9 @@ public abstract class AlterTypeStatement extends SchemaAlteringStatement
         private final ColumnIdentifier fieldName;
         private final CQL3Type.Raw type;
 
-        public AddOrAlter(UTName name, boolean isAdd, ColumnIdentifier fieldName, CQL3Type.Raw type)
+        public AddOrAlter(UTName name, boolean isAdd, ColumnIdentifier fieldName, CQL3Type.Raw type, Schema schema, MigrationManager migrationManager)
         {
-            super(name);
+            super(name, schema, migrationManager);
             this.isAdd = isAdd;
             this.fieldName = fieldName;
             this.type = type;
@@ -314,9 +319,9 @@ public abstract class AlterTypeStatement extends SchemaAlteringStatement
     {
         private final Map<ColumnIdentifier, ColumnIdentifier> renames;
 
-        public Renames(UTName name, Map<ColumnIdentifier, ColumnIdentifier> renames)
+        public Renames(UTName name, Map<ColumnIdentifier, ColumnIdentifier> renames, Schema schema, MigrationManager migrationManager)
         {
-            super(name);
+            super(name, schema, migrationManager);
             this.renames = renames;
         }
 
