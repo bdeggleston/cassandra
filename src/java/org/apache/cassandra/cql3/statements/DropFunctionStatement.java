@@ -41,15 +41,19 @@ public final class DropFunctionStatement extends SchemaAlteringStatement
     private final List<CQL3Type.Raw> argRawTypes;
     private final boolean argsPresent;
 
+    private final MigrationManager migrationManager;
+
     public DropFunctionStatement(FunctionName functionName,
                                  List<CQL3Type.Raw> argRawTypes,
                                  boolean argsPresent,
-                                 boolean ifExists)
+                                 boolean ifExists,
+                                 MigrationManager migrationManager)
     {
         this.functionName = functionName;
         this.argRawTypes = argRawTypes;
         this.argsPresent = argsPresent;
         this.ifExists = ifExists;
+        this.migrationManager = migrationManager;
     }
 
     public void checkAccess(ClientState state) throws UnauthorizedException
@@ -129,7 +133,7 @@ public final class DropFunctionStatement extends SchemaAlteringStatement
             throw new InvalidRequestException(String.format("Cannot drop function '%s' because it is a " +
                                                             "native (built-in) function", functionName));
 
-        MigrationManager.instance.announceFunctionDrop((UDFunction)old, isLocalOnly);
+        migrationManager.announceFunctionDrop((UDFunction)old, isLocalOnly);
         return true;
     }
 }

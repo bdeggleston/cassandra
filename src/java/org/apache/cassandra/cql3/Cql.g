@@ -551,7 +551,7 @@ dropFunctionStatement returns [DropFunctionStatement expr]
         ')'
         { argsPresent = true; }
       )?
-      { $expr = new DropFunctionStatement(fn, argsTypes, argsPresent, ifExists); }
+      { $expr = new DropFunctionStatement(fn, argsTypes, argsPresent, ifExists, MigrationManager.instance); }
     ;
 
 /**
