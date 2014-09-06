@@ -58,7 +58,10 @@ options {
     import org.apache.cassandra.triggers.TriggerExecutor;
     import org.apache.cassandra.config.KSMetaDataFactory;
     import org.apache.cassandra.tracing.Tracing;
-
+    import org.apache.cassandra.service.StorageProxy;
+    import org.apache.cassandra.db.DBConfig;
+    import org.apache.cassandra.db.MutationFactory;
+    import org.apache.cassandra.db.CounterMutationFactory;
 }
 
 @members {
@@ -364,7 +367,13 @@ insertStatement returns [UpdateStatement.ParsedInsert expr]
                                                    attrs,
                                                    columnNames,
                                                    values,
-                                                   ifNotExists);
+                                                   ifNotExists,
+                                                   DatabaseDescriptor.instance,
+                                                   Tracing.instance,
+                                                   StorageProxy.instance,
+                                                   DBConfig.instance,
+                                                   MutationFactory.instance,
+                                                   CounterMutationFactory.instance);
       }
     ;
 
@@ -398,7 +407,13 @@ updateStatement returns [UpdateStatement.ParsedUpdate expr]
                                                   attrs,
                                                   operations,
                                                   wclause,
-                                                  conditions == null ? Collections.<Pair<ColumnIdentifier, ColumnCondition.Raw>>emptyList() : conditions);
+                                                  conditions == null ? Collections.<Pair<ColumnIdentifier, ColumnCondition.Raw>>emptyList() : conditions,
+                                                  DatabaseDescriptor.instance,
+                                                  Tracing.instance,
+                                                  StorageProxy.instance,
+                                                  DBConfig.instance,
+                                                  MutationFactory.instance,
+                                                  CounterMutationFactory.instance);
      }
     ;
 
@@ -432,7 +447,13 @@ deleteStatement returns [DeleteStatement.Parsed expr]
                                             columnDeletions,
                                             wclause,
                                             conditions == null ? Collections.<Pair<ColumnIdentifier, ColumnCondition.Raw>>emptyList() : conditions,
-                                            ifExists);
+                                            ifExists,
+                                            DatabaseDescriptor.instance,
+                                            Tracing.instance,
+                                            StorageProxy.instance,
+                                            DBConfig.instance,
+                                            MutationFactory.instance,
+                                            CounterMutationFactory.instance);
       }
     ;
 

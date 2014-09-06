@@ -20,12 +20,15 @@ package org.apache.cassandra.cql3.statements;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.exceptions.*;
+import org.apache.cassandra.service.StorageProxy;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.Pair;
 
 /**
@@ -33,9 +36,18 @@ import org.apache.cassandra.utils.Pair;
  */
 public class DeleteStatement extends ModificationStatement
 {
-    private DeleteStatement(StatementType type, int boundTerms, CFMetaData cfm, Attributes attrs)
+    private DeleteStatement(StatementType type,
+                            int boundTerms,
+                            CFMetaData cfm,
+                            Attributes attrs,
+                            DatabaseDescriptor databaseDescriptor,
+                            Tracing tracing,
+                            StorageProxy storageProxy,
+                            DBConfig dbConfig,
+                            MutationFactory mutationFactory,
+                            CounterMutationFactory counterMutationFactory)
     {
-        super(type, boundTerms, cfm, attrs);
+        super(type, boundTerms, cfm, attrs, databaseDescriptor, tracing, storageProxy, dbConfig, mutationFactory, counterMutationFactory);
     }
 
     public boolean requireFullClusteringKey()
@@ -89,21 +101,50 @@ public class DeleteStatement extends ModificationStatement
         private final List<Operation.RawDeletion> deletions;
         private final List<Relation> whereClause;
 
+        private final DatabaseDescriptor databaseDescriptor;
+        private final Tracing tracing;
+        private final StorageProxy storageProxy;
+        private final DBConfig dbConfig;
+        private final MutationFactory mutationFactory;
+        private final CounterMutationFactory counterMutationFactory;
+
         public Parsed(CFName name,
                       Attributes.Raw attrs,
                       List<Operation.RawDeletion> deletions,
                       List<Relation> whereClause,
                       List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions,
-                      boolean ifExists)
+                      boolean ifExists,
+                      DatabaseDescriptor databaseDescriptor,
+                      Tracing tracing,
+                      StorageProxy storageProxy,
+                      DBConfig dbConfig,
+                      MutationFactory mutationFactory,
+                      CounterMutationFactory counterMutationFactory)
         {
             super(name, attrs, conditions, false, ifExists);
             this.deletions = deletions;
             this.whereClause = whereClause;
+
+            this.databaseDescriptor = databaseDescriptor;
+            this.tracing = tracing;
+            this.storageProxy = storageProxy;
+            this.dbConfig = dbConfig;
+            this.mutationFactory = mutationFactory;
+            this.counterMutationFactory = counterMutationFactory;
         }
 
         protected ModificationStatement prepareInternal(CFMetaData cfm, VariableSpecifications boundNames, Attributes attrs) throws InvalidRequestException
         {
-            DeleteStatement stmt = new DeleteStatement(ModificationStatement.StatementType.DELETE, boundNames.size(), cfm, attrs);
+            DeleteStatement stmt = new DeleteStatement(ModificationStatement.StatementType.DELETE,
+                                                       boundNames.size(),
+                                                       cfm,
+                                                       attrs,
+                                                       databaseDescriptor,
+                                                       tracing,
+                                                       storageProxy,
+                                                       dbConfig,
+                                                       mutationFactory,
+                                                       counterMutationFactory);
 
             for (Operation.RawDeletion deletion : deletions)
             {

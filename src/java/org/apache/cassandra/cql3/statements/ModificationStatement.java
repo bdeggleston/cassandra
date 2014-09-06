@@ -80,12 +80,35 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         }
     };
 
-    public ModificationStatement(StatementType type, int boundTerms, CFMetaData cfm, Attributes attrs)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Tracing tracing;
+    private final StorageProxy storageProxy;
+    private final DBConfig dbConfig;
+    private final MutationFactory mutationFactory;
+    private final CounterMutationFactory counterMutationFactory;
+
+    protected ModificationStatement(StatementType type,
+                                    int boundTerms,
+                                    CFMetaData cfm,
+                                    Attributes attrs,
+                                    DatabaseDescriptor databaseDescriptor,
+                                    Tracing tracing,
+                                    StorageProxy storageProxy,
+                                    DBConfig dbConfig,
+                                    MutationFactory mutationFactory,
+                                    CounterMutationFactory counterMutationFactory)
     {
         this.type = type;
         this.boundTerms = boundTerms;
         this.cfm = cfm;
         this.attrs = attrs;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
+        this.storageProxy = storageProxy;
+        this.dbConfig = dbConfig;
+        this.mutationFactory = mutationFactory;
+        this.counterMutationFactory = counterMutationFactory;
     }
 
     public long measureForPreparedCache(MemoryMeter meter)
@@ -439,11 +462,11 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                                   key,
                                                   columnFamily(),
                                                   now,
-                                                  new SliceQueryFilter(slices, false, Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance)));
+                                                  new SliceQueryFilter(slices, false, Integer.MAX_VALUE, databaseDescriptor, tracing)));
 
         List<Row> rows = local
                        ? SelectStatement.readLocally(keyspace(), commands)
-                       : StorageProxy.instance.read(commands, cl);
+                       : storageProxy.read(commands, cl);
 
         Map<ByteBuffer, CQL3Row> map = new HashMap<ByteBuffer, CQL3Row>();
         for (Row row : rows)
@@ -495,7 +518,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 
         Collection<? extends IMutation> mutations = getMutations(options, false, options.getTimestamp(queryState));
         if (!mutations.isEmpty())
-            StorageProxy.instance.mutateWithTriggers(mutations, cl, false);
+            storageProxy.mutateWithTriggers(mutations, cl, false);
 
         return null;
     }
@@ -512,11 +535,11 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         long now = options.getTimestamp(queryState);
         Composite prefix = createClusteringPrefix(options);
 
-        CQL3CasRequest request = new CQL3CasRequest(cfm, key, false, DatabaseDescriptor.instance, DBConfig.instance, Tracing.instance);
+        CQL3CasRequest request = new CQL3CasRequest(cfm, key, false, databaseDescriptor, dbConfig, tracing);
         addConditions(prefix, request, options);
         request.addRowUpdate(prefix, this, options, now);
 
-        ColumnFamily result = StorageProxy.instance.cas(keyspace(),
+        ColumnFamily result = storageProxy.cas(keyspace(),
                                                columnFamily(),
                                                key,
                                                request,
@@ -658,11 +681,11 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         for (ByteBuffer key: keys)
         {
             ThriftValidation.validateKey(cfm, key);
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfm, DBConfig.instance);
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfm, dbConfig);
             addUpdateForKey(cf, key, clusteringPrefix, params);
-            Mutation mut = MutationFactory.instance.create(cfm.ksName, key, cf);
+            Mutation mut = mutationFactory.create(cfm.ksName, key, cf);
 
-            mutations.add(isCounter() ? CounterMutationFactory.instance.create(mut, options.getConsistency()) : mut);
+            mutations.add(isCounter() ? counterMutationFactory.create(mut, options.getConsistency()) : mut);
         }
         return mutations;
     }
