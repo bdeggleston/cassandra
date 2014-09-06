@@ -668,7 +668,7 @@ createTriggerStatement returns [CreateTriggerStatement expr]
 dropTriggerStatement returns [DropTriggerStatement expr]
      @init { boolean ifExists = false; }
     : K_DROP K_TRIGGER (K_IF K_EXISTS { ifExists = true; } )? (name=cident) K_ON cf=columnFamilyName
-      { $expr = new DropTriggerStatement(cf, name.toString(), ifExists); }
+      { $expr = new DropTriggerStatement(cf, name.toString(), ifExists, Schema.instance, MigrationManager.instance); }
     ;
 
 /**
@@ -748,7 +748,7 @@ dropTableStatement returns [DropTableStatement stmt]
  */
 dropTypeStatement returns [DropTypeStatement stmt]
     @init { boolean ifExists = false; }
-    : K_DROP K_TYPE (K_IF K_EXISTS { ifExists = true; } )? name=userTypeName { $stmt = new DropTypeStatement(name, ifExists); }
+    : K_DROP K_TYPE (K_IF K_EXISTS { ifExists = true; } )? name=userTypeName { $stmt = new DropTypeStatement(name, ifExists, Schema.init, MigrationManager.instance); }
     ;
 
 /**

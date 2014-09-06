@@ -30,12 +30,16 @@ public class DropTypeStatement extends SchemaAlteringStatement
 {
     private final UTName name;
     private final boolean ifExists;
+    private final Schema schema;
+    private final MigrationManager migrationManager;
 
-    public DropTypeStatement(UTName name, boolean ifExists)
+    public DropTypeStatement(UTName name, boolean ifExists, Schema schema, MigrationManager migrationManager)
     {
         super();
         this.name = name;
         this.ifExists = ifExists;
+        this.schema = schema;
+        this.migrationManager = migrationManager;
     }
 
     @Override
@@ -52,7 +56,7 @@ public class DropTypeStatement extends SchemaAlteringStatement
 
     public void validate(ClientState state) throws RequestValidationException
     {
-        KSMetaData ksm = Schema.instance.getKSMetaData(name.getKeyspace());
+        KSMetaData ksm = schema.getKSMetaData(name.getKeyspace());
         if (ksm == null)
             throw new InvalidRequestException(String.format("Cannot drop type in unknown keyspace %s", name.getKeyspace()));
 
@@ -72,7 +76,7 @@ public class DropTypeStatement extends SchemaAlteringStatement
         // we drop and 2) existing tables referencing the type (maybe in a nested
         // way).
 
-        for (KSMetaData ksm2 : Schema.instance.getKeyspaceDefinitions())
+        for (KSMetaData ksm2 : schema.getKeyspaceDefinitions())
         {
             for (UserType ut : ksm2.userTypes.getAllTypes().values())
             {
@@ -139,7 +143,7 @@ public class DropTypeStatement extends SchemaAlteringStatement
 
     public boolean announceMigration(boolean isLocalOnly) throws InvalidRequestException, ConfigurationException
     {
-        KSMetaData ksm = Schema.instance.getKSMetaData(name.getKeyspace());
+        KSMetaData ksm = schema.getKSMetaData(name.getKeyspace());
         assert ksm != null;
 
         UserType toDrop = ksm.userTypes.getType(name.getUserTypeName());
@@ -147,7 +151,7 @@ public class DropTypeStatement extends SchemaAlteringStatement
         if (toDrop == null)
             return false;
 
-        MigrationManager.instance.announceTypeDrop(toDrop, isLocalOnly);
+        migrationManager.announceTypeDrop(toDrop, isLocalOnly);
         return true;
     }
 }
