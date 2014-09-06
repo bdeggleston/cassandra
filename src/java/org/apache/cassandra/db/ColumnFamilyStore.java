@@ -1696,7 +1696,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public ColumnFamily getTopLevelColumns(QueryFilter filter, int gcBefore)
     {
         Tracing.instance.trace("Executing single-partition query on {}", name);
-        CollationController controller = new CollationController(this, filter, gcBefore);
+        CollationController controller = new CollationController(this, filter, gcBefore, DBConfig.instance, KeyspaceManager.instance, Tracing.instance);
         ColumnFamily columns;
         try (OpOrder.Group op = readOrdering.start())
         {
