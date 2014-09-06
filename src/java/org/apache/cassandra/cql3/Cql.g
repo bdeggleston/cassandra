@@ -638,7 +638,7 @@ createIndexStatement returns [CreateIndexStatement expr]
         (idxName=IDENT)? K_ON cf=columnFamilyName '(' id=indexIdent ')'
         (K_USING cls=STRING_LITERAL { props.customClass = $cls.text; })?
         (K_WITH properties[props])?
-      { $expr = new CreateIndexStatement(cf, $idxName.text, id, props, ifNotExists); }
+      { $expr = new CreateIndexStatement(cf, $idxName.text, id, props, ifNotExists, MigrationManager.instance, Schema.instance); }
     ;
 
 indexIdent returns [IndexTarget id]

@@ -47,17 +47,24 @@ public class CreateIndexStatement extends SchemaAlteringStatement
     private final IndexPropDefs properties;
     private final boolean ifNotExists;
 
+    private final MigrationManager migrationManager;
+    private final Schema schema;
+
     public CreateIndexStatement(CFName name,
                                 String indexName,
                                 IndexTarget target,
                                 IndexPropDefs properties,
-                                boolean ifNotExists)
+                                boolean ifNotExists,
+                                MigrationManager migrationManager,
+                                Schema schema)
     {
         super(name);
         this.indexName = indexName;
         this.target = target;
         this.properties = properties;
         this.ifNotExists = ifNotExists;
+        this.migrationManager = migrationManager;
+        this.schema = schema;
     }
 
     public void checkAccess(ClientState state) throws UnauthorizedException, InvalidRequestException
@@ -120,7 +127,7 @@ public class CreateIndexStatement extends SchemaAlteringStatement
     public boolean announceMigration(boolean isLocalOnly) throws RequestValidationException
     {
         logger.debug("Updating column {} definition for index {}", target.column, indexName);
-        CFMetaData cfm = Schema.instance.getCFMetaData(keyspace(), columnFamily()).copy();
+        CFMetaData cfm = schema.getCFMetaData(keyspace(), columnFamily()).copy();
         ColumnDefinition cd = cfm.getColumnDefinition(target.column);
 
         if (cd.getIndexType() != null && ifNotExists)
@@ -147,7 +154,7 @@ public class CreateIndexStatement extends SchemaAlteringStatement
 
         cd.setIndexName(indexName);
         cfm.addDefaultIndexNames();
-        MigrationManager.instance.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
+        migrationManager.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
         return true;
     }
 
