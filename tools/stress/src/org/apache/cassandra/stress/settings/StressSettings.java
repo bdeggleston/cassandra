@@ -29,6 +29,12 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.EncryptionOptions;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.db.CounterMutationFactory;
+import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.MutationFactory;
+import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.stress.util.JavaDriverClient;
 import org.apache.cassandra.stress.util.SimpleThriftClient;
 import org.apache.cassandra.stress.util.SmartThriftClient;
@@ -146,10 +152,17 @@ public class StressSettings implements Serializable
         try
         {
             String currentNode = node.randomNode();
-            SimpleClient client = new SimpleClient(currentNode, port.nativePort, Message.Type.getCodecMap(Tracing.instance,
+            SimpleClient client = new SimpleClient(currentNode, port.nativePort, Message.Type.getCodecMap(DatabaseDescriptor.instance,
+                                                                                                          Tracing.instance,
                                                                                                           DatabaseDescriptor.instance.getAuthenticator(),
                                                                                                           QueryHandlerInstance.instance,
-                                                                                                          QueryProcessor.instance));
+                                                                                                          QueryProcessor.instance,
+                                                                                                          KeyspaceManager.instance,
+                                                                                                          StorageProxy.instance,
+                                                                                                          MutationFactory.instance,
+                                                                                                          CounterMutationFactory.instance,
+                                                                                                          DBConfig.instance,
+                                                                                                          LocatorConfig.instance));
             client.connect(false);
             client.execute("USE \"" + schema.keyspace + "\";", org.apache.cassandra.db.ConsistencyLevel.ONE);
             return client;

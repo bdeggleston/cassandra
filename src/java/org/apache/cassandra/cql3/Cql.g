@@ -528,7 +528,18 @@ batchStatement returns [BatchStatement.Parsed expr]
           ( s=batchStatementObjective ';'? { statements.add(s); } )*
       K_APPLY K_BATCH
       {
-          return new BatchStatement.Parsed(type, attrs, statements);
+          return new BatchStatement.Parsed(type,
+                                           attrs,
+                                           statements,
+                                           DatabaseDescriptor.instance,
+                                           Tracing.instance,
+                                           QueryProcessor.instance,
+                                           KeyspaceManager.instance,
+                                           StorageProxy.instance,
+                                           MutationFactory.instance,
+                                           CounterMutationFactory.instance,
+                                           DBConfig.instance,
+                                           LocatorConfig.instance);
       }
     ;
 

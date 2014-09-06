@@ -36,9 +36,11 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.QueryProcessor;
-import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.transport.messages.*;
 import org.apache.cassandra.utils.Hex;
@@ -249,10 +251,17 @@ public class Client extends SimpleClient
         ClientEncryptionOptions encryptionOptions = new ClientEncryptionOptions();
         System.out.println("CQL binary protocol console " + host + "@" + port);
 
-        Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(Tracing.instance,
+        Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
+                                                                           Tracing.instance,
                                                                            DatabaseDescriptor.instance.getAuthenticator(),
                                                                            QueryHandlerInstance.instance,
-                                                                           QueryProcessor.instance);
+                                                                           QueryProcessor.instance,
+                                                                           KeyspaceManager.instance,
+                                                                           StorageProxy.instance,
+                                                                           MutationFactory.instance,
+                                                                           CounterMutationFactory.instance,
+                                                                           DBConfig.instance,
+                                                                           LocatorConfig.instance);
         new Client(host, port, encryptionOptions, codecs).run();
         System.exit(0);
     }

@@ -29,8 +29,15 @@ import io.netty.channel.*;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import org.apache.cassandra.auth.IAuthenticator;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryHandler;
 import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.db.CounterMutationFactory;
+import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.MutationFactory;
+import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -122,7 +129,17 @@ public abstract class Message
             return t;
         }
 
-        public static Map<Type, Codec> getCodecMap(Tracing tracing, IAuthenticator authenticator, QueryHandler queryHandler, QueryProcessor queryProcessor)
+        public static Map<Type, Codec> getCodecMap(DatabaseDescriptor databaseDescriptor,
+                                                   Tracing tracing,
+                                                   IAuthenticator authenticator,
+                                                   QueryHandler queryHandler,
+                                                   QueryProcessor queryProcessor,
+                                                   KeyspaceManager keyspaceManager,
+                                                   StorageProxy storageProxy,
+                                                   MutationFactory mutationFactory,
+                                                   CounterMutationFactory counterMutationFactory,
+                                                   DBConfig dbConfig,
+                                                   LocatorConfig locatorConfig)
         {
             Map<Type, Codec> codecs = new EnumMap<>(Type.class);
             codecs.put(Type.ERROR, ErrorMessage.codec);
@@ -138,7 +155,16 @@ public abstract class Message
             codecs.put(Type.EXECUTE, new ExecuteMessage.Codec(tracing, queryHandler));
             codecs.put(Type.REGISTER, RegisterMessage.codec);
             codecs.put(Type.EVENT, EventMessage.codec);
-            codecs.put(Type.BATCH, new BatchMessage.Codec(tracing, queryProcessor, queryHandler));
+            codecs.put(Type.BATCH, new BatchMessage.Codec(databaseDescriptor,
+                                                          tracing,
+                                                          queryProcessor,
+                                                          queryHandler,
+                                                          keyspaceManager,
+                                                          storageProxy,
+                                                          mutationFactory,
+                                                          counterMutationFactory,
+                                                          dbConfig,
+                                                          locatorConfig));
             codecs.put(Type.AUTH_CHALLENGE, AuthChallenge.codec);
             codecs.put(Type.AUTH_RESPONSE, AuthResponse.codec);
             codecs.put(Type.AUTH_SUCCESS, AuthSuccess.codec);

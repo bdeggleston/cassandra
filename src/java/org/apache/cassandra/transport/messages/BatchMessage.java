@@ -25,13 +25,20 @@ import java.util.UUID;
 
 import io.netty.buffer.ByteBuf;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.cql3.statements.BatchStatement;
 import org.apache.cassandra.cql3.statements.ModificationStatement;
 import org.apache.cassandra.cql3.statements.ParsedStatement;
+import org.apache.cassandra.db.CounterMutationFactory;
+import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.PreparedQueryNotFoundException;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.QueryState;
+import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.transport.*;
 import org.apache.cassandra.utils.MD5Digest;
@@ -41,15 +48,31 @@ public class BatchMessage extends Message.Request
 {
     public static class Codec implements Message.Codec<BatchMessage>
     {
+        private final DatabaseDescriptor databaseDescriptor;
         private final Tracing tracing;
         private final QueryProcessor queryProcessor;
         private final QueryHandler queryHandler;
+        private final KeyspaceManager keyspaceManager;
+        private final StorageProxy storageProxy;
+        private final MutationFactory mutationFactory;
+        private final CounterMutationFactory counterMutationFactory;
+        private final DBConfig dbConfig;
+        private final LocatorConfig locatorConfig;
 
-        public Codec(Tracing tracing, QueryProcessor queryProcessor, QueryHandler queryHandler)
+        public Codec(DatabaseDescriptor databaseDescriptor, Tracing tracing, QueryProcessor queryProcessor, QueryHandler queryHandler,
+                     KeyspaceManager keyspaceManager, StorageProxy storageProxy, MutationFactory mutationFactory,
+                     CounterMutationFactory counterMutationFactory, DBConfig dbConfig, LocatorConfig locatorConfig)
         {
+            this.databaseDescriptor = databaseDescriptor;
             this.tracing = tracing;
             this.queryProcessor = queryProcessor;
             this.queryHandler = queryHandler;
+            this.keyspaceManager = keyspaceManager;
+            this.storageProxy = storageProxy;
+            this.mutationFactory = mutationFactory;
+            this.counterMutationFactory = counterMutationFactory;
+            this.dbConfig = dbConfig;
+            this.locatorConfig = locatorConfig;
         }
 
         @Override
@@ -77,7 +100,9 @@ public class BatchMessage extends Message.Request
                                  ? QueryOptions.fromPreV3Batch(CBUtil.readConsistencyLevel(body))
                                  : QueryOptions.codec.decode(body, version);
 
-            return new BatchMessage(toType(type), queryOrIds, variables, options, tracing, queryProcessor, queryHandler);
+            return new BatchMessage(toType(type), queryOrIds, variables, options, databaseDescriptor, tracing, queryProcessor,
+                                    queryHandler, keyspaceManager, storageProxy, mutationFactory, counterMutationFactory,
+                                    dbConfig, locatorConfig);
         }
 
         @Override
@@ -155,20 +180,38 @@ public class BatchMessage extends Message.Request
     public final List<List<ByteBuffer>> values;
     public final QueryOptions options;
 
+    private final DatabaseDescriptor databaseDescriptor;
     private final Tracing tracing;
     private final QueryProcessor queryProcessor;
     private final QueryHandler queryHandler;
+    private final KeyspaceManager keyspaceManager;
+    private final StorageProxy storageProxy;
+    private final MutationFactory mutationFactory;
+    private final CounterMutationFactory counterMutationFactory;
+    private final DBConfig dbConfig;
+    private final LocatorConfig locatorConfig;
 
-    public BatchMessage(BatchStatement.Type type, List<Object> queryOrIdList, List<List<ByteBuffer>> values, QueryOptions options, Tracing tracing, QueryProcessor queryProcessor, QueryHandler queryHandler)
+    public BatchMessage(BatchStatement.Type type, List<Object> queryOrIdList, List<List<ByteBuffer>> values, QueryOptions options,
+                        DatabaseDescriptor databaseDescriptor, Tracing tracing, QueryProcessor queryProcessor, QueryHandler queryHandler,
+                        KeyspaceManager keyspaceManager, StorageProxy storageProxy, MutationFactory mutationFactory,
+                        CounterMutationFactory counterMutationFactory, DBConfig dbConfig, LocatorConfig locatorConfig)
     {
         super(Message.Type.BATCH);
         this.batchType = type;
         this.queryOrIdList = queryOrIdList;
         this.values = values;
         this.options = options;
+
+        this.databaseDescriptor = databaseDescriptor;
         this.tracing = tracing;
         this.queryProcessor = queryProcessor;
         this.queryHandler = queryHandler;
+        this.keyspaceManager = keyspaceManager;
+        this.storageProxy = storageProxy;
+        this.mutationFactory = mutationFactory;
+        this.counterMutationFactory = counterMutationFactory;
+        this.dbConfig = dbConfig;
+        this.locatorConfig = locatorConfig;
     }
 
     public Message.Response execute(QueryState state)
@@ -229,7 +272,9 @@ public class BatchMessage extends Message.Request
 
             // Note: It's ok at this point to pass a bogus value for the number of bound terms in the BatchState ctor
             // (and no value would be really correct, so we prefer passing a clearly wrong one).
-            BatchStatement batch = new BatchStatement(-1, batchType, statements, Attributes.none());
+            BatchStatement batch = new BatchStatement(-1, batchType, statements, Attributes.none(), databaseDescriptor,
+                                                      tracing, queryProcessor, keyspaceManager, storageProxy, mutationFactory,
+                                                      counterMutationFactory, dbConfig, locatorConfig);
             Message.Response response = queryHandler.processBatch(batch, state, batchOptions);
 
             if (tracingId != null)

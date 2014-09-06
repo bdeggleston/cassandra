@@ -57,6 +57,16 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
     private final boolean hasConditions;
     private static final Logger logger = LoggerFactory.getLogger(BatchStatement.class);
 
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Tracing tracing;
+    private final QueryProcessor queryProcessor;
+    private final KeyspaceManager keyspaceManager;
+    private final StorageProxy storageProxy;
+    private final MutationFactory mutationFactory;
+    private final CounterMutationFactory counterMutationFactory;
+    private final DBConfig dbConfig;
+    private final LocatorConfig locatorConfig;
+
     /**
      * Creates a new BatchStatement from a list of statements and a
      * Thrift consistency level.
@@ -65,7 +75,10 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
      * @param statements a list of UpdateStatements
      * @param attrs additional attributes for statement (CL, timestamp, timeToLive)
      */
-    public BatchStatement(int boundTerms, Type type, List<ModificationStatement> statements, Attributes attrs)
+    public BatchStatement(int boundTerms, Type type, List<ModificationStatement> statements, Attributes attrs,
+                          DatabaseDescriptor databaseDescriptor, Tracing tracing, QueryProcessor queryProcessor,
+                          KeyspaceManager keyspaceManager, StorageProxy storageProxy, MutationFactory mutationFactory,
+                          CounterMutationFactory counterMutationFactory, DBConfig dbConfig, LocatorConfig locatorConfig)
     {
         boolean hasConditions = false;
         for (ModificationStatement statement : statements)
@@ -76,6 +89,16 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         this.statements = statements;
         this.attrs = attrs;
         this.hasConditions = hasConditions;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
+        this.queryProcessor = queryProcessor;
+        this.keyspaceManager = keyspaceManager;
+        this.storageProxy = storageProxy;
+        this.mutationFactory = mutationFactory;
+        this.counterMutationFactory = counterMutationFactory;
+        this.dbConfig = dbConfig;
+        this.locatorConfig = locatorConfig;
     }
 
     public long measureForPreparedCache(MemoryMeter meter)
@@ -222,8 +245,8 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
             Mutation mut;
             if (mutation == null)
             {
-                mut = MutationFactory.instance.create(ksName, key);
-                mutation = statement.cfm.isCounter() ? CounterMutationFactory.instance.create(mut, options.getConsistency()) : mut;
+                mut = mutationFactory.create(ksName, key);
+                mutation = statement.cfm.isCounter() ? counterMutationFactory.create(mut, options.getConsistency()) : mut;
                 ksMap.put(key, mutation);
             }
             else
@@ -239,10 +262,10 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
      * Checks batch size to ensure threshold is met. If not, a warning is logged.
      * @param cfs ColumnFamilies that will store the batch's mutations.
      */
-    public static void verifyBatchSize(Iterable<ColumnFamily> cfs)
+    public static void verifyBatchSize(Iterable<ColumnFamily> cfs, DatabaseDescriptor databaseDescriptor)
     {
         long size = 0;
-        long warnThreshold = DatabaseDescriptor.instance.getBatchSizeWarnThreshold();
+        long warnThreshold = databaseDescriptor.getBatchSizeWarnThreshold();
 
         for (ColumnFamily cf : cfs)
             size += cf.dataSize();
@@ -293,10 +316,10 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
                 return im.getColumnFamilies();
             }
         }));
-        verifyBatchSize(cfs);
+        verifyBatchSize(cfs, databaseDescriptor);
 
         boolean mutateAtomic = (type == Type.LOGGED && mutations.size() > 1);
-        StorageProxy.instance.instance.mutateWithTriggers(mutations, cl, mutateAtomic);
+        storageProxy.mutateWithTriggers(mutations, cl, mutateAtomic);
     }
 
     private ResultMessage executeWithConditions(BatchQueryOptions options, long now)
@@ -321,7 +344,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
                 key = pks.get(0);
                 ksName = statement.cfm.ksName;
                 cfName = statement.cfm.cfName;
-                casRequest = new CQL3CasRequest(statement.cfm, key, true, DatabaseDescriptor.instance, DBConfig.instance, Tracing.instance);
+                casRequest = new CQL3CasRequest(statement.cfm, key, true, databaseDescriptor, dbConfig, tracing);
             }
             else if (!key.equals(pks.get(0)))
             {
@@ -341,7 +364,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
             casRequest.addRowUpdate(clusteringPrefix, statement, statementOptions, timestamp);
         }
 
-        ColumnFamily result = StorageProxy.instance.instance.cas(ksName, cfName, key, casRequest, options.getSerialConsistency(), options.getConsistency());
+        ColumnFamily result = storageProxy.cas(ksName, cfName, key, casRequest, options.getSerialConsistency(), options.getConsistency());
 
         return new ResultMessage.Rows(ModificationStatement.buildCasResultSet(ksName,
                                                                               key,
@@ -350,12 +373,12 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
                                                                               columnsWithConditions,
                                                                               true,
                                                                               options.forStatement(0),
-                                                                              DatabaseDescriptor.instance,
-                                                                              Tracing.instance,
-                                                                              QueryProcessor.instance,
-                                                                              KeyspaceManager.instance,
-                                                                              StorageProxy.instance,
-                                                                              LocatorConfig.instance));
+                                                                              databaseDescriptor,
+                                                                              tracing,
+                                                                              queryProcessor,
+                                                                              keyspaceManager,
+                                                                              storageProxy,
+                                                                              locatorConfig));
     }
 
     public ResultMessage executeInternal(QueryState queryState, QueryOptions options) throws RequestValidationException, RequestExecutionException
@@ -386,12 +409,35 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         private final Attributes.Raw attrs;
         private final List<ModificationStatement.Parsed> parsedStatements;
 
-        public Parsed(Type type, Attributes.Raw attrs, List<ModificationStatement.Parsed> parsedStatements)
+        private final DatabaseDescriptor databaseDescriptor;
+        private final Tracing tracing;
+        private final QueryProcessor queryProcessor;
+        private final KeyspaceManager keyspaceManager;
+        private final StorageProxy storageProxy;
+        private final MutationFactory mutationFactory;
+        private final CounterMutationFactory counterMutationFactory;
+        private final DBConfig dbConfig;
+        private final LocatorConfig locatorConfig;
+
+        public Parsed(Type type, Attributes.Raw attrs, List<ModificationStatement.Parsed> parsedStatements,
+                      DatabaseDescriptor databaseDescriptor, Tracing tracing, QueryProcessor queryProcessor,
+                      KeyspaceManager keyspaceManager, StorageProxy storageProxy, MutationFactory mutationFactory,
+                      CounterMutationFactory counterMutationFactory, DBConfig dbConfig, LocatorConfig locatorConfig)
         {
             super(null);
             this.type = type;
             this.attrs = attrs;
             this.parsedStatements = parsedStatements;
+
+            this.databaseDescriptor = databaseDescriptor;
+            this.tracing = tracing;
+            this.queryProcessor = queryProcessor;
+            this.keyspaceManager = keyspaceManager;
+            this.storageProxy = storageProxy;
+            this.mutationFactory = mutationFactory;
+            this.counterMutationFactory = counterMutationFactory;
+            this.dbConfig = dbConfig;
+            this.locatorConfig = locatorConfig;
         }
 
         @Override
@@ -412,7 +458,10 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
             Attributes prepAttrs = attrs.prepare("[batch]", "[batch]");
             prepAttrs.collectMarkerSpecification(boundNames);
 
-            BatchStatement batchStatement = new BatchStatement(boundNames.size(), type, statements, prepAttrs);
+            BatchStatement batchStatement = new BatchStatement(boundNames.size(), type, statements, prepAttrs,
+                                                               databaseDescriptor, tracing, queryProcessor, keyspaceManager,
+                                                               storageProxy, mutationFactory, counterMutationFactory,
+                                                               dbConfig, locatorConfig);
             batchStatement.validate();
 
             return new ParsedStatement.Prepared(batchStatement, boundNames);

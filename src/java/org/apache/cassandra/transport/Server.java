@@ -32,6 +32,11 @@ import io.netty.util.Version;
 import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.db.CounterMutationFactory;
+import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.MutationFactory;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,10 +89,17 @@ public class Server implements CassandraDaemon.Server
 
     private EventLoopGroup workerGroup;
     private EventExecutor eventExecutorGroup;
-    private final Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(Tracing.instance,
+    private final Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
+                                                                                     Tracing.instance,
                                                                                      DatabaseDescriptor.instance.getAuthenticator(),
                                                                                      QueryHandlerInstance.instance,
-                                                                                     QueryProcessor.instance);
+                                                                                     QueryProcessor.instance,
+                                                                                     KeyspaceManager.instance,
+                                                                                     StorageProxy.instance,
+                                                                                     MutationFactory.instance,
+                                                                                     CounterMutationFactory.instance,
+                                                                                     DBConfig.instance,
+                                                                                     LocatorConfig.instance);
 
     public Server(InetSocketAddress socket)
     {

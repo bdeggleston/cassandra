@@ -144,7 +144,7 @@ public class CQL3CasRequest implements CASRequest
             upd.applyUpdates(current, cf);
 
         if (isBatch)
-            BatchStatement.verifyBatchSize(Collections.singleton(cf));
+            BatchStatement.verifyBatchSize(Collections.singleton(cf), databaseDescriptor);
 
         return cf;
     }
