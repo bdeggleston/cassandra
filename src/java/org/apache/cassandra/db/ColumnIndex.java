@@ -23,7 +23,6 @@ import java.util.*;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.io.sstable.IndexHelper;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -69,10 +68,12 @@ public class ColumnIndex
         private final DeletionInfo deletionInfo; // only used for serializing and calculating row header size
 
         private final OnDiskAtom.Serializer atomSerializer;
+        private final int columnIndexSize;
 
         public Builder(ColumnFamily cf,
                        ByteBuffer key,
-                       DataOutputPlus output)
+                       DataOutputPlus output,
+                       int columnIndexSize)
         {
             assert cf != null;
             assert key != null;
@@ -85,6 +86,7 @@ public class ColumnIndex
             this.output = output;
             this.tombstoneTracker = new RangeTombstone.Tracker(cf.getComparator());
             this.atomSerializer = cf.getComparator().onDiskAtomSerializer();
+            this.columnIndexSize = columnIndexSize;
         }
 
         /**
@@ -190,7 +192,7 @@ public class ColumnIndex
             blockSize += size;
 
             // if we hit the column index size that we have to index after, go ahead and index it.
-            if (blockSize >= DatabaseDescriptor.instance.getColumnIndexSize())
+            if (blockSize >= columnIndexSize)
             {
                 IndexHelper.IndexInfo cIndexInfo = new IndexHelper.IndexInfo(firstColumn.name(), column.name(), indexOffset + startPosition, endPosition - startPosition);
                 result.columnsIndex.add(cIndexInfo);

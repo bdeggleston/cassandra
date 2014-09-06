@@ -322,7 +322,7 @@ public class Util
             DataOutputBuffer out = new DataOutputBuffer();
             DeletionTime.serializer.serialize(cf.deletionInfo().getTopLevelDeletion(), out);
             out.writeInt(cf.getColumnCount());
-            new ColumnIndex.Builder(cf, ByteBufferUtil.EMPTY_BYTE_BUFFER, out).build(cf);
+            new ColumnIndex.Builder(cf, ByteBufferUtil.EMPTY_BYTE_BUFFER, out, DatabaseDescriptor.instance.getColumnIndexSize()).build(cf);
             return ByteBuffer.wrap(out.toByteArray());
         }
         catch (IOException e)

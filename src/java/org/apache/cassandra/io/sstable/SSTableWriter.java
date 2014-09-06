@@ -220,7 +220,7 @@ public class SSTableWriter extends SSTable
     {
         assert cf.hasColumns() || cf.isMarkedForDelete();
 
-        ColumnIndex.Builder builder = new ColumnIndex.Builder(cf, key.getKey(), out);
+        ColumnIndex.Builder builder = new ColumnIndex.Builder(cf, key.getKey(), out, DatabaseDescriptor.instance.getColumnIndexSize());
         ColumnIndex index = builder.build(cf);
 
         out.writeShort(END_OF_ROW);
@@ -247,7 +247,7 @@ public class SSTableWriter extends SSTable
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance);
         cf.delete(DeletionTime.serializer.deserialize(in));
 
-        ColumnIndex.Builder columnIndexer = new ColumnIndex.Builder(cf, key.getKey(), dataFile.stream);
+        ColumnIndex.Builder columnIndexer = new ColumnIndex.Builder(cf, key.getKey(), dataFile.stream, DatabaseDescriptor.instance.getColumnIndexSize());
 
         if (cf.deletionInfo().getTopLevelDeletion().localDeletionTime < Integer.MAX_VALUE)
             tombstones.update(cf.deletionInfo().getTopLevelDeletion().localDeletionTime);
