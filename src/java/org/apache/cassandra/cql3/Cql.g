@@ -55,6 +55,7 @@ options {
     import org.apache.cassandra.service.MigrationManager;
     import org.apache.cassandra.auth.Auth;
     import org.apache.cassandra.config.CFMetaDataFactory;
+    import org.apache.cassandra.triggers.TriggerExecutor;
 
 }
 
@@ -658,7 +659,7 @@ createTriggerStatement returns [CreateTriggerStatement expr]
     }
     : K_CREATE K_TRIGGER (K_IF K_NOT K_EXISTS { ifNotExists = true; } )? (name=cident)
         K_ON cf=columnFamilyName K_USING cls=STRING_LITERAL
-      { $expr = new CreateTriggerStatement(cf, name.toString(), $cls.text, ifNotExists); }
+      { $expr = new CreateTriggerStatement(cf, name.toString(), $cls.text, ifNotExists, Schema.instance, MigrationManager.instance, CFMetaDataFactory.instance, TriggerExecutor.instance); }
     ;
 
 /**

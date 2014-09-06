@@ -43,12 +43,21 @@ public class CreateTriggerStatement extends SchemaAlteringStatement
     private final String triggerClass;
     private final boolean ifNotExists;
 
-    public CreateTriggerStatement(CFName name, String triggerName, String clazz, boolean ifNotExists)
+    private final Schema schema;
+    private final MigrationManager migrationManager;
+    private final CFMetaDataFactory cfMetaDataFactory;
+    private final TriggerExecutor triggerExecutor;
+
+    public CreateTriggerStatement(CFName name, String triggerName, String triggerClass, boolean ifNotExists, Schema schema, MigrationManager migrationManager, CFMetaDataFactory cfMetaDataFactory, TriggerExecutor triggerExecutor)
     {
         super(name);
         this.triggerName = triggerName;
-        this.triggerClass = clazz;
+        this.triggerClass = triggerClass;
         this.ifNotExists = ifNotExists;
+        this.schema = schema;
+        this.migrationManager = migrationManager;
+        this.cfMetaDataFactory = cfMetaDataFactory;
+        this.triggerExecutor = triggerExecutor;
     }
 
     public void checkAccess(ClientState state) throws UnauthorizedException
@@ -61,7 +70,7 @@ public class CreateTriggerStatement extends SchemaAlteringStatement
         ThriftValidation.validateColumnFamily(keyspace(), columnFamily());
         try
         {
-            TriggerExecutor.instance.loadTriggerInstance(triggerClass);
+            triggerExecutor.loadTriggerInstance(triggerClass);
         }
         catch (Exception e)
         {
@@ -71,15 +80,15 @@ public class CreateTriggerStatement extends SchemaAlteringStatement
 
     public boolean announceMigration(boolean isLocalOnly) throws ConfigurationException, InvalidRequestException
     {
-        CFMetaData cfm = Schema.instance.getCFMetaData(keyspace(), columnFamily()).copy();
+        CFMetaData cfm = schema.getCFMetaData(keyspace(), columnFamily()).copy();
 
-        TriggerDefinition triggerDefinition = TriggerDefinition.create(triggerName, triggerClass, CFMetaDataFactory.instance);
+        TriggerDefinition triggerDefinition = TriggerDefinition.create(triggerName, triggerClass, cfMetaDataFactory);
 
         if (!ifNotExists || !cfm.containsTriggerDefinition(triggerDefinition))
         {
             cfm.addTriggerDefinition(triggerDefinition);
             logger.info("Adding trigger with name {} and class {}", triggerName, triggerClass);
-            MigrationManager.instance.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
+            migrationManager.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
             return true;
         }
         return false;
