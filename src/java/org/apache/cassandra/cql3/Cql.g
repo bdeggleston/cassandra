@@ -53,6 +53,8 @@ options {
     import org.apache.cassandra.config.Schema;
     import org.apache.cassandra.locator.LocatorConfig;
     import org.apache.cassandra.service.MigrationManager;
+    import org.apache.cassandra.auth.Auth;
+
 }
 
 @members {
@@ -849,7 +851,7 @@ alterUserStatement returns [AlterUserStatement stmt]
     : K_ALTER K_USER username
       ( K_WITH userOptions[opts] )?
       ( K_SUPERUSER { superuser = true; } | K_NOSUPERUSER { superuser = false; } )?
-      { $stmt = new AlterUserStatement($username.text, opts, superuser); }
+      { $stmt = new AlterUserStatement($username.text, opts, superuser, Auth.instance); }
     ;
 
 /**

@@ -35,11 +35,14 @@ public class AlterUserStatement extends AuthenticationStatement
     private final UserOptions opts;
     private final Boolean superuser;
 
-    public AlterUserStatement(String username, UserOptions opts, Boolean superuser)
+    private final Auth auth;
+
+    public AlterUserStatement(String username, UserOptions opts, Boolean superuser, Auth auth)
     {
         this.username = username;
         this.opts = opts;
         this.superuser = superuser;
+        this.auth = auth;
     }
 
     public void validate(ClientState state) throws RequestValidationException
@@ -52,7 +55,7 @@ public class AlterUserStatement extends AuthenticationStatement
         // validate login here before checkAccess to avoid leaking user existence to anonymous users.
         state.ensureNotAnonymous();
 
-        if (!Auth.instance.isExistingUser(username))
+        if (!auth.isExistingUser(username))
             throw new InvalidRequestException(String.format("User %s doesn't exist", username));
     }
 
@@ -60,7 +63,7 @@ public class AlterUserStatement extends AuthenticationStatement
     {
         AuthenticatedUser user = state.getUser();
 
-        boolean isSuper = user.isSuper(Auth.instance);
+        boolean isSuper = user.isSuper(auth);
 
         if (superuser != null && user.getName().equals(username))
             throw new UnauthorizedException("You aren't allowed to alter your own superuser status");
@@ -68,7 +71,7 @@ public class AlterUserStatement extends AuthenticationStatement
         if (superuser != null && !isSuper)
             throw new UnauthorizedException("Only superusers are allowed to alter superuser status");
 
-        if (!user.isSuper(Auth.instance) && !user.getName().equals(username))
+        if (!user.isSuper(auth) && !user.getName().equals(username))
             throw new UnauthorizedException("You aren't allowed to alter this user");
 
         if (!isSuper)
@@ -86,7 +89,7 @@ public class AlterUserStatement extends AuthenticationStatement
         if (!opts.isEmpty())
             DatabaseDescriptor.instance.getAuthenticator().alter(username, opts.getOptions());
         if (superuser != null)
-            Auth.instance.insertUser(username, superuser.booleanValue());
+            auth.insertUser(username, superuser.booleanValue());
         return null;
     }
 }
