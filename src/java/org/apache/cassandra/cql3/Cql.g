@@ -805,7 +805,7 @@ listPermissionsStatement returns [ListPermissionsStatement stmt]
       ( K_ON resource { resource = $resource.res; } )?
       ( K_OF username { username = $username.text; } )?
       ( K_NORECURSIVE { recursive = false; } )?
-      { $stmt = new ListPermissionsStatement($permissionOrAll.perms, resource, username, recursive); }
+      { $stmt = new ListPermissionsStatement($permissionOrAll.perms, resource, username, recursive, Auth.instance); }
     ;
 
 permission returns [Permission perm]

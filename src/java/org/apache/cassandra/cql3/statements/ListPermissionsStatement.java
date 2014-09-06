@@ -33,7 +33,7 @@ import org.apache.cassandra.transport.messages.ResultMessage;
 
 public class ListPermissionsStatement extends AuthorizationStatement
 {
-    private static final String KS = Auth.instance.AUTH_KS;
+    private static final String KS = Auth.AUTH_KS;
     private static final String CF = "permissions"; // virtual cf to use for now.
 
     private static final List<ColumnSpecification> metadata;
@@ -51,13 +51,15 @@ public class ListPermissionsStatement extends AuthorizationStatement
     private DataResource resource;
     private final String username;
     private final boolean recursive;
+    private final Auth auth;
 
-    public ListPermissionsStatement(Set<Permission> permissions, IResource resource, String username, boolean recursive)
+    public ListPermissionsStatement(Set<Permission> permissions, IResource resource, String username, boolean recursive, Auth auth)
     {
         this.permissions = permissions;
         this.resource = (DataResource) resource;
         this.username = username;
         this.recursive = recursive;
+        this.auth = auth;
     }
 
     public void validate(ClientState state) throws RequestValidationException
@@ -65,7 +67,7 @@ public class ListPermissionsStatement extends AuthorizationStatement
         // a check to ensure the existence of the user isn't being leaked by user existence check.
         state.ensureNotAnonymous();
 
-        if (username != null && !Auth.instance.isExistingUser(username))
+        if (username != null && !auth.isExistingUser(username))
             throw new InvalidRequestException(String.format("User %s doesn't exist", username));
 
         if (resource != null)
@@ -118,6 +120,6 @@ public class ListPermissionsStatement extends AuthorizationStatement
     private Set<PermissionDetails> list(ClientState state, IResource resource)
     throws RequestValidationException, RequestExecutionException
     {
-        return DatabaseDescriptor.instance.getAuthorizer().list(state.getUser(), permissions, resource, username);
+        return auth.getAuthorizer().list(state.getUser(), permissions, resource, username);
     }
 }
