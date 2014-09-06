@@ -561,7 +561,8 @@ createKeyspaceStatement returns [CreateKeyspaceStatement expr]
         boolean ifNotExists = false;
     }
     : K_CREATE K_KEYSPACE (K_IF K_NOT K_EXISTS { ifNotExists = true; } )? ks=keyspaceName
-      K_WITH properties[attrs] { $expr = new CreateKeyspaceStatement(ks, attrs, ifNotExists); }
+      K_WITH properties[attrs] { $expr = new CreateKeyspaceStatement(ks, attrs, ifNotExists,
+      DatabaseDescriptor.instance, MigrationManager.instance, LocatorConfig.instance); }
     ;
 
 /**

@@ -39,6 +39,10 @@ public class CreateKeyspaceStatement extends SchemaAlteringStatement
     private final KSPropDefs attrs;
     private final boolean ifNotExists;
 
+    private final DatabaseDescriptor databaseDescriptor;
+    private final MigrationManager migrationManager;
+    private final LocatorConfig locatorConfig;
+
     /**
      * Creates a new <code>CreateKeyspaceStatement</code> instance for a given
      * keyspace name and keyword arguments.
@@ -46,12 +50,17 @@ public class CreateKeyspaceStatement extends SchemaAlteringStatement
      * @param name the name of the keyspace to create
      * @param attrs map of the raw keyword arguments that followed the <code>WITH</code> keyword.
      */
-    public CreateKeyspaceStatement(String name, KSPropDefs attrs, boolean ifNotExists)
+    public CreateKeyspaceStatement(String name, KSPropDefs attrs, boolean ifNotExists,
+                                   DatabaseDescriptor databaseDescriptor, MigrationManager migrationManager, LocatorConfig locatorConfig)
     {
         super();
         this.name = name;
         this.attrs = attrs;
         this.ifNotExists = ifNotExists;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.migrationManager = migrationManager;
+        this.locatorConfig = locatorConfig;
     }
 
     @Override
@@ -92,8 +101,8 @@ public class CreateKeyspaceStatement extends SchemaAlteringStatement
         // so doing proper validation here.
         AbstractReplicationStrategy.validateReplicationStrategy(name,
                                                                 AbstractReplicationStrategy.getClass(attrs.getReplicationStrategyClass()),
-                                                                LocatorConfig.instance.getTokenMetadata(),
-                                                                DatabaseDescriptor.instance.getEndpointSnitch(),
+                                                                locatorConfig.getTokenMetadata(),
+                                                                databaseDescriptor.getEndpointSnitch(),
                                                                 attrs.getReplicationOptions());
     }
 
@@ -101,7 +110,7 @@ public class CreateKeyspaceStatement extends SchemaAlteringStatement
     {
         try
         {
-            MigrationManager.instance.announceNewKeyspace(attrs.asKSMetadata(name), isLocalOnly);
+            migrationManager.announceNewKeyspace(attrs.asKSMetadata(name), isLocalOnly);
             return true;
         }
         catch (AlreadyExistsException e)
