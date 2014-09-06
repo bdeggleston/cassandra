@@ -757,7 +757,7 @@ dropTypeStatement returns [DropTypeStatement stmt]
 dropIndexStatement returns [DropIndexStatement expr]
     @init { boolean ifExists = false; }
     : K_DROP K_INDEX (K_IF K_EXISTS { ifExists = true; } )? index=indexName
-      { $expr = new DropIndexStatement(index, ifExists); }
+      { $expr = new DropIndexStatement(index, ifExists, Schema.instance, MigrationManager.instance); }
     ;
 
 /**

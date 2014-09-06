@@ -39,11 +39,16 @@ public class DropIndexStatement extends SchemaAlteringStatement
     // initialized in announceMigration()
     private String indexedCF;
 
-    public DropIndexStatement(IndexName indexName, boolean ifExists)
+    private final Schema schema;
+    private final MigrationManager migrationManager;
+
+    public DropIndexStatement(IndexName indexName, boolean ifExists, Schema schema, MigrationManager migrationManager)
     {
         super(indexName.getCfName());
         this.indexName = indexName.getIdx();
         this.ifExists = ifExists;
+        this.schema = schema;
+        this.migrationManager = migrationManager;
     }
 
     public void checkAccess(ClientState state) throws UnauthorizedException, InvalidRequestException
@@ -81,7 +86,7 @@ public class DropIndexStatement extends SchemaAlteringStatement
 
         CFMetaData updatedCfm = updateCFMetadata(cfm);
         indexedCF = updatedCfm.cfName;
-        MigrationManager.instance.announceColumnFamilyUpdate(updatedCfm, false, isLocalOnly);
+        migrationManager.announceColumnFamilyUpdate(updatedCfm, false, isLocalOnly);
         return true;
     }
 
@@ -99,7 +104,7 @@ public class DropIndexStatement extends SchemaAlteringStatement
 
     private CFMetaData findIndexedCF() throws InvalidRequestException
     {
-        KSMetaData ksm = Schema.instance.getKSMetaData(keyspace());
+        KSMetaData ksm = schema.getKSMetaData(keyspace());
         if (ksm == null)
             throw new KeyspaceNotDefinedException("Keyspace " + keyspace() + " does not exist");
         for (CFMetaData cfm : ksm.cfMetaData().values())
