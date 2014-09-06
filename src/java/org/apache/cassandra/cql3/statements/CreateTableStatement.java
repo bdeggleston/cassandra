@@ -34,7 +34,6 @@ import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.marshal.*;
-import org.apache.cassandra.exceptions.AlreadyExistsException;
 import org.apache.cassandra.io.compress.CompressionParameters;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.MigrationManager;
@@ -60,12 +59,17 @@ public class CreateTableStatement extends SchemaAlteringStatement
     private final CFPropDefs properties;
     private final boolean ifNotExists;
 
-    public CreateTableStatement(CFName name, CFPropDefs properties, boolean ifNotExists, Set<ColumnIdentifier> staticColumns)
+    private final MigrationManager migrationManager;
+    private final CFMetaDataFactory cfMetaDataFactory;
+
+    public CreateTableStatement(CFName name, CFPropDefs properties, boolean ifNotExists, Set<ColumnIdentifier> staticColumns, MigrationManager migrationManager, CFMetaDataFactory cfMetaDataFactory)
     {
         super(name);
         this.properties = properties;
         this.ifNotExists = ifNotExists;
         this.staticColumns = staticColumns;
+        this.migrationManager = migrationManager;
+        this.cfMetaDataFactory = cfMetaDataFactory;
 
         try
         {
@@ -112,7 +116,7 @@ public class CreateTableStatement extends SchemaAlteringStatement
     {
         try
         {
-            MigrationManager.instance.announceNewColumnFamily(getCFMetaData(), isLocalOnly);
+            migrationManager.announceNewColumnFamily(getCFMetaData(), isLocalOnly);
             return true;
         }
         catch (AlreadyExistsException e)
@@ -137,17 +141,7 @@ public class CreateTableStatement extends SchemaAlteringStatement
      */
     public CFMetaData getCFMetaData() throws RequestValidationException
     {
-        CFMetaData newCFMD;
-        newCFMD = new CFMetaData(keyspace(),
-                                 columnFamily(),
-                                 ColumnFamilyType.Standard,
-                                 comparator,
-                                 SystemKeyspace.instance,
-                                 Schema.instance,
-                                 ColumnFamilyStoreManager.instance,
-                                 KeyspaceManager.instance,
-                                 CFMetaDataFactory.instance,
-                                 MutationFactory.instance);
+        CFMetaData newCFMD = cfMetaDataFactory.create(keyspace(), columnFamily(), ColumnFamilyType.Standard, comparator);;
         applyPropertiesTo(newCFMD);
         return newCFMD;
     }
@@ -182,10 +176,15 @@ public class CreateTableStatement extends SchemaAlteringStatement
 
         private final boolean ifNotExists;
 
-        public RawStatement(CFName name, boolean ifNotExists)
+        private final MigrationManager migrationManager;
+        private final CFMetaDataFactory cfMetaDataFactory;
+
+        public RawStatement(CFName name, boolean ifNotExists, MigrationManager migrationManager, CFMetaDataFactory cfMetaDataFactory)
         {
             super(name);
             this.ifNotExists = ifNotExists;
+            this.migrationManager = migrationManager;
+            this.cfMetaDataFactory = cfMetaDataFactory;
         }
 
         /**
@@ -205,7 +204,7 @@ public class CreateTableStatement extends SchemaAlteringStatement
 
             properties.validate();
 
-            CreateTableStatement stmt = new CreateTableStatement(cfName, properties, ifNotExists, staticColumns);
+            CreateTableStatement stmt = new CreateTableStatement(cfName, properties, ifNotExists, staticColumns, migrationManager, cfMetaDataFactory);
 
             Map<ByteBuffer, CollectionType> definedCollections = null;
             for (Map.Entry<ColumnIdentifier, CQL3Type.Raw> entry : definitions.entrySet())

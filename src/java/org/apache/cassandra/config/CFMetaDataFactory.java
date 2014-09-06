@@ -263,18 +263,22 @@ public class CFMetaDataFactory
                                                                   + ") WITH COMMENT='show all compaction history' AND DEFAULT_TIME_TO_LIVE=604800",
                                                           QueryProcessor.instance);
 
+    public CFMetaData create(String keyspace, String name, ColumnFamilyType columnFamilyType, CellNameType cellNameType)
+    {
+        return new CFMetaData(keyspace, name, columnFamilyType, cellNameType, SystemKeyspace.instance, Schema.instance, ColumnFamilyStoreManager.instance,
+                              KeyspaceManager.instance, this, MutationFactory.instance);
+    }
+
     public CFMetaData denseCFMetaData(String keyspace, String name, AbstractType<?> comp, AbstractType<?> subcc)
     {
         CellNameType cellNameType = CellNames.fromAbstractType(makeRawAbstractType(comp, subcc), true);
-        return new CFMetaData(keyspace, name, subcc == null ? ColumnFamilyType.Standard : ColumnFamilyType.Super, cellNameType,
-                              SystemKeyspace.instance, Schema.instance, ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this, MutationFactory.instance);
+        return create(keyspace, name, subcc == null ? ColumnFamilyType.Standard : ColumnFamilyType.Super, cellNameType);
     }
 
     public CFMetaData sparseCFMetaData(String keyspace, String name, AbstractType<?> comp)
     {
         CellNameType cellNameType = CellNames.fromAbstractType(comp, false);
-        return new CFMetaData(keyspace, name, ColumnFamilyType.Standard, cellNameType,
-                              SystemKeyspace.instance, Schema.instance, ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this, MutationFactory.instance);
+        return create(keyspace, name, ColumnFamilyType.Standard, cellNameType);
     }
 
     public CFMetaData denseCFMetaData(String keyspace, String name, AbstractType<?> comp)

@@ -54,6 +54,7 @@ options {
     import org.apache.cassandra.locator.LocatorConfig;
     import org.apache.cassandra.service.MigrationManager;
     import org.apache.cassandra.auth.Auth;
+    import org.apache.cassandra.config.CFMetaDataFactory;
 
 }
 
@@ -575,7 +576,7 @@ createKeyspaceStatement returns [CreateKeyspaceStatement expr]
 createTableStatement returns [CreateTableStatement.RawStatement expr]
     @init { boolean ifNotExists = false; }
     : K_CREATE K_COLUMNFAMILY (K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
-      cf=columnFamilyName { $expr = new CreateTableStatement.RawStatement(cf, ifNotExists); }
+      cf=columnFamilyName { $expr = new CreateTableStatement.RawStatement(cf, ifNotExists, MigrationManager.instance, CFMetaDataFactory.instance); }
       cfamDefinition[expr]
     ;
 
