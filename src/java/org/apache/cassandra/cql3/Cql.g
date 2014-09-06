@@ -48,6 +48,11 @@ options {
     import org.apache.cassandra.exceptions.InvalidRequestException;
     import org.apache.cassandra.exceptions.SyntaxException;
     import org.apache.cassandra.utils.Pair;
+
+    import org.apache.cassandra.config.DatabaseDescriptor;
+    import org.apache.cassandra.config.Schema;
+    import org.apache.cassandra.locator.LocatorConfig;
+    import org.apache.cassandra.service.MigrationManager;
 }
 
 @members {
@@ -667,7 +672,7 @@ dropTriggerStatement returns [DropTriggerStatement expr]
 alterKeyspaceStatement returns [AlterKeyspaceStatement expr]
     @init { KSPropDefs attrs = new KSPropDefs(); }
     : K_ALTER K_KEYSPACE ks=keyspaceName
-        K_WITH properties[attrs] { $expr = new AlterKeyspaceStatement(ks, attrs); }
+        K_WITH properties[attrs] { $expr = new AlterKeyspaceStatement(ks, attrs, DatabaseDescriptor.instance, Schema.instance, MigrationManager.instance, LocatorConfig.instance); }
     ;
 
 

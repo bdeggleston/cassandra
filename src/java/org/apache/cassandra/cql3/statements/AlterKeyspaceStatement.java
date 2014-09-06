@@ -34,11 +34,20 @@ public class AlterKeyspaceStatement extends SchemaAlteringStatement
     private final String name;
     private final KSPropDefs attrs;
 
-    public AlterKeyspaceStatement(String name, KSPropDefs attrs)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+    private final MigrationManager migrationManager;
+    private final LocatorConfig locatorConfig;
+
+    public AlterKeyspaceStatement(String name, KSPropDefs attrs, DatabaseDescriptor databaseDescriptor, Schema schema, MigrationManager migrationManager, LocatorConfig locatorConfig)
     {
         super();
         this.name = name;
         this.attrs = attrs;
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.migrationManager = migrationManager;
+        this.locatorConfig = locatorConfig;
     }
 
     @Override
@@ -54,7 +63,7 @@ public class AlterKeyspaceStatement extends SchemaAlteringStatement
 
     public void validate(ClientState state) throws RequestValidationException
     {
-        KSMetaData ksm = Schema.instance.getKSMetaData(name);
+        KSMetaData ksm = schema.getKSMetaData(name);
         if (ksm == null)
             throw new InvalidRequestException("Unknown keyspace " + name);
         if (ksm.name.equalsIgnoreCase(Keyspace.SYSTEM_KS))
@@ -73,20 +82,20 @@ public class AlterKeyspaceStatement extends SchemaAlteringStatement
             // so doing proper validation here.
             AbstractReplicationStrategy.validateReplicationStrategy(name,
                                                                     AbstractReplicationStrategy.getClass(attrs.getReplicationStrategyClass()),
-                                                                    LocatorConfig.instance.getTokenMetadata(),
-                                                                    DatabaseDescriptor.instance.getEndpointSnitch(),
+                                                                    locatorConfig.getTokenMetadata(),
+                                                                    databaseDescriptor.getEndpointSnitch(),
                                                                     attrs.getReplicationOptions());
         }
     }
 
     public boolean announceMigration(boolean isLocalOnly) throws RequestValidationException
     {
-        KSMetaData ksm = Schema.instance.getKSMetaData(name);
+        KSMetaData ksm = schema.getKSMetaData(name);
         // In the (very) unlikely case the keyspace was dropped since validate()
         if (ksm == null)
             throw new InvalidRequestException("Unknown keyspace " + name);
 
-        MigrationManager.instance.announceKeyspaceUpdate(attrs.asKSMetadataUpdate(ksm), isLocalOnly);
+        migrationManager.announceKeyspaceUpdate(attrs.asKSMetadataUpdate(ksm), isLocalOnly);
         return true;
     }
 
