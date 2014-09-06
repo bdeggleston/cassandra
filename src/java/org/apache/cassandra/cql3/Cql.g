@@ -528,7 +528,7 @@ createFunctionStatement returns [CreateFunctionStatement expr]
             )
           )
       )
-      { $expr = new CreateFunctionStatement(fn, language.toLowerCase(), bodyOrClassName, deterministic, argsNames, argsTypes, rt, orReplace, ifNotExists); }
+      { $expr = new CreateFunctionStatement(fn, language.toLowerCase(), bodyOrClassName, deterministic, argsNames, argsTypes, rt, orReplace, ifNotExists, MigrationManager.instance); }
     ;
 
 dropFunctionStatement returns [DropFunctionStatement expr]

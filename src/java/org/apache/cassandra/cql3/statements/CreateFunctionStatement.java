@@ -48,6 +48,8 @@ public final class CreateFunctionStatement extends SchemaAlteringStatement
     private final List<CQL3Type.Raw> argRawTypes;
     private final CQL3Type.Raw rawReturnType;
 
+    private final MigrationManager migrationManager;
+
     public CreateFunctionStatement(FunctionName functionName,
                                    String language,
                                    String body,
@@ -56,7 +58,8 @@ public final class CreateFunctionStatement extends SchemaAlteringStatement
                                    List<CQL3Type.Raw> argRawTypes,
                                    CQL3Type.Raw rawReturnType,
                                    boolean orReplace,
-                                   boolean ifNotExists)
+                                   boolean ifNotExists,
+                                   MigrationManager migrationManager)
     {
         this.functionName = functionName;
         this.language = language;
@@ -67,6 +70,7 @@ public final class CreateFunctionStatement extends SchemaAlteringStatement
         this.rawReturnType = rawReturnType;
         this.orReplace = orReplace;
         this.ifNotExists = ifNotExists;
+        this.migrationManager = migrationManager;
     }
 
     public void checkAccess(ClientState state) throws UnauthorizedException
@@ -114,7 +118,7 @@ public final class CreateFunctionStatement extends SchemaAlteringStatement
                                                                 functionName, returnType.asCQL3Type(), old.returnType().asCQL3Type()));
         }
 
-        MigrationManager.instance.announceNewFunction(UDFunction.create(functionName, argNames, argTypes, returnType, language, body, deterministic), isLocalOnly);
+        migrationManager.announceNewFunction(UDFunction.create(functionName, argNames, argTypes, returnType, language, body, deterministic), isLocalOnly);
         return true;
     }
 }
