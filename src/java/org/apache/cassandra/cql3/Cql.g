@@ -777,7 +777,7 @@ grantStatement returns [GrantStatement stmt]
           resource
       K_TO
           username
-      { $stmt = new GrantStatement($permissionOrAll.perms, $resource.res, $username.text); }
+      { $stmt = new GrantStatement($permissionOrAll.perms, $resource.res, $username.text, Auth.instance); }
     ;
 
 /**
