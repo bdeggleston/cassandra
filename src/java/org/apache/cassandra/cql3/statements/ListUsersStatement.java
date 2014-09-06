@@ -30,6 +30,18 @@ import org.apache.cassandra.transport.messages.ResultMessage;
 
 public class ListUsersStatement extends AuthenticationStatement
 {
+
+    private final Tracing tracing;
+    private final QueryProcessor queryProcessor;
+    private final Auth auth;
+
+    public ListUsersStatement(Tracing tracing, QueryProcessor queryProcessor, Auth auth)
+    {
+        this.tracing = tracing;
+        this.queryProcessor = queryProcessor;
+        this.auth = auth;
+    }
+
     public void validate(ClientState state)
     {
     }
@@ -41,8 +53,8 @@ public class ListUsersStatement extends AuthenticationStatement
 
     public ResultMessage execute(ClientState state) throws RequestValidationException, RequestExecutionException
     {
-        return QueryProcessor.instance.process(String.format("SELECT * FROM %s.%s", Auth.AUTH_KS, Auth.USERS_CF),
+        return queryProcessor.process(String.format("SELECT * FROM %s.%s", Auth.AUTH_KS, Auth.USERS_CF),
                                       ConsistencyLevel.QUORUM,
-                                      QueryState.forInternalCalls(Tracing.instance, Auth.instance));
+                                      QueryState.forInternalCalls(tracing, auth));
     }
 }

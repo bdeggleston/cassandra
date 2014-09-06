@@ -57,6 +57,7 @@ options {
     import org.apache.cassandra.config.CFMetaDataFactory;
     import org.apache.cassandra.triggers.TriggerExecutor;
     import org.apache.cassandra.config.KSMetaDataFactory;
+    import org.apache.cassandra.tracing.Tracing;
 
 }
 
@@ -870,7 +871,7 @@ dropUserStatement returns [DropUserStatement stmt]
  * LIST USERS
  */
 listUsersStatement returns [ListUsersStatement stmt]
-    : K_LIST K_USERS { $stmt = new ListUsersStatement(); }
+    : K_LIST K_USERS { $stmt = new ListUsersStatement(Tracing.instance, QueryProcessor.instance, Auth.instance); }
     ;
 
 userOptions[UserOptions opts]
