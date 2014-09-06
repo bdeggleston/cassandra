@@ -47,13 +47,16 @@ public class AlterTableStatement extends SchemaAlteringStatement
     private final Map<ColumnIdentifier, ColumnIdentifier> renames;
     private final boolean isStatic; // Only for ALTER ADD
 
+    private final MigrationManager migrationManager;
+
     public AlterTableStatement(CFName name,
                                Type type,
                                ColumnIdentifier columnName,
                                CQL3Type.Raw validator,
                                CFPropDefs cfProps,
                                Map<ColumnIdentifier, ColumnIdentifier> renames,
-                               boolean isStatic)
+                               boolean isStatic,
+                               MigrationManager migrationManager)
     {
         super(name);
         this.oType = type;
@@ -62,6 +65,7 @@ public class AlterTableStatement extends SchemaAlteringStatement
         this.cfProps = cfProps;
         this.renames = renames;
         this.isStatic = isStatic;
+        this.migrationManager = migrationManager;
     }
 
     public void checkAccess(ClientState state) throws UnauthorizedException, InvalidRequestException
@@ -260,7 +264,7 @@ public class AlterTableStatement extends SchemaAlteringStatement
                 break;
         }
 
-        MigrationManager.instance.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
+        migrationManager.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
         return true;
     }
 

@@ -700,7 +700,7 @@ alterTableStatement returns [AlterTableStatement expr]
                ( K_AND idn=cident K_TO toIdn=cident { renames.put(idn, toIdn); } )*
           )
     {
-        $expr = new AlterTableStatement(cf, type, id, v, props, renames, isStatic);
+        $expr = new AlterTableStatement(cf, type, id, v, props, renames, isStatic, MigrationManager.instance);
     }
     ;
 
