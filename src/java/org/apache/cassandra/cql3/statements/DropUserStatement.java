@@ -19,7 +19,6 @@ package org.apache.cassandra.cql3.statements;
 
 import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.auth.AuthenticatedUser;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.exceptions.RequestValidationException;
@@ -31,11 +30,13 @@ public class DropUserStatement extends AuthenticationStatement
 {
     private final String username;
     private final boolean ifExists;
+    private final Auth auth;
 
-    public DropUserStatement(String username, boolean ifExists)
+    public DropUserStatement(String username, boolean ifExists, Auth auth)
     {
         this.username = username;
         this.ifExists = ifExists;
+        this.auth = auth;
     }
 
     public void validate(ClientState state) throws RequestValidationException
@@ -43,7 +44,7 @@ public class DropUserStatement extends AuthenticationStatement
         // validate login here before checkAccess to avoid leaking user existence to anonymous users.
         state.ensureNotAnonymous();
 
-        if (!ifExists && !Auth.instance.isExistingUser(username))
+        if (!ifExists && !auth.isExistingUser(username))
             throw new InvalidRequestException(String.format("User %s doesn't exist", username));
 
         AuthenticatedUser user = state.getUser();
@@ -53,20 +54,20 @@ public class DropUserStatement extends AuthenticationStatement
 
     public void checkAccess(ClientState state) throws UnauthorizedException
     {
-        if (!state.getUser().isSuper(Auth.instance))
+        if (!state.getUser().isSuper(auth))
             throw new UnauthorizedException("Only superusers are allowed to perform DROP USER queries");
     }
 
     public ResultMessage execute(ClientState state) throws RequestValidationException, RequestExecutionException
     {
         // not rejected in validate()
-        if (ifExists && !Auth.instance.isExistingUser(username))
+        if (ifExists && !auth.isExistingUser(username))
             return null;
 
         // clean up permissions after the dropped user.
-        DatabaseDescriptor.instance.getAuthorizer().revokeAll(username);
-        Auth.instance.deleteUser(username);
-        DatabaseDescriptor.instance.getAuthenticator().drop(username);
+        auth.getAuthorizer().revokeAll(username);
+        auth.deleteUser(username);
+        auth.getAuthenticator().drop(username);
         return null;
     }
 }

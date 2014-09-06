@@ -748,7 +748,7 @@ dropTableStatement returns [DropTableStatement stmt]
  */
 dropTypeStatement returns [DropTypeStatement stmt]
     @init { boolean ifExists = false; }
-    : K_DROP K_TYPE (K_IF K_EXISTS { ifExists = true; } )? name=userTypeName { $stmt = new DropTypeStatement(name, ifExists, Schema.init, MigrationManager.instance); }
+    : K_DROP K_TYPE (K_IF K_EXISTS { ifExists = true; } )? name=userTypeName { $stmt = new DropTypeStatement(name, ifExists, Schema.instance, MigrationManager.instance); }
     ;
 
 /**
@@ -862,7 +862,7 @@ alterUserStatement returns [AlterUserStatement stmt]
  */
 dropUserStatement returns [DropUserStatement stmt]
     @init { boolean ifExists = false; }
-    : K_DROP K_USER (K_IF K_EXISTS { ifExists = true; })? username { $stmt = new DropUserStatement($username.text, ifExists); }
+    : K_DROP K_USER (K_IF K_EXISTS { ifExists = true; })? username { $stmt = new DropUserStatement($username.text, ifExists, Auth.instance); }
     ;
 
 /**
