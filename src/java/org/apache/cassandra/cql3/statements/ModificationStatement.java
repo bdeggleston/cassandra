@@ -512,7 +512,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         long now = options.getTimestamp(queryState);
         Composite prefix = createClusteringPrefix(options);
 
-        CQL3CasRequest request = new CQL3CasRequest(cfm, key, false);
+        CQL3CasRequest request = new CQL3CasRequest(cfm, key, false, DatabaseDescriptor.instance, DBConfig.instance, Tracing.instance);
         addConditions(prefix, request, options);
         request.addRowUpdate(prefix, this, options, now);
 

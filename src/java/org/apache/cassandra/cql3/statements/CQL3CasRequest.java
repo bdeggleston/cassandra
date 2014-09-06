@@ -50,7 +50,11 @@ public class CQL3CasRequest implements CASRequest
 
     private final List<RowUpdate> updates = new ArrayList<>();
 
-    public CQL3CasRequest(CFMetaData cfm, ByteBuffer key, boolean isBatch)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final DBConfig dbConfig;
+    private final Tracing tracing;
+
+    public CQL3CasRequest(CFMetaData cfm, ByteBuffer key, boolean isBatch, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig, Tracing tracing)
     {
         this.cfm = cfm;
         // When checking if conditions apply, we want to use a fixed reference time for a whole request to check
@@ -59,6 +63,10 @@ public class CQL3CasRequest implements CASRequest
         this.key = key;
         this.conditions = new TreeMap<>(cfm.comparator);
         this.isBatch = isBatch;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.dbConfig = dbConfig;
+        this.tracing = tracing;
     }
 
     public void addRowUpdate(Composite prefix, ModificationStatement stmt, QueryOptions options, long timestamp)
@@ -116,7 +124,7 @@ public class CQL3CasRequest implements CASRequest
         int toGroup = cfm.comparator.isDense() ? -1 : cfm.clusteringColumns().size();
         slices = ColumnSlice.deoverlapSlices(slices, cfm.comparator);
         assert ColumnSlice.validateSlices(slices, cfm.comparator, false);
-        return new SliceQueryFilter(slices, false, slices.length, toGroup, DatabaseDescriptor.instance, Tracing.instance);
+        return new SliceQueryFilter(slices, false, slices.length, toGroup, databaseDescriptor, tracing);
     }
 
     public boolean appliesTo(ColumnFamily current) throws InvalidRequestException
@@ -131,7 +139,7 @@ public class CQL3CasRequest implements CASRequest
 
     public ColumnFamily makeUpdates(ColumnFamily current) throws InvalidRequestException
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfm, DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfm, dbConfig);
         for (RowUpdate upd : updates)
             upd.applyUpdates(current, cf);
 

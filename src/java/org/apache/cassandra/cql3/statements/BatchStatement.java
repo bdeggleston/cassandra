@@ -23,6 +23,7 @@ import java.util.*;
 import com.google.common.base.Function;
 import com.google.common.collect.*;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.github.jamm.MemoryMeter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -319,7 +320,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
                 key = pks.get(0);
                 ksName = statement.cfm.ksName;
                 cfName = statement.cfm.cfName;
-                casRequest = new CQL3CasRequest(statement.cfm, key, true);
+                casRequest = new CQL3CasRequest(statement.cfm, key, true, DatabaseDescriptor.instance, DBConfig.instance, Tracing.instance);
             }
             else if (!key.equals(pks.get(0)))
             {
