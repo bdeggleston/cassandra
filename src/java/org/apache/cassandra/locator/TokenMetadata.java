@@ -1117,6 +1117,7 @@ public class TokenMetadata
 
         protected Topology(IEndpointSnitch endpointSnitch)
         {
+            assert endpointSnitch != null;
             dcEndpoints = HashMultimap.create();
             dcRacks = new HashMap<String, Multimap<String, InetAddress>>();
             currentLocations = new HashMap<InetAddress, Pair<String, String>>();
@@ -1125,6 +1126,7 @@ public class TokenMetadata
 
         protected void clear()
         {
+            assert endpointSnitch != null;
             dcEndpoints.clear();
             dcRacks.clear();
             currentLocations.clear();

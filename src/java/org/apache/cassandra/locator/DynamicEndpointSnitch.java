@@ -79,24 +79,6 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
         this.resetIntervalInMs = resetIntervalMs;
         this.badnessThreshold = badnessThreshold;
 
-        Runnable update = new Runnable()
-        {
-            public void run()
-            {
-                updateScores();
-            }
-        };
-        Runnable reset = new Runnable()
-        {
-            public void run()
-            {
-                // we do this so that a host considered bad has a chance to recover, otherwise would we never try
-                // to read from it, which would cause its score to never change
-                reset();
-            }
-        };
-        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(update, updateIntervalInMs, updateIntervalInMs, TimeUnit.MILLISECONDS);
-        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(reset, resetIntervalInMs, resetIntervalInMs, TimeUnit.MILLISECONDS);
         registerMBean();
    }
 
@@ -129,6 +111,24 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     @Override
     public void gossiperStarting()
     {
+        Runnable update = new Runnable()
+        {
+            public void run()
+            {
+                updateScores();
+            }
+        };
+        Runnable reset = new Runnable()
+        {
+            public void run()
+            {
+                // we do this so that a host considered bad has a chance to recover, otherwise would we never try
+                // to read from it, which would cause its score to never change
+                reset();
+            }
+        };
+        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(update, updateIntervalInMs, updateIntervalInMs, TimeUnit.MILLISECONDS);
+        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(reset, resetIntervalInMs, resetIntervalInMs, TimeUnit.MILLISECONDS);
         subsnitch.gossiperStarting();
     }
 

@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.dht.BigIntegerToken;
 import org.apache.cassandra.dht.Range;
@@ -39,6 +40,7 @@ import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.Pair;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class OldNetworkTopologyStrategyTest
@@ -46,6 +48,12 @@ public class OldNetworkTopologyStrategyTest
     private List<Token> keyTokens;
     private TokenMetadata tmd;
     private Map<String, ArrayList<InetAddress>> expectedResults;
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
+    }
 
     @Before
     public void init()

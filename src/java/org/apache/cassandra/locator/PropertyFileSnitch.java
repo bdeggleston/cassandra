@@ -189,16 +189,25 @@ public class PropertyFileSnitch extends AbstractNetworkTopologySnitch
 
         logger.debug("loaded network topology {}", FBUtilities.toString(reloadedMap));
         endpointMap = reloadedMap;
-        if (LocatorConfig.instance != null) // null check tolerates circular dependency; see CASSANDRA-4145
-            LocatorConfig.instance.getTokenMetadata().invalidateCachedRings();
 
         if (gossipStarted)
+        {
+            LocatorConfig.instance.getTokenMetadata().invalidateCachedRings();
             StorageService.instance.gossipSnitchInfo();
+        }
     }
 
     @Override
     public void gossiperStarting()
     {
+        try
+        {
+            reloadConfiguration();
+        }
+        catch (ConfigurationException e)
+        {
+            throw new RuntimeException(e);
+        }
         gossipStarted = true;
     }
 }

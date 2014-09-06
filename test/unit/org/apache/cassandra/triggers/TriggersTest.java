@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Collections;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Mutation;
@@ -62,6 +63,7 @@ public class TriggersTest
     @BeforeClass
     public static void beforeTest() throws ConfigurationException
     {
+        DatabaseDescriptor.init();
         SchemaLoader.loadSchema();
     }
 

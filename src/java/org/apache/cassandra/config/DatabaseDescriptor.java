@@ -140,6 +140,16 @@ public class DatabaseDescriptor
         }
 
         instance = databaseDescriptor;
+        try
+        {
+            instance.setUpSnitch();
+        }
+        catch (ConfigurationException e)
+        {
+            logger.error("Fatal configuration error", e);
+            System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
+            System.exit(1);
+        }
         assert Gossiper.instance != null;
         assert Tracing.instance != null;
         assert KeyspaceManager.instance != null;
@@ -156,16 +166,6 @@ public class DatabaseDescriptor
         assert LocatorConfig.instance != null;
         assert StorageService.instance != null;
 
-        try
-        {
-            instance.setUpSnitch();
-        }
-        catch (ConfigurationException e)
-        {
-            logger.error("Fatal configuration error", e);
-            System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
-            System.exit(1);
-        }
     }
 
     public static DatabaseDescriptor create() throws ConfigurationException

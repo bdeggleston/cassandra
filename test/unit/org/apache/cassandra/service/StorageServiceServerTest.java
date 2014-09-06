@@ -22,20 +22,20 @@ package org.apache.cassandra.service;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.URL;
 import java.util.*;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
-import org.apache.cassandra.config.KSMetaDataFactory;
+import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.apache.cassandra.OrderedJUnit4ClassRunner;
-import org.apache.cassandra.config.KSMetaData;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.Range;
@@ -43,7 +43,6 @@ import org.apache.cassandra.dht.StringToken;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.SchemaLoader;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.locator.PropertyFileSnitch;
 import org.apache.cassandra.locator.TokenMetadata;
@@ -54,13 +53,27 @@ import static org.junit.Assert.assertTrue;
 @RunWith(OrderedJUnit4ClassRunner.class)
 public class StorageServiceServerTest
 {
+
+    public static class ConfigLoader extends YamlConfigurationLoader
+    {
+        @Override
+        public Config loadConfig(URL url) throws ConfigurationException
+        {
+            Config conf = super.loadConfig(url);
+            conf.endpoint_snitch = PropertyFileSnitch.class.getName();
+            return conf;
+        }
+    }
+
     @BeforeClass
     public static void setUp() throws ConfigurationException
     {
+        System.setProperty("cassandra.config.loader", ConfigLoader.class.getName());
         DatabaseDescriptor.init();
-        IEndpointSnitch snitch = new PropertyFileSnitch();
-        DatabaseDescriptor.instance.setEndpointSnitch(snitch);
+//        IEndpointSnitch snitch = new PropertyFileSnitch();
+//        DatabaseDescriptor.instance.setEndpointSnitch(snitch);
         KeyspaceManager.instance.setInitialized();
+//        snitch.gossiperStarting();
     }
 
     @Test

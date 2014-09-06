@@ -58,6 +58,7 @@ public class DynamicEndpointSnitchTest
         StorageService.instance.initClient(0);
         SimpleSnitch ss = new SimpleSnitch();
         DynamicEndpointSnitch dsnitch = new DynamicEndpointSnitch(ss, String.valueOf(ss.hashCode()));
+        dsnitch.gossiperStarting();
         InetAddress self = DatabaseDescriptor.instance.getBroadcastAddress();
         InetAddress host1 = InetAddress.getByName("127.0.0.2");
         InetAddress host2 = InetAddress.getByName("127.0.0.3");
