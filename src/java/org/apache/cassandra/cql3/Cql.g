@@ -619,7 +619,7 @@ cfamOrdering[CreateTableStatement.RawStatement expr]
 createTypeStatement returns [CreateTypeStatement expr]
     @init { boolean ifNotExists = false; }
     : K_CREATE K_TYPE (K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
-         tn=userTypeName { $expr = new CreateTypeStatement(tn, ifNotExists); }
+         tn=userTypeName { $expr = new CreateTypeStatement(tn, ifNotExists, Schema.instance, MigrationManager.instance); }
          '(' typeColumns[expr] ( ',' typeColumns[expr]? )* ')'
     ;
 

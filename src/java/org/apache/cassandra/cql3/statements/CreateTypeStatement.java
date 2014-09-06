@@ -38,11 +38,16 @@ public class CreateTypeStatement extends SchemaAlteringStatement
     private final List<CQL3Type.Raw> columnTypes = new ArrayList<>();
     private final boolean ifNotExists;
 
-    public CreateTypeStatement(UTName name, boolean ifNotExists)
+    private final Schema schema;
+    private final MigrationManager migrationManager;
+
+    public CreateTypeStatement(UTName name, boolean ifNotExists, Schema schema, MigrationManager migrationManager)
     {
         super();
         this.name = name;
         this.ifNotExists = ifNotExists;
+        this.schema = schema;
+        this.migrationManager = migrationManager;
     }
 
     @Override
@@ -65,7 +70,7 @@ public class CreateTypeStatement extends SchemaAlteringStatement
 
     public void validate(ClientState state) throws RequestValidationException
     {
-        KSMetaData ksm = Schema.instance.getKSMetaData(name.getKeyspace());
+        KSMetaData ksm = schema.getKSMetaData(name.getKeyspace());
         if (ksm == null)
             throw new InvalidRequestException(String.format("Cannot add type in unknown keyspace %s", name.getKeyspace()));
 
@@ -118,7 +123,7 @@ public class CreateTypeStatement extends SchemaAlteringStatement
 
     public boolean announceMigration(boolean isLocalOnly) throws InvalidRequestException, ConfigurationException
     {
-        KSMetaData ksm = Schema.instance.getKSMetaData(name.getKeyspace());
+        KSMetaData ksm = schema.getKSMetaData(name.getKeyspace());
         assert ksm != null; // should haven't validate otherwise
 
         // Can happen with ifNotExists
@@ -127,7 +132,7 @@ public class CreateTypeStatement extends SchemaAlteringStatement
 
         UserType type = createType();
         checkForDuplicateNames(type);
-        MigrationManager.instance.announceNewType(type, isLocalOnly);
+        migrationManager.announceNewType(type, isLocalOnly);
         return true;
     }
 }
