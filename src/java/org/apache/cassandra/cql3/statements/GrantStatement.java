@@ -31,12 +31,9 @@ import org.apache.cassandra.transport.messages.ResultMessage;
 
 public class GrantStatement extends PermissionAlteringStatement
 {
-    private final Auth auth;
-
     public GrantStatement(Set<Permission> permissions, IResource resource, String username, Auth auth)
     {
-        super(permissions, resource, username);
-        this.auth = auth;
+        super(permissions, resource, username, auth);
     }
 
     public ResultMessage execute(ClientState state) throws RequestValidationException, RequestExecutionException

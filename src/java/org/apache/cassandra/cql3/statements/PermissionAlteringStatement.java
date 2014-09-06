@@ -34,11 +34,15 @@ public abstract class PermissionAlteringStatement extends AuthorizationStatement
     protected DataResource resource;
     protected final String username;
 
-    protected PermissionAlteringStatement(Set<Permission> permissions, IResource resource, String username)
+    protected final Auth auth;
+
+    protected PermissionAlteringStatement(Set<Permission> permissions, IResource resource, String username, Auth auth)
     {
         this.permissions = permissions;
         this.resource = (DataResource) resource;
         this.username = username;
+
+        this.auth = auth;
     }
 
     public void validate(ClientState state) throws RequestValidationException
@@ -46,7 +50,7 @@ public abstract class PermissionAlteringStatement extends AuthorizationStatement
         // validate login here before checkAccess to avoid leaking user existence to anonymous users.
         state.ensureNotAnonymous();
 
-        if (!Auth.instance.isExistingUser(username))
+        if (!auth.isExistingUser(username))
             throw new InvalidRequestException(String.format("User %s doesn't exist", username));
 
         // if a keyspace is omitted when GRANT/REVOKE ON TABLE <table>, we need to correct the resource.

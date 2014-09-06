@@ -813,7 +813,7 @@ revokeStatement returns [RevokeStatement stmt]
           resource
       K_FROM
           username
-      { $stmt = new RevokeStatement($permissionOrAll.perms, $resource.res, $username.text); }
+      { $stmt = new RevokeStatement($permissionOrAll.perms, $resource.res, $username.text, Auth.instance); }
     ;
 
 listPermissionsStatement returns [ListPermissionsStatement stmt]
