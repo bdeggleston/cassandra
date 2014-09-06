@@ -62,6 +62,7 @@ options {
     import org.apache.cassandra.db.DBConfig;
     import org.apache.cassandra.db.MutationFactory;
     import org.apache.cassandra.db.CounterMutationFactory;
+    import org.apache.cassandra.db.KeyspaceManager;
 }
 
 @members {
@@ -295,7 +296,17 @@ selectStatement returns [SelectStatement.RawStatement expr]
                                                                              isCount,
                                                                              countAlias,
                                                                              allowFiltering);
-          $expr = new SelectStatement.RawStatement(cf, params, sclause, wclause, limit);
+          $expr = new SelectStatement.RawStatement(cf,
+                                                   params,
+                                                   sclause,
+                                                   wclause,
+                                                   limit,
+                                                   DatabaseDescriptor.instance,
+                                                   Tracing.instance,
+                                                   QueryProcessor.instance,
+                                                   KeyspaceManager.instance,
+                                                   StorageProxy.instance,
+                                                   LocatorConfig.instance);
       }
     ;
 
@@ -370,10 +381,13 @@ insertStatement returns [UpdateStatement.ParsedInsert expr]
                                                    ifNotExists,
                                                    DatabaseDescriptor.instance,
                                                    Tracing.instance,
+                                                   QueryProcessor.instance,
                                                    StorageProxy.instance,
+                                                   KeyspaceManager.instance,
                                                    DBConfig.instance,
                                                    MutationFactory.instance,
-                                                   CounterMutationFactory.instance);
+                                                   CounterMutationFactory.instance,
+                                                   LocatorConfig.instance);
       }
     ;
 
@@ -410,10 +424,13 @@ updateStatement returns [UpdateStatement.ParsedUpdate expr]
                                                   conditions == null ? Collections.<Pair<ColumnIdentifier, ColumnCondition.Raw>>emptyList() : conditions,
                                                   DatabaseDescriptor.instance,
                                                   Tracing.instance,
+                                                  QueryProcessor.instance,
                                                   StorageProxy.instance,
+                                                  KeyspaceManager.instance,
                                                   DBConfig.instance,
                                                   MutationFactory.instance,
-                                                  CounterMutationFactory.instance);
+                                                  CounterMutationFactory.instance,
+                                                  LocatorConfig.instance);
      }
     ;
 
@@ -450,10 +467,13 @@ deleteStatement returns [DeleteStatement.Parsed expr]
                                             ifExists,
                                             DatabaseDescriptor.instance,
                                             Tracing.instance,
+                                            QueryProcessor.instance,
                                             StorageProxy.instance,
+                                            KeyspaceManager.instance,
                                             DBConfig.instance,
                                             MutationFactory.instance,
-                                            CounterMutationFactory.instance);
+                                            CounterMutationFactory.instance,
+                                            LocatorConfig.instance);
       }
     ;
 

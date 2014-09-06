@@ -27,6 +27,7 @@ import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.exceptions.*;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.Pair;
@@ -42,12 +43,27 @@ public class DeleteStatement extends ModificationStatement
                             Attributes attrs,
                             DatabaseDescriptor databaseDescriptor,
                             Tracing tracing,
+                            QueryProcessor queryProcessor,
                             StorageProxy storageProxy,
+                            KeyspaceManager keyspaceManager,
                             DBConfig dbConfig,
                             MutationFactory mutationFactory,
-                            CounterMutationFactory counterMutationFactory)
+                            CounterMutationFactory counterMutationFactory,
+                            LocatorConfig locatorConfig)
     {
-        super(type, boundTerms, cfm, attrs, databaseDescriptor, tracing, storageProxy, dbConfig, mutationFactory, counterMutationFactory);
+        super(type,
+              boundTerms,
+              cfm,
+              attrs,
+              databaseDescriptor,
+              tracing,
+              queryProcessor,
+              storageProxy,
+              keyspaceManager,
+              dbConfig,
+              mutationFactory,
+              counterMutationFactory,
+              locatorConfig);
     }
 
     public boolean requireFullClusteringKey()
@@ -103,10 +119,13 @@ public class DeleteStatement extends ModificationStatement
 
         private final DatabaseDescriptor databaseDescriptor;
         private final Tracing tracing;
+        private final QueryProcessor queryProcessor;
         private final StorageProxy storageProxy;
+        private final KeyspaceManager keyspaceManager;
         private final DBConfig dbConfig;
         private final MutationFactory mutationFactory;
         private final CounterMutationFactory counterMutationFactory;
+        private final LocatorConfig locatorConfig;
 
         public Parsed(CFName name,
                       Attributes.Raw attrs,
@@ -116,10 +135,13 @@ public class DeleteStatement extends ModificationStatement
                       boolean ifExists,
                       DatabaseDescriptor databaseDescriptor,
                       Tracing tracing,
+                      QueryProcessor queryProcessor,
                       StorageProxy storageProxy,
+                      KeyspaceManager keyspaceManager,
                       DBConfig dbConfig,
                       MutationFactory mutationFactory,
-                      CounterMutationFactory counterMutationFactory)
+                      CounterMutationFactory counterMutationFactory,
+                      LocatorConfig locatorConfig)
         {
             super(name, attrs, conditions, false, ifExists);
             this.deletions = deletions;
@@ -127,10 +149,13 @@ public class DeleteStatement extends ModificationStatement
 
             this.databaseDescriptor = databaseDescriptor;
             this.tracing = tracing;
+            this.queryProcessor = queryProcessor;
             this.storageProxy = storageProxy;
+            this.keyspaceManager = keyspaceManager;
             this.dbConfig = dbConfig;
             this.mutationFactory = mutationFactory;
             this.counterMutationFactory = counterMutationFactory;
+            this.locatorConfig = locatorConfig;
         }
 
         protected ModificationStatement prepareInternal(CFMetaData cfm, VariableSpecifications boundNames, Attributes attrs) throws InvalidRequestException
@@ -141,10 +166,13 @@ public class DeleteStatement extends ModificationStatement
                                                        attrs,
                                                        databaseDescriptor,
                                                        tracing,
+                                                       queryProcessor,
                                                        storageProxy,
+                                                       keyspaceManager,
                                                        dbConfig,
                                                        mutationFactory,
-                                                       counterMutationFactory);
+                                                       counterMutationFactory,
+                                                       locatorConfig);
 
             for (Operation.RawDeletion deletion : deletions)
             {

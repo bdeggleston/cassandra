@@ -23,6 +23,7 @@ import java.util.*;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.github.jamm.MemoryMeter;
 
@@ -82,10 +83,13 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 
     private final DatabaseDescriptor databaseDescriptor;
     private final Tracing tracing;
+    private final QueryProcessor queryProcessor;
     private final StorageProxy storageProxy;
+    private final KeyspaceManager keyspaceManager;
     private final DBConfig dbConfig;
     private final MutationFactory mutationFactory;
     private final CounterMutationFactory counterMutationFactory;
+    private final LocatorConfig locatorConfig;
 
     protected ModificationStatement(StatementType type,
                                     int boundTerms,
@@ -93,10 +97,13 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                     Attributes attrs,
                                     DatabaseDescriptor databaseDescriptor,
                                     Tracing tracing,
+                                    QueryProcessor queryProcessor,
                                     StorageProxy storageProxy,
+                                    KeyspaceManager keyspaceManager,
                                     DBConfig dbConfig,
                                     MutationFactory mutationFactory,
-                                    CounterMutationFactory counterMutationFactory)
+                                    CounterMutationFactory counterMutationFactory,
+                                    LocatorConfig locatorConfig)
     {
         this.type = type;
         this.boundTerms = boundTerms;
@@ -105,10 +112,13 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 
         this.databaseDescriptor = databaseDescriptor;
         this.tracing = tracing;
+        this.queryProcessor =  queryProcessor;
         this.storageProxy = storageProxy;
+        this.keyspaceManager = keyspaceManager;
         this.dbConfig = dbConfig;
         this.mutationFactory = mutationFactory;
         this.counterMutationFactory = counterMutationFactory;
+        this.locatorConfig = locatorConfig;
     }
 
     public long measureForPreparedCache(MemoryMeter meter)
@@ -465,7 +475,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                                   new SliceQueryFilter(slices, false, Integer.MAX_VALUE, databaseDescriptor, tracing)));
 
         List<Row> rows = local
-                       ? SelectStatement.readLocally(keyspace(), commands)
+                       ? SelectStatement.readLocally(keyspace(), commands, keyspaceManager)
                        : storageProxy.read(commands, cl);
 
         Map<ByteBuffer, CQL3Row> map = new HashMap<ByteBuffer, CQL3Row>();
@@ -572,10 +582,34 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 
     private ResultSet buildCasResultSet(ByteBuffer key, ColumnFamily cf, QueryOptions options) throws InvalidRequestException
     {
-        return buildCasResultSet(keyspace(), key, columnFamily(), cf, getColumnsWithConditions(), false, options);
+        return buildCasResultSet(keyspace(),
+                                 key,
+                                 columnFamily(),
+                                 cf,
+                                 getColumnsWithConditions(),
+                                 false,
+                                 options,
+                                 databaseDescriptor,
+                                 tracing,
+                                 queryProcessor,
+                                 keyspaceManager,
+                                 storageProxy,
+                                 locatorConfig);
     }
 
-    public static ResultSet buildCasResultSet(String ksName, ByteBuffer key, String cfName, ColumnFamily cf, Iterable<ColumnDefinition> columnsWithConditions, boolean isBatch, QueryOptions options)
+    public static ResultSet buildCasResultSet(String ksName,
+                                              ByteBuffer key,
+                                              String cfName,
+                                              ColumnFamily cf,
+                                              Iterable<ColumnDefinition> columnsWithConditions,
+                                              boolean isBatch,
+                                              QueryOptions options,
+                                              DatabaseDescriptor databaseDescriptor,
+                                              Tracing tracing,
+                                              QueryProcessor queryProcessor,
+                                              KeyspaceManager keyspaceManager,
+                                              StorageProxy storageProxy,
+                                              LocatorConfig locatorConfig)
     throws InvalidRequestException
     {
         boolean success = cf == null;
@@ -585,7 +619,17 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         List<List<ByteBuffer>> rows = Collections.singletonList(Collections.singletonList(BooleanType.instance.decompose(success)));
 
         ResultSet rs = new ResultSet(metadata, rows);
-        return success ? rs : merge(rs, buildCasFailureResultSet(key, cf, columnsWithConditions, isBatch, options));
+        return success ? rs : merge(rs, buildCasFailureResultSet(key,
+                                                                 cf,
+                                                                 columnsWithConditions,
+                                                                 isBatch,
+                                                                 options,
+                                                                 databaseDescriptor,
+                                                                 tracing,
+                                                                 queryProcessor,
+                                                                 keyspaceManager,
+                                                                 storageProxy,
+                                                                 locatorConfig));
     }
 
     private static ResultSet merge(ResultSet left, ResultSet right)
@@ -611,7 +655,17 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         return new ResultSet(new ResultSet.Metadata(specs), rows);
     }
 
-    private static ResultSet buildCasFailureResultSet(ByteBuffer key, ColumnFamily cf, Iterable<ColumnDefinition> columnsWithConditions, boolean isBatch, QueryOptions options)
+    private static ResultSet buildCasFailureResultSet(ByteBuffer key,
+                                                      ColumnFamily cf,
+                                                      Iterable<ColumnDefinition> columnsWithConditions,
+                                                      boolean isBatch,
+                                                      QueryOptions options,
+                                                      DatabaseDescriptor databaseDescriptor,
+                                                      Tracing tracing,
+                                                      QueryProcessor queryProcessor,
+                                                      KeyspaceManager keyspaceManager,
+                                                      StorageProxy storageProxy,
+                                                      LocatorConfig locatorConfig)
     throws InvalidRequestException
     {
         CFMetaData cfm = cf.metadata();
@@ -639,7 +693,14 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 
         long now = System.currentTimeMillis();
         Selection.ResultSetBuilder builder = selection.resultSetBuilder(now);
-        SelectStatement.forSelection(cfm, selection).processColumnFamily(key, cf, options, now, builder);
+        SelectStatement.forSelection(cfm,
+                                     selection,
+                                     databaseDescriptor,
+                                     tracing,
+                                     queryProcessor,
+                                     keyspaceManager,
+                                     storageProxy,
+                                     locatorConfig).processColumnFamily(key, cf, options, now, builder);
 
         return builder.build();
     }

@@ -46,9 +46,7 @@ import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.service.StorageProxy;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.pager.*;
-import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.thrift.ThriftValidation;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -108,7 +106,24 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         }
     };
 
-    public SelectStatement(CFMetaData cfm, int boundTerms, Parameters parameters, Selection selection, Term limit)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Tracing tracing;
+    private final QueryProcessor queryProcessor;
+    private final KeyspaceManager keyspaceManager;
+    private final StorageProxy storageProxy;
+    private final LocatorConfig locatorConfig;
+
+    public SelectStatement(CFMetaData cfm,
+                           int boundTerms,
+                           Parameters parameters,
+                           Selection selection,
+                           Term limit,
+                           DatabaseDescriptor databaseDescriptor,
+                           Tracing tracing,
+                           QueryProcessor queryProcessor,
+                           KeyspaceManager keyspaceManager,
+                           StorageProxy storageProxy,
+                           LocatorConfig locatorConfig)
     {
         this.cfm = cfm;
         this.boundTerms = boundTerms;
@@ -117,6 +132,13 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         this.columnRestrictions = new Restriction[cfm.clusteringColumns().size()];
         this.parameters = parameters;
         this.limit = limit;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
+        this.queryProcessor = queryProcessor;
+        this.keyspaceManager = keyspaceManager;
+        this.storageProxy = storageProxy;
+        this.locatorConfig = locatorConfig;
 
         // Now gather a few info on whether we should bother with static columns or not for this statement
         initStaticColumnsInfo();
@@ -150,9 +172,26 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
     // Creates a simple select based on the given selection.
     // Note that the results select statement should not be used for actual queries, but only for processing already
     // queried data through processColumnFamily.
-    static SelectStatement forSelection(CFMetaData cfm, Selection selection)
+    static SelectStatement forSelection(CFMetaData cfm,
+                                        Selection selection,
+                                        DatabaseDescriptor databaseDescriptor,
+                                        Tracing tracing,
+                                        QueryProcessor queryProcessor,
+                                        KeyspaceManager keyspaceManager,
+                                        StorageProxy storageProxy,
+                                        LocatorConfig locatorConfig)
     {
-        return new SelectStatement(cfm, 0, defaultParameters, selection, null);
+        return new SelectStatement(cfm,
+                                   0,
+                                   defaultParameters,
+                                   selection,
+                                   null,
+                                   databaseDescriptor,
+                                   tracing,
+                                   queryProcessor,
+                                   keyspaceManager,
+                                   storageProxy,
+                                   locatorConfig);
     }
 
     public ResultSet.Metadata getResultMetadata()
@@ -257,8 +296,8 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         else
         {
             rows = command instanceof Pageable.ReadCommands
-                 ? StorageProxy.instance.read(((Pageable.ReadCommands)command).commands, options.getConsistency())
-                 : StorageProxy.instance.getRangeSlice((RangeSliceCommand)command, options.getConsistency());
+                 ? storageProxy.read(((Pageable.ReadCommands)command).commands, options.getConsistency())
+                 : storageProxy.getRangeSlice((RangeSliceCommand)command, options.getConsistency());
         }
 
         return processResults(rows, options, limit, now);
@@ -289,9 +328,9 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         return new ResultMessage.Rows(rset);
     }
 
-    static List<Row> readLocally(String keyspaceName, List<ReadCommand> cmds)
+    static List<Row> readLocally(String keyspaceName, List<ReadCommand> cmds, KeyspaceManager keyspaceManager)
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
+        Keyspace keyspace = keyspaceManager.open(keyspaceName);
         List<Row> rows = new ArrayList<Row>(cmds.size());
         for (ReadCommand cmd : cmds)
             rows.add(cmd.getRow(keyspace));
@@ -306,7 +345,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         List<Row> rows = command == null
                        ? Collections.<Row>emptyList()
                        : (command instanceof Pageable.ReadCommands
-                          ? readLocally(keyspace(), ((Pageable.ReadCommands)command).commands)
+                          ? readLocally(keyspace(), ((Pageable.ReadCommands)command).commands, keyspaceManager)
                           : ((RangeSliceCommand)command).executeLocally());
 
         return processResults(rows, options, limit, now);
@@ -345,7 +384,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         // However, IN + LIMIT is not a very sensible choice.
         for (ByteBuffer key : keys)
         {
-            QueryProcessor.instance.validateKey(key);
+            queryProcessor.validateKey(key);
             // We should not share the slice filter amongst the commands (hence the cloneShallow), due to
             // SliceQueryFilter not being immutable due to its columnCounter used by the lastCounted() method
             // (this is fairly ugly and we should change that but that's probably not a tiny refactor to do that cleanly)
@@ -372,7 +411,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
 
     private AbstractBounds<RowPosition> getKeyBounds(QueryOptions options) throws InvalidRequestException
     {
-        IPartitioner<?> p = LocatorConfig.instance.getPartitioner();
+        IPartitioner<?> p = locatorConfig.getPartitioner();
 
         if (onToken)
         {
@@ -399,7 +438,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             RowPosition start = includeStart ? startToken.minKeyBound() : startToken.maxKeyBound();
             RowPosition end = includeEnd ? endToken.maxKeyBound() : endToken.minKeyBound();
 
-            return new Range<RowPosition>(start, end, LocatorConfig.instance.getPartitioner());
+            return new Range<RowPosition>(start, end, locatorConfig.getPartitioner());
         }
         else
         {
@@ -415,14 +454,14 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             if (includeKeyBound(Bound.START))
             {
                 return includeKeyBound(Bound.END)
-                     ? new Bounds<RowPosition>(startKey, finishKey, LocatorConfig.instance.getPartitioner())
-                     : new IncludingExcludingBounds<RowPosition>(startKey, finishKey, LocatorConfig.instance.getPartitioner());
+                     ? new Bounds<RowPosition>(startKey, finishKey, locatorConfig.getPartitioner())
+                     : new IncludingExcludingBounds<RowPosition>(startKey, finishKey, locatorConfig.getPartitioner());
             }
             else
             {
                 return includeKeyBound(Bound.END)
-                     ? new Range<RowPosition>(startKey, finishKey, LocatorConfig.instance.getPartitioner())
-                     : new ExcludingBounds<RowPosition>(startKey, finishKey, LocatorConfig.instance.getPartitioner());
+                     ? new Range<RowPosition>(startKey, finishKey, locatorConfig.getPartitioner())
+                     : new ExcludingBounds<RowPosition>(startKey, finishKey, locatorConfig.getPartitioner());
             }
         }
     }
@@ -445,7 +484,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             // For distinct, we only care about fetching the beginning of each partition. If we don't have
             // static columns, we in fact only care about the first cell, so we query only that (we don't "group").
             // If we do have static columns, we do need to fetch the first full group (to have the static columns values).
-            return new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 1, selectsStaticColumns ? toGroup : -1, DatabaseDescriptor.instance, Tracing.instance);
+            return new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 1, selectsStaticColumns ? toGroup : -1, databaseDescriptor, tracing);
         }
         else if (isColumnRange())
         {
@@ -533,7 +572,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             SortedSet<CellName> cellNames = getRequestedColumns(options);
             if (cellNames == null) // in case of IN () for the last column of the key
                 return null;
-            QueryProcessor.instance.validateCellNames(cellNames, cfm.comparator);
+            queryProcessor.validateCellNames(cellNames, cfm.comparator);
             return new NamesQueryFilter(cellNames, true);
         }
     }
@@ -546,7 +585,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
     private SliceQueryFilter sliceFilter(ColumnSlice[] slices, int limit, int toGroup)
     {
         assert ColumnSlice.validateSlices(slices, cfm.comparator, isReversed) : String.format("Invalid slices: " + Arrays.toString(slices) + (isReversed ? " (reversed)" : ""));
-        return new SliceQueryFilter(slices, isReversed, limit, toGroup, DatabaseDescriptor.instance, Tracing.instance);
+        return new SliceQueryFilter(slices, isReversed, limit, toGroup, databaseDescriptor, tracing);
     }
 
     private int getLimit(QueryOptions options) throws InvalidRequestException
@@ -1088,7 +1127,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         
         if (usesSecondaryIndexing)
         {
-            ColumnFamilyStore cfs = KeyspaceManager.instance.open(keyspace()).getColumnFamilyStore(columnFamily());
+            ColumnFamilyStore cfs = keyspaceManager.open(keyspace()).getColumnFamilyStore(columnFamily());
             SecondaryIndexManager secondaryIndexManager = cfs.indexManager;
             secondaryIndexManager.validateIndexSearchersForQuery(expressions);
         }
@@ -1355,13 +1394,37 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         private final List<Relation> whereClause;
         private final Term.Raw limit;
 
-        public RawStatement(CFName cfName, Parameters parameters, List<RawSelector> selectClause, List<Relation> whereClause, Term.Raw limit)
+        private final DatabaseDescriptor databaseDescriptor;
+        private final Tracing tracing;
+        private final QueryProcessor queryProcessor;
+        private final KeyspaceManager keyspaceManager;
+        private final StorageProxy storageProxy;
+        private final LocatorConfig locatorConfig;
+
+        public RawStatement(CFName cfName,
+                            Parameters parameters,
+                            List<RawSelector> selectClause,
+                            List<Relation> whereClause,
+                            Term.Raw limit,
+                            DatabaseDescriptor databaseDescriptor,
+                            Tracing tracing,
+                            QueryProcessor queryProcessor,
+                            KeyspaceManager keyspaceManager,
+                            StorageProxy storageProxy,
+                            LocatorConfig locatorConfig)
         {
             super(cfName);
             this.parameters = parameters;
             this.selectClause = selectClause;
             this.whereClause = whereClause == null ? Collections.<Relation>emptyList() : whereClause;
             this.limit = limit;
+
+            this.databaseDescriptor = databaseDescriptor;
+            this.tracing = tracing;
+            this.queryProcessor = queryProcessor;
+            this.keyspaceManager = keyspaceManager;
+            this.storageProxy = storageProxy;
+            this.locatorConfig = locatorConfig;
         }
 
         public ParsedStatement.Prepared prepare() throws InvalidRequestException
@@ -1377,7 +1440,17 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                                 ? Selection.wildcard(cfm)
                                 : Selection.fromSelectors(cfm, selectClause);
 
-            SelectStatement stmt = new SelectStatement(cfm, boundNames.size(), parameters, selection, prepareLimit(boundNames));
+            SelectStatement stmt = new SelectStatement(cfm,
+                                                       boundNames.size(),
+                                                       parameters,
+                                                       selection,
+                                                       prepareLimit(boundNames),
+                                                       databaseDescriptor,
+                                                       tracing,
+                                                       queryProcessor,
+                                                       keyspaceManager,
+                                                       storageProxy,
+                                                       locatorConfig);
 
             /*
              * WHERE clause. For a given entity, rules are:
@@ -1648,7 +1721,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                 receiver = new ColumnSpecification(def.ksName,
                                                    def.cfName,
                                                    new ColumnIdentifier("partition key token", true),
-                                                   LocatorConfig.instance.getPartitioner().getTokenValidator());
+                                                   locatorConfig.getPartitioner().getTokenValidator());
             }
 
             // We don't support relations against entire collections, like "numbers = {1, 2, 3}"

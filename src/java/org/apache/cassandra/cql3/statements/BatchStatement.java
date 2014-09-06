@@ -23,6 +23,7 @@ import java.util.*;
 import com.google.common.base.Function;
 import com.google.common.collect.*;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.github.jamm.MemoryMeter;
 import org.slf4j.Logger;
@@ -342,7 +343,19 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
 
         ColumnFamily result = StorageProxy.instance.instance.cas(ksName, cfName, key, casRequest, options.getSerialConsistency(), options.getConsistency());
 
-        return new ResultMessage.Rows(ModificationStatement.buildCasResultSet(ksName, key, cfName, result, columnsWithConditions, true, options.forStatement(0)));
+        return new ResultMessage.Rows(ModificationStatement.buildCasResultSet(ksName,
+                                                                              key,
+                                                                              cfName,
+                                                                              result,
+                                                                              columnsWithConditions,
+                                                                              true,
+                                                                              options.forStatement(0),
+                                                                              DatabaseDescriptor.instance,
+                                                                              Tracing.instance,
+                                                                              QueryProcessor.instance,
+                                                                              KeyspaceManager.instance,
+                                                                              StorageProxy.instance,
+                                                                              LocatorConfig.instance));
     }
 
     public ResultMessage executeInternal(QueryState queryState, QueryOptions options) throws RequestValidationException, RequestExecutionException
