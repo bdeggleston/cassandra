@@ -28,12 +28,12 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 
 public class EndpointSnitchInfo implements EndpointSnitchInfoMBean
 {
-    public static void create()
+    public static void create(IEndpointSnitch endpointSnitch)
     {
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
         {
-            mbs.registerMBean(new EndpointSnitchInfo(), new ObjectName("org.apache.cassandra.db:type=EndpointSnitchInfo"));
+            mbs.registerMBean(new EndpointSnitchInfo(endpointSnitch), new ObjectName("org.apache.cassandra.db:type=EndpointSnitchInfo"));
         }
         catch (Exception e)
         {
@@ -41,18 +41,25 @@ public class EndpointSnitchInfo implements EndpointSnitchInfoMBean
         }
     }
 
+    private final IEndpointSnitch endpointSnitch;
+
+    public EndpointSnitchInfo(IEndpointSnitch endpointSnitch)
+    {
+        this.endpointSnitch = endpointSnitch;
+    }
+
     public String getDatacenter(String host) throws UnknownHostException
     {
-        return DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(InetAddress.getByName(host));
+        return endpointSnitch.getDatacenter(InetAddress.getByName(host));
     }
 
     public String getRack(String host) throws UnknownHostException
     {
-        return DatabaseDescriptor.instance.getEndpointSnitch().getRack(InetAddress.getByName(host));
+        return endpointSnitch.getRack(InetAddress.getByName(host));
     }
 
     public String getSnitchName()
     {
-        return DatabaseDescriptor.instance.getEndpointSnitch().getClass().getName();
+        return endpointSnitch.getClass().getName();
     }
 }

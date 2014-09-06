@@ -674,7 +674,7 @@ public class DatabaseDescriptor
     public void setUpSnitch() throws ConfigurationException
     {
         snitch = createEndpointSnitch(conf.endpoint_snitch);
-        EndpointSnitchInfo.create();
+        EndpointSnitchInfo.create(snitch);
 
         localDC = snitch.getDatacenter(getBroadcastAddress());
         localComparator = new Comparator<InetAddress>()
