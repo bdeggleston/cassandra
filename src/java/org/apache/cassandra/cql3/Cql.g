@@ -56,6 +56,7 @@ options {
     import org.apache.cassandra.auth.Auth;
     import org.apache.cassandra.config.CFMetaDataFactory;
     import org.apache.cassandra.triggers.TriggerExecutor;
+    import org.apache.cassandra.config.KSMetaDataFactory;
 
 }
 
@@ -559,7 +560,7 @@ dropFunctionStatement returns [DropFunctionStatement expr]
  */
 createKeyspaceStatement returns [CreateKeyspaceStatement expr]
     @init {
-        KSPropDefs attrs = new KSPropDefs();
+        KSPropDefs attrs = new KSPropDefs(KSMetaDataFactory.instance);
         boolean ifNotExists = false;
     }
     : K_CREATE K_KEYSPACE (K_IF K_NOT K_EXISTS { ifNotExists = true; } )? ks=keyspaceName
@@ -675,7 +676,7 @@ dropTriggerStatement returns [DropTriggerStatement expr]
  * ALTER KEYSPACE <KS> WITH <property> = <value>;
  */
 alterKeyspaceStatement returns [AlterKeyspaceStatement expr]
-    @init { KSPropDefs attrs = new KSPropDefs(); }
+    @init { KSPropDefs attrs = new KSPropDefs(KSMetaDataFactory.instance); }
     : K_ALTER K_KEYSPACE ks=keyspaceName
         K_WITH properties[attrs] { $expr = new AlterKeyspaceStatement(ks, attrs, DatabaseDescriptor.instance, Schema.instance, MigrationManager.instance, LocatorConfig.instance); }
     ;

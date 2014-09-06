@@ -41,6 +41,13 @@ public class KSPropDefs extends PropertyDefinitions
 
     private String strategyClass;
 
+    private final KSMetaDataFactory ksMetaDataFactory;
+
+    public KSPropDefs(KSMetaDataFactory ksMetaDataFactory)
+    {
+        this.ksMetaDataFactory = ksMetaDataFactory;
+    }
+
     public void validate() throws SyntaxException
     {
         // Skip validation if the strategy class is already set as it means we've alreayd
@@ -73,7 +80,7 @@ public class KSPropDefs extends PropertyDefinitions
 
     public KSMetaData asKSMetadata(String ksName) throws RequestValidationException
     {
-        return KSMetaDataFactory.instance.newKeyspace(ksName, getReplicationStrategyClass(), getReplicationOptions(), getBoolean(KW_DURABLE_WRITES, true));
+        return ksMetaDataFactory.newKeyspace(ksName, getReplicationStrategyClass(), getReplicationOptions(), getBoolean(KW_DURABLE_WRITES, true));
     }
 
     public KSMetaData asKSMetadataUpdate(KSMetaData old) throws RequestValidationException
@@ -85,6 +92,6 @@ public class KSPropDefs extends PropertyDefinitions
             sClass = old.strategyClass.getName();
             sOptions = old.strategyOptions;
         }
-        return KSMetaDataFactory.instance.newKeyspace(old.name, sClass, sOptions, getBoolean(KW_DURABLE_WRITES, old.durableWrites));
+        return ksMetaDataFactory.newKeyspace(old.name, sClass, sOptions, getBoolean(KW_DURABLE_WRITES, old.durableWrites));
     }
 }
