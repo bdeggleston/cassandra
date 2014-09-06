@@ -25,6 +25,7 @@ import java.util.*;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.Schema;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -134,7 +135,13 @@ public class CommitLog implements CommitLogMBean
      */
     public int recover(File... clogs) throws IOException
     {
-        CommitLogReplayer recovery = new CommitLogReplayer();
+        CommitLogReplayer recovery = new CommitLogReplayer(Schema.instance,
+                                                           SystemKeyspace.instance,
+                                                           ColumnFamilyStoreManager.instance,
+                                                           KeyspaceManager.instance,
+                                                           StageManager.instance,
+                                                           MutationFactory.instance,
+                                                           this);
         recovery.recover(clogs);
         return recovery.blockForWrites();
     }

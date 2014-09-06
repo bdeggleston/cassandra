@@ -58,8 +58,20 @@ public class CommitLogReplayer
     private final PureJavaCrc32 checksum;
     private byte[] buffer;
 
-    public CommitLogReplayer()
+    private final Schema schema;
+    private final KeyspaceManager keyspaceManager;
+    private final StageManager stageManager;
+    private final MutationFactory mutationFactory;
+    private final CommitLog commitLog;
+
+    public CommitLogReplayer(Schema schema, SystemKeyspace systemKeyspace, ColumnFamilyStoreManager columnFamilyStoreManager, KeyspaceManager keyspaceManager, StageManager stageManager, MutationFactory mutationFactory, CommitLog commitLog)
     {
+        this.schema = schema;
+        this.keyspaceManager = keyspaceManager;
+        this.stageManager = stageManager;
+        this.mutationFactory = mutationFactory;
+        this.commitLog = commitLog;
+
         this.keyspacesRecovered = new NonBlockingHashSet<Keyspace>();
         this.futures = new ArrayList<Future<?>>();
         this.buffer = new byte[4096];
@@ -71,7 +83,7 @@ public class CommitLogReplayer
         // compute per-CF and global replay positions
         cfPositions = new HashMap<UUID, ReplayPosition>();
         Ordering<ReplayPosition> replayPositionOrdering = Ordering.from(ReplayPosition.comparator);
-        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
+        for (ColumnFamilyStore cfs : columnFamilyStoreManager.all())
         {
             // it's important to call RP.gRP per-cf, before aggregating all the positions w/ the Ordering.min call
             // below: gRP will return NONE if there are no flushed sstables, which is important to have in the
@@ -79,7 +91,7 @@ public class CommitLogReplayer
             ReplayPosition rp = ReplayPosition.getReplayPosition(cfs.getSSTables());
 
             // but, if we've truncted the cf in question, then we need to need to start replay after the truncation
-            ReplayPosition truncatedAt = SystemKeyspace.instance.getTruncatedPosition(cfs.metadata.cfId);
+            ReplayPosition truncatedAt = systemKeyspace.getTruncatedPosition(cfs.metadata.cfId);
             if (truncatedAt != null)
                 rp = replayPositionOrdering.max(Arrays.asList(rp, truncatedAt));
 
@@ -167,7 +179,7 @@ public class CommitLogReplayer
     {
         public abstract Iterable<ColumnFamily> filter(Mutation mutation);
 
-        public static ReplayFilter create()
+        public static ReplayFilter create(Schema schema)
         {
             // If no replaylist is supplied an empty array of strings is used to replay everything.
             if (System.getProperty("cassandra.replayList") == null)
@@ -180,7 +192,7 @@ public class CommitLogReplayer
                 if (pair.length != 2)
                     throw new IllegalArgumentException("Each table to be replayed must be fully qualified with keyspace name, e.g., 'system.peers'");
 
-                Keyspace ks = Schema.instance.getKeyspaceInstance(pair[0]);
+                Keyspace ks = schema.getKeyspaceInstance(pair[0]);
                 if (ks == null)
                     throw new IllegalArgumentException("Unknown keyspace " + pair[0]);
                 if (ks.getColumnFamilyStore(pair[1]) == null)
@@ -227,7 +239,7 @@ public class CommitLogReplayer
 
     public void recover(File file) throws IOException
     {
-        final ReplayFilter replayFilter = ReplayFilter.create();
+        final ReplayFilter replayFilter = ReplayFilter.create(schema);
         logger.info("Replaying {}", file.getPath());
         CommitLogDescriptor desc = CommitLogDescriptor.fromFileName(file.getName());
         final long segmentId = desc.id;
@@ -334,7 +346,7 @@ public class CommitLogReplayer
                     final Mutation mutation;
                     try
                     {
-                        mutation = MutationFactory.instance.serializer.deserialize(new DataInputStream(bufIn),
+                        mutation = mutationFactory.serializer.deserialize(new DataInputStream(bufIn),
                                                                    desc.getMessagingVersion(),
                                                                    ColumnSerializer.Flag.LOCAL);
                         // doublecheck that what we read is [still] valid for the current schema
@@ -382,12 +394,12 @@ public class CommitLogReplayer
                     {
                         public void runMayThrow() throws IOException
                         {
-                            if (Schema.instance.getKSMetaData(mutation.getKeyspaceName()) == null)
+                            if (schema.getKSMetaData(mutation.getKeyspaceName()) == null)
                                 return;
                             if (pointInTimeExceeded(mutation))
                                 return;
 
-                            final Keyspace keyspace = KeyspaceManager.instance.open(mutation.getKeyspaceName());
+                            final Keyspace keyspace = keyspaceManager.open(mutation.getKeyspaceName());
 
                             // Rebuild the mutation, omitting column families that
                             //    a) the user has requested that we ignore,
@@ -397,7 +409,7 @@ public class CommitLogReplayer
                             Mutation newMutation = null;
                             for (ColumnFamily columnFamily : replayFilter.filter(mutation))
                             {
-                                if (Schema.instance.getCF(columnFamily.id()) == null)
+                                if (schema.getCF(columnFamily.id()) == null)
                                     continue; // dropped
 
                                 ReplayPosition rp = cfPositions.get(columnFamily.id());
@@ -407,7 +419,7 @@ public class CommitLogReplayer
                                 if (segmentId > rp.segment || (segmentId == rp.segment && entryLocation > rp.position))
                                 {
                                     if (newMutation == null)
-                                        newMutation = MutationFactory.instance.create(mutation.getKeyspaceName(), mutation.key());
+                                        newMutation = mutationFactory.create(mutation.getKeyspaceName(), mutation.key());
                                     newMutation.add(columnFamily);
                                     replayedCount.incrementAndGet();
                                 }
@@ -415,12 +427,12 @@ public class CommitLogReplayer
                             if (newMutation != null)
                             {
                                 assert !newMutation.isEmpty();
-                                KeyspaceManager.instance.open(newMutation.getKeyspaceName()).apply(newMutation, false);
+                                keyspaceManager.open(newMutation.getKeyspaceName()).apply(newMutation, false);
                                 keyspacesRecovered.add(keyspace);
                             }
                         }
                     };
-                    futures.add(StageManager.instance.getStage(Stage.MUTATION).submit(runnable));
+                    futures.add(stageManager.getStage(Stage.MUTATION).submit(runnable));
                     if (futures.size() > MAX_OUTSTANDING_REPLAY_COUNT)
                     {
                         FBUtilities.waitOnFutures(futures);
@@ -444,11 +456,11 @@ public class CommitLogReplayer
 
     protected boolean pointInTimeExceeded(Mutation fm)
     {
-        long restoreTarget = CommitLog.instance.archiver.restorePointInTime;
+        long restoreTarget = commitLog.archiver.restorePointInTime;
 
         for (ColumnFamily families : fm.getColumnFamilies())
         {
-            if (CommitLog.instance.archiver.precision.toMillis(families.maxTimestamp()) > restoreTarget)
+            if (commitLog.archiver.precision.toMillis(families.maxTimestamp()) > restoreTarget)
                 return true;
         }
         return false;
