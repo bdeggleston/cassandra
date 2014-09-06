@@ -31,7 +31,6 @@ import java.util.TimeZone;
 import java.util.concurrent.*;
 
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
@@ -52,15 +51,20 @@ public class CommitLogArchiver
     }
 
     public final Map<String, Future<?>> archivePending = new ConcurrentHashMap<String, Future<?>>();
-    public final ExecutorService executor = new JMXEnabledThreadPoolExecutor("CommitLogArchiver", Tracing.instance);
+    public final ExecutorService executor;
     private final String archiveCommand;
     private final String restoreCommand;
     private final String restoreDirectories;
     public final long restorePointInTime;
     public final TimeUnit precision;
 
-    public CommitLogArchiver()
+    private final String commitLogLocation;
+
+    public CommitLogArchiver(String commitLogLocation, Tracing tracing)
     {
+        this.commitLogLocation = commitLogLocation;
+        executor = new JMXEnabledThreadPoolExecutor("CommitLogArchiver", tracing);
+
         Properties commitlog_commands = new Properties();
         InputStream stream = null;
         try
@@ -178,7 +182,7 @@ public class CommitLogArchiver
                 if (descriptor.version > CommitLogDescriptor.VERSION_21)
                     throw new IllegalStateException("Unsupported commit log version: " + descriptor.version);
 
-                File toFile = new File(DatabaseDescriptor.instance.getCommitLogLocation(), descriptor.fileName());
+                File toFile = new File(commitLogLocation, descriptor.fileName());
                 if (toFile.exists())
                     throw new IllegalStateException("Trying to restore archive " + fromFile.getPath() + ", but the same segment already exists in the restore location: " + toFile.getPath());
 

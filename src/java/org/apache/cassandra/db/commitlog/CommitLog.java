@@ -27,6 +27,7 @@ import javax.management.ObjectName;
 
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +58,7 @@ public class CommitLog implements CommitLogMBean
     private static final long MAX_MUTATION_SIZE = DatabaseDescriptor.instance.getCommitLogSegmentSize() >> 1;
 
     public final CommitLogSegmentManager allocator;
-    public final CommitLogArchiver archiver = new CommitLogArchiver();
+    public final CommitLogArchiver archiver = new CommitLogArchiver(DatabaseDescriptor.instance.getCommitLogLocation(), Tracing.instance);
     final CommitLogMetrics metrics;
     final AbstractCommitLogService executor;
 
