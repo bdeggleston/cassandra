@@ -7,12 +7,14 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.RingPosition;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.gms.FailureDetector;
+import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -265,4 +267,15 @@ public class LocatorConfig
     {
         return DatabaseDescriptor.instance.getBroadcastAddress();
     }
+
+    public Gossiper getGossiper()
+    {
+        return Gossiper.instance;
+    }
+
+    public SystemKeyspace getSystemKeyspace()
+    {
+        return SystemKeyspace.instance;
+    }
+
 }

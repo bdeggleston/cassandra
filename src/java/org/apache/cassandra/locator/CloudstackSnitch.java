@@ -32,14 +32,11 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.gms.ApplicationState;
 import org.apache.cassandra.gms.EndpointState;
-import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.io.util.FileUtils;
 
 /**
@@ -83,13 +80,13 @@ public class CloudstackSnitch extends AbstractNetworkTopologySnitch
 
     public String getRack(InetAddress endpoint)
     {
-        if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+        if (endpoint.equals(locatorConfig.getBroadcastAddress()))
             return csZoneRack;
-        EndpointState state = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+        EndpointState state = locatorConfig.getGossiper().getEndpointStateForEndpoint(endpoint);
         if (state == null || state.getApplicationState(ApplicationState.RACK) == null) 
         {
             if (savedEndpoints == null)
-                savedEndpoints = SystemKeyspace.instance.loadDcRackInfo();
+                savedEndpoints = locatorConfig.getSystemKeyspace().loadDcRackInfo();
             if (savedEndpoints.containsKey(endpoint))
                 return savedEndpoints.get(endpoint).get("rack");
             return DEFAULT_RACK;
@@ -99,13 +96,13 @@ public class CloudstackSnitch extends AbstractNetworkTopologySnitch
 
     public String getDatacenter(InetAddress endpoint)
     {
-        if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+        if (endpoint.equals(locatorConfig.getBroadcastAddress()))
             return csZoneDc;
-        EndpointState state = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+        EndpointState state = locatorConfig.getGossiper().getEndpointStateForEndpoint(endpoint);
         if (state == null || state.getApplicationState(ApplicationState.DC) == null) 
         {
             if (savedEndpoints == null)
-                savedEndpoints = SystemKeyspace.instance.loadDcRackInfo();
+                savedEndpoints = locatorConfig.getSystemKeyspace().loadDcRackInfo();
             if (savedEndpoints.containsKey(endpoint))
                 return savedEndpoints.get(endpoint).get("data_center");
             return DEFAULT_DC;
