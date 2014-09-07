@@ -100,7 +100,7 @@ public class QueryPagers
             if (commands.size() == 1)
                 return pager(commands.get(0), consistencyLevel, local, state);
 
-            return new MultiPartitionPager(commands, consistencyLevel, local, state);
+            return new MultiPartitionPager(commands, consistencyLevel, local, state, Schema.instance, KeyspaceManager.instance, StorageProxy.instance);
         }
         else if (command instanceof ReadCommand)
         {

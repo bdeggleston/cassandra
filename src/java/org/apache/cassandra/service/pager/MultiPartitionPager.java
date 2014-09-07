@@ -48,7 +48,11 @@ class MultiPartitionPager implements QueryPager
     private int remaining;
     private int current;
 
-    MultiPartitionPager(List<ReadCommand> commands, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state)
+    private final Schema schema;
+    private final KeyspaceManager keyspaceManager;
+    private final StorageProxy storageProxy;
+
+    MultiPartitionPager(List<ReadCommand> commands, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy)
     {
         int i = 0;
         // If it's not the beginning (state != null), we need to find where we were and skip previous commands
@@ -57,6 +61,10 @@ class MultiPartitionPager implements QueryPager
             for (; i < commands.size(); i++)
                 if (commands.get(i).key.equals(state.partitionKey))
                     break;
+
+        this.schema = schema;
+        this.keyspaceManager = keyspaceManager;
+        this.storageProxy = storageProxy;
 
         if (i >= commands.size())
         {
@@ -81,11 +89,11 @@ class MultiPartitionPager implements QueryPager
         remaining = state == null ? computeRemaining(pagers) : state.remaining;
     }
 
-    private static SinglePartitionPager makePager(ReadCommand command, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state)
+    private SinglePartitionPager makePager(ReadCommand command, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state)
     {
         return command instanceof SliceFromReadCommand
-             ? new SliceQueryPager((SliceFromReadCommand)command, Schema.instance, consistencyLevel, localQuery, state, KeyspaceManager.instance, StorageProxy.instance)
-             : new NamesQueryPager((SliceByNamesReadCommand)command, consistencyLevel, localQuery, KeyspaceManager.instance, StorageProxy.instance);
+             ? new SliceQueryPager((SliceFromReadCommand)command, schema, consistencyLevel, localQuery, state, keyspaceManager, storageProxy)
+             : new NamesQueryPager((SliceByNamesReadCommand)command, consistencyLevel, localQuery, keyspaceManager, storageProxy);
     }
 
     private static int computeRemaining(SinglePartitionPager[] pagers)
