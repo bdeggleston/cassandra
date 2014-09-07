@@ -59,6 +59,9 @@ public class RepairJob
     private AtomicInteger waitForSync;
 
     private final IRepairJobEventListener listener;
+    private final DatabaseDescriptor databaseDescriptor;
+    private final KeyspaceManager keyspaceManager;
+    private final MessagingService messagingService;
 
     /**
      * Create repair job to run on specific columnfamily
@@ -70,18 +73,24 @@ public class RepairJob
                      String columnFamily,
                      Range<Token> range,
                      boolean isSequential,
-                     ListeningExecutorService taskExecutor)
+                     ListeningExecutorService taskExecutor,
+                     DatabaseDescriptor databaseDescriptor,
+                     KeyspaceManager keyspaceManager,
+                     MessagingService messagingService1)
     {
         this.listener = listener;
         this.desc = new RepairJobDesc(parentSessionId, sessionId, keyspace, columnFamily, range);
         this.isSequential = isSequential;
         this.taskExecutor = taskExecutor;
+        this.databaseDescriptor = databaseDescriptor;
+        this.keyspaceManager = keyspaceManager;
+        this.messagingService = messagingService1;
         this.treeRequests = new RequestCoordinator<InetAddress>(isSequential)
         {
             public void send(InetAddress endpoint)
             {
                 ValidationRequest request = new ValidationRequest(desc, gcBefore);
-                MessagingService.instance.sendOneWay(request.createMessage(), endpoint);
+                messagingService.sendOneWay(request.createMessage(), endpoint);
             }
         };
     }
@@ -101,7 +110,7 @@ public class RepairJob
     {
         // send requests to all nodes
         List<InetAddress> allEndpoints = new ArrayList<>(endpoints);
-        allEndpoints.add(DatabaseDescriptor.instance.getBroadcastAddress());
+        allEndpoints.add(databaseDescriptor.getBroadcastAddress());
 
         if (isSequential)
         {
@@ -138,7 +147,7 @@ public class RepairJob
 
     private void sendTreeRequestsInternal(Collection<InetAddress> endpoints)
     {
-        this.gcBefore = KeyspaceManager.instance.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily).gcBefore(System.currentTimeMillis());
+        this.gcBefore = keyspaceManager.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily).gcBefore(System.currentTimeMillis());
         for (InetAddress endpoint : endpoints)
             treeRequests.add(endpoint);
 
@@ -191,7 +200,7 @@ public class RepairJob
             for (int j = i + 1; j < trees.size(); ++j)
             {
                 TreeResponse r2 = trees.get(j);
-                Differencer differencer = new Differencer(desc, r1, r2, DatabaseDescriptor.instance, MessagingService.instance);
+                Differencer differencer = new Differencer(desc, r1, r2, databaseDescriptor, messagingService);
                 differencers.add(differencer);
                 logger.debug("Queueing comparison {}", differencer);
             }
