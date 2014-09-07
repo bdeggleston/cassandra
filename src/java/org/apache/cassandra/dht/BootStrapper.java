@@ -24,7 +24,9 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.streaming.StreamManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +66,7 @@ public class BootStrapper
         if (logger.isDebugEnabled())
             logger.debug("Beginning bootstrap process");
 
-        RangeStreamer streamer = new RangeStreamer(tokenMetadata, tokens, address, "Bootstrap");
+        RangeStreamer streamer = new RangeStreamer(tokenMetadata, tokens, address, "Bootstrap", DatabaseDescriptor.instance, Schema.instance, Gossiper.instance, StreamManager.instance, KeyspaceManager.instance);
         streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
 
         for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())

@@ -33,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
@@ -56,6 +55,10 @@ public class RangeStreamer
     private final Multimap<String, Map.Entry<InetAddress, Collection<Range<Token>>>> toFetch = HashMultimap.create();
     private final Set<ISourceFilter> sourceFilters = new HashSet<ISourceFilter>();
     private final StreamPlan streamPlan;
+
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Gossiper gossiper;
+    private final KeyspaceManager keyspaceManager;
 
     /**
      * A filter applied to sources to stream from when constructing a fetch map.
@@ -104,22 +107,30 @@ public class RangeStreamer
         }
     }
 
-    public RangeStreamer(TokenMetadata metadata, Collection<Token> tokens, InetAddress address, String description)
+    public RangeStreamer(TokenMetadata metadata, Collection<Token> tokens, InetAddress address, String description,
+                         DatabaseDescriptor databaseDescriptor, Schema schema, Gossiper gossiper, StreamManager streamManager, KeyspaceManager keyspaceManager)
     {
         this.metadata = metadata;
         this.tokens = tokens;
         this.address = address;
         this.description = description;
-        this.streamPlan = new StreamPlan(description, DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, StreamManager.instance);
+        this.databaseDescriptor = databaseDescriptor;
+        this.gossiper = gossiper;
+        this.keyspaceManager = keyspaceManager;
+        this.streamPlan = new StreamPlan(description, this.databaseDescriptor, schema, this.keyspaceManager, streamManager);
     }
 
-    public RangeStreamer(TokenMetadata metadata, InetAddress address, String description)
+    public RangeStreamer(TokenMetadata metadata, InetAddress address, String description, DatabaseDescriptor databaseDescriptor,
+                         Schema schema, Gossiper gossiper, StreamManager streamManager, KeyspaceManager keyspaceManager)
     {
         this.metadata = metadata;
         this.tokens = null;
         this.address = address;
         this.description = description;
-        this.streamPlan = new StreamPlan(description, DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, StreamManager.instance);
+        this.databaseDescriptor = databaseDescriptor;
+        this.gossiper = gossiper;
+        this.keyspaceManager = keyspaceManager;
+        this.streamPlan = new StreamPlan(description, this.databaseDescriptor, schema, this.keyspaceManager, streamManager);
     }
 
     public void addSourceFilter(ISourceFilter filter)
@@ -138,7 +149,7 @@ public class RangeStreamer
                 logger.debug(String.format("%s: range %s exists on %s", description, entry.getKey(), entry.getValue()));
         }
 
-        for (Map.Entry<InetAddress, Collection<Range<Token>>> entry : getRangeFetchMap(rangesForKeyspace, sourceFilters).asMap().entrySet())
+        for (Map.Entry<InetAddress, Collection<Range<Token>>> entry : getRangeFetchMap(rangesForKeyspace, sourceFilters, databaseDescriptor).asMap().entrySet())
         {
             if (logger.isDebugEnabled())
             {
@@ -151,8 +162,8 @@ public class RangeStreamer
 
     private boolean useStrictSourcesForRanges(String keyspaceName)
     {
-        AbstractReplicationStrategy strat = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
-        return !DatabaseDescriptor.instance.isReplacing()
+        AbstractReplicationStrategy strat = keyspaceManager.open(keyspaceName).getReplicationStrategy();
+        return !databaseDescriptor.isReplacing()
                 && useStrictConsistency
                 && tokens != null
                 && metadata.getAllEndpoints().size() != strat.getReplicationFactor();
@@ -164,7 +175,7 @@ public class RangeStreamer
      */
     private Multimap<Range<Token>, InetAddress> getAllRangesWithSourcesFor(String keyspaceName, Collection<Range<Token>> desiredRanges)
     {
-        AbstractReplicationStrategy strat = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
+        AbstractReplicationStrategy strat = keyspaceManager.open(keyspaceName).getReplicationStrategy();
         Multimap<Range<Token>, InetAddress> rangeAddresses = strat.getRangeAddresses(metadata.cloneOnlyTokenMap());
 
         Multimap<Range<Token>, InetAddress> rangeSources = ArrayListMultimap.create();
@@ -174,7 +185,7 @@ public class RangeStreamer
             {
                 if (range.contains(desiredRange))
                 {
-                    List<InetAddress> preferred = DatabaseDescriptor.instance.getEndpointSnitch().getSortedListByProximity(address, rangeAddresses.get(range));
+                    List<InetAddress> preferred = databaseDescriptor.getEndpointSnitch().getSortedListByProximity(address, rangeAddresses.get(range));
                     rangeSources.putAll(desiredRange, preferred);
                     break;
                 }
@@ -196,7 +207,7 @@ public class RangeStreamer
     {
 
         assert tokens != null;
-        AbstractReplicationStrategy strat = KeyspaceManager.instance.open(table).getReplicationStrategy();
+        AbstractReplicationStrategy strat = keyspaceManager.open(table).getReplicationStrategy();
 
         //Active ranges
         TokenMetadata metadataClone = metadata.cloneOnlyTokenMap();
@@ -239,8 +250,8 @@ public class RangeStreamer
                 throw new IllegalStateException("Multiple endpoints found for " + desiredRange);
 
             InetAddress sourceIp = addressList.iterator().next();
-            EndpointState sourceState = Gossiper.instance.getEndpointStateForEndpoint(sourceIp);
-            if (Gossiper.instance.isEnabled() && (sourceState == null || !sourceState.isAlive()))
+            EndpointState sourceState = gossiper.getEndpointStateForEndpoint(sourceIp);
+            if (gossiper.isEnabled() && (sourceState == null || !sourceState.isAlive()))
                 throw new RuntimeException("A node required to move the data consistently is down ("+sourceIp+").  If you wish to move the data from a potentially inconsistent replica, restart the node with -Dcassandra.consistent.rangemovement=false");
         }
 
@@ -254,7 +265,7 @@ public class RangeStreamer
      * @return
      */
     private static Multimap<InetAddress, Range<Token>> getRangeFetchMap(Multimap<Range<Token>, InetAddress> rangesWithSources,
-                                                                        Collection<ISourceFilter> sourceFilters)
+                                                                        Collection<ISourceFilter> sourceFilters, DatabaseDescriptor databaseDescriptor)
     {
         Multimap<InetAddress, Range<Token>> rangeFetchMapMap = HashMultimap.create();
         for (Range<Token> range : rangesWithSources.keySet())
@@ -264,7 +275,7 @@ public class RangeStreamer
             outer:
             for (InetAddress address : rangesWithSources.get(range))
             {
-                if (address.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+                if (address.equals(databaseDescriptor.getBroadcastAddress()))
                 {
                     // If localhost is a source, we have found one, but we don't add it to the map to avoid streaming locally
                     foundSource = true;
@@ -289,9 +300,9 @@ public class RangeStreamer
         return rangeFetchMapMap;
     }
 
-    public static Multimap<InetAddress, Range<Token>> getWorkMap(Multimap<Range<Token>, InetAddress> rangesWithSourceTarget)
+    public static Multimap<InetAddress, Range<Token>> getWorkMap(Multimap<Range<Token>, InetAddress> rangesWithSourceTarget, DatabaseDescriptor databaseDescriptor, IFailureDetector failureDetector)
     {
-        return getRangeFetchMap(rangesWithSourceTarget, Collections.<ISourceFilter>singleton(new FailureDetectorSourceFilter(FailureDetector.instance)));
+        return getRangeFetchMap(rangesWithSourceTarget, Collections.<ISourceFilter>singleton(new FailureDetectorSourceFilter(failureDetector)), databaseDescriptor);
     }
 
     // For testing purposes
