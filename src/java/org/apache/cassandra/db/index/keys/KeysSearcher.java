@@ -48,7 +48,7 @@ public class KeysSearcher extends SecondaryIndexSearcher
 
     public KeysSearcher(SecondaryIndexManager indexManager, Set<ByteBuffer> columns)
     {
-        super(indexManager, columns);
+        super(indexManager, columns, Tracing.instance);
     }
 
     @Override

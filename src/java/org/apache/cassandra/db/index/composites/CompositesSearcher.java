@@ -47,7 +47,7 @@ public class CompositesSearcher extends SecondaryIndexSearcher
 
     public CompositesSearcher(SecondaryIndexManager indexManager, Set<ByteBuffer> columns)
     {
-        super(indexManager, columns);
+        super(indexManager, columns, Tracing.instance);
     }
 
     @Override

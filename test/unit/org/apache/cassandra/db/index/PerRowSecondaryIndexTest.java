@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -211,7 +212,7 @@ public class PerRowSecondaryIndexTest
         @Override
         protected SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns)
         {
-            return new SecondaryIndexSearcher(baseCfs.indexManager, columns)
+            return new SecondaryIndexSearcher(baseCfs.indexManager, columns, Tracing.instance)
             {
                 
                 @Override

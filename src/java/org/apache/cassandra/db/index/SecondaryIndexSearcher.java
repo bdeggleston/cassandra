@@ -31,12 +31,14 @@ public abstract class SecondaryIndexSearcher
     protected final SecondaryIndexManager indexManager;
     protected final Set<ByteBuffer> columns;
     protected final ColumnFamilyStore baseCfs;
+    protected final Tracing tracing;
 
-    public SecondaryIndexSearcher(SecondaryIndexManager indexManager, Set<ByteBuffer> columns)
+    public SecondaryIndexSearcher(SecondaryIndexManager indexManager, Set<ByteBuffer> columns, Tracing tracing)
     {
         this.indexManager = indexManager;
         this.columns = columns;
         this.baseCfs = indexManager.baseCfs;
+        this.tracing = tracing;
     }
 
     public SecondaryIndex highestSelectivityIndex(List<IndexExpression> clause)
@@ -100,9 +102,9 @@ public abstract class SecondaryIndexSearcher
         }
 
         if (best == null)
-            Tracing.instance.trace("No applicable indexes found");
+            tracing.trace("No applicable indexes found");
         else
-            Tracing.instance.trace("Candidate index mean cardinalities are {}. Scanning with {}.",
+            tracing.trace("Candidate index mean cardinalities are {}. Scanning with {}.",
                           FBUtilities.toString(candidates), indexManager.getIndexForColumn(best.column).getIndexName());
 
         return best;
