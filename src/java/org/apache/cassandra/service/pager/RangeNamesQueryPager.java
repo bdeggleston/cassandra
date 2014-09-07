@@ -24,7 +24,6 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.NamesQueryFilter;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.exceptions.RequestExecutionException;
-import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageProxy;
 
 /**
@@ -41,21 +40,27 @@ public class RangeNamesQueryPager extends AbstractQueryPager
     private final RangeSliceCommand command;
     private volatile DecoratedKey lastReturnedKey;
 
+    private final StorageProxy storageProxy;
+    private final IPartitioner partitioner;
+
     // Don't use directly, use QueryPagers method instead
-    RangeNamesQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery)
+    RangeNamesQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, StorageProxy storageProxy, IPartitioner partitioner)
     {
         super(consistencyLevel, command.maxResults, localQuery, command.keyspace, command.columnFamily, schema, command.predicate, command.timestamp);
         this.command = command;
         assert columnFilter instanceof NamesQueryFilter && ((NamesQueryFilter)columnFilter).countCQL3Rows();
+
+        this.storageProxy = storageProxy;
+        this.partitioner = partitioner;
     }
 
-    RangeNamesQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state)
+    RangeNamesQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state, StorageProxy storageProxy, IPartitioner partitioner)
     {
-        this(command, schema, consistencyLevel, localQuery);
+        this(command, schema, consistencyLevel, localQuery, storageProxy, partitioner);
 
         if (state != null)
         {
-            lastReturnedKey = LocatorConfig.instance.getPartitioner().decorateKey(state.partitionKey);
+            lastReturnedKey = this.partitioner.decorateKey(state.partitionKey);
             restoreState(state.remaining, true);
         }
     }
@@ -76,7 +81,7 @@ public class RangeNamesQueryPager extends AbstractQueryPager
 
         return localQuery
              ? pageCmd.executeLocally()
-             : StorageProxy.instance.getRangeSlice(pageCmd, consistencyLevel);
+             : storageProxy.getRangeSlice(pageCmd, consistencyLevel);
     }
 
     protected boolean containsPreviousLast(Row first)
@@ -104,11 +109,11 @@ public class RangeNamesQueryPager extends AbstractQueryPager
         AbstractBounds<RowPosition> bounds = command.keyRange;
         if (bounds instanceof Range || bounds instanceof Bounds)
         {
-            return new Range<RowPosition>(lastReturnedKey, bounds.right, LocatorConfig.instance.getPartitioner());
+            return new Range<RowPosition>(lastReturnedKey, bounds.right, partitioner);
         }
         else
         {
-            return new ExcludingBounds<RowPosition>(lastReturnedKey, bounds.right, LocatorConfig.instance.getPartitioner());
+            return new ExcludingBounds<RowPosition>(lastReturnedKey, bounds.right, partitioner);
         }
     }
 }

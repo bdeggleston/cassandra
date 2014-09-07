@@ -111,7 +111,7 @@ public class QueryPagers
             assert command instanceof RangeSliceCommand;
             RangeSliceCommand rangeCommand = (RangeSliceCommand)command;
             if (rangeCommand.predicate instanceof NamesQueryFilter)
-                return new RangeNamesQueryPager(rangeCommand, Schema.instance, consistencyLevel, local, state);
+                return new RangeNamesQueryPager(rangeCommand, Schema.instance, consistencyLevel, local, state, StorageProxy.instance, LocatorConfig.instance.getPartitioner());
             else
                 return new RangeSliceQueryPager(rangeCommand, Schema.instance, consistencyLevel, local, state, StorageProxy.instance, LocatorConfig.instance.getPartitioner());
         }
