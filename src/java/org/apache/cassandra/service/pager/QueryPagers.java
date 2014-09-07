@@ -29,6 +29,7 @@ import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.exceptions.RequestValidationException;
+import org.apache.cassandra.service.StorageProxy;
 
 /**
  * Static utility methods to create query pagers.
@@ -87,7 +88,7 @@ public class QueryPagers
         if (command instanceof SliceByNamesReadCommand)
             return new NamesQueryPager((SliceByNamesReadCommand)command, consistencyLevel, local);
         else
-            return new SliceQueryPager((SliceFromReadCommand)command, Schema.instance, consistencyLevel, local, state);
+            return new SliceQueryPager((SliceFromReadCommand)command, Schema.instance, consistencyLevel, local, state, KeyspaceManager.instance, StorageProxy.instance);
     }
 
     private static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel, boolean local, PagingState state)
@@ -137,7 +138,7 @@ public class QueryPagers
     public static Iterator<ColumnFamily> pageRowLocally(final ColumnFamilyStore cfs, ByteBuffer key, final int pageSize)
     {
         SliceFromReadCommand command = new SliceFromReadCommand(cfs.metadata.ksName, key, cfs.name, System.currentTimeMillis(), new IdentityQueryFilter());
-        final SliceQueryPager pager = new SliceQueryPager(command, Schema.instance, null, true);
+        final SliceQueryPager pager = new SliceQueryPager(command, Schema.instance, null, true, KeyspaceManager.instance, StorageProxy.instance);
 
         return new Iterator<ColumnFamily>()
         {
@@ -180,7 +181,7 @@ public class QueryPagers
                                  long now) throws RequestValidationException, RequestExecutionException
     {
         SliceFromReadCommand command = new SliceFromReadCommand(keyspace, key, columnFamily, now, filter);
-        final SliceQueryPager pager = new SliceQueryPager(command, Schema.instance, consistencyLevel, false);
+        final SliceQueryPager pager = new SliceQueryPager(command, Schema.instance, consistencyLevel, false, KeyspaceManager.instance, StorageProxy.instance);
 
         ColumnCounter counter = filter.columnCounter(Schema.instance.getCFMetaData(keyspace, columnFamily).comparator, now);
         while (!pager.isExhausted())

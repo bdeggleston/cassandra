@@ -41,17 +41,21 @@ public class SliceQueryPager extends AbstractQueryPager implements SinglePartiti
     private final SliceFromReadCommand command;
 
     private volatile CellName lastReturned;
+    private final KeyspaceManager keyspaceManager;
+    private final StorageProxy storageProxy;
 
     // Don't use directly, use QueryPagers method instead
-    SliceQueryPager(SliceFromReadCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery)
+    SliceQueryPager(SliceFromReadCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, KeyspaceManager keyspaceManager, StorageProxy storageProxy)
     {
         super(consistencyLevel, command.filter.count, localQuery, command.ksName, command.cfName, schema, command.filter, command.timestamp);
         this.command = command;
+        this.keyspaceManager = keyspaceManager;
+        this.storageProxy = storageProxy;
     }
 
-    SliceQueryPager(SliceFromReadCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state)
+    SliceQueryPager(SliceFromReadCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state, KeyspaceManager keyspaceManager, StorageProxy storageProxy)
     {
-        this(command, schema, consistencyLevel, localQuery);
+        this(command, schema, consistencyLevel, localQuery, keyspaceManager, storageProxy);
 
         if (state != null)
         {
@@ -82,8 +86,8 @@ public class SliceQueryPager extends AbstractQueryPager implements SinglePartiti
         logger.debug("Querying next page of slice query; new filter: {}", filter);
         ReadCommand pageCmd = command.withUpdatedFilter(filter);
         return localQuery
-             ? Collections.singletonList(pageCmd.getRow(KeyspaceManager.instance.open(command.ksName)))
-             : StorageProxy.instance.read(Collections.singletonList(pageCmd), consistencyLevel);
+             ? Collections.singletonList(pageCmd.getRow(keyspaceManager.open(command.ksName)))
+             : storageProxy.read(Collections.singletonList(pageCmd), consistencyLevel);
     }
 
     protected boolean containsPreviousLast(Row first)
