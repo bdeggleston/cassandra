@@ -24,15 +24,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.gms.ApplicationState;
 import org.apache.cassandra.gms.EndpointState;
-import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.gms.VersionedValue;
 import org.apache.cassandra.io.util.FileUtils;
-import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.ResourceWatcher;
 import org.apache.cassandra.utils.WrappedRunnable;
@@ -126,7 +122,7 @@ public class YamlFileNetworkTopologySnitch
                 }
             };
             ResourceWatcher.watch(topologyConfigFilename, runnable,
-                    CHECK_PERIOD_IN_MS, StorageServiceExecutors.instance.scheduledTasks);
+                    CHECK_PERIOD_IN_MS, locatorConfig.getStorageServiceExecutors().scheduledTasks);
         }
         catch (final ConfigurationException e)
         {
@@ -314,7 +310,7 @@ public class YamlFileNetworkTopologySnitch
             }
         }
 
-        final NodeData localNodeData = nodeDataMap.get(DatabaseDescriptor.instance.getBroadcastAddress());
+        final NodeData localNodeData = nodeDataMap.get(locatorConfig.getBroadcastAddress());
         if (localNodeData == null)
         {
             throw new ConfigurationException(
@@ -353,7 +349,7 @@ public class YamlFileNetworkTopologySnitch
 
         if (gossiperInitialized)
         {
-            StorageService.instance.gossipSnitchInfo();
+            locatorConfig.getStorageService().gossipSnitchInfo();
         }
     }
 
@@ -365,15 +361,15 @@ public class YamlFileNetworkTopologySnitch
     {
         if (localNodeData.dcLocalAddress == null)
             return;
-        final EndpointState es = Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.instance.getBroadcastAddress());
+        final EndpointState es = locatorConfig.getGossiper().getEndpointStateForEndpoint(locatorConfig.getBroadcastAddress());
         if (es == null)
             return;
         final VersionedValue vv = es.getApplicationState(ApplicationState.INTERNAL_IP);
         if ((vv != null && !vv.value.equals(localNodeData.dcLocalAddress.toString()))
             || vv == null)
         {
-            Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP,
-                StorageService.instance.valueFactory.internalIP(localNodeData.dcLocalAddress.toString()));
+            locatorConfig.getGossiper().addLocalApplicationState(ApplicationState.INTERNAL_IP,
+                locatorConfig.getStorageService().valueFactory.internalIP(localNodeData.dcLocalAddress.toString()));
         }
     }
 
@@ -409,8 +405,8 @@ public class YamlFileNetworkTopologySnitch
     public synchronized void gossiperStarting()
     {
         gossiperInitialized = true;
-        StorageService.instance.gossipSnitchInfo();
-        Gossiper.instance.register(new ReconnectableSnitchHelper(this, localNodeData.datacenter, true));
+        locatorConfig.getStorageService().gossipSnitchInfo();
+        locatorConfig.getGossiper().register(new ReconnectableSnitchHelper(this, localNodeData.datacenter, true));
     }
 
 }
