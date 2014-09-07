@@ -28,6 +28,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
@@ -118,7 +119,17 @@ public class ActiveRepairService
      */
     public RepairFuture submitRepairSession(UUID parentRepairSession, Range<Token> range, String keyspace, boolean isSequential, Set<InetAddress> endpoints, String... cfnames)
     {
-        RepairSession session = new RepairSession(parentRepairSession, range, keyspace, isSequential, endpoints, cfnames);
+        RepairSession session = new RepairSession(parentRepairSession,
+                                                  range,
+                                                  keyspace,
+                                                  isSequential,
+                                                  endpoints,
+                                                  DatabaseDescriptor.instance,
+                                                  KeyspaceManager.instance,
+                                                  MessagingService.instance,
+                                                  this,
+                                                  FailureDetector.instance,
+                                                  cfnames);
         if (session.endpoints.isEmpty())
             return null;
         RepairFuture futureTask = new RepairFuture(session);
@@ -154,7 +165,18 @@ public class ActiveRepairService
     {
         Set<InetAddress> neighbours = new HashSet<>();
         neighbours.addAll(getNeighbors(desc.keyspace, desc.range, null, null));
-        RepairSession session = new RepairSession(desc.parentSessionId, desc.sessionId, desc.range, desc.keyspace, false, neighbours, new String[]{desc.columnFamily});
+        RepairSession session = new RepairSession(desc.parentSessionId,
+                                                  desc.sessionId,
+                                                  desc.range,
+                                                  desc.keyspace,
+                                                  false,
+                                                  neighbours,
+                                                  DatabaseDescriptor.instance,
+                                                  KeyspaceManager.instance,
+                                                  MessagingService.instance,
+                                                  this,
+                                                  FailureDetector.instance,
+                                                  new String[]{desc.columnFamily});
         sessions.put(session.getId(), session);
         RepairFuture futureTask = new RepairFuture(session);
         executor.execute(futureTask);

@@ -111,6 +111,12 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
 
     private volatile boolean terminated = false;
 
+    private final DatabaseDescriptor databaseDescriptor;
+    private final KeyspaceManager keyspaceManager;
+    private final MessagingService messagingService;
+    private final ActiveRepairService activeRepairService;
+    private final IFailureDetector failureDetector;
+
     /**
      * Create new repair session.
      *
@@ -120,12 +126,44 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
      * @param endpoints the data centers that should be part of the repair; null for all DCs
      * @param cfnames names of columnfamilies
      */
-    public RepairSession(UUID parentRepairSession, Range<Token> range, String keyspace, boolean isSequential, Set<InetAddress> endpoints, String... cfnames)
+    public RepairSession(UUID parentRepairSession,
+                         Range<Token> range,
+                         String keyspace,
+                         boolean isSequential,
+                         Set<InetAddress> endpoints,
+                         DatabaseDescriptor databaseDescriptor,
+                         KeyspaceManager keyspaceManager,
+                         MessagingService messagingService,
+                         ActiveRepairService activeRepairService,
+                         IFailureDetector failureDetector,
+                         String... cfnames)
     {
-        this(parentRepairSession, UUIDGen.getTimeUUID(), range, keyspace, isSequential, endpoints, cfnames);
+        this(parentRepairSession,
+             UUIDGen.getTimeUUID(),
+             range,
+             keyspace,
+             isSequential,
+             endpoints,
+             databaseDescriptor,
+             keyspaceManager,
+             messagingService,
+             activeRepairService,
+             failureDetector,
+             cfnames);
     }
 
-    public RepairSession(UUID parentRepairSession, UUID id, Range<Token> range, String keyspace, boolean isSequential, Set<InetAddress> endpoints, String[] cfnames)
+    public RepairSession(UUID parentRepairSession,
+                         UUID id,
+                         Range<Token> range,
+                         String keyspace,
+                         boolean isSequential,
+                         Set<InetAddress> endpoints,
+                         DatabaseDescriptor databaseDescriptor,
+                         KeyspaceManager keyspaceManager,
+                         MessagingService messagingService,
+                         ActiveRepairService activeRepairService,
+                         IFailureDetector failureDetector,
+                         String[] cfnames)
     {
         this.parentRepairSession = parentRepairSession;
         this.id = id;
@@ -135,6 +173,11 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
         assert cfnames.length > 0 : "Repairing no column families seems pointless, doesn't it";
         this.range = range;
         this.endpoints = endpoints;
+        this.databaseDescriptor = databaseDescriptor;
+        this.keyspaceManager = keyspaceManager;
+        this.messagingService = messagingService;
+        this.activeRepairService = activeRepairService;
+        this.failureDetector = failureDetector;
     }
 
     public UUID getId()
@@ -191,7 +234,7 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
                 // After this point, we rely on tcp_keepalive for individual sockets to notify us when a connection is down.
                 // See CASSANDRA-3569
                 if (fdUnregistered.compareAndSet(false, true))
-                    FailureDetector.instance.unregisterFailureDetectionEventListener(this);
+                    failureDetector.unregisterFailureDetectionEventListener(this);
 
                 // We are done with this repair session as far as differencing
                 // is considered. Just inform the session
@@ -250,7 +293,7 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
     private String repairedNodes()
     {
         StringBuilder sb = new StringBuilder();
-        sb.append(DatabaseDescriptor.instance.getBroadcastAddress());
+        sb.append(databaseDescriptor.getBroadcastAddress());
         for (InetAddress ep : endpoints)
             sb.append(", ").append(ep);
         return sb.toString();
@@ -271,7 +314,7 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
         // Checking all nodes are live
         for (InetAddress endpoint : endpoints)
         {
-            if (!FailureDetector.instance.isAlive(endpoint))
+            if (!failureDetector.isAlive(endpoint))
             {
                 String message = String.format("Cannot proceed on repair because a neighbor (%s) is dead: session failed", endpoint);
                 differencingDone.signalAll();
@@ -280,13 +323,13 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
             }
         }
 
-        ActiveRepairService.instance.addToActiveSessions(this);
+        activeRepairService.addToActiveSessions(this);
         try
         {
             // Create and queue a RepairJob for each column family
             for (String cfname : cfnames)
             {
-                RepairJob job = new RepairJob(this, parentRepairSession, id, keyspace, cfname, range, isSequential, taskExecutor, DatabaseDescriptor.instance, KeyspaceManager.instance, MessagingService.instance);
+                RepairJob job = new RepairJob(this, parentRepairSession, id, keyspace, cfname, range, isSequential, taskExecutor, databaseDescriptor, keyspaceManager, messagingService);
                 jobs.offer(job);
             }
             logger.debug("Sending tree requests to endpoints {}", endpoints);
@@ -315,12 +358,12 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
             // mark this session as terminated
             terminate();
 
-            ActiveRepairService.instance.removeFromActiveSessions(this);
+            activeRepairService.removeFromActiveSessions(this);
 
             // If we've reached here in an exception state without completing Merkle Tree sync, we'll still be registered
             // with the FailureDetector.
             if (fdUnregistered.compareAndSet(false, true))
-                FailureDetector.instance.unregisterFailureDetectionEventListener(this);
+                failureDetector.unregisterFailureDetectionEventListener(this);
         }
     }
 
@@ -377,7 +420,7 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
             return;
 
         // We want a higher confidence in the failure detection than usual because failing a repair wrongly has a high cost.
-        if (phi < 2 * DatabaseDescriptor.instance.getPhiConvictThreshold())
+        if (phi < 2 * databaseDescriptor.getPhiConvictThreshold())
             return;
 
         // Though unlikely, it is possible to arrive here multiple time and we
