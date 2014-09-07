@@ -181,7 +181,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.READ, new ReadVerbHandler(KeyspaceManager.instance, MessagingService.instance, this, Tracing.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.RANGE_SLICE, new RangeSliceVerbHandler(Tracing.instance, MessagingService.instance, this));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAGED_RANGE, new RangeSliceVerbHandler(Tracing.instance, MessagingService.instance, this));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.COUNTER_MUTATION, new CounterMutationVerbHandler(DatabaseDescriptor.instance, MessagingService.instance, StorageProxy.instance));
+        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.COUNTER_MUTATION, new CounterMutationVerbHandler(LocatorConfig.instance, MessagingService.instance, StorageProxy.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.TRUNCATE, new TruncateVerbHandler(Tracing.instance, KeyspaceManager.instance, MessagingService.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PREPARE, new PrepareVerbHandler(Tracing.instance, SystemKeyspace.instance, MessagingService.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PROPOSE, new ProposeVerbHandler(Tracing.instance, SystemKeyspace.instance, MessagingService.instance));
@@ -820,7 +820,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void gossipSnitchInfo()
     {
-        IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
+        IEndpointSnitch snitch = LocatorConfig.instance.getEndpointSnitch();
         String dc = snitch.getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
         String rack = snitch.getRack(DatabaseDescriptor.instance.getBroadcastAddress());
         Gossiper.instance.addLocalApplicationState(ApplicationState.DC, valueFactory.datacenter(dc));
@@ -866,7 +866,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                                    DatabaseDescriptor.instance, Schema.instance, Gossiper.instance, StreamManager.instance, KeyspaceManager.instance);
         streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
         if (sourceDc != null)
-            streamer.addSourceFilter(new RangeStreamer.SingleDatacenterFilter(DatabaseDescriptor.instance.getEndpointSnitch(), sourceDc));
+            streamer.addSourceFilter(new RangeStreamer.SingleDatacenterFilter(LocatorConfig.instance.getEndpointSnitch(), sourceDc));
 
         for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
             streamer.addRanges(keyspaceName, LocatorConfig.instance.getLocalRanges(keyspaceName));
@@ -1092,8 +1092,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private boolean isLocalDC(InetAddress targetHost)
     {
-        String remoteDC = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(targetHost);
-        String localDC = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
+        String remoteDC = LocatorConfig.instance.getEndpointSnitch().getDatacenter(targetHost);
+        String localDC = LocatorConfig.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
         return remoteDC.equals(localDC);
     }
 
@@ -1185,8 +1185,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             {
                 EndpointDetails details = new EndpointDetails();
                 details.host = endpoint.getHostAddress();
-                details.datacenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(endpoint);
-                details.rack = DatabaseDescriptor.instance.getEndpointSnitch().getRack(endpoint);
+                details.datacenter = LocatorConfig.instance.getEndpointSnitch().getDatacenter(endpoint);
+                details.rack = LocatorConfig.instance.getEndpointSnitch().getRack(endpoint);
 
                 endpoints.add(details.host);
                 rpc_endpoints.add(getRpcaddress(endpoint));
@@ -1765,7 +1765,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         for (Range<Token> range : ranges)
         {
             Collection<InetAddress> possibleRanges = rangeAddresses.get(range);
-            IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
+            IEndpointSnitch snitch = LocatorConfig.instance.getEndpointSnitch();
             List<InetAddress> sources = snitch.getSortedListByProximity(myAddress, possibleRanges);
 
             assert (!sources.contains(myAddress));
@@ -2912,7 +2912,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         else
         {
             // stream to the closest peer as chosen by the snitch
-            DatabaseDescriptor.instance.getEndpointSnitch().sortByProximity(DatabaseDescriptor.instance.getBroadcastAddress(), candidates);
+            LocatorConfig.instance.getEndpointSnitch().sortByProximity(DatabaseDescriptor.instance.getBroadcastAddress(), candidates);
             InetAddress hintsDestinationHost = candidates.get(0);
 
             // stream all hints -- range list will be a singleton of "the entire ring"
@@ -3020,7 +3020,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         private void calculateToFromStreams(Collection<Token> newTokens, List<String> keyspaceNames)
         {
             InetAddress localAddress = DatabaseDescriptor.instance.getBroadcastAddress();
-            IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
+            IEndpointSnitch snitch = LocatorConfig.instance.getEndpointSnitch();
             TokenMetadata tokenMetaCloneAllSettled = LocatorConfig.instance.getTokenMetadata().cloneAfterAllSettled();
             // clone to avoid concurrent modification in calculateNaturalEndpoints
             TokenMetadata tokenMetaClone = LocatorConfig.instance.getTokenMetadata().cloneOnlyTokenMap();
@@ -3401,7 +3401,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     // Never ever do this at home. Used by tests.
     IPartitioner setPartitionerUnsafe(IPartitioner newPartitioner)
     {
-        IPartitioner oldPartitioner = DatabaseDescriptor.instance.getPartitioner();
+        IPartitioner oldPartitioner = LocatorConfig.instance.getPartitioner();
         DatabaseDescriptor.instance.setPartitioner(newPartitioner);
         valueFactory = new VersionedValue.VersionedValueFactory(LocatorConfig.instance.getPartitioner());
         return oldPartitioner;
@@ -3519,7 +3519,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void updateSnitch(String epSnitchClassName, Boolean dynamic, Integer dynamicUpdateInterval, Integer dynamicResetInterval, Double dynamicBadnessThreshold) throws ClassNotFoundException
     {
-        IEndpointSnitch oldSnitch = DatabaseDescriptor.instance.getEndpointSnitch();
+        IEndpointSnitch oldSnitch = LocatorConfig.instance.getEndpointSnitch();
 
         // new snitch registers mbean during construction
         IEndpointSnitch newSnitch;
@@ -3688,7 +3688,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             {
                 try
                 {
-                    setPartitioner(DatabaseDescriptor.instance.getPartitioner());
+                    setPartitioner(LocatorConfig.instance.getPartitioner());
                     for (Map.Entry<Range<Token>, List<InetAddress>> entry : getRangeToAddressMap(keyspace).entrySet())
                     {
                         Range<Token> range = entry.getKey();

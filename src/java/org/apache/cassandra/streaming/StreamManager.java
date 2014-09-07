@@ -37,6 +37,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.RateLimiter;
 
 import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
@@ -91,9 +92,9 @@ public class StreamManager implements StreamManagerMBean
             double interDCThroughput = ((double) DatabaseDescriptor.instance.getInterDCStreamThroughputOutboundMegabitsPerSec()) * ONE_MEGA_BIT;
             mayUpdateThroughput(interDCThroughput, interDCLimiter);
 
-            if (DatabaseDescriptor.instance.getLocalDataCenter() != null && DatabaseDescriptor.instance.getEndpointSnitch() != null)
+            if (DatabaseDescriptor.instance.getLocalDataCenter() != null && LocatorConfig.instance.getEndpointSnitch() != null)
                 isLocalDC = DatabaseDescriptor.instance.getLocalDataCenter().equals(
-                            DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(peer));
+                            LocatorConfig.instance.getEndpointSnitch().getDatacenter(peer));
             else
                 isLocalDC = true;
         }

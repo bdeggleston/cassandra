@@ -270,7 +270,7 @@ public class StorageProxy implements StorageProxyMBean
 
     private Predicate<InetAddress> sameDCPredicateFor(final String dc)
     {
-        final IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
+        final IEndpointSnitch snitch = LocatorConfig.instance.getEndpointSnitch();
         return new Predicate<InetAddress>()
         {
             public boolean apply(InetAddress host)
@@ -288,7 +288,7 @@ public class StorageProxy implements StorageProxyMBean
         if (consistencyForPaxos == ConsistencyLevel.LOCAL_SERIAL)
         {
             // Restrict naturalEndpoints and pendingEndpoints to node in the local DC only
-            String localDc = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
+            String localDc = LocatorConfig.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
             Predicate<InetAddress> isLocalDc = sameDCPredicateFor(localDc);
             naturalEndpoints = ImmutableList.copyOf(Iterables.filter(naturalEndpoints, isLocalDc));
             pendingEndpoints = ImmutableList.copyOf(Iterables.filter(pendingEndpoints, isLocalDc));
@@ -460,7 +460,7 @@ public class StorageProxy implements StorageProxyMBean
     throws UnavailableException, OverloadedException, WriteTimeoutException
     {
         Tracing.instance.trace("Determining replicas for mutation");
-        final String localDataCenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
+        final String localDataCenter = LocatorConfig.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
 
         long startTime = System.nanoTime();
         List<AbstractWriteResponseHandler> responseHandlers = new ArrayList<>(mutations.size());
@@ -570,7 +570,7 @@ public class StorageProxy implements StorageProxyMBean
         long startTime = System.nanoTime();
 
         List<WriteResponseHandlerWrapper> wrappers = new ArrayList<WriteResponseHandlerWrapper>(mutations.size());
-        String localDataCenter = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
+        String localDataCenter = LocatorConfig.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
 
         try
         {
@@ -760,7 +760,7 @@ public class StorageProxy implements StorageProxyMBean
     {
         TokenMetadata.Topology topology = LocatorConfig.instance.getTokenMetadata().cachedOnlyTokenMap().getTopology();
         Multimap<String, InetAddress> localEndpoints = HashMultimap.create(topology.getDatacenterRacks().get(localDataCenter));
-        String localRack = DatabaseDescriptor.instance.getEndpointSnitch().getRack(DatabaseDescriptor.instance.getBroadcastAddress());
+        String localRack = LocatorConfig.instance.getEndpointSnitch().getRack(DatabaseDescriptor.instance.getBroadcastAddress());
 
         Collection<InetAddress> chosenEndpoints = new BatchlogManager.EndpointFilter(localRack, localEndpoints).filter();
         if (chosenEndpoints.isEmpty())
@@ -825,7 +825,7 @@ public class StorageProxy implements StorageProxyMBean
                     // belongs on a different server
                     if (message == null)
                         message = mutation.createMessage();
-                    String dc = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(destination);
+                    String dc = LocatorConfig.instance.getEndpointSnitch().getDatacenter(destination);
                     // direct writes to local DC or old Cassandra versions
                     // (1.1 knows how to forward old-style String message IDs; updated to int in 2.0)
                     if (localDataCenter.equals(dc))
@@ -1035,7 +1035,7 @@ public class StorageProxy implements StorageProxyMBean
     private InetAddress findSuitableEndpoint(String keyspaceName, ByteBuffer key, String localDataCenter, ConsistencyLevel cl) throws UnavailableException
     {
         Keyspace keyspace = KeyspaceManager.instance.open(keyspaceName);
-        IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
+        IEndpointSnitch snitch = LocatorConfig.instance.getEndpointSnitch();
         List<InetAddress> endpoints = LocatorConfig.instance.getLiveNaturalEndpoints(keyspace, key);
         if (endpoints.isEmpty())
             // TODO have a way to compute the consistency level
@@ -1417,7 +1417,7 @@ public class StorageProxy implements StorageProxyMBean
     private List<InetAddress> getLiveSortedEndpoints(Keyspace keyspace, RingPosition pos)
     {
         List<InetAddress> liveEndpoints = LocatorConfig.instance.getLiveNaturalEndpoints(keyspace, pos);
-        DatabaseDescriptor.instance.getEndpointSnitch().sortByProximity(DatabaseDescriptor.instance.getBroadcastAddress(), liveEndpoints);
+        LocatorConfig.instance.getEndpointSnitch().sortByProximity(DatabaseDescriptor.instance.getBroadcastAddress(), liveEndpoints);
         return liveEndpoints;
     }
 
@@ -1541,7 +1541,7 @@ public class StorageProxy implements StorageProxyMBean
                                                     ? getLiveSortedEndpoints(keyspace, range.right)
                                                     : nextEndpoints;
                     List<InetAddress> filteredEndpoints = nextFilteredEndpoints == null
-                                                        ? consistency_level.filterForQuery(keyspace, liveEndpoints, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch(), DatabaseDescriptor.instance.getLocalComparator())
+                                                        ? consistency_level.filterForQuery(keyspace, liveEndpoints, DatabaseDescriptor.instance.getLocalDataCenter(), LocatorConfig.instance.getEndpointSnitch(), DatabaseDescriptor.instance.getLocalComparator())
                                                         : nextFilteredEndpoints;
                     ++i;
                     ++concurrentRequests;
@@ -1553,7 +1553,7 @@ public class StorageProxy implements StorageProxyMBean
                     {
                         nextRange = ranges.get(i);
                         nextEndpoints = getLiveSortedEndpoints(keyspace, nextRange.right);
-                        nextFilteredEndpoints = consistency_level.filterForQuery(keyspace, nextEndpoints, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch(), DatabaseDescriptor.instance.getLocalComparator());
+                        nextFilteredEndpoints = consistency_level.filterForQuery(keyspace, nextEndpoints, DatabaseDescriptor.instance.getLocalDataCenter(), LocatorConfig.instance.getEndpointSnitch(), DatabaseDescriptor.instance.getLocalComparator());
 
                         // If the current range right is the min token, we should stop merging because CFS.getRangeSlice
                         // don't know how to deal with a wrapping range.
@@ -1566,13 +1566,13 @@ public class StorageProxy implements StorageProxyMBean
                         List<InetAddress> merged = intersection(liveEndpoints, nextEndpoints);
 
                         // Check if there is enough endpoint for the merge to be possible.
-                        if (!consistency_level.isSufficientLiveNodes(keyspace, merged, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch()))
+                        if (!consistency_level.isSufficientLiveNodes(keyspace, merged, DatabaseDescriptor.instance.getLocalDataCenter(), LocatorConfig.instance.getEndpointSnitch()))
                             break;
 
-                        List<InetAddress> filteredMerged = consistency_level.filterForQuery(keyspace, merged, DatabaseDescriptor.instance.getLocalDataCenter(), DatabaseDescriptor.instance.getEndpointSnitch(), DatabaseDescriptor.instance.getLocalComparator());
+                        List<InetAddress> filteredMerged = consistency_level.filterForQuery(keyspace, merged, DatabaseDescriptor.instance.getLocalDataCenter(), LocatorConfig.instance.getEndpointSnitch(), DatabaseDescriptor.instance.getLocalComparator());
 
                         // Estimate whether merging will be a win or not
-                        if (!DatabaseDescriptor.instance.getEndpointSnitch().isWorthMergingForRangeQuery(filteredMerged, filteredEndpoints, nextFilteredEndpoints))
+                        if (!LocatorConfig.instance.getEndpointSnitch().isWorthMergingForRangeQuery(filteredMerged, filteredEndpoints, nextFilteredEndpoints))
                             break;
 
                         // If we get there, merge this range and the next one
@@ -1955,7 +1955,7 @@ public class StorageProxy implements StorageProxyMBean
     {
         if (DatabaseDescriptor.instance.shouldHintByDC())
         {
-            final String dc = DatabaseDescriptor.instance.getEndpointSnitch().getDatacenter(ep);
+            final String dc = LocatorConfig.instance.getEndpointSnitch().getDatacenter(ep);
             //Disable DC specific hints
             if(!DatabaseDescriptor.instance.hintedHandoffEnabled(dc))
             {

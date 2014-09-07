@@ -18,7 +18,6 @@
 package org.apache.cassandra.cql3.statements;
 
 import org.apache.cassandra.auth.Permission;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.Keyspace;
@@ -34,17 +33,15 @@ public class AlterKeyspaceStatement extends SchemaAlteringStatement
     private final String name;
     private final KSPropDefs attrs;
 
-    private final DatabaseDescriptor databaseDescriptor;
     private final Schema schema;
     private final MigrationManager migrationManager;
     private final LocatorConfig locatorConfig;
 
-    public AlterKeyspaceStatement(String name, KSPropDefs attrs, DatabaseDescriptor databaseDescriptor, Schema schema, MigrationManager migrationManager, LocatorConfig locatorConfig)
+    public AlterKeyspaceStatement(String name, KSPropDefs attrs, Schema schema, MigrationManager migrationManager, LocatorConfig locatorConfig)
     {
         super();
         this.name = name;
         this.attrs = attrs;
-        this.databaseDescriptor = databaseDescriptor;
         this.schema = schema;
         this.migrationManager = migrationManager;
         this.locatorConfig = locatorConfig;
@@ -83,7 +80,7 @@ public class AlterKeyspaceStatement extends SchemaAlteringStatement
             AbstractReplicationStrategy.validateReplicationStrategy(name,
                                                                     AbstractReplicationStrategy.getClass(attrs.getReplicationStrategyClass()),
                                                                     locatorConfig.getTokenMetadata(),
-                                                                    databaseDescriptor.getEndpointSnitch(),
+                                                                    locatorConfig.getEndpointSnitch(),
                                                                     attrs.getReplicationOptions());
         }
     }

@@ -623,7 +623,7 @@ createKeyspaceStatement returns [CreateKeyspaceStatement expr]
     }
     : K_CREATE K_KEYSPACE (K_IF K_NOT K_EXISTS { ifNotExists = true; } )? ks=keyspaceName
       K_WITH properties[attrs] { $expr = new CreateKeyspaceStatement(ks, attrs, ifNotExists,
-      DatabaseDescriptor.instance, MigrationManager.instance, LocatorConfig.instance); }
+      MigrationManager.instance, LocatorConfig.instance); }
     ;
 
 /**
@@ -736,7 +736,7 @@ dropTriggerStatement returns [DropTriggerStatement expr]
 alterKeyspaceStatement returns [AlterKeyspaceStatement expr]
     @init { KSPropDefs attrs = new KSPropDefs(KSMetaDataFactory.instance); }
     : K_ALTER K_KEYSPACE ks=keyspaceName
-        K_WITH properties[attrs] { $expr = new AlterKeyspaceStatement(ks, attrs, DatabaseDescriptor.instance, Schema.instance, MigrationManager.instance, LocatorConfig.instance); }
+        K_WITH properties[attrs] { $expr = new AlterKeyspaceStatement(ks, attrs, Schema.instance, MigrationManager.instance, LocatorConfig.instance); }
     ;
 
 

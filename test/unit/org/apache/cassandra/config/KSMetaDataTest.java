@@ -49,7 +49,6 @@ public class KSMetaDataTest
                                             options,
                                             true,
                                             Collections.<CFMetaData>emptyList(),
-                                            DatabaseDescriptor.instance,
                                             QueryProcessor.instance,
                                             LocatorConfig.instance,
                                             SystemKeyspace.instance,

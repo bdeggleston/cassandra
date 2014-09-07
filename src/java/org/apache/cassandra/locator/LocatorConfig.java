@@ -169,4 +169,9 @@ public class LocatorConfig
         return DatabaseDescriptor.instance.getEndpointSnitch();
     }
 
+    public InetAddress getBroadcastAddress()
+    {
+        return DatabaseDescriptor.instance.getBroadcastAddress();
+    }
+
 }

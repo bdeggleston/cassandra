@@ -2,12 +2,10 @@ package org.apache.cassandra.db;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaDataFactory;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 
 import java.io.File;
@@ -64,7 +62,6 @@ public class KeyspaceManager
                     // open and store the keyspace
                     keyspaceInstance = new Keyspace(keyspaceName,
                                                     loadSSTables,
-                                                    DatabaseDescriptor.instance,
                                                     Tracing.instance,
                                                     Schema.instance,
                                                     ColumnFamilyStoreManager.instance,

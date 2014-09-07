@@ -73,7 +73,7 @@ public class StreamTransferTaskTest
                                                   Schema.instance,
                                                   KeyspaceManager.instance,
                                                   StreamManager.instance,
-                                                  DatabaseDescriptor.instance.getPartitioner());
+                                                  LocatorConfig.instance.getPartitioner());
         ColumnFamilyStore cfs = KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf);
 
         // create two sstables

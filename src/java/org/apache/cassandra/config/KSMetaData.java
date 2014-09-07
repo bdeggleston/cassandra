@@ -41,7 +41,6 @@ public final class KSMetaData
 
     public final UTMetaData userTypes;
 
-    private final DatabaseDescriptor databaseDescriptor;
     private final QueryProcessor queryProcessor;
     private final LocatorConfig locatorConfig;
     private final SystemKeyspace systemKeyspace;
@@ -53,7 +52,6 @@ public final class KSMetaData
                Map<String, String> strategyOptions,
                boolean durableWrites,
                Iterable<CFMetaData> cfDefs,
-               DatabaseDescriptor databaseDescriptor,
                QueryProcessor queryProcessor,
                LocatorConfig locatorConfig,
                SystemKeyspace systemKeyspace,
@@ -61,7 +59,7 @@ public final class KSMetaData
                MutationFactory mutationFactory)
     {
         this(name, strategyClass, strategyOptions, durableWrites, cfDefs, new UTMetaData(),
-             databaseDescriptor, queryProcessor, locatorConfig, systemKeyspace, cfMetaDataFactory, mutationFactory);
+             queryProcessor, locatorConfig, systemKeyspace, cfMetaDataFactory, mutationFactory);
     }
 
     KSMetaData(String name,
@@ -70,7 +68,6 @@ public final class KSMetaData
                boolean durableWrites,
                Iterable<CFMetaData> cfDefs,
                UTMetaData userTypes,
-               DatabaseDescriptor databaseDescriptor,
                QueryProcessor queryProcessor,
                LocatorConfig locatorConfig,
                SystemKeyspace systemKeyspace,
@@ -87,7 +84,6 @@ public final class KSMetaData
         this.durableWrites = durableWrites;
         this.userTypes = userTypes;
 
-        this.databaseDescriptor = databaseDescriptor;
         this.queryProcessor = queryProcessor;
         this.locatorConfig = locatorConfig;
         this.systemKeyspace = systemKeyspace;
@@ -171,7 +167,7 @@ public final class KSMetaData
 
         // Attempt to instantiate the ARS, which will throw a ConfigException if the strategy_options aren't fully formed
         TokenMetadata tmd = locatorConfig.getTokenMetadata();
-        IEndpointSnitch eps = databaseDescriptor.getEndpointSnitch();
+        IEndpointSnitch eps = locatorConfig.getEndpointSnitch();
         AbstractReplicationStrategy.validateReplicationStrategy(name, strategyClass, tmd, eps, strategyOptions);
 
         for (CFMetaData cfm : cfMetaData.values())
@@ -239,7 +235,6 @@ public final class KSMetaData
                                   result.getBoolean("durable_writes"),
                                   cfms,
                                   userTypes,
-                                  databaseDescriptor,
                                   queryProcessor,
                                   locatorConfig,
                                   systemKeyspace,

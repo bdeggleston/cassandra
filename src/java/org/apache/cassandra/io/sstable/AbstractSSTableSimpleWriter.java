@@ -31,6 +31,7 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.context.CounterContext;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.CounterId;
 import org.apache.cassandra.utils.Pair;
@@ -58,7 +59,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
             0, // We don't care about the bloom filter
             ActiveRepairService.UNREPAIRED_SSTABLE,
             metadata,
-            DatabaseDescriptor.instance.getPartitioner(),
+            LocatorConfig.instance.getPartitioner(),
             new MetadataCollector(metadata.comparator));
     }
 
@@ -96,7 +97,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
         if (currentKey != null && !columnFamily.isEmpty())
             writeRow(currentKey, columnFamily);
 
-        currentKey = DatabaseDescriptor.instance.getPartitioner().decorateKey(key);
+        currentKey = LocatorConfig.instance.getPartitioner().decorateKey(key);
         columnFamily = getColumnFamily();
     }
 

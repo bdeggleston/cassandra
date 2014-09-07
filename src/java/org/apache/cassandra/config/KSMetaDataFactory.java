@@ -44,13 +44,13 @@ public class KSMetaDataFactory
 
     public KSMetaData newKeyspace(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> options, boolean durablesWrites, Iterable<CFMetaData> cfDefs)
     {
-        return new KSMetaData(name, strategyClass, options, durablesWrites, cfDefs, new UTMetaData(), DatabaseDescriptor.instance, QueryProcessor.instance,
+        return new KSMetaData(name, strategyClass, options, durablesWrites, cfDefs, new UTMetaData(), QueryProcessor.instance,
                               LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance, MutationFactory.instance);
     }
 
     public KSMetaData cloneWith(KSMetaData ksm, Iterable<CFMetaData> cfDefs)
     {
-        return new KSMetaData(ksm.name, ksm.strategyClass, ksm.strategyOptions, ksm.durableWrites, cfDefs, ksm.userTypes, DatabaseDescriptor.instance,
+        return new KSMetaData(ksm.name, ksm.strategyClass, ksm.strategyOptions, ksm.durableWrites, cfDefs, ksm.userTypes,
                               QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance, MutationFactory.instance);
     }
 
@@ -73,26 +73,26 @@ public class KSMetaDataFactory
                                                 CFMetaDataFactory.instance.CompactionHistoryCf,
                                                 CFMetaDataFactory.instance.PaxosCf,
                                                 CFMetaDataFactory.instance.SSTableActivityCF);
-        return new KSMetaData(Keyspace.SYSTEM_KS, LocalStrategy.class, Collections.<String, String>emptyMap(), true, cfDefs, DatabaseDescriptor.instance,
+        return new KSMetaData(Keyspace.SYSTEM_KS, LocalStrategy.class, Collections.<String, String>emptyMap(), true, cfDefs,
                               QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance, MutationFactory.instance);
     }
 
     public KSMetaData traceKeyspace()
     {
         List<CFMetaData> cfDefs = Arrays.asList(CFMetaDataFactory.instance.TraceSessionsCf, CFMetaDataFactory.instance.TraceEventsCf);
-        return new KSMetaData(Tracing.TRACE_KS, SimpleStrategy.class, ImmutableMap.of("replication_factor", "2"), true, cfDefs, DatabaseDescriptor.instance,
+        return new KSMetaData(Tracing.TRACE_KS, SimpleStrategy.class, ImmutableMap.of("replication_factor", "2"), true, cfDefs,
                               QueryProcessor.instance, LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance, MutationFactory.instance);
     }
 
     public KSMetaData testMetadata(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> strategyOptions, CFMetaData... cfDefs)
     {
-        return new KSMetaData(name, strategyClass, strategyOptions, true, Arrays.asList(cfDefs), DatabaseDescriptor.instance, QueryProcessor.instance,
+        return new KSMetaData(name, strategyClass, strategyOptions, true, Arrays.asList(cfDefs), QueryProcessor.instance,
                               LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance, MutationFactory.instance);
     }
 
     public KSMetaData testMetadataNotDurable(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> strategyOptions, CFMetaData... cfDefs)
     {
-        return new KSMetaData(name, strategyClass, strategyOptions, false, Arrays.asList(cfDefs), DatabaseDescriptor.instance, QueryProcessor.instance,
+        return new KSMetaData(name, strategyClass, strategyOptions, false, Arrays.asList(cfDefs), QueryProcessor.instance,
                               LocatorConfig.instance, SystemKeyspace.instance, CFMetaDataFactory.instance, MutationFactory.instance);
     }
 
@@ -114,7 +114,6 @@ public class KSMetaDataFactory
                                   result.getBoolean("durable_writes"),
                                   cfms,
                                   userTypes,
-                                  DatabaseDescriptor.instance,
                                   QueryProcessor.instance,
                                   LocatorConfig.instance,
                                   SystemKeyspace.instance,
@@ -153,7 +152,6 @@ public class KSMetaDataFactory
                               ksd.strategy_options == null ? Collections.<String, String>emptyMap() : ksd.strategy_options,
                               ksd.durable_writes,
                               Arrays.asList(cfDefs),
-                              DatabaseDescriptor.instance,
                               QueryProcessor.instance,
                               LocatorConfig.instance,
                               SystemKeyspace.instance,

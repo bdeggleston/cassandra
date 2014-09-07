@@ -1159,7 +1159,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
             localState.addApplicationState(entry.getKey(), entry.getValue());
 
         //notify snitches that Gossiper is about to start
-        DatabaseDescriptor.instance.getEndpointSnitch().gossiperStarting();
+        LocatorConfig.instance.getEndpointSnitch().gossiperStarting();
         if (logger.isTraceEnabled())
             logger.trace("gossip started with generation {}", localState.getHeartBeatState().getGeneration());
 

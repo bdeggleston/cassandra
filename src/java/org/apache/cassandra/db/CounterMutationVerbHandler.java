@@ -18,6 +18,7 @@
 package org.apache.cassandra.db;
 
 import org.apache.cassandra.locator.IEndpointSnitch;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,10 +40,10 @@ public class CounterMutationVerbHandler implements IVerbHandler<CounterMutation>
     private final MessagingService messagingService;
     private final StorageProxy storageProxy;
 
-    public CounterMutationVerbHandler(DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StorageProxy storageProxy)
+    public CounterMutationVerbHandler(LocatorConfig locatorConfig, MessagingService messagingService, StorageProxy storageProxy)
     {
-        this.snitch = databaseDescriptor.getEndpointSnitch();
-        this.broadcastAddress = databaseDescriptor.getBroadcastAddress();
+        this.snitch = locatorConfig.getEndpointSnitch();
+        this.broadcastAddress = locatorConfig.getBroadcastAddress();
         this.messagingService = messagingService;
         this.storageProxy = storageProxy;
     }

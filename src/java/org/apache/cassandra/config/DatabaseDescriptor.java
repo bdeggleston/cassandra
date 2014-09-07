@@ -785,6 +785,7 @@ public class DatabaseDescriptor
         }
     }
 
+    @Deprecated  // use LocatorConfig.instance.getPartitioner
     public IPartitioner<?> getPartitioner()
     {
         return partitioner;
@@ -801,10 +802,12 @@ public class DatabaseDescriptor
         partitioner = newPartitioner;
     }
 
+    @Deprecated  // use LocatorConfig.instance.getEndpointSnitch
     public IEndpointSnitch getEndpointSnitch()
     {
         return snitch;
     }
+
     public void setEndpointSnitch(IEndpointSnitch eps)
     {
         snitch = eps;
@@ -1176,6 +1179,7 @@ public class DatabaseDescriptor
         }
     }
 
+    @Deprecated  // use LocatorConfig.instance.getBroadcastAddress
     public InetAddress getBroadcastAddress()
     {
         return broadcastAddress == null ? getLocalAddress() : broadcastAddress;

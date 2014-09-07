@@ -19,7 +19,6 @@ package org.apache.cassandra.cql3.statements;
 
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.auth.Permission;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.exceptions.AlreadyExistsException;
 import org.apache.cassandra.exceptions.InvalidRequestException;
@@ -39,7 +38,6 @@ public class CreateKeyspaceStatement extends SchemaAlteringStatement
     private final KSPropDefs attrs;
     private final boolean ifNotExists;
 
-    private final DatabaseDescriptor databaseDescriptor;
     private final MigrationManager migrationManager;
     private final LocatorConfig locatorConfig;
 
@@ -51,14 +49,13 @@ public class CreateKeyspaceStatement extends SchemaAlteringStatement
      * @param attrs map of the raw keyword arguments that followed the <code>WITH</code> keyword.
      */
     public CreateKeyspaceStatement(String name, KSPropDefs attrs, boolean ifNotExists,
-                                   DatabaseDescriptor databaseDescriptor, MigrationManager migrationManager, LocatorConfig locatorConfig)
+                                   MigrationManager migrationManager, LocatorConfig locatorConfig)
     {
         super();
         this.name = name;
         this.attrs = attrs;
         this.ifNotExists = ifNotExists;
 
-        this.databaseDescriptor = databaseDescriptor;
         this.migrationManager = migrationManager;
         this.locatorConfig = locatorConfig;
     }
@@ -102,7 +99,7 @@ public class CreateKeyspaceStatement extends SchemaAlteringStatement
         AbstractReplicationStrategy.validateReplicationStrategy(name,
                                                                 AbstractReplicationStrategy.getClass(attrs.getReplicationStrategyClass()),
                                                                 locatorConfig.getTokenMetadata(),
-                                                                databaseDescriptor.getEndpointSnitch(),
+                                                                locatorConfig.getEndpointSnitch(),
                                                                 attrs.getReplicationOptions());
     }
 

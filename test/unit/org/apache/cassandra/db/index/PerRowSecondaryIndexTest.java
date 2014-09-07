@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -176,7 +177,7 @@ public class PerRowSecondaryIndexTest
         @Override
         public void index(ByteBuffer rowKey, ColumnFamily cf)
         {
-            QueryFilter filter = QueryFilter.getIdentityFilter(DatabaseDescriptor.instance.getPartitioner().decorateKey(rowKey),
+            QueryFilter filter = QueryFilter.getIdentityFilter(LocatorConfig.instance.getPartitioner().decorateKey(rowKey),
                                                                baseCfs.getColumnFamilyName(),
                                                                System.currentTimeMillis());
             LAST_INDEXED_ROW = cf;

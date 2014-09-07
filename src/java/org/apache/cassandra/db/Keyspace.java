@@ -195,16 +195,14 @@ public class Keyspace
         return list;
     }
 
-    private final DatabaseDescriptor databaseDescriptor;
     private final Tracing tracing;
     private final Schema schema;
     private final ColumnFamilyStoreManager columnFamilyStoreManager;
     private final LocatorConfig locatorConfig;
     private final CommitLog commitLog;
 
-    Keyspace(String keyspaceName, boolean loadSSTables, DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, LocatorConfig locatorConfig, CommitLog commitLog)
+    Keyspace(String keyspaceName, boolean loadSSTables, Tracing tracing, Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, LocatorConfig locatorConfig, CommitLog commitLog)
     {
-        this.databaseDescriptor = databaseDescriptor;
         this.tracing = tracing;
         this.schema = schema;
         this.columnFamilyStoreManager = columnFamilyStoreManager;
@@ -228,7 +226,7 @@ public class Keyspace
         replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(ksm.name,
                                                                                     ksm.strategyClass,
                                                                                     locatorConfig.getTokenMetadata(),
-                                                                                    databaseDescriptor.getEndpointSnitch(),
+                                                                                    locatorConfig.getEndpointSnitch(),
                                                                                     ksm.strategyOptions);
     }
 

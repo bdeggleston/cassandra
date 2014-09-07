@@ -137,7 +137,7 @@ public class SystemKeyspace
     private void setupVersion()
     {
         String req = "INSERT INTO system.%s (key, release_version, cql_version, thrift_version, native_protocol_version, data_center, rack, partitioner) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        IEndpointSnitch snitch = DatabaseDescriptor.instance.getEndpointSnitch();
+        IEndpointSnitch snitch = LocatorConfig.instance.getEndpointSnitch();
         QueryProcessor.instance.executeOnceInternal(String.format(req, LOCAL_CF),
                                                     LOCAL_KEY,
                                                     FBUtilities.getReleaseVersionString(),

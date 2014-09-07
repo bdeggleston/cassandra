@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 import com.google.common.collect.Lists;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.Test;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -115,13 +116,13 @@ public class IndexSummaryTest
         for (int i = 0; i < size; i++)
         {
             UUID uuid = UUID.randomUUID();
-            DecoratedKey key = DatabaseDescriptor.instance.getPartitioner().decorateKey(ByteBufferUtil.bytes(uuid));
+            DecoratedKey key = LocatorConfig.instance.getPartitioner().decorateKey(ByteBufferUtil.bytes(uuid));
             list.add(key);
         }
         Collections.sort(list);
         for (int i = 0; i < size; i++)
             builder.maybeAddEntry(list.get(i), i);
-        IndexSummary summary = builder.build(DatabaseDescriptor.instance.getPartitioner());
+        IndexSummary summary = builder.build(LocatorConfig.instance.getPartitioner());
         return Pair.create(list, summary);
     }
 

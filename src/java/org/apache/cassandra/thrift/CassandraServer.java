@@ -1444,9 +1444,9 @@ public class CassandraServer implements Cassandra.Iface
 
     public String describe_snitch() throws TException
     {
-        if (DatabaseDescriptor.instance.getEndpointSnitch() instanceof DynamicEndpointSnitch)
-            return ((DynamicEndpointSnitch)DatabaseDescriptor.instance.getEndpointSnitch()).subsnitch.getClass().getName();
-        return DatabaseDescriptor.instance.getEndpointSnitch().getClass().getName();
+        if (LocatorConfig.instance.getEndpointSnitch() instanceof DynamicEndpointSnitch)
+            return ((DynamicEndpointSnitch)LocatorConfig.instance.getEndpointSnitch()).subsnitch.getClass().getName();
+        return LocatorConfig.instance.getEndpointSnitch().getClass().getName();
     }
 
     @Deprecated
