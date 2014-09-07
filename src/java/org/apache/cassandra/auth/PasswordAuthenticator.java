@@ -26,14 +26,11 @@ import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-import org.apache.cassandra.service.StorageServiceExecutors;
-import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.cql3.UntypedResultSet;
-import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.ConsistencyLevel;
@@ -73,6 +70,12 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
                                                                       90 * 24 * 60 * 60); // 3 months.
 
     private SelectStatement authenticateStatement;
+    private final Auth auth;
+
+    public PasswordAuthenticator(Auth auth)
+    {
+        this.auth = auth;
+    }
 
     // No anonymous access.
     public boolean requireAuthentication()
@@ -104,7 +107,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
         UntypedResultSet result;
         try
         {
-            ResultMessage.Rows rows = authenticateStatement.execute(QueryState.forInternalCalls(Tracing.instance, Auth.instance),
+            ResultMessage.Rows rows = authenticateStatement.execute(QueryState.forInternalCalls(auth.getTracing(), auth),
                                                                     QueryOptions.forInternalCalls(consistencyForUser(username),
                                                                                                   Lists.newArrayList(ByteBufferUtil.bytes(username))));
             result = UntypedResultSet.create(rows.result);
@@ -165,12 +168,12 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
 
     public void setup()
     {
-        Auth.instance.setupTable(CREDENTIALS_CF, CREDENTIALS_CF_SCHEMA);
+        auth.setupTable(CREDENTIALS_CF, CREDENTIALS_CF_SCHEMA);
 
         // the delay is here to give the node some time to see its peers - to reduce
         // "skipped default user setup: some nodes are were not ready" log spam.
         // It's the only reason for the delay.
-        StorageServiceExecutors.instance.tasks.schedule(new Runnable()
+        auth.getStorageServiceExecutors().tasks.schedule(new Runnable()
                                       {
                                           public void run()
                                           {
@@ -186,7 +189,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
                                          SALTED_HASH,
                                          Auth.AUTH_KS,
                                          CREDENTIALS_CF);
-            authenticateStatement = (SelectStatement) QueryProcessor.instance.parseStatement(query).prepare().statement;
+            authenticateStatement = (SelectStatement) auth.getQueryProcessor().parseStatement(query).prepare().statement;
         }
         catch (RequestValidationException e)
         {
@@ -244,7 +247,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
 
     private UntypedResultSet process(String query, ConsistencyLevel cl) throws RequestExecutionException
     {
-        return QueryProcessor.instance.process(query, cl);
+        return auth.getQueryProcessor().process(query, cl);
     }
 
     private static ConsistencyLevel consistencyForUser(String username)
