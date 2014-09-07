@@ -21,10 +21,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 
 import org.apache.cassandra.exceptions.ConfigurationException;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.gms.ApplicationState;
-import org.apache.cassandra.gms.Gossiper;
-import org.apache.cassandra.service.StorageService;
 
 /**
  * 1) Snitch will automatically set the public IP by querying the AWS API
@@ -51,14 +48,14 @@ public class Ec2MultiRegionSnitch extends Ec2Snitch
         logger.info("EC2Snitch using publicIP as identifier: {}", localPublicAddress);
         localPrivateAddress = awsApiCall(PRIVATE_IP_QUERY_URL);
         // use the Public IP to broadcast Address to other nodes.
-        DatabaseDescriptor.instance.setBroadcastAddress(localPublicAddress);
-        DatabaseDescriptor.instance.setBroadcastRpcAddress(localPublicAddress);
+        locatorConfig.getDatabaseDescriptor().setBroadcastAddress(localPublicAddress);
+        locatorConfig.getDatabaseDescriptor().setBroadcastRpcAddress(localPublicAddress);
     }
 
     public void gossiperStarting()
     {
         super.gossiperStarting();
-        Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP, StorageService.instance.valueFactory.internalIP(localPrivateAddress));
-        Gossiper.instance.register(new ReconnectableSnitchHelper(this, ec2region, true));
+        locatorConfig.getGossiper().addLocalApplicationState(ApplicationState.INTERNAL_IP, locatorConfig.getStorageService().valueFactory.internalIP(localPrivateAddress));
+        locatorConfig.getGossiper().register(new ReconnectableSnitchHelper(this, ec2region, true));
     }
 }
