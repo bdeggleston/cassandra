@@ -87,7 +87,7 @@ public class QueryPagers
     private static QueryPager pager(ReadCommand command, ConsistencyLevel consistencyLevel, boolean local, PagingState state)
     {
         if (command instanceof SliceByNamesReadCommand)
-            return new NamesQueryPager((SliceByNamesReadCommand)command, consistencyLevel, local);
+            return new NamesQueryPager((SliceByNamesReadCommand)command, consistencyLevel, local, KeyspaceManager.instance, StorageProxy.instance);
         else
             return new SliceQueryPager((SliceFromReadCommand)command, Schema.instance, consistencyLevel, local, state, KeyspaceManager.instance, StorageProxy.instance);
     }

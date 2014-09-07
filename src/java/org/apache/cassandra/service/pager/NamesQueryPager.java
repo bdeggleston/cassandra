@@ -38,6 +38,9 @@ public class NamesQueryPager implements SinglePartitionPager
 
     private volatile boolean queried;
 
+    private final KeyspaceManager keyspaceManager;
+    private final StorageProxy storageProxy;
+
     /**
      * For now, we'll only use this in CQL3. In there, as name query can never
      * yield more than one CQL3 row, there is no need for paging and so this is straight-forward.
@@ -49,11 +52,13 @@ public class NamesQueryPager implements SinglePartitionPager
      * count every cell individually) and the names filter asks for more than pageSize columns.
      */
     // Don't use directly, use QueryPagers method instead
-    NamesQueryPager(SliceByNamesReadCommand command, ConsistencyLevel consistencyLevel, boolean localQuery)
+    NamesQueryPager(SliceByNamesReadCommand command, ConsistencyLevel consistencyLevel, boolean localQuery, KeyspaceManager keyspaceManager, StorageProxy storageProxy)
     {
         this.command = command;
         this.consistencyLevel = consistencyLevel;
         this.localQuery = localQuery;
+        this.keyspaceManager = keyspaceManager;
+        this.storageProxy = storageProxy;
     }
 
     public ByteBuffer key()
@@ -86,8 +91,8 @@ public class NamesQueryPager implements SinglePartitionPager
 
         queried = true;
         return localQuery
-             ? Collections.singletonList(command.getRow(KeyspaceManager.instance.open(command.ksName)))
-             : StorageProxy.instance.read(Collections.<ReadCommand>singletonList(command), consistencyLevel);
+             ? Collections.singletonList(command.getRow(keyspaceManager.open(command.ksName)))
+             : storageProxy.read(Collections.<ReadCommand>singletonList(command), consistencyLevel);
     }
 
     public int maxRemaining()

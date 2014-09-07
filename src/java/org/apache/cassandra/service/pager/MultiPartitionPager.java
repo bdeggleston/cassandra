@@ -85,7 +85,7 @@ class MultiPartitionPager implements QueryPager
     {
         return command instanceof SliceFromReadCommand
              ? new SliceQueryPager((SliceFromReadCommand)command, Schema.instance, consistencyLevel, localQuery, state, KeyspaceManager.instance, StorageProxy.instance)
-             : new NamesQueryPager((SliceByNamesReadCommand)command, consistencyLevel, localQuery);
+             : new NamesQueryPager((SliceByNamesReadCommand)command, consistencyLevel, localQuery, KeyspaceManager.instance, StorageProxy.instance);
     }
 
     private static int computeRemaining(SinglePartitionPager[] pagers)
