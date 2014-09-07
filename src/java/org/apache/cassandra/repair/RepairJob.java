@@ -24,7 +24,10 @@ import java.util.concurrent.locks.Condition;
 
 import com.google.common.util.concurrent.*;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.streaming.StreamManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +63,10 @@ public class RepairJob
 
     private final IRepairJobEventListener listener;
     private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
     private final KeyspaceManager keyspaceManager;
+    private final ActiveRepairService activeRepairService;
+    private final StreamManager streamManager;
     private final MessagingService messagingService;
 
     /**
@@ -75,7 +81,10 @@ public class RepairJob
                      boolean isSequential,
                      ListeningExecutorService taskExecutor,
                      DatabaseDescriptor databaseDescriptor,
+                     Schema schema,
                      KeyspaceManager keyspaceManager,
+                     ActiveRepairService activeRepairService,
+                     StreamManager streamManager,
                      MessagingService messagingService1)
     {
         this.listener = listener;
@@ -83,7 +92,10 @@ public class RepairJob
         this.isSequential = isSequential;
         this.taskExecutor = taskExecutor;
         this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
         this.keyspaceManager = keyspaceManager;
+        this.activeRepairService = activeRepairService;
+        this.streamManager = streamManager;
         this.messagingService = messagingService1;
         this.treeRequests = new RequestCoordinator<InetAddress>(isSequential)
         {
@@ -200,7 +212,7 @@ public class RepairJob
             for (int j = i + 1; j < trees.size(); ++j)
             {
                 TreeResponse r2 = trees.get(j);
-                Differencer differencer = new Differencer(desc, r1, r2, databaseDescriptor, messagingService);
+                Differencer differencer = new Differencer(desc, r1, r2, databaseDescriptor, schema, keyspaceManager, activeRepairService, streamManager, messagingService);
                 differencers.add(differencer);
                 logger.debug("Queueing comparison {}", differencer);
             }

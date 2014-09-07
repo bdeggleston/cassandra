@@ -23,6 +23,10 @@ import java.util.List;
 
 import com.google.common.base.Objects;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.streaming.StreamManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,14 +51,30 @@ public class Differencer implements Runnable
     public final List<Range<Token>> differences = new ArrayList<>();
 
     private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+    private final KeyspaceManager keyspaceManager;
+    private final ActiveRepairService activeRepairService;
+    private final StreamManager streamManager;
     private final MessagingService messagingService;
 
-    public Differencer(RepairJobDesc desc, TreeResponse r1, TreeResponse r2, DatabaseDescriptor databaseDescriptor, MessagingService messagingService)
+    public Differencer(RepairJobDesc desc,
+                       TreeResponse r1,
+                       TreeResponse r2,
+                       DatabaseDescriptor databaseDescriptor,
+                       Schema schema,
+                       KeyspaceManager keyspaceManager,
+                       ActiveRepairService activeRepairService,
+                       StreamManager streamManager,
+                       MessagingService messagingService)
     {
         this.desc = desc;
         this.r1 = r1;
         this.r2 = r2;
         this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.keyspaceManager = keyspaceManager;
+        this.activeRepairService = activeRepairService;
+        this.streamManager = streamManager;
         this.messagingService = messagingService;
     }
 
@@ -93,7 +113,7 @@ public class Differencer implements Runnable
         InetAddress dst = r2.endpoint.equals(local) ? r1.endpoint : r2.endpoint;
 
         SyncRequest request = new SyncRequest(desc, local, src, dst, differences);
-        StreamingRepairTask task = new StreamingRepairTask(desc, request);
+        StreamingRepairTask task = new StreamingRepairTask(desc, request, databaseDescriptor, schema, activeRepairService, keyspaceManager, streamManager, messagingService);
         task.run();
     }
 

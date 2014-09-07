@@ -28,6 +28,7 @@ import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.streaming.StreamManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +64,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
     private final ActiveRepairService activeRepairService;
     private final CompactionManager compactionManager;
     private final MessagingService messagingService;
+    private final StreamManager streamManager;
     private final IPartitioner partitioner;
 
     public RepairMessageVerbHandler(DatabaseDescriptor databaseDescriptor,
@@ -72,6 +74,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                                     ActiveRepairService activeRepairService,
                                     CompactionManager compactionManager,
                                     MessagingService messagingService,
+                                    StreamManager streamManager,
                                     IPartitioner partitioner)
     {
         this.databaseDescriptor = databaseDescriptor;
@@ -81,6 +84,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
         this.activeRepairService = activeRepairService;
         this.compactionManager = compactionManager;
         this.messagingService = messagingService;
+        this.streamManager = streamManager;
         this.partitioner = partitioner;
     }
 
@@ -132,7 +136,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
             case SYNC_REQUEST:
                 // forwarded sync request
                 SyncRequest request = (SyncRequest) message.payload;
-                StreamingRepairTask task = new StreamingRepairTask(desc, request);
+                StreamingRepairTask task = new StreamingRepairTask(desc, request, databaseDescriptor, schema, activeRepairService, keyspaceManager, streamManager, messagingService);
                 task.run();
                 break;
 

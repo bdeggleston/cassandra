@@ -43,15 +43,28 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
     public final RepairJobDesc desc;
     public final SyncRequest request;
 
-    public StreamingRepairTask(RepairJobDesc desc, SyncRequest request)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+    private final ActiveRepairService activeRepairService;
+    private final KeyspaceManager keyspaceManager;
+    private final StreamManager streamManager;
+    private final MessagingService messagingService;
+
+    public StreamingRepairTask(RepairJobDesc desc, SyncRequest request, DatabaseDescriptor databaseDescriptor, Schema schema, ActiveRepairService activeRepairService, KeyspaceManager keyspaceManager, StreamManager streamManager, MessagingService messagingService)
     {
         this.desc = desc;
         this.request = request;
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.activeRepairService = activeRepairService;
+        this.keyspaceManager = keyspaceManager;
+        this.streamManager = streamManager;
+        this.messagingService = messagingService;
     }
 
     public void run()
     {
-        if (request.src.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+        if (request.src.equals(databaseDescriptor.getBroadcastAddress()))
             initiateStreaming();
         else
             forwardToSource();
@@ -60,11 +73,11 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
     private void initiateStreaming()
     {
         long repairedAt = ActiveRepairService.UNREPAIRED_SSTABLE;
-        if (desc.parentSessionId != null && ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId) != null)
-            repairedAt = ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId).repairedAt;
+        if (desc.parentSessionId != null && activeRepairService.getParentRepairSession(desc.parentSessionId) != null)
+            repairedAt = activeRepairService.getParentRepairSession(desc.parentSessionId).repairedAt;
 
         logger.info(String.format("[streaming task #%s] Performing streaming repair of %d ranges with %s", desc.sessionId, request.ranges.size(), request.dst));
-        StreamResultFuture op = new StreamPlan("Repair", repairedAt, 1, DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, StreamManager.instance)
+        StreamResultFuture op = new StreamPlan("Repair", repairedAt, 1, databaseDescriptor, schema, keyspaceManager, streamManager)
                                     .flushBeforeTransfer(true)
                                     // request ranges from the remote node
                                     .requestRanges(request.dst, desc.keyspace, request.ranges, desc.columnFamily)
@@ -77,7 +90,7 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
     private void forwardToSource()
     {
         logger.info(String.format("[repair #%s] Forwarding streaming repair of %d ranges to %s (to be streamed with %s)", desc.sessionId, request.ranges.size(), request.src, request.dst));
-        MessagingService.instance.sendOneWay(request.createMessage(), request.src);
+        messagingService.sendOneWay(request.createMessage(), request.src);
     }
 
     public void handleStreamEvent(StreamEvent event)
@@ -92,7 +105,7 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
     public void onSuccess(StreamState state)
     {
         logger.info(String.format("[repair #%s] streaming task succeed, returning response to %s", desc.sessionId, request.initiator));
-        MessagingService.instance.sendOneWay(new SyncComplete(desc, request.src, request.dst, true).createMessage(), request.initiator);
+        messagingService.sendOneWay(new SyncComplete(desc, request.src, request.dst, true).createMessage(), request.initiator);
     }
 
     /**
@@ -100,6 +113,6 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
      */
     public void onFailure(Throwable t)
     {
-        MessagingService.instance.sendOneWay(new SyncComplete(desc, request.src, request.dst, false).createMessage(), request.initiator);
+        messagingService.sendOneWay(new SyncComplete(desc, request.src, request.dst, false).createMessage(), request.initiator);
     }
 }

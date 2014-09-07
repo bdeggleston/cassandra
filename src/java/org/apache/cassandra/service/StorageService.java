@@ -198,6 +198,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                                                                                                           ActiveRepairService.instance,
                                                                                                                           CompactionManager.instance,
                                                                                                                           MessagingService.instance,
+                                                                                                                          StreamManager.instance,
                                                                                                                           LocatorConfig.instance.getPartitioner()));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.GOSSIP_SHUTDOWN, new GossipShutdownVerbHandler(Gossiper.instance, FailureDetector.instance));
 

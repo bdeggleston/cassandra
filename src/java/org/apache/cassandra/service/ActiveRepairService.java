@@ -28,8 +28,10 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.streaming.StreamManager;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,9 +127,11 @@ public class ActiveRepairService
                                                   isSequential,
                                                   endpoints,
                                                   DatabaseDescriptor.instance,
+                                                  Schema.instance,
                                                   KeyspaceManager.instance,
                                                   MessagingService.instance,
                                                   this,
+                                                  StreamManager.instance,
                                                   FailureDetector.instance,
                                                   cfnames);
         if (session.endpoints.isEmpty())
@@ -172,9 +176,11 @@ public class ActiveRepairService
                                                   false,
                                                   neighbours,
                                                   DatabaseDescriptor.instance,
+                                                  Schema.instance,
                                                   KeyspaceManager.instance,
                                                   MessagingService.instance,
                                                   this,
+                                                  StreamManager.instance,
                                                   FailureDetector.instance,
                                                   new String[]{desc.columnFamily});
         sessions.put(session.getId(), session);
