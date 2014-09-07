@@ -129,7 +129,7 @@ public class RepairJob
             List<ListenableFuture<InetAddress>> snapshotTasks = new ArrayList<>(allEndpoints.size());
             for (InetAddress endpoint : allEndpoints)
             {
-                SnapshotTask snapshotTask = new SnapshotTask(desc, endpoint);
+                SnapshotTask snapshotTask = new SnapshotTask(desc, endpoint, messagingService);
                 snapshotTasks.add(snapshotTask);
                 taskExecutor.execute(snapshotTask);
             }
