@@ -19,14 +19,11 @@ package org.apache.cassandra.tools;
 
 import java.util.*;
 
-import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.*;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.Upgrader;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.utils.OutputHandler;
@@ -95,7 +92,7 @@ public class StandaloneUpgrader
             {
                 try
                 {
-                    Upgrader upgrader = new Upgrader(cfs, sstable, handler);
+                    Upgrader upgrader = new Upgrader(cfs, sstable, handler, DatabaseDescriptor.instance, DBConfig.instance);
                     upgrader.upgrade();
                 }
                 catch (Exception e)

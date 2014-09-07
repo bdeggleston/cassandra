@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,14 +55,16 @@ public class CompactionTask extends AbstractCompactionTask
     private CompactionExecutorStatsCollector collector;
     private final DatabaseDescriptor databaseDescriptor;
     private final SystemKeyspace systemKeyspace;
+    private final DBConfig dbConfig;
 
-    public CompactionTask(ColumnFamilyStore cfs, Iterable<SSTableReader> sstables, int gcBefore, boolean offline, DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace)
+    public CompactionTask(ColumnFamilyStore cfs, Iterable<SSTableReader> sstables, int gcBefore, boolean offline, DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace, DBConfig dbConfig)
     {
         super(cfs, Sets.newHashSet(sstables));
         this.gcBefore = gcBefore;
         this.offline = offline;
         this.databaseDescriptor = databaseDescriptor;
         this.systemKeyspace = systemKeyspace;
+        this.dbConfig = dbConfig;
     }
 
     public static synchronized long addToTotalBytesCompacted(long bytesCompacted)
@@ -146,7 +149,7 @@ public class CompactionTask extends AbstractCompactionTask
         logger.debug("Expected bloom filter size : {}", keysPerSSTable);
 
         // TODO: errors when creating the scanners can result in untidied resources
-        AbstractCompactionIterable ci = new CompactionIterable(compactionType, strategy.getScanners(actuallyCompact), controller);
+        AbstractCompactionIterable ci = new CompactionIterable(compactionType, strategy.getScanners(actuallyCompact), controller, databaseDescriptor, dbConfig);
         CloseableIterator<AbstractCompactedRow> iter = ci.iterator();
 
         // we can't preheat until the tracker has been set. This doesn't happen until we tell the cfs to

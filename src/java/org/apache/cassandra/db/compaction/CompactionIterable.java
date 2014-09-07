@@ -39,9 +39,14 @@ public class CompactionIterable extends AbstractCompactionIterable
         }
     };
 
-    public CompactionIterable(OperationType type, List<ICompactionScanner> scanners, CompactionController controller)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final DBConfig dbConfig;
+
+    public CompactionIterable(OperationType type, List<ICompactionScanner> scanners, CompactionController controller, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig)
     {
         super(controller, type, scanners);
+        this.databaseDescriptor = databaseDescriptor;
+        this.dbConfig = dbConfig;
     }
 
     public CloseableIterator<AbstractCompactedRow> iterator()
@@ -73,7 +78,7 @@ public class CompactionIterable extends AbstractCompactionIterable
                 // create a new container for rows, since we're going to clear ours for the next one,
                 // and the AbstractCompactionRow code should be able to assume that the collection it receives
                 // won't be pulled out from under it.
-                return new LazilyCompactedRow(controller, ImmutableList.copyOf(rows), DatabaseDescriptor.instance, DBConfig.instance);
+                return new LazilyCompactedRow(controller, ImmutableList.copyOf(rows), databaseDescriptor, dbConfig);
             }
             finally
             {

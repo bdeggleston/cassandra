@@ -1065,7 +1065,7 @@ public class CompactionManager implements CompactionManagerMBean
             repairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination, expectedBloomFilterSize, repairedAt, sstableAsSet));
             unRepairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination, expectedBloomFilterSize, ActiveRepairService.UNREPAIRED_SSTABLE, sstableAsSet));
 
-            CompactionIterable ci = new CompactionIterable(OperationType.ANTICOMPACTION, scanners, controller);
+            CompactionIterable ci = new CompactionIterable(OperationType.ANTICOMPACTION, scanners, controller, DatabaseDescriptor.instance, DBConfig.instance);
 
             try (CloseableIterator<AbstractCompactedRow> iter = ci.iterator())
             {
@@ -1176,7 +1176,9 @@ public class CompactionManager implements CompactionManagerMBean
         {
             super(OperationType.VALIDATION,
                   cfs.getCompactionStrategy().getScanners(sstables, range),
-                  new ValidationCompactionController(cfs, gcBefore));
+                  new ValidationCompactionController(cfs, gcBefore),
+                  DatabaseDescriptor.instance,
+                  DBConfig.instance);
         }
     }
 

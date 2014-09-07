@@ -22,7 +22,9 @@ import java.util.*;
 
 import com.google.common.base.Throwables;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
@@ -42,13 +44,17 @@ public class Upgrader
     private final long estimatedRows;
 
     private final OutputHandler outputHandler;
+    private final DatabaseDescriptor databaseDescriptor;
+    private final DBConfig dbConfig;
 
-    public Upgrader(ColumnFamilyStore cfs, SSTableReader sstable, OutputHandler outputHandler)
+    public Upgrader(ColumnFamilyStore cfs, SSTableReader sstable, OutputHandler outputHandler, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig)
     {
         this.cfs = cfs;
         this.sstable = sstable;
         this.toUpgrade = new HashSet<>(Collections.singleton(sstable));
         this.outputHandler = outputHandler;
+        this.databaseDescriptor = databaseDescriptor;
+        this.dbConfig = dbConfig;
 
         this.directory = new File(sstable.getFilename()).getParentFile();
 
@@ -86,7 +92,7 @@ public class Upgrader
         outputHandler.output("Upgrading " + sstable);
 
         SSTableRewriter writer = new SSTableRewriter(cfs, toUpgrade, CompactionTask.getMaxDataAge(this.toUpgrade), OperationType.UPGRADE_SSTABLES, true);
-        try (CloseableIterator<AbstractCompactedRow> iter = new CompactionIterable(compactionType, strategy.getScanners(this.toUpgrade), controller).iterator())
+        try (CloseableIterator<AbstractCompactedRow> iter = new CompactionIterable(compactionType, strategy.getScanners(this.toUpgrade), controller, databaseDescriptor, dbConfig).iterator())
         {
             writer.switchWriter(createCompactionWriter(sstable.getSSTableMetadata().repairedAt));
             while (iter.hasNext())

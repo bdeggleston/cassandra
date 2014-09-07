@@ -25,6 +25,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -271,7 +272,7 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
                 return null;
 
             if (cfs.getDataTracker().markCompacting(hottestBucket))
-                return new CompactionTask(cfs, hottestBucket, gcBefore, false, DatabaseDescriptor.instance, SystemKeyspace.instance);
+                return new CompactionTask(cfs, hottestBucket, gcBefore, false, DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance);
         }
     }
 
@@ -290,7 +291,8 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
             else
                 unrepaired.add(sstable);
         }
-        return Arrays.<AbstractCompactionTask>asList(new CompactionTask(cfs, repaired, gcBefore, false, DatabaseDescriptor.instance, SystemKeyspace.instance), new CompactionTask(cfs, unrepaired, gcBefore, false, DatabaseDescriptor.instance, SystemKeyspace.instance));
+        return Arrays.<AbstractCompactionTask>asList(new CompactionTask(cfs, repaired, gcBefore, false, DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance),
+                                                     new CompactionTask(cfs, unrepaired, gcBefore, false, DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance));
     }
 
     public AbstractCompactionTask getUserDefinedTask(Collection<SSTableReader> sstables, final int gcBefore)
@@ -303,7 +305,7 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
             return null;
         }
 
-        return new CompactionTask(cfs, sstables, gcBefore, false, DatabaseDescriptor.instance, SystemKeyspace.instance).setUserDefined(true);
+        return new CompactionTask(cfs, sstables, gcBefore, false, DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance).setUserDefined(true);
     }
 
     public int getEstimatedRemainingTasks()
