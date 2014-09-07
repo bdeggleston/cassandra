@@ -191,7 +191,7 @@ public class RepairJob
             for (int j = i + 1; j < trees.size(); ++j)
             {
                 TreeResponse r2 = trees.get(j);
-                Differencer differencer = new Differencer(desc, r1, r2);
+                Differencer differencer = new Differencer(desc, r1, r2, DatabaseDescriptor.instance, MessagingService.instance);
                 differencers.add(differencer);
                 logger.debug("Queueing comparison {}", differencer);
             }

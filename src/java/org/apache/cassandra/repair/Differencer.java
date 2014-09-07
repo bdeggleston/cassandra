@@ -46,11 +46,16 @@ public class Differencer implements Runnable
     public final TreeResponse r2;
     public final List<Range<Token>> differences = new ArrayList<>();
 
-    public Differencer(RepairJobDesc desc, TreeResponse r1, TreeResponse r2)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final MessagingService messagingService;
+
+    public Differencer(RepairJobDesc desc, TreeResponse r1, TreeResponse r2, DatabaseDescriptor databaseDescriptor, MessagingService messagingService)
     {
         this.desc = desc;
         this.r1 = r1;
         this.r2 = r2;
+        this.databaseDescriptor = databaseDescriptor;
+        this.messagingService = messagingService;
     }
 
     /**
@@ -67,7 +72,7 @@ public class Differencer implements Runnable
         {
             logger.info(String.format(format, "are consistent"));
             // send back sync complete message
-            MessagingService.instance.sendOneWay(new SyncComplete(desc, r1.endpoint, r2.endpoint, true).createMessage(), DatabaseDescriptor.instance.getLocalAddress());
+            messagingService.sendOneWay(new SyncComplete(desc, r1.endpoint, r2.endpoint, true).createMessage(), databaseDescriptor.getLocalAddress());
             return;
         }
 
@@ -82,7 +87,7 @@ public class Differencer implements Runnable
      */
     void performStreamingRepair()
     {
-        InetAddress local = DatabaseDescriptor.instance.getBroadcastAddress();
+        InetAddress local = databaseDescriptor.getBroadcastAddress();
         // We can take anyone of the node as source or destination, however if one is localhost, we put at source to avoid a forwarding
         InetAddress src = r2.endpoint.equals(local) ? r2.endpoint : r1.endpoint;
         InetAddress dst = r2.endpoint.equals(local) ? r1.endpoint : r2.endpoint;
