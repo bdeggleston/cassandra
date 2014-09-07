@@ -60,8 +60,8 @@ public class NetworkTopologyStrategyTest
     public void testProperties() throws IOException, ConfigurationException
     {
         IEndpointSnitch snitch = new PropertyFileSnitch();
-        DatabaseDescriptor.instance.setEndpointSnitch(snitch);
-        TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
+        LocatorConfig.instance.setEndpointSnitch(snitch);
+        TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance.getPartitioner(), LocatorConfig.instance.getEndpointSnitch());
         createDummyTokens(metadata, true);
 
         Map<String, String> configOptions = new HashMap<String, String>();
@@ -84,8 +84,8 @@ public class NetworkTopologyStrategyTest
     public void testPropertiesWithEmptyDC() throws IOException, ConfigurationException
     {
         IEndpointSnitch snitch = new PropertyFileSnitch();
-        DatabaseDescriptor.instance.setEndpointSnitch(snitch);
-        TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
+        LocatorConfig.instance.setEndpointSnitch(snitch);
+        TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance.getPartitioner(), LocatorConfig.instance.getEndpointSnitch());
         createDummyTokens(metadata, false);
 
         Map<String, String> configOptions = new HashMap<String, String>();
@@ -112,8 +112,8 @@ public class NetworkTopologyStrategyTest
         int[] dcReplication = new int[]{2, 6, 6};
 
         IEndpointSnitch snitch = new RackInferringSnitch();
-        DatabaseDescriptor.instance.setEndpointSnitch(snitch);
-        TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
+        LocatorConfig.instance.setEndpointSnitch(snitch);
+        TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance.getPartitioner(), LocatorConfig.instance.getEndpointSnitch());
         Map<String, String> configOptions = new HashMap<String, String>();
         Multimap<InetAddress, Token> tokens = HashMultimap.create();
 

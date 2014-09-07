@@ -2,6 +2,7 @@ package org.apache.cassandra.locator;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.Keyspace;
@@ -10,21 +11,97 @@ import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.RingPosition;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.gms.FailureDetector;
+import org.apache.cassandra.utils.FBUtilities;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
 
 public class LocatorConfig
 {
-    public static final LocatorConfig instance = new LocatorConfig();
+    private static final Logger logger = LoggerFactory.getLogger(LocatorConfig.class);
+    public static final LocatorConfig instance;
 
-    private TokenMetadata tokenMetadata;
-
-    public LocatorConfig()
+    static
     {
-        this.tokenMetadata = new TokenMetadata(FailureDetector.instance, this);
+        LocatorConfig locatorConfig = null;
+        try
+        {
+            locatorConfig = new LocatorConfig();
+        }
+        catch (ConfigurationException e)
+        {
+            logger.error("Fatal configuration error", e);
+            System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
+            System.exit(1);
+        }
+        catch (Exception e)
+        {
+            logger.error("Fatal error during configuration loading", e);
+            System.err.println(e.getMessage() + "\nFatal error during configuration loading; unable to start. See log for stacktrace.");
+            System.exit(1);
+        }
+        instance = locatorConfig;
+    }
+
+    private final Config conf;
+    private TokenMetadata tokenMetadata;
+    private IEndpointSnitch snitch;
+    private final EndpointSnitchInfo endpointSnitchInfo;
+
+    private String localDC;
+    private Comparator<InetAddress> localComparator;
+
+    public LocatorConfig() throws ConfigurationException
+    {
+        conf = DatabaseDescriptor.instance.getConfig();
+
+        snitch = createEndpointSnitch();
+        tokenMetadata = new TokenMetadata(FailureDetector.instance, DatabaseDescriptor.instance.getPartitioner(), snitch);
+        endpointSnitchInfo = EndpointSnitchInfo.create(snitch);
+
+        localDC = snitch.getDatacenter(getBroadcastAddress());
+        localComparator = new Comparator<InetAddress>()
+        {
+            public int compare(InetAddress endpoint1, InetAddress endpoint2)
+            {
+                boolean local1 = localDC.equals(snitch.getDatacenter(endpoint1));
+                boolean local2 = localDC.equals(snitch.getDatacenter(endpoint2));
+                if (local1 && !local2)
+                    return -1;
+                if (local2 && !local1)
+                    return 1;
+                return 0;
+            }
+        };
+    }
+
+    private IEndpointSnitch createEndpointSnitch() throws ConfigurationException
+    {
+        String className = conf.endpoint_snitch;
+        if (!className.contains("."))
+            className = "org.apache.cassandra.locator." + className;
+        Class<IEndpointSnitch> cls = FBUtilities.classForName(className, "snitch");
+        Constructor<IEndpointSnitch> constructor = FBUtilities.getConstructor(cls, LocatorConfig.class);
+        try
+        {
+            return constructor != null ? constructor.newInstance(this) : cls.newInstance();
+        }
+        catch (InvocationTargetException | InstantiationException | IllegalAccessException e)
+        {
+            String msg = String.format(
+                    "Error instantiating IAuthorizer: %s" +
+                            "IAuthorizer implementations must support empty constructors, \n" +
+                            "or constructors taking a single org.apache.cassandra.auth.Auth argument",
+                    className);
+            throw new ConfigurationException(msg, e);
+        }
     }
 
     public IPartitioner getPartitioner()
@@ -166,12 +243,26 @@ public class LocatorConfig
 
     public IEndpointSnitch getEndpointSnitch()
     {
-        return DatabaseDescriptor.instance.getEndpointSnitch();
+        return snitch;
+    }
+
+    public void setEndpointSnitch(IEndpointSnitch eps)
+    {
+        snitch = eps;
+    }
+
+    public String getLocalDC()
+    {
+        return localDC;
+    }
+
+    public Comparator<InetAddress> getLocalComparator()
+    {
+        return localComparator;
     }
 
     public InetAddress getBroadcastAddress()
     {
         return DatabaseDescriptor.instance.getBroadcastAddress();
     }
-
 }

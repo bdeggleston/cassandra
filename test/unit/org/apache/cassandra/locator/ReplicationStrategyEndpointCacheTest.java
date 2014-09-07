@@ -52,7 +52,7 @@ public class ReplicationStrategyEndpointCacheTest
 
     public void setup(Class stratClass, Map<String, String> strategyOptions) throws Exception
     {
-        tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
+        tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance.getPartitioner(), LocatorConfig.instance.getEndpointSnitch());
         searchToken = new BigIntegerToken(String.valueOf(15), LocatorConfig.instance.getPartitioner());
 
         strategy = getStrategyWithNewTokenMetadata(KeyspaceManager.instance.open(KEYSPACE).getReplicationStrategy(), tmd);

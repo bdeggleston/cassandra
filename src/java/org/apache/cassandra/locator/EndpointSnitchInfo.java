@@ -24,21 +24,22 @@ import java.net.UnknownHostException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
-
 public class EndpointSnitchInfo implements EndpointSnitchInfoMBean
 {
-    public static void create(IEndpointSnitch endpointSnitch)
+    public static EndpointSnitchInfo create(IEndpointSnitch endpointSnitch)
     {
+        EndpointSnitchInfo endpointSnitchInfo = new EndpointSnitchInfo(endpointSnitch);
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
         {
-            mbs.registerMBean(new EndpointSnitchInfo(endpointSnitch), new ObjectName("org.apache.cassandra.db:type=EndpointSnitchInfo"));
+            mbs.registerMBean(endpointSnitchInfo, new ObjectName("org.apache.cassandra.db:type=EndpointSnitchInfo"));
         }
         catch (Exception e)
         {
             throw new RuntimeException(e);
         }
+
+        return endpointSnitchInfo;
     }
 
     private final IEndpointSnitch endpointSnitch;

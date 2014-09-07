@@ -95,7 +95,7 @@ public class SimpleStrategyTest
         AbstractReplicationStrategy strategy;
         for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
         {
-            tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
+            tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance.getPartitioner(), LocatorConfig.instance.getEndpointSnitch());
             strategy = getStrategy(keyspaceName, tmd);
             List<InetAddress> hosts = new ArrayList<InetAddress>();
             for (int i = 0; i < endpointTokens.length; i++)
@@ -122,7 +122,7 @@ public class SimpleStrategyTest
     {
         // the token difference will be RING_SIZE * 2.
         final int RING_SIZE = 10;
-        TokenMetadata tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
+        TokenMetadata tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance.getPartitioner(), LocatorConfig.instance.getEndpointSnitch());
         TokenMetadata oldTmd = StorageServiceAccessor.setTokenMetadata(tmd, StorageService.instance);
 
         Token[] endpointTokens = new Token[RING_SIZE];

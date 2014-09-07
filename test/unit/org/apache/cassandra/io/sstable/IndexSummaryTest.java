@@ -25,6 +25,7 @@ import java.util.*;
 
 import com.google.common.collect.Lists;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -44,6 +45,13 @@ import static org.junit.Assert.*;
 
 public class IndexSummaryTest
 {
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     @Test
     public void testGetKey()
     {

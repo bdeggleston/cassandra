@@ -105,21 +105,24 @@ public class TokenMetadata
     private volatile long ringVersion = 0;
 
     private final IFailureDetector failureDetector;
-    private final LocatorConfig locatorConfig;
+    private final IPartitioner partitioner;
+    private final IEndpointSnitch snitch;
 
-    public TokenMetadata(IFailureDetector failureDetector, LocatorConfig locatorConfig)
+    public TokenMetadata(IFailureDetector failureDetector, IPartitioner partitioner, IEndpointSnitch snitch)
     {
         this(failureDetector,
-             locatorConfig,
+             partitioner,
+             snitch,
              SortedBiMultiValMap.<Token, InetAddress>create(null, inetaddressCmp),
              HashBiMap.<InetAddress, UUID>create(),
-             new Topology(locatorConfig.getEndpointSnitch()));
+             new Topology(snitch));
     }
 
-    private TokenMetadata(IFailureDetector failureDetector, LocatorConfig locatorConfig, BiMultiValMap<Token, InetAddress> tokenToEndpointMap, BiMap<InetAddress, UUID> endpointsMap, Topology topology)
+    private TokenMetadata(IFailureDetector failureDetector, IPartitioner partitioner, IEndpointSnitch snitch, BiMultiValMap<Token, InetAddress> tokenToEndpointMap, BiMap<InetAddress, UUID> endpointsMap, Topology topology)
     {
         this.failureDetector = failureDetector;
-        this.locatorConfig = locatorConfig;
+        this.partitioner = partitioner;
+        this.snitch = snitch;
         this.tokenToEndpointMap = tokenToEndpointMap;
         this.topology = topology;
         endpointToHostIdMap = endpointsMap;
@@ -527,10 +530,11 @@ public class TokenMetadata
         try
         {
             return new TokenMetadata(failureDetector,
-                                     locatorConfig,
+                                     partitioner,
+                                     snitch,
                                      SortedBiMultiValMap.<Token, InetAddress>create(tokenToEndpointMap, null, inetaddressCmp),
                                      HashBiMap.create(endpointToHostIdMap),
-                                     new Topology(topology, locatorConfig.getEndpointSnitch()));
+                                     new Topology(topology, snitch));
         }
         finally
         {

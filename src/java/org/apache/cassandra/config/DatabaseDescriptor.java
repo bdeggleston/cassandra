@@ -79,7 +79,6 @@ public class DatabaseDescriptor
      */
     private static final int MAX_NUM_TOKENS = 1536;
 
-    private IEndpointSnitch snitch;
     private InetAddress listenAddress; // leave null so we can fall through to getLocalHost
     private InetAddress broadcastAddress;
     private InetAddress rpcAddress;
@@ -102,9 +101,6 @@ public class DatabaseDescriptor
     private long counterCacheSizeInMB;
     private IAllocator memoryAllocator;
     private long indexSummaryCapacityInMB;
-
-    private String localDC;
-    private Comparator<InetAddress> localComparator;
 
     // delay after which we assume ring has stablized
     private int ringDelay;
@@ -130,16 +126,6 @@ public class DatabaseDescriptor
         }
 
         instance = databaseDescriptor;
-        try
-        {
-            instance.setUpSnitch();
-        }
-        catch (ConfigurationException e)
-        {
-            logger.error("Fatal configuration error", e);
-            System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
-            System.exit(1);
-        }
         assert Gossiper.instance != null;
         assert Tracing.instance != null;
         assert KeyspaceManager.instance != null;
@@ -642,28 +628,6 @@ public class DatabaseDescriptor
         ringDelay = calculateRingDelay();
     }
 
-    public void setUpSnitch() throws ConfigurationException
-    {
-        snitch = createEndpointSnitch(conf.endpoint_snitch);
-        EndpointSnitchInfo.create(snitch);
-
-        localDC = snitch.getDatacenter(getBroadcastAddress());
-        localComparator = new Comparator<InetAddress>()
-        {
-            public int compare(InetAddress endpoint1, InetAddress endpoint2)
-            {
-                boolean local1 = localDC.equals(snitch.getDatacenter(endpoint1));
-                boolean local2 = localDC.equals(snitch.getDatacenter(endpoint2));
-                if (local1 && !local2)
-                    return -1;
-                if (local2 && !local1)
-                    return 1;
-                return 0;
-            }
-        };
-
-    }
-
     private static int calculateRingDelay()
     {
         String newdelay = System.getProperty("cassandra.ring_delay_ms");
@@ -679,14 +643,6 @@ public class DatabaseDescriptor
     public int getRingDelay()
     {
         return ringDelay;
-    }
-
-    private IEndpointSnitch createEndpointSnitch(String snitchClassName) throws ConfigurationException
-    {
-        if (!snitchClassName.contains("."))
-            snitchClassName = "org.apache.cassandra.locator." + snitchClassName;
-        IEndpointSnitch snitch = FBUtilities.construct(snitchClassName, "snitch");
-        return conf.dynamic_snitch ? new DynamicEndpointSnitch(snitch, null, getDynamicUpdateInterval(), getDynamicResetInterval(), getDynamicBadnessThreshold()) : snitch;
     }
 
     /** load keyspace (keyspace) definitions, but do not initialize the keyspace instances. */
@@ -805,12 +761,7 @@ public class DatabaseDescriptor
     @Deprecated  // use LocatorConfig.instance.getEndpointSnitch
     public IEndpointSnitch getEndpointSnitch()
     {
-        return snitch;
-    }
-
-    public void setEndpointSnitch(IEndpointSnitch eps)
-    {
-        snitch = eps;
+        return LocatorConfig.instance.getEndpointSnitch();
     }
 
     public IRequestScheduler getRequestScheduler()
@@ -1595,14 +1546,16 @@ public class DatabaseDescriptor
         return conf.streaming_socket_timeout_in_ms;
     }
 
+    @Deprecated
     public String getLocalDataCenter()
     {
-        return localDC;
+        return LocatorConfig.instance.getLocalDC();
     }
 
+    @Deprecated
     public Comparator<InetAddress> getLocalComparator()
     {
-        return localComparator;
+        return LocatorConfig.instance.getLocalComparator();
     }
 
     public Config.InternodeCompression internodeCompression()
