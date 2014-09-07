@@ -15,6 +15,9 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -268,6 +271,8 @@ public class LocatorConfig
         return DatabaseDescriptor.instance.getBroadcastAddress();
     }
 
+    // endpoint snitch dependency getters
+
     public Gossiper getGossiper()
     {
         return Gossiper.instance;
@@ -278,4 +283,23 @@ public class LocatorConfig
         return SystemKeyspace.instance;
     }
 
+    public MessagingService getMessagingService()
+    {
+        return MessagingService.instance;
+    }
+
+    public DatabaseDescriptor getDatabaseDescriptor()
+    {
+        return DatabaseDescriptor.instance;
+    }
+
+    public StorageService getStorageService()
+    {
+        return StorageService.instance;
+    }
+
+    public StorageServiceExecutors getStorageServiceExecutors()
+    {
+        return StorageServiceExecutors.instance;
+    }
 }

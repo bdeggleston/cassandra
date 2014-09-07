@@ -27,11 +27,6 @@ import java.util.concurrent.TimeUnit;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.service.StorageServiceExecutors;
-
 import com.yammer.metrics.stats.ExponentiallyDecayingSample;
 
 /**
@@ -65,7 +60,12 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
 
     public DynamicEndpointSnitch(IEndpointSnitch snitch, LocatorConfig locatorConfig1, String instance)
     {
-        this(snitch, locatorConfig1, instance, DatabaseDescriptor.instance.getDynamicUpdateInterval(), DatabaseDescriptor.instance.getDynamicResetInterval(), DatabaseDescriptor.instance.getDynamicBadnessThreshold());
+        this(snitch,
+             locatorConfig1,
+             instance,
+             locatorConfig1.getDatabaseDescriptor().getDynamicUpdateInterval(),
+             locatorConfig1.getDatabaseDescriptor().getDynamicResetInterval(),
+             locatorConfig1.getDatabaseDescriptor().getDynamicBadnessThreshold());
     }
 
     public DynamicEndpointSnitch(IEndpointSnitch snitch, LocatorConfig locatorConfig1, String instance, int updateIntervalMs, int resetIntervalMs, double badnessThreshold)
@@ -128,8 +128,8 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
                 reset();
             }
         };
-        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(update, updateIntervalInMs, updateIntervalInMs, TimeUnit.MILLISECONDS);
-        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(reset, resetIntervalInMs, resetIntervalInMs, TimeUnit.MILLISECONDS);
+        locatorConfig.getStorageServiceExecutors().scheduledTasks.scheduleWithFixedDelay(update, updateIntervalInMs, updateIntervalInMs, TimeUnit.MILLISECONDS);
+        locatorConfig.getStorageServiceExecutors().scheduledTasks.scheduleWithFixedDelay(reset, resetIntervalInMs, resetIntervalInMs, TimeUnit.MILLISECONDS);
         subsnitch.gossiperStarting();
     }
 
@@ -153,7 +153,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     @Override
     public void sortByProximity(final InetAddress address, List<InetAddress> addresses)
     {
-        assert address.equals(DatabaseDescriptor.instance.getBroadcastAddress()); // we only know about ourself
+        assert address.equals(locatorConfig.getBroadcastAddress()); // we only know about ourself
         if (badnessThreshold == 0)
         {
             sortByProximityWithScore(address, addresses);
@@ -241,13 +241,13 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
 
     private void updateScores() // this is expensive
     {
-        if (!StorageService.instance.isInitialized()) 
+        if (!locatorConfig.getStorageService().isInitialized())
             return;
         if (!registered)
         {
-            if (MessagingService.instance != null)
+            if (locatorConfig.getMessagingService() != null)
             {
-                MessagingService.instance.register(this);
+                locatorConfig.getMessagingService().register(this);
                 registered = true;
             }
 
@@ -267,7 +267,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
             double score = entry.getValue().getSnapshot().getMedian() / maxLatency;
             // finally, add the severity without any weighting, since hosts scale this relative to their own load and the size of the task causing the severity.
             // "Severity" is basically a measure of compaction activity (CASSANDRA-3722).
-            score += StorageService.instance.getSeverity(entry.getKey());
+            score += locatorConfig.getStorageService().getSeverity(entry.getKey());
             // lowest score (least amount of badness) wins.
             scores.put(entry.getKey(), score);            
         }
@@ -317,12 +317,12 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
 
     public void setSeverity(double severity)
     {
-        StorageService.instance.reportManualSeverity(severity);
+        locatorConfig.getStorageService().reportManualSeverity(severity);
     }
 
     public double getSeverity()
     {
-        return StorageService.instance.getSeverity(DatabaseDescriptor.instance.getBroadcastAddress());
+        return locatorConfig.getStorageService().getSeverity(locatorConfig.getBroadcastAddress());
     }
 
     public boolean isWorthMergingForRangeQuery(List<InetAddress> merged, List<InetAddress> l1, List<InetAddress> l2)
