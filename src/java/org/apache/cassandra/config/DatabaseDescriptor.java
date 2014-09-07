@@ -1110,6 +1110,7 @@ public class DatabaseDescriptor
         return ImmutableSet.<InetAddress>builder().addAll(seedProvider.getSeeds()).build();
     }
 
+    @Deprecated  // use LocatorConfig.instance.getListenAddress
     public InetAddress getListenAddress()
     {
         return listenAddress;
@@ -1118,6 +1119,7 @@ public class DatabaseDescriptor
     /**
      * Please use getBroadcastAddress instead. You need this only when you have to listen/connect.
      */
+    @Deprecated  // use LocatorConfig.instance.getLocalAddress
     public InetAddress getLocalAddress()
     {
         try

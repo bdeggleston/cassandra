@@ -266,6 +266,16 @@ public class LocatorConfig
         return localComparator;
     }
 
+    public InetAddress getListenAddress()
+    {
+        return DatabaseDescriptor.instance.getListenAddress();
+    }
+
+    public InetAddress getLocalAddress()
+    {
+        return DatabaseDescriptor.instance.getLocalAddress();
+    }
+
     public InetAddress getBroadcastAddress()
     {
         return DatabaseDescriptor.instance.getBroadcastAddress();

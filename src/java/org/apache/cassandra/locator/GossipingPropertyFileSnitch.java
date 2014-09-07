@@ -22,17 +22,12 @@ import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.Map;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.service.StorageServiceExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.gms.ApplicationState;
 import org.apache.cassandra.gms.EndpointState;
-import org.apache.cassandra.gms.Gossiper;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.ResourceWatcher;
 import org.apache.cassandra.utils.WrappedRunnable;
@@ -70,7 +65,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
 
         try
         {
-            psnitch = new PropertyFileSnitch(LocatorConfig.instance);
+            psnitch = new PropertyFileSnitch(locatorConfig);
             logger.info("Loaded {} for compatibility", PropertyFileSnitch.SNITCH_PROPERTIES_FILENAME);
         }
         catch (ConfigurationException e)
@@ -88,7 +83,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
                     reloadConfiguration();
                 }
             };
-            ResourceWatcher.watch(SnitchProperties.RACKDC_PROPERTY_FILENAME, runnable, refreshPeriodInSeconds * 1000, StorageServiceExecutors.instance.scheduledTasks);
+            ResourceWatcher.watch(SnitchProperties.RACKDC_PROPERTY_FILENAME, runnable, refreshPeriodInSeconds * 1000, locatorConfig.getStorageServiceExecutors().scheduledTasks);
         }
         catch (ConfigurationException ex)
         {
@@ -104,16 +99,16 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
      */
     public String getDatacenter(InetAddress endpoint)
     {
-        if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+        if (endpoint.equals(locatorConfig.getBroadcastAddress()))
             return myDC;
 
-        EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+        EndpointState epState = locatorConfig.getGossiper().getEndpointStateForEndpoint(endpoint);
         if (epState == null || epState.getApplicationState(ApplicationState.DC) == null)
         {
             if (psnitch == null)
             {
                 if (savedEndpoints == null)
-                    savedEndpoints = SystemKeyspace.instance.loadDcRackInfo();
+                    savedEndpoints = locatorConfig.getSystemKeyspace().loadDcRackInfo();
                 if (savedEndpoints.containsKey(endpoint))
                     return savedEndpoints.get(endpoint).get("data_center");
                 return DEFAULT_DC;
@@ -132,16 +127,16 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
      */
     public String getRack(InetAddress endpoint)
     {
-        if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+        if (endpoint.equals(locatorConfig.getBroadcastAddress()))
             return myRack;
 
-        EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+        EndpointState epState = locatorConfig.getGossiper().getEndpointStateForEndpoint(endpoint);
         if (epState == null || epState.getApplicationState(ApplicationState.RACK) == null)
         {
             if (psnitch == null)
             {
                 if (savedEndpoints == null)
-                    savedEndpoints = SystemKeyspace.instance.loadDcRackInfo();
+                    savedEndpoints = locatorConfig.getSystemKeyspace().loadDcRackInfo();
                 if (savedEndpoints.containsKey(endpoint))
                     return savedEndpoints.get(endpoint).get("rack");
                 return DEFAULT_RACK;
@@ -156,8 +151,8 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
     {
         super.gossiperStarting();
 
-        Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP,
-                StorageService.instance.valueFactory.internalIP(DatabaseDescriptor.instance.getLocalAddress().getHostAddress()));
+        locatorConfig.getGossiper().addLocalApplicationState(ApplicationState.INTERNAL_IP,
+                locatorConfig.getStorageService().valueFactory.internalIP(locatorConfig.getLocalAddress().getHostAddress()));
 
         reloadGossiperState();
 
@@ -185,24 +180,24 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
 
             reloadGossiperState();
 
-            if (StorageService.instance != null)
-                LocatorConfig.instance.getTokenMetadata().invalidateCachedRings();
+            if (locatorConfig.getStorageService() != null)
+                locatorConfig.getTokenMetadata().invalidateCachedRings();
 
             if (gossipStarted)
-                StorageService.instance.gossipSnitchInfo();
+                locatorConfig.getStorageService().gossipSnitchInfo();
         }
     }
 
     private void reloadGossiperState()
     {
-        if (Gossiper.instance != null)
+        if (locatorConfig.getGossiper() != null)
         {
             ReconnectableSnitchHelper pendingHelper = new ReconnectableSnitchHelper(this, myDC, preferLocal);
-            Gossiper.instance.register(pendingHelper);
+            locatorConfig.getGossiper().register(pendingHelper);
             
             pendingHelper = snitchHelperReference.getAndSet(pendingHelper);
             if (pendingHelper != null)
-                Gossiper.instance.unregister(pendingHelper);
+                locatorConfig.getGossiper().unregister(pendingHelper);
         }
         // else this will eventually rerun at gossiperStarting()
     }
