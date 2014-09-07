@@ -24,14 +24,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.service.StorageServiceExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.util.FileUtils;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.ResourceWatcher;
 import org.apache.cassandra.utils.WrappedRunnable;
@@ -72,7 +69,7 @@ public class PropertyFileSnitch extends AbstractNetworkTopologySnitch
                     reloadConfiguration();
                 }
             };
-            ResourceWatcher.watch(SNITCH_PROPERTIES_FILENAME, runnable, 60 * 1000, StorageServiceExecutors.instance.scheduledTasks);
+            ResourceWatcher.watch(SNITCH_PROPERTIES_FILENAME, runnable, 60 * 1000, locatorConfig.getStorageServiceExecutors().scheduledTasks);
         }
         catch (ConfigurationException ex)
         {
@@ -184,17 +181,17 @@ public class PropertyFileSnitch extends AbstractNetworkTopologySnitch
                 reloadedMap.put(host, token);
             }
         }
-        if (defaultDCRack == null && !reloadedMap.containsKey(DatabaseDescriptor.instance.getBroadcastAddress()))
+        if (defaultDCRack == null && !reloadedMap.containsKey(locatorConfig.getBroadcastAddress()))
             throw new ConfigurationException(String.format("Snitch definitions at %s do not define a location for this node's broadcast address %s, nor does it provides a default",
-                                                           SNITCH_PROPERTIES_FILENAME, DatabaseDescriptor.instance.getBroadcastAddress()));
+                                                           SNITCH_PROPERTIES_FILENAME, locatorConfig.getBroadcastAddress()));
 
         logger.debug("loaded network topology {}", FBUtilities.toString(reloadedMap));
         endpointMap = reloadedMap;
 
         if (gossipStarted)
         {
-            LocatorConfig.instance.getTokenMetadata().invalidateCachedRings();
-            StorageService.instance.gossipSnitchInfo();
+            locatorConfig.getTokenMetadata().invalidateCachedRings();
+            locatorConfig.getStorageService().gossipSnitchInfo();
         }
     }
 
