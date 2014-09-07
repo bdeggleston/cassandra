@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
@@ -47,6 +48,7 @@ public class UpdateStatement extends ModificationStatement
                             Attributes attrs,
                             DatabaseDescriptor databaseDescriptor,
                             Tracing tracing,
+                            Schema schema,
                             QueryProcessor queryProcessor,
                             StorageProxy storageProxy,
                             KeyspaceManager keyspaceManager,
@@ -61,6 +63,7 @@ public class UpdateStatement extends ModificationStatement
               attrs,
               databaseDescriptor,
               tracing,
+              schema,
               queryProcessor,
               storageProxy,
               keyspaceManager,
@@ -133,6 +136,7 @@ public class UpdateStatement extends ModificationStatement
 
         private final DatabaseDescriptor databaseDescriptor;
         private final Tracing tracing;
+        private final Schema schema;
         private final QueryProcessor queryProcessor;
         private final StorageProxy storageProxy;
         private final KeyspaceManager keyspaceManager;
@@ -155,6 +159,7 @@ public class UpdateStatement extends ModificationStatement
                             boolean ifNotExists,
                             DatabaseDescriptor databaseDescriptor,
                             Tracing tracing,
+                            Schema schema,
                             QueryProcessor queryProcessor,
                             StorageProxy storageProxy,
                             KeyspaceManager keyspaceManager,
@@ -169,6 +174,7 @@ public class UpdateStatement extends ModificationStatement
 
             this.databaseDescriptor = databaseDescriptor;
             this.tracing = tracing;
+            this.schema = schema;
             this.queryProcessor =  queryProcessor;
             this.storageProxy = storageProxy;
             this.keyspaceManager = keyspaceManager;
@@ -186,6 +192,7 @@ public class UpdateStatement extends ModificationStatement
                                                        attrs,
                                                        databaseDescriptor,
                                                        tracing,
+                                                       schema,
                                                        queryProcessor,
                                                        storageProxy,
                                                        keyspaceManager,
@@ -241,6 +248,7 @@ public class UpdateStatement extends ModificationStatement
 
         private final DatabaseDescriptor databaseDescriptor;
         private final Tracing tracing;
+        private final Schema schema;
         private final QueryProcessor queryProcessor;
         private final StorageProxy storageProxy;
         private final KeyspaceManager keyspaceManager;
@@ -265,6 +273,7 @@ public class UpdateStatement extends ModificationStatement
                             List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions,
                             DatabaseDescriptor databaseDescriptor,
                             Tracing tracing,
+                            Schema schema,
                             QueryProcessor queryProcessor,
                             StorageProxy storageProxy,
                             KeyspaceManager keyspaceManager,
@@ -279,6 +288,7 @@ public class UpdateStatement extends ModificationStatement
 
             this.databaseDescriptor = databaseDescriptor;
             this.tracing = tracing;
+            this.schema = schema;
             this.queryProcessor =  queryProcessor;
             this.storageProxy = storageProxy;
             this.keyspaceManager = keyspaceManager;
@@ -296,6 +306,7 @@ public class UpdateStatement extends ModificationStatement
                                                        attrs,
                                                        databaseDescriptor,
                                                        tracing,
+                                                       schema,
                                                        queryProcessor,
                                                        storageProxy,
                                                        keyspaceManager,

@@ -30,6 +30,7 @@ import javax.net.ssl.SSLEngine;
 
 import io.netty.util.Version;
 import org.apache.cassandra.auth.Auth;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.CounterMutationFactory;
@@ -91,6 +92,7 @@ public class Server implements CassandraDaemon.Server
     private EventExecutor eventExecutorGroup;
     private final Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
                                                                                      Tracing.instance,
+                                                                                     Schema.instance,
                                                                                      Auth.instance.getAuthenticator(),
                                                                                      QueryHandlerInstance.instance,
                                                                                      QueryProcessor.instance,

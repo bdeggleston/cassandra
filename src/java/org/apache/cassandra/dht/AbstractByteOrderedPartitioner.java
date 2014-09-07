@@ -38,7 +38,7 @@ import org.apache.cassandra.utils.Pair;
 
 public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner<BytesToken>
 {
-    public static final BytesToken MINIMUM = new BytesToken(ArrayUtils.EMPTY_BYTE_ARRAY, LocatorConfig.instance.getPartitioner());
+    public static final BytesToken MINIMUM = new BytesToken(ArrayUtils.EMPTY_BYTE_ARRAY, null);
 
     public static final BigInteger BYTE_MASK = new BigInteger("255");
 

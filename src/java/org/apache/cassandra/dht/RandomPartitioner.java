@@ -40,10 +40,10 @@ import org.apache.cassandra.utils.Pair;
 public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
 {
     public static final BigInteger ZERO = new BigInteger("0");
-    public static final BigIntegerToken MINIMUM = new BigIntegerToken("-1", LocatorConfig.instance.getPartitioner());
+    public static final BigIntegerToken MINIMUM = new BigIntegerToken("-1", null);
     public static final BigInteger MAXIMUM = new BigInteger("2").pow(127);
 
-    private static final int EMPTY_SIZE = (int) ObjectSizes.measureDeep(new BigIntegerToken(FBUtilities.hashToBigInteger(ByteBuffer.allocate(1)), LocatorConfig.instance.getPartitioner()));
+    private static final int EMPTY_SIZE = (int) ObjectSizes.measureDeep(new BigIntegerToken(FBUtilities.hashToBigInteger(ByteBuffer.allocate(1)), null));
 
     public DecoratedKey decorateKey(ByteBuffer key)
     {

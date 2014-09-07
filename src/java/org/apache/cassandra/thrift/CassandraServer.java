@@ -570,7 +570,10 @@ public class CassandraServer implements Cassandra.Iface
                                           filter,
                                           ThriftConversion.fromThrift(consistency_level),
                                           pageSize,
-                                          timestamp);
+                                          timestamp,
+                                          Schema.instance,
+                                          KeyspaceManager.instance,
+                                          StorageProxy.instance);
         }
         catch (IllegalArgumentException e)
         {

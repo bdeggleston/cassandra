@@ -34,6 +34,7 @@ import com.google.common.base.Splitter;
 import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.auth.IAuthenticator;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.QueryProcessor;
@@ -254,6 +255,7 @@ public class Client extends SimpleClient
 
         Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
                                                                            Tracing.instance,
+                                                                           Schema.instance,
                                                                            Auth.instance.getAuthenticator(),
                                                                            QueryHandlerInstance.instance,
                                                                            QueryProcessor.instance,

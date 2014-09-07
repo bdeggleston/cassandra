@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.StorageProxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -341,7 +342,7 @@ public class Keyspace
      * @param cfs ColumnFamily to index row in
      * @param idxNames columns to index, in comparator order
      */
-    public static void indexRow(DecoratedKey key, ColumnFamilyStore cfs, Set<String> idxNames)
+    public static void indexRow(DecoratedKey key, ColumnFamilyStore cfs, Set<String> idxNames, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, DBConfig dbConfig)
     {
         if (logger.isDebugEnabled())
             logger.debug("Indexing row {} ", cfs.metadata.getKeyValidator().getString(key.getKey()));
@@ -350,7 +351,7 @@ public class Keyspace
         {
             Set<SecondaryIndex> indexes = cfs.indexManager.getIndexesByNames(idxNames);
 
-            Iterator<ColumnFamily> pager = QueryPagers.pageRowLocally(cfs, key.getKey(), DEFAULT_PAGE_SIZE);
+            Iterator<ColumnFamily> pager = QueryPagers.pageRowLocally(cfs, key.getKey(), DEFAULT_PAGE_SIZE, schema, keyspaceManager, storageProxy, dbConfig);
             while (pager.hasNext())
             {
                 ColumnFamily cf = pager.next();

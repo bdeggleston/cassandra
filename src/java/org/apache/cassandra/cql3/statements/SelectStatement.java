@@ -27,6 +27,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.github.jamm.MemoryMeter;
@@ -108,6 +109,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
 
     private final DatabaseDescriptor databaseDescriptor;
     private final Tracing tracing;
+    private final Schema schema;
     private final QueryProcessor queryProcessor;
     private final KeyspaceManager keyspaceManager;
     private final StorageProxy storageProxy;
@@ -120,6 +122,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                            Term limit,
                            DatabaseDescriptor databaseDescriptor,
                            Tracing tracing,
+                           Schema schema,
                            QueryProcessor queryProcessor,
                            KeyspaceManager keyspaceManager,
                            StorageProxy storageProxy,
@@ -135,6 +138,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
 
         this.databaseDescriptor = databaseDescriptor;
         this.tracing = tracing;
+        this.schema = schema;
         this.queryProcessor = queryProcessor;
         this.keyspaceManager = keyspaceManager;
         this.storageProxy = storageProxy;
@@ -176,6 +180,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                                         Selection selection,
                                         DatabaseDescriptor databaseDescriptor,
                                         Tracing tracing,
+                                        Schema schema,
                                         QueryProcessor queryProcessor,
                                         KeyspaceManager keyspaceManager,
                                         StorageProxy storageProxy,
@@ -188,6 +193,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                                    null,
                                    databaseDescriptor,
                                    tracing,
+                                   schema,
                                    queryProcessor,
                                    keyspaceManager,
                                    storageProxy,
@@ -255,7 +261,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         }
         else
         {
-            QueryPager pager = QueryPagers.pager(command, cl, options.getPagingState());
+            QueryPager pager = QueryPagers.pager(command, cl, options.getPagingState(), schema, keyspaceManager, storageProxy, locatorConfig.getPartitioner());
             if (parameters.isCount)
                 return pageCountQuery(pager, options, pageSize, now, limit);
 
@@ -1396,6 +1402,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
 
         private final DatabaseDescriptor databaseDescriptor;
         private final Tracing tracing;
+        private final Schema schema;
         private final QueryProcessor queryProcessor;
         private final KeyspaceManager keyspaceManager;
         private final StorageProxy storageProxy;
@@ -1408,6 +1415,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                             Term.Raw limit,
                             DatabaseDescriptor databaseDescriptor,
                             Tracing tracing,
+                            Schema schema,
                             QueryProcessor queryProcessor,
                             KeyspaceManager keyspaceManager,
                             StorageProxy storageProxy,
@@ -1421,6 +1429,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
 
             this.databaseDescriptor = databaseDescriptor;
             this.tracing = tracing;
+            this.schema = schema;
             this.queryProcessor = queryProcessor;
             this.keyspaceManager = keyspaceManager;
             this.storageProxy = storageProxy;
@@ -1447,6 +1456,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                                                        prepareLimit(boundNames),
                                                        databaseDescriptor,
                                                        tracing,
+                                                       schema,
                                                        queryProcessor,
                                                        keyspaceManager,
                                                        storageProxy,

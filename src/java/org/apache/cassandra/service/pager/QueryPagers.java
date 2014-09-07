@@ -27,9 +27,9 @@ import org.apache.cassandra.db.filter.ColumnCounter;
 import org.apache.cassandra.db.filter.NamesQueryFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.exceptions.RequestValidationException;
-import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageProxy;
 
 /**
@@ -84,62 +84,62 @@ public class QueryPagers
         }
     }
 
-    private static QueryPager pager(ReadCommand command, ConsistencyLevel consistencyLevel, boolean local, PagingState state)
+    private static QueryPager pager(ReadCommand command, ConsistencyLevel consistencyLevel, boolean local, PagingState state, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy)
     {
         if (command instanceof SliceByNamesReadCommand)
-            return new NamesQueryPager((SliceByNamesReadCommand)command, consistencyLevel, local, KeyspaceManager.instance, StorageProxy.instance);
+            return new NamesQueryPager((SliceByNamesReadCommand)command, consistencyLevel, local, keyspaceManager, storageProxy);
         else
-            return new SliceQueryPager((SliceFromReadCommand)command, Schema.instance, consistencyLevel, local, state, KeyspaceManager.instance, StorageProxy.instance);
+            return new SliceQueryPager((SliceFromReadCommand)command, schema, consistencyLevel, local, state, keyspaceManager, storageProxy);
     }
 
-    private static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel, boolean local, PagingState state)
+    private static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel, boolean local, PagingState state, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, IPartitioner partitioner)
     {
         if (command instanceof Pageable.ReadCommands)
         {
             List<ReadCommand> commands = ((Pageable.ReadCommands)command).commands;
             if (commands.size() == 1)
-                return pager(commands.get(0), consistencyLevel, local, state);
+                return pager(commands.get(0), consistencyLevel, local, state, schema, keyspaceManager, storageProxy, partitioner);
 
-            return new MultiPartitionPager(commands, consistencyLevel, local, state, Schema.instance, KeyspaceManager.instance, StorageProxy.instance);
+            return new MultiPartitionPager(commands, consistencyLevel, local, state, schema, keyspaceManager, storageProxy);
         }
         else if (command instanceof ReadCommand)
         {
-            return pager((ReadCommand)command, consistencyLevel, local, state);
+            return pager((ReadCommand)command, consistencyLevel, local, state, schema, keyspaceManager, storageProxy);
         }
         else
         {
             assert command instanceof RangeSliceCommand;
             RangeSliceCommand rangeCommand = (RangeSliceCommand)command;
             if (rangeCommand.predicate instanceof NamesQueryFilter)
-                return new RangeNamesQueryPager(rangeCommand, Schema.instance, consistencyLevel, local, state, StorageProxy.instance, LocatorConfig.instance.getPartitioner());
+                return new RangeNamesQueryPager(rangeCommand, schema, consistencyLevel, local, state, storageProxy, partitioner);
             else
-                return new RangeSliceQueryPager(rangeCommand, Schema.instance, consistencyLevel, local, state, StorageProxy.instance, LocatorConfig.instance.getPartitioner());
+                return new RangeSliceQueryPager(rangeCommand, schema, consistencyLevel, local, state, storageProxy, partitioner);
         }
     }
 
-    public static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel)
+    public static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, IPartitioner partitioner)
     {
-        return pager(command, consistencyLevel, false, null);
+        return pager(command, consistencyLevel, false, null, schema, keyspaceManager, storageProxy, partitioner);
     }
 
-    public static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel, PagingState state)
+    public static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel, PagingState state, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, IPartitioner partitioner)
     {
-        return pager(command, consistencyLevel, false, state);
+        return pager(command, consistencyLevel, false, state, schema, keyspaceManager, storageProxy, partitioner);
     }
 
-    public static QueryPager localPager(Pageable command)
+    public static QueryPager localPager(Pageable command, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, IPartitioner partitioner)
     {
-        return pager(command, null, true, null);
+        return pager(command, null, true, null, schema, keyspaceManager, storageProxy, partitioner);
     }
 
     /**
      * Convenience method to (locally) page an internal row.
      * Used to 2ndary index a wide row without dying.
      */
-    public static Iterator<ColumnFamily> pageRowLocally(final ColumnFamilyStore cfs, ByteBuffer key, final int pageSize)
+    public static Iterator<ColumnFamily> pageRowLocally(final ColumnFamilyStore cfs, ByteBuffer key, final int pageSize, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, final DBConfig dbConfig)
     {
         SliceFromReadCommand command = new SliceFromReadCommand(cfs.metadata.ksName, key, cfs.name, System.currentTimeMillis(), new IdentityQueryFilter());
-        final SliceQueryPager pager = new SliceQueryPager(command, Schema.instance, null, true, KeyspaceManager.instance, StorageProxy.instance);
+        final SliceQueryPager pager = new SliceQueryPager(command, schema, null, true, keyspaceManager, storageProxy);
 
         return new Iterator<ColumnFamily>()
         {
@@ -155,7 +155,7 @@ public class QueryPagers
                 {
                     List<Row> rows = pager.fetchPage(pageSize);
                     ColumnFamily cf = rows.isEmpty() ? null : rows.get(0).cf;
-                    return cf == null ? ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance) : cf;
+                    return cf == null ? ArrayBackedSortedColumns.factory.create(cfs.metadata, dbConfig) : cf;
                 }
                 catch (Exception e)
                 {
@@ -179,12 +179,15 @@ public class QueryPagers
                                  SliceQueryFilter filter,
                                  ConsistencyLevel consistencyLevel,
                                  final int pageSize,
-                                 long now) throws RequestValidationException, RequestExecutionException
+                                 long now,
+                                 Schema schema,
+                                 KeyspaceManager keyspaceManager,
+                                 StorageProxy storageProxy) throws RequestValidationException, RequestExecutionException
     {
         SliceFromReadCommand command = new SliceFromReadCommand(keyspace, key, columnFamily, now, filter);
-        final SliceQueryPager pager = new SliceQueryPager(command, Schema.instance, consistencyLevel, false, KeyspaceManager.instance, StorageProxy.instance);
+        final SliceQueryPager pager = new SliceQueryPager(command, schema, consistencyLevel, false, keyspaceManager, storageProxy);
 
-        ColumnCounter counter = filter.columnCounter(Schema.instance.getCFMetaData(keyspace, columnFamily).comparator, now);
+        ColumnCounter counter = filter.columnCounter(schema.getCFMetaData(keyspace, columnFamily).comparator, now);
         while (!pager.isExhausted())
         {
             List<Row> next = pager.fetchPage(pageSize);

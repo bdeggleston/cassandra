@@ -26,6 +26,7 @@ import java.util.UUID;
 import io.netty.buffer.ByteBuf;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.cql3.statements.BatchStatement;
 import org.apache.cassandra.cql3.statements.ModificationStatement;
@@ -50,6 +51,7 @@ public class BatchMessage extends Message.Request
     {
         private final DatabaseDescriptor databaseDescriptor;
         private final Tracing tracing;
+        private final Schema schema;
         private final QueryProcessor queryProcessor;
         private final QueryHandler queryHandler;
         private final KeyspaceManager keyspaceManager;
@@ -59,12 +61,13 @@ public class BatchMessage extends Message.Request
         private final DBConfig dbConfig;
         private final LocatorConfig locatorConfig;
 
-        public Codec(DatabaseDescriptor databaseDescriptor, Tracing tracing, QueryProcessor queryProcessor, QueryHandler queryHandler,
-                     KeyspaceManager keyspaceManager, StorageProxy storageProxy, MutationFactory mutationFactory,
+        public Codec(DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, QueryProcessor queryProcessor,
+                     QueryHandler queryHandler, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MutationFactory mutationFactory,
                      CounterMutationFactory counterMutationFactory, DBConfig dbConfig, LocatorConfig locatorConfig)
         {
             this.databaseDescriptor = databaseDescriptor;
             this.tracing = tracing;
+            this.schema = schema;
             this.queryProcessor = queryProcessor;
             this.queryHandler = queryHandler;
             this.keyspaceManager = keyspaceManager;
@@ -100,7 +103,7 @@ public class BatchMessage extends Message.Request
                                  ? QueryOptions.fromPreV3Batch(CBUtil.readConsistencyLevel(body))
                                  : QueryOptions.codec.decode(body, version);
 
-            return new BatchMessage(toType(type), queryOrIds, variables, options, databaseDescriptor, tracing, queryProcessor,
+            return new BatchMessage(toType(type), queryOrIds, variables, options, databaseDescriptor, tracing, schema, queryProcessor,
                                     queryHandler, keyspaceManager, storageProxy, mutationFactory, counterMutationFactory,
                                     dbConfig, locatorConfig);
         }
@@ -182,6 +185,7 @@ public class BatchMessage extends Message.Request
 
     private final DatabaseDescriptor databaseDescriptor;
     private final Tracing tracing;
+    private final Schema schema;
     private final QueryProcessor queryProcessor;
     private final QueryHandler queryHandler;
     private final KeyspaceManager keyspaceManager;
@@ -192,7 +196,7 @@ public class BatchMessage extends Message.Request
     private final LocatorConfig locatorConfig;
 
     public BatchMessage(BatchStatement.Type type, List<Object> queryOrIdList, List<List<ByteBuffer>> values, QueryOptions options,
-                        DatabaseDescriptor databaseDescriptor, Tracing tracing, QueryProcessor queryProcessor, QueryHandler queryHandler,
+                        DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, QueryProcessor queryProcessor, QueryHandler queryHandler,
                         KeyspaceManager keyspaceManager, StorageProxy storageProxy, MutationFactory mutationFactory,
                         CounterMutationFactory counterMutationFactory, DBConfig dbConfig, LocatorConfig locatorConfig)
     {
@@ -204,6 +208,7 @@ public class BatchMessage extends Message.Request
 
         this.databaseDescriptor = databaseDescriptor;
         this.tracing = tracing;
+        this.schema = schema;
         this.queryProcessor = queryProcessor;
         this.queryHandler = queryHandler;
         this.keyspaceManager = keyspaceManager;
@@ -273,8 +278,8 @@ public class BatchMessage extends Message.Request
             // Note: It's ok at this point to pass a bogus value for the number of bound terms in the BatchState ctor
             // (and no value would be really correct, so we prefer passing a clearly wrong one).
             BatchStatement batch = new BatchStatement(-1, batchType, statements, Attributes.none(), databaseDescriptor,
-                                                      tracing, queryProcessor, keyspaceManager, storageProxy, mutationFactory,
-                                                      counterMutationFactory, dbConfig, locatorConfig);
+                                                      tracing, schema, queryProcessor, keyspaceManager, storageProxy,
+                                                      mutationFactory, counterMutationFactory, dbConfig, locatorConfig);
             Message.Response response = queryHandler.processBatch(batch, state, batchOptions);
 
             if (tracingId != null)

@@ -24,7 +24,9 @@ import java.nio.charset.CharacterCodingException;
 
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -202,7 +204,8 @@ public class QueryPagerTest
     @Test
     public void namesQueryTest() throws Exception
     {
-        QueryPager pager = QueryPagers.localPager(namesQuery("k0", "c1", "c5", "c7", "c8"));
+        QueryPager pager = QueryPagers.localPager(namesQuery("k0", "c1", "c5", "c7", "c8"), Schema.instance, KeyspaceManager.instance,
+                                                  StorageProxy.instance, LocatorConfig.instance.getPartitioner());
 
         assertFalse(pager.isExhausted());
         List<Row> page = pager.fetchPage(3);
@@ -215,7 +218,8 @@ public class QueryPagerTest
     @Test
     public void sliceQueryTest() throws Exception
     {
-        QueryPager pager = QueryPagers.localPager(sliceQuery("k0", "c1", "c8", 10));
+        QueryPager pager = QueryPagers.localPager(sliceQuery("k0", "c1", "c8", 10), Schema.instance, KeyspaceManager.instance,
+                                                  StorageProxy.instance, LocatorConfig.instance.getPartitioner());
 
         List<Row> page;
 
@@ -240,7 +244,8 @@ public class QueryPagerTest
     @Test
     public void reversedSliceQueryTest() throws Exception
     {
-        QueryPager pager = QueryPagers.localPager(sliceQuery("k0", "c8", "c1", true, 10));
+        QueryPager pager = QueryPagers.localPager(sliceQuery("k0", "c8", "c1", true, 10), Schema.instance, KeyspaceManager.instance,
+                                                  StorageProxy.instance, LocatorConfig.instance.getPartitioner());
 
         List<Row> page;
 
@@ -268,7 +273,7 @@ public class QueryPagerTest
         QueryPager pager = QueryPagers.localPager(new Pageable.ReadCommands(new ArrayList<ReadCommand>() {{
             add(sliceQuery("k1", "c2", "c6", 10));
             add(sliceQuery("k4", "c3", "c5", 10));
-        }}));
+        }}), Schema.instance, KeyspaceManager.instance, StorageProxy.instance, LocatorConfig.instance.getPartitioner());
 
         List<Row> page;
 
@@ -294,7 +299,8 @@ public class QueryPagerTest
     @Test
     public void rangeNamesQueryTest() throws Exception
     {
-        QueryPager pager = QueryPagers.localPager(rangeNamesQuery(range("k0", "k5"), 100, "c1", "c4", "c8"));
+        QueryPager pager = QueryPagers.localPager(rangeNamesQuery(range("k0", "k5"), 100, "c1", "c4", "c8"),
+                                                  Schema.instance, KeyspaceManager.instance, StorageProxy.instance, LocatorConfig.instance.getPartitioner());
 
         List<Row> page;
 
@@ -316,7 +322,8 @@ public class QueryPagerTest
     @Test
     public void rangeSliceQueryTest() throws Exception
     {
-        QueryPager pager = QueryPagers.localPager(rangeSliceQuery(range("k1", "k5"), 100, "c1", "c7"));
+        QueryPager pager = QueryPagers.localPager(rangeSliceQuery(range("k1", "k5"), 100, "c1", "c7"), Schema.instance,
+                                                  KeyspaceManager.instance, StorageProxy.instance, LocatorConfig.instance.getPartitioner());
 
         List<Row> page;
 
@@ -370,7 +377,8 @@ public class QueryPagerTest
             QueryProcessor.instance.executeInternal(String.format("INSERT INTO %s.%s (k, c, v) VALUES ('k%d', 'c%d', null)", keyspace, table, 0, i));
 
         SliceQueryFilter filter = new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 100, DatabaseDescriptor.instance, Tracing.instance);
-        QueryPager pager = QueryPagers.localPager(new SliceFromReadCommand(keyspace, bytes("k0"), table, 0, filter));
+        QueryPager pager = QueryPagers.localPager(new SliceFromReadCommand(keyspace, bytes("k0"), table, 0, filter), Schema.instance,
+                                                  KeyspaceManager.instance, StorageProxy.instance, LocatorConfig.instance.getPartitioner());
 
         for (int i = 0; i < 5; i++)
         {

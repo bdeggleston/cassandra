@@ -55,6 +55,7 @@ import com.google.common.util.concurrent.RateLimiter;
 
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1118,7 +1119,7 @@ public class CompactionManager implements CompactionManagerMBean
                 metrics.beginCompaction(builder);
                 try
                 {
-                    builder.build();
+                    builder.build(Schema.instance, KeyspaceManager.instance, StorageProxy.instance, DBConfig.instance);
                 }
                 finally
                 {

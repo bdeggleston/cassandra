@@ -23,6 +23,7 @@ import java.util.*;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.github.jamm.MemoryMeter;
@@ -83,6 +84,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 
     private final DatabaseDescriptor databaseDescriptor;
     private final Tracing tracing;
+    private final Schema schema;
     private final QueryProcessor queryProcessor;
     private final StorageProxy storageProxy;
     private final KeyspaceManager keyspaceManager;
@@ -97,6 +99,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                     Attributes attrs,
                                     DatabaseDescriptor databaseDescriptor,
                                     Tracing tracing,
+                                    Schema schema,
                                     QueryProcessor queryProcessor,
                                     StorageProxy storageProxy,
                                     KeyspaceManager keyspaceManager,
@@ -112,6 +115,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 
         this.databaseDescriptor = databaseDescriptor;
         this.tracing = tracing;
+        this.schema = schema;
         this.queryProcessor =  queryProcessor;
         this.storageProxy = storageProxy;
         this.keyspaceManager = keyspaceManager;
@@ -591,6 +595,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                  options,
                                  databaseDescriptor,
                                  tracing,
+                                 schema,
                                  queryProcessor,
                                  keyspaceManager,
                                  storageProxy,
@@ -606,6 +611,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                               QueryOptions options,
                                               DatabaseDescriptor databaseDescriptor,
                                               Tracing tracing,
+                                              Schema schema,
                                               QueryProcessor queryProcessor,
                                               KeyspaceManager keyspaceManager,
                                               StorageProxy storageProxy,
@@ -626,6 +632,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                                                  options,
                                                                  databaseDescriptor,
                                                                  tracing,
+                                                                 schema,
                                                                  queryProcessor,
                                                                  keyspaceManager,
                                                                  storageProxy,
@@ -662,6 +669,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                                       QueryOptions options,
                                                       DatabaseDescriptor databaseDescriptor,
                                                       Tracing tracing,
+                                                      Schema schema,
                                                       QueryProcessor queryProcessor,
                                                       KeyspaceManager keyspaceManager,
                                                       StorageProxy storageProxy,
@@ -697,6 +705,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                      selection,
                                      databaseDescriptor,
                                      tracing,
+                                     schema,
                                      queryProcessor,
                                      keyspaceManager,
                                      storageProxy,

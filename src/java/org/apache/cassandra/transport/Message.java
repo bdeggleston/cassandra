@@ -30,6 +30,7 @@ import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import org.apache.cassandra.auth.IAuthenticator;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryHandler;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.CounterMutationFactory;
@@ -131,6 +132,7 @@ public abstract class Message
 
         public static Map<Type, Codec> getCodecMap(DatabaseDescriptor databaseDescriptor,
                                                    Tracing tracing,
+                                                   Schema schema,
                                                    IAuthenticator authenticator,
                                                    QueryHandler queryHandler,
                                                    QueryProcessor queryProcessor,
@@ -157,6 +159,7 @@ public abstract class Message
             codecs.put(Type.EVENT, EventMessage.codec);
             codecs.put(Type.BATCH, new BatchMessage.Codec(databaseDescriptor,
                                                           tracing,
+                                                          schema,
                                                           queryProcessor,
                                                           queryHandler,
                                                           keyspaceManager,

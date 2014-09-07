@@ -30,6 +30,8 @@ import com.googlecode.concurrentlinkedhashmap.EntryWeigher;
 import org.antlr.runtime.*;
 import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.StorageProxy;
 import org.github.jamm.MemoryMeter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -280,7 +282,11 @@ public class QueryProcessor implements QueryHandler
                 throw new IllegalArgumentException("Only SELECTs can be paged");
 
             SelectStatement select = (SelectStatement)prepared.statement;
-            QueryPager pager = QueryPagers.localPager(select.getPageableCommand(makeInternalOptions(prepared, values)));
+            QueryPager pager = QueryPagers.localPager(select.getPageableCommand(makeInternalOptions(prepared, values)),
+                                                      Schema.instance,
+                                                      KeyspaceManager.instance,
+                                                      StorageProxy.instance,
+                                                      LocatorConfig.instance.getPartitioner());
             return UntypedResultSet.create(select, pager, pageSize);
         }
         catch (RequestValidationException e)

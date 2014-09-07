@@ -38,7 +38,7 @@ import org.apache.cassandra.utils.Pair;
 
 public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
 {
-    public static final StringToken MINIMUM = new StringToken("", LocatorConfig.instance.getPartitioner());
+    public static final StringToken MINIMUM = new StringToken("", null);
 
     public static final BigInteger CHAR_MASK = new BigInteger("65535");
 
