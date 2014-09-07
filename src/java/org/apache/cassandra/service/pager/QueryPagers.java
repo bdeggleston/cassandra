@@ -29,6 +29,7 @@ import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.exceptions.RequestValidationException;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageProxy;
 
 /**
@@ -112,7 +113,7 @@ public class QueryPagers
             if (rangeCommand.predicate instanceof NamesQueryFilter)
                 return new RangeNamesQueryPager(rangeCommand, Schema.instance, consistencyLevel, local, state);
             else
-                return new RangeSliceQueryPager(rangeCommand, Schema.instance, consistencyLevel, local, state);
+                return new RangeSliceQueryPager(rangeCommand, Schema.instance, consistencyLevel, local, state, StorageProxy.instance, LocatorConfig.instance.getPartitioner());
         }
     }
 
