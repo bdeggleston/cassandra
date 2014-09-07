@@ -505,7 +505,7 @@ public final class MessagingService implements MessagingServiceMBean
         OutboundTcpConnectionPool cp = connectionManagers.get(to);
         if (cp == null)
         {
-            cp = new OutboundTcpConnectionPool(to);
+            cp = new OutboundTcpConnectionPool(to, DatabaseDescriptor.instance, Tracing.instance, SystemKeyspace.instance, this);
             OutboundTcpConnectionPool existingPool = connectionManagers.putIfAbsent(to, cp);
             if (existingPool != null)
                 cp = existingPool;

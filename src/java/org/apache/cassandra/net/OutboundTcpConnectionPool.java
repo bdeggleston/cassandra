@@ -32,6 +32,7 @@ import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.metrics.ConnectionMetrics;
 import org.apache.cassandra.security.SSLFactory;
+import org.apache.cassandra.tracing.Tracing;
 
 public class OutboundTcpConnectionPool
 {
@@ -44,14 +45,19 @@ public class OutboundTcpConnectionPool
     private InetAddress resetedEndpoint;
     private ConnectionMetrics metrics;
 
-    OutboundTcpConnectionPool(InetAddress remoteEp)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final SystemKeyspace systemKeyspace;
+
+    OutboundTcpConnectionPool(InetAddress remoteEp, DatabaseDescriptor databaseDescriptor, Tracing tracing, SystemKeyspace systemKeyspace, MessagingService messagingService)
     {
         id = remoteEp;
-        resetedEndpoint = SystemKeyspace.instance.getPreferredIP(remoteEp);
+        this.databaseDescriptor = databaseDescriptor;
+        this.systemKeyspace = systemKeyspace;
+        resetedEndpoint = this.systemKeyspace.getPreferredIP(remoteEp);
         started = new CountDownLatch(1);
 
-        cmdCon = new OutboundTcpConnection(this);
-        ackCon = new OutboundTcpConnection(this);
+        cmdCon = new OutboundTcpConnection(this, this.databaseDescriptor, tracing, messagingService);
+        ackCon = new OutboundTcpConnection(this, this.databaseDescriptor, tracing, messagingService);
     }
 
     /**
@@ -88,7 +94,7 @@ public class OutboundTcpConnectionPool
      */
     public void reset(InetAddress remoteEP)
     {
-        SystemKeyspace.instance.updatePreferredIP(id, remoteEP);
+        systemKeyspace.updatePreferredIP(id, remoteEP);
         resetedEndpoint = remoteEP;
         for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon })
             conn.softCloseSocket();
@@ -115,7 +121,7 @@ public class OutboundTcpConnectionPool
 
     public Socket newSocket() throws IOException
     {
-        return newSocket(endPoint(), DatabaseDescriptor.instance);
+        return newSocket(endPoint(), databaseDescriptor);
     }
 
     public static Socket newSocket(InetAddress endpoint, DatabaseDescriptor databaseDescriptor) throws IOException
@@ -139,8 +145,8 @@ public class OutboundTcpConnectionPool
 
     public InetAddress endPoint()
     {
-        if (id.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
-            return DatabaseDescriptor.instance.getLocalAddress();
+        if (id.equals(databaseDescriptor.getBroadcastAddress()))
+            return databaseDescriptor.getLocalAddress();
         return resetedEndpoint == null ? id : resetedEndpoint;
     }
 
