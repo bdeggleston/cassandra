@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
@@ -42,15 +43,15 @@ public class SliceQueryPager extends AbstractQueryPager implements SinglePartiti
     private volatile CellName lastReturned;
 
     // Don't use directly, use QueryPagers method instead
-    SliceQueryPager(SliceFromReadCommand command, ConsistencyLevel consistencyLevel, boolean localQuery)
+    SliceQueryPager(SliceFromReadCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery)
     {
-        super(consistencyLevel, command.filter.count, localQuery, command.ksName, command.cfName, command.filter, command.timestamp);
+        super(consistencyLevel, command.filter.count, localQuery, command.ksName, command.cfName, schema, command.filter, command.timestamp);
         this.command = command;
     }
 
-    SliceQueryPager(SliceFromReadCommand command, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state)
+    SliceQueryPager(SliceFromReadCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state)
     {
-        this(command, consistencyLevel, localQuery);
+        this(command, schema, consistencyLevel, localQuery);
 
         if (state != null)
         {

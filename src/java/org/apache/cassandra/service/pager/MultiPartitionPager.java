@@ -20,6 +20,7 @@ package org.apache.cassandra.service.pager;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.exceptions.RequestValidationException;
 import org.apache.cassandra.exceptions.RequestExecutionException;
@@ -82,7 +83,7 @@ class MultiPartitionPager implements QueryPager
     private static SinglePartitionPager makePager(ReadCommand command, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state)
     {
         return command instanceof SliceFromReadCommand
-             ? new SliceQueryPager((SliceFromReadCommand)command, consistencyLevel, localQuery, state)
+             ? new SliceQueryPager((SliceFromReadCommand)command, Schema.instance, consistencyLevel, localQuery, state)
              : new NamesQueryPager((SliceByNamesReadCommand)command, consistencyLevel, localQuery);
     }
 

@@ -87,7 +87,7 @@ public class QueryPagers
         if (command instanceof SliceByNamesReadCommand)
             return new NamesQueryPager((SliceByNamesReadCommand)command, consistencyLevel, local);
         else
-            return new SliceQueryPager((SliceFromReadCommand)command, consistencyLevel, local, state);
+            return new SliceQueryPager((SliceFromReadCommand)command, Schema.instance, consistencyLevel, local, state);
     }
 
     private static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel, boolean local, PagingState state)
@@ -109,9 +109,9 @@ public class QueryPagers
             assert command instanceof RangeSliceCommand;
             RangeSliceCommand rangeCommand = (RangeSliceCommand)command;
             if (rangeCommand.predicate instanceof NamesQueryFilter)
-                return new RangeNamesQueryPager(rangeCommand, consistencyLevel, local, state);
+                return new RangeNamesQueryPager(rangeCommand, Schema.instance, consistencyLevel, local, state);
             else
-                return new RangeSliceQueryPager(rangeCommand, consistencyLevel, local, state);
+                return new RangeSliceQueryPager(rangeCommand, Schema.instance, consistencyLevel, local, state);
         }
     }
 
@@ -137,7 +137,7 @@ public class QueryPagers
     public static Iterator<ColumnFamily> pageRowLocally(final ColumnFamilyStore cfs, ByteBuffer key, final int pageSize)
     {
         SliceFromReadCommand command = new SliceFromReadCommand(cfs.metadata.ksName, key, cfs.name, System.currentTimeMillis(), new IdentityQueryFilter());
-        final SliceQueryPager pager = new SliceQueryPager(command, null, true);
+        final SliceQueryPager pager = new SliceQueryPager(command, Schema.instance, null, true);
 
         return new Iterator<ColumnFamily>()
         {
@@ -180,7 +180,7 @@ public class QueryPagers
                                  long now) throws RequestValidationException, RequestExecutionException
     {
         SliceFromReadCommand command = new SliceFromReadCommand(keyspace, key, columnFamily, now, filter);
-        final SliceQueryPager pager = new SliceQueryPager(command, consistencyLevel, false);
+        final SliceQueryPager pager = new SliceQueryPager(command, Schema.instance, consistencyLevel, false);
 
         ColumnCounter counter = filter.columnCounter(Schema.instance.getCFMetaData(keyspace, columnFamily).comparator, now);
         while (!pager.isExhausted())

@@ -54,10 +54,11 @@ abstract class AbstractQueryPager implements QueryPager
                                  boolean localQuery,
                                  String keyspace,
                                  String columnFamily,
+                                 Schema schema,
                                  IDiskAtomFilter columnFilter,
                                  long timestamp)
     {
-        this(consistencyLevel, toFetch, localQuery, Schema.instance.getCFMetaData(keyspace, columnFamily), columnFilter, timestamp);
+        this(consistencyLevel, toFetch, localQuery, schema.getCFMetaData(keyspace, columnFamily), columnFilter, timestamp);
     }
 
     protected AbstractQueryPager(ConsistencyLevel consistencyLevel,

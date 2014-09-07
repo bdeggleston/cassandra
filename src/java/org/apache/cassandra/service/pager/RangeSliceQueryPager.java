@@ -19,6 +19,7 @@ package org.apache.cassandra.service.pager;
 
 import java.util.List;
 
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.Composite;
@@ -41,16 +42,16 @@ public class RangeSliceQueryPager extends AbstractQueryPager
     private volatile CellName lastReturnedName;
 
     // Don't use directly, use QueryPagers method instead
-    RangeSliceQueryPager(RangeSliceCommand command, ConsistencyLevel consistencyLevel, boolean localQuery)
+    RangeSliceQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery)
     {
-        super(consistencyLevel, command.maxResults, localQuery, command.keyspace, command.columnFamily, command.predicate, command.timestamp);
+        super(consistencyLevel, command.maxResults, localQuery, command.keyspace, command.columnFamily, schema, command.predicate, command.timestamp);
         this.command = command;
         assert columnFilter instanceof SliceQueryFilter;
     }
 
-    RangeSliceQueryPager(RangeSliceCommand command, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state)
+    RangeSliceQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state)
     {
-        this(command, consistencyLevel, localQuery);
+        this(command, schema, consistencyLevel, localQuery);
 
         if (state != null)
         {
