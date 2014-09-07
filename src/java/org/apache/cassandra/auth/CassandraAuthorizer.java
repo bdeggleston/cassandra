@@ -21,13 +21,11 @@ import java.util.*;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.cql3.UntypedResultSet;
-import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.ConsistencyLevel;
@@ -62,16 +60,23 @@ public class CassandraAuthorizer implements IAuthorizer
 
     private SelectStatement authorizeStatement;
 
+    private final Auth auth;
+
+    public CassandraAuthorizer(Auth auth)
+    {
+        this.auth = auth;
+    }
+
     // Returns every permission on the resource granted to the user.
     public Set<Permission> authorize(AuthenticatedUser user, IResource resource)
     {
-        if (user.isSuper(Auth.instance))
+        if (user.isSuper(auth))
             return Permission.ALL;
 
         UntypedResultSet result;
         try
         {
-            ResultMessage.Rows rows = authorizeStatement.execute(QueryState.forInternalCalls(Tracing.instance, Auth.instance),
+            ResultMessage.Rows rows = authorizeStatement.execute(QueryState.forInternalCalls(auth.getTracing(), auth),
                                                                  QueryOptions.forInternalCalls(ConsistencyLevel.LOCAL_ONE,
                                                                                                Lists.newArrayList(ByteBufferUtil.bytes(user.getName()),
                                                                                                                   ByteBufferUtil.bytes(resource.getName()))));
@@ -112,7 +117,7 @@ public class CassandraAuthorizer implements IAuthorizer
     private void modify(Set<Permission> permissions, IResource resource, String user, String op) throws RequestExecutionException
     {
         process(String.format("UPDATE %s.%s SET permissions = permissions %s {%s} WHERE username = '%s' AND resource = '%s'",
-                              Auth.instance.AUTH_KS,
+                              Auth.AUTH_KS,
                               PERMISSIONS_CF,
                               op,
                               "'" + StringUtils.join(permissions, "','") + "'",
@@ -127,7 +132,7 @@ public class CassandraAuthorizer implements IAuthorizer
     public Set<PermissionDetails> list(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, String of)
     throws RequestValidationException, RequestExecutionException
     {
-        if (!performer.isSuper(Auth.instance) && !performer.getName().equals(of))
+        if (!performer.isSuper(auth) && !performer.getName().equals(of))
             throw new UnauthorizedException(String.format("You are not authorized to view %s's permissions",
                                                           of == null ? "everyone" : of));
 
@@ -153,7 +158,7 @@ public class CassandraAuthorizer implements IAuthorizer
 
     private static String buildListQuery(IResource resource, String of)
     {
-        List<String> vars = Lists.newArrayList(Auth.instance.AUTH_KS, PERMISSIONS_CF);
+        List<String> vars = Lists.newArrayList(Auth.AUTH_KS, PERMISSIONS_CF);
         List<String> conditions = new ArrayList<String>();
 
         if (resource != null)
@@ -184,7 +189,7 @@ public class CassandraAuthorizer implements IAuthorizer
     {
         try
         {
-            process(String.format("DELETE FROM %s.%s WHERE username = '%s'", Auth.instance.AUTH_KS, PERMISSIONS_CF, escape(droppedUser)));
+            process(String.format("DELETE FROM %s.%s WHERE username = '%s'", Auth.AUTH_KS, PERMISSIONS_CF, escape(droppedUser)));
         }
         catch (Throwable e)
         {
@@ -201,7 +206,7 @@ public class CassandraAuthorizer implements IAuthorizer
         {
             // TODO: switch to secondary index on 'resource' once https://issues.apache.org/jira/browse/CASSANDRA-5125 is resolved.
             rows = process(String.format("SELECT username FROM %s.%s WHERE resource = '%s' ALLOW FILTERING",
-                                         Auth.instance.AUTH_KS,
+                                         Auth.AUTH_KS,
                                          PERMISSIONS_CF,
                                          escape(droppedResource.getName())));
         }
@@ -216,7 +221,7 @@ public class CassandraAuthorizer implements IAuthorizer
             try
             {
                 process(String.format("DELETE FROM %s.%s WHERE username = '%s' AND resource = '%s'",
-                                      Auth.instance.AUTH_KS,
+                                      Auth.AUTH_KS,
                                       PERMISSIONS_CF,
                                       escape(row.getString(USERNAME)),
                                       escape(droppedResource.getName())));
@@ -230,7 +235,7 @@ public class CassandraAuthorizer implements IAuthorizer
 
     public Set<DataResource> protectedResources()
     {
-        return ImmutableSet.of(DataResource.columnFamily(Auth.instance.AUTH_KS, PERMISSIONS_CF));
+        return ImmutableSet.of(DataResource.columnFamily(Auth.AUTH_KS, PERMISSIONS_CF));
     }
 
     public void validateConfiguration() throws ConfigurationException
@@ -239,12 +244,12 @@ public class CassandraAuthorizer implements IAuthorizer
 
     public void setup()
     {
-        Auth.instance.setupTable(PERMISSIONS_CF, PERMISSIONS_CF_SCHEMA);
+        auth.setupTable(PERMISSIONS_CF, PERMISSIONS_CF_SCHEMA);
 
         try
         {
-            String query = String.format("SELECT permissions FROM %s.%s WHERE username = ? AND resource = ?", Auth.instance.AUTH_KS, PERMISSIONS_CF);
-            authorizeStatement = (SelectStatement) QueryProcessor.instance.parseStatement(query).prepare().statement;
+            String query = String.format("SELECT permissions FROM %s.%s WHERE username = ? AND resource = ?", Auth.AUTH_KS, PERMISSIONS_CF);
+            authorizeStatement = (SelectStatement) auth.getQueryProcessor().parseStatement(query).prepare().statement;
         }
         catch (RequestValidationException e)
         {
@@ -260,6 +265,6 @@ public class CassandraAuthorizer implements IAuthorizer
 
     private UntypedResultSet process(String query) throws RequestExecutionException
     {
-        return QueryProcessor.instance.process(query, ConsistencyLevel.ONE);
+        return auth.getQueryProcessor().process(query, ConsistencyLevel.ONE);
     }
 }

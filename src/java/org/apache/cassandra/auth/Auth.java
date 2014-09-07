@@ -475,6 +475,26 @@ public class Auth
         return readableSystemResources;
     }
 
+    public QueryProcessor getQueryProcessor()
+    {
+        return QueryProcessor.instance;
+    }
+
+    public Tracing getTracing()
+    {
+        return Tracing.instance;
+    }
+
+    public Schema getSchema()
+    {
+        return Schema.instance;
+    }
+
+    public StorageServiceExecutors getStorageServiceExecutors()
+    {
+        return StorageServiceExecutors.instance;
+    }
+
     /**
      * IMigrationListener implementation that cleans up permissions on dropped resources.
      */
