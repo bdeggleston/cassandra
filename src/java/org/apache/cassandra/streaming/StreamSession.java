@@ -139,6 +139,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     private final Schema schema;
     private final KeyspaceManager keyspaceManager;
     private final StreamManager streamManager;
+    private final IPartitioner partitioner;
 
     public static enum State
     {
@@ -166,13 +167,14 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         this.index = index;
         this.factory = factory;
         Map<StreamMessage.Type, StreamMessage.Serializer> inputSerializers = StreamMessage.Type.getInputSerializers(keyspaceManager, schema, partitioner);
-        Map<StreamMessage.Type, StreamMessage.Serializer> outputSerializers = StreamMessage.Type.getOutputSerializers();
+        Map<StreamMessage.Type, StreamMessage.Serializer> outputSerializers = StreamMessage.Type.getOutputSerializers(partitioner);
         this.handler = new ConnectionHandler(this, broadcastAddress, inputSerializers, outputSerializers);
         this.metrics = StreamingMetrics.get(peer);
         this.maxRetries = maxRetries;
         this.schema = schema;
         this.keyspaceManager = keyspaceManager;
         this.streamManager = streamManager;
+        this.partitioner = partitioner;
     }
 
     public UUID planId()
@@ -237,7 +239,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
      */
     public void addStreamRequest(String keyspace, Collection<Range<Token>> ranges, Collection<String> columnFamilies, long repairedAt)
     {
-        requests.add(new StreamRequest(keyspace, ranges, columnFamilies, repairedAt));
+        requests.add(new StreamRequest(keyspace, ranges, columnFamilies, repairedAt, partitioner));
     }
 
     /**

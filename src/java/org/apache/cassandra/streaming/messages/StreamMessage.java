@@ -27,6 +27,7 @@ import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.util.DataOutputStreamAndChannel;
+import org.apache.cassandra.streaming.StreamRequest;
 import org.apache.cassandra.streaming.StreamSession;
 
 /**
@@ -108,7 +109,7 @@ public abstract class StreamMessage
         public static Map<Type, Serializer> getInputSerializers(KeyspaceManager keyspaceManager, Schema schema, IPartitioner partitioner)
         {
             Map<Type, Serializer> serializers = new EnumMap<>(Type.class);
-            serializers.put(PREPARE, PrepareMessage.serializer);
+            serializers.put(PREPARE, new PrepareMessage.Serializer(new StreamRequest.Serializer(partitioner)));
             serializers.put(FILE, new IncomingFileMessage.MsgSerializer(keyspaceManager, schema, partitioner));
             serializers.put(RECEIVED, ReceivedMessage.serializer);
             serializers.put(RETRY, RetryMessage.serializer);
@@ -117,10 +118,10 @@ public abstract class StreamMessage
             return serializers;
         }
 
-        public static Map<Type, Serializer> getOutputSerializers()
+        public static Map<Type, Serializer> getOutputSerializers(IPartitioner partitioner)
         {
             Map<Type, Serializer> serializers = new EnumMap<>(Type.class);
-            serializers.put(PREPARE, PrepareMessage.serializer);
+            serializers.put(PREPARE, new PrepareMessage.Serializer(new StreamRequest.Serializer(partitioner)));
             serializers.put(FILE, OutgoingFileMessage.serializer);
             serializers.put(RECEIVED, ReceivedMessage.serializer);
             serializers.put(RETRY, RetryMessage.serializer);

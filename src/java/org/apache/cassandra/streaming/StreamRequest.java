@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
@@ -33,22 +34,31 @@ import org.apache.cassandra.locator.LocatorConfig;
 
 public class StreamRequest
 {
-    public static final IVersionedSerializer<StreamRequest> serializer = new StreamRequestSerializer();
-
     public final String keyspace;
     public final Collection<Range<Token>> ranges;
     public final Collection<String> columnFamilies = new HashSet<>();
     public final long repairedAt;
-    public StreamRequest(String keyspace, Collection<Range<Token>> ranges, Collection<String> columnFamilies, long repairedAt)
+    private final IPartitioner partitioner;
+
+    public StreamRequest(String keyspace, Collection<Range<Token>> ranges, Collection<String> columnFamilies, long repairedAt, IPartitioner p)
     {
         this.keyspace = keyspace;
         this.ranges = ranges;
         this.columnFamilies.addAll(columnFamilies);
         this.repairedAt = repairedAt;
+        this.partitioner = p;
     }
 
-    public static class StreamRequestSerializer implements IVersionedSerializer<StreamRequest>
+    public static class Serializer implements IVersionedSerializer<StreamRequest>
     {
+
+        private final IPartitioner partitioner;
+
+        public Serializer(IPartitioner partitioner)
+        {
+            this.partitioner = partitioner;
+        }
+
         public void serialize(StreamRequest request, DataOutputPlus out, int version) throws IOException
         {
             out.writeUTF(request.keyspace);
@@ -80,7 +90,7 @@ public class StreamRequest
             List<String> columnFamilies = new ArrayList<>(cfCount);
             for (int i = 0; i < cfCount; i++)
                 columnFamilies.add(in.readUTF());
-            return new StreamRequest(keyspace, ranges, columnFamilies, repairedAt);
+            return new StreamRequest(keyspace, ranges, columnFamilies, repairedAt, partitioner);
         }
 
         public long serializedSize(StreamRequest request, int version)

@@ -30,8 +30,15 @@ import org.apache.cassandra.streaming.StreamSummary;
 
 public class PrepareMessage extends StreamMessage
 {
-    public static Serializer<PrepareMessage> serializer = new Serializer<PrepareMessage>()
+    public static class Serializer implements StreamMessage.Serializer<PrepareMessage>
     {
+        private final StreamRequest.Serializer streamRequestSerializer;
+
+        public Serializer(StreamRequest.Serializer streamRequestSerializer)
+        {
+            this.streamRequestSerializer = streamRequestSerializer;
+        }
+
         public PrepareMessage deserialize(ReadableByteChannel in, int version, StreamSession session) throws IOException
         {
             DataInput input = new DataInputStream(Channels.newInputStream(in));
@@ -39,7 +46,7 @@ public class PrepareMessage extends StreamMessage
             // requests
             int numRequests = input.readInt();
             for (int i = 0; i < numRequests; i++)
-                message.requests.add(StreamRequest.serializer.deserialize(input, version));
+                message.requests.add(streamRequestSerializer.deserialize(input, version));
             // summaries
             int numSummaries = input.readInt();
             for (int i = 0; i < numSummaries; i++)
@@ -52,7 +59,7 @@ public class PrepareMessage extends StreamMessage
             // requests
             out.writeInt(message.requests.size());
             for (StreamRequest request : message.requests)
-                StreamRequest.serializer.serialize(request, out, version);
+                streamRequestSerializer.serialize(request, out, version);
             // summaries
             out.writeInt(message.summaries.size());
             for (StreamSummary summary : message.summaries)
