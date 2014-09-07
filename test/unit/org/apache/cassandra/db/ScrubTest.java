@@ -30,8 +30,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
-import org.apache.cassandra.config.CFMetaDataFactory;
-import org.apache.cassandra.config.KSMetaData;
+import org.apache.cassandra.config.*;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.CounterColumnType;
@@ -49,8 +48,6 @@ import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.Scrubber;
@@ -138,7 +135,7 @@ public class ScrubTest
         file.close();
 
         // with skipCorrupted == false, the scrub is expected to fail
-        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, false, false);
+        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, false, false, DatabaseDescriptor.instance, DBConfig.instance);
         try
         {
             scrubber.scrub();
@@ -147,7 +144,7 @@ public class ScrubTest
         catch (IOError err) {}
 
         // with skipCorrupted == true, the corrupt row will be skipped
-        scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, true, false);
+        scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, true, false, DatabaseDescriptor.instance, DBConfig.instance);
         scrubber.scrub();
         scrubber.close();
         assertEquals(1, cfs.getSSTables().size());
@@ -252,7 +249,7 @@ public class ScrubTest
         components.add(Component.TOC);
         SSTableReader sstable = SSTableReader.openNoValidation(desc, components, metadata);
 
-        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, false, true);
+        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, false, true, DatabaseDescriptor.instance, DBConfig.instance);
         scrubber.scrub();
 
         cfs.loadNewSSTables();

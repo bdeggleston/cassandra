@@ -23,6 +23,7 @@ import java.util.*;
 
 import com.google.common.base.Throwables;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.io.util.FileUtils;
@@ -65,20 +66,24 @@ public class Scrubber implements Closeable
          }
     };
     private final SortedSet<Row> outOfOrderRows = new TreeSet<>(rowComparator);
+    private final DatabaseDescriptor databaseDescriptor;
+    private final DBConfig dbConfig;
 
 
-    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, CompactionManager compactionManager, boolean skipCorrupted, boolean isOffline) throws IOException
+    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, CompactionManager compactionManager, boolean skipCorrupted, boolean isOffline, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig) throws IOException
     {
-        this(cfs, sstable, compactionManager, skipCorrupted, new OutputHandler.LogOutput(), isOffline);
+        this(cfs, sstable, compactionManager, skipCorrupted, new OutputHandler.LogOutput(), isOffline, databaseDescriptor, dbConfig);
     }
 
-    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, CompactionManager compactionManager, boolean skipCorrupted, OutputHandler outputHandler, boolean isOffline) throws IOException
+    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, CompactionManager compactionManager, boolean skipCorrupted, OutputHandler outputHandler, boolean isOffline, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig) throws IOException
     {
         this.cfs = cfs;
         this.sstable = sstable;
         this.outputHandler = outputHandler;
         this.skipCorrupted = skipCorrupted;
         this.isOffline = isOffline;
+        this.databaseDescriptor = databaseDescriptor;
+        this.dbConfig = dbConfig;
 
         // Calculate the expected compacted filesize
         this.destination = cfs.directories.getDirectoryForNewSSTables();
@@ -183,7 +188,7 @@ public class Scrubber implements Closeable
                         continue;
                     }
 
-                    AbstractCompactedRow compactedRow = new LazilyCompactedRow(controller, Collections.singletonList(atoms));
+                    AbstractCompactedRow compactedRow = new LazilyCompactedRow(controller, Collections.singletonList(atoms), databaseDescriptor, dbConfig);
                     if (writer.tryAppend(compactedRow) == null)
                         emptyRows++;
                     else
@@ -212,7 +217,7 @@ public class Scrubber implements Closeable
                                 continue;
                             }
 
-                            AbstractCompactedRow compactedRow = new LazilyCompactedRow(controller, Collections.singletonList(atoms));
+                            AbstractCompactedRow compactedRow = new LazilyCompactedRow(controller, Collections.singletonList(atoms), databaseDescriptor, dbConfig);
                             if (writer.tryAppend(compactedRow) == null)
                                 emptyRows++;
                             else

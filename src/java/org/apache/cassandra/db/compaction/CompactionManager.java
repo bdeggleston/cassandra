@@ -575,7 +575,7 @@ public class CompactionManager implements CompactionManagerMBean
 
     private void scrubOne(ColumnFamilyStore cfs, SSTableReader sstable, boolean skipCorrupted) throws IOException
     {
-        Scrubber scrubber = new Scrubber(cfs, sstable, this, skipCorrupted, false);
+        Scrubber scrubber = new Scrubber(cfs, sstable, this, skipCorrupted, false, DatabaseDescriptor.instance, DBConfig.instance);
 
         CompactionInfo.Holder scrubInfo = scrubber.getScrubInfo();
         metrics.beginCompaction(scrubInfo);
@@ -698,7 +698,7 @@ public class CompactionManager implements CompactionManagerMBean
                 row = cleanupStrategy.cleanup(row);
                 if (row == null)
                     continue;
-                AbstractCompactedRow compactedRow = new LazilyCompactedRow(controller, Collections.singletonList(row));
+                AbstractCompactedRow compactedRow = new LazilyCompactedRow(controller, Collections.singletonList(row), DatabaseDescriptor.instance, DBConfig.instance);
                 if (writer.append(compactedRow) != null)
                     totalkeysWritten++;
             }

@@ -21,16 +21,13 @@ package org.apache.cassandra.tools;
 import java.io.File;
 import java.util.*;
 
-import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.LeveledCompactionStrategy;
 import org.apache.cassandra.db.compaction.LeveledManifest;
 import org.apache.cassandra.db.compaction.Scrubber;
@@ -110,7 +107,7 @@ public class StandaloneScrubber
                 {
                     try
                     {
-                        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, options.skipCorrupted, handler, true);
+                        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, options.skipCorrupted, handler, true, DatabaseDescriptor.instance, DBConfig.instance);
                         try
                         {
                             scrubber.scrub();

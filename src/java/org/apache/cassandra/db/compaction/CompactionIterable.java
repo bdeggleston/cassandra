@@ -23,6 +23,8 @@ import java.util.List;
 
 import com.google.common.collect.ImmutableList;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.columniterator.OnDiskAtomIterator;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.MergeIterator;
@@ -71,7 +73,7 @@ public class CompactionIterable extends AbstractCompactionIterable
                 // create a new container for rows, since we're going to clear ours for the next one,
                 // and the AbstractCompactionRow code should be able to assume that the collection it receives
                 // won't be pulled out from under it.
-                return new LazilyCompactedRow(controller, ImmutableList.copyOf(rows));
+                return new LazilyCompactedRow(controller, ImmutableList.copyOf(rows), DatabaseDescriptor.instance, DBConfig.instance);
             }
             finally
             {
