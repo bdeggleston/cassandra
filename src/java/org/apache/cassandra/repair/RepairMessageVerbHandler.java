@@ -24,9 +24,10 @@ import java.util.UUID;
 import java.util.concurrent.Future;
 
 import com.google.common.base.Predicate;
+import org.apache.cassandra.concurrent.StageManager;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.dht.IPartitioner;
-import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,13 +58,24 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
 
     private final KeyspaceManager keyspaceManager;
     private final Schema schema;
+    private final DatabaseDescriptor databaseDescriptor;
+    private final StageManager stageManager;
     private final ActiveRepairService activeRepairService;
     private final CompactionManager compactionManager;
     private final MessagingService messagingService;
     private final IPartitioner partitioner;
 
-    public RepairMessageVerbHandler(KeyspaceManager keyspaceManager, Schema schema, ActiveRepairService activeRepairService, CompactionManager compactionManager, MessagingService messagingService, IPartitioner partitioner)
+    public RepairMessageVerbHandler(DatabaseDescriptor databaseDescriptor,
+                                    StageManager stageManager,
+                                    KeyspaceManager keyspaceManager,
+                                    Schema schema,
+                                    ActiveRepairService activeRepairService,
+                                    CompactionManager compactionManager,
+                                    MessagingService messagingService,
+                                    IPartitioner partitioner)
     {
+        this.databaseDescriptor = databaseDescriptor;
+        this.stageManager = stageManager;
         this.keyspaceManager = keyspaceManager;
         this.schema = schema;
         this.activeRepairService = activeRepairService;
@@ -100,7 +112,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 {
                     public boolean apply(SSTableReader sstable)
                     {
-                        return sstable != null && new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), LocatorConfig.instance.getPartitioner()).intersects(Collections.singleton(repairingRange));
+                        return sstable != null && new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), partitioner).intersects(Collections.singleton(repairingRange));
                     }
                 });
 
@@ -113,7 +125,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                 // trigger read-only compaction
                 ColumnFamilyStore store = keyspaceManager.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
 
-                Validator validator = new Validator(desc, message.from, validationRequest.gcBefore);
+                Validator validator = new Validator(desc, message.from, validationRequest.gcBefore, databaseDescriptor, stageManager, messagingService);
                 compactionManager.submitValidation(store, validator);
                 break;
 

@@ -26,9 +26,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageService;
 import org.junit.After;
 import org.junit.Before;
@@ -176,7 +178,7 @@ public class LeveledCompactionStrategyTest
         UUID parentRepSession = UUID.randomUUID();
         ActiveRepairService.instance.registerParentRepairSession(parentRepSession, Arrays.asList(cfs), Arrays.asList(range));
         RepairJobDesc desc = new RepairJobDesc(parentRepSession, UUID.randomUUID(), KEYSPACE1, CF_STANDARDDLEVELED, range);
-        Validator validator = new Validator(desc, DatabaseDescriptor.instance.getBroadcastAddress(), gcBefore);
+        Validator validator = new Validator(desc, DatabaseDescriptor.instance.getBroadcastAddress(), gcBefore, DatabaseDescriptor.instance, StageManager.instance, MessagingService.instance);
         CompactionManager.instance.submitValidation(cfs, validator).get();
     }
 

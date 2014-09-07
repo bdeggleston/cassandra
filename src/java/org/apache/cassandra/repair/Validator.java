@@ -64,7 +64,16 @@ public class Validator implements Runnable
     // last key seen
     private DecoratedKey lastKey;
 
-    public Validator(RepairJobDesc desc, InetAddress initiator, int gcBefore)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final StageManager stageManager;
+    private final MessagingService messagingService;
+
+    public Validator(RepairJobDesc desc,
+                     InetAddress initiator,
+                     int gcBefore,
+                     DatabaseDescriptor databaseDescriptor,
+                     StageManager stageManager,
+                     MessagingService messagingService)
     {
         this.desc = desc;
         this.initiator = initiator;
@@ -72,6 +81,9 @@ public class Validator implements Runnable
         validated = 0;
         range = null;
         ranges = null;
+        this.databaseDescriptor = databaseDescriptor;
+        this.stageManager = stageManager;
+        this.messagingService = messagingService;
     }
 
     public void prepare(ColumnFamilyStore cfs, MerkleTree tree)
@@ -197,7 +209,7 @@ public class Validator implements Runnable
     {
         completeTree();
 
-        StageManager.instance.getStage(Stage.ANTI_ENTROPY).execute(this);
+        stageManager.getStage(Stage.ANTI_ENTROPY).execute(this);
 
         if (logger.isDebugEnabled())
         {
@@ -232,7 +244,7 @@ public class Validator implements Runnable
     {
         logger.error("Failed creating a merkle tree for {}, {} (see log for details)", desc, initiator);
         // send fail message only to nodes >= version 2.0
-        MessagingService.instance.sendOneWay(new ValidationComplete(desc).createMessage(), initiator);
+        messagingService.sendOneWay(new ValidationComplete(desc).createMessage(), initiator);
     }
 
     /**
@@ -241,8 +253,8 @@ public class Validator implements Runnable
     public void run()
     {
         // respond to the request that triggered this validation
-        if (!initiator.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+        if (!initiator.equals(databaseDescriptor.getBroadcastAddress()))
             logger.info(String.format("[repair #%s] Sending completed merkle tree to %s for %s/%s", desc.sessionId, initiator, desc.keyspace, desc.columnFamily));
-        MessagingService.instance.sendOneWay(new ValidationComplete(desc, tree).createMessage(), initiator);
+        messagingService.sendOneWay(new ValidationComplete(desc, tree).createMessage(), initiator);
     }
 }
