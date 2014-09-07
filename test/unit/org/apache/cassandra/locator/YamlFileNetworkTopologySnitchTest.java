@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.google.common.net.InetAddresses;
@@ -31,6 +32,12 @@ import com.google.common.net.InetAddresses;
  */
 public class YamlFileNetworkTopologySnitchTest
 {
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
+    }
 
     /**
      * Testing variant of {@link YamlFileNetworkTopologySnitch}.
