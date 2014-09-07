@@ -36,6 +36,8 @@ import com.google.common.collect.Lists;
 
 import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.streaming.StreamManager;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -921,7 +923,7 @@ public final class MessagingService implements MessagingServiceMBean
                     logger.debug("Connection version {} from {}", version, socket.getInetAddress());
 
                     Thread thread = isStream
-                                  ? new IncomingStreamingConnection(version, socket)
+                                  ? new IncomingStreamingConnection(version, socket, DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, StreamManager.instance)
                                   : new IncomingTcpConnection(version, MessagingService.getBits(header, 2, 1) == 1, socket);
                     thread.start();
                 }

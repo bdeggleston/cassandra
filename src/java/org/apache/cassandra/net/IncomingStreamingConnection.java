@@ -43,11 +43,20 @@ public class IncomingStreamingConnection extends Thread
     private final int version;
     private final Socket socket;
 
-    public IncomingStreamingConnection(int version, Socket socket)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+    private final KeyspaceManager keyspaceManager;
+    private final StreamManager streamManager;
+
+    public IncomingStreamingConnection(int version, Socket socket, DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, StreamManager streamManager)
     {
         super("STREAM-INIT-" + socket.getRemoteSocketAddress());
         this.version = version;
         this.socket = socket;
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.keyspaceManager = keyspaceManager;
+        this.streamManager = streamManager;
     }
 
     @Override
@@ -67,7 +76,7 @@ public class IncomingStreamingConnection extends Thread
             // Note: we cannot use the same socket for incoming and outgoing streams because we want to
             // parallelize said streams and the socket is blocking, so we might deadlock.
             StreamResultFuture.initReceivingSide(init.sessionIndex, init.planId, init.description, init.from, socket, init.isForOutgoing, version,
-                                                 DatabaseDescriptor.instance, KeyspaceManager.instance, Schema.instance, StreamManager.instance);
+                                                 databaseDescriptor, keyspaceManager, schema, streamManager);
         }
         catch (IOException e)
         {
