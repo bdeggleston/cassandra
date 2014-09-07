@@ -28,14 +28,14 @@ public class BytesToken extends Token<byte[]>
 {
     static final long serialVersionUID = -2630749093733680626L;
 
-    public BytesToken(ByteBuffer token)
+    public BytesToken(ByteBuffer token, IPartitioner partitioner)
     {
-        this(ByteBufferUtil.getArray(token));
+        this(ByteBufferUtil.getArray(token), partitioner);
     }
 
-    public BytesToken(byte[] token)
+    public BytesToken(byte[] token, IPartitioner partitioner)
     {
-        super(token);
+        super(token, partitioner);
     }
 
     @Override

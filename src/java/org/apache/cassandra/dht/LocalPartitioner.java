@@ -30,7 +30,7 @@ import org.apache.cassandra.utils.ObjectSizes;
 
 public class LocalPartitioner extends AbstractPartitioner<LocalToken>
 {
-    private static final long EMPTY_SIZE = ObjectSizes.measure(new LocalToken(null, null));
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new LocalToken(null, null, null));
 
     private final AbstractType<?> comparator;
 
@@ -51,12 +51,12 @@ public class LocalPartitioner extends AbstractPartitioner<LocalToken>
 
     public LocalToken getMinimumToken()
     {
-        return new LocalToken(comparator, ByteBufferUtil.EMPTY_BYTE_BUFFER);
+        return new LocalToken(comparator, ByteBufferUtil.EMPTY_BYTE_BUFFER, this);
     }
 
     public LocalToken getToken(ByteBuffer key)
     {
-        return new LocalToken(comparator, key);
+        return new LocalToken(comparator, key, this);
     }
 
     public long getHeapSizeOf(LocalToken token)

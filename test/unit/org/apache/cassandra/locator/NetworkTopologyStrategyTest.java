@@ -75,7 +75,7 @@ public class NetworkTopologyStrategyTest
         assert strategy.getReplicationFactor("DC2") == 2;
         assert strategy.getReplicationFactor("DC3") == 1;
         // Query for the natural hosts
-        ArrayList<InetAddress> endpoints = strategy.getNaturalEndpoints(new StringToken("123"));
+        ArrayList<InetAddress> endpoints = strategy.getNaturalEndpoints(new StringToken("123", LocatorConfig.instance.getPartitioner()));
         assert 6 == endpoints.size();
         assert 6 == new HashSet<InetAddress>(endpoints).size(); // ensure uniqueness
     }
@@ -99,7 +99,7 @@ public class NetworkTopologyStrategyTest
         assert strategy.getReplicationFactor("DC2") == 3;
         assert strategy.getReplicationFactor("DC3") == 0;
         // Query for the natural hosts
-        ArrayList<InetAddress> endpoints = strategy.getNaturalEndpoints(new StringToken("123"));
+        ArrayList<InetAddress> endpoints = strategy.getNaturalEndpoints(new StringToken("123", LocatorConfig.instance.getPartitioner()));
         assert 6 == endpoints.size();
         assert 6 == new HashSet<InetAddress>(endpoints).size(); // ensure uniqueness
     }
@@ -128,7 +128,7 @@ public class NetworkTopologyStrategyTest
                 {
                     byte[] ipBytes = new byte[]{10, (byte)dc, (byte)rack, (byte)ep};
                     InetAddress address = InetAddress.getByAddress(ipBytes);
-                    StringToken token = new StringToken(String.format("%02x%02x%02x", ep, rack, dc));
+                    StringToken token = new StringToken(String.format("%02x%02x%02x", ep, rack, dc), LocatorConfig.instance.getPartitioner());
                     logger.debug("adding node {} at {}", address, token);
                     tokens.put(address, token);
                 }
@@ -140,7 +140,7 @@ public class NetworkTopologyStrategyTest
 
         for (String testToken : new String[]{"123456", "200000", "000402", "ffffff", "400200"})
         {
-            List<InetAddress> endpoints = strategy.calculateNaturalEndpoints(new StringToken(testToken), metadata);
+            List<InetAddress> endpoints = strategy.calculateNaturalEndpoints(new StringToken(testToken, LocatorConfig.instance.getPartitioner()), metadata);
             Set<InetAddress> epSet = new HashSet<InetAddress>(endpoints);
 
             Assert.assertEquals(totalRF, endpoints.size());
@@ -173,7 +173,7 @@ public class NetworkTopologyStrategyTest
 
     public void tokenFactory(TokenMetadata metadata, String token, byte[] bytes) throws UnknownHostException
     {
-        Token token1 = new StringToken(token);
+        Token token1 = new StringToken(token, LocatorConfig.instance.getPartitioner());
         InetAddress add1 = InetAddress.getByAddress(bytes);
         metadata.updateNormalToken(token1, add1);
     }

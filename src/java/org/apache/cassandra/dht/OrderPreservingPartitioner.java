@@ -38,7 +38,7 @@ import org.apache.cassandra.utils.Pair;
 
 public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
 {
-    public static final StringToken MINIMUM = new StringToken("");
+    public static final StringToken MINIMUM = new StringToken("", LocatorConfig.instance.getPartitioner());
 
     public static final BigInteger CHAR_MASK = new BigInteger("65535");
 
@@ -56,7 +56,7 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
         BigInteger right = bigForString(((StringToken)rtoken).token, sigchars);
 
         Pair<BigInteger,Boolean> midpair = FBUtilities.midpoint(left, right, 16*sigchars);
-        return new StringToken(stringForBig(midpair.left, sigchars, midpair.right));
+        return new StringToken(stringForBig(midpair.left, sigchars, midpair.right), LocatorConfig.instance.getPartitioner());
     }
 
     /**
@@ -111,7 +111,7 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
         for (int j = 0; j < 16; j++) {
             buffer.append(chars.charAt(r.nextInt(chars.length())));
         }
-        return new StringToken(buffer.toString());
+        return new StringToken(buffer.toString(), LocatorConfig.instance.getPartitioner());
     }
 
     private final Token.TokenFactory<String> tokenFactory = new Token.TokenFactory<String>()
@@ -125,7 +125,7 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
         {
             try
             {
-                return new StringToken(ByteBufferUtil.string(bytes));
+                return new StringToken(ByteBufferUtil.string(bytes), LocatorConfig.instance.getPartitioner());
             }
             catch (CharacterCodingException e)
             {
@@ -146,7 +146,7 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
 
         public Token<String> fromString(String string)
         {
-            return new StringToken(string);
+            return new StringToken(string, LocatorConfig.instance.getPartitioner());
         }
     };
 
@@ -171,7 +171,7 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
         {
             skey = ByteBufferUtil.bytesToHex(key);
         }
-        return new StringToken(skey);
+        return new StringToken(skey, LocatorConfig.instance.getPartitioner());
     }
 
     public long getHeapSizeOf(StringToken token)

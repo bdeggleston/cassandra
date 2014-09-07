@@ -47,36 +47,36 @@ public class RangeTest
     @Test
     public void testContains()
     {
-        Range left = new Range(new BigIntegerToken("0"), new BigIntegerToken("100"), LocatorConfig.instance.getPartitioner());
-        assert !left.contains(new BigIntegerToken("0"));
-        assert left.contains(new BigIntegerToken("10"));
-        assert left.contains(new BigIntegerToken("100"));
-        assert !left.contains(new BigIntegerToken("101"));
+        Range left = new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        assert !left.contains(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()));
+        assert left.contains(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()));
+        assert left.contains(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()));
+        assert !left.contains(new BigIntegerToken("101", LocatorConfig.instance.getPartitioner()));
     }
 
     @Test
     public void testContainsWrapping()
     {
-        Range range = new Range(new BigIntegerToken("0"), new BigIntegerToken("0"), LocatorConfig.instance.getPartitioner());
-        assert range.contains(new BigIntegerToken("0"));
-        assert range.contains(new BigIntegerToken("10"));
-        assert range.contains(new BigIntegerToken("100"));
-        assert range.contains(new BigIntegerToken("101"));
+        Range range = new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        assert range.contains(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()));
+        assert range.contains(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()));
+        assert range.contains(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()));
+        assert range.contains(new BigIntegerToken("101", LocatorConfig.instance.getPartitioner()));
 
-        range = new Range(new BigIntegerToken("100"), new BigIntegerToken("0"), LocatorConfig.instance.getPartitioner());
-        assert range.contains(new BigIntegerToken("0"));
-        assert !range.contains(new BigIntegerToken("1"));
-        assert !range.contains(new BigIntegerToken("100"));
-        assert range.contains(new BigIntegerToken("200"));
+        range = new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        assert range.contains(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()));
+        assert !range.contains(new BigIntegerToken("1", LocatorConfig.instance.getPartitioner()));
+        assert !range.contains(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()));
+        assert range.contains(new BigIntegerToken("200", LocatorConfig.instance.getPartitioner()));
     }
 
     @Test
     public void testContainsRange()
     {
-        Range one = new Range(new BigIntegerToken("2"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner());
-        Range two = new Range(new BigIntegerToken("2"), new BigIntegerToken("5"), LocatorConfig.instance.getPartitioner());
-        Range thr = new Range(new BigIntegerToken("5"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner());
-        Range fou = new Range(new BigIntegerToken("10"), new BigIntegerToken("12"), LocatorConfig.instance.getPartitioner());
+        Range one = new Range(new BigIntegerToken("2", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range two = new Range(new BigIntegerToken("2", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("5", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range thr = new Range(new BigIntegerToken("5", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range fou = new Range(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("12", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
 
         assert one.contains(two);
         assert one.contains(thr);
@@ -98,11 +98,11 @@ public class RangeTest
     @Test
     public void testContainsRangeWrapping()
     {
-        Range one = new Range(new BigIntegerToken("10"), new BigIntegerToken("2"), LocatorConfig.instance.getPartitioner());
-        Range two = new Range(new BigIntegerToken("5"), new BigIntegerToken("3"), LocatorConfig.instance.getPartitioner());
-        Range thr = new Range(new BigIntegerToken("10"), new BigIntegerToken("12"), LocatorConfig.instance.getPartitioner());
-        Range fou = new Range(new BigIntegerToken("2"), new BigIntegerToken("6"), LocatorConfig.instance.getPartitioner());
-        Range fiv = new Range(new BigIntegerToken("0"), new BigIntegerToken("0"), LocatorConfig.instance.getPartitioner());
+        Range one = new Range(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("2", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range two = new Range(new BigIntegerToken("5", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("3", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range thr = new Range(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("12", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range fou = new Range(new BigIntegerToken("2", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("6", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range fiv = new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
 
         assert !one.contains(two);
         assert one.contains(thr);
@@ -129,12 +129,12 @@ public class RangeTest
     @Test
     public void testContainsRangeOneWrapping()
     {
-        Range wrap1 = new Range(new BigIntegerToken("0"), new BigIntegerToken("0"), LocatorConfig.instance.getPartitioner());
-        Range wrap2 = new Range(new BigIntegerToken("10"), new BigIntegerToken("2"), LocatorConfig.instance.getPartitioner());
+        Range wrap1 = new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range wrap2 = new Range(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("2", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
 
-        Range nowrap1 = new Range(new BigIntegerToken("0"), new BigIntegerToken("2"), LocatorConfig.instance.getPartitioner());
-        Range nowrap2 = new Range(new BigIntegerToken("2"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner());
-        Range nowrap3 = new Range(new BigIntegerToken("10"), new BigIntegerToken("100"), LocatorConfig.instance.getPartitioner());
+        Range nowrap1 = new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("2", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range nowrap2 = new Range(new BigIntegerToken("2", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range nowrap3 = new Range(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
 
         assert wrap1.contains(nowrap1);
         assert wrap1.contains(nowrap2);
@@ -148,10 +148,10 @@ public class RangeTest
     @Test
     public void testIntersects()
     {
-        Range all = new Range(new BigIntegerToken("0"), new BigIntegerToken("0"), LocatorConfig.instance.getPartitioner()); // technically, this is a wrapping range
-        Range one = new Range(new BigIntegerToken("2"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner());
-        Range two = new Range(new BigIntegerToken("0"), new BigIntegerToken("8"), LocatorConfig.instance.getPartitioner());
-        Range not = new Range(new BigIntegerToken("10"), new BigIntegerToken("12"), LocatorConfig.instance.getPartitioner());
+        Range all = new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner()); // technically, this is a wrapping range
+        Range one = new Range(new BigIntegerToken("2", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range two = new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("8", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range not = new Range(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("12", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
 
         assert all.intersects(one);
         assert all.intersects(two);
@@ -169,12 +169,12 @@ public class RangeTest
     @Test
     public void testIntersectsWrapping()
     {
-        Range onewrap = new Range(new BigIntegerToken("10"), new BigIntegerToken("2"), LocatorConfig.instance.getPartitioner());
+        Range onewrap = new Range(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("2", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
         Range onecomplement = new Range(onewrap.right, onewrap.left, LocatorConfig.instance.getPartitioner());
-        Range onestartswith = new Range(onewrap.left, new BigIntegerToken("12"), LocatorConfig.instance.getPartitioner());
-        Range oneendswith = new Range(new BigIntegerToken("1"), onewrap.right, LocatorConfig.instance.getPartitioner());
-        Range twowrap = new Range(new BigIntegerToken("5"), new BigIntegerToken("3"), LocatorConfig.instance.getPartitioner());
-        Range not = new Range(new BigIntegerToken("2"), new BigIntegerToken("6"), LocatorConfig.instance.getPartitioner());
+        Range onestartswith = new Range(onewrap.left, new BigIntegerToken("12", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range oneendswith = new Range(new BigIntegerToken("1", LocatorConfig.instance.getPartitioner()), onewrap.right, LocatorConfig.instance.getPartitioner());
+        Range twowrap = new Range(new BigIntegerToken("5", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("3", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range not = new Range(new BigIntegerToken("2", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("6", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
 
         assert !onewrap.intersects(onecomplement);
         assert onewrap.intersects(onestartswith);
@@ -211,11 +211,11 @@ public class RangeTest
     @Test
     public void testIntersectionWithAll()
     {
-        Range all0 = new Range(new BigIntegerToken("0"), new BigIntegerToken("0"), LocatorConfig.instance.getPartitioner());
-        Range all10 = new Range(new BigIntegerToken("10"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner());
-        Range all100 = new Range(new BigIntegerToken("100"), new BigIntegerToken("100"), LocatorConfig.instance.getPartitioner());
-        Range all1000 = new Range(new BigIntegerToken("1000"), new BigIntegerToken("1000"), LocatorConfig.instance.getPartitioner());
-        Range wraps = new Range(new BigIntegerToken("100"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner());
+        Range all0 = new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range all10 = new Range(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range all100 = new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range all1000 = new Range(new BigIntegerToken("1000", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("1000", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range wraps = new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
 
         assertIntersection(all0, wraps, wraps);
         assertIntersection(all10, wraps, wraps);
@@ -226,12 +226,12 @@ public class RangeTest
     @Test
     public void testIntersectionContains()
     {
-        Range wraps1 = new Range(new BigIntegerToken("100"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner());
-        Range wraps2 = new Range(new BigIntegerToken("90"), new BigIntegerToken("20"), LocatorConfig.instance.getPartitioner());
-        Range wraps3 = new Range(new BigIntegerToken("90"), new BigIntegerToken("0"), LocatorConfig.instance.getPartitioner());
-        Range nowrap1 = new Range(new BigIntegerToken("100"), new BigIntegerToken("110"), LocatorConfig.instance.getPartitioner());
-        Range nowrap2 = new Range(new BigIntegerToken("0"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner());
-        Range nowrap3 = new Range(new BigIntegerToken("0"), new BigIntegerToken("9"), LocatorConfig.instance.getPartitioner());
+        Range wraps1 = new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range wraps2 = new Range(new BigIntegerToken("90", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("20", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range wraps3 = new Range(new BigIntegerToken("90", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range nowrap1 = new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("110", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range nowrap2 = new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range nowrap3 = new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("9", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
 
         assertIntersection(wraps1, wraps2, wraps1);
         assertIntersection(wraps3, wraps2, wraps3);
@@ -249,11 +249,11 @@ public class RangeTest
     @Test
     public void testNoIntersection()
     {
-        Range wraps1 = new Range(new BigIntegerToken("100"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner());
-        Range wraps2 = new Range(new BigIntegerToken("100"), new BigIntegerToken("0"), LocatorConfig.instance.getPartitioner());
-        Range nowrap1 = new Range(new BigIntegerToken("0"), new BigIntegerToken("100"), LocatorConfig.instance.getPartitioner());
-        Range nowrap2 = new Range(new BigIntegerToken("100"), new BigIntegerToken("200"), LocatorConfig.instance.getPartitioner());
-        Range nowrap3 = new Range(new BigIntegerToken("10"), new BigIntegerToken("100"), LocatorConfig.instance.getPartitioner());
+        Range wraps1 = new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range wraps2 = new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range nowrap1 = new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range nowrap2 = new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("200", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range nowrap3 = new Range(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
 
         assertNoIntersection(wraps1, nowrap3);
         assertNoIntersection(wraps2, nowrap1);
@@ -263,67 +263,67 @@ public class RangeTest
     @Test
     public void testIntersectionOneWraps()
     {
-        Range wraps1 = new Range(new BigIntegerToken("100"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner());
-        Range wraps2 = new Range(new BigIntegerToken("100"), new BigIntegerToken("0"), LocatorConfig.instance.getPartitioner());
-        Range nowrap1 = new Range(new BigIntegerToken("0"), new BigIntegerToken("200"), LocatorConfig.instance.getPartitioner());
-        Range nowrap2 = new Range(new BigIntegerToken("0"), new BigIntegerToken("100"), LocatorConfig.instance.getPartitioner());
+        Range wraps1 = new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range wraps2 = new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range nowrap1 = new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("200", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range nowrap2 = new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
 
         assertIntersection(wraps1,
                            nowrap1,
-                           new Range(new BigIntegerToken("0"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner()),
-                           new Range(new BigIntegerToken("100"), new BigIntegerToken("200"), LocatorConfig.instance.getPartitioner()));
+                           new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner()),
+                           new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("200", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner()));
         assertIntersection(wraps2,
                            nowrap1,
-                           new Range(new BigIntegerToken("100"), new BigIntegerToken("200"), LocatorConfig.instance.getPartitioner()));
+                           new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("200", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner()));
         assertIntersection(wraps1,
                            nowrap2,
-                           new Range(new BigIntegerToken("0"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner()));
+                           new Range(new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner()));
     }
 
     @Test
     public void testIntersectionTwoWraps()
     {
-        Range wraps1 = new Range(new BigIntegerToken("100"), new BigIntegerToken("20"), LocatorConfig.instance.getPartitioner());
-        Range wraps2 = new Range(new BigIntegerToken("120"), new BigIntegerToken("90"), LocatorConfig.instance.getPartitioner());
-        Range wraps3 = new Range(new BigIntegerToken("120"), new BigIntegerToken("110"), LocatorConfig.instance.getPartitioner());
-        Range wraps4 = new Range(new BigIntegerToken("10"), new BigIntegerToken("0"), LocatorConfig.instance.getPartitioner());
-        Range wraps5 = new Range(new BigIntegerToken("10"), new BigIntegerToken("1"), LocatorConfig.instance.getPartitioner());
-        Range wraps6 = new Range(new BigIntegerToken("30"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner());
+        Range wraps1 = new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("20", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range wraps2 = new Range(new BigIntegerToken("120", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("90", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range wraps3 = new Range(new BigIntegerToken("120", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("110", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range wraps4 = new Range(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range wraps5 = new Range(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("1", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range wraps6 = new Range(new BigIntegerToken("30", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
 
         assertIntersection(wraps1,
                            wraps2,
-                           new Range(new BigIntegerToken("120"), new BigIntegerToken("20"), LocatorConfig.instance.getPartitioner()));
+                           new Range(new BigIntegerToken("120", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("20", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner()));
         assertIntersection(wraps1,
                            wraps3,
-                           new Range(new BigIntegerToken("120"), new BigIntegerToken("20"), LocatorConfig.instance.getPartitioner()),
-                           new Range(new BigIntegerToken("100"), new BigIntegerToken("110"), LocatorConfig.instance.getPartitioner()));
+                           new Range(new BigIntegerToken("120", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("20", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner()),
+                           new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("110", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner()));
         assertIntersection(wraps1,
                            wraps4,
-                           new Range(new BigIntegerToken("10"), new BigIntegerToken("20"), LocatorConfig.instance.getPartitioner()),
-                           new Range(new BigIntegerToken("100"), new BigIntegerToken("0"), LocatorConfig.instance.getPartitioner()));
+                           new Range(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("20", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner()),
+                           new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner()));
         assertIntersection(wraps1,
                            wraps5,
-                           new Range(new BigIntegerToken("10"), new BigIntegerToken("20"), LocatorConfig.instance.getPartitioner()),
-                           new Range(new BigIntegerToken("100"), new BigIntegerToken("1"), LocatorConfig.instance.getPartitioner()));
+                           new Range(new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("20", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner()),
+                           new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("1", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner()));
         assertIntersection(wraps1,
                            wraps6,
-                           new Range(new BigIntegerToken("100"), new BigIntegerToken("10"), LocatorConfig.instance.getPartitioner()));
+                           new Range(new BigIntegerToken("100", LocatorConfig.instance.getPartitioner()), new BigIntegerToken("10", LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner()));
     }
 
     @Test
     public void testByteTokensCompare()
     {
-        Token t1 = new BytesToken(ByteBuffer.wrap(new byte[] { 1,2,3 }));
-        Token t2 = new BytesToken(ByteBuffer.wrap(new byte[] { 1,2,3 }));
-        Token t3 = new BytesToken(ByteBuffer.wrap(new byte[]{1, 2, 3, 4}));
+        Token t1 = new BytesToken(ByteBuffer.wrap(new byte[] { 1,2,3 }), LocatorConfig.instance.getPartitioner());
+        Token t2 = new BytesToken(ByteBuffer.wrap(new byte[] { 1,2,3 }), LocatorConfig.instance.getPartitioner());
+        Token t3 = new BytesToken(ByteBuffer.wrap(new byte[]{1, 2, 3, 4}), LocatorConfig.instance.getPartitioner());
 
         assert t1.compareTo(t2) == 0;
         assert t1.compareTo(t3) < 0;
         assert t3.compareTo(t1) > 0;
         assert t1.compareTo(t1) == 0;
 
-        Token t4 = new BytesToken(new byte[] { 1,2,3 });
-        Token t5 = new BytesToken(new byte[] { 4,5,6,7 });
+        Token t4 = new BytesToken(new byte[] { 1,2,3 }, LocatorConfig.instance.getPartitioner());
+        Token t5 = new BytesToken(new byte[] { 4,5,6,7 }, LocatorConfig.instance.getPartitioner());
 
         assert t4.compareTo(t5) < 0;
         assert t5.compareTo(t4) > 0;
@@ -332,7 +332,7 @@ public class RangeTest
 
     private Range makeRange(String token1, String token2)
     {
-        return new Range(new BigIntegerToken(token1), new BigIntegerToken(token2), LocatorConfig.instance.getPartitioner());
+        return new Range(new BigIntegerToken(token1, LocatorConfig.instance.getPartitioner()), new BigIntegerToken(token2, LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
     }
 
     private Set<Range> makeRanges(String[][] tokenPairs)

@@ -167,8 +167,8 @@ public class RowCacheTest
         byte[] tk1, tk2;
         tk1 = "key1000".getBytes();
         tk2 = "key1050".getBytes();
-        tmd.updateNormalToken(new BytesToken(tk1), InetAddress.getByName("127.0.0.1"));
-        tmd.updateNormalToken(new BytesToken(tk2), InetAddress.getByName("127.0.0.2"));
+        tmd.updateNormalToken(new BytesToken(tk1, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.1"));
+        tmd.updateNormalToken(new BytesToken(tk2, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.2"));
         store.cleanupCache();
         assertEquals(CacheService.instance.rowCache.getKeySet().size(), 50);
         CacheService.instance.setRowCacheCapacityInMB(0);

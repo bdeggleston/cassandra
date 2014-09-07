@@ -92,7 +92,7 @@ public class AntiCompactionTest
         store.forceBlockingFlush();
         Collection<SSTableReader> sstables = store.getUnrepairedSSTables();
         assertEquals(store.getSSTables().size(), sstables.size());
-        Range<Token> range = new Range<Token>(new BytesToken("0".getBytes()), new BytesToken("4".getBytes()), LocatorConfig.instance.getPartitioner());
+        Range<Token> range = new Range<Token>(new BytesToken("0".getBytes(), LocatorConfig.instance.getPartitioner()), new BytesToken("4".getBytes(), LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
         List<Range<Token>> ranges = Arrays.asList(range);
 
         SSTableReader.acquireReferences(sstables);
@@ -166,7 +166,7 @@ public class AntiCompactionTest
         Collection<SSTableReader> sstables = store.getUnrepairedSSTables();
         assertEquals(store.getSSTables().size(), sstables.size());
 
-        Range<Token> range = new Range<Token>(new BytesToken("0".getBytes()), new BytesToken("4".getBytes()), LocatorConfig.instance.getPartitioner());
+        Range<Token> range = new Range<Token>(new BytesToken("0".getBytes(), LocatorConfig.instance.getPartitioner()), new BytesToken("4".getBytes(), LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
         List<Range<Token>> ranges = Arrays.asList(range);
 
         SSTableReader.acquireReferences(sstables);

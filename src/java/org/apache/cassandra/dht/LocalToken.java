@@ -27,9 +27,9 @@ public class LocalToken extends Token<ByteBuffer>
 
     private final AbstractType<?> comparator;
 
-    public LocalToken(AbstractType<?> comparator, ByteBuffer token)
+    public LocalToken(AbstractType<?> comparator, ByteBuffer token, IPartitioner partitioner)
     {
-        super(token);
+        super(token, partitioner);
         this.comparator = comparator;
     }
 

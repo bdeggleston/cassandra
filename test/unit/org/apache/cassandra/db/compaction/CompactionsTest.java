@@ -542,8 +542,8 @@ public class CompactionsTest
 
     private static Range<Token> rangeFor(int start, int end)
     {
-        return new Range<Token>(new BytesToken(String.format("%03d", start).getBytes()),
-                                new BytesToken(String.format("%03d", end).getBytes()),
+        return new Range<Token>(new BytesToken(String.format("%03d", start).getBytes(), LocatorConfig.instance.getPartitioner()),
+                                new BytesToken(String.format("%03d", end).getBytes(), LocatorConfig.instance.getPartitioner()),
                                 LocatorConfig.instance.getPartitioner());
     }
 

@@ -67,8 +67,8 @@ public class SimpleStrategyTest
         List<Token> endpointTokens = new ArrayList<Token>();
         List<Token> keyTokens = new ArrayList<Token>();
         for (int i = 0; i < 5; i++) {
-            endpointTokens.add(new BigIntegerToken(String.valueOf(10 * i)));
-            keyTokens.add(new BigIntegerToken(String.valueOf(10 * i + 5)));
+            endpointTokens.add(new BigIntegerToken(String.valueOf(10 * i), LocatorConfig.instance.getPartitioner()));
+            keyTokens.add(new BigIntegerToken(String.valueOf(10 * i + 5), LocatorConfig.instance.getPartitioner()));
         }
         verifyGetNaturalEndpoints(endpointTokens.toArray(new Token[0]), keyTokens.toArray(new Token[0]));
     }
@@ -81,7 +81,7 @@ public class SimpleStrategyTest
         List<Token> endpointTokens = new ArrayList<Token>();
         List<Token> keyTokens = new ArrayList<Token>();
         for (int i = 0; i < 5; i++) {
-            endpointTokens.add(new StringToken(String.valueOf((char)('a' + i * 2))));
+            endpointTokens.add(new StringToken(String.valueOf((char)('a' + i * 2)), LocatorConfig.instance.getPartitioner()));
             keyTokens.add(partitioner.getToken(ByteBufferUtil.bytes(String.valueOf((char)('a' + i * 2 + 1)))));
         }
         verifyGetNaturalEndpoints(endpointTokens.toArray(new Token[0]), keyTokens.toArray(new Token[0]));
@@ -130,8 +130,8 @@ public class SimpleStrategyTest
 
         for (int i = 0; i < RING_SIZE; i++)
         {
-            endpointTokens[i] = new BigIntegerToken(String.valueOf(RING_SIZE * 2 * i));
-            keyTokens[i] = new BigIntegerToken(String.valueOf(RING_SIZE * 2 * i + RING_SIZE));
+            endpointTokens[i] = new BigIntegerToken(String.valueOf(RING_SIZE * 2 * i), LocatorConfig.instance.getPartitioner());
+            keyTokens[i] = new BigIntegerToken(String.valueOf(RING_SIZE * 2 * i + RING_SIZE), LocatorConfig.instance.getPartitioner());
         }
 
         List<InetAddress> hosts = new ArrayList<InetAddress>();
@@ -143,7 +143,7 @@ public class SimpleStrategyTest
         }
 
         // bootstrap at the end of the ring
-        Token bsToken = new BigIntegerToken(String.valueOf(210));
+        Token bsToken = new BigIntegerToken(String.valueOf(210), LocatorConfig.instance.getPartitioner());
         InetAddress bootstrapEndpoint = InetAddress.getByName("127.0.0.11");
         tmd.addBootstrapToken(bsToken, bootstrapEndpoint);
 

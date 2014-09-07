@@ -21,9 +21,9 @@ public class LongToken extends Token<Long>
 {
     static final long serialVersionUID = -5833580143318243006L;
 
-    public LongToken(Long token)
+    public LongToken(Long token, IPartitioner partitioner)
     {
-        super(token);
+        super(token, partitioner);
     }
 
     public int compareTo(Token<Long> o)

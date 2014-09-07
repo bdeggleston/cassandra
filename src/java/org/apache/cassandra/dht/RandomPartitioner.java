@@ -27,6 +27,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.IntegerType;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.GuidGenerator;
@@ -39,10 +40,10 @@ import org.apache.cassandra.utils.Pair;
 public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
 {
     public static final BigInteger ZERO = new BigInteger("0");
-    public static final BigIntegerToken MINIMUM = new BigIntegerToken("-1");
+    public static final BigIntegerToken MINIMUM = new BigIntegerToken("-1", LocatorConfig.instance.getPartitioner());
     public static final BigInteger MAXIMUM = new BigInteger("2").pow(127);
 
-    private static final int EMPTY_SIZE = (int) ObjectSizes.measureDeep(new BigIntegerToken(FBUtilities.hashToBigInteger(ByteBuffer.allocate(1))));
+    private static final int EMPTY_SIZE = (int) ObjectSizes.measureDeep(new BigIntegerToken(FBUtilities.hashToBigInteger(ByteBuffer.allocate(1)), LocatorConfig.instance.getPartitioner()));
 
     public DecoratedKey decorateKey(ByteBuffer key)
     {
@@ -56,7 +57,7 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
         BigInteger right = rtoken.equals(MINIMUM) ? ZERO : ((BigIntegerToken)rtoken).token;
         Pair<BigInteger,Boolean> midpair = FBUtilities.midpoint(left, right, 127);
         // discard the remainder
-        return new BigIntegerToken(midpair.left);
+        return new BigIntegerToken(midpair.left, LocatorConfig.instance.getPartitioner());
     }
 
     public BigIntegerToken getMinimumToken()
@@ -69,7 +70,7 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
         BigInteger token = FBUtilities.hashToBigInteger(GuidGenerator.guidAsBytes());
         if ( token.signum() == -1 )
             token = token.multiply(BigInteger.valueOf(-1L));
-        return new BigIntegerToken(token);
+        return new BigIntegerToken(token, LocatorConfig.instance.getPartitioner());
     }
 
     private final Token.TokenFactory<BigInteger> tokenFactory = new Token.TokenFactory<BigInteger>() {
@@ -80,7 +81,7 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
 
         public Token<BigInteger> fromByteArray(ByteBuffer bytes)
         {
-            return new BigIntegerToken(new BigInteger(ByteBufferUtil.getArray(bytes)));
+            return new BigIntegerToken(new BigInteger(ByteBufferUtil.getArray(bytes)), LocatorConfig.instance.getPartitioner());
         }
 
         public String toString(Token<BigInteger> bigIntegerToken)
@@ -106,7 +107,7 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
 
         public Token<BigInteger> fromString(String string)
         {
-            return new BigIntegerToken(new BigInteger(string));
+            return new BigIntegerToken(new BigInteger(string), LocatorConfig.instance.getPartitioner());
         }
     };
 
@@ -124,7 +125,7 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
     {
         if (key.remaining() == 0)
             return MINIMUM;
-        return new BigIntegerToken(FBUtilities.hashToBigInteger(key));
+        return new BigIntegerToken(FBUtilities.hashToBigInteger(key), LocatorConfig.instance.getPartitioner());
     }
 
     public long getHeapSizeOf(BigIntegerToken token)

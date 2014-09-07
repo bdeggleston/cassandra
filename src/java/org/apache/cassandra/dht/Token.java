@@ -38,9 +38,12 @@ public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
 
     public final T token;
 
-    protected Token(T token)
+    public final IPartitioner partitioner;
+
+    protected Token(T token, IPartitioner partitioner)
     {
         this.token = token;
+        this.partitioner = partitioner;
     }
 
     /**

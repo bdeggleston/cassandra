@@ -30,6 +30,7 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.exceptions.ConfigurationException;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MurmurHash;
@@ -40,7 +41,7 @@ import org.apache.cassandra.utils.ObjectSizes;
  */
 public class Murmur3Partitioner extends AbstractPartitioner<LongToken>
 {
-    public static final LongToken MINIMUM = new LongToken(Long.MIN_VALUE);
+    public static final LongToken MINIMUM = new LongToken(Long.MIN_VALUE, null);
     public static final long MAXIMUM = Long.MAX_VALUE;
 
     private static final int HEAP_SIZE = (int) ObjectSizes.measureDeep(MINIMUM);
@@ -74,7 +75,7 @@ public class Murmur3Partitioner extends AbstractPartitioner<LongToken>
                 midpoint = min.add(midpoint.subtract(max));
         }
 
-        return new LongToken(midpoint.longValue());
+        return new LongToken(midpoint.longValue(), this);
     }
 
     public LongToken getMinimumToken()
@@ -95,7 +96,7 @@ public class Murmur3Partitioner extends AbstractPartitioner<LongToken>
 
         long[] hash = new long[2];
         MurmurHash.hash3_x64_128(key, key.position(), key.remaining(), 0, hash);
-        return new LongToken(normalize(hash[0]));
+        return new LongToken(normalize(hash[0]), this);
     }
 
     public long getHeapSizeOf(LongToken token)
@@ -105,7 +106,7 @@ public class Murmur3Partitioner extends AbstractPartitioner<LongToken>
 
     public LongToken getRandomToken()
     {
-        return new LongToken(normalize(FBUtilities.threadLocalRandom().nextLong()));
+        return new LongToken(normalize(FBUtilities.threadLocalRandom().nextLong()), this);
     }
 
     private long normalize(long v)
@@ -168,7 +169,7 @@ public class Murmur3Partitioner extends AbstractPartitioner<LongToken>
 
         public Token<Long> fromByteArray(ByteBuffer bytes)
         {
-            return new LongToken(ByteBufferUtil.toLong(bytes));
+            return new LongToken(ByteBufferUtil.toLong(bytes), LocatorConfig.instance.getPartitioner());
         }
 
         public String toString(Token<Long> longToken)
@@ -192,7 +193,7 @@ public class Murmur3Partitioner extends AbstractPartitioner<LongToken>
         {
             try
             {
-                return new LongToken(Long.valueOf(string));
+                return new LongToken(Long.valueOf(string), LocatorConfig.instance.getPartitioner());
             }
             catch (NumberFormatException e)
             {

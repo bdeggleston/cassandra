@@ -63,16 +63,16 @@ public class SSTableScannerTest
 
     private static Bounds<RowPosition> boundsFor(int start, int end)
     {
-        return new Bounds<RowPosition>(new BytesToken(toKey(start).getBytes()).minKeyBound(),
-                                       new BytesToken(toKey(end).getBytes()).maxKeyBound(),
+        return new Bounds<RowPosition>(new BytesToken(toKey(start).getBytes(), LocatorConfig.instance.getPartitioner()).minKeyBound(),
+                                       new BytesToken(toKey(end).getBytes(), LocatorConfig.instance.getPartitioner()).maxKeyBound(),
                                        LocatorConfig.instance.getPartitioner());
     }
 
 
     private static Range<Token> rangeFor(int start, int end)
     {
-        return new Range<Token>(new BytesToken(toKey(start).getBytes()),
-                                new BytesToken(toKey(end).getBytes()),
+        return new Range<Token>(new BytesToken(toKey(start).getBytes(), LocatorConfig.instance.getPartitioner()),
+                                new BytesToken(toKey(end).getBytes(), LocatorConfig.instance.getPartitioner()),
                                 LocatorConfig.instance.getPartitioner());
     }
 

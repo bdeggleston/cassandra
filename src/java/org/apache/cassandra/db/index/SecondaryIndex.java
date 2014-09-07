@@ -290,7 +290,7 @@ public abstract class SecondaryIndex
     {
         // FIXME: this imply one column definition per index
         ByteBuffer name = columnDefs.iterator().next().name.bytes;
-        return new BufferDecoratedKey(new LocalToken(baseCfs.metadata.getColumnDefinition(name).type, value), value);
+        return new BufferDecoratedKey(new LocalToken(baseCfs.metadata.getColumnDefinition(name).type, value, LocatorConfig.instance.getPartitioner()), value);
     }
 
     /**

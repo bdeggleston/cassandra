@@ -53,18 +53,18 @@ public class ReplicationStrategyEndpointCacheTest
     public void setup(Class stratClass, Map<String, String> strategyOptions) throws Exception
     {
         tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
-        searchToken = new BigIntegerToken(String.valueOf(15));
+        searchToken = new BigIntegerToken(String.valueOf(15), LocatorConfig.instance.getPartitioner());
 
         strategy = getStrategyWithNewTokenMetadata(KeyspaceManager.instance.open(KEYSPACE).getReplicationStrategy(), tmd);
 
-        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(10)), InetAddress.getByName("127.0.0.1"));
-        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(20)), InetAddress.getByName("127.0.0.2"));
-        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(30)), InetAddress.getByName("127.0.0.3"));
-        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(40)), InetAddress.getByName("127.0.0.4"));
+        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(10), LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.1"));
+        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(20), LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.2"));
+        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(30), LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.3"));
+        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(40), LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.4"));
         //tmd.updateNormalToken(new BigIntegerToken(String.valueOf(50)), InetAddress.getByName("127.0.0.5"));
-        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(60)), InetAddress.getByName("127.0.0.6"));
-        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(70)), InetAddress.getByName("127.0.0.7"));
-        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(80)), InetAddress.getByName("127.0.0.8"));
+        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(60), LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.6"));
+        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(70), LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.7"));
+        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(80), LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.8"));
     }
 
     @Test
@@ -100,7 +100,7 @@ public class ReplicationStrategyEndpointCacheTest
 
         // test token addition, in DC2 before existing token
         initial = strategy.getNaturalEndpoints(searchToken);
-        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(35)), InetAddress.getByName("127.0.0.5"));
+        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(35), LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.5"));
         endpoints = strategy.getNaturalEndpoints(searchToken);
         assert endpoints.size() == 5 : StringUtils.join(endpoints, ",");
         assert !endpoints.equals(initial);
@@ -116,7 +116,7 @@ public class ReplicationStrategyEndpointCacheTest
         // test token change
         initial = strategy.getNaturalEndpoints(searchToken);
         //move .8 after search token but before other DC3
-        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(25)), InetAddress.getByName("127.0.0.8"));
+        tmd.updateNormalToken(new BigIntegerToken(String.valueOf(25), LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.8"));
         endpoints = strategy.getNaturalEndpoints(searchToken);
         assert endpoints.size() == 5 : StringUtils.join(endpoints, ",");
         assert !endpoints.equals(initial);

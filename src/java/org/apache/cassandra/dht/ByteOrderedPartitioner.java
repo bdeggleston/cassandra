@@ -29,7 +29,7 @@ public class ByteOrderedPartitioner extends AbstractByteOrderedPartitioner
     {
         if (key.remaining() == 0)
             return MINIMUM;
-        return new BytesToken(key);
+        return new BytesToken(key, this);
     }
 
     @Override

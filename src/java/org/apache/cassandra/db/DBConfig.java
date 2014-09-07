@@ -2,6 +2,7 @@ package org.apache.cassandra.db;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.LongToken;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.concurrent.OpOrder;
@@ -35,10 +36,10 @@ public class DBConfig
         ConcurrentNavigableMap<RowPosition, Object> rows = new ConcurrentSkipListMap<>();
         final Object val = new Object();
         for (int i = 0 ; i < count ; i++)
-            rows.put(allocator.clone(new BufferDecoratedKey(new LongToken((long) i), ByteBufferUtil.EMPTY_BYTE_BUFFER), group), val);
+            rows.put(allocator.clone(new BufferDecoratedKey(new LongToken((long) i, LocatorConfig.instance.getPartitioner()), ByteBufferUtil.EMPTY_BYTE_BUFFER), group), val);
         double avgSize = ObjectSizes.measureDeep(rows) / (double) count;
         rowOverhead = (int) ((avgSize - Math.floor(avgSize)) < 0.05 ? Math.floor(avgSize) : Math.ceil(avgSize));
-        rowOverhead -= ObjectSizes.measureDeep(new LongToken((long) 0));
+        rowOverhead -= ObjectSizes.measureDeep(new LongToken((long) 0, LocatorConfig.instance.getPartitioner()));
         rowOverhead += AtomicBTreeColumns.EMPTY_SIZE;
         allocator.setDiscarding();
         allocator.setDiscarded();

@@ -150,9 +150,9 @@ public class OldNetworkTopologyStrategyTest
 
     private void addEndpoint(String endpointTokenID, String keyTokenID, String endpointAddress) throws UnknownHostException
     {
-        BigIntegerToken endpointToken = new BigIntegerToken(endpointTokenID);
+        BigIntegerToken endpointToken = new BigIntegerToken(endpointTokenID, LocatorConfig.instance.getPartitioner());
 
-        BigIntegerToken keyToken = new BigIntegerToken(keyTokenID);
+        BigIntegerToken keyToken = new BigIntegerToken(keyTokenID, LocatorConfig.instance.getPartitioner());
         keyTokens.add(keyToken);
 
         InetAddress ep = InetAddress.getByName(endpointAddress);
@@ -183,7 +183,7 @@ public class OldNetworkTopologyStrategyTest
         // Moves to the left : nothing to fetch, last part to stream
 
         int movingNodeIdx = 1;
-        BigIntegerToken newToken = new BigIntegerToken("21267647932558653966460912964485513216");
+        BigIntegerToken newToken = new BigIntegerToken("21267647932558653966460912964485513216", LocatorConfig.instance.getPartitioner());
         BigIntegerToken[] tokens = initTokens();
         BigIntegerToken[] tokensAfterMove = initTokensAfterMove(tokens, movingNodeIdx, newToken);
         Pair<Set<Range<Token>>, Set<Range<Token>>> ranges = calculateStreamAndFetchRanges(tokens, tokensAfterMove, movingNodeIdx);
@@ -200,7 +200,7 @@ public class OldNetworkTopologyStrategyTest
         // Moves to the right : last part to fetch, nothing to stream
 
         int movingNodeIdx = 1;
-        BigIntegerToken newToken = new BigIntegerToken("35267647932558653966460912964485513216");
+        BigIntegerToken newToken = new BigIntegerToken("35267647932558653966460912964485513216", LocatorConfig.instance.getPartitioner());
         BigIntegerToken[] tokens = initTokens();
         BigIntegerToken[] tokensAfterMove = initTokensAfterMove(tokens, movingNodeIdx, newToken);
         Pair<Set<Range<Token>>, Set<Range<Token>>> ranges = calculateStreamAndFetchRanges(tokens, tokensAfterMove, movingNodeIdx);
@@ -218,7 +218,7 @@ public class OldNetworkTopologyStrategyTest
 
         int movingNodeIdx = 1;
         int movingNodeIdxAfterMove = 4;
-        BigIntegerToken newToken = new BigIntegerToken("90070591730234615865843651857942052864");
+        BigIntegerToken newToken = new BigIntegerToken("90070591730234615865843651857942052864", LocatorConfig.instance.getPartitioner());
         BigIntegerToken[] tokens = initTokens();
         BigIntegerToken[] tokensAfterMove = initTokensAfterMove(tokens, movingNodeIdx, newToken);
         Pair<Set<Range<Token>>, Set<Range<Token>>> ranges = calculateStreamAndFetchRanges(tokens, tokensAfterMove, movingNodeIdx);
@@ -250,7 +250,7 @@ public class OldNetworkTopologyStrategyTest
 
         int movingNodeIdx = 1;
         int movingNodeIdxAfterMove = 2;
-        BigIntegerToken newToken = new BigIntegerToken("52535295865117307932921825928971026432");
+        BigIntegerToken newToken = new BigIntegerToken("52535295865117307932921825928971026432", LocatorConfig.instance.getPartitioner());
         BigIntegerToken[] tokens = initTokens();
         BigIntegerToken[] tokensAfterMove = initTokensAfterMove(tokens, movingNodeIdx, newToken);
         Pair<Set<Range<Token>>, Set<Range<Token>>> ranges = calculateStreamAndFetchRanges(tokens, tokensAfterMove, movingNodeIdx);
@@ -282,7 +282,7 @@ public class OldNetworkTopologyStrategyTest
 
         int movingNodeIdx = 1;
         int movingNodeIdxAfterMove = 7;
-        BigIntegerToken newToken = new BigIntegerToken("158873535527910577765226390751398592512");
+        BigIntegerToken newToken = new BigIntegerToken("158873535527910577765226390751398592512", LocatorConfig.instance.getPartitioner());
         BigIntegerToken[] tokens = initTokens();
         BigIntegerToken[] tokensAfterMove = initTokensAfterMove(tokens, movingNodeIdx, newToken);
         Pair<Set<Range<Token>>, Set<Range<Token>>> ranges = calculateStreamAndFetchRanges(tokens, tokensAfterMove, movingNodeIdx);
@@ -320,14 +320,14 @@ public class OldNetworkTopologyStrategyTest
     private BigIntegerToken[] initTokens()
     {
         BigIntegerToken[] tokens = new BigIntegerToken[] {
-                new BigIntegerToken("0"), // just to be able to test
-                new BigIntegerToken("34028236692093846346337460743176821145"),
-                new BigIntegerToken("42535295865117307932921825928971026432"),
-                new BigIntegerToken("63802943797675961899382738893456539648"),
-                new BigIntegerToken("85070591730234615865843651857942052864"),
-                new BigIntegerToken("106338239662793269832304564822427566080"),
-                new BigIntegerToken("127605887595351923798765477786913079296"),
-                new BigIntegerToken("148873535527910577765226390751398592512")
+                new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), // just to be able to test
+                new BigIntegerToken("34028236692093846346337460743176821145", LocatorConfig.instance.getPartitioner()),
+                new BigIntegerToken("42535295865117307932921825928971026432", LocatorConfig.instance.getPartitioner()),
+                new BigIntegerToken("63802943797675961899382738893456539648", LocatorConfig.instance.getPartitioner()),
+                new BigIntegerToken("85070591730234615865843651857942052864", LocatorConfig.instance.getPartitioner()),
+                new BigIntegerToken("106338239662793269832304564822427566080", LocatorConfig.instance.getPartitioner()),
+                new BigIntegerToken("127605887595351923798765477786913079296", LocatorConfig.instance.getPartitioner()),
+                new BigIntegerToken("148873535527910577765226390751398592512", LocatorConfig.instance.getPartitioner())
         };
         return tokens;
     }

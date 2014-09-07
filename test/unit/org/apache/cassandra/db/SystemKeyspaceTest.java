@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -57,7 +58,7 @@ public class SystemKeyspaceTest
         List<Token> tokens = new ArrayList<Token>()
         {{
             for (int i = 0; i < 9; i++)
-                add(new BytesToken(ByteBufferUtil.bytes(String.format("token%d", i))));
+                add(new BytesToken(ByteBufferUtil.bytes(String.format("token%d", i)), LocatorConfig.instance.getPartitioner()));
         }};
 
         SystemKeyspace.instance.updateTokens(tokens);
@@ -70,7 +71,7 @@ public class SystemKeyspaceTest
     @Test
     public void testNonLocalToken() throws UnknownHostException
     {
-        BytesToken token = new BytesToken(ByteBufferUtil.bytes("token3"));
+        BytesToken token = new BytesToken(ByteBufferUtil.bytes("token3"), LocatorConfig.instance.getPartitioner());
         InetAddress address = InetAddress.getByName("127.0.0.2");
         SystemKeyspace.instance.updateTokens(address, Collections.<Token>singletonList(token));
         assert SystemKeyspace.instance.loadTokens().get(address).contains(token);

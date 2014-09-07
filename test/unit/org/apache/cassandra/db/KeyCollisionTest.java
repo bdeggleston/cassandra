@@ -110,7 +110,7 @@ public class KeyCollisionTest
     public static class LengthPartitioner extends AbstractPartitioner<BigIntegerToken>
     {
         public static final BigInteger ZERO = new BigInteger("0");
-        public static final BigIntegerToken MINIMUM = new BigIntegerToken("-1");
+        public static final BigIntegerToken MINIMUM = new BigIntegerToken("-1", LocatorConfig.instance.getPartitioner());
 
         private static final byte DELIMITER_BYTE = ":".getBytes()[0];
 
@@ -126,7 +126,7 @@ public class KeyCollisionTest
             BigInteger right = rtoken.equals(MINIMUM) ? ZERO : ((BigIntegerToken)rtoken).token;
             Pair<BigInteger,Boolean> midpair = FBUtilities.midpoint(left, right, 127);
             // discard the remainder
-            return new BigIntegerToken(midpair.left);
+            return new BigIntegerToken(midpair.left, LocatorConfig.instance.getPartitioner());
         }
 
         public BigIntegerToken getMinimumToken()
@@ -136,7 +136,7 @@ public class KeyCollisionTest
 
         public BigIntegerToken getRandomToken()
         {
-            return new BigIntegerToken(BigInteger.valueOf(new Random().nextInt(15)));
+            return new BigIntegerToken(BigInteger.valueOf(new Random().nextInt(15)), LocatorConfig.instance.getPartitioner());
         }
 
         private final Token.TokenFactory<BigInteger> tokenFactory = new Token.TokenFactory<BigInteger>() {
@@ -147,7 +147,7 @@ public class KeyCollisionTest
 
             public Token<BigInteger> fromByteArray(ByteBuffer bytes)
             {
-                return new BigIntegerToken(new BigInteger(ByteBufferUtil.getArray(bytes)));
+                return new BigIntegerToken(new BigInteger(ByteBufferUtil.getArray(bytes)), LocatorConfig.instance.getPartitioner());
             }
 
             public String toString(Token<BigInteger> bigIntegerToken)
@@ -157,7 +157,7 @@ public class KeyCollisionTest
 
             public Token<BigInteger> fromString(String string)
             {
-                return new BigIntegerToken(new BigInteger(string));
+                return new BigIntegerToken(new BigInteger(string), LocatorConfig.instance.getPartitioner());
             }
 
             public void validate(String token) {}
@@ -177,7 +177,7 @@ public class KeyCollisionTest
         {
             if (key.remaining() == 0)
                 return MINIMUM;
-            return new BigIntegerToken(BigInteger.valueOf(key.remaining()));
+            return new BigIntegerToken(BigInteger.valueOf(key.remaining()), LocatorConfig.instance.getPartitioner());
         }
 
         @Override

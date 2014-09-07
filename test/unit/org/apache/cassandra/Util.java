@@ -257,8 +257,8 @@ public class Util
 
         for (int i=0; i<howMany; i++)
         {
-            endpointTokens.add(new BigIntegerToken(String.valueOf(10 * i)));
-            keyTokens.add(new BigIntegerToken(String.valueOf(10 * i + 5)));
+            endpointTokens.add(new BigIntegerToken(String.valueOf(10 * i), LocatorConfig.instance.getPartitioner()));
+            keyTokens.add(new BigIntegerToken(String.valueOf(10 * i + 5), LocatorConfig.instance.getPartitioner()));
             hostIds.add(hostIdPool.get(i));
         }
 

@@ -90,9 +90,9 @@ public class MerkleTreeTest
     public static Token tok(int i)
     {
         if (i == -1)
-            return new BigIntegerToken(new BigInteger("-1"));
+            return new BigIntegerToken(new BigInteger("-1"), LocatorConfig.instance.getPartitioner());
         BigInteger bint = RandomPartitioner.MAXIMUM.divide(TOKEN_SCALE).multiply(new BigInteger(""+i));
-        return new BigIntegerToken(bint);
+        return new BigIntegerToken(bint, LocatorConfig.instance.getPartitioner());
     }
 
     @Test

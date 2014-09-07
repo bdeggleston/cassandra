@@ -23,14 +23,14 @@ public class BigIntegerToken extends Token<BigInteger>
 {
     static final long serialVersionUID = -5833589141319293006L;
 
-    public BigIntegerToken(BigInteger token)
+    public BigIntegerToken(BigInteger token, IPartitioner partitioner)
     {
-        super(token);
+        super(token, partitioner);
     }
 
     // convenience method for testing
-    public BigIntegerToken(String token) {
-        this(new BigInteger(token));
+    public BigIntegerToken(String token, IPartitioner partitioner) {
+        this(new BigInteger(token), partitioner);
     }
 
     public int compareTo(Token<BigInteger> o)

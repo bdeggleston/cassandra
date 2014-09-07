@@ -38,7 +38,7 @@ import org.apache.cassandra.utils.Pair;
 
 public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner<BytesToken>
 {
-    public static final BytesToken MINIMUM = new BytesToken(ArrayUtils.EMPTY_BYTE_ARRAY);
+    public static final BytesToken MINIMUM = new BytesToken(ArrayUtils.EMPTY_BYTE_ARRAY, LocatorConfig.instance.getPartitioner());
 
     public static final BigInteger BYTE_MASK = new BigInteger("255");
 
@@ -78,7 +78,7 @@ public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner
         BigInteger right = bigForBytes(rb, sigbytes);
 
         Pair<BigInteger,Boolean> midpair = FBUtilities.midpoint(left, right, 8*sigbytes);
-        return new BytesToken(bytesForBig(midpair.left, sigbytes, midpair.right));
+        return new BytesToken(bytesForBig(midpair.left, sigbytes, midpair.right), LocatorConfig.instance.getPartitioner());
     }
 
     /**
@@ -125,7 +125,7 @@ public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner
         Random r = new Random();
         byte[] buffer = new byte[16];
         r.nextBytes(buffer);
-        return new BytesToken(buffer);
+        return new BytesToken(buffer, LocatorConfig.instance.getPartitioner());
     }
 
     private final Token.TokenFactory<byte[]> tokenFactory = new Token.TokenFactory<byte[]>() {
@@ -136,7 +136,7 @@ public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner
 
         public Token<byte[]> fromByteArray(ByteBuffer bytes)
         {
-            return new BytesToken(bytes);
+            return new BytesToken(bytes, LocatorConfig.instance.getPartitioner());
         }
 
         public String toString(Token<byte[]> bytesToken)
@@ -162,7 +162,7 @@ public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner
         {
             if (string.length() % 2 == 1)
                 string = "0" + string;
-            return new BytesToken(Hex.hexToBytes(string));
+            return new BytesToken(Hex.hexToBytes(string), LocatorConfig.instance.getPartitioner());
         }
     };
 

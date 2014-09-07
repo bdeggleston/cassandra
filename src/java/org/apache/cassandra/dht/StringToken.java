@@ -22,9 +22,9 @@ public class StringToken extends Token<String>
 {
     static final long serialVersionUID = 5464084395277974963L;
 
-    public StringToken(String token)
+    public StringToken(String token, IPartitioner partitioner)
     {
-        super(token);
+        super(token, partitioner);
     }
 
     public int compareTo(Token<String> o)
