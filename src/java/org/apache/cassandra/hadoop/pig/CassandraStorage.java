@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.util.*;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.hadoop.HadoopCompat;
 import org.apache.cassandra.db.Cell;
 import org.slf4j.Logger;
@@ -77,15 +78,15 @@ public class CassandraStorage extends AbstractCassandraStorage
     private Map<ByteBuffer, Cell> lastRow;
     private boolean hasNext = true;
 
-    public CassandraStorage()
+    public CassandraStorage(CFMetaDataFactory cfMetaDataFactory)
     {
-        this(1024);
+        this(1024, cfMetaDataFactory);
     }
 
     /**@param limit number of columns to fetch in a slice */
-    public CassandraStorage(int limit)
+    public CassandraStorage(int limit, CFMetaDataFactory cfMetaDataFactory)
     {
-        super();
+        super(cfMetaDataFactory);
         this.limit = limit;
         DEFAULT_INPUT_FORMAT = "org.apache.cassandra.hadoop.ColumnFamilyInputFormat";
         DEFAULT_OUTPUT_FORMAT = "org.apache.cassandra.hadoop.ColumnFamilyOutputFormat";

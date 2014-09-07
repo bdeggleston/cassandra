@@ -23,6 +23,7 @@ import java.nio.charset.CharacterCodingException;
 import java.util.*;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.BufferCell;
 import org.apache.cassandra.db.composites.CellNames;
@@ -65,15 +66,15 @@ public class CqlStorage extends AbstractCassandraStorage
     protected String whereClause;
     private boolean hasCompactValueAlias = false;
         
-    public CqlStorage()
+    public CqlStorage(CFMetaDataFactory cfMetaDataFactory)
     {
-        this(1000);
+        this(1000, cfMetaDataFactory);
     }
 
     /** @param pageSize limit number of CQL rows to fetch in a thrift request */
-    public CqlStorage(int pageSize)
+    public CqlStorage(int pageSize, CFMetaDataFactory cfMetaDataFactory)
     {
-        super();
+        super(cfMetaDataFactory);
         this.pageSize = pageSize;
         DEFAULT_INPUT_FORMAT = "org.apache.cassandra.hadoop.cql3.CqlPagingInputFormat";
         DEFAULT_OUTPUT_FORMAT = "org.apache.cassandra.hadoop.cql3.CqlOutputFormat";

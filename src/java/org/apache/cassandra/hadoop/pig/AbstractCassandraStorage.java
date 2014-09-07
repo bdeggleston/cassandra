@@ -101,9 +101,12 @@ public abstract class AbstractCassandraStorage extends LoadFunc implements Store
     protected String initHostAddress;
     protected String rpcPort;
 
-    public AbstractCassandraStorage()
+    protected final CFMetaDataFactory cfMetaDataFactory;
+
+    public AbstractCassandraStorage(CFMetaDataFactory cfMetaDataFactory)
     {
         super();
+        this.cfMetaDataFactory = cfMetaDataFactory;
     }
 
     /** Deconstructs a composite type to a Tuple. */
@@ -778,7 +781,7 @@ public abstract class AbstractCassandraStorage extends LoadFunc implements Store
         for (CfDef cfDef : ksDef.cf_defs)
         {
             if (cfDef.name.equalsIgnoreCase(cf))
-                return CFMetaDataFactory.instance.fromThrift(cfDef);
+                return cfMetaDataFactory.fromThrift(cfDef);
         }
         return null;
     }

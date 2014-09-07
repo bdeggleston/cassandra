@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Map;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.db.BufferCell;
 import org.apache.cassandra.db.Cell;
 import org.apache.cassandra.db.composites.CellNames;
@@ -63,15 +64,15 @@ public class CqlNativeStorage extends CqlStorage
     private String nativeSSLCipherSuites;
     private String inputCql;
 
-    public CqlNativeStorage()
+    public CqlNativeStorage(CFMetaDataFactory cfMetaDataFactory)
     {
-        this(1000);
+        this(1000, cfMetaDataFactory);
     }
 
     /** @param pageSize limit number of CQL rows to fetch in a thrift request */
-    public CqlNativeStorage(int pageSize)
+    public CqlNativeStorage(int pageSize, CFMetaDataFactory cfMetaDataFactory)
     {
-        super(pageSize);
+        super(pageSize, cfMetaDataFactory);
         DEFAULT_INPUT_FORMAT = "org.apache.cassandra.hadoop.cql3.CqlInputFormat";
     }
 
