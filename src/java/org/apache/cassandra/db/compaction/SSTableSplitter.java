@@ -19,6 +19,7 @@ package org.apache.cassandra.db.compaction;
 
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.io.sstable.*;
 
@@ -28,9 +29,10 @@ public class SSTableSplitter {
 
     private CompactionInfo.Holder info;
 
-    public SSTableSplitter(ColumnFamilyStore cfs, SSTableReader sstable, int sstableSizeInMB)
+
+    public SSTableSplitter(ColumnFamilyStore cfs, SSTableReader sstable, int sstableSizeInMB, DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace)
     {
-        this.task = new SplittingCompactionTask(cfs, sstable, sstableSizeInMB);
+        this.task = new SplittingCompactionTask(cfs, sstable, sstableSizeInMB, databaseDescriptor, systemKeyspace);
     }
 
     public void split()
@@ -55,9 +57,9 @@ public class SSTableSplitter {
     {
         private final int sstableSizeInMB;
 
-        public SplittingCompactionTask(ColumnFamilyStore cfs, SSTableReader sstable, int sstableSizeInMB)
+        public SplittingCompactionTask(ColumnFamilyStore cfs, SSTableReader sstable, int sstableSizeInMB, DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace)
         {
-            super(cfs, Collections.singletonList(sstable), CompactionManager.NO_GC, true);
+            super(cfs, Collections.singletonList(sstable), CompactionManager.NO_GC, true, databaseDescriptor, systemKeyspace);
             this.sstableSizeInMB = sstableSizeInMB;
 
             if (sstableSizeInMB <= 0)

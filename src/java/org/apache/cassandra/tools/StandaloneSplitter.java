@@ -21,13 +21,10 @@ package org.apache.cassandra.tools;
 import java.io.File;
 import java.util.*;
 
-import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.*;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.SSTableSplitter;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.utils.Pair;
@@ -139,7 +136,7 @@ public class StandaloneSplitter
             {
                 try
                 {
-                    new SSTableSplitter(cfs, sstable, options.sizeInMB).split();
+                    new SSTableSplitter(cfs, sstable, options.sizeInMB, DatabaseDescriptor.instance, SystemKeyspace.instance).split();
                 }
                 catch (Exception e)
                 {

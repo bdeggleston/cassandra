@@ -52,12 +52,16 @@ public class CompactionTask extends AbstractCompactionTask
     private final boolean offline;
     protected static long totalBytesCompacted = 0;
     private CompactionExecutorStatsCollector collector;
+    private final DatabaseDescriptor databaseDescriptor;
+    private final SystemKeyspace systemKeyspace;
 
-    public CompactionTask(ColumnFamilyStore cfs, Iterable<SSTableReader> sstables, int gcBefore, boolean offline)
+    public CompactionTask(ColumnFamilyStore cfs, Iterable<SSTableReader> sstables, int gcBefore, boolean offline, DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace)
     {
         super(cfs, Sets.newHashSet(sstables));
         this.gcBefore = gcBefore;
         this.offline = offline;
+        this.databaseDescriptor = databaseDescriptor;
+        this.systemKeyspace = systemKeyspace;
     }
 
     public static synchronized long addToTotalBytesCompacted(long bytesCompacted)
@@ -111,7 +115,7 @@ public class CompactionTask extends AbstractCompactionTask
         // This should be harmless; see comments to CFS.maybeReloadCompactionStrategy.
         AbstractCompactionStrategy strategy = cfs.getCompactionStrategy();
 
-        if (DatabaseDescriptor.instance.isSnapshotBeforeCompaction())
+        if (databaseDescriptor.isSnapshotBeforeCompaction())
             cfs.snapshotWithoutFlush(System.currentTimeMillis() + "-compact-" + cfs.name);
 
         // sanity check: all sstables must belong to the same cfs
@@ -124,7 +128,7 @@ public class CompactionTask extends AbstractCompactionTask
             }
         });
 
-        UUID taskId = SystemKeyspace.instance.startCompaction(cfs, sstables);
+        UUID taskId = systemKeyspace.startCompaction(cfs, sstables);
 
         CompactionController controller = getCompactionController(sstables);
         Set<SSTableReader> actuallyCompact = Sets.difference(sstables, controller.getFullyExpiredSSTables());
@@ -196,7 +200,7 @@ public class CompactionTask extends AbstractCompactionTask
             // point of no return -- the new sstables are live on disk; next we'll start deleting the old ones
             // (in replaceCompactedSSTables)
             if (taskId != null)
-                SystemKeyspace.instance.finishCompaction(taskId);
+                systemKeyspace.finishCompaction(taskId);
 
             if (collector != null)
                 collector.finishCompaction(ci);
@@ -245,7 +249,7 @@ public class CompactionTask extends AbstractCompactionTask
             mergedRows.put(rows, count);
         }
 
-        SystemKeyspace.instance.updateCompactionHistory(cfs.keyspace.getName(), cfs.name, System.currentTimeMillis(), startsize, endsize, mergedRows);
+        systemKeyspace.updateCompactionHistory(cfs.keyspace.getName(), cfs.name, System.currentTimeMillis(), startsize, endsize, mergedRows);
         logger.info(String.format("Compacted %d sstables to [%s].  %,d bytes to %,d (~%d%% of original) in %,dms = %fMB/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}",
                                   oldSStables.size(), newSSTableNames.toString(), startsize, endsize, (int) (ratio * 100), dTime, mbps, totalSourceRows, totalKeysWritten, mergeSummary.toString()));
         logger.debug(String.format("CF Total Bytes Compacted: %,d", CompactionTask.addToTotalBytesCompacted(endsize)));
