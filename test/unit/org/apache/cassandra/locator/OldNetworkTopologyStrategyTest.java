@@ -71,7 +71,7 @@ public class OldNetworkTopologyStrategyTest
     @Test
     public void testBigIntegerEndpointsA() throws UnknownHostException
     {
-        RackInferringSnitch endpointSnitch = new RackInferringSnitch();
+        RackInferringSnitch endpointSnitch = new RackInferringSnitch(LocatorConfig.instance);
 
         AbstractReplicationStrategy strategy = new OldNetworkTopologyStrategy("Keyspace1", tmd, endpointSnitch, KSMetaData.optsWithRF(1));
         addEndpoint("0", "5", "254.0.0.1");
@@ -96,7 +96,7 @@ public class OldNetworkTopologyStrategyTest
     @Test
     public void testBigIntegerEndpointsB() throws UnknownHostException
     {
-        RackInferringSnitch endpointSnitch = new RackInferringSnitch();
+        RackInferringSnitch endpointSnitch = new RackInferringSnitch(LocatorConfig.instance);
 
         AbstractReplicationStrategy strategy = new OldNetworkTopologyStrategy("Keyspace1", tmd, endpointSnitch, KSMetaData.optsWithRF(1));
         addEndpoint("0", "5", "254.0.0.1");
@@ -122,7 +122,7 @@ public class OldNetworkTopologyStrategyTest
     @Test
     public void testBigIntegerEndpointsC() throws UnknownHostException
     {
-        RackInferringSnitch endpointSnitch = new RackInferringSnitch();
+        RackInferringSnitch endpointSnitch = new RackInferringSnitch(LocatorConfig.instance);
 
         AbstractReplicationStrategy strategy = new OldNetworkTopologyStrategy("Keyspace1", tmd, endpointSnitch, KSMetaData.optsWithRF(1));
         addEndpoint("0", "5", "254.0.0.1");
@@ -357,7 +357,7 @@ public class OldNetworkTopologyStrategyTest
 
     private Pair<Set<Range<Token>>, Set<Range<Token>>> calculateStreamAndFetchRanges(BigIntegerToken[] tokens, BigIntegerToken[] tokensAfterMove, int movingNodeIdx) throws UnknownHostException
     {
-        RackInferringSnitch endpointSnitch = new RackInferringSnitch();
+        RackInferringSnitch endpointSnitch = new RackInferringSnitch(LocatorConfig.instance);
 
         InetAddress movingNode = InetAddress.getByName("254.0.0." + Integer.toString(movingNodeIdx + 1));
 

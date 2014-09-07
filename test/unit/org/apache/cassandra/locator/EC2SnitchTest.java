@@ -58,9 +58,9 @@ public class EC2SnitchTest
 
     private class TestEC2Snitch extends Ec2Snitch
     {
-        public TestEC2Snitch() throws IOException, ConfigurationException
+        public TestEC2Snitch(LocatorConfig locatorConfig1) throws IOException, ConfigurationException
         {
-            super();
+            super(locatorConfig1);
         }
 
         @Override
@@ -74,7 +74,7 @@ public class EC2SnitchTest
     public void testRac() throws IOException, ConfigurationException
     {
         az = "us-east-1d";
-        Ec2Snitch snitch = new TestEC2Snitch();
+        Ec2Snitch snitch = new TestEC2Snitch(LocatorConfig.instance);
         InetAddress local = InetAddress.getByName("127.0.0.1");
         InetAddress nonlocal = InetAddress.getByName("127.0.0.7");
 
@@ -94,7 +94,7 @@ public class EC2SnitchTest
     public void testNewRegions() throws IOException, ConfigurationException
     {
         az = "us-east-2d";
-        Ec2Snitch snitch = new TestEC2Snitch();
+        Ec2Snitch snitch = new TestEC2Snitch(LocatorConfig.instance);
         InetAddress local = InetAddress.getByName("127.0.0.1");
         assertEquals("us-east-2", snitch.getDatacenter(local));
         assertEquals("2d", snitch.getRack(local));

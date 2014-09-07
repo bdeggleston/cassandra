@@ -20,10 +20,16 @@ package org.apache.cassandra.locator;
 import java.net.InetAddress;
 import java.util.*;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
-
 public abstract class AbstractEndpointSnitch implements IEndpointSnitch
 {
+
+    protected final LocatorConfig locatorConfig;
+
+    protected AbstractEndpointSnitch(LocatorConfig locatorConfig)
+    {
+        this.locatorConfig = locatorConfig;
+    }
+
     public abstract int compareEndpoints(InetAddress target, InetAddress a1, InetAddress a2);
 
     /**
@@ -73,7 +79,7 @@ public abstract class AbstractEndpointSnitch implements IEndpointSnitch
 
     private boolean hasRemoteNode(List<InetAddress> l)
     {
-        String localDc = DatabaseDescriptor.instance.getLocalDataCenter();
+        String localDc = locatorConfig.getLocalDC();
         for (InetAddress ep : l)
         {
             if (!localDc.equals(getDatacenter(ep)))

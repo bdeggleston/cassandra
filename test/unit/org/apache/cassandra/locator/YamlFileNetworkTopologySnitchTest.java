@@ -46,11 +46,9 @@ public class YamlFileNetworkTopologySnitchTest
          * @throws ConfigurationException
          *             on configuration error
          */
-        public TestYamlFileNetworkTopologySnitch(
-                final String topologyConfigFilename)
-                throws ConfigurationException
+        public TestYamlFileNetworkTopologySnitch(LocatorConfig locatorConfig1, final String topologyConfigFilename) throws ConfigurationException
         {
-            super(topologyConfigFilename);
+            super(locatorConfig1, topologyConfigFilename);
         }
     }
 
@@ -63,7 +61,7 @@ public class YamlFileNetworkTopologySnitchTest
     @Test
     public void testBasic() throws Exception
     {
-        final TestYamlFileNetworkTopologySnitch snitch = new TestYamlFileNetworkTopologySnitch(
+        final TestYamlFileNetworkTopologySnitch snitch = new TestYamlFileNetworkTopologySnitch(LocatorConfig.instance,
                 "cassandra-topology.yaml");
         checkEndpoint(snitch, DatabaseDescriptor.instance.getBroadcastAddress()
                 .getHostAddress(), "DC1", "RAC1");

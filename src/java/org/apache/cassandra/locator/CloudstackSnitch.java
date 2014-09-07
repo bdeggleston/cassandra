@@ -66,8 +66,9 @@ public class CloudstackSnitch extends AbstractNetworkTopologySnitch
     protected String csZoneDc;
     protected String csZoneRack;
 
-    public CloudstackSnitch() throws IOException, ConfigurationException
+    public CloudstackSnitch(LocatorConfig locatorConfig1) throws IOException, ConfigurationException
     {
+        super(locatorConfig1);
         String endpoint = csMetadataEndpoint();
         String zone = csQueryMetadata(endpoint + ZONE_NAME_QUERY_URI);
         String zone_parts[] = zone.split("-");

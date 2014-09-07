@@ -3536,7 +3536,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             DatabaseDescriptor.instance.setDynamicUpdateInterval(dynamicUpdateInterval);
             DatabaseDescriptor.instance.setDynamicResetInterval(dynamicResetInterval);
             DatabaseDescriptor.instance.setDynamicBadnessThreshold(dynamicBadnessThreshold);
-            newSnitch = new DynamicEndpointSnitch(newSnitch);
+            newSnitch = new DynamicEndpointSnitch(newSnitch, LocatorConfig.instance);
         }
 
         // point snitch references to the new instance

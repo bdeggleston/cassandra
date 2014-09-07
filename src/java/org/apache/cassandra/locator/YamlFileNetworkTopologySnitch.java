@@ -88,9 +88,9 @@ public class YamlFileNetworkTopologySnitch
      * @throws ConfigurationException
      *             on failure
      */
-    public YamlFileNetworkTopologySnitch() throws ConfigurationException
+    public YamlFileNetworkTopologySnitch(LocatorConfig locatorConfig1) throws ConfigurationException
     {
-        this(DEFAULT_TOPOLOGY_CONFIG_FILENAME);
+        this(locatorConfig1, DEFAULT_TOPOLOGY_CONFIG_FILENAME);
     }
 
     /**
@@ -101,9 +101,10 @@ public class YamlFileNetworkTopologySnitch
      * @throws ConfigurationException
      *             on failure
      */
-    YamlFileNetworkTopologySnitch(final String topologyConfigFilename)
+    YamlFileNetworkTopologySnitch(LocatorConfig locatorConfig1, final String topologyConfigFilename)
             throws ConfigurationException
     {
+        super(locatorConfig1);
         this.topologyConfigFilename = topologyConfigFilename;
         loadTopologyConfiguration();
 

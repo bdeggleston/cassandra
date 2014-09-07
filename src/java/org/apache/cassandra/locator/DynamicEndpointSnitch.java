@@ -58,18 +58,19 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
 
     public final IEndpointSnitch subsnitch;
 
-    public DynamicEndpointSnitch(IEndpointSnitch snitch)
+    public DynamicEndpointSnitch(IEndpointSnitch snitch, LocatorConfig locatorConfig1)
     {
-        this(snitch, null);
+        this(snitch, locatorConfig1, null);
     }
 
-    public DynamicEndpointSnitch(IEndpointSnitch snitch, String instance)
+    public DynamicEndpointSnitch(IEndpointSnitch snitch, LocatorConfig locatorConfig1, String instance)
     {
-        this(snitch, instance, DatabaseDescriptor.instance.getDynamicUpdateInterval(), DatabaseDescriptor.instance.getDynamicResetInterval(), DatabaseDescriptor.instance.getDynamicBadnessThreshold());
+        this(snitch, locatorConfig1, instance, DatabaseDescriptor.instance.getDynamicUpdateInterval(), DatabaseDescriptor.instance.getDynamicResetInterval(), DatabaseDescriptor.instance.getDynamicBadnessThreshold());
     }
 
-    public DynamicEndpointSnitch(IEndpointSnitch snitch, String instance, int updateIntervalMs, int resetIntervalMs, double badnessThreshold)
+    public DynamicEndpointSnitch(IEndpointSnitch snitch, LocatorConfig locatorConfig1, String instance, int updateIntervalMs, int resetIntervalMs, double badnessThreshold)
     {
+        super(locatorConfig1);
         mbeanName = "org.apache.cassandra.db:type=DynamicEndpointSnitch";
         if (instance != null)
             mbeanName += ",instance=" + instance;

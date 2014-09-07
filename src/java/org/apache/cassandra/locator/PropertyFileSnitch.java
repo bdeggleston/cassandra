@@ -57,8 +57,9 @@ public class PropertyFileSnitch extends AbstractNetworkTopologySnitch
 
     private volatile boolean gossipStarted;
 
-    public PropertyFileSnitch() throws ConfigurationException
+    public PropertyFileSnitch(LocatorConfig locatorConfig1) throws ConfigurationException
     {
+        super(locatorConfig1);
         reloadConfiguration();
 
         try

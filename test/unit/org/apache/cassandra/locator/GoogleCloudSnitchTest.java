@@ -54,9 +54,9 @@ public class GoogleCloudSnitchTest
 
     private class TestGoogleCloudSnitch extends GoogleCloudSnitch
     {
-        public TestGoogleCloudSnitch() throws IOException, ConfigurationException
+        public TestGoogleCloudSnitch(LocatorConfig locatorConfig1) throws IOException, ConfigurationException
         {
-            super();
+            super(locatorConfig1);
         }
 
         @Override
@@ -70,7 +70,7 @@ public class GoogleCloudSnitchTest
     public void testRac() throws IOException, ConfigurationException
     {
         az = "us-central1-a";
-        GoogleCloudSnitch snitch = new TestGoogleCloudSnitch();
+        GoogleCloudSnitch snitch = new TestGoogleCloudSnitch(LocatorConfig.instance);
         InetAddress local = InetAddress.getByName("127.0.0.1");
         InetAddress nonlocal = InetAddress.getByName("127.0.0.7");
 
@@ -90,7 +90,7 @@ public class GoogleCloudSnitchTest
     public void testNewRegions() throws IOException, ConfigurationException
     {
         az = "asia-east1-a";
-        GoogleCloudSnitch snitch = new TestGoogleCloudSnitch();
+        GoogleCloudSnitch snitch = new TestGoogleCloudSnitch(LocatorConfig.instance);
         InetAddress local = InetAddress.getByName("127.0.0.1");
         assertEquals("asia-east1", snitch.getDatacenter(local));
         assertEquals("a", snitch.getRack(local));

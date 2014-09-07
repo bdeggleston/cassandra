@@ -59,7 +59,7 @@ public class NetworkTopologyStrategyTest
     @Test
     public void testProperties() throws IOException, ConfigurationException
     {
-        IEndpointSnitch snitch = new PropertyFileSnitch();
+        IEndpointSnitch snitch = new PropertyFileSnitch(LocatorConfig.instance);
         LocatorConfig.instance.setEndpointSnitch(snitch);
         TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance.getPartitioner(), LocatorConfig.instance.getEndpointSnitch());
         createDummyTokens(metadata, true);
@@ -83,7 +83,7 @@ public class NetworkTopologyStrategyTest
     @Test
     public void testPropertiesWithEmptyDC() throws IOException, ConfigurationException
     {
-        IEndpointSnitch snitch = new PropertyFileSnitch();
+        IEndpointSnitch snitch = new PropertyFileSnitch(LocatorConfig.instance);
         LocatorConfig.instance.setEndpointSnitch(snitch);
         TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance.getPartitioner(), LocatorConfig.instance.getEndpointSnitch());
         createDummyTokens(metadata, false);
@@ -111,7 +111,7 @@ public class NetworkTopologyStrategyTest
         int[] dcEndpoints = new int[]{128, 256, 512};
         int[] dcReplication = new int[]{2, 6, 6};
 
-        IEndpointSnitch snitch = new RackInferringSnitch();
+        IEndpointSnitch snitch = new RackInferringSnitch(LocatorConfig.instance);
         LocatorConfig.instance.setEndpointSnitch(snitch);
         TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance.getPartitioner(), LocatorConfig.instance.getEndpointSnitch());
         Map<String, String> configOptions = new HashMap<String, String>();

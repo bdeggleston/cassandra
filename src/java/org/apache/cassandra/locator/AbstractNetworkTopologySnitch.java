@@ -25,6 +25,12 @@ import java.net.InetAddress;
  */
 public abstract class AbstractNetworkTopologySnitch extends AbstractEndpointSnitch
 {
+
+    protected AbstractNetworkTopologySnitch(LocatorConfig locatorConfig)
+    {
+        super(locatorConfig);
+    }
+
     /**
      * Return the rack for which an endpoint resides in
      * @param endpoint a specified endpoint

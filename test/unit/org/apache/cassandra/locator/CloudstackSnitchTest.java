@@ -50,9 +50,9 @@ public class CloudstackSnitchTest
 
     private class TestCloudstackSnitch extends CloudstackSnitch
     {
-        public TestCloudstackSnitch() throws IOException, ConfigurationException
+        public TestCloudstackSnitch(LocatorConfig locatorConfig1) throws IOException, ConfigurationException
         {
-            super();
+            super(locatorConfig1);
         }
 
         @Override
@@ -72,7 +72,7 @@ public class CloudstackSnitchTest
     public void testRacks() throws IOException, ConfigurationException
     {
         az = "ch-gva-1";
-        CloudstackSnitch snitch = new TestCloudstackSnitch();
+        CloudstackSnitch snitch = new TestCloudstackSnitch(LocatorConfig.instance);
         InetAddress local = InetAddress.getByName("127.0.0.1");
         InetAddress nonlocal = InetAddress.getByName("127.0.0.7");
 
@@ -93,7 +93,7 @@ public class CloudstackSnitchTest
     public void testNewRegions() throws IOException, ConfigurationException
     {
         az = "ch-gva-1";
-        CloudstackSnitch snitch = new TestCloudstackSnitch();
+        CloudstackSnitch snitch = new TestCloudstackSnitch(LocatorConfig.instance);
         InetAddress local = InetAddress.getByName("127.0.0.1");
 
         assertEquals("ch-gva", snitch.getDatacenter(local));

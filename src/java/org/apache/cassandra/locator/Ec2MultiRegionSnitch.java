@@ -44,9 +44,9 @@ public class Ec2MultiRegionSnitch extends Ec2Snitch
     private final InetAddress localPublicAddress;
     private final String localPrivateAddress;
 
-    public Ec2MultiRegionSnitch() throws IOException, ConfigurationException
+    public Ec2MultiRegionSnitch(LocatorConfig locatorConfig1) throws IOException, ConfigurationException
     {
-        super();
+        super(locatorConfig1);
         localPublicAddress = InetAddress.getByName(awsApiCall(PUBLIC_IP_QUERY_URL));
         logger.info("EC2Snitch using publicIP as identifier: {}", localPublicAddress);
         localPrivateAddress = awsApiCall(PRIVATE_IP_QUERY_URL);

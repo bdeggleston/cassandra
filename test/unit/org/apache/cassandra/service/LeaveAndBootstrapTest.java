@@ -715,7 +715,7 @@ public class LeaveAndBootstrapTest
                 keyspaceName,
                 ksmd.strategyClass,
                 tmd,
-                new SimpleSnitch(),
+                new SimpleSnitch(LocatorConfig.instance),
                 ksmd.strategyOptions);
     }
 

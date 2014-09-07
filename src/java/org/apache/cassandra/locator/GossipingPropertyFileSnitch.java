@@ -56,20 +56,21 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
 
     private static final int DEFAULT_REFRESH_PERIOD_IN_SECONDS = 60;
     
-    public GossipingPropertyFileSnitch() throws ConfigurationException
+    public GossipingPropertyFileSnitch(LocatorConfig locatorConfig1) throws ConfigurationException
     {
-        this(DEFAULT_REFRESH_PERIOD_IN_SECONDS);
+        this(locatorConfig1, DEFAULT_REFRESH_PERIOD_IN_SECONDS);
     }
 
-    public GossipingPropertyFileSnitch(int refreshPeriodInSeconds) throws ConfigurationException
+    public GossipingPropertyFileSnitch(LocatorConfig locatorConfig1, int refreshPeriodInSeconds) throws ConfigurationException
     {
+        super(locatorConfig1);
         snitchHelperReference = new AtomicReference<ReconnectableSnitchHelper>();
 
         reloadConfiguration();
 
         try
         {
-            psnitch = new PropertyFileSnitch();
+            psnitch = new PropertyFileSnitch(LocatorConfig.instance);
             logger.info("Loaded {} for compatibility", PropertyFileSnitch.SNITCH_PROPERTIES_FILENAME);
         }
         catch (ConfigurationException e)

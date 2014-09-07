@@ -185,7 +185,7 @@ public class SimpleStrategyTest
                 keyspaceName,
                 ksmd.strategyClass,
                 tmd,
-                new SimpleSnitch(),
+                new SimpleSnitch(LocatorConfig.instance),
                 ksmd.strategyOptions);
     }
 }

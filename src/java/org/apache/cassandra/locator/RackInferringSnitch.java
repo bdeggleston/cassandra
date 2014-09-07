@@ -25,6 +25,12 @@ import java.net.InetAddress;
  */
 public class RackInferringSnitch extends AbstractNetworkTopologySnitch
 {
+
+    public RackInferringSnitch(LocatorConfig locatorConfig)
+    {
+        super(locatorConfig);
+    }
+
     public String getRack(InetAddress endpoint)
     {
         return Integer.toString(endpoint.getAddress()[2] & 0xFF, 10);

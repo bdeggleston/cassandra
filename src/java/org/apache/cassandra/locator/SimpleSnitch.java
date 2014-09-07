@@ -27,6 +27,11 @@ import java.util.List;
  */
 public class SimpleSnitch extends AbstractEndpointSnitch
 {
+    public SimpleSnitch(LocatorConfig locatorConfig)
+    {
+        super(locatorConfig);
+    }
+
     public String getRack(InetAddress endpoint)
     {
         return "rack1";

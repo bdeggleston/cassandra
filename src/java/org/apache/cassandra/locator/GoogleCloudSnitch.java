@@ -50,8 +50,9 @@ public class GoogleCloudSnitch extends AbstractNetworkTopologySnitch
     protected String gceZone;
     protected String gceRegion;
 
-    public GoogleCloudSnitch() throws IOException, ConfigurationException
+    public GoogleCloudSnitch(LocatorConfig locatorConfig1) throws IOException, ConfigurationException
     {
+        super(locatorConfig1);
         String response = gceApiCall(ZONE_NAME_QUERY_URL);
         String[] splits = response.split("/");
         String az = splits[splits.length - 1];

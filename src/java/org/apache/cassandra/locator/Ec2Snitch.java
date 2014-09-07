@@ -50,8 +50,9 @@ public class Ec2Snitch extends AbstractNetworkTopologySnitch
     protected String ec2zone;
     protected String ec2region;
 
-    public Ec2Snitch() throws IOException, ConfigurationException
+    public Ec2Snitch(LocatorConfig locatorConfig1) throws IOException, ConfigurationException
     {
+        super(locatorConfig1);
         String az = awsApiCall(ZONE_NAME_QUERY_URL);
         // Split "us-east-1a" or "asia-1a" into "us-east"/"1a" and "asia"/"1a".
         String[] splits = az.split("-");
