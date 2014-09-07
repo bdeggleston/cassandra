@@ -406,7 +406,7 @@ public class YamlFileNetworkTopologySnitch
     {
         gossiperInitialized = true;
         locatorConfig.getStorageService().gossipSnitchInfo();
-        locatorConfig.getGossiper().register(new ReconnectableSnitchHelper(this, localNodeData.datacenter, true));
+        locatorConfig.getGossiper().register(new ReconnectableSnitchHelper(this, locatorConfig.getMessagingService(), localNodeData.datacenter, true));
     }
 
 }

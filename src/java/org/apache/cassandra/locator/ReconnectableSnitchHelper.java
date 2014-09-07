@@ -38,12 +38,14 @@ public class ReconnectableSnitchHelper implements IEndpointStateChangeSubscriber
 {
     private static final Logger logger = LoggerFactory.getLogger(ReconnectableSnitchHelper.class);
     private final IEndpointSnitch snitch;
+    private final MessagingService messagingService;
     private final String localDc;
     private final boolean preferLocal;
 
-    public ReconnectableSnitchHelper(IEndpointSnitch snitch, String localDc, boolean preferLocal)
+    public ReconnectableSnitchHelper(IEndpointSnitch snitch, MessagingService messagingService, String localDc, boolean preferLocal)
     {
         this.snitch = snitch;
+        this.messagingService = messagingService;
         this.localDc = localDc;
         this.preferLocal = preferLocal;
     }
@@ -63,10 +65,10 @@ public class ReconnectableSnitchHelper implements IEndpointStateChangeSubscriber
     private void reconnect(InetAddress publicAddress, InetAddress localAddress)
     {
         if (snitch.getDatacenter(publicAddress).equals(localDc)
-                && MessagingService.instance.getVersion(publicAddress) == MessagingService.current_version
-                && !MessagingService.instance.getConnectionPool(publicAddress).endPoint().equals(localAddress))
+                && messagingService.getVersion(publicAddress) == MessagingService.current_version
+                && !messagingService.getConnectionPool(publicAddress).endPoint().equals(localAddress))
         {
-            MessagingService.instance.getConnectionPool(publicAddress).reset(localAddress);
+            messagingService.getConnectionPool(publicAddress).reset(localAddress);
             logger.debug(String.format("Intiated reconnect to an Internal IP %s for the %s", localAddress, publicAddress));
         }
     }

@@ -192,7 +192,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
     {
         if (locatorConfig.getGossiper() != null)
         {
-            ReconnectableSnitchHelper pendingHelper = new ReconnectableSnitchHelper(this, myDC, preferLocal);
+            ReconnectableSnitchHelper pendingHelper = new ReconnectableSnitchHelper(this, locatorConfig.getMessagingService(), myDC, preferLocal);
             locatorConfig.getGossiper().register(pendingHelper);
             
             pendingHelper = snitchHelperReference.getAndSet(pendingHelper);

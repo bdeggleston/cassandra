@@ -56,6 +56,6 @@ public class Ec2MultiRegionSnitch extends Ec2Snitch
     {
         super.gossiperStarting();
         locatorConfig.getGossiper().addLocalApplicationState(ApplicationState.INTERNAL_IP, locatorConfig.getStorageService().valueFactory.internalIP(localPrivateAddress));
-        locatorConfig.getGossiper().register(new ReconnectableSnitchHelper(this, ec2region, true));
+        locatorConfig.getGossiper().register(new ReconnectableSnitchHelper(this, locatorConfig.getMessagingService(), ec2region, true));
     }
 }
