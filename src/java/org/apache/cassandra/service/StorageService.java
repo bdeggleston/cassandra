@@ -709,7 +709,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     throw new UnsupportedOperationException(s);
                 }
                 setMode(Mode.JOINING, "getting bootstrap token", true);
-                bootstrapTokens = BootStrapper.getBootstrapTokens(LocatorConfig.instance.getTokenMetadata());
+                bootstrapTokens = BootStrapper.getBootstrapTokens(LocatorConfig.instance.getTokenMetadata(), DatabaseDescriptor.instance, LocatorConfig.instance.getPartitioner());
             }
             else
             {
@@ -956,7 +956,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (!Gossiper.instance.seenAnySeed())
             throw new IllegalStateException("Unable to contact any seeds!");
         setMode(Mode.JOINING, "Starting to bootstrap...", true);
-        new BootStrapper(DatabaseDescriptor.instance.getBroadcastAddress(), tokens, LocatorConfig.instance.getTokenMetadata()).bootstrap(); // handles token update
+        new BootStrapper(DatabaseDescriptor.instance.getBroadcastAddress(), tokens, LocatorConfig.instance.getTokenMetadata(),
+                         DatabaseDescriptor.instance, Schema.instance, Gossiper.instance, KeyspaceManager.instance, StreamManager.instance, this).bootstrap(); // handles token update
         logger.info("Bootstrap completed! for the tokens {}", tokens);
     }
 

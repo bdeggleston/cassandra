@@ -51,7 +51,15 @@ public class BootStrapper
     protected final Collection<Token> tokens;
     protected final TokenMetadata tokenMetadata;
 
-    public BootStrapper(InetAddress address, Collection<Token> tokens, TokenMetadata tmd)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+    private final Gossiper gossiper;
+    private final KeyspaceManager keyspaceManager;
+    private final StreamManager streamManager;
+    private final StorageService storageService;
+
+    public BootStrapper(InetAddress address, Collection<Token> tokens, TokenMetadata tmd, DatabaseDescriptor databaseDescriptor,
+                        Schema schema, Gossiper gossiper, KeyspaceManager keyspaceManager, StreamManager streamManager, StorageService storageService)
     {
         assert address != null;
         assert tokens != null && !tokens.isEmpty();
@@ -59,6 +67,13 @@ public class BootStrapper
         this.address = address;
         this.tokens = tokens;
         tokenMetadata = tmd;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.gossiper = gossiper;
+        this.keyspaceManager = keyspaceManager;
+        this.streamManager = streamManager;
+        this.storageService = storageService;
     }
 
     public void bootstrap()
@@ -66,19 +81,19 @@ public class BootStrapper
         if (logger.isDebugEnabled())
             logger.debug("Beginning bootstrap process");
 
-        RangeStreamer streamer = new RangeStreamer(tokenMetadata, tokens, address, "Bootstrap", DatabaseDescriptor.instance, Schema.instance, Gossiper.instance, StreamManager.instance, KeyspaceManager.instance);
+        RangeStreamer streamer = new RangeStreamer(tokenMetadata, tokens, address, "Bootstrap", databaseDescriptor, schema, gossiper, streamManager, keyspaceManager);
         streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
 
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        for (String keyspaceName : schema.getNonSystemKeyspaces())
         {
-            AbstractReplicationStrategy strategy = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
+            AbstractReplicationStrategy strategy = keyspaceManager.open(keyspaceName).getReplicationStrategy();
             streamer.addRanges(keyspaceName, strategy.getPendingAddressRanges(tokenMetadata, tokens, address));
         }
 
         try
         {
             streamer.fetchAsync().get();
-            StorageService.instance.finishBootstrapping();
+            storageService.finishBootstrapping();
         }
         catch (InterruptedException e)
         {
@@ -95,9 +110,9 @@ public class BootStrapper
      * otherwise, if num_tokens == 1, pick a token to assume half the load of the most-loaded node.
      * else choose num_tokens tokens at random
      */
-    public static Collection<Token> getBootstrapTokens(final TokenMetadata metadata) throws ConfigurationException
+    public static Collection<Token> getBootstrapTokens(final TokenMetadata metadata, DatabaseDescriptor databaseDescriptor, IPartitioner partitioner) throws ConfigurationException
     {
-        Collection<String> initialTokens = DatabaseDescriptor.instance.getInitialTokens();
+        Collection<String> initialTokens = databaseDescriptor.getInitialTokens();
         // if user specified tokens, use those
         if (initialTokens.size() > 0)
         {
@@ -105,7 +120,7 @@ public class BootStrapper
             List<Token> tokens = new ArrayList<Token>(initialTokens.size());
             for (String tokenString : initialTokens)
             {
-                Token token = LocatorConfig.instance.getPartitioner().getTokenFactory().fromString(tokenString);
+                Token token = partitioner.getTokenFactory().fromString(tokenString);
                 if (metadata.getEndpoint(token) != null)
                     throw new ConfigurationException("Bootstrapping to existing token " + tokenString + " is not allowed (decommission/removenode the old node first).");
                 tokens.add(token);
@@ -113,7 +128,7 @@ public class BootStrapper
             return tokens;
         }
 
-        int numTokens = DatabaseDescriptor.instance.getNumTokens();
+        int numTokens = databaseDescriptor.getNumTokens();
         if (numTokens < 1)
             throw new ConfigurationException("num_tokens must be >= 1");
 
