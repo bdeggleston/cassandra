@@ -23,6 +23,7 @@ import java.util.*;
 
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -100,7 +101,7 @@ public class StandaloneScrubber
             if (cfs.getCompactionStrategy() instanceof LeveledCompactionStrategy)
             {
                 int maxSizeInMB = (int)((cfs.getCompactionStrategy().getMaxSSTableBytes()) / (1024L * 1024L));
-                manifest = LeveledManifest.create(cfs, maxSizeInMB, sstables);
+                manifest = LeveledManifest.create(cfs, maxSizeInMB, sstables, DatabaseDescriptor.instance, LocatorConfig.instance);
             }
 
             if (!options.manifestCheckOnly)

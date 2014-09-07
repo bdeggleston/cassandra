@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
 
+import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -126,7 +127,7 @@ public class LongLeveledCompactionStrategyTest
             {
                for (SSTableReader sstable : sstables)
                {
-                   Set<SSTableReader> overlaps = LeveledManifest.overlapping(sstable, sstables);
+                   Set<SSTableReader> overlaps = LeveledManifest.overlapping(sstable, sstables, LocatorConfig.instance.getPartitioner());
                    assert overlaps.size() == 1 && overlaps.contains(sstable);
                }
             }

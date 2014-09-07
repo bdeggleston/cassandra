@@ -28,6 +28,7 @@ import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,12 +70,17 @@ public class LeveledManifest
     private boolean hasRepairedData = false;
     private final int [] compactionCounter;
 
-    private LeveledManifest(ColumnFamilyStore cfs, int maxSSTableSizeInMB, SizeTieredCompactionStrategyOptions options)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final LocatorConfig locatorConfig;
+
+    private LeveledManifest(ColumnFamilyStore cfs, int maxSSTableSizeInMB, SizeTieredCompactionStrategyOptions options, DatabaseDescriptor databaseDescriptor, LocatorConfig locatorConfig)
     {
         this.cfs = cfs;
         this.hasRepairedData = cfs.getRepairedSSTables().size() > 0;
         this.maxSSTableSizeInBytes = maxSSTableSizeInMB * 1024 * 1024;
         this.options = options;
+        this.databaseDescriptor = databaseDescriptor;
+        this.locatorConfig = locatorConfig;
 
         // allocate enough generations for a PB of data, with a 1-MB sstable size.  (Note that if maxSSTableSize is
         // updated, we will still have sstables of the older, potentially smaller size.  So don't make this
@@ -91,14 +97,14 @@ public class LeveledManifest
         compactionCounter = new int[n];
     }
 
-    public static LeveledManifest create(ColumnFamilyStore cfs, int maxSSTableSize, List<SSTableReader> sstables)
+    public static LeveledManifest create(ColumnFamilyStore cfs, int maxSSTableSize, List<SSTableReader> sstables, DatabaseDescriptor databaseDescriptor, LocatorConfig locatorConfig)
     {
-        return create(cfs, maxSSTableSize, sstables, new SizeTieredCompactionStrategyOptions());
+        return create(cfs, maxSSTableSize, sstables, new SizeTieredCompactionStrategyOptions(), databaseDescriptor, locatorConfig);
     }
 
-    public static LeveledManifest create(ColumnFamilyStore cfs, int maxSSTableSize, Iterable<SSTableReader> sstables, SizeTieredCompactionStrategyOptions options)
+    public static LeveledManifest create(ColumnFamilyStore cfs, int maxSSTableSize, Iterable<SSTableReader> sstables, SizeTieredCompactionStrategyOptions options, DatabaseDescriptor databaseDescriptor, LocatorConfig locatorConfig)
     {
-        LeveledManifest manifest = new LeveledManifest(cfs, maxSSTableSize, options);
+        LeveledManifest manifest = new LeveledManifest(cfs, maxSSTableSize, options, databaseDescriptor, locatorConfig);
 
         // ensure all SSTables are in the manifest
         for (SSTableReader ssTableReader : sstables)
@@ -372,7 +378,7 @@ public class LeveledManifest
             if (score > 1.001)
             {
                 // before proceeding with a higher level, let's see if L0 is far enough behind to warrant STCS
-                if (!DatabaseDescriptor.instance.getDisableSTCSInL0() && getLevel(0).size() > MAX_COMPACTING_L0)
+                if (!databaseDescriptor.getDisableSTCSInL0() && getLevel(0).size() > MAX_COMPACTING_L0)
                 {
                     List<SSTableReader> mostInteresting = getSSTablesForSTCS(getLevel(0));
                     if (!mostInteresting.isEmpty())
@@ -463,10 +469,10 @@ public class LeveledManifest
                             max = candidate.last;
                     }
                     Set<SSTableReader> compacting = cfs.getDataTracker().getCompacting();
-                    Range<RowPosition> boundaries = new Range<>(min, max, LocatorConfig.instance.getPartitioner());
+                    Range<RowPosition> boundaries = new Range<>(min, max, locatorConfig.getPartitioner());
                     for (SSTableReader sstable : getLevel(i))
                     {
-                        Range<RowPosition> r = new Range<RowPosition>(sstable.first, sstable.last, LocatorConfig.instance.getPartitioner());
+                        Range<RowPosition> r = new Range<RowPosition>(sstable.first, sstable.last, locatorConfig.getPartitioner());
                         if (boundaries.contains(r) && !compacting.contains(sstable))
                         {
                             logger.info("Adding high-level (L{}) {} to candidates", sstable.getSSTableLevel(), sstable);
@@ -522,7 +528,7 @@ public class LeveledManifest
         return level;
     }
 
-    private static Set<SSTableReader> overlapping(Collection<SSTableReader> candidates, Iterable<SSTableReader> others)
+    private static Set<SSTableReader> overlapping(Collection<SSTableReader> candidates, Iterable<SSTableReader> others, IPartitioner partitioner)
     {
         assert !candidates.isEmpty();
         /*
@@ -546,26 +552,26 @@ public class LeveledManifest
             first = first.compareTo(sstable.first.getToken()) <= 0 ? first : sstable.first.getToken();
             last = last.compareTo(sstable.last.getToken()) >= 0 ? last : sstable.last.getToken();
         }
-        return overlapping(first, last, others);
+        return overlapping(first, last, others, partitioner);
     }
 
     @VisibleForTesting
-    static Set<SSTableReader> overlapping(SSTableReader sstable, Iterable<SSTableReader> others)
+    static Set<SSTableReader> overlapping(SSTableReader sstable, Iterable<SSTableReader> others, IPartitioner partitioner)
     {
-        return overlapping(sstable.first.getToken(), sstable.last.getToken(), others);
+        return overlapping(sstable.first.getToken(), sstable.last.getToken(), others, partitioner);
     }
 
     /**
      * @return sstables from @param sstables that contain keys between @param start and @param end, inclusive.
      */
-    private static Set<SSTableReader> overlapping(Token start, Token end, Iterable<SSTableReader> sstables)
+    private static Set<SSTableReader> overlapping(Token start, Token end, Iterable<SSTableReader> sstables, IPartitioner partitioner)
     {
         assert start.compareTo(end) <= 0;
         Set<SSTableReader> overlapped = new HashSet<SSTableReader>();
-        Bounds<Token> promotedBounds = new Bounds<Token>(start, end, LocatorConfig.instance.getPartitioner());
+        Bounds<Token> promotedBounds = new Bounds<Token>(start, end, partitioner);
         for (SSTableReader candidate : sstables)
         {
-            Bounds<Token> candidateBounds = new Bounds<Token>(candidate.first.getToken(), candidate.last.getToken(), LocatorConfig.instance.getPartitioner());
+            Bounds<Token> candidateBounds = new Bounds<Token>(candidate.first.getToken(), candidate.last.getToken(), partitioner);
             if (candidateBounds.intersects(promotedBounds))
                 overlapped.add(candidate);
         }
@@ -617,7 +623,7 @@ public class LeveledManifest
                 if (candidates.contains(sstable))
                     continue;
 
-                Sets.SetView<SSTableReader> overlappedL0 = Sets.union(Collections.singleton(sstable), overlapping(sstable, remaining));
+                Sets.SetView<SSTableReader> overlappedL0 = Sets.union(Collections.singleton(sstable), overlapping(sstable, remaining, locatorConfig.getPartitioner()));
                 if (!Sets.intersection(overlappedL0, compactingL0).isEmpty())
                     continue;
 
@@ -625,7 +631,7 @@ public class LeveledManifest
                 {
                     // overlappedL0 could contain sstables that are not in compactingL0, but do overlap
                     // other sstables that are
-                    if (overlapping(newCandidate, compactingL0).isEmpty())
+                    if (overlapping(newCandidate, compactingL0, locatorConfig.getPartitioner()).isEmpty())
                         candidates.add(newCandidate);
                     remaining.remove(newCandidate);
                 }
@@ -644,7 +650,7 @@ public class LeveledManifest
                 // add sstables from L1 that overlap candidates
                 // if the overlapping ones are already busy in a compaction, leave it out.
                 // TODO try to find a set of L0 sstables that only overlaps with non-busy L1 sstables
-                Set<SSTableReader> l1overlapping = overlapping(candidates, getLevel(1));
+                Set<SSTableReader> l1overlapping = overlapping(candidates, getLevel(1), locatorConfig.getPartitioner());
                 if (Sets.intersection(l1overlapping, compacting).size() > 0)
                     return Collections.emptyList();
                 candidates = Sets.union(candidates, l1overlapping);
@@ -673,7 +679,7 @@ public class LeveledManifest
         for (int i = 0; i < getLevel(level).size(); i++)
         {
             SSTableReader sstable = getLevel(level).get((start + i) % getLevel(level).size());
-            Set<SSTableReader> candidates = Sets.union(Collections.singleton(sstable), overlapping(sstable, getLevel(level + 1)));
+            Set<SSTableReader> candidates = Sets.union(Collections.singleton(sstable), overlapping(sstable, getLevel(level + 1), locatorConfig.getPartitioner()));
             if (Iterables.any(candidates, suspectP))
                 continue;
             if (Sets.intersection(candidates, compacting).isEmpty())
