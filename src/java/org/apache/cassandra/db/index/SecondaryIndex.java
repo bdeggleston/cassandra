@@ -199,7 +199,8 @@ public abstract class SecondaryIndex
         {
             SecondaryIndexBuilder builder = new SecondaryIndexBuilder(baseCfs,
                                                                       Collections.singleton(getIndexName()),
-                                                                      new ReducingKeyIterator(sstables));
+                                                                      new ReducingKeyIterator(sstables),
+                                                                      StorageService.instance);
             Future<?> future = CompactionManager.instance.submitIndexBuild(builder);
             FBUtilities.waitOnFuture(future);
             forceBlockingFlush();

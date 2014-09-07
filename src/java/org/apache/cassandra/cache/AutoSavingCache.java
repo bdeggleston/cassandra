@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.service.StorageService;
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,10 +60,13 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
     private final CompactionManager compactionManager;
     private final CFMetaDataFactory cfMetaDataFactory;
     private final DebuggableScheduledThreadPoolExecutor optionalTaskExecutor;
+    private final StorageService storageService;
 
     private static final String CURRENT_VERSION = "b";
 
-    public AutoSavingCache(ICache<K, V> cache, CacheService.CacheType cacheType, CacheSerializer<K, V> cacheloader, DatabaseDescriptor databaseDescriptor, CompactionManager compactionManager, CFMetaDataFactory cfMetaDataFactory, DebuggableScheduledThreadPoolExecutor optionalTaskExecutor)
+    public AutoSavingCache(ICache<K, V> cache, CacheService.CacheType cacheType, CacheSerializer<K, V> cacheloader,
+                           DatabaseDescriptor databaseDescriptor, CompactionManager compactionManager,
+                           CFMetaDataFactory cfMetaDataFactory, DebuggableScheduledThreadPoolExecutor optionalTaskExecutor, StorageService storageService)
     {
         super(cacheType.toString(), cache);
         this.cacheType = cacheType;
@@ -71,6 +75,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
         this.compactionManager = compactionManager;
         this.cfMetaDataFactory = cfMetaDataFactory;
         this.optionalTaskExecutor = optionalTaskExecutor;
+        this.storageService = storageService;
     }
 
     public File getCachePath(String ksName, String cfName, UUID cfId, String version)
@@ -80,7 +85,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
 
     public Writer getWriter(int keysToSave)
     {
-        return new Writer(keysToSave, cfMetaDataFactory);
+        return new Writer(keysToSave, cfMetaDataFactory, storageService);
     }
 
     public void scheduleSaving(int savePeriodInSeconds, final int keysToSave)
@@ -164,8 +169,9 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
         private final CompactionInfo info;
         private long keysWritten;
 
-        protected Writer(int keysToSave, CFMetaDataFactory cfMetaDataFactory)
+        protected Writer(int keysToSave, CFMetaDataFactory cfMetaDataFactory, StorageService storageService)
         {
+            super(storageService);
             if (keysToSave >= getKeySet().size())
                 keys = getKeySet();
             else

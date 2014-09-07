@@ -576,7 +576,7 @@ public class CompactionManager implements CompactionManagerMBean
 
     private void scrubOne(ColumnFamilyStore cfs, SSTableReader sstable, boolean skipCorrupted) throws IOException
     {
-        Scrubber scrubber = new Scrubber(cfs, sstable, this, skipCorrupted, false, DatabaseDescriptor.instance, DBConfig.instance);
+        Scrubber scrubber = new Scrubber(cfs, sstable, this, skipCorrupted, false, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
 
         CompactionInfo.Holder scrubInfo = scrubber.getScrubInfo();
         metrics.beginCompaction(scrubInfo);
@@ -681,7 +681,7 @@ public class CompactionManager implements CompactionManagerMBean
             throw new IOException("disk full");
 
         ICompactionScanner scanner = cleanupStrategy.getScanner(sstable, getRateLimiter());
-        CleanupInfo ci = new CleanupInfo(sstable, scanner);
+        CleanupInfo ci = new CleanupInfo(sstable, scanner, StorageService.instance);
 
         metrics.beginCompaction(ci);
         SSTableRewriter writer = new SSTableRewriter(cfs, new HashSet<>(ImmutableSet.of(sstable)), sstable.maxDataAge, OperationType.CLEANUP, false);
@@ -1065,7 +1065,7 @@ public class CompactionManager implements CompactionManagerMBean
             repairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination, expectedBloomFilterSize, repairedAt, sstableAsSet));
             unRepairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination, expectedBloomFilterSize, ActiveRepairService.UNREPAIRED_SSTABLE, sstableAsSet));
 
-            CompactionIterable ci = new CompactionIterable(OperationType.ANTICOMPACTION, scanners, controller, DatabaseDescriptor.instance, DBConfig.instance);
+            CompactionIterable ci = new CompactionIterable(OperationType.ANTICOMPACTION, scanners, controller, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
 
             try (CloseableIterator<AbstractCompactedRow> iter = ci.iterator())
             {
@@ -1178,7 +1178,8 @@ public class CompactionManager implements CompactionManagerMBean
                   cfs.getCompactionStrategy().getScanners(sstables, range),
                   new ValidationCompactionController(cfs, gcBefore),
                   DatabaseDescriptor.instance,
-                  DBConfig.instance);
+                  DBConfig.instance,
+                  StorageService.instance);
         }
     }
 
@@ -1344,8 +1345,9 @@ public class CompactionManager implements CompactionManagerMBean
         private final SSTableReader sstable;
         private final ICompactionScanner scanner;
 
-        public CleanupInfo(SSTableReader sstable, ICompactionScanner scanner)
+        public CleanupInfo(SSTableReader sstable, ICompactionScanner scanner, StorageService storageService)
         {
+            super(storageService);
             this.sstable = sstable;
             this.scanner = scanner;
         }

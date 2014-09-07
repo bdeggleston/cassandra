@@ -39,6 +39,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -158,7 +159,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
             if (cfs.getDataTracker().markCompacting(candidate.sstables))
             {
                 LeveledCompactionTask newTask = new LeveledCompactionTask(cfs, candidate.sstables, candidate.level, gcBefore, candidate.maxSSTableBytes,
-                                                                          DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance);
+                                                                          DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance, StorageService.instance);
                 newTask.setCompactionType(op);
                 return Arrays.<AbstractCompactionTask>asList(newTask);
             }
@@ -184,7 +185,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
                 level = 0;
         }
         return new LeveledCompactionTask(cfs, sstables, level, gcBefore, maxSSTableBytes,
-                                         DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance);
+                                         DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance, StorageService.instance);
     }
 
     /**

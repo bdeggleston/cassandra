@@ -29,6 +29,7 @@ import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.io.util.RandomAccessReader;
 import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.OutputHandler;
 
@@ -70,12 +71,14 @@ public class Scrubber implements Closeable
     private final DBConfig dbConfig;
 
 
-    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, CompactionManager compactionManager, boolean skipCorrupted, boolean isOffline, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig) throws IOException
+    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, CompactionManager compactionManager, boolean skipCorrupted, boolean isOffline,
+                    DatabaseDescriptor databaseDescriptor, DBConfig dbConfig, StorageService storageService) throws IOException
     {
-        this(cfs, sstable, compactionManager, skipCorrupted, new OutputHandler.LogOutput(), isOffline, databaseDescriptor, dbConfig);
+        this(cfs, sstable, compactionManager, skipCorrupted, new OutputHandler.LogOutput(), isOffline, databaseDescriptor, dbConfig, storageService);
     }
 
-    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, CompactionManager compactionManager, boolean skipCorrupted, OutputHandler outputHandler, boolean isOffline, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig) throws IOException
+    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, CompactionManager compactionManager, boolean skipCorrupted, OutputHandler outputHandler, boolean isOffline,
+                    DatabaseDescriptor databaseDescriptor, DBConfig dbConfig, StorageService storageService) throws IOException
     {
         this.cfs = cfs;
         this.sstable = sstable;
@@ -106,7 +109,7 @@ public class Scrubber implements Closeable
                         ? sstable.openDataReader()
                         : sstable.openDataReader(compactionManager.getRateLimiter());
         this.indexFile = RandomAccessReader.open(new File(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX)));
-        this.scrubInfo = new ScrubInfo(dataFile, sstable);
+        this.scrubInfo = new ScrubInfo(dataFile, sstable, storageService);
     }
 
     public void scrub()
@@ -349,8 +352,9 @@ public class Scrubber implements Closeable
         private final RandomAccessReader dataFile;
         private final SSTableReader sstable;
 
-        public ScrubInfo(RandomAccessReader dataFile, SSTableReader sstable)
+        public ScrubInfo(RandomAccessReader dataFile, SSTableReader sstable, StorageService storageService)
         {
+            super(storageService);
             this.dataFile = dataFile;
             this.sstable = sstable;
         }

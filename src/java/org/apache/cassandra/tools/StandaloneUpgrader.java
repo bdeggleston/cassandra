@@ -20,6 +20,7 @@ package org.apache.cassandra.tools;
 import java.util.*;
 
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.service.StorageService;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -92,7 +93,7 @@ public class StandaloneUpgrader
             {
                 try
                 {
-                    Upgrader upgrader = new Upgrader(cfs, sstable, handler, DatabaseDescriptor.instance, DBConfig.instance);
+                    Upgrader upgrader = new Upgrader(cfs, sstable, handler, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
                     upgrader.upgrade();
                 }
                 catch (Exception e)

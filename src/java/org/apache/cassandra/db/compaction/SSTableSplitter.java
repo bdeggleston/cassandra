@@ -22,6 +22,7 @@ import java.util.*;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.io.sstable.*;
+import org.apache.cassandra.service.StorageService;
 
 public class SSTableSplitter {
 
@@ -59,7 +60,7 @@ public class SSTableSplitter {
 
         public SplittingCompactionTask(ColumnFamilyStore cfs, SSTableReader sstable, int sstableSizeInMB, DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace, DBConfig dbConfig)
         {
-            super(cfs, Collections.singletonList(sstable), CompactionManager.NO_GC, true, databaseDescriptor, systemKeyspace, dbConfig);
+            super(cfs, Collections.singletonList(sstable), CompactionManager.NO_GC, true, databaseDescriptor, systemKeyspace, dbConfig, StorageService.instance);
             this.sstableSizeInMB = sstableSizeInMB;
 
             if (sstableSizeInMB <= 0)

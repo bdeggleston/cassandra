@@ -38,6 +38,7 @@ import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.locator.SimpleStrategy;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.UUIDGen;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.BeforeClass;
@@ -135,7 +136,7 @@ public class ScrubTest
         file.close();
 
         // with skipCorrupted == false, the scrub is expected to fail
-        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, false, false, DatabaseDescriptor.instance, DBConfig.instance);
+        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, false, false, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
         try
         {
             scrubber.scrub();
@@ -144,7 +145,7 @@ public class ScrubTest
         catch (IOError err) {}
 
         // with skipCorrupted == true, the corrupt row will be skipped
-        scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, true, false, DatabaseDescriptor.instance, DBConfig.instance);
+        scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, true, false, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
         scrubber.scrub();
         scrubber.close();
         assertEquals(1, cfs.getSSTables().size());
@@ -249,7 +250,7 @@ public class ScrubTest
         components.add(Component.TOC);
         SSTableReader sstable = SSTableReader.openNoValidation(desc, components, metadata);
 
-        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, false, true, DatabaseDescriptor.instance, DBConfig.instance);
+        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, false, true, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
         scrubber.scrub();
 
         cfs.loadNewSSTables();

@@ -27,6 +27,7 @@ import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.compaction.CompactionInterruptedException;
 import org.apache.cassandra.io.sstable.ReducingKeyIterator;
 import org.apache.cassandra.service.StorageProxy;
+import org.apache.cassandra.service.StorageService;
 
 /**
  * Manages building an entire index from column family data. Runs on to compaction manager.
@@ -37,8 +38,9 @@ public class SecondaryIndexBuilder extends CompactionInfo.Holder
     private final Set<String> idxNames;
     private final ReducingKeyIterator iter;
 
-    public SecondaryIndexBuilder(ColumnFamilyStore cfs, Set<String> idxNames, ReducingKeyIterator iter)
+    public SecondaryIndexBuilder(ColumnFamilyStore cfs, Set<String> idxNames, ReducingKeyIterator iter, StorageService storageService)
     {
+        super(storageService);
         this.cfs = cfs;
         this.idxNames = idxNames;
         this.iter = iter;

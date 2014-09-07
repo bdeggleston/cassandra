@@ -24,6 +24,7 @@ import java.util.*;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.StorageService;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -107,7 +108,7 @@ public class StandaloneScrubber
                 {
                     try
                     {
-                        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, options.skipCorrupted, handler, true, DatabaseDescriptor.instance, DBConfig.instance);
+                        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, options.skipCorrupted, handler, true, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
                         try
                         {
                             scrubber.scrub();

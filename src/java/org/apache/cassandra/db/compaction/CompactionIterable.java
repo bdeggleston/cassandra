@@ -26,6 +26,7 @@ import com.google.common.collect.ImmutableList;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.columniterator.OnDiskAtomIterator;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.MergeIterator;
 
@@ -42,9 +43,9 @@ public class CompactionIterable extends AbstractCompactionIterable
     private final DatabaseDescriptor databaseDescriptor;
     private final DBConfig dbConfig;
 
-    public CompactionIterable(OperationType type, List<ICompactionScanner> scanners, CompactionController controller, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig)
+    public CompactionIterable(OperationType type, List<ICompactionScanner> scanners, CompactionController controller, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig, StorageService storageService)
     {
-        super(controller, type, scanners);
+        super(controller, type, scanners, storageService);
         this.databaseDescriptor = databaseDescriptor;
         this.dbConfig = dbConfig;
     }

@@ -20,6 +20,7 @@ package org.apache.cassandra.db.compaction;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.CloseableIterator;
 
 public abstract class AbstractCompactionIterable extends CompactionInfo.Holder implements Iterable<AbstractCompactedRow>
@@ -36,8 +37,9 @@ public abstract class AbstractCompactionIterable extends CompactionInfo.Holder i
      */
     protected final AtomicLong[] mergeCounters;
 
-    public AbstractCompactionIterable(CompactionController controller, OperationType type, List<ICompactionScanner> scanners)
+    public AbstractCompactionIterable(CompactionController controller, OperationType type, List<ICompactionScanner> scanners, StorageService storageService)
     {
+        super(storageService);
         this.controller = controller;
         this.type = type;
         this.scanners = scanners;

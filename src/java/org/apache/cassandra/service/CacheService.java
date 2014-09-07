@@ -124,7 +124,8 @@ public class CacheService implements CacheServiceMBean
                                                                                      DatabaseDescriptor.instance,
                                                                                      CompactionManager.instance,
                                                                                      CFMetaDataFactory.instance,
-                                                                                     StorageServiceExecutors.instance.optionalTasks);
+                                                                                     StorageServiceExecutors.instance.optionalTasks,
+                                                                                     StorageService.instance);
 
         int keyCacheKeysToSave = DatabaseDescriptor.instance.getKeyCacheKeysToSave();
 
@@ -150,7 +151,8 @@ public class CacheService implements CacheServiceMBean
                                                                                       DatabaseDescriptor.instance,
                                                                                       CompactionManager.instance,
                                                                                       CFMetaDataFactory.instance,
-                                                                                      StorageServiceExecutors.instance.optionalTasks);
+                                                                                      StorageServiceExecutors.instance.optionalTasks,
+                                                                                      StorageService.instance);
 
         int rowCacheKeysToSave = DatabaseDescriptor.instance.getRowCacheKeysToSave();
 
@@ -172,7 +174,8 @@ public class CacheService implements CacheServiceMBean
                                   DatabaseDescriptor.instance,
                                   CompactionManager.instance,
                                   CFMetaDataFactory.instance,
-                                  StorageServiceExecutors.instance.optionalTasks);
+                                  StorageServiceExecutors.instance.optionalTasks,
+                                  StorageService.instance);
 
         int keysToSave = DatabaseDescriptor.instance.getCounterCacheKeysToSave();
 

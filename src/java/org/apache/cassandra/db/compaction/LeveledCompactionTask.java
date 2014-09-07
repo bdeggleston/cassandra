@@ -25,6 +25,7 @@ import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.SSTableWriter;
+import org.apache.cassandra.service.StorageService;
 
 public class LeveledCompactionTask extends CompactionTask
 {
@@ -32,9 +33,9 @@ public class LeveledCompactionTask extends CompactionTask
     private final long maxSSTableBytes;
 
     public LeveledCompactionTask(ColumnFamilyStore cfs, Collection<SSTableReader> sstables, int level, final int gcBefore, long maxSSTableBytes,
-                                 DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace, DBConfig dbConfig)
+                                 DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace, DBConfig dbConfig, StorageService storageService)
     {
-        super(cfs, sstables, gcBefore, false, databaseDescriptor, systemKeyspace, dbConfig);
+        super(cfs, sstables, gcBefore, false, databaseDescriptor, systemKeyspace, dbConfig, storageService);
         this.level = level;
         this.maxSSTableBytes = maxSSTableBytes;
     }
