@@ -18,6 +18,7 @@
 package org.apache.cassandra.utils;
 
 import java.io.*;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.net.InetAddress;
@@ -41,8 +42,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.auth.IAuthenticator;
-import org.apache.cassandra.auth.IAuthorizer;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Range;
@@ -406,20 +405,6 @@ public class FBUtilities
         return FBUtilities.construct(offheap_allocator, "off-heap allocator");
     }
 
-    public static IAuthorizer newAuthorizer(String className) throws ConfigurationException
-    {
-        if (!className.contains("."))
-            className = "org.apache.cassandra.auth." + className;
-        return FBUtilities.construct(className, "authorizer");
-    }
-
-    public static IAuthenticator newAuthenticator(String className) throws ConfigurationException
-    {
-        if (!className.contains("."))
-            className = "org.apache.cassandra.auth." + className;
-        return FBUtilities.construct(className, "authenticator");
-    }
-
     /**
      * @return The Class for the given name.
      * @param classname Fully qualified classname.
@@ -439,6 +424,18 @@ public class FBUtilities
         catch (NoClassDefFoundError e)
         {
             throw new ConfigurationException(String.format("Unable to find %s class '%s'", readable, classname), e);
+        }
+    }
+
+    public static <T> Constructor<T> getConstructor(Class<T> cls, Class<?>... args)
+    {
+        try
+        {
+            return cls.getConstructor(args);
+        }
+        catch (NoSuchMethodException e)
+        {
+            return null;
         }
     }
 

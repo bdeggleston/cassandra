@@ -34,6 +34,7 @@ import javax.management.ObjectName;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.slf4j.Logger;
@@ -952,7 +953,7 @@ public final class MessagingService implements MessagingServiceMBean
 
         private boolean authenticate(Socket socket)
         {
-            return DatabaseDescriptor.instance.getInternodeAuthenticator().authenticate(socket.getInetAddress(), socket.getPort());
+            return Auth.instance.getInternodeAuthenticator().authenticate(socket.getInetAddress(), socket.getPort());
         }
     }
 

@@ -20,6 +20,7 @@ package org.apache.cassandra.cql3;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.auth.IAuthenticator;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.exceptions.InvalidRequestException;
@@ -48,9 +49,9 @@ public class UserOptions
     {
         for (IAuthenticator.Option option : options.keySet())
         {
-            if (!DatabaseDescriptor.instance.getAuthenticator().supportedOptions().contains(option))
+            if (!Auth.instance.getAuthenticator().supportedOptions().contains(option))
                 throw new InvalidRequestException(String.format("%s doesn't support %s option",
-                                                                DatabaseDescriptor.instance.getAuthenticator().getClass().getName(),
+                                                                Auth.instance.getAuthenticator().getClass().getName(),
                                                                 option));
         }
     }

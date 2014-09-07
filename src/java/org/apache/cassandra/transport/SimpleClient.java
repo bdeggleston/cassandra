@@ -29,6 +29,7 @@ import java.util.concurrent.SynchronousQueue;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.tracing.Tracing;
@@ -115,7 +116,7 @@ public class SimpleClient
             options.put(StartupMessage.COMPRESSION, "snappy");
             connection.setCompressor(FrameCompressor.SnappyCompressor.instance);
         }
-        execute(new StartupMessage(options, DatabaseDescriptor.instance.getAuthenticator()));
+        execute(new StartupMessage(options, Auth.instance.getAuthenticator()));
     }
 
     protected void establishConnection() throws IOException
@@ -148,7 +149,7 @@ public class SimpleClient
 
     public void login(Map<String, String> credentials)
     {
-        CredentialsMessage msg = new CredentialsMessage(DatabaseDescriptor.instance.getAuthenticator());
+        CredentialsMessage msg = new CredentialsMessage(Auth.instance.getAuthenticator());
         msg.credentials.putAll(credentials);
         execute(msg);
     }

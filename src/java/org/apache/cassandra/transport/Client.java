@@ -31,6 +31,7 @@ import java.util.Map;
 
 import com.google.common.base.Splitter;
 
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.auth.IAuthenticator;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
@@ -113,7 +114,7 @@ public class Client extends SimpleClient
                    connection.setCompressor(FrameCompressor.SnappyCompressor.instance);
                }
             }
-            return new StartupMessage(options, DatabaseDescriptor.instance.getAuthenticator());
+            return new StartupMessage(options, Auth.instance.getAuthenticator());
         }
         else if (msgType.equals("QUERY"))
         {
@@ -176,7 +177,7 @@ public class Client extends SimpleClient
         else if (msgType.equals("CREDENTIALS"))
         {
             System.err.println("[WARN] CREDENTIALS command is deprecated, use AUTHENTICATE instead");
-            CredentialsMessage msg = new CredentialsMessage(DatabaseDescriptor.instance.getAuthenticator());
+            CredentialsMessage msg = new CredentialsMessage(Auth.instance.getAuthenticator());
             msg.credentials.putAll(readCredentials(iter));
             return msg;
         }
@@ -253,7 +254,7 @@ public class Client extends SimpleClient
 
         Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
                                                                            Tracing.instance,
-                                                                           DatabaseDescriptor.instance.getAuthenticator(),
+                                                                           Auth.instance.getAuthenticator(),
                                                                            QueryHandlerInstance.instance,
                                                                            QueryProcessor.instance,
                                                                            KeyspaceManager.instance,

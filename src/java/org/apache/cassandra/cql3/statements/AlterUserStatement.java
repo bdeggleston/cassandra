@@ -78,7 +78,7 @@ public class AlterUserStatement extends AuthenticationStatement
         {
             for (IAuthenticator.Option option : opts.getOptions().keySet())
             {
-                if (!DatabaseDescriptor.instance.getAuthenticator().alterableOptions().contains(option))
+                if (!Auth.instance.getAuthenticator().alterableOptions().contains(option))
                     throw new UnauthorizedException(String.format("You aren't allowed to alter %s option", option));
             }
         }
@@ -87,7 +87,7 @@ public class AlterUserStatement extends AuthenticationStatement
     public ResultMessage execute(ClientState state) throws RequestValidationException, RequestExecutionException
     {
         if (!opts.isEmpty())
-            DatabaseDescriptor.instance.getAuthenticator().alter(username, opts.getOptions());
+            Auth.instance.getAuthenticator().alter(username, opts.getOptions());
         if (superuser != null)
             auth.insertUser(username, superuser.booleanValue());
         return null;

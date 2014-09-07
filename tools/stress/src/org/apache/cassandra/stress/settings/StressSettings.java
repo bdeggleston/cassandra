@@ -25,6 +25,7 @@ import java.io.Serializable;
 import java.util.*;
 
 import com.datastax.driver.core.Metadata;
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.EncryptionOptions;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
@@ -154,7 +155,7 @@ public class StressSettings implements Serializable
             String currentNode = node.randomNode();
             SimpleClient client = new SimpleClient(currentNode, port.nativePort, Message.Type.getCodecMap(DatabaseDescriptor.instance,
                                                                                                           Tracing.instance,
-                                                                                                          DatabaseDescriptor.instance.getAuthenticator(),
+                                                                                                          Auth.instance.getAuthenticator(),
                                                                                                           QueryHandlerInstance.instance,
                                                                                                           QueryProcessor.instance,
                                                                                                           KeyspaceManager.instance,

@@ -17,6 +17,8 @@
  */
 package org.apache.cassandra.auth;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -29,7 +31,9 @@ import com.google.common.collect.Lists;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -53,7 +57,30 @@ public class Auth
 {
     private static final Logger logger = LoggerFactory.getLogger(Auth.class);
 
-    public static final Auth instance = new Auth();
+    public static final Auth instance;
+    static
+    {
+        Auth auth = null;
+
+        try
+        {
+            auth = new Auth();
+        }
+        catch (ConfigurationException e)
+        {
+            logger.error("Fatal configuration error", e);
+            System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
+            System.exit(1);
+        }
+        catch (Exception e)
+        {
+            logger.error("Fatal error during configuration loading", e);
+            System.err.println(e.getMessage() + "\nFatal error during configuration loading; unable to start. See log for stacktrace.");
+            System.exit(1);
+        }
+
+        instance = auth;
+    }
 
     public static final String DEFAULT_SUPERUSER_NAME = "cassandra";
 
@@ -72,6 +99,10 @@ public class Auth
                                                                 90 * 24 * 60 * 60); // 3 months.
 
     private SelectStatement selectUserStatement;
+    private final Config conf;
+    private final IAuthorizer authorizer;
+    private final IAuthenticator authenticator;
+    private final IInternodeAuthenticator internodeAuthenticator;
 
     private final Set<IResource> readableSystemResources = new HashSet<>();
     private final Set<IResource> protectedAuthResources = new HashSet<>();
@@ -79,8 +110,19 @@ public class Auth
     // User-level permissions cache.
     private final LoadingCache<Pair<AuthenticatedUser, IResource>, Set<Permission>> permissionsCache;
 
-    public Auth()
+    public Auth() throws ConfigurationException
     {
+        conf = DatabaseDescriptor.instance.getConfig();
+        authorizer = createAuthorizer();
+        authenticator = createAuthenticator();
+        internodeAuthenticator = createInternodeAuthenticator();
+
+        if (authenticator instanceof AllowAllAuthenticator && !(authorizer instanceof AllowAllAuthorizer))
+            throw new ConfigurationException("AllowAllAuthenticator can't be used with " +  conf.authorizer);
+
+        authenticator.validateConfiguration();
+        authorizer.validateConfiguration();
+        internodeAuthenticator.validateConfiguration();
 
         // We want these system cfs to be always readable since many tools rely on them (nodetool, cqlsh, bulkloader, etc.)
         String[] cfs =  new String[] { SystemKeyspace.LOCAL_CF,
@@ -92,9 +134,88 @@ public class Auth
         for (String cf : cfs)
             readableSystemResources.add(DataResource.columnFamily(Keyspace.SYSTEM_KS, cf));
 
-        protectedAuthResources.addAll(DatabaseDescriptor.instance.getAuthenticator().protectedResources());
-        protectedAuthResources.addAll(DatabaseDescriptor.instance.getAuthorizer().protectedResources());
+        protectedAuthResources.addAll(authenticator.protectedResources());
+        protectedAuthResources.addAll(authorizer.protectedResources());
+
         permissionsCache = initPermissionsCache();
+    }
+
+    private IAuthorizer createAuthorizer() throws ConfigurationException
+    {
+        if (conf.authorizer == null)
+            return new AllowAllAuthorizer();
+
+        String className = conf.authorizer;
+        if (!className.contains("."))
+            className = "org.apache.cassandra.auth." + className;
+        Class<IAuthorizer> cls = FBUtilities.classForName(className, "authorizer");
+        Constructor<IAuthorizer> constructor = FBUtilities.getConstructor(cls, Auth.class);
+        try
+        {
+            return constructor != null ? constructor.newInstance(this) : cls.newInstance();
+        }
+        catch (InvocationTargetException | InstantiationException | IllegalAccessException e)
+        {
+            String msg = String.format(
+                    "Error instantiating IAuthorizer: %s" +
+                            "IAuthorizer implementations must support empty constructors, \n" +
+                            "or constructors taking a single org.apache.cassandra.auth.Auth argument",
+                    className);
+            throw new ConfigurationException(msg, e);
+        }
+    }
+
+    private IAuthenticator createAuthenticator() throws ConfigurationException
+    {
+        if (conf.authenticator == null)
+            return new AllowAllAuthenticator();
+
+        String className = conf.authenticator;
+        if (!className.contains("."))
+            className = "org.apache.cassandra.auth." + className;
+        Class<IAuthenticator> cls = FBUtilities.classForName(className, "authorizer");
+
+        // look for a constructor that takes an auth instance
+
+        Constructor<IAuthenticator> constructor = FBUtilities.getConstructor(cls, Auth.class);
+        try
+        {
+            return constructor != null ? constructor.newInstance(this) : cls.newInstance();
+        }
+        catch (InvocationTargetException | InstantiationException | IllegalAccessException e)
+        {
+            String msg = String.format(
+                    "Error instantiating IAuthenticator: %s.\n" +
+                            "IAuthorizer implementations must support empty constructors, \n" +
+                            "or constructors taking a single org.apache.cassandra.auth.Auth argument",
+                    className);
+            throw new ConfigurationException(msg, e);
+        }
+    }
+
+    private IInternodeAuthenticator createInternodeAuthenticator() throws ConfigurationException
+    {
+        if (conf.internode_authenticator == null)
+            return new AllowAllInternodeAuthenticator();
+
+        String className = conf.internode_authenticator;
+        if (!className.contains("."))
+            className = "org.apache.cassandra.auth." + className;
+        Class<IInternodeAuthenticator> cls = FBUtilities.classForName(className, "authorizer");
+        Constructor<IInternodeAuthenticator> constructor = FBUtilities.getConstructor(cls, Auth.class);
+        try
+        {
+            return constructor != null ? constructor.newInstance(this) : cls.newInstance();
+        }
+        catch (InvocationTargetException | InstantiationException | IllegalAccessException e)
+        {
+            String msg = String.format(
+                    "Error instantiating IInternodeAuthenticator: %s" +
+                            "IAuthorizer implementations must support empty constructors, \n" +
+                            "or constructors taking a single org.apache.cassandra.auth.Auth argument",
+                    className);
+            throw new ConfigurationException(msg, e);
+        }
     }
 
     public static long getSuperuserSetupDelay()
@@ -162,14 +283,14 @@ public class Auth
      */
     public void setup()
     {
-        if (DatabaseDescriptor.instance.getAuthenticator() instanceof AllowAllAuthenticator)
+        if (authenticator instanceof AllowAllAuthenticator)
             return;
 
         setupAuthKeyspace();
         setupTable(USERS_CF, USERS_CF_SCHEMA);
 
-        DatabaseDescriptor.instance.getAuthenticator().setup();
-        DatabaseDescriptor.instance.getAuthorizer().setup();
+        authenticator.setup();
+        authorizer.setup();
 
         // register a custom MigrationListener for permissions cleanup after dropped keyspaces/cfs.
         MigrationManager.instance.register(new MigrationListener());
@@ -306,17 +427,22 @@ public class Auth
 
     public IAuthenticator getAuthenticator()
     {
-        return DatabaseDescriptor.instance.getAuthenticator();
+        return authenticator;
     }
 
     public IAuthorizer getAuthorizer()
     {
-        return DatabaseDescriptor.instance.getAuthorizer();
+        return authorizer;
+    }
+
+    public IInternodeAuthenticator getInternodeAuthenticator()
+    {
+        return internodeAuthenticator;
     }
 
     private LoadingCache<Pair<AuthenticatedUser, IResource>, Set<Permission>> initPermissionsCache()
     {
-        if (DatabaseDescriptor.instance.getAuthorizer() instanceof AllowAllAuthorizer)
+        if (authorizer instanceof AllowAllAuthorizer)
             return null;
 
         int validityPeriod = DatabaseDescriptor.instance.getPermissionsValidity();
@@ -328,7 +454,7 @@ public class Auth
                 {
                     public Set<Permission> load(Pair<AuthenticatedUser, IResource> userResource)
                     {
-                        return DatabaseDescriptor.instance.getAuthorizer().authorize(userResource.left,
+                        return authorizer.authorize(userResource.left,
                                                                                      userResource.right);
                     }
                 });
@@ -356,12 +482,12 @@ public class Auth
     {
         public void onDropKeyspace(String ksName)
         {
-            DatabaseDescriptor.instance.getAuthorizer().revokeAll(DataResource.keyspace(ksName));
+            authorizer.revokeAll(DataResource.keyspace(ksName));
         }
 
         public void onDropColumnFamily(String ksName, String cfName)
         {
-            DatabaseDescriptor.instance.getAuthorizer().revokeAll(DataResource.columnFamily(ksName, cfName));
+            authorizer.revokeAll(DataResource.columnFamily(ksName, cfName));
         }
 
         public void onDropUserType(String ksName, String userType)

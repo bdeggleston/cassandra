@@ -80,7 +80,7 @@ public class Server implements CassandraDaemon.Server
         public Connection newConnection(Channel channel, int version)
         {
             return new ServerConnection(channel, version, connectionTracker,
-                                        Tracing.instance, DatabaseDescriptor.instance.getAuthenticator(), Auth.instance);
+                                        Tracing.instance, Auth.instance.getAuthenticator(), Auth.instance);
         }
     };
 
@@ -91,7 +91,7 @@ public class Server implements CassandraDaemon.Server
     private EventExecutor eventExecutorGroup;
     private final Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
                                                                                      Tracing.instance,
-                                                                                     DatabaseDescriptor.instance.getAuthenticator(),
+                                                                                     Auth.instance.getAuthenticator(),
                                                                                      QueryHandlerInstance.instance,
                                                                                      QueryProcessor.instance,
                                                                                      KeyspaceManager.instance,
@@ -148,7 +148,7 @@ public class Server implements CassandraDaemon.Server
     {
         // Check that a SaslAuthenticator can be provided by the configured
         // IAuthenticator. If not, don't start the server.
-        IAuthenticator authenticator = DatabaseDescriptor.instance.getAuthenticator();
+        IAuthenticator authenticator = Auth.instance.getAuthenticator();
         if (authenticator.requireAuthentication() && !(authenticator instanceof ISaslAwareAuthenticator))
         {
             logger.error("Not starting native transport as the configured IAuthenticator is not capable of SASL authentication");

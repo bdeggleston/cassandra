@@ -35,6 +35,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Longs;
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.locator.LocatorConfig;
@@ -1483,7 +1484,7 @@ public class CassandraServer implements Cassandra.Iface
     {
         try
         {
-            AuthenticatedUser user = DatabaseDescriptor.instance.getAuthenticator().authenticate(auth_request.getCredentials());
+            AuthenticatedUser user = Auth.instance.getAuthenticator().authenticate(auth_request.getCredentials());
             state().login(user);
         }
         catch (org.apache.cassandra.exceptions.AuthenticationException e)

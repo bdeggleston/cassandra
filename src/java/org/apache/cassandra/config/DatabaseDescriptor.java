@@ -48,12 +48,6 @@ import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.cassandra.auth.AllowAllAuthenticator;
-import org.apache.cassandra.auth.AllowAllAuthorizer;
-import org.apache.cassandra.auth.AllowAllInternodeAuthenticator;
-import org.apache.cassandra.auth.IAuthenticator;
-import org.apache.cassandra.auth.IAuthorizer;
-import org.apache.cassandra.auth.IInternodeAuthenticator;
 import org.apache.cassandra.config.Config.RequestSchedulerId;
 import org.apache.cassandra.config.EncryptionOptions.ClientEncryptionOptions;
 import org.apache.cassandra.config.EncryptionOptions.ServerEncryptionOptions;
@@ -91,7 +85,6 @@ public class DatabaseDescriptor
     private InetAddress rpcAddress;
     private InetAddress broadcastRpcAddress;
     private SeedProvider seedProvider;
-    private IInternodeAuthenticator internodeAuthenticator;
 
     /* Hashing strategy Random or OPHF */
     private IPartitioner<?> partitioner;
@@ -100,9 +93,6 @@ public class DatabaseDescriptor
     private Config.DiskAccessMode indexAccessMode;
 
     private Config conf;
-
-    private IAuthenticator authenticator = new AllowAllAuthenticator();
-    private IAuthorizer authorizer = new AllowAllAuthorizer();
 
     private IRequestScheduler requestScheduler;
     private RequestSchedulerId requestSchedulerId;
@@ -286,25 +276,6 @@ public class DatabaseDescriptor
             indexAccessMode = conf.disk_access_mode;
             logger.info("Non-unix environment detected.  DiskAccessMode set to {}, indexAccessMode {}", conf.disk_access_mode, indexAccessMode);
         }
-
-        /* Authentication and authorization backend, implementing IAuthenticator and IAuthorizer */
-        if (conf.authenticator != null)
-            authenticator = FBUtilities.newAuthenticator(conf.authenticator);
-
-        if (conf.authorizer != null)
-            authorizer = FBUtilities.newAuthorizer(conf.authorizer);
-
-        if (authenticator instanceof AllowAllAuthenticator && !(authorizer instanceof AllowAllAuthorizer))
-            throw new ConfigurationException("AllowAllAuthenticator can't be used with " +  conf.authorizer);
-
-        if (conf.internode_authenticator != null)
-            internodeAuthenticator = FBUtilities.construct(conf.internode_authenticator, "internode_authenticator");
-        else
-            internodeAuthenticator = new AllowAllInternodeAuthenticator();
-
-        authenticator.validateConfiguration();
-        authorizer.validateConfiguration();
-        internodeAuthenticator.validateConfiguration();
 
         /* Hashing strategy */
         if (conf.partitioner == null)
@@ -765,16 +736,6 @@ public class DatabaseDescriptor
         return false;
     }
 
-    public IAuthenticator getAuthenticator()
-    {
-        return authenticator;
-    }
-
-    public IAuthorizer getAuthorizer()
-    {
-        return authorizer;
-    }
-
     public int getPermissionsValidity()
     {
         return conf.permissions_validity_in_ms;
@@ -1218,11 +1179,6 @@ public class DatabaseDescriptor
     public InetAddress getBroadcastAddress()
     {
         return broadcastAddress == null ? getLocalAddress() : broadcastAddress;
-    }
-
-    public IInternodeAuthenticator getInternodeAuthenticator()
-    {
-        return internodeAuthenticator;
     }
 
     public void setBroadcastAddress(InetAddress broadcastAdd)
