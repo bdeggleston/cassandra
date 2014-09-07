@@ -72,25 +72,25 @@ implements org.apache.hadoop.mapred.RecordWriter<K, V>
     protected SSTableLoader loader;
     protected Progressable progress;
     protected TaskAttemptContext context;
-    
-    protected AbstractBulkRecordWriter(TaskAttemptContext context)
+
+    protected AbstractBulkRecordWriter(TaskAttemptContext context, DatabaseDescriptor databaseDescriptor)
     {
-        this(HadoopCompat.getConfiguration(context));
+        this(HadoopCompat.getConfiguration(context), databaseDescriptor);
         this.context = context;
     }
 
-    protected AbstractBulkRecordWriter(Configuration conf, Progressable progress)
+    protected AbstractBulkRecordWriter(Configuration conf, Progressable progress, DatabaseDescriptor databaseDescriptor)
     {
-        this(conf);
+        this(conf, databaseDescriptor);
         this.progress = progress;
     }
 
-    protected AbstractBulkRecordWriter(Configuration conf)
+    protected AbstractBulkRecordWriter(Configuration conf, DatabaseDescriptor databaseDescriptor)
     {
         Config.setClientMode(true);
         Config.setOutboundBindAny(true);
         this.conf = conf;
-        DatabaseDescriptor.instance.setStreamThroughputOutboundMegabitsPerSec(Integer.parseInt(conf.get(STREAM_THROTTLE_MBITS, "0")));
+        databaseDescriptor.setStreamThroughputOutboundMegabitsPerSec(Integer.parseInt(conf.get(STREAM_THROTTLE_MBITS, "0")));
         maxFailures = Integer.parseInt(conf.get(MAX_FAILED_HOSTS, "0"));
         bufferSize = Integer.parseInt(conf.get(BUFFER_SIZE_IN_MB, "64"));
     }
@@ -160,7 +160,10 @@ implements org.apache.hadoop.mapred.RecordWriter<K, V>
         private final String username;
         private final String password;
 
-        public ExternalClient(Configuration conf)
+        protected final CFMetaDataFactory cfMetaDataFactory;
+        protected final LocatorConfig locatorConfig;
+
+        public ExternalClient(Configuration conf, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig)
         {
           super();
           this.conf = conf;
@@ -168,6 +171,8 @@ implements org.apache.hadoop.mapred.RecordWriter<K, V>
           this.rpcPort = ConfigHelper.getOutputRpcPort(conf);
           this.username = ConfigHelper.getOutputKeyspaceUserName(conf);
           this.password = ConfigHelper.getOutputKeyspacePassword(conf);
+          this.cfMetaDataFactory = cfMetaDataFactory;
+          this.locatorConfig = locatorConfig;
         }
 
         public void init(String keyspace)
@@ -212,7 +217,7 @@ implements org.apache.hadoop.mapred.RecordWriter<K, V>
 
                     for (TokenRange tr : tokenRanges)
                     {
-                        Range<Token> range = new Range<Token>(tkFactory.fromString(tr.start_token), tkFactory.fromString(tr.end_token), LocatorConfig.instance.getPartitioner());
+                        Range<Token> range = new Range<Token>(tkFactory.fromString(tr.start_token), tkFactory.fromString(tr.end_token), locatorConfig.getPartitioner());
                         for (String ep : tr.endpoints)
                         {
                             addRangeForEndpoint(range, InetAddress.getByName(ep));
@@ -223,7 +228,7 @@ implements org.apache.hadoop.mapred.RecordWriter<K, V>
                     {
                         Map<String, CFMetaData> cfs = new HashMap<>(ksDef.cf_defs.size());
                         for (CfDef cfDef : ksDef.cf_defs)
-                            cfs.put(cfDef.name, CFMetaDataFactory.instance.fromThrift(cfDef));
+                            cfs.put(cfDef.name, cfMetaDataFactory.fromThrift(cfDef));
                         knownCfs.put(ksDef.name, cfs);
                     }
                     break;

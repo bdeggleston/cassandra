@@ -26,6 +26,7 @@ import java.util.Map;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.hadoop.AbstractBulkRecordWriter;
@@ -34,6 +35,7 @@ import org.apache.cassandra.hadoop.ConfigHelper;
 import org.apache.cassandra.hadoop.HadoopCompat;
 import org.apache.cassandra.io.sstable.CQLSSTableWriter;
 import org.apache.cassandra.io.sstable.SSTableLoader;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.util.Progressable;
@@ -60,21 +62,30 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
     private String insertStatement;
     private File outputDir;
 
-    CqlBulkRecordWriter(TaskAttemptContext context) throws IOException
+    private final CFMetaDataFactory cfMetaDataFactory;
+    private final LocatorConfig locatorConfig;
+
+    CqlBulkRecordWriter(TaskAttemptContext context, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig) throws IOException
     {
-        super(context);
+        super(context, databaseDescriptor);
+        this.cfMetaDataFactory = cfMetaDataFactory;
+        this.locatorConfig = locatorConfig;
         setConfigs();
     }
 
-    CqlBulkRecordWriter(Configuration conf, Progressable progress) throws IOException
+    CqlBulkRecordWriter(Configuration conf, Progressable progress, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig) throws IOException
     {
-        super(conf, progress);
+        super(conf, progress, databaseDescriptor);
+        this.cfMetaDataFactory = cfMetaDataFactory;
+        this.locatorConfig = locatorConfig;
         setConfigs();
     }
 
-    CqlBulkRecordWriter(Configuration conf) throws IOException
+    CqlBulkRecordWriter(Configuration conf, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig) throws IOException
     {
-        super(conf);
+        super(conf, databaseDescriptor);
+        this.cfMetaDataFactory = cfMetaDataFactory;
+        this.locatorConfig = locatorConfig;
         setConfigs();
     }
     
@@ -105,7 +116,7 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
             }
             if (loader == null)
             {
-                ExternalClient externalClient = new ExternalClient(conf);
+                ExternalClient externalClient = new ExternalClient(conf, cfMetaDataFactory, locatorConfig);
                 
                 externalClient.addKnownCfs(keyspace, schema);
 
@@ -166,9 +177,9 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
     {
         private Map<String, Map<String, CFMetaData>> knownCqlCfs = new HashMap<>();
         
-        public ExternalClient(Configuration conf)
+        public ExternalClient(Configuration conf, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig)
         {
-            super(conf);
+            super(conf, cfMetaDataFactory, locatorConfig);
         }
 
         public void addKnownCfs(String keyspace, String cql)
