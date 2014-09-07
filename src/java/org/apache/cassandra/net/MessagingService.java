@@ -37,6 +37,7 @@ import com.google.common.collect.Lists;
 import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.gms.*;
 import org.apache.cassandra.streaming.StreamManager;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.slf4j.Logger;
@@ -49,10 +50,6 @@ import org.apache.cassandra.config.EncryptionOptions.ServerEncryptionOptions;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.dht.BootStrapper;
 import org.apache.cassandra.exceptions.ConfigurationException;
-import org.apache.cassandra.gms.EchoMessage;
-import org.apache.cassandra.gms.GossipDigestAck;
-import org.apache.cassandra.gms.GossipDigestAck2;
-import org.apache.cassandra.gms.GossipDigestSyn;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.FileUtils;
@@ -924,7 +921,7 @@ public final class MessagingService implements MessagingServiceMBean
 
                     Thread thread = isStream
                                   ? new IncomingStreamingConnection(version, socket, DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, StreamManager.instance)
-                                  : new IncomingTcpConnection(version, MessagingService.getBits(header, 2, 1) == 1, socket);
+                                  : new IncomingTcpConnection(version, MessagingService.getBits(header, 2, 1) == 1, socket, DatabaseDescriptor.instance, Gossiper.instance, MessagingService.instance);
                     thread.start();
                 }
                 catch (AsynchronousCloseException e)
