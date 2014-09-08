@@ -41,24 +41,26 @@ public class RangeSliceQueryPager extends AbstractQueryPager
     private volatile DecoratedKey lastReturnedKey;
     private volatile CellName lastReturnedName;
 
+    private final KeyspaceManager keyspaceManager;
     private final StorageProxy storageProxy;
     private final MessagingService messagingService;
     private final IPartitioner partitioner;
 
     // Don't use directly, use QueryPagers method instead
-    RangeSliceQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
+    RangeSliceQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
     {
         super(consistencyLevel, command.maxResults, localQuery, command.keyspace, command.columnFamily, schema, command.predicate, command.timestamp);
         this.command = command;
         assert columnFilter instanceof SliceQueryFilter;
+        this.keyspaceManager = keyspaceManager;
         this.storageProxy = storageProxy;
         this.partitioner = partitioner;
         this.messagingService = messagingService;
     }
 
-    RangeSliceQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
+    RangeSliceQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
     {
-        this(command, schema, consistencyLevel, localQuery, storageProxy, messagingService, partitioner);
+        this(command, schema, consistencyLevel, localQuery, keyspaceManager, storageProxy, messagingService, partitioner);
 
         if (state != null)
         {
@@ -91,6 +93,7 @@ public class RangeSliceQueryPager extends AbstractQueryPager
                                                           command.rowFilter,
                                                           pageSize,
                                                           command.countCQL3Rows,
+                                                          keyspaceManager,
                                                           messagingService.pagedRangeCommandSerializer);
 
         return localQuery

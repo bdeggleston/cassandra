@@ -39,6 +39,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
     public final Composite stop;
     public final int limit;
     private final boolean countCQL3Rows;
+    private final KeyspaceManager keyspaceManager;
     private final Serializer serializer;
 
     public PagedRangeCommand(String keyspace,
@@ -51,6 +52,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
                              List<IndexExpression> rowFilter,
                              int limit,
                              boolean countCQL3Rows,
+                             KeyspaceManager keyspaceManager,
                              Serializer serializer)
     {
         super(keyspace, columnFamily, timestamp, keyRange, predicate, rowFilter);
@@ -58,6 +60,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
         this.stop = stop;
         this.limit = limit;
         this.countCQL3Rows = countCQL3Rows;
+        this.keyspaceManager = keyspaceManager;
         this.serializer = serializer;
     }
 
@@ -80,6 +83,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
                                      rowFilter,
                                      limit,
                                      countCQL3Rows,
+                                     keyspaceManager,
                                      serializer);
     }
 
@@ -95,6 +99,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
                                      rowFilter,
                                      newLimit,
                                      countCQL3Rows,
+                                     keyspaceManager,
                                      serializer);
     }
 
@@ -128,10 +133,14 @@ public class PagedRangeCommand extends AbstractRangeCommand
     public static class Serializer implements IVersionedSerializer<PagedRangeCommand>
     {
 
+        private final Schema schema;
+        private final KeyspaceManager keyspaceManager;
         private final AbstractBounds.Serializer abstractBoundsSerializer;
 
-        public Serializer(AbstractBounds.Serializer abstractBoundsSerializer)
+        public Serializer(Schema schema, KeyspaceManager keyspaceManager, AbstractBounds.Serializer abstractBoundsSerializer)
         {
+            this.schema = schema;
+            this.keyspaceManager = keyspaceManager;
             this.abstractBoundsSerializer = abstractBoundsSerializer;
         }
 
@@ -143,7 +152,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
 
             abstractBoundsSerializer.serialize(cmd.keyRange, out, version);
 
-            CFMetaData metadata = Schema.instance.getCFMetaData(cmd.keyspace, cmd.columnFamily);
+            CFMetaData metadata = schema.getCFMetaData(cmd.keyspace, cmd.columnFamily);
 
             // SliceQueryFilter (the count is not used)
             SliceQueryFilter filter = (SliceQueryFilter)cmd.predicate;
@@ -174,7 +183,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
 
             AbstractBounds<RowPosition> keyRange = abstractBoundsSerializer.deserialize(in, version).toRowBounds();
 
-            CFMetaData metadata = Schema.instance.getCFMetaData(keyspace, columnFamily);
+            CFMetaData metadata = schema.getCFMetaData(keyspace, columnFamily);
 
             SliceQueryFilter predicate = metadata.comparator.sliceQueryFilterSerializer().deserialize(in, version);
 
@@ -195,7 +204,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
             boolean countCQL3Rows = version >= MessagingService.VERSION_21
                                   ? in.readBoolean()
                                   : predicate.compositesToGroup >= 0 || predicate.count != 1; // See #6857
-            return new PagedRangeCommand(keyspace, columnFamily, timestamp, keyRange, predicate, start, stop, rowFilter, limit, countCQL3Rows, this);
+            return new PagedRangeCommand(keyspace, columnFamily, timestamp, keyRange, predicate, start, stop, rowFilter, limit, countCQL3Rows, keyspaceManager, this);
         }
 
         public long serializedSize(PagedRangeCommand cmd, int version)
@@ -208,7 +217,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
 
             size += abstractBoundsSerializer.serializedSize(cmd.keyRange, version);
 
-            CFMetaData metadata = Schema.instance.getCFMetaData(cmd.keyspace, cmd.columnFamily);
+            CFMetaData metadata = schema.getCFMetaData(cmd.keyspace, cmd.columnFamily);
 
             size += metadata.comparator.sliceQueryFilterSerializer().serializedSize((SliceQueryFilter)cmd.predicate, version);
 

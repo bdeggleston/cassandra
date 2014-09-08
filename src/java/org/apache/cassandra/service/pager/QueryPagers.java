@@ -114,7 +114,7 @@ public class QueryPagers
             if (rangeCommand.predicate instanceof NamesQueryFilter)
                 return new RangeNamesQueryPager(rangeCommand, schema, consistencyLevel, local, state, storageProxy, partitioner);
             else
-                return new RangeSliceQueryPager(rangeCommand, schema, consistencyLevel, local, state, storageProxy, messagingService, partitioner);
+                return new RangeSliceQueryPager(rangeCommand, schema, consistencyLevel, local, state, keyspaceManager, storageProxy, messagingService, partitioner);
         }
     }
 
