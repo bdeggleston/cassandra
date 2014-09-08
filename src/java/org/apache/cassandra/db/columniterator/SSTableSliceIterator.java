@@ -61,7 +61,7 @@ public class SSTableSliceIterator implements OnDiskAtomIterator
     private static OnDiskAtomIterator createReader(SSTableReader sstable, RowIndexEntry indexEntry, FileDataInput file, ColumnSlice[] slices, boolean reversed, Tracing tracing, DBConfig dbConfig)
     {
         return slices.length == 1 && slices[0].start.isEmpty() && !reversed
-             ? new SimpleSliceReader(sstable, indexEntry, file, slices[0].finish, tracing)
+             ? new SimpleSliceReader(sstable, indexEntry, file, slices[0].finish, tracing, dbConfig)
              : new IndexedSliceReader(sstable, indexEntry, file, slices, reversed, tracing, dbConfig);
     }
 

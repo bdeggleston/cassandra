@@ -44,7 +44,7 @@ class SimpleSliceReader extends AbstractIterator<OnDiskAtom> implements OnDiskAt
     private final ColumnFamily emptyColumnFamily;
     private final Iterator<OnDiskAtom> atomIterator;
 
-    public SimpleSliceReader(SSTableReader sstable, RowIndexEntry indexEntry, FileDataInput input, Composite finishColumn, Tracing tracing)
+    public SimpleSliceReader(SSTableReader sstable, RowIndexEntry indexEntry, FileDataInput input, Composite finishColumn, Tracing tracing, DBConfig dbConfig)
     {
         tracing.trace("Seeking to partition beginning in data file");
         this.finishColumn = finishColumn;
@@ -66,7 +66,7 @@ class SimpleSliceReader extends AbstractIterator<OnDiskAtom> implements OnDiskAt
             // Skip key and data size
             ByteBufferUtil.skipShortLength(file);
 
-            emptyColumnFamily = ArrayBackedSortedColumns.factory.create(sstable.metadata, DBConfig.instance);
+            emptyColumnFamily = ArrayBackedSortedColumns.factory.create(sstable.metadata, dbConfig);
             emptyColumnFamily.delete(DeletionTime.serializer.deserialize(file));
             atomIterator = emptyColumnFamily.metadata().getOnDiskIterator(file, sstable.descriptor.version);
         }
