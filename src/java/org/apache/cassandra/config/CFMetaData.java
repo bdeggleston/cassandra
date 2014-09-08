@@ -22,7 +22,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -52,8 +51,6 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.cache.CachingOptions;
 import org.apache.cassandra.cql3.ColumnIdentifier;
-import org.apache.cassandra.cql3.QueryProcessor;
-import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.compaction.AbstractCompactionStrategy;
 import org.apache.cassandra.db.compaction.LeveledCompactionStrategy;
 import org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy;
@@ -62,12 +59,9 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.CounterColumnType;
-import org.apache.cassandra.db.marshal.LongType;
-import org.apache.cassandra.db.marshal.TypeParser;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.InvalidRequestException;
-import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.io.compress.CompressionParameters;
 import org.apache.cassandra.io.compress.LZ4Compressor;
 import org.apache.cassandra.io.sstable.Descriptor;
@@ -75,8 +69,6 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.UUIDGen;
 
-import static org.apache.cassandra.utils.FBUtilities.fromJsonList;
-import static org.apache.cassandra.utils.FBUtilities.fromJsonMap;
 import static org.apache.cassandra.utils.FBUtilities.json;
 
 /**
@@ -269,6 +261,8 @@ public final class CFMetaData
     private final KeyspaceManager keyspaceManager;
     private final CFMetaDataFactory cfMetaDataFactory;
     private final MutationFactory mutationFactory;
+    private final DBConfig dbConfig;
+
     /**
      * Create new ColumnFamily metadata with generated random ID.
      * When loading from existing schema, use CFMetaData
@@ -279,7 +273,7 @@ public final class CFMetaData
      */
     public CFMetaData(String keyspace, String name, ColumnFamilyType type, CellNameType comp, SystemKeyspace systemKeyspace,
                       Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, KeyspaceManager keyspaceManager,
-                      CFMetaDataFactory cfMetaDataFactory, MutationFactory mutationFactory)
+                      CFMetaDataFactory cfMetaDataFactory, MutationFactory mutationFactory, DBConfig dbConfig)
     {
         this(keyspace,
              name,
@@ -291,12 +285,13 @@ public final class CFMetaData
              columnFamilyStoreManager,
              keyspaceManager,
              cfMetaDataFactory,
-             mutationFactory);
+             mutationFactory,
+             dbConfig);
     }
 
-    CFMetaData(String keyspace, String name, ColumnFamilyType type, CellNameType comp, UUID id,
-               SystemKeyspace systemKeyspace, Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager,
-               KeyspaceManager keyspaceManager, CFMetaDataFactory cfMetaDataFactory, MutationFactory mutationFactory)
+    CFMetaData(String keyspace, String name, ColumnFamilyType type, CellNameType comp, UUID id, SystemKeyspace systemKeyspace,
+               Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, KeyspaceManager keyspaceManager,
+               CFMetaDataFactory cfMetaDataFactory, MutationFactory mutationFactory, DBConfig dbConfig)
     {
         cfId = id;
         ksName = keyspace;
@@ -310,6 +305,7 @@ public final class CFMetaData
         this.keyspaceManager = keyspaceManager;
         this.cfMetaDataFactory = cfMetaDataFactory;
         this.mutationFactory = mutationFactory;
+        this.dbConfig = dbConfig;
     }
 
     public Map<String, TriggerDefinition> getTriggers()
@@ -340,7 +336,7 @@ public final class CFMetaData
 
     public CFMetaData copy()
     {
-        return copyOpts(new CFMetaData(ksName, cfName, cfType, comparator, cfId, systemKeyspace, schema, columnFamilyStoreManager, keyspaceManager, cfMetaDataFactory, mutationFactory), this);
+        return copyOpts(new CFMetaData(ksName, cfName, cfType, comparator, cfId, systemKeyspace, schema, columnFamilyStoreManager, keyspaceManager, cfMetaDataFactory, mutationFactory, dbConfig), this);
     }
 
     /**
@@ -361,7 +357,8 @@ public final class CFMetaData
                                        columnFamilyStoreManager,
                                        keyspaceManager,
                                        cfMetaDataFactory,
-                                       mutationFactory), this);
+                                       mutationFactory,
+                                       dbConfig), this);
     }
 
     static CFMetaData copyOpts(CFMetaData newCFMD, CFMetaData oldCFMD)
@@ -871,9 +868,10 @@ public final class CFMetaData
         {
             Constructor<? extends AbstractCompactionStrategy> constructor = compactionStrategyClass.getConstructor(new Class[] {
                 ColumnFamilyStore.class,
-                Map.class // options
+                Map.class, // options
+                DBConfig.class
             });
-            return constructor.newInstance(cfs, compactionStrategyOptions);
+            return constructor.newInstance(cfs, compactionStrategyOptions, dbConfig);
         }
         catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e)
         {

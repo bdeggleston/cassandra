@@ -73,7 +73,8 @@ public class DirectoriesTest
                                    ColumnFamilyStoreManager.instance,
                                    KeyspaceManager.instance,
                                    CFMetaDataFactory.instance,
-                                   MutationFactory.instance));
+                                   MutationFactory.instance,
+                                   DBConfig.instance));
         }
 
         tempDataDir = File.createTempFile("cassandra", "unittest");
@@ -220,7 +221,8 @@ public class DirectoriesTest
                                             ColumnFamilyStoreManager.instance,
                                             KeyspaceManager.instance,
                                             CFMetaDataFactory.instance,
-                                            MutationFactory.instance);
+                                            MutationFactory.instance,
+                                            DBConfig.instance);
             Directories dir = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance);
 
             for (File file : dir.getCFDirectories())

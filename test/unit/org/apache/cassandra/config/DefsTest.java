@@ -89,7 +89,8 @@ public class DefsTest
                                         ColumnFamilyStoreManager.instance,
                                         KeyspaceManager.instance,
                                         CFMetaDataFactory.instance,
-                                        MutationFactory.instance);
+                                        MutationFactory.instance,
+                                        DBConfig.instance);
 
         for (int i = 0; i < 5; i++)
         {
@@ -489,7 +490,8 @@ public class DefsTest
                                 ColumnFamilyStoreManager.instance,
                                 KeyspaceManager.instance,
                                 CFMetaDataFactory.instance,
-                                MutationFactory.instance);
+                                MutationFactory.instance,
+                                DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -508,7 +510,8 @@ public class DefsTest
                                 ColumnFamilyStoreManager.instance,
                                 KeyspaceManager.instance,
                                 CFMetaDataFactory.instance,
-                                MutationFactory.instance);
+                                MutationFactory.instance,
+                                DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -527,7 +530,8 @@ public class DefsTest
                                 ColumnFamilyStoreManager.instance,
                                 KeyspaceManager.instance,
                                 CFMetaDataFactory.instance,
-                                MutationFactory.instance);
+                                MutationFactory.instance,
+                                DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -546,7 +550,8 @@ public class DefsTest
                                 ColumnFamilyStoreManager.instance,
                                 KeyspaceManager.instance,
                                 CFMetaDataFactory.instance,
-                                MutationFactory.instance);
+                                MutationFactory.instance,
+                                DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -565,7 +570,8 @@ public class DefsTest
                                 ColumnFamilyStoreManager.instance,
                                 KeyspaceManager.instance,
                                 CFMetaDataFactory.instance,
-                                MutationFactory.instance);
+                                MutationFactory.instance,
+                                DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -615,7 +621,8 @@ public class DefsTest
                                             ColumnFamilyStoreManager.instance,
                                             KeyspaceManager.instance,
                                             CFMetaDataFactory.instance,
-                                            MutationFactory.instance);
+                                            MutationFactory.instance,
+                                            DBConfig.instance);
         newCFMD.comment(comment)
                .readRepairChance(0.0);
 

@@ -23,10 +23,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.RateLimiter;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DBConfig;
-import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +64,7 @@ public abstract class AbstractCompactionStrategy
     protected float tombstoneThreshold;
     protected long tombstoneCompactionInterval;
     protected boolean uncheckedTombstoneCompaction;
+    protected final DBConfig dbConfig;
 
     /**
      * pause/resume/getNextBackgroundTask must synchronize.  This guarantees that after pause completes,
@@ -82,11 +80,12 @@ public abstract class AbstractCompactionStrategy
 
     protected volatile boolean enabled = true;
 
-    protected AbstractCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options)
+    protected AbstractCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options, DBConfig dbConfig)
     {
         assert cfs != null;
         this.cfs = cfs;
         this.options = ImmutableMap.copyOf(options);
+        this.dbConfig = dbConfig;
 
         /* checks must be repeated here, as user supplied strategies might not call validateOptions directly */
 
@@ -177,7 +176,7 @@ public abstract class AbstractCompactionStrategy
 
     public AbstractCompactionTask getCompactionTask(Collection<SSTableReader> sstables, final int gcBefore, long maxSSTableBytes)
     {
-        return new CompactionTask(cfs, sstables, gcBefore, false, DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance, StorageService.instance);
+        return new CompactionTask(cfs, sstables, gcBefore, false, dbConfig.getDatabaseDescriptor(), dbConfig.getSystemKeyspace(), dbConfig, dbConfig.getStorageService());
     }
 
     /**
@@ -233,7 +232,7 @@ public abstract class AbstractCompactionStrategy
     {
         cfs.getDataTracker().replaceFlushed(memtable, sstable);
         if (sstable != null)
-            CompactionManager.instance.submitBackground(cfs);
+            dbConfig.getCompactionManager().submitBackground(cfs);
     }
 
     /**
@@ -269,7 +268,7 @@ public abstract class AbstractCompactionStrategy
      */
     public List<ICompactionScanner> getScanners(Collection<SSTableReader> sstables, Range<Token> range)
     {
-        RateLimiter limiter = CompactionManager.instance.getRateLimiter();
+        RateLimiter limiter = dbConfig.getCompactionManager().getRateLimiter();
         ArrayList<ICompactionScanner> scanners = new ArrayList<ICompactionScanner>();
         for (SSTableReader sstable : sstables)
             scanners.add(sstable.getScanner(range, limiter));

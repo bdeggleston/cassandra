@@ -24,10 +24,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DBConfig;
-import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,9 +63,9 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
     protected SizeTieredCompactionStrategyOptions options;
     protected volatile int estimatedRemainingTasks;
 
-    public SizeTieredCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options)
+    public SizeTieredCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options, DBConfig dbConfig)
     {
-        super(cfs, options);
+        super(cfs, options, dbConfig);
         this.estimatedRemainingTasks = 0;
         this.options = new SizeTieredCompactionStrategyOptions(options);
     }
@@ -273,7 +270,7 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
                 return null;
 
             if (cfs.getDataTracker().markCompacting(hottestBucket))
-                return new CompactionTask(cfs, hottestBucket, gcBefore, false, DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance, StorageService.instance);
+                return new CompactionTask(cfs, hottestBucket, gcBefore, false, dbConfig.getDatabaseDescriptor(), dbConfig.getSystemKeyspace(), dbConfig, dbConfig.getStorageService());
         }
     }
 
@@ -292,8 +289,8 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
             else
                 unrepaired.add(sstable);
         }
-        return Arrays.<AbstractCompactionTask>asList(new CompactionTask(cfs, repaired, gcBefore, false, DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance, StorageService.instance),
-                                                     new CompactionTask(cfs, unrepaired, gcBefore, false, DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance, StorageService.instance));
+        return Arrays.<AbstractCompactionTask>asList(new CompactionTask(cfs, repaired, gcBefore, false, dbConfig.getDatabaseDescriptor(), dbConfig.getSystemKeyspace(), dbConfig, dbConfig.getStorageService()),
+                                                     new CompactionTask(cfs, unrepaired, gcBefore, false, dbConfig.getDatabaseDescriptor(), dbConfig.getSystemKeyspace(), dbConfig, dbConfig.getStorageService()));
     }
 
     public AbstractCompactionTask getUserDefinedTask(Collection<SSTableReader> sstables, final int gcBefore)
@@ -306,7 +303,7 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
             return null;
         }
 
-        return new CompactionTask(cfs, sstables, gcBefore, false, DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance, StorageService.instance).setUserDefined(true);
+        return new CompactionTask(cfs, sstables, gcBefore, false, dbConfig.getDatabaseDescriptor(), dbConfig.getSystemKeyspace(), dbConfig, dbConfig.getStorageService()).setUserDefined(true);
     }
 
     public int getEstimatedRemainingTasks()

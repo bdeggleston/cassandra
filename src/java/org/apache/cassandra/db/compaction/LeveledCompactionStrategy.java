@@ -35,11 +35,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.*;
 import com.google.common.primitives.Doubles;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DBConfig;
-import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,9 +60,9 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
     final LeveledManifest manifest;
     private final int maxSSTableSizeInMB;
 
-    public LeveledCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options)
+    public LeveledCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options, DBConfig dbConfig)
     {
-        super(cfs, options);
+        super(cfs, options, dbConfig);
         int configuredMaxSSTableSize = 160;
         SizeTieredCompactionStrategyOptions localOptions = new SizeTieredCompactionStrategyOptions(options);
         if (options != null)
@@ -87,7 +83,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
         }
         maxSSTableSizeInMB = configuredMaxSSTableSize;
 
-        manifest = LeveledManifest.create(cfs, this.maxSSTableSizeInMB, cfs.getSSTables(), localOptions, DatabaseDescriptor.instance, LocatorConfig.instance);
+        manifest = LeveledManifest.create(cfs, this.maxSSTableSizeInMB, cfs.getSSTables(), localOptions, dbConfig.getDatabaseDescriptor(), dbConfig.getLocatorConfig());
         logger.debug("Created {}", manifest);
     }
 
@@ -159,7 +155,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
             if (cfs.getDataTracker().markCompacting(candidate.sstables))
             {
                 LeveledCompactionTask newTask = new LeveledCompactionTask(cfs, candidate.sstables, candidate.level, gcBefore, candidate.maxSSTableBytes,
-                                                                          DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance, StorageService.instance);
+                                                                          dbConfig.getDatabaseDescriptor(), dbConfig.getSystemKeyspace(), dbConfig, dbConfig.getStorageService());
                 newTask.setCompactionType(op);
                 return Arrays.<AbstractCompactionTask>asList(newTask);
             }
@@ -185,7 +181,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
                 level = 0;
         }
         return new LeveledCompactionTask(cfs, sstables, level, gcBefore, maxSSTableBytes,
-                                         DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance, StorageService.instance);
+                                         dbConfig.getDatabaseDescriptor(), dbConfig.getSystemKeyspace(), dbConfig, dbConfig.getStorageService());
     }
 
     /**
@@ -280,14 +276,14 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
             {
                 // L0 makes no guarantees about overlapping-ness.  Just create a direct scanner for each
                 for (SSTableReader sstable : byLevel.get(level))
-                    scanners.add(sstable.getScanner(range, CompactionManager.instance.getRateLimiter()));
+                    scanners.add(sstable.getScanner(range, dbConfig.getCompactionManager().getRateLimiter()));
             }
             else
             {
                 // Create a LeveledScanner that only opens one sstable at a time, in sorted order
                 List<SSTableReader> intersecting = LeveledScanner.intersecting(byLevel.get(level), range);
                 if (!intersecting.isEmpty())
-                    scanners.add(new LeveledScanner(intersecting, range));
+                    scanners.add(new LeveledScanner(intersecting, range, dbConfig.getCompactionManager()));
             }
         }
 
@@ -305,10 +301,12 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
 
         private ICompactionScanner currentScanner;
         private long positionOffset;
+        private final CompactionManager compactionManager;
 
-        public LeveledScanner(Collection<SSTableReader> sstables, Range<Token> range)
+        public LeveledScanner(Collection<SSTableReader> sstables, Range<Token> range, CompactionManager compactionManager)
         {
             this.range = range;
+            this.compactionManager = compactionManager;
 
             // add only sstables that intersect our range, and estimate how much data that involves
             this.sstables = new ArrayList<SSTableReader>(sstables.size());
@@ -329,7 +327,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
             Collections.sort(this.sstables, SSTableReader.sstableComparator);
             sstableIterator = this.sstables.iterator();
             assert sstableIterator.hasNext(); // caller should check intersecting first
-            currentScanner = sstableIterator.next().getScanner(range, CompactionManager.instance.getRateLimiter());
+            currentScanner = sstableIterator.next().getScanner(range, compactionManager.getRateLimiter());
         }
 
         public static List<SSTableReader> intersecting(Collection<SSTableReader> sstables, Range<Token> range)
@@ -364,7 +362,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
                         currentScanner = null;
                         return endOfData();
                     }
-                    currentScanner = sstableIterator.next().getScanner(range, CompactionManager.instance.getRateLimiter());
+                    currentScanner = sstableIterator.next().getScanner(range, compactionManager.getRateLimiter());
                 }
             }
             catch (IOException e)
