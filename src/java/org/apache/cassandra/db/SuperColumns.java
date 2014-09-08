@@ -101,7 +101,7 @@ public class SuperColumns
                 int size = in.readInt();
                 List<Cell> subCells = new ArrayList<>(size);
 
-                ColumnSerializer colSer = subType(type).columnSerializer();
+                ColumnSerializer colSer = subType(type, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance).columnSerializer();
                 for (int i = 0; i < size; ++i)
                     subCells.add(colSer.deserialize(in, flag, expireBefore));
 
@@ -126,14 +126,14 @@ public class SuperColumns
         }
     }
 
-    private static CellNameType subType(CellNameType type)
+    private static CellNameType subType(CellNameType type, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        return new SimpleDenseCellNameType(type.subtype(1));
+        return new SimpleDenseCellNameType(type.subtype(1), databaseDescriptor, tracing, dbConfig);
     }
 
-    public static CellNameType scNameType(CellNameType type)
+    public static CellNameType scNameType(CellNameType type, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        return new SimpleDenseCellNameType(type.subtype(0));
+        return new SimpleDenseCellNameType(type.subtype(0), databaseDescriptor, tracing, dbConfig);
     }
 
     public static AbstractType<?> getComparatorFor(CFMetaData metadata, ByteBuffer superColumn)

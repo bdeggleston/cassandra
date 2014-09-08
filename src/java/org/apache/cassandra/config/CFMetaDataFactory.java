@@ -265,19 +265,19 @@ public class CFMetaDataFactory
 
     public CFMetaData create(String keyspace, String name, ColumnFamilyType columnFamilyType, CellNameType cellNameType)
     {
-        return new CFMetaData(keyspace, name, columnFamilyType, cellNameType, SystemKeyspace.instance, Schema.instance, ColumnFamilyStoreManager.instance,
-                              KeyspaceManager.instance, this, MutationFactory.instance, DBConfig.instance);
+        return new CFMetaData(keyspace, name, columnFamilyType, cellNameType, DatabaseDescriptor.instance, Tracing.instance, SystemKeyspace.instance,
+                              Schema.instance, ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this, MutationFactory.instance, DBConfig.instance);
     }
 
     public CFMetaData denseCFMetaData(String keyspace, String name, AbstractType<?> comp, AbstractType<?> subcc)
     {
-        CellNameType cellNameType = CellNames.fromAbstractType(makeRawAbstractType(comp, subcc), true);
+        CellNameType cellNameType = CellNames.fromAbstractType(makeRawAbstractType(comp, subcc), true, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         return create(keyspace, name, subcc == null ? ColumnFamilyType.Standard : ColumnFamilyType.Super, cellNameType);
     }
 
     public CFMetaData sparseCFMetaData(String keyspace, String name, AbstractType<?> comp)
     {
-        CellNameType cellNameType = CellNames.fromAbstractType(comp, false);
+        CellNameType cellNameType = CellNames.fromAbstractType(comp, false, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         return create(keyspace, name, ColumnFamilyType.Standard, cellNameType);
     }
 
@@ -310,8 +310,8 @@ public class CFMetaDataFactory
 
     private CFMetaData newSystemMetadata(String keyspace, String cfName, String comment, CellNameType comparator)
     {
-        return new CFMetaData(keyspace, cfName, ColumnFamilyType.Standard, comparator, CFMetaData.generateLegacyCfId(keyspace, cfName), SystemKeyspace.instance,
-                              Schema.instance, ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this, MutationFactory.instance, DBConfig.instance)
+        return new CFMetaData(keyspace, cfName, ColumnFamilyType.Standard, comparator, CFMetaData.generateLegacyCfId(keyspace, cfName), DatabaseDescriptor.instance, Tracing.instance,
+                              SystemKeyspace.instance, Schema.instance, ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this, MutationFactory.instance, DBConfig.instance)
                 .comment(comment)
                 .readRepairChance(0)
                 .dcLocalReadRepairChance(0)
@@ -336,8 +336,8 @@ public class CFMetaDataFactory
                 ? CachingOptions.KEYS_ONLY
                 : CachingOptions.NONE;
 
-        return new CFMetaData(parent.ksName, parent.indexColumnFamilyName(info), ColumnFamilyType.Standard, indexComparator, parent.cfId, SystemKeyspace.instance,
-                              Schema.instance, ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this, MutationFactory.instance, DBConfig.instance)
+        return new CFMetaData(parent.ksName, parent.indexColumnFamilyName(info), ColumnFamilyType.Standard, indexComparator, parent.cfId, DatabaseDescriptor.instance, Tracing.instance,
+                              SystemKeyspace.instance, Schema.instance, ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this, MutationFactory.instance, DBConfig.instance)
                 .keyValidator(info.type)
                 .readRepairChance(0.0)
                 .dcLocalReadRepairChance(0.0)
@@ -402,14 +402,14 @@ public class CFMetaDataFactory
                 defs.add(def);
             }
 
-            CellNameType comparator = CellNames.fromAbstractType(fullRawComparator, CFMetaData.isDense(fullRawComparator, defs));
+            CellNameType comparator = CellNames.fromAbstractType(fullRawComparator, CFMetaData.isDense(fullRawComparator, defs), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
             UUID cfId = Schema.instance.getId(cf_def.keyspace, cf_def.name);
             if (cfId == null)
                 cfId = UUIDGen.getTimeUUID();
 
-            CFMetaData newCFMD = new CFMetaData(cf_def.keyspace, cf_def.name, cfType, comparator, cfId, SystemKeyspace.instance, Schema.instance,
-                                                ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this, MutationFactory.instance, DBConfig.instance);
+            CFMetaData newCFMD = new CFMetaData(cf_def.keyspace, cf_def.name, cfType, comparator, cfId, DatabaseDescriptor.instance, Tracing.instance, SystemKeyspace.instance,
+                                                Schema.instance, ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this, MutationFactory.instance, DBConfig.instance);
 
             newCFMD.addAllColumnDefinitions(defs);
 
@@ -533,15 +533,15 @@ public class CFMetaDataFactory
                     ? result.getBoolean("is_dense")
                     : CFMetaData.isDense(fullRawComparator, columnDefs);
 
-            CellNameType comparator = CellNames.fromAbstractType(fullRawComparator, isDense);
+            CellNameType comparator = CellNames.fromAbstractType(fullRawComparator, isDense, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
             // if we are upgrading, we use id generated from names initially
             UUID cfId = result.has("cf_id")
                     ? result.getUUID("cf_id")
                     : CFMetaData.generateLegacyCfId(ksName, cfName);
 
-            CFMetaData cfm = new CFMetaData(ksName, cfName, cfType, comparator, cfId, SystemKeyspace.instance, Schema.instance, ColumnFamilyStoreManager.instance,
-                                            KeyspaceManager.instance, this, MutationFactory.instance, DBConfig.instance);
+            CFMetaData cfm = new CFMetaData(ksName, cfName, cfType, comparator, cfId, DatabaseDescriptor.instance, Tracing.instance, SystemKeyspace.instance, Schema.instance,
+                                            ColumnFamilyStoreManager.instance, KeyspaceManager.instance, this, MutationFactory.instance, DBConfig.instance);
             cfm.setDense(isDense);
 
             cfm.readRepairChance(result.getDouble("read_repair_chance"));

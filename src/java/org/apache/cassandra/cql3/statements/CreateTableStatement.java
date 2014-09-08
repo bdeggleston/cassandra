@@ -20,17 +20,15 @@ package org.apache.cassandra.cql3.statements;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.exceptions.*;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.StringUtils;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 
 import org.apache.cassandra.auth.Permission;
-import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.marshal.*;
@@ -256,13 +254,13 @@ public class CreateTableStatement extends SchemaAlteringStatement
                     if (definedCollections != null)
                         throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
 
-                    stmt.comparator = new SimpleSparseCellNameType(UTF8Type.instance);
+                    stmt.comparator = new SimpleSparseCellNameType(UTF8Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
                 }
                 else
                 {
                     stmt.comparator = definedCollections == null
-                                    ? new CompoundSparseCellNameType(Collections.<AbstractType<?>>emptyList())
-                                    : new CompoundSparseCellNameType.WithCollection(Collections.<AbstractType<?>>emptyList(), ColumnToCollectionType.getInstance(definedCollections));
+                                    ? new CompoundSparseCellNameType(Collections.<AbstractType<?>>emptyList(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)
+                                    : new CompoundSparseCellNameType.WithCollection(Collections.<AbstractType<?>>emptyList(), ColumnToCollectionType.getInstance(definedCollections), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
                 }
             }
             else
@@ -282,7 +280,7 @@ public class CreateTableStatement extends SchemaAlteringStatement
                     AbstractType<?> at = getTypeAndRemove(stmt.columns, alias);
                     if (at instanceof CounterColumnType)
                         throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s", stmt.columnAliases.get(0)));
-                    stmt.comparator = new SimpleDenseCellNameType(at);
+                    stmt.comparator = new SimpleDenseCellNameType(at, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
                 }
                 else
                 {
@@ -304,13 +302,13 @@ public class CreateTableStatement extends SchemaAlteringStatement
                         if (definedCollections != null)
                             throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
 
-                        stmt.comparator = new CompoundDenseCellNameType(types);
+                        stmt.comparator = new CompoundDenseCellNameType(types, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
                     }
                     else
                     {
                         stmt.comparator = definedCollections == null
-                                        ? new CompoundSparseCellNameType(types)
-                                        : new CompoundSparseCellNameType.WithCollection(types, ColumnToCollectionType.getInstance(definedCollections));
+                                        ? new CompoundSparseCellNameType(types, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)
+                                        : new CompoundSparseCellNameType.WithCollection(types, ColumnToCollectionType.getInstance(definedCollections), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
                     }
                 }
             }

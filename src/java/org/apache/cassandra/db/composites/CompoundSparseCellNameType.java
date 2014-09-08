@@ -22,12 +22,15 @@ import java.util.*;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.CQL3Row;
 import org.apache.cassandra.cql3.ColumnIdentifier;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.ColumnToCollectionType;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
@@ -42,24 +45,24 @@ public class CompoundSparseCellNameType extends AbstractCompoundCellNameType
 
     private final Composite staticPrefix;
 
-    public CompoundSparseCellNameType(List<AbstractType<?>> types)
+    public CompoundSparseCellNameType(List<AbstractType<?>> types, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        this(types, UTF8Type.instance);
+        this(types, UTF8Type.instance, databaseDescriptor, tracing, dbConfig);
     }
 
-    public CompoundSparseCellNameType(List<AbstractType<?>> types, AbstractType<?> columnNameType)
+    public CompoundSparseCellNameType(List<AbstractType<?>> types, AbstractType<?> columnNameType, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        this(new CompoundCType(types), columnNameType);
+        this(new CompoundCType(types, databaseDescriptor, tracing, dbConfig), columnNameType, databaseDescriptor, tracing, dbConfig);
     }
 
-    private CompoundSparseCellNameType(CompoundCType clusteringType, AbstractType<?> columnNameType)
+    private CompoundSparseCellNameType(CompoundCType clusteringType, AbstractType<?> columnNameType, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        this(clusteringType, columnNameType, makeCType(clusteringType, columnNameType, null), new HashMap<ByteBuffer, ColumnIdentifier>());
+        this(clusteringType, columnNameType, makeCType(clusteringType, columnNameType, null, databaseDescriptor, tracing, dbConfig), new HashMap<ByteBuffer, ColumnIdentifier>(), databaseDescriptor, tracing, dbConfig);
     }
 
-    private CompoundSparseCellNameType(CompoundCType clusteringType, AbstractType<?> columnNameType, CompoundCType fullType, Map<ByteBuffer, ColumnIdentifier> internedIds)
+    private CompoundSparseCellNameType(CompoundCType clusteringType, AbstractType<?> columnNameType, CompoundCType fullType, Map<ByteBuffer, ColumnIdentifier> internedIds, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        super(clusteringType, fullType);
+        super(clusteringType, fullType, databaseDescriptor, tracing, dbConfig);
         this.columnNameType = columnNameType;
         this.internedIds = internedIds;
         this.staticPrefix = makeStaticPrefix(clusteringType.size());
@@ -94,7 +97,7 @@ public class CompoundSparseCellNameType extends AbstractCompoundCellNameType
         };
     }
 
-    protected static CompoundCType makeCType(CompoundCType clusteringType, AbstractType<?> columnNameType, ColumnToCollectionType collectionType)
+    protected static CompoundCType makeCType(CompoundCType clusteringType, AbstractType<?> columnNameType, ColumnToCollectionType collectionType, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         List<AbstractType<?>> allSubtypes = new ArrayList<AbstractType<?>>(clusteringType.size() + (collectionType == null ? 1 : 2));
         for (int i = 0; i < clusteringType.size(); i++)
@@ -102,13 +105,13 @@ public class CompoundSparseCellNameType extends AbstractCompoundCellNameType
         allSubtypes.add(columnNameType);
         if (collectionType != null)
             allSubtypes.add(collectionType);
-        return new CompoundCType(allSubtypes);
+        return new CompoundCType(allSubtypes, databaseDescriptor, tracing, dbConfig);
     }
 
     public CellNameType setSubtype(int position, AbstractType<?> newType)
     {
         if (position < clusteringSize)
-            return new CompoundSparseCellNameType(clusteringType.setSubtype(position, newType), columnNameType, fullType.setSubtype(position, newType), internedIds);
+            return new CompoundSparseCellNameType(clusteringType.setSubtype(position, newType), columnNameType, fullType.setSubtype(position, newType), internedIds, databaseDescriptor, tracing, dbConfig);
 
         if (position == clusteringSize)
             throw new IllegalArgumentException();
@@ -119,7 +122,7 @@ public class CompoundSparseCellNameType extends AbstractCompoundCellNameType
     @Override
     public CellNameType addOrUpdateCollection(ColumnIdentifier columnName, CollectionType newCollection)
     {
-        return new WithCollection(clusteringType, ColumnToCollectionType.getInstance(Collections.singletonMap(columnName.bytes, newCollection)), internedIds);
+        return new WithCollection(clusteringType, ColumnToCollectionType.getInstance(Collections.singletonMap(columnName.bytes, newCollection)), internedIds, databaseDescriptor, tracing, dbConfig);
     }
 
     public boolean isDense()
@@ -208,24 +211,24 @@ public class CompoundSparseCellNameType extends AbstractCompoundCellNameType
     {
         private final ColumnToCollectionType collectionType;
 
-        public WithCollection(List<AbstractType<?>> types, ColumnToCollectionType collectionType)
+        public WithCollection(List<AbstractType<?>> types, ColumnToCollectionType collectionType, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
         {
-            this(new CompoundCType(types), collectionType);
+            this(new CompoundCType(types, databaseDescriptor, tracing, dbConfig), collectionType, databaseDescriptor, tracing, dbConfig);
         }
 
-        WithCollection(CompoundCType clusteringType, ColumnToCollectionType collectionType)
+        WithCollection(CompoundCType clusteringType, ColumnToCollectionType collectionType, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
         {
-            this(clusteringType, collectionType, new HashMap<ByteBuffer, ColumnIdentifier>());
+            this(clusteringType, collectionType, new HashMap<ByteBuffer, ColumnIdentifier>(), databaseDescriptor, tracing, dbConfig);
         }
 
-        private WithCollection(CompoundCType clusteringType, ColumnToCollectionType collectionType, Map<ByteBuffer, ColumnIdentifier> internedIds)
+        private WithCollection(CompoundCType clusteringType, ColumnToCollectionType collectionType, Map<ByteBuffer, ColumnIdentifier> internedIds, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
         {
-            this(clusteringType, makeCType(clusteringType, UTF8Type.instance, collectionType), collectionType, internedIds);
+            this(clusteringType, makeCType(clusteringType, UTF8Type.instance, collectionType, databaseDescriptor, tracing, dbConfig), collectionType, internedIds, databaseDescriptor, tracing, dbConfig);
         }
 
-        private WithCollection(CompoundCType clusteringType, CompoundCType fullCType, ColumnToCollectionType collectionType, Map<ByteBuffer, ColumnIdentifier> internedIds)
+        private WithCollection(CompoundCType clusteringType, CompoundCType fullCType, ColumnToCollectionType collectionType, Map<ByteBuffer, ColumnIdentifier> internedIds, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
         {
-            super(clusteringType, UTF8Type.instance, fullCType, internedIds);
+            super(clusteringType, UTF8Type.instance, fullCType, internedIds, databaseDescriptor, tracing, dbConfig);
             this.collectionType = collectionType;
         }
 
@@ -233,7 +236,7 @@ public class CompoundSparseCellNameType extends AbstractCompoundCellNameType
         public CellNameType setSubtype(int position, AbstractType<?> newType)
         {
             if (position < clusteringSize)
-                return new WithCollection(clusteringType.setSubtype(position, newType), collectionType, internedIds);
+                return new WithCollection(clusteringType.setSubtype(position, newType), collectionType, internedIds, databaseDescriptor, tracing, dbConfig);
 
             throw position >= fullType.size() ? new IndexOutOfBoundsException() : new IllegalArgumentException();
         }
@@ -243,7 +246,7 @@ public class CompoundSparseCellNameType extends AbstractCompoundCellNameType
         {
             Map<ByteBuffer, CollectionType> newMap = new HashMap<>(collectionType.defined);
             newMap.put(columnName.bytes, newCollection);
-            return new WithCollection(clusteringType, ColumnToCollectionType.getInstance(newMap), internedIds);
+            return new WithCollection(clusteringType, ColumnToCollectionType.getInstance(newMap), internedIds, databaseDescriptor, tracing, dbConfig);
         }
 
         @Override

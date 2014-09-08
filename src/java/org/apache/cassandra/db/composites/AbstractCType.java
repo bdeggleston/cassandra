@@ -23,12 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.Cell;
-import org.apache.cassandra.db.DeletionInfo;
-import org.apache.cassandra.db.NativeCell;
-import org.apache.cassandra.db.RangeTombstone;
-import org.apache.cassandra.db.RowIndexEntry;
-import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.marshal.AbstractCompositeType;
@@ -90,9 +85,16 @@ public abstract class AbstractCType implements CType
     private final RowIndexEntry.Serializer rowIndexEntrySerializer;
 
     protected final boolean isByteOrderComparable;
+    protected final DatabaseDescriptor databaseDescriptor;
+    protected final Tracing tracing;
+    protected final DBConfig dbConfig;
 
-    protected AbstractCType(boolean isByteOrderComparable)
+    protected AbstractCType(boolean isByteOrderComparable, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
+        this.dbConfig = dbConfig;
+
         reverseComparator = new Comparator<Composite>()
         {
             public int compare(Composite c1, Composite c2)
@@ -119,7 +121,7 @@ public abstract class AbstractCType implements CType
 
         indexSerializer = new IndexInfo.Serializer(this);
         sliceSerializer = new ColumnSlice.Serializer(this);
-        sliceQueryFilterSerializer = new SliceQueryFilter.Serializer(this, DatabaseDescriptor.instance, Tracing.instance);
+        sliceQueryFilterSerializer = new SliceQueryFilter.Serializer(this, databaseDescriptor, tracing, dbConfig);
         deletionInfoSerializer = new DeletionInfo.Serializer(this);
         rangeTombstoneSerializer = new RangeTombstone.Serializer(this);
         rowIndexEntrySerializer = new RowIndexEntry.Serializer(this);

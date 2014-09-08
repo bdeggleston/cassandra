@@ -23,26 +23,34 @@ import java.util.*;
 import org.apache.cassandra.auth.Permission;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.cql3.*;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.composites.CellNames;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.MigrationManager;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.transport.Event;
 
 public abstract class AlterTypeStatement extends SchemaAlteringStatement
 {
     protected final UTName name;
 
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Tracing tracing;
     private final Schema schema;
     private final MigrationManager migrationManager;
+    private final DBConfig dbConfig;
 
-    protected AlterTypeStatement(UTName name, Schema schema, MigrationManager migrationManager)
+    protected AlterTypeStatement(UTName name, DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, MigrationManager migrationManager, DBConfig dbConfig)
     {
         super();
         this.name = name;
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
         this.schema = schema;
         this.migrationManager = migrationManager;
+        this.dbConfig = dbConfig;
     }
 
     @Override
@@ -57,19 +65,19 @@ public abstract class AlterTypeStatement extends SchemaAlteringStatement
 
     protected abstract UserType makeUpdatedType(UserType toUpdate) throws InvalidRequestException;
 
-    public static AlterTypeStatement addition(UTName name, ColumnIdentifier fieldName, CQL3Type.Raw type, Schema schema, MigrationManager migrationManager)
+    public static AlterTypeStatement addition(UTName name, ColumnIdentifier fieldName, CQL3Type.Raw type, DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, MigrationManager migrationManager, DBConfig dbConfig)
     {
-        return new AddOrAlter(name, true, fieldName, type, schema, migrationManager);
+        return new AddOrAlter(name, true, fieldName, type, databaseDescriptor, tracing, schema, migrationManager, dbConfig);
     }
 
-    public static AlterTypeStatement alter(UTName name, ColumnIdentifier fieldName, CQL3Type.Raw type, Schema schema, MigrationManager migrationManager)
+    public static AlterTypeStatement alter(UTName name, ColumnIdentifier fieldName, CQL3Type.Raw type, DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, MigrationManager migrationManager, DBConfig dbConfig)
     {
-        return new AddOrAlter(name, false, fieldName, type, schema, migrationManager);
+        return new AddOrAlter(name, false, fieldName, type, databaseDescriptor, tracing, schema, migrationManager, dbConfig);
     }
 
-    public static AlterTypeStatement renames(UTName name, Map<ColumnIdentifier, ColumnIdentifier> renames, Schema schema, MigrationManager migrationManager)
+    public static AlterTypeStatement renames(UTName name, Map<ColumnIdentifier, ColumnIdentifier> renames, DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, MigrationManager migrationManager, DBConfig dbConfig)
     {
-        return new Renames(name, renames, schema, migrationManager);
+        return new Renames(name, renames, databaseDescriptor, tracing, schema, migrationManager, dbConfig);
     }
 
     public void checkAccess(ClientState state) throws UnauthorizedException, InvalidRequestException
@@ -166,12 +174,12 @@ public abstract class AlterTypeStatement extends SchemaAlteringStatement
                 cfm.keyValidator(updateWith(cfm.getKeyValidator(), keyspace, toReplace, updated));
                 break;
             case CLUSTERING_COLUMN:
-                cfm.comparator = CellNames.fromAbstractType(updateWith(cfm.comparator.asAbstractType(), keyspace, toReplace, updated), cfm.comparator.isDense());
+                cfm.comparator = CellNames.fromAbstractType(updateWith(cfm.comparator.asAbstractType(), keyspace, toReplace, updated), cfm.comparator.isDense(), databaseDescriptor, tracing, dbConfig);
                 break;
             default:
                 // If it's a collection, we still want to modify the comparator because the collection is aliased in it
                 if (def.type instanceof CollectionType)
-                    cfm.comparator = CellNames.fromAbstractType(updateWith(cfm.comparator.asAbstractType(), keyspace, toReplace, updated), cfm.comparator.isDense());
+                    cfm.comparator = CellNames.fromAbstractType(updateWith(cfm.comparator.asAbstractType(), keyspace, toReplace, updated), cfm.comparator.isDense(), databaseDescriptor, tracing, dbConfig);
         }
         return true;
     }
@@ -268,9 +276,9 @@ public abstract class AlterTypeStatement extends SchemaAlteringStatement
         private final ColumnIdentifier fieldName;
         private final CQL3Type.Raw type;
 
-        public AddOrAlter(UTName name, boolean isAdd, ColumnIdentifier fieldName, CQL3Type.Raw type, Schema schema, MigrationManager migrationManager)
+        public AddOrAlter(UTName name, boolean isAdd, ColumnIdentifier fieldName, CQL3Type.Raw type, DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, MigrationManager migrationManager, DBConfig dbConfig)
         {
-            super(name, schema, migrationManager);
+            super(name, databaseDescriptor, tracing, schema, migrationManager, dbConfig);
             this.isAdd = isAdd;
             this.fieldName = fieldName;
             this.type = type;
@@ -319,9 +327,9 @@ public abstract class AlterTypeStatement extends SchemaAlteringStatement
     {
         private final Map<ColumnIdentifier, ColumnIdentifier> renames;
 
-        public Renames(UTName name, Map<ColumnIdentifier, ColumnIdentifier> renames, Schema schema, MigrationManager migrationManager)
+        public Renames(UTName name, Map<ColumnIdentifier, ColumnIdentifier> renames, DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, MigrationManager migrationManager, DBConfig dbConfig)
         {
-            super(name, schema, migrationManager);
+            super(name, databaseDescriptor, tracing, schema, migrationManager, dbConfig);
             this.renames = renames;
         }
 

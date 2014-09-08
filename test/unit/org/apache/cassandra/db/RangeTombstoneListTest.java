@@ -20,6 +20,8 @@ package org.apache.cassandra.db;
 
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -30,7 +32,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class RangeTombstoneListTest
 {
-    private static final Comparator<Composite> cmp = new SimpleDenseCellNameType(IntegerType.instance);
+    private static final Comparator<Composite> cmp = new SimpleDenseCellNameType(IntegerType.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
     private static final Random rand = new Random();
 
     @Test

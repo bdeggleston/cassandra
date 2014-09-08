@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
@@ -50,7 +52,7 @@ public abstract class CompositesIndex extends AbstractSimplePerColumnSecondaryIn
         if (indexComparator == null)
         {
             assert columnDef != null;
-            indexComparator = getIndexComparator(baseCfs.metadata, columnDef);
+            indexComparator = getIndexComparator(baseCfs.metadata, columnDef, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         }
         return indexComparator;
     }
@@ -87,31 +89,31 @@ public abstract class CompositesIndex extends AbstractSimplePerColumnSecondaryIn
     }
 
     // Check SecondaryIndex.getIndexComparator if you want to know why this is static
-    public static CellNameType getIndexComparator(CFMetaData baseMetadata, ColumnDefinition cfDef)
+    public static CellNameType getIndexComparator(CFMetaData baseMetadata, ColumnDefinition cfDef, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         if (cfDef.type.isCollection())
         {
             switch (((CollectionType)cfDef.type).kind)
             {
                 case LIST:
-                    return CompositesIndexOnCollectionValue.buildIndexComparator(baseMetadata, cfDef);
+                    return CompositesIndexOnCollectionValue.buildIndexComparator(baseMetadata, cfDef, databaseDescriptor, tracing, dbConfig);
                 case SET:
-                    return CompositesIndexOnCollectionKey.buildIndexComparator(baseMetadata, cfDef);
+                    return CompositesIndexOnCollectionKey.buildIndexComparator(baseMetadata, cfDef, databaseDescriptor, tracing, dbConfig);
                 case MAP:
                     return cfDef.getIndexOptions().containsKey("index_keys")
-                         ? CompositesIndexOnCollectionKey.buildIndexComparator(baseMetadata, cfDef)
-                         : CompositesIndexOnCollectionValue.buildIndexComparator(baseMetadata, cfDef);
+                         ? CompositesIndexOnCollectionKey.buildIndexComparator(baseMetadata, cfDef, databaseDescriptor, tracing, dbConfig)
+                         : CompositesIndexOnCollectionValue.buildIndexComparator(baseMetadata, cfDef, databaseDescriptor, tracing, dbConfig);
             }
         }
 
         switch (cfDef.kind)
         {
             case CLUSTERING_COLUMN:
-                return CompositesIndexOnClusteringKey.buildIndexComparator(baseMetadata, cfDef);
+                return CompositesIndexOnClusteringKey.buildIndexComparator(baseMetadata, cfDef, databaseDescriptor, tracing, dbConfig);
             case REGULAR:
-                return CompositesIndexOnRegular.buildIndexComparator(baseMetadata, cfDef);
+                return CompositesIndexOnRegular.buildIndexComparator(baseMetadata, cfDef, databaseDescriptor, tracing, dbConfig);
             case PARTITION_KEY:
-                return CompositesIndexOnPartitionKey.buildIndexComparator(baseMetadata, cfDef);
+                return CompositesIndexOnPartitionKey.buildIndexComparator(baseMetadata, cfDef, databaseDescriptor, tracing, dbConfig);
             //case COMPACT_VALUE:
             //    return CompositesIndexOnCompactValue.buildIndexComparator(baseMetadata, cfDef);
         }

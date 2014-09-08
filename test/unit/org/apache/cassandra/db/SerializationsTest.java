@@ -392,14 +392,14 @@ public class SerializationsTest extends AbstractSerializationsTester
     {
         private final String KS = KEYSPACE1;
         private final ByteBuffer Key = ByteBufferUtil.bytes("Key01");
-        private final SortedSet<CellName> NamedCols = new TreeSet<CellName>(new SimpleDenseCellNameType(BytesType.instance))
+        private final SortedSet<CellName> NamedCols = new TreeSet<CellName>(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance))
         {{
             add(CellNames.simpleDense(ByteBufferUtil.bytes("AAA")));
             add(CellNames.simpleDense(ByteBufferUtil.bytes("BBB")));
             add(CellNames.simpleDense(ByteBufferUtil.bytes("CCC")));
         }};
         private final ByteBuffer SC = ByteBufferUtil.bytes("SCName");
-        private final SortedSet<CellName> NamedSCCols = new TreeSet<CellName>(new CompoundDenseCellNameType(Arrays.<AbstractType<?>>asList(BytesType.instance, BytesType.instance)))
+        private final SortedSet<CellName> NamedSCCols = new TreeSet<CellName>(new CompoundDenseCellNameType(Arrays.<AbstractType<?>>asList(BytesType.instance, BytesType.instance), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance))
         {{
             add(CellNames.compositeDense(SC, ByteBufferUtil.bytes("AAA")));
             add(CellNames.compositeDense(SC, ByteBufferUtil.bytes("BBB")));

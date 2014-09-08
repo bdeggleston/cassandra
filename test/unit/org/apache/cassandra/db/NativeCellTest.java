@@ -27,13 +27,11 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.apache.cassandra.config.CFMetaDataFactory;
-import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.config.*;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.Assert;
 import org.junit.Test;
 
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
@@ -83,17 +81,19 @@ public class NativeCellTest
 
     final static Name[] TESTS = new Name[]
                           {
-                              new Name(simpleDense(bytes("a")), new SimpleDenseCellNameType(UTF8Type.instance)),
-                              new Name(simpleSparse(new ColumnIdentifier("a", true)), new SimpleSparseCellNameType(UTF8Type.instance)),
-                              new Name(compositeDense(bytes("a"), bytes("b")), new CompoundDenseCellNameType(Arrays.<AbstractType<?>>asList(UTF8Type.instance, UTF8Type.instance))),
-                              new Name(compositeSparse(bytess("b", "c"), new ColumnIdentifier("a", true), false), new CompoundSparseCellNameType(Arrays.<AbstractType<?>>asList(UTF8Type.instance, UTF8Type.instance))),
-                              new Name(compositeSparse(bytess("b", "c"), new ColumnIdentifier("a", true), true), new CompoundSparseCellNameType(Arrays.<AbstractType<?>>asList(UTF8Type.instance, UTF8Type.instance)))
+                              new Name(simpleDense(bytes("a")), new SimpleDenseCellNameType(UTF8Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)),
+                              new Name(simpleSparse(new ColumnIdentifier("a", true)), new SimpleSparseCellNameType(UTF8Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)),
+                              new Name(compositeDense(bytes("a"), bytes("b")), new CompoundDenseCellNameType(Arrays.<AbstractType<?>>asList(UTF8Type.instance, UTF8Type.instance), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)),
+                              new Name(compositeSparse(bytess("b", "c"), new ColumnIdentifier("a", true), false), new CompoundSparseCellNameType(Arrays.<AbstractType<?>>asList(UTF8Type.instance, UTF8Type.instance), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)),
+                              new Name(compositeSparse(bytess("b", "c"), new ColumnIdentifier("a", true), true), new CompoundSparseCellNameType(Arrays.<AbstractType<?>>asList(UTF8Type.instance, UTF8Type.instance), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance))
                           };
 
     private static final CFMetaData metadata = new CFMetaData("",
                                                               "",
                                                               ColumnFamilyType.Standard,
                                                               null,
+                                                              DatabaseDescriptor.instance,
+                                                              Tracing.instance,
                                                               SystemKeyspace.instance,
                                                               Schema.instance,
                                                               ColumnFamilyStoreManager.instance,

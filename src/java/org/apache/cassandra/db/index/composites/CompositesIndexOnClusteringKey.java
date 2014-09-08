@@ -23,10 +23,12 @@ import java.util.List;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.db.marshal.*;
+import org.apache.cassandra.tracing.Tracing;
 
 /**
  * Index on a CLUSTERING_COLUMN column definition.
@@ -47,7 +49,7 @@ import org.apache.cassandra.db.marshal.*;
  */
 public class CompositesIndexOnClusteringKey extends CompositesIndex
 {
-    public static CellNameType buildIndexComparator(CFMetaData baseMetadata, ColumnDefinition columnDef)
+    public static CellNameType buildIndexComparator(CFMetaData baseMetadata, ColumnDefinition columnDef, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         // Index cell names are rk ck_0 ... ck_{i-1} ck_{i+1} ck_n, so n
         // components total (where n is the number of clustering keys)
@@ -58,7 +60,7 @@ public class CompositesIndexOnClusteringKey extends CompositesIndex
             types.add(baseMetadata.clusteringColumns().get(i).type);
         for (int i = columnDef.position() + 1; i < ckCount; i++)
             types.add(baseMetadata.clusteringColumns().get(i).type);
-        return new CompoundDenseCellNameType(types);
+        return new CompoundDenseCellNameType(types, databaseDescriptor, tracing, dbConfig);
     }
 
     protected ByteBuffer getIndexedValue(ByteBuffer rowKey, Cell cell)

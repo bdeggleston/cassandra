@@ -379,7 +379,7 @@ public class CassandraServer implements Cassandra.Iface
     {
         if (metadata.isSuper())
         {
-            CellNameType columnType = new SimpleDenseCellNameType(metadata.comparator.subtype(parent.isSetSuper_column() ? 1 : 0));
+            CellNameType columnType = new SimpleDenseCellNameType(metadata.comparator.subtype(parent.isSetSuper_column() ? 1 : 0), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
             Composite start = columnType.fromByteBuffer(range.start);
             Composite finish = columnType.fromByteBuffer(range.finish);
             SliceQueryFilter filter = new SliceQueryFilter(start, finish, range.reversed, range.count, DatabaseDescriptor.instance, Tracing.instance);
@@ -399,7 +399,7 @@ public class CassandraServer implements Cassandra.Iface
         {
             if (metadata.isSuper())
             {
-                CellNameType columnType = new SimpleDenseCellNameType(metadata.comparator.subtype(parent.isSetSuper_column() ? 1 : 0));
+                CellNameType columnType = new SimpleDenseCellNameType(metadata.comparator.subtype(parent.isSetSuper_column() ? 1 : 0), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
                 SortedSet<CellName> s = new TreeSet<>(columnType);
                 for (ByteBuffer bb : predicate.column_names)
                     s.add(columnType.cellFromByteBuffer(bb));
@@ -487,7 +487,7 @@ public class CassandraServer implements Cassandra.Iface
             IDiskAtomFilter filter;
             if (metadata.isSuper())
             {
-                CellNameType columnType = new SimpleDenseCellNameType(metadata.comparator.subtype(column_path.column == null ? 0 : 1));
+                CellNameType columnType = new SimpleDenseCellNameType(metadata.comparator.subtype(column_path.column == null ? 0 : 1), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
                 SortedSet<CellName> names = new TreeSet<CellName>(columnType);
                 names.add(columnType.cellFromByteBuffer(column_path.column == null ? column_path.super_column : column_path.column));
                 filter = SuperColumns.fromSCNamesFilter(metadata.comparator, column_path.column == null ? null : column_path.bufferForSuper_column(), new NamesQueryFilter(names),

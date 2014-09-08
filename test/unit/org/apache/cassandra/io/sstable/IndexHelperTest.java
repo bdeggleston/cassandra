@@ -23,6 +23,9 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.Test;
 
 import org.apache.cassandra.Util;
@@ -45,7 +48,7 @@ public class IndexHelperTest
         indexes.add(new IndexInfo(cn(10L), cn(15L), 0, 0));
         indexes.add(new IndexInfo(cn(20L), cn(25L), 0, 0));
 
-        CellNameType comp = new SimpleDenseCellNameType(IntegerType.instance);
+        CellNameType comp = new SimpleDenseCellNameType(IntegerType.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
         assertEquals(0, IndexHelper.indexFor(cn(-1L), indexes, comp, false, -1));
         assertEquals(0, IndexHelper.indexFor(cn(5L), indexes, comp, false, -1));

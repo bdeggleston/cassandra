@@ -20,7 +20,10 @@ package org.apache.cassandra.db.composites;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.tracing.Tracing;
 
 /**
  * A not truly-composite CType.
@@ -29,9 +32,9 @@ public class SimpleCType extends AbstractCType
 {
     protected final AbstractType<?> type;
 
-    public SimpleCType(AbstractType<?> type)
+    public SimpleCType(AbstractType<?> type, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        super(type.isByteOrderComparable());
+        super(type.isByteOrderComparable(), databaseDescriptor, tracing, dbConfig);
         this.type = type;
     }
 
@@ -78,7 +81,7 @@ public class SimpleCType extends AbstractCType
     {
         if (position != 0)
             throw new IndexOutOfBoundsException();
-        return new SimpleCType(newType);
+        return new SimpleCType(newType, databaseDescriptor, tracing, dbConfig);
     }
 
     // Use sparingly, it defeats the purpose

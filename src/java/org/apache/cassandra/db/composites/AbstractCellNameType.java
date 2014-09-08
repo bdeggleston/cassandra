@@ -25,6 +25,7 @@ import java.util.*;
 import com.google.common.collect.AbstractIterator;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.CQL3Row;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.*;
@@ -36,6 +37,7 @@ import org.apache.cassandra.db.marshal.ColumnToCollectionType;
 import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public abstract class AbstractCellNameType extends AbstractCType implements CellNameType
@@ -51,9 +53,9 @@ public abstract class AbstractCellNameType extends AbstractCType implements Cell
     private final IVersionedSerializer<NamesQueryFilter> namesQueryFilterSerializer;
     private final IVersionedSerializer<IDiskAtomFilter> diskAtomFilterSerializer;
 
-    protected AbstractCellNameType(boolean isByteOrderComparable)
+    protected AbstractCellNameType(boolean isByteOrderComparable, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        super(isByteOrderComparable);
+        super(isByteOrderComparable, databaseDescriptor, tracing, dbConfig);
         columnComparator = new Comparator<Cell>()
         {
             public int compare(Cell c1, Cell c2)

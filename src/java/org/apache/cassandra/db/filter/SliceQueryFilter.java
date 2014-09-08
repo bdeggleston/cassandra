@@ -400,12 +400,14 @@ public class SliceQueryFilter implements IDiskAtomFilter
         private CType type;
         private final DatabaseDescriptor databaseDescriptor;
         private final Tracing tracing;
+        private final DBConfig dbConfig;
 
-        public Serializer(CType type, DatabaseDescriptor databaseDescriptor, Tracing tracing)
+        public Serializer(CType type, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
         {
             this.type = type;
             this.databaseDescriptor = databaseDescriptor;
             this.tracing = tracing;
+            this.dbConfig = dbConfig;
         }
 
         public void serialize(SliceQueryFilter f, DataOutputPlus out, int version) throws IOException

@@ -21,15 +21,18 @@ import java.nio.ByteBuffer;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.CQL3Row;
 import org.apache.cassandra.cql3.ColumnIdentifier;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.tracing.Tracing;
 
 public class SimpleDenseCellNameType extends AbstractSimpleCellNameType
 {
-    public SimpleDenseCellNameType(AbstractType<?> type)
+    public SimpleDenseCellNameType(AbstractType<?> type, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        super(type);
+        super(type, databaseDescriptor, tracing, dbConfig);
     }
 
     public int clusteringPrefixSize()
@@ -47,7 +50,7 @@ public class SimpleDenseCellNameType extends AbstractSimpleCellNameType
     {
         if (position != 0)
             throw new IllegalArgumentException();
-        return new SimpleDenseCellNameType(newType);
+        return new SimpleDenseCellNameType(newType, databaseDescriptor, tracing, dbConfig);
     }
 
     public boolean isDense()

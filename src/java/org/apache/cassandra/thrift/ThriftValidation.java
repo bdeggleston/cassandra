@@ -642,7 +642,7 @@ public class ThriftValidation
         IDiskAtomFilter filter;
 
         CellNameType comparator = metadata.isSuper()
-                                ? new SimpleDenseCellNameType(metadata.comparator.subtype(superColumn == null ? 0 : 1))
+                                ? new SimpleDenseCellNameType(metadata.comparator.subtype(superColumn == null ? 0 : 1), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)
                                 : metadata.comparator;
         if (sr == null)
         {

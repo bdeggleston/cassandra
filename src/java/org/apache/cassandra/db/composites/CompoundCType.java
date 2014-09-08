@@ -22,8 +22,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
+import org.apache.cassandra.tracing.Tracing;
 
 /**
  * A truly-composite CType.
@@ -33,9 +36,9 @@ public class CompoundCType extends AbstractCType
     final List<AbstractType<?>> types;
 
     // It's up to the caller to pass a list that is effectively immutable
-    public CompoundCType(List<AbstractType<?>> types)
+    public CompoundCType(List<AbstractType<?>> types, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        super(isByteOrderComparable(types));
+        super(isByteOrderComparable(types), databaseDescriptor, tracing, dbConfig);
         this.types = types;
     }
 
@@ -93,7 +96,7 @@ public class CompoundCType extends AbstractCType
     {
         List<AbstractType<?>> newTypes = new ArrayList<AbstractType<?>>(types);
         newTypes.set(position, newType);
-        return new CompoundCType(newTypes);
+        return new CompoundCType(newTypes, databaseDescriptor, tracing, dbConfig);
     }
 
     public AbstractType<?> asAbstractType()

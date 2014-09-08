@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
 
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.CFMetaData;

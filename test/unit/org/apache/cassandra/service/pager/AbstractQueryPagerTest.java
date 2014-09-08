@@ -20,6 +20,7 @@ package org.apache.cassandra.service.pager;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -139,7 +140,9 @@ public class AbstractQueryPagerTest
         return new CFMetaData("ks",
                               "cf",
                               ColumnFamilyType.Standard,
-                              CellNames.fromAbstractType(Int32Type.instance, false),
+                              CellNames.fromAbstractType(Int32Type.instance, false, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
+                              DatabaseDescriptor.instance,
+                              Tracing.instance,
                               SystemKeyspace.instance,
                               Schema.instance,
                               ColumnFamilyStoreManager.instance,

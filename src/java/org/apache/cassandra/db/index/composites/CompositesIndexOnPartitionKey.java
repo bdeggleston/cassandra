@@ -23,10 +23,12 @@ import java.util.List;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.db.marshal.*;
+import org.apache.cassandra.tracing.Tracing;
 
 /**
  * Index on a PARTITION_KEY column definition.
@@ -48,14 +50,14 @@ import org.apache.cassandra.db.marshal.*;
  */
 public class CompositesIndexOnPartitionKey extends CompositesIndex
 {
-    public static CellNameType buildIndexComparator(CFMetaData baseMetadata, ColumnDefinition columnDef)
+    public static CellNameType buildIndexComparator(CFMetaData baseMetadata, ColumnDefinition columnDef, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         int ckCount = baseMetadata.clusteringColumns().size();
         List<AbstractType<?>> types = new ArrayList<AbstractType<?>>(ckCount + 1);
         types.add(SecondaryIndex.keyComparator);
         for (int i = 0; i < ckCount; i++)
             types.add(baseMetadata.comparator.subtype(i));
-        return new CompoundDenseCellNameType(types);
+        return new CompoundDenseCellNameType(types, databaseDescriptor, tracing, dbConfig);
     }
 
     protected ByteBuffer getIndexedValue(ByteBuffer rowKey, Cell cell)

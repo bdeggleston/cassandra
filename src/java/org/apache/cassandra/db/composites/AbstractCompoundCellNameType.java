@@ -21,8 +21,11 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
+import org.apache.cassandra.tracing.Tracing;
 
 public abstract class AbstractCompoundCellNameType extends AbstractCellNameType
 {
@@ -32,9 +35,9 @@ public abstract class AbstractCompoundCellNameType extends AbstractCellNameType
     protected final int clusteringSize;
     protected final int fullSize;
 
-    protected AbstractCompoundCellNameType(CompoundCType clusteringType, CompoundCType fullType)
+    protected AbstractCompoundCellNameType(CompoundCType clusteringType, CompoundCType fullType, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        super(isByteOrderComparable(fullType.types));
+        super(isByteOrderComparable(fullType.types), databaseDescriptor, tracing, dbConfig);
         this.clusteringType = clusteringType;
         this.fullType = fullType;
 

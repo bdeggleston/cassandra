@@ -20,28 +20,31 @@ package org.apache.cassandra.db.composites;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.Cell;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.ColumnToCollectionType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.tracing.Tracing;
 
 public abstract class CellNames
 {
     private CellNames() {}
 
-    public static CellNameType fromAbstractType(AbstractType<?> type, boolean isDense)
+    public static CellNameType fromAbstractType(AbstractType<?> type, boolean isDense, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         if (isDense)
         {
             if (type instanceof CompositeType)
             {
-                return new CompoundDenseCellNameType(((CompositeType)type).types);
+                return new CompoundDenseCellNameType(((CompositeType)type).types, databaseDescriptor, tracing, dbConfig);
             }
             else
             {
-                return new SimpleDenseCellNameType(type);
+                return new SimpleDenseCellNameType(type, databaseDescriptor, tracing, dbConfig);
             }
         }
         else
@@ -53,17 +56,17 @@ public abstract class CellNames
                 {
                     // We don't allow collection for super columns, so the "name" type *must* be UTF8
                     assert types.get(types.size() - 2) instanceof UTF8Type;
-                    return new CompoundSparseCellNameType.WithCollection(types.subList(0, types.size() - 2), (ColumnToCollectionType)types.get(types.size() - 1));
+                    return new CompoundSparseCellNameType.WithCollection(types.subList(0, types.size() - 2), (ColumnToCollectionType)types.get(types.size() - 1), databaseDescriptor, tracing, dbConfig);
                 }
                 else
                 {
                     AbstractType<?> nameType = types.get(types.size() - 1);
-                    return new CompoundSparseCellNameType(types.subList(0, types.size() - 1), nameType);
+                    return new CompoundSparseCellNameType(types.subList(0, types.size() - 1), nameType, databaseDescriptor, tracing, dbConfig);
                 }
             }
             else
             {
-                return new SimpleSparseCellNameType(type);
+                return new SimpleSparseCellNameType(type, databaseDescriptor, tracing, dbConfig);
             }
         }
     }

@@ -36,6 +36,7 @@ import org.apache.cassandra.io.sstable.SSTableDeletingTask;
 import org.apache.cassandra.locator.OldNetworkTopologyStrategy;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.service.MigrationManager;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import static org.apache.cassandra.Util.cellname;
 
@@ -83,7 +84,9 @@ public class DefsTest
         CFMetaData cfm = new CFMetaData(KEYSPACE1,
                                         "TestApplyCFM_CF",
                                         ColumnFamilyType.Standard,
-                                        new SimpleDenseCellNameType(BytesType.instance),
+                                        new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
+                                        DatabaseDescriptor.instance,
+                                        Tracing.instance,
                                         SystemKeyspace.instance,
                                         Schema.instance,
                                         ColumnFamilyStoreManager.instance,
@@ -485,6 +488,8 @@ public class DefsTest
                                 cf.cfName,
                                 cf.cfType,
                                 cf.comparator,
+                                DatabaseDescriptor.instance,
+                                Tracing.instance,
                                 SystemKeyspace.instance,
                                 Schema.instance,
                                 ColumnFamilyStoreManager.instance,
@@ -505,6 +510,8 @@ public class DefsTest
                                 cf.cfName + "_renamed",
                                 cf.cfType,
                                 cf.comparator,
+                                DatabaseDescriptor.instance,
+                                Tracing.instance,
                                 SystemKeyspace.instance,
                                 Schema.instance,
                                 ColumnFamilyStoreManager.instance,
@@ -525,6 +532,8 @@ public class DefsTest
                                 cf.cfName,
                                 cf.cfType,
                                 cf.comparator,
+                                DatabaseDescriptor.instance,
+                                Tracing.instance,
                                 SystemKeyspace.instance,
                                 Schema.instance,
                                 ColumnFamilyStoreManager.instance,
@@ -545,6 +554,8 @@ public class DefsTest
                                 cf.cfName,
                                 ColumnFamilyType.Super,
                                 cf.comparator,
+                                DatabaseDescriptor.instance,
+                                Tracing.instance,
                                 SystemKeyspace.instance,
                                 Schema.instance,
                                 ColumnFamilyStoreManager.instance,
@@ -564,7 +575,9 @@ public class DefsTest
         newCfm = new CFMetaData(cf.ksName,
                                 cf.cfName,
                                 cf.cfType,
-                                new SimpleDenseCellNameType(TimeUUIDType.instance),
+                                new SimpleDenseCellNameType(TimeUUIDType.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
+                                DatabaseDescriptor.instance,
+                                Tracing.instance,
                                 SystemKeyspace.instance,
                                 Schema.instance,
                                 ColumnFamilyStoreManager.instance,
@@ -615,7 +628,9 @@ public class DefsTest
         CFMetaData newCFMD = new CFMetaData(ks,
                                             cf,
                                             ColumnFamilyType.Standard,
-                                            new SimpleDenseCellNameType(UTF8Type.instance),
+                                            new SimpleDenseCellNameType(UTF8Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
+                                            DatabaseDescriptor.instance,
+                                            Tracing.instance,
                                             SystemKeyspace.instance,
                                             Schema.instance,
                                             ColumnFamilyStoreManager.instance,

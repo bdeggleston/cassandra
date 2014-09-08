@@ -18,7 +18,10 @@
 package org.apache.cassandra.db.composites;
 
 import com.google.common.collect.Lists;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.marshal.*;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.junit.Test;
 
@@ -34,9 +37,9 @@ public class CTypeTest
         types.add(Int32Type.instance);
     }
 
-    static final CellNameType cdtype = new CompoundDenseCellNameType(types);
-    static final CellNameType stype1 = new SimpleDenseCellNameType(BytesType.instance);
-    static final CellNameType stype2 = new SimpleDenseCellNameType(UUIDType.instance);
+    static final CellNameType cdtype = new CompoundDenseCellNameType(types, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+    static final CellNameType stype1 = new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+    static final CellNameType stype2 = new SimpleDenseCellNameType(UUIDType.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
     @Test
     public void testCompoundType()

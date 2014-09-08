@@ -23,9 +23,12 @@ import java.util.Map;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.CQL3Row;
 import org.apache.cassandra.cql3.ColumnIdentifier;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.tracing.Tracing;
 
 public class SimpleSparseCellNameType extends AbstractSimpleCellNameType
 {
@@ -33,14 +36,14 @@ public class SimpleSparseCellNameType extends AbstractSimpleCellNameType
     // be those that have been declared and we can intern the whole CellName instances.
     private final Map<ByteBuffer, CellName> internedNames;
 
-    public SimpleSparseCellNameType(AbstractType<?> type)
+    public SimpleSparseCellNameType(AbstractType<?> type, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        this(type, new HashMap<ByteBuffer, CellName>());
+        this(type, new HashMap<ByteBuffer, CellName>(), databaseDescriptor, tracing, dbConfig);
     }
 
-    private SimpleSparseCellNameType(AbstractType<?> type, Map<ByteBuffer, CellName> internedNames)
+    private SimpleSparseCellNameType(AbstractType<?> type, Map<ByteBuffer, CellName> internedNames, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        super(type);
+        super(type, databaseDescriptor, tracing, dbConfig);
         this.internedNames = internedNames;
     }
 
@@ -53,7 +56,7 @@ public class SimpleSparseCellNameType extends AbstractSimpleCellNameType
     {
         if (position != 0)
             throw new IllegalArgumentException();
-        return new SimpleSparseCellNameType(newType, internedNames);
+        return new SimpleSparseCellNameType(newType, internedNames, databaseDescriptor, tracing, dbConfig);
     }
 
     public CBuilder prefixBuilder()

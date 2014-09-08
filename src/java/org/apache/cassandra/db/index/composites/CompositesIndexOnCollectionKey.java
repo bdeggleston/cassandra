@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CBuilder;
 import org.apache.cassandra.db.composites.CellName;
@@ -31,6 +32,7 @@ import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.composites.CompoundDenseCellNameType;
 import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.db.marshal.*;
+import org.apache.cassandra.tracing.Tracing;
 
 /**
  * Index on the collection element of the cell name of a collection.
@@ -48,14 +50,14 @@ import org.apache.cassandra.db.marshal.*;
  */
 public class CompositesIndexOnCollectionKey extends CompositesIndex
 {
-    public static CellNameType buildIndexComparator(CFMetaData baseMetadata, ColumnDefinition columnDef)
+    public static CellNameType buildIndexComparator(CFMetaData baseMetadata, ColumnDefinition columnDef, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         int count = 1 + baseMetadata.clusteringColumns().size(); // row key + clustering prefix
         List<AbstractType<?>> types = new ArrayList<AbstractType<?>>(count);
         types.add(SecondaryIndex.keyComparator);
         for (int i = 0; i < count - 1; i++)
             types.add(baseMetadata.comparator.subtype(i));
-        return new CompoundDenseCellNameType(types);
+        return new CompoundDenseCellNameType(types, databaseDescriptor, tracing, dbConfig);
     }
 
     @Override

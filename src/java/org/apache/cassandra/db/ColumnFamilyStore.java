@@ -399,7 +399,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
      * Removes unnecessary files from the cf directory at startup: these include temp files, orphans, zero-length files
      * and compacted sstables. Files that cannot be recognized will be ignored.
      */
-    public static void scrubDataDirectories(CFMetaData metadata)
+    public static void scrubDataDirectories(CFMetaData metadata, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         Directories directories = new Directories(metadata, DatabaseDescriptor.instance, StorageService.instance);
 
@@ -471,11 +471,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         {
             if (def.isIndexed())
             {
-                CellNameType indexComparator = SecondaryIndex.getIndexComparator(metadata, def);
+                CellNameType indexComparator = SecondaryIndex.getIndexComparator(metadata, def, databaseDescriptor, tracing, dbConfig);
                 if (indexComparator != null)
                 {
                     CFMetaData indexMetadata = CFMetaDataFactory.instance.newIndexMetadata(metadata, def, indexComparator);
-                    scrubDataDirectories(indexMetadata);
+                    scrubDataDirectories(indexMetadata, databaseDescriptor, tracing, dbConfig);
                 }
             }
         }

@@ -43,6 +43,7 @@ import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.*;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -255,6 +256,8 @@ public final class CFMetaData
     public CFMetaData triggers(Map<String, TriggerDefinition> prop) {triggers = prop; return this;}
     public CFMetaData setDense(Boolean prop) {isDense = prop; return this;}
 
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Tracing tracing;
     private final SystemKeyspace systemKeyspace;
     private final Schema schema;
     private final ColumnFamilyStoreManager columnFamilyStoreManager;
@@ -271,15 +274,17 @@ public final class CFMetaData
      * @param name column family name
      * @param comp default comparator
      */
-    public CFMetaData(String keyspace, String name, ColumnFamilyType type, CellNameType comp, SystemKeyspace systemKeyspace,
-                      Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, KeyspaceManager keyspaceManager,
-                      CFMetaDataFactory cfMetaDataFactory, MutationFactory mutationFactory, DBConfig dbConfig)
+    public CFMetaData(String keyspace, String name, ColumnFamilyType type, CellNameType comp, DatabaseDescriptor databaseDescriptor,
+                      Tracing tracing, SystemKeyspace systemKeyspace, Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager,
+                      KeyspaceManager keyspaceManager, CFMetaDataFactory cfMetaDataFactory, MutationFactory mutationFactory, DBConfig dbConfig)
     {
         this(keyspace,
              name,
              type,
              comp,
              UUIDGen.getTimeUUID(),
+             databaseDescriptor,
+             tracing,
              systemKeyspace,
              schema,
              columnFamilyStoreManager,
@@ -289,9 +294,9 @@ public final class CFMetaData
              dbConfig);
     }
 
-    CFMetaData(String keyspace, String name, ColumnFamilyType type, CellNameType comp, UUID id, SystemKeyspace systemKeyspace,
-               Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager, KeyspaceManager keyspaceManager,
-               CFMetaDataFactory cfMetaDataFactory, MutationFactory mutationFactory, DBConfig dbConfig)
+    CFMetaData(String keyspace, String name, ColumnFamilyType type, CellNameType comp, UUID id, DatabaseDescriptor databaseDescriptor,
+               Tracing tracing, SystemKeyspace systemKeyspace, Schema schema, ColumnFamilyStoreManager columnFamilyStoreManager,
+               KeyspaceManager keyspaceManager, CFMetaDataFactory cfMetaDataFactory, MutationFactory mutationFactory, DBConfig dbConfig)
     {
         cfId = id;
         ksName = keyspace;
@@ -299,6 +304,8 @@ public final class CFMetaData
         cfType = type;
         comparator = comp;
 
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
         this.systemKeyspace = systemKeyspace;
         this.schema = schema;
         this.columnFamilyStoreManager = columnFamilyStoreManager;
@@ -336,7 +343,20 @@ public final class CFMetaData
 
     public CFMetaData copy()
     {
-        return copyOpts(new CFMetaData(ksName, cfName, cfType, comparator, cfId, systemKeyspace, schema, columnFamilyStoreManager, keyspaceManager, cfMetaDataFactory, mutationFactory, dbConfig), this);
+        return copyOpts(new CFMetaData(ksName,
+                                       cfName,
+                                       cfType,
+                                       comparator,
+                                       cfId,
+                                       databaseDescriptor,
+                                       tracing,
+                                       systemKeyspace,
+                                       schema,
+                                       columnFamilyStoreManager,
+                                       keyspaceManager,
+                                       cfMetaDataFactory,
+                                       mutationFactory,
+                                       dbConfig), this);
     }
 
     /**
@@ -352,6 +372,8 @@ public final class CFMetaData
                                        cfType,
                                        comparator,
                                        newCfId,
+                                       databaseDescriptor,
+                                       tracing,
                                        systemKeyspace,
                                        schema,
                                        columnFamilyStoreManager,
@@ -547,8 +569,8 @@ public final class CFMetaData
     public CType getKeyValidatorAsCType()
     {
         return keyValidator instanceof CompositeType
-             ? new CompoundCType(((CompositeType) keyValidator).types)
-             : new SimpleCType(keyValidator);
+             ? new CompoundCType(((CompositeType) keyValidator).types, databaseDescriptor, tracing, dbConfig)
+             : new SimpleCType(keyValidator, databaseDescriptor, tracing, dbConfig);
     }
 
     public double getBloomFilterFpChance()

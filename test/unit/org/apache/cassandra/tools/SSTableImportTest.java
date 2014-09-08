@@ -32,6 +32,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;

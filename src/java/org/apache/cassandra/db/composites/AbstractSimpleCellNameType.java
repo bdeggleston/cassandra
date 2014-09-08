@@ -23,9 +23,12 @@ import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 import net.nicoulaj.compilecommand.annotations.Inline;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.Cell;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.NativeCell;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public abstract class AbstractSimpleCellNameType extends AbstractCellNameType
@@ -65,9 +68,9 @@ public abstract class AbstractSimpleCellNameType extends AbstractCellNameType
         }
     };
 
-    protected AbstractSimpleCellNameType(AbstractType<?> type)
+    protected AbstractSimpleCellNameType(AbstractType<?> type, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        super(type.isByteOrderComparable());
+        super(type.isByteOrderComparable(), databaseDescriptor, tracing, dbConfig);
         this.type = type;
     }
 

@@ -33,6 +33,7 @@ import java.util.concurrent.Future;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -68,6 +69,8 @@ public class DirectoriesTest
                                    cf,
                                    ColumnFamilyType.Standard,
                                    null,
+                                   DatabaseDescriptor.instance,
+                                   Tracing.instance,
                                    SystemKeyspace.instance,
                                    Schema.instance,
                                    ColumnFamilyStoreManager.instance,
@@ -216,6 +219,8 @@ public class DirectoriesTest
                                             "badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbad",
                                             ColumnFamilyType.Standard,
                                             null,
+                                            DatabaseDescriptor.instance,
+                                            Tracing.instance,
                                             SystemKeyspace.instance,
                                             Schema.instance,
                                             ColumnFamilyStoreManager.instance,

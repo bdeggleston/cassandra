@@ -60,7 +60,7 @@ import static org.apache.cassandra.db.index.SecondaryIndexManager.Updater;
  */
 public class AtomicBTreeColumns extends ColumnFamily
 {
-    static final long EMPTY_SIZE = ObjectSizes.measure(new AtomicBTreeColumns(new CFMetaData("ks", "cf", ColumnFamilyType.Standard, new SimpleSparseCellNameType(UTF8Type.instance), null, null, null, null, null, null, null), null, null))
+    static final long EMPTY_SIZE = ObjectSizes.measure(new AtomicBTreeColumns(new CFMetaData("ks", "cf", ColumnFamilyType.Standard, new SimpleSparseCellNameType(UTF8Type.instance, null, null, null), null, null, null, null, null, null, null, null, null), null, null))
             + ObjectSizes.measure(new Holder(null, null));
 
     private static final Function<Cell, CellName> NAME = new Function<Cell, CellName>()

@@ -781,13 +781,13 @@ alterTableStatement returns [AlterTableStatement expr]
  */
 alterTypeStatement returns [AlterTypeStatement expr]
     : K_ALTER K_TYPE name=userTypeName
-          ( K_ALTER f=cident K_TYPE v=comparatorType { $expr = AlterTypeStatement.alter(name, f, v, Schema.instance, MigrationManager.instance); }
-          | K_ADD   f=cident v=comparatorType        { $expr = AlterTypeStatement.addition(name, f, v, Schema.instance, MigrationManager.instance); }
+          ( K_ALTER f=cident K_TYPE v=comparatorType { $expr = AlterTypeStatement.alter(name, f, v, DatabaseDescriptor.instance, Tracing.instance, Schema.instance, MigrationManager.instance, DBConfig.instance); }
+          | K_ADD   f=cident v=comparatorType        { $expr = AlterTypeStatement.addition(name, f, v, DatabaseDescriptor.instance, Tracing.instance, Schema.instance, MigrationManager.instance, DBConfig.instance); }
           | K_RENAME
                { Map<ColumnIdentifier, ColumnIdentifier> renames = new HashMap<ColumnIdentifier, ColumnIdentifier>(); }
                  id1=cident K_TO toId1=cident { renames.put(id1, toId1); }
                  ( K_AND idn=cident K_TO toIdn=cident { renames.put(idn, toIdn); } )*
-               { $expr = AlterTypeStatement.renames(name, renames, Schema.instance, MigrationManager.instance); }
+               { $expr = AlterTypeStatement.renames(name, renames, DatabaseDescriptor.instance, Tracing.instance, Schema.instance, MigrationManager.instance, DBConfig.instance); }
           )
     ;
 
