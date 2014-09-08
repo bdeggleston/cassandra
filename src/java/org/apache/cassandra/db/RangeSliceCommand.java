@@ -25,6 +25,7 @@ import java.util.List;
 import com.google.common.base.Objects;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
@@ -50,10 +51,11 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                              IDiskAtomFilter predicate,
                              AbstractBounds<RowPosition> range,
                              int maxResults,
+                             DatabaseDescriptor databaseDescriptor,
                              KeyspaceManager keyspaceManager,
                              Serializer serializer)
     {
-        this(keyspace, columnFamily, timestamp, predicate, range, null, maxResults, false, false, keyspaceManager, serializer);
+        this(keyspace, columnFamily, timestamp, predicate, range, null, maxResults, false, false, databaseDescriptor, keyspaceManager, serializer);
     }
 
     public RangeSliceCommand(String keyspace,
@@ -63,10 +65,11 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                              AbstractBounds<RowPosition> range,
                              List<IndexExpression> row_filter,
                              int maxResults,
+                             DatabaseDescriptor databaseDescriptor,
                              KeyspaceManager keyspaceManager,
                              Serializer serializer)
     {
-        this(keyspace, columnFamily, timestamp, predicate, range, row_filter, maxResults, false, false, keyspaceManager, serializer);
+        this(keyspace, columnFamily, timestamp, predicate, range, row_filter, maxResults, false, false, databaseDescriptor, keyspaceManager, serializer);
     }
 
     public RangeSliceCommand(String keyspace,
@@ -78,10 +81,11 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                              int maxResults,
                              boolean countCQL3Rows,
                              boolean isPaging,
+                             DatabaseDescriptor databaseDescriptor,
                              KeyspaceManager keyspaceManager,
                              Serializer serializer)
     {
-        super(keyspace, columnFamily, timestamp, range, predicate, rowFilter);
+        super(keyspace, columnFamily, timestamp, range, predicate, rowFilter, databaseDescriptor);
         this.maxResults = maxResults;
         this.countCQL3Rows = countCQL3Rows;
         this.isPaging = isPaging;
@@ -105,6 +109,7 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                                      maxResults,
                                      countCQL3Rows,
                                      isPaging,
+                                     databaseDescriptor,
                                      keyspaceManager,
                                      serializer);
     }
@@ -120,6 +125,7 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                                      newLimit,
                                      countCQL3Rows,
                                      isPaging,
+                                     databaseDescriptor,
                                      keyspaceManager,
                                      serializer);
     }
@@ -163,11 +169,13 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
     public static class Serializer implements IVersionedSerializer<RangeSliceCommand>
     {
 
+        private final DatabaseDescriptor databaseDescriptor;
         private final KeyspaceManager keyspaceManager;
         private final AbstractBounds.Serializer abstractBoundsSerializer;
 
-        public Serializer(KeyspaceManager keyspaceManager, AbstractBounds.Serializer abstractBoundsSerializer)
+        public Serializer(DatabaseDescriptor databaseDescriptor, KeyspaceManager keyspaceManager, AbstractBounds.Serializer abstractBoundsSerializer)
         {
+            this.databaseDescriptor = databaseDescriptor;
             this.keyspaceManager = keyspaceManager;
             this.abstractBoundsSerializer = abstractBoundsSerializer;
         }
@@ -228,7 +236,7 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
             int maxResults = in.readInt();
             boolean countCQL3Rows = in.readBoolean();
             boolean isPaging = in.readBoolean();
-            return new RangeSliceCommand(keyspace, columnFamily, timestamp, predicate, range, rowFilter, maxResults, countCQL3Rows, isPaging, keyspaceManager, this);
+            return new RangeSliceCommand(keyspace, columnFamily, timestamp, predicate, range, rowFilter, maxResults, countCQL3Rows, isPaging, databaseDescriptor, keyspaceManager, this);
         }
 
         public long serializedSize(RangeSliceCommand rsc, int version)

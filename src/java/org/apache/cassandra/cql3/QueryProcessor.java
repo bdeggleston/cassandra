@@ -29,6 +29,7 @@ import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 import com.googlecode.concurrentlinkedhashmap.EntryWeigher;
 import org.antlr.runtime.*;
 import org.apache.cassandra.auth.Auth;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.net.MessagingService;
@@ -284,6 +285,7 @@ public class QueryProcessor implements QueryHandler
 
             SelectStatement select = (SelectStatement)prepared.statement;
             QueryPager pager = QueryPagers.localPager(select.getPageableCommand(makeInternalOptions(prepared, values)),
+                                                      DatabaseDescriptor.instance,
                                                       Schema.instance,
                                                       KeyspaceManager.instance,
                                                       StorageProxy.instance,

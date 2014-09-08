@@ -267,7 +267,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         }
         else
         {
-            QueryPager pager = QueryPagers.pager(command, cl, options.getPagingState(), schema, keyspaceManager, storageProxy, messagingService, locatorConfig.getPartitioner());
+            QueryPager pager = QueryPagers.pager(command, cl, options.getPagingState(), databaseDescriptor, schema, keyspaceManager, storageProxy, messagingService, locatorConfig.getPartitioner());
             if (parameters.isCount)
                 return pageCountQuery(pager, options, pageSize, now, limit);
 
@@ -425,7 +425,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         AbstractBounds<RowPosition> keyBounds = getKeyBounds(options);
         return keyBounds == null
              ? null
-             : new RangeSliceCommand(keyspace(), columnFamily(), now,  filter, keyBounds, expressions, limit, !parameters.isDistinct, false, keyspaceManager, messagingService.rangeSliceCommandSerializer);
+             : new RangeSliceCommand(keyspace(), columnFamily(), now,  filter, keyBounds, expressions, limit, !parameters.isDistinct, false, databaseDescriptor, keyspaceManager, messagingService.rangeSliceCommandSerializer);
     }
 
     private AbstractBounds<RowPosition> getKeyBounds(QueryOptions options) throws InvalidRequestException

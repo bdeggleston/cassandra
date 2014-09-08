@@ -34,8 +34,9 @@ public abstract class AbstractRangeCommand implements IReadCommand
     public final AbstractBounds<RowPosition> keyRange;
     public final IDiskAtomFilter predicate;
     public final List<IndexExpression> rowFilter;
+    protected final DatabaseDescriptor databaseDescriptor;
 
-    public AbstractRangeCommand(String keyspace, String columnFamily, long timestamp, AbstractBounds<RowPosition> keyRange, IDiskAtomFilter predicate, List<IndexExpression> rowFilter)
+    public AbstractRangeCommand(String keyspace, String columnFamily, long timestamp, AbstractBounds<RowPosition> keyRange, IDiskAtomFilter predicate, List<IndexExpression> rowFilter, DatabaseDescriptor databaseDescriptor)
     {
         this.keyspace = keyspace;
         this.columnFamily = columnFamily;
@@ -43,6 +44,7 @@ public abstract class AbstractRangeCommand implements IReadCommand
         this.keyRange = keyRange;
         this.predicate = predicate;
         this.rowFilter = rowFilter;
+        this.databaseDescriptor = databaseDescriptor;
     }
 
     public String getKeyspace()
@@ -60,6 +62,6 @@ public abstract class AbstractRangeCommand implements IReadCommand
 
     public long getTimeout()
     {
-        return DatabaseDescriptor.instance.getRangeRpcTimeout();
+        return databaseDescriptor.getRangeRpcTimeout();
     }
 }

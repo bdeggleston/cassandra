@@ -19,6 +19,7 @@ package org.apache.cassandra.service.pager;
 
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
@@ -41,26 +42,28 @@ public class RangeSliceQueryPager extends AbstractQueryPager
     private volatile DecoratedKey lastReturnedKey;
     private volatile CellName lastReturnedName;
 
+    private final DatabaseDescriptor databaseDescriptor;
     private final KeyspaceManager keyspaceManager;
     private final StorageProxy storageProxy;
     private final MessagingService messagingService;
     private final IPartitioner partitioner;
 
     // Don't use directly, use QueryPagers method instead
-    RangeSliceQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
+    RangeSliceQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, DatabaseDescriptor databaseDescriptor, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
     {
         super(consistencyLevel, command.maxResults, localQuery, command.keyspace, command.columnFamily, schema, command.predicate, command.timestamp);
         this.command = command;
         assert columnFilter instanceof SliceQueryFilter;
+        this.databaseDescriptor = databaseDescriptor;
         this.keyspaceManager = keyspaceManager;
         this.storageProxy = storageProxy;
         this.partitioner = partitioner;
         this.messagingService = messagingService;
     }
 
-    RangeSliceQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
+    RangeSliceQueryPager(RangeSliceCommand command, Schema schema, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state, DatabaseDescriptor databaseDescriptor, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
     {
-        this(command, schema, consistencyLevel, localQuery, keyspaceManager, storageProxy, messagingService, partitioner);
+        this(command, schema, consistencyLevel, localQuery, databaseDescriptor, keyspaceManager, storageProxy, messagingService, partitioner);
 
         if (state != null)
         {
@@ -93,6 +96,7 @@ public class RangeSliceQueryPager extends AbstractQueryPager
                                                           command.rowFilter,
                                                           pageSize,
                                                           command.countCQL3Rows,
+                                                          databaseDescriptor,
                                                           keyspaceManager,
                                                           messagingService.pagedRangeCommandSerializer);
 

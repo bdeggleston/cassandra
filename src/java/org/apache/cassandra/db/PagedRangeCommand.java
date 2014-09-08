@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.*;
@@ -52,10 +53,11 @@ public class PagedRangeCommand extends AbstractRangeCommand
                              List<IndexExpression> rowFilter,
                              int limit,
                              boolean countCQL3Rows,
+                             DatabaseDescriptor databaseDescriptor,
                              KeyspaceManager keyspaceManager,
                              Serializer serializer)
     {
-        super(keyspace, columnFamily, timestamp, keyRange, predicate, rowFilter);
+        super(keyspace, columnFamily, timestamp, keyRange, predicate, rowFilter, databaseDescriptor);
         this.start = start;
         this.stop = stop;
         this.limit = limit;
@@ -83,6 +85,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
                                      rowFilter,
                                      limit,
                                      countCQL3Rows,
+                                     databaseDescriptor,
                                      keyspaceManager,
                                      serializer);
     }
@@ -99,6 +102,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
                                      rowFilter,
                                      newLimit,
                                      countCQL3Rows,
+                                     databaseDescriptor,
                                      keyspaceManager,
                                      serializer);
     }
@@ -133,12 +137,14 @@ public class PagedRangeCommand extends AbstractRangeCommand
     public static class Serializer implements IVersionedSerializer<PagedRangeCommand>
     {
 
+        private final DatabaseDescriptor databaseDescriptor;
         private final Schema schema;
         private final KeyspaceManager keyspaceManager;
         private final AbstractBounds.Serializer abstractBoundsSerializer;
 
-        public Serializer(Schema schema, KeyspaceManager keyspaceManager, AbstractBounds.Serializer abstractBoundsSerializer)
+        public Serializer(DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, AbstractBounds.Serializer abstractBoundsSerializer)
         {
+            this.databaseDescriptor = databaseDescriptor;
             this.schema = schema;
             this.keyspaceManager = keyspaceManager;
             this.abstractBoundsSerializer = abstractBoundsSerializer;
@@ -204,7 +210,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
             boolean countCQL3Rows = version >= MessagingService.VERSION_21
                                   ? in.readBoolean()
                                   : predicate.compositesToGroup >= 0 || predicate.count != 1; // See #6857
-            return new PagedRangeCommand(keyspace, columnFamily, timestamp, keyRange, predicate, start, stop, rowFilter, limit, countCQL3Rows, keyspaceManager, this);
+            return new PagedRangeCommand(keyspace, columnFamily, timestamp, keyRange, predicate, start, stop, rowFilter, limit, countCQL3Rows, databaseDescriptor, keyspaceManager, this);
         }
 
         public long serializedSize(PagedRangeCommand cmd, int version)

@@ -605,6 +605,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                           range,
                                                           null,
                                                           LARGE_NUMBER,
+                                                          DatabaseDescriptor.instance,
                                                           KeyspaceManager.instance,
                                                           MessagingService.instance.rangeSliceCommandSerializer);
             return StorageProxy.instance.getRangeSlice(cmd, ConsistencyLevel.ONE);

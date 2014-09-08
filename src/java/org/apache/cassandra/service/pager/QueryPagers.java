@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.ColumnCounter;
@@ -94,13 +95,13 @@ public class QueryPagers
             return new SliceQueryPager((SliceFromReadCommand)command, schema, consistencyLevel, local, state, keyspaceManager, storageProxy);
     }
 
-    private static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel, boolean local, PagingState state, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
+    private static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel, boolean local, PagingState state, DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
     {
         if (command instanceof Pageable.ReadCommands)
         {
             List<ReadCommand> commands = ((Pageable.ReadCommands)command).commands;
             if (commands.size() == 1)
-                return pager(commands.get(0), consistencyLevel, local, state, schema, keyspaceManager, storageProxy, messagingService, partitioner);
+                return pager(commands.get(0), consistencyLevel, local, state, databaseDescriptor, schema, keyspaceManager, storageProxy, messagingService, partitioner);
 
             return new MultiPartitionPager(commands, consistencyLevel, local, state, schema, keyspaceManager, storageProxy);
         }
@@ -115,23 +116,23 @@ public class QueryPagers
             if (rangeCommand.predicate instanceof NamesQueryFilter)
                 return new RangeNamesQueryPager(rangeCommand, schema, consistencyLevel, local, state, storageProxy, partitioner);
             else
-                return new RangeSliceQueryPager(rangeCommand, schema, consistencyLevel, local, state, keyspaceManager, storageProxy, messagingService, partitioner);
+                return new RangeSliceQueryPager(rangeCommand, schema, consistencyLevel, local, state, databaseDescriptor, keyspaceManager, storageProxy, messagingService, partitioner);
         }
     }
 
-    public static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
+    public static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel, DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
     {
-        return pager(command, consistencyLevel, false, null, schema, keyspaceManager, storageProxy, messagingService, partitioner);
+        return pager(command, consistencyLevel, false, null, databaseDescriptor, schema, keyspaceManager, storageProxy, messagingService, partitioner);
     }
 
-    public static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel, PagingState state, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
+    public static QueryPager pager(Pageable command, ConsistencyLevel consistencyLevel, PagingState state, DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
     {
-        return pager(command, consistencyLevel, false, state, schema, keyspaceManager, storageProxy, messagingService, partitioner);
+        return pager(command, consistencyLevel, false, state, databaseDescriptor, schema, keyspaceManager, storageProxy, messagingService, partitioner);
     }
 
-    public static QueryPager localPager(Pageable command, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
+    public static QueryPager localPager(Pageable command, DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, IPartitioner partitioner)
     {
-        return pager(command, null, true, null, schema, keyspaceManager, storageProxy, messagingService, partitioner);
+        return pager(command, null, true, null, databaseDescriptor, schema, keyspaceManager, storageProxy, messagingService, partitioner);
     }
 
     /**
