@@ -145,7 +145,7 @@ public class LegacySSTableTest
         for (String keystring : TEST_DATA)
         {
             ByteBuffer key = ByteBufferUtil.bytes(keystring);
-            SSTableNamesIterator iter = new SSTableNamesIterator(sstable, Util.dk(key), FBUtilities.singleton(Util.cellname(key), type));
+            SSTableNamesIterator iter = new SSTableNamesIterator(sstable, Util.dk(key), FBUtilities.singleton(Util.cellname(key), type), DBConfig.instance);
             ColumnFamily cf = iter.getColumnFamily();
 
             // check not deleted (CASSANDRA-6527)
@@ -182,7 +182,7 @@ public class LegacySSTableTest
                 ByteBuffer key = ByteBufferUtil.bytes(keystring);
                 // confirm that the bloom filter does not reject any keys/names
                 DecoratedKey dk = reader.partitioner.decorateKey(key);
-                SSTableNamesIterator iter = new SSTableNamesIterator(reader, dk, FBUtilities.singleton(Util.cellname(key), type));
+                SSTableNamesIterator iter = new SSTableNamesIterator(reader, dk, FBUtilities.singleton(Util.cellname(key), type), DBConfig.instance);
                 assert iter.next().name().toByteBuffer().equals(key);
             }
 

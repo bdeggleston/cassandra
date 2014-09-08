@@ -87,12 +87,12 @@ public class NamesQueryFilter implements IDiskAtomFilter
 
     public OnDiskAtomIterator getSSTableColumnIterator(SSTableReader sstable, DecoratedKey key)
     {
-        return new SSTableNamesIterator(sstable, key, columns);
+        return new SSTableNamesIterator(sstable, key, columns, DBConfig.instance);
     }
 
     public OnDiskAtomIterator getSSTableColumnIterator(SSTableReader sstable, FileDataInput file, DecoratedKey key, RowIndexEntry indexEntry)
     {
-        return new SSTableNamesIterator(sstable, file, key, columns, indexEntry);
+        return new SSTableNamesIterator(sstable, file, key, columns, indexEntry, DBConfig.instance);
     }
 
     public void collectReducedColumns(ColumnFamily container, Iterator<Cell> reducedColumns, int gcBefore, long now)

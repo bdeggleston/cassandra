@@ -42,13 +42,15 @@ public class SSTableNamesIterator extends AbstractIterator<OnDiskAtom> implement
     private Iterator<OnDiskAtom> iter;
     public final SortedSet<CellName> columns;
     public final DecoratedKey key;
+    private final DBConfig dbConfig;
 
-    public SSTableNamesIterator(SSTableReader sstable, DecoratedKey key, SortedSet<CellName> columns)
+    public SSTableNamesIterator(SSTableReader sstable, DecoratedKey key, SortedSet<CellName> columns, DBConfig dbConfig)
     {
         assert columns != null;
         this.sstable = sstable;
         this.columns = columns;
         this.key = key;
+        this.dbConfig = dbConfig;
 
         RowIndexEntry indexEntry = sstable.getPosition(key, SSTableReader.Operator.EQ);
         if (indexEntry == null)
@@ -70,12 +72,13 @@ public class SSTableNamesIterator extends AbstractIterator<OnDiskAtom> implement
         }
     }
 
-    public SSTableNamesIterator(SSTableReader sstable, FileDataInput file, DecoratedKey key, SortedSet<CellName> columns, RowIndexEntry indexEntry)
+    public SSTableNamesIterator(SSTableReader sstable, FileDataInput file, DecoratedKey key, SortedSet<CellName> columns, RowIndexEntry indexEntry, DBConfig dbConfig)
     {
         assert columns != null;
         this.sstable = sstable;
         this.columns = columns;
         this.key = key;
+        this.dbConfig = dbConfig;
 
         try
         {
@@ -115,10 +118,10 @@ public class SSTableNamesIterator extends AbstractIterator<OnDiskAtom> implement
 
         if (!indexEntry.isIndexed())
         {
-            ColumnFamilySerializer serializer = DBConfig.instance.columnFamilySerializer;
+            ColumnFamilySerializer serializer = dbConfig.columnFamilySerializer;
             try
             {
-                cf = ArrayBackedSortedColumns.factory.create(sstable.metadata, DBConfig.instance);
+                cf = ArrayBackedSortedColumns.factory.create(sstable.metadata, dbConfig);
                 cf.delete(DeletionTime.serializer.deserialize(file));
             }
             catch (Exception e)
@@ -128,7 +131,7 @@ public class SSTableNamesIterator extends AbstractIterator<OnDiskAtom> implement
         }
         else
         {
-            cf = ArrayBackedSortedColumns.factory.create(sstable.metadata, DBConfig.instance);
+            cf = ArrayBackedSortedColumns.factory.create(sstable.metadata, dbConfig);
             cf.delete(indexEntry.deletionTime());
         }
 
