@@ -31,23 +31,30 @@ import org.apache.cassandra.utils.UUIDSerializer;
 
 public class ColumnFamilySerializer implements IVersionedSerializer<ColumnFamily>, ISSTableSerializer<ColumnFamily>
 {
+    private final Schema schema;
+
+    public ColumnFamilySerializer(Schema schema)
+    {
+        this.schema = schema;
+    }
+
     /*
-     * Serialized ColumnFamily format:
-     *
-     * [serialized for intra-node writes only, e.g. returning a query result]
-     * <cf nullability boolean: false if the cf is null>
-     * <cf id>
-     *
-     * [in sstable only]
-     * <column bloom filter>
-     * <sparse column index, start/finish columns every ColumnIndexSizeInKB of data>
-     *
-     * [always present]
-     * <local deletion time>
-     * <client-provided deletion time>
-     * <column count>
-     * <columns, serialized individually>
-    */
+         * Serialized ColumnFamily format:
+         *
+         * [serialized for intra-node writes only, e.g. returning a query result]
+         * <cf nullability boolean: false if the cf is null>
+         * <cf id>
+         *
+         * [in sstable only]
+         * <column bloom filter>
+         * <sparse column index, start/finish columns every ColumnIndexSizeInKB of data>
+         *
+         * [always present]
+         * <local deletion time>
+         * <client-provided deletion time>
+         * <column count>
+         * <columns, serialized individually>
+        */
     public void serialize(ColumnFamily cf, DataOutputPlus out, int version)
     {
         try
@@ -93,7 +100,7 @@ public class ColumnFamilySerializer implements IVersionedSerializer<ColumnFamily
         if (!in.readBoolean())
             return null;
 
-        ColumnFamily cf = factory.create(Schema.instance.getCFMetaData(deserializeCfId(in, version)), DBConfig.instance);
+        ColumnFamily cf = factory.create(schema.getCFMetaData(deserializeCfId(in, version)), DBConfig.instance);
 
         if (cf.metadata().isSuper() && version < MessagingService.VERSION_20)
         {
@@ -159,7 +166,7 @@ public class ColumnFamilySerializer implements IVersionedSerializer<ColumnFamily
     public UUID deserializeCfId(DataInput in, int version) throws IOException
     {
         UUID cfId = UUIDSerializer.serializer.deserialize(in, version);
-        if (Schema.instance.getCF(cfId) == null)
+        if (schema.getCF(cfId) == null)
             throw new UnknownColumnFamilyException("Couldn't find cfId=" + cfId, cfId);
 
         return cfId;

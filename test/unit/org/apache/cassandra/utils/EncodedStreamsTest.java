@@ -135,13 +135,13 @@ public class EncodedStreamsTest
     {
         ByteArrayOutputStream byteArrayOStream1 = new ByteArrayOutputStream();
         EncodedDataOutputStream odos = new EncodedDataOutputStream(byteArrayOStream1);
-        ColumnFamily.serializer.serialize(createCF(), odos, version);
+        DBConfig.instance.columnFamilySerializer.serialize(createCF(), odos, version);
 
         ByteArrayInputStream byteArrayIStream1 = new ByteArrayInputStream(byteArrayOStream1.toByteArray());
         EncodedDataInputStream odis = new EncodedDataInputStream(new DataInputStream(byteArrayIStream1));
-        ColumnFamily cf = ColumnFamily.serializer.deserialize(odis, version);
+        ColumnFamily cf = DBConfig.instance.columnFamilySerializer.deserialize(odis, version);
         Assert.assertEquals(cf, createCF());
-        Assert.assertEquals(byteArrayOStream1.size(), (int) ColumnFamily.serializer.serializedSize(cf, TypeSizes.VINT, version));
+        Assert.assertEquals(byteArrayOStream1.size(), (int) DBConfig.instance.columnFamilySerializer.serializedSize(cf, TypeSizes.VINT, version));
     }
 
     @Test
@@ -151,13 +151,13 @@ public class EncodedStreamsTest
 
         ByteArrayOutputStream byteArrayOStream1 = new ByteArrayOutputStream();
         EncodedDataOutputStream odos = new EncodedDataOutputStream(byteArrayOStream1);
-        ColumnFamily.serializer.serialize(counterCF, odos, version);
+        DBConfig.instance.columnFamilySerializer.serialize(counterCF, odos, version);
 
         ByteArrayInputStream byteArrayIStream1 = new ByteArrayInputStream(byteArrayOStream1.toByteArray());
         EncodedDataInputStream odis = new EncodedDataInputStream(new DataInputStream(byteArrayIStream1));
-        ColumnFamily cf = ColumnFamily.serializer.deserialize(odis, version);
+        ColumnFamily cf = DBConfig.instance.columnFamilySerializer.deserialize(odis, version);
         Assert.assertEquals(cf, counterCF);
-        Assert.assertEquals(byteArrayOStream1.size(), (int) ColumnFamily.serializer.serializedSize(cf, TypeSizes.VINT, version));
+        Assert.assertEquals(byteArrayOStream1.size(), (int) DBConfig.instance.columnFamilySerializer.serializedSize(cf, TypeSizes.VINT, version));
     }
 }
 

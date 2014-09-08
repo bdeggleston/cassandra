@@ -36,13 +36,15 @@ public class ReadVerbHandler implements IVerbHandler<ReadCommand>
     private final MessagingService messagingService;
     private final StorageService storageService;
     private final Tracing tracing;
+    private final ReadResponse.Serializer serializer;
 
-    public ReadVerbHandler(KeyspaceManager keyspaceManager, MessagingService messagingService, StorageService storageService, Tracing tracing)
+    public ReadVerbHandler(KeyspaceManager keyspaceManager, MessagingService messagingService, StorageService storageService, Tracing tracing, ReadResponse.Serializer serializer)
     {
         this.keyspaceManager = keyspaceManager;
         this.messagingService = messagingService;
         this.storageService = storageService;
         this.tracing = tracing;
+        this.serializer = serializer;
     }
 
     public void doVerb(MessageIn<ReadCommand> message, int id)
@@ -67,7 +69,7 @@ public class ReadVerbHandler implements IVerbHandler<ReadCommand>
 
         MessageOut<ReadResponse> reply = new MessageOut<ReadResponse>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                       getResponse(command, row),
-                                                                      ReadResponse.serializer);
+                                                                      serializer);
         tracing.trace("Enqueuing response to {}", message.from);
         messagingService.sendReply(reply, id, message.from);
     }

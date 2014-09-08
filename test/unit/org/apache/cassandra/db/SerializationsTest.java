@@ -199,15 +199,15 @@ public class SerializationsTest extends AbstractSerializationsTester
     private void testRowWrite() throws IOException
     {
         DataOutputStreamAndChannel out = getOutput("db.Row.bin");
-        Row.serializer.serialize(statics.StandardRow, out, getVersion());
-        Row.serializer.serialize(statics.SuperRow, out, getVersion());
-        Row.serializer.serialize(statics.NullRow, out, getVersion());
+        DBConfig.instance.rowSerializer.serialize(statics.StandardRow, out, getVersion());
+        DBConfig.instance.rowSerializer.serialize(statics.SuperRow, out, getVersion());
+        DBConfig.instance.rowSerializer.serialize(statics.NullRow, out, getVersion());
         out.close();
 
         // test serializedSize
-        testSerializedSize(statics.StandardRow, Row.serializer);
-        testSerializedSize(statics.SuperRow, Row.serializer);
-        testSerializedSize(statics.NullRow, Row.serializer);
+        testSerializedSize(statics.StandardRow, DBConfig.instance.rowSerializer);
+        testSerializedSize(statics.SuperRow, DBConfig.instance.rowSerializer);
+        testSerializedSize(statics.NullRow, DBConfig.instance.rowSerializer);
     }
 
     @Test
@@ -218,9 +218,9 @@ public class SerializationsTest extends AbstractSerializationsTester
         testRowWrite();
 
         DataInputStream in = getInput("db.Row.bin");
-        assert Row.serializer.deserialize(in, getVersion()) != null;
-        assert Row.serializer.deserialize(in, getVersion()) != null;
-        assert Row.serializer.deserialize(in, getVersion()) != null;
+        assert DBConfig.instance.rowSerializer.deserialize(in, getVersion()) != null;
+        assert DBConfig.instance.rowSerializer.deserialize(in, getVersion()) != null;
+        assert DBConfig.instance.rowSerializer.deserialize(in, getVersion()) != null;
         in.close();
     }
 

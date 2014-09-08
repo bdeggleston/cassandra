@@ -178,12 +178,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         /* register the verb handlers */
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.MUTATION, new MutationVerbHandler(Tracing.instance, MessagingService.instance, MutationFactory.instance.serializer));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.READ_REPAIR, new ReadRepairVerbHandler(MessagingService.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.READ, new ReadVerbHandler(KeyspaceManager.instance, MessagingService.instance, this, Tracing.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.RANGE_SLICE, new RangeSliceVerbHandler(Tracing.instance, MessagingService.instance, this));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAGED_RANGE, new RangeSliceVerbHandler(Tracing.instance, MessagingService.instance, this));
+        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.READ, new ReadVerbHandler(KeyspaceManager.instance, MessagingService.instance, this, Tracing.instance, MessagingService.instance.readResponseSerializer));
+        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.RANGE_SLICE, new RangeSliceVerbHandler(Tracing.instance, MessagingService.instance, this, MessagingService.instance.rangeSliceReplySerializer));
+        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAGED_RANGE, new RangeSliceVerbHandler(Tracing.instance, MessagingService.instance, this, MessagingService.instance.rangeSliceReplySerializer));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.COUNTER_MUTATION, new CounterMutationVerbHandler(LocatorConfig.instance, MessagingService.instance, StorageProxy.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.TRUNCATE, new TruncateVerbHandler(Tracing.instance, KeyspaceManager.instance, MessagingService.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PREPARE, new PrepareVerbHandler(Tracing.instance, SystemKeyspace.instance, MessagingService.instance));
+        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PREPARE, new PrepareVerbHandler(Tracing.instance, SystemKeyspace.instance, MessagingService.instance, MessagingService.instance.prepareResponseSerializer));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PROPOSE, new ProposeVerbHandler(Tracing.instance, SystemKeyspace.instance, MessagingService.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_COMMIT, new CommitVerbHandler(Tracing.instance, SystemKeyspace.instance, KeyspaceManager.instance, MessagingService.instance));
 

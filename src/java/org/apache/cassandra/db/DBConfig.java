@@ -1,6 +1,7 @@
 package org.apache.cassandra.db;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.dht.LongToken;
 import org.apache.cassandra.locator.LocatorConfig;
@@ -21,12 +22,17 @@ public class DBConfig
     private final MemtablePool memtablePool;
     private final long memtableRowOverhead;
 
+    public final ColumnFamilySerializer columnFamilySerializer;
+    public final Row.RowSerializer rowSerializer;
+
     public DBConfig()
     {
         memtablePool = DatabaseDescriptor.instance.getMemtableAllocatorPool();
         memtableRowOverhead = estimateRowOverhead(
                 Integer.valueOf(System.getProperty("cassandra.memtable_row_overhead_computation_step", "100000")));
 
+        columnFamilySerializer = new ColumnFamilySerializer(Schema.instance);
+        rowSerializer = new Row.RowSerializer(LocatorConfig.instance.getPartitioner(), columnFamilySerializer);
     }
 
     private int estimateRowOverhead(int count)

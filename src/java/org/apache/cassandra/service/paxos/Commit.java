@@ -38,8 +38,6 @@ import org.apache.cassandra.utils.UUIDSerializer;
 
 public class Commit
 {
-    public static final CommitSerializer serializer = new CommitSerializer();
-
     public final ByteBuffer key;
     public final UUID ballot;
     public final ColumnFamily update;
@@ -126,20 +124,28 @@ public class Commit
         return String.format("Commit(%s, %s, %s)", ByteBufferUtil.bytesToHex(key), ballot, update);
     }
 
-    public static class CommitSerializer implements IVersionedSerializer<Commit>
+    public static class Serializer implements IVersionedSerializer<Commit>
     {
+
+        private final ColumnFamilySerializer columnFamilySerializer;
+
+        public Serializer(ColumnFamilySerializer columnFamilySerializer)
+        {
+            this.columnFamilySerializer = columnFamilySerializer;
+        }
+
         public void serialize(Commit commit, DataOutputPlus out, int version) throws IOException
         {
             ByteBufferUtil.writeWithShortLength(commit.key, out);
             UUIDSerializer.serializer.serialize(commit.ballot, out, version);
-            ColumnFamily.serializer.serialize(commit.update, out, version);
+            columnFamilySerializer.serialize(commit.update, out, version);
         }
 
         public Commit deserialize(DataInput in, int version) throws IOException
         {
             return new Commit(ByteBufferUtil.readWithShortLength(in),
                               UUIDSerializer.serializer.deserialize(in, version),
-                              ColumnFamily.serializer.deserialize(in,
+                              columnFamilySerializer.deserialize(in,
                                                                   ArrayBackedSortedColumns.factory,
                                                                   ColumnSerializer.Flag.LOCAL,
                                                                   version));
@@ -149,7 +155,7 @@ public class Commit
         {
             return 2 + commit.key.remaining()
                    + UUIDSerializer.serializer.serializedSize(commit.ballot, version)
-                   + ColumnFamily.serializer.serializedSize(commit.update, version);
+                   + columnFamilySerializer.serializedSize(commit.update, version);
         }
     }
 }

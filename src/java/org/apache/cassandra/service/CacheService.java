@@ -144,7 +144,7 @@ public class CacheService implements CacheServiceMBean
         long rowCacheInMemoryCapacity = DatabaseDescriptor.instance.getRowCacheSizeInMB() * 1024 * 1024;
 
         // cache object
-        ICache<RowCacheKey, IRowCacheEntry> rc = new SerializingCacheProvider().create(rowCacheInMemoryCapacity);
+        ICache<RowCacheKey, IRowCacheEntry> rc = new SerializingCacheProvider(DBConfig.instance.columnFamilySerializer).create(rowCacheInMemoryCapacity);
         AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache = new AutoSavingCache<>(rc,
                                                                                       CacheType.ROW_CACHE,
                                                                                       new RowCacheSerializer(),

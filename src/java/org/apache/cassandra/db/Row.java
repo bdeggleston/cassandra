@@ -21,16 +21,13 @@ import java.io.*;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class Row
 {
-    public static final RowSerializer serializer = new RowSerializer();
-
     public final DecoratedKey key;
     public final ColumnFamily cf;
 
@@ -42,9 +39,9 @@ public class Row
         this.cf = cf;
     }
 
-    public Row(ByteBuffer key, ColumnFamily updates)
+    public Row(ByteBuffer key, ColumnFamily updates, IPartitioner partitioner)
     {
-        this(LocatorConfig.instance.getPartitioner().decorateKey(key), updates);
+        this(partitioner.decorateKey(key), updates);
     }
 
     @Override
@@ -63,16 +60,25 @@ public class Row
 
     public static class RowSerializer implements IVersionedSerializer<Row>
     {
+        private final ColumnFamilySerializer columnFamilySerializer;
+        private final IPartitioner partitioner;
+
+        public RowSerializer(IPartitioner partitioner, ColumnFamilySerializer columnFamilySerializer)
+        {
+            this.partitioner = partitioner;
+            this.columnFamilySerializer = columnFamilySerializer;
+        }
+
         public void serialize(Row row, DataOutputPlus out, int version) throws IOException
         {
             ByteBufferUtil.writeWithShortLength(row.key.getKey(), out);
-            ColumnFamily.serializer.serialize(row.cf, out, version);
+            columnFamilySerializer.serialize(row.cf, out, version);
         }
 
         public Row deserialize(DataInput in, int version, ColumnSerializer.Flag flag) throws IOException
         {
-            return new Row(LocatorConfig.instance.getPartitioner().decorateKey(ByteBufferUtil.readWithShortLength(in)),
-                           ColumnFamily.serializer.deserialize(in, flag, version));
+            return new Row(partitioner.decorateKey(ByteBufferUtil.readWithShortLength(in)),
+                           columnFamilySerializer.deserialize(in, flag, version));
         }
 
         public Row deserialize(DataInput in, int version) throws IOException
@@ -83,7 +89,7 @@ public class Row
         public long serializedSize(Row row, int version)
         {
             int keySize = row.key.getKey().remaining();
-            return TypeSizes.NATIVE.sizeof((short) keySize) + keySize + ColumnFamily.serializer.serializedSize(row.cf, TypeSizes.NATIVE, version);
+            return TypeSizes.NATIVE.sizeof((short) keySize) + keySize + columnFamilySerializer.serializedSize(row.cf, TypeSizes.NATIVE, version);
         }
     }
 }

@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.ColumnFamilySerializer;
 import org.apache.cassandra.db.ColumnSerializer;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -35,8 +36,6 @@ import org.apache.cassandra.utils.UUIDSerializer;
 
 public class PrepareResponse
 {
-    public static final PrepareResponseSerializer serializer = new PrepareResponseSerializer();
-
     public final boolean promised;
 
     /*
@@ -63,16 +62,24 @@ public class PrepareResponse
         return String.format("PrepareResponse(%s, %s, %s)", promised, mostRecentCommit, inProgressCommit);
     }
 
-    public static class PrepareResponseSerializer implements IVersionedSerializer<PrepareResponse>
+    public static class Serializer implements IVersionedSerializer<PrepareResponse>
     {
+
+        private final ColumnFamilySerializer columnFamilySerializer;
+
+        public Serializer(ColumnFamilySerializer columnFamilySerializer)
+        {
+            this.columnFamilySerializer = columnFamilySerializer;
+        }
+
         public void serialize(PrepareResponse response, DataOutputPlus out, int version) throws IOException
         {
             out.writeBoolean(response.promised);
             ByteBufferUtil.writeWithShortLength(response.inProgressCommit.key, out);
             UUIDSerializer.serializer.serialize(response.inProgressCommit.ballot, out, version);
-            ColumnFamily.serializer.serialize(response.inProgressCommit.update, out, version);
+            columnFamilySerializer.serialize(response.inProgressCommit.update, out, version);
             UUIDSerializer.serializer.serialize(response.mostRecentCommit.ballot, out, version);
-            ColumnFamily.serializer.serialize(response.mostRecentCommit.update, out, version);
+            columnFamilySerializer.serialize(response.mostRecentCommit.update, out, version);
         }
 
         public PrepareResponse deserialize(DataInput in, int version) throws IOException
@@ -82,12 +89,12 @@ public class PrepareResponse
             return new PrepareResponse(success,
                                        new Commit(key,
                                                   UUIDSerializer.serializer.deserialize(in, version),
-                                                  ColumnFamily.serializer.deserialize(in,
+                                                  columnFamilySerializer.deserialize(in,
                                                                                       ArrayBackedSortedColumns.factory,
                                                                                       ColumnSerializer.Flag.LOCAL, version)),
                                        new Commit(key,
                                                   UUIDSerializer.serializer.deserialize(in, version),
-                                                  ColumnFamily.serializer.deserialize(in,
+                                                  columnFamilySerializer.deserialize(in,
                                                                                       ArrayBackedSortedColumns.factory,
                                                                                       ColumnSerializer.Flag.LOCAL, version)));
         }
@@ -97,9 +104,9 @@ public class PrepareResponse
             return 1
                    + 2 + response.inProgressCommit.key.remaining()
                    + UUIDSerializer.serializer.serializedSize(response.inProgressCommit.ballot, version)
-                   + ColumnFamily.serializer.serializedSize(response.inProgressCommit.update, version)
+                   + columnFamilySerializer.serializedSize(response.inProgressCommit.update, version)
                    + UUIDSerializer.serializer.serializedSize(response.mostRecentCommit.ballot, version)
-                   + ColumnFamily.serializer.serializedSize(response.mostRecentCommit.update, version);
+                   + columnFamilySerializer.serializedSize(response.mostRecentCommit.update, version);
         }
     }
 }

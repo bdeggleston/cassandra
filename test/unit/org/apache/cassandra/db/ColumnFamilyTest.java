@@ -82,10 +82,10 @@ public class ColumnFamilyTest
         cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, Schema.instance, DBConfig.instance);
         cf.addColumn(column("C", "v", 1));
         DataOutputBuffer bufOut = new DataOutputBuffer();
-        ColumnFamily.serializer.serialize(cf, bufOut, version);
+        DBConfig.instance.columnFamilySerializer.serialize(cf, bufOut, version);
 
         ByteArrayInputStream bufIn = new ByteArrayInputStream(bufOut.getData(), 0, bufOut.getLength());
-        cf = ColumnFamily.serializer.deserialize(new DataInputStream(bufIn), version);
+        cf = DBConfig.instance.columnFamilySerializer.deserialize(new DataInputStream(bufIn), version);
         assert cf != null;
         assert cf.metadata().cfName.equals(CF_STANDARD1);
         assert cf.getSortedColumns().size() == 1;
@@ -109,11 +109,11 @@ public class ColumnFamilyTest
         {
             cf.addColumn(column(cName, map.get(cName), 314));
         }
-        ColumnFamily.serializer.serialize(cf, bufOut, version);
+        DBConfig.instance.columnFamilySerializer.serialize(cf, bufOut, version);
 
         // verify
         ByteArrayInputStream bufIn = new ByteArrayInputStream(bufOut.getData(), 0, bufOut.getLength());
-        cf = ColumnFamily.serializer.deserialize(new DataInputStream(bufIn), version);
+        cf = DBConfig.instance.columnFamilySerializer.deserialize(new DataInputStream(bufIn), version);
         for (String cName : map.navigableKeySet())
         {
             ByteBuffer val = cf.getColumn(cellname(cName)).value();

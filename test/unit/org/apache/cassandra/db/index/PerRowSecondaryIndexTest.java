@@ -219,7 +219,7 @@ public class PerRowSecondaryIndexTest
                 @Override
                 public List<Row> search(ExtendedFilter filter)
                 {
-                    return Arrays.asList(new Row(LAST_INDEXED_KEY, LAST_INDEXED_ROW));
+                    return Arrays.asList(new Row(LAST_INDEXED_KEY, LAST_INDEXED_ROW, LocatorConfig.instance.getPartitioner()));
                 }
 
                 @Override

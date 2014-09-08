@@ -35,7 +35,6 @@ import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
 import org.apache.cassandra.auth.Auth;
-import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.gms.*;
 import org.apache.cassandra.streaming.StreamManager;
@@ -137,6 +136,11 @@ public final class MessagingService implements MessagingServiceMBean
         ;
     }
 
+    public final ReadResponse.Serializer readResponseSerializer = new ReadResponse.Serializer(DBConfig.instance.rowSerializer);
+    public final RangeSliceReply.Serializer rangeSliceReplySerializer = new RangeSliceReply.Serializer(DBConfig.instance.rowSerializer);
+    public final PrepareResponse.Serializer prepareResponseSerializer = new PrepareResponse.Serializer(DBConfig.instance.columnFamilySerializer);
+    public final Commit.Serializer commitSerializer = new Commit.Serializer(DBConfig.instance.columnFamilySerializer);
+
     public final EnumMap<MessagingService.Verb, Stage> verbStages = new EnumMap<MessagingService.Verb, Stage>(MessagingService.Verb.class)
     {{
         put(Verb.MUTATION, Stage.MUTATION);
@@ -214,9 +218,9 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.COUNTER_MUTATION, CounterMutationFactory.instance.serializer);
         put(Verb.SNAPSHOT, SnapshotCommand.serializer);
         put(Verb.ECHO, EchoMessage.serializer);
-        put(Verb.PAXOS_PREPARE, Commit.serializer);
-        put(Verb.PAXOS_PROPOSE, Commit.serializer);
-        put(Verb.PAXOS_COMMIT, Commit.serializer);
+        put(Verb.PAXOS_PREPARE, commitSerializer);
+        put(Verb.PAXOS_PROPOSE, commitSerializer);
+        put(Verb.PAXOS_COMMIT, commitSerializer);
     }};
 
     /**
@@ -227,9 +231,9 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.MUTATION, WriteResponse.serializer);
         put(Verb.READ_REPAIR, WriteResponse.serializer);
         put(Verb.COUNTER_MUTATION, WriteResponse.serializer);
-        put(Verb.RANGE_SLICE, RangeSliceReply.serializer);
-        put(Verb.PAGED_RANGE, RangeSliceReply.serializer);
-        put(Verb.READ, ReadResponse.serializer);
+        put(Verb.RANGE_SLICE, rangeSliceReplySerializer);
+        put(Verb.PAGED_RANGE, rangeSliceReplySerializer);
+        put(Verb.READ, readResponseSerializer);
         put(Verb.TRUNCATE, TruncateResponse.serializer);
         put(Verb.SNAPSHOT, null);
 
@@ -238,7 +242,7 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.BOOTSTRAP_TOKEN, BootStrapper.StringSerializer.instance);
         put(Verb.REPLICATION_FINISHED, null);
 
-        put(Verb.PAXOS_PREPARE, PrepareResponse.serializer);
+        put(Verb.PAXOS_PREPARE, prepareResponseSerializer);
         put(Verb.PAXOS_PROPOSE, BooleanSerializer.serializer);
     }};
 

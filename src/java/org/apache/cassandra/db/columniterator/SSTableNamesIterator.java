@@ -115,7 +115,7 @@ public class SSTableNamesIterator extends AbstractIterator<OnDiskAtom> implement
 
         if (!indexEntry.isIndexed())
         {
-            ColumnFamilySerializer serializer = ColumnFamily.serializer;
+            ColumnFamilySerializer serializer = DBConfig.instance.columnFamilySerializer;
             try
             {
                 cf = ArrayBackedSortedColumns.factory.create(sstable.metadata, DBConfig.instance);

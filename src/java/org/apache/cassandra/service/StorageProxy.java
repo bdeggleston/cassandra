@@ -380,7 +380,7 @@ public class StorageProxy implements StorageProxyMBean
      */
     private void sendCommit(Commit commit, Iterable<InetAddress> replicas)
     {
-        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_COMMIT, commit, Commit.serializer);
+        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_COMMIT, commit, MessagingService.instance.commitSerializer);
         for (InetAddress target : replicas)
             MessagingService.instance.sendOneWay(message, target);
     }
@@ -389,7 +389,7 @@ public class StorageProxy implements StorageProxyMBean
     throws WriteTimeoutException
     {
         PrepareCallback callback = new PrepareCallback(toPrepare.key, toPrepare.update.metadata(), requiredParticipants, consistencyForPaxos, DatabaseDescriptor.instance.getWriteRpcTimeout());
-        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_PREPARE, toPrepare, Commit.serializer);
+        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_PREPARE, toPrepare, MessagingService.instance.commitSerializer);
         for (InetAddress target : endpoints)
             MessagingService.instance.sendRR(message, target, callback);
         callback.await();
@@ -400,7 +400,7 @@ public class StorageProxy implements StorageProxyMBean
     throws WriteTimeoutException
     {
         ProposeCallback callback = new ProposeCallback(endpoints.size(), requiredParticipants, !timeoutIfPartial, consistencyLevel, DatabaseDescriptor.instance.getWriteRpcTimeout());
-        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_PROPOSE, proposal, Commit.serializer);
+        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_PROPOSE, proposal, MessagingService.instance.commitSerializer);
         for (InetAddress target : endpoints)
             MessagingService.instance.sendRR(message, target, callback);
 
@@ -431,7 +431,7 @@ public class StorageProxy implements StorageProxyMBean
             responseHandler = rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistencyLevel, null, WriteType.SIMPLE);
         }
 
-        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_COMMIT, proposal, Commit.serializer);
+        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_COMMIT, proposal, MessagingService.instance.commitSerializer);
         for (InetAddress destination : Iterables.concat(naturalEndpoints, pendingEndpoints))
         {
             if (FailureDetector.instance.isAlive(destination))
@@ -1403,7 +1403,7 @@ public class StorageProxy implements StorageProxyMBean
 
         protected void runMayThrow()
         {
-            RangeSliceReply result = new RangeSliceReply(command.executeLocally());
+            RangeSliceReply result = new RangeSliceReply(command.executeLocally(), MessagingService.instance.rangeSliceReplySerializer);
             MessagingService.instance.addLatency(DatabaseDescriptor.instance.getBroadcastAddress(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
             handler.response(result);
         }

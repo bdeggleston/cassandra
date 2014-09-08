@@ -101,7 +101,7 @@ public class SSTableSimpleUnsortedWriter extends AbstractSSTableSimpleWriter
 
     protected void writeRow(DecoratedKey key, ColumnFamily columnFamily) throws IOException
     {
-        currentSize += key.getKey().remaining() + ColumnFamily.serializer.serializedSize(columnFamily, MessagingService.current_version) * 1.2;
+        currentSize += key.getKey().remaining() + DBConfig.instance.columnFamilySerializer.serializedSize(columnFamily, MessagingService.current_version) * 1.2;
 
         if (currentSize > bufferSize)
             sync();
@@ -120,7 +120,7 @@ public class SSTableSimpleUnsortedWriter extends AbstractSSTableSimpleWriter
         {
             // We will reuse a CF that we have counted already. But because it will be easier to add the full size
             // of the CF in the next writeRow call than to find out the delta, we just remove the size until that next call
-            currentSize -= currentKey.getKey().remaining() + ColumnFamily.serializer.serializedSize(previous, MessagingService.current_version) * 1.2;
+            currentSize -= currentKey.getKey().remaining() + DBConfig.instance.columnFamilySerializer.serializedSize(previous, MessagingService.current_version) * 1.2;
         }
         return previous;
     }

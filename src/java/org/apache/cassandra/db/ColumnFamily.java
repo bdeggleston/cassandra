@@ -55,20 +55,21 @@ import org.apache.cassandra.utils.*;
  */
 public abstract class ColumnFamily implements Iterable<Cell>, IRowCacheEntry
 {
-    /* The column serializer for this Column Family. Create based on config. */
-    public static final ColumnFamilySerializer serializer = new ColumnFamilySerializer();
-
     protected final CFMetaData metadata;
+    protected final DBConfig dbConfig;
+    protected final ColumnFamilySerializer serializer;
 
-    protected ColumnFamily(CFMetaData metadata)
+    protected ColumnFamily(CFMetaData metadata, DBConfig dbConfig)
     {
         assert metadata != null;
         this.metadata = metadata;
+        this.dbConfig = dbConfig;
+        this.serializer = this.dbConfig.columnFamilySerializer;
     }
 
     public <T extends ColumnFamily> T cloneMeShallow(ColumnFamily.Factory<T> factory, boolean reversedInsertOrder)
     {
-        T cf = factory.create(metadata, DBConfig.instance, reversedInsertOrder);
+        T cf = factory.create(metadata, dbConfig, reversedInsertOrder);
         cf.delete(this);
         return cf;
     }
@@ -286,7 +287,7 @@ public abstract class ColumnFamily implements Iterable<Cell>, IRowCacheEntry
     public ColumnFamily diff(ColumnFamily cfComposite)
     {
         assert cfComposite.id().equals(id());
-        ColumnFamily cfDiff = ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance);
+        ColumnFamily cfDiff = ArrayBackedSortedColumns.factory.create(metadata, dbConfig);
         cfDiff.delete(cfComposite.deletionInfo());
 
         // (don't need to worry about cfNew containing Columns that are shadowed by
@@ -481,7 +482,7 @@ public abstract class ColumnFamily implements Iterable<Cell>, IRowCacheEntry
         return builder.build();
     }
 
-    public static ColumnFamily fromBytes(ByteBuffer bytes)
+    public static ColumnFamily fromBytes(ByteBuffer bytes, ColumnFamilySerializer serializer)
     {
         if (bytes == null)
             return null;

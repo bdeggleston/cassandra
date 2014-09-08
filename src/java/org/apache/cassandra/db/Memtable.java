@@ -243,7 +243,7 @@ public class Memtable
                 {
                     DecoratedKey key = (DecoratedKey) entry.getKey();
                     key = new BufferDecoratedKey(key.getToken(), HeapAllocator.instance.clone(key.getKey()));
-                    ColumnFamily cells = ArrayBackedSortedColumns.localCopy(entry.getValue(), HeapAllocator.instance);
+                    ColumnFamily cells = ArrayBackedSortedColumns.localCopy(entry.getValue(), HeapAllocator.instance, dbConfig);
                     entry = new AbstractMap.SimpleImmutableEntry<>(key, cells);
                 }
                 // Store the reference to the current entry so that remove() can update the current size.

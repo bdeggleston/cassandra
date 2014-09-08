@@ -306,7 +306,7 @@ public class Mutation implements IMutation
             out.writeInt(size);
             assert size > 0;
             for (Map.Entry<UUID, ColumnFamily> entry : mutation.modifications.entrySet())
-                ColumnFamily.serializer.serialize(entry.getValue(), out, version);
+                dbConfig.columnFamilySerializer.serialize(entry.getValue(), out, version);
         }
 
         public Mutation deserialize(DataInput in, int version, ColumnSerializer.Flag flag) throws IOException
@@ -342,7 +342,7 @@ public class Mutation implements IMutation
 
         private ColumnFamily deserializeOneCf(DataInput in, int version, ColumnSerializer.Flag flag) throws IOException
         {
-            ColumnFamily cf = ColumnFamily.serializer.deserialize(in, ArrayBackedSortedColumns.factory, flag, version);
+            ColumnFamily cf = dbConfig.columnFamilySerializer.deserialize(in, ArrayBackedSortedColumns.factory, flag, version);
             // We don't allow Mutation with null column family, so we should never get null back.
             assert cf != null;
             return cf;
@@ -366,7 +366,7 @@ public class Mutation implements IMutation
 
             size += sizes.sizeof(mutation.modifications.size());
             for (Map.Entry<UUID,ColumnFamily> entry : mutation.modifications.entrySet())
-                size += ColumnFamily.serializer.serializedSize(entry.getValue(), TypeSizes.NATIVE, version);
+                size += dbConfig.columnFamilySerializer.serializedSize(entry.getValue(), TypeSizes.NATIVE, version);
 
             return size;
         }

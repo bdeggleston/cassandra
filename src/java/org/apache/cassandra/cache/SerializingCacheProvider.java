@@ -21,6 +21,7 @@ import java.io.DataInput;
 import java.io.IOException;
 
 import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.ColumnFamilySerializer;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -28,14 +29,30 @@ import org.apache.cassandra.net.MessagingService;
 
 public class SerializingCacheProvider
 {
+
+    private final ColumnFamilySerializer columnFamilySerializer;
+
+    public SerializingCacheProvider(ColumnFamilySerializer columnFamilySerializer)
+    {
+        this.columnFamilySerializer = columnFamilySerializer;
+    }
+
     public ICache<RowCacheKey, IRowCacheEntry> create(long capacity)
     {
-        return SerializingCache.create(capacity, new RowCacheSerializer());
+        return SerializingCache.create(capacity, new RowCacheSerializer(columnFamilySerializer));
     }
 
     // Package protected for tests
     static class RowCacheSerializer implements ISerializer<IRowCacheEntry>
     {
+
+        private final ColumnFamilySerializer columnFamilySerializer;
+
+        RowCacheSerializer(ColumnFamilySerializer columnFamilySerializer)
+        {
+            this.columnFamilySerializer = columnFamilySerializer;
+        }
+
         public void serialize(IRowCacheEntry entry, DataOutputPlus out) throws IOException
         {
             assert entry != null; // unlike CFS we don't support nulls, since there is no need for that in the cache
@@ -44,7 +61,7 @@ public class SerializingCacheProvider
             if (isSentinel)
                 out.writeLong(((RowCacheSentinel) entry).sentinelId);
             else
-                ColumnFamily.serializer.serialize((ColumnFamily) entry, out, MessagingService.current_version);
+                columnFamilySerializer.serialize((ColumnFamily) entry, out, MessagingService.current_version);
         }
 
         public IRowCacheEntry deserialize(DataInput in) throws IOException
@@ -52,7 +69,7 @@ public class SerializingCacheProvider
             boolean isSentinel = in.readBoolean();
             if (isSentinel)
                 return new RowCacheSentinel(in.readLong());
-            return ColumnFamily.serializer.deserialize(in, MessagingService.current_version);
+            return columnFamilySerializer.deserialize(in, MessagingService.current_version);
         }
 
         public long serializedSize(IRowCacheEntry entry, TypeSizes typeSizes)
@@ -61,7 +78,7 @@ public class SerializingCacheProvider
             if (entry instanceof RowCacheSentinel)
                 size += typeSizes.sizeof(((RowCacheSentinel) entry).sentinelId);
             else
-                size += ColumnFamily.serializer.serializedSize((ColumnFamily) entry, typeSizes, MessagingService.current_version);
+                size += columnFamilySerializer.serializedSize((ColumnFamily) entry, typeSizes, MessagingService.current_version);
             return size;
         }
     }

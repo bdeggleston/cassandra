@@ -31,12 +31,14 @@ public class RangeSliceVerbHandler implements IVerbHandler<AbstractRangeCommand>
     private final Tracing tracing;
     private final MessagingService messagingService;
     private final StorageService storageService;
+    private final RangeSliceReply.Serializer serializer;
 
-    public RangeSliceVerbHandler(Tracing tracing, MessagingService messagingService, StorageService storageService)
+    public RangeSliceVerbHandler(Tracing tracing, MessagingService messagingService, StorageService storageService, RangeSliceReply.Serializer serializer)
     {
         this.tracing = tracing;
         this.messagingService = messagingService;
         this.storageService = storageService;
+        this.serializer = serializer;
     }
 
     public void doVerb(MessageIn<AbstractRangeCommand> message, int id)
@@ -48,7 +50,7 @@ public class RangeSliceVerbHandler implements IVerbHandler<AbstractRangeCommand>
                 /* Don't service reads! */
                 throw new RuntimeException("Cannot service reads while bootstrapping!");
             }
-            RangeSliceReply reply = new RangeSliceReply(message.payload.executeLocally());
+            RangeSliceReply reply = new RangeSliceReply(message.payload.executeLocally(), serializer);
             tracing.trace("Enqueuing response to {}", message.from);
             messagingService.sendReply(reply.createMessage(), id, message.from);
         }

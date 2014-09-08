@@ -59,13 +59,13 @@ public class ArrayBackedSortedColumns extends ColumnFamily
     {
         public ArrayBackedSortedColumns create(CFMetaData metadata, DBConfig dbConfig, boolean insertReversed, int initialCapacity)
         {
-            return new ArrayBackedSortedColumns(metadata, insertReversed, initialCapacity == 0 ? EMPTY_ARRAY : new Cell[initialCapacity], 0, 0);
+            return new ArrayBackedSortedColumns(metadata, dbConfig, insertReversed, initialCapacity == 0 ? EMPTY_ARRAY : new Cell[initialCapacity], 0, 0);
         }
     };
 
-    private ArrayBackedSortedColumns(CFMetaData metadata, boolean reversed, Cell[] cells, int size, int sortedSize)
+    private ArrayBackedSortedColumns(CFMetaData metadata, DBConfig dbConfig, boolean reversed, Cell[] cells, int size, int sortedSize)
     {
-        super(metadata);
+        super(metadata, dbConfig);
         this.reversed = reversed;
         this.deletionInfo = DeletionInfo.live();
         this.cells = cells;
@@ -74,9 +74,9 @@ public class ArrayBackedSortedColumns extends ColumnFamily
         this.isSorted = size == sortedSize;
     }
 
-    private ArrayBackedSortedColumns(ArrayBackedSortedColumns original)
+    private ArrayBackedSortedColumns(ArrayBackedSortedColumns original, DBConfig dbConfig)
     {
-        super(original.metadata);
+        super(original.metadata, dbConfig);
         this.reversed = original.reversed;
         this.deletionInfo = DeletionInfo.live(); // this is INTENTIONALLY not set to original.deletionInfo.
         this.cells = Arrays.copyOf(original.cells, original.size);
@@ -85,9 +85,9 @@ public class ArrayBackedSortedColumns extends ColumnFamily
         this.isSorted = original.isSorted;
     }
 
-    public static ArrayBackedSortedColumns localCopy(ColumnFamily original, AbstractAllocator allocator)
+    public static ArrayBackedSortedColumns localCopy(ColumnFamily original, AbstractAllocator allocator, DBConfig dbConfig)
     {
-        ArrayBackedSortedColumns copy = new ArrayBackedSortedColumns(original.metadata, false, new Cell[original.getColumnCount()], 0, 0);
+        ArrayBackedSortedColumns copy = new ArrayBackedSortedColumns(original.metadata, dbConfig, false, new Cell[original.getColumnCount()], 0, 0);
         for (Cell cell : original)
             copy.internalAdd(cell.localCopy(original.metadata, allocator));
         copy.sortedSize = copy.size; // internalAdd doesn't update sortedSize.
@@ -102,7 +102,7 @@ public class ArrayBackedSortedColumns extends ColumnFamily
 
     public ColumnFamily cloneMe()
     {
-        return new ArrayBackedSortedColumns(this);
+        return new ArrayBackedSortedColumns(this, dbConfig);
     }
 
     public boolean isInsertReversed()

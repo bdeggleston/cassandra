@@ -33,13 +33,13 @@ import org.apache.cassandra.net.MessagingService;
 
 public class RangeSliceReply
 {
-    public static final RangeSliceReplySerializer serializer = new RangeSliceReplySerializer();
-
     public final List<Row> rows;
+    private final Serializer serializer;
 
-    public RangeSliceReply(List<Row> rows)
+    public RangeSliceReply(List<Row> rows, Serializer serializer)
     {
         this.rows = rows;
+        this.serializer = serializer;
     }
 
     public MessageOut<RangeSliceReply> createMessage()
@@ -55,18 +55,25 @@ public class RangeSliceReply
                '}';
     }
 
-    public static RangeSliceReply read(byte[] body, int version) throws IOException
+    public static RangeSliceReply read(byte[] body, int version, Serializer serializer) throws IOException
     {
         return serializer.deserialize(new DataInputStream(new FastByteArrayInputStream(body)), version);
     }
 
-    private static class RangeSliceReplySerializer implements IVersionedSerializer<RangeSliceReply>
+    public static class Serializer implements IVersionedSerializer<RangeSliceReply>
     {
+        private final Row.RowSerializer rowSerializer;
+
+        public Serializer(Row.RowSerializer rowSerializer)
+        {
+            this.rowSerializer = rowSerializer;
+        }
+
         public void serialize(RangeSliceReply rsr, DataOutputPlus out, int version) throws IOException
         {
             out.writeInt(rsr.rows.size());
             for (Row row : rsr.rows)
-                Row.serializer.serialize(row, out, version);
+                rowSerializer.serialize(row, out, version);
         }
 
         public RangeSliceReply deserialize(DataInput in, int version) throws IOException
@@ -74,15 +81,15 @@ public class RangeSliceReply
             int rowCount = in.readInt();
             List<Row> rows = new ArrayList<Row>(rowCount);
             for (int i = 0; i < rowCount; i++)
-                rows.add(Row.serializer.deserialize(in, version));
-            return new RangeSliceReply(rows);
+                rows.add(rowSerializer.deserialize(in, version));
+            return new RangeSliceReply(rows, this);
         }
 
         public long serializedSize(RangeSliceReply rsr, int version)
         {
             int size = TypeSizes.NATIVE.sizeof(rsr.rows.size());
             for (Row row : rsr.rows)
-                size += Row.serializer.serializedSize(row, version);
+                size += rowSerializer.serializedSize(row, version);
             return size;
         }
     }

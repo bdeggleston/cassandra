@@ -31,8 +31,6 @@ import org.apache.cassandra.utils.ByteBufferUtil;
  */
 public class ReadResponse
 {
-    public static final IVersionedSerializer<ReadResponse> serializer = new ReadResponseSerializer();
-
     private final Row row;
     private final ByteBuffer digest;
 
@@ -64,51 +62,60 @@ public class ReadResponse
     {
         return digest != null;
     }
-}
 
-class ReadResponseSerializer implements IVersionedSerializer<ReadResponse>
-{
-    public void serialize(ReadResponse response, DataOutputPlus out, int version) throws IOException
+    public static class Serializer implements IVersionedSerializer<ReadResponse>
     {
-        out.writeInt(response.isDigestQuery() ? response.digest().remaining() : 0);
-        ByteBuffer buffer = response.isDigestQuery() ? response.digest() : ByteBufferUtil.EMPTY_BYTE_BUFFER;
-        out.write(buffer);
-        out.writeBoolean(response.isDigestQuery());
-        if (!response.isDigestQuery())
-            Row.serializer.serialize(response.row(), out, version);
-    }
 
-    public ReadResponse deserialize(DataInput in, int version) throws IOException
-    {
-        byte[] digest = null;
-        int digestSize = in.readInt();
-        if (digestSize > 0)
-        {
-            digest = new byte[digestSize];
-            in.readFully(digest, 0, digestSize);
-        }
-        boolean isDigest = in.readBoolean();
-        assert isDigest == digestSize > 0;
+        private final Row.RowSerializer rowSerializer;
 
-        Row row = null;
-        if (!isDigest)
+        public Serializer(Row.RowSerializer rowSerializer)
         {
-            // This is coming from a remote host
-            row = Row.serializer.deserialize(in, version, ColumnSerializer.Flag.FROM_REMOTE);
+            this.rowSerializer = rowSerializer;
         }
 
-        return isDigest ? new ReadResponse(ByteBuffer.wrap(digest)) : new ReadResponse(row);
+        public void serialize(ReadResponse response, DataOutputPlus out, int version) throws IOException
+        {
+            out.writeInt(response.isDigestQuery() ? response.digest().remaining() : 0);
+            ByteBuffer buffer = response.isDigestQuery() ? response.digest() : ByteBufferUtil.EMPTY_BYTE_BUFFER;
+            out.write(buffer);
+            out.writeBoolean(response.isDigestQuery());
+            if (!response.isDigestQuery())
+                rowSerializer.serialize(response.row(), out, version);
+        }
+
+        public ReadResponse deserialize(DataInput in, int version) throws IOException
+        {
+            byte[] digest = null;
+            int digestSize = in.readInt();
+            if (digestSize > 0)
+            {
+                digest = new byte[digestSize];
+                in.readFully(digest, 0, digestSize);
+            }
+            boolean isDigest = in.readBoolean();
+            assert isDigest == digestSize > 0;
+
+            Row row = null;
+            if (!isDigest)
+            {
+                // This is coming from a remote host
+                row = rowSerializer.deserialize(in, version, ColumnSerializer.Flag.FROM_REMOTE);
+            }
+
+            return isDigest ? new ReadResponse(ByteBuffer.wrap(digest)) : new ReadResponse(row);
+        }
+
+        public long serializedSize(ReadResponse response, int version)
+        {
+            TypeSizes typeSizes = TypeSizes.NATIVE;
+            ByteBuffer buffer = response.isDigestQuery() ? response.digest() : ByteBufferUtil.EMPTY_BYTE_BUFFER;
+            int size = typeSizes.sizeof(buffer.remaining());
+            size += buffer.remaining();
+            size += typeSizes.sizeof(response.isDigestQuery());
+            if (!response.isDigestQuery())
+                size += rowSerializer.serializedSize(response.row(), version);
+            return size;
+        }
     }
 
-    public long serializedSize(ReadResponse response, int version)
-    {
-        TypeSizes typeSizes = TypeSizes.NATIVE;
-        ByteBuffer buffer = response.isDigestQuery() ? response.digest() : ByteBufferUtil.EMPTY_BYTE_BUFFER;
-        int size = typeSizes.sizeof(buffer.remaining());
-        size += buffer.remaining();
-        size += typeSizes.sizeof(response.isDigestQuery());
-        if (!response.isDigestQuery())
-            size += Row.serializer.serializedSize(response.row(), version);
-        return size;
-    }
 }

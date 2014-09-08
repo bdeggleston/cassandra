@@ -60,7 +60,7 @@ import static org.apache.cassandra.db.index.SecondaryIndexManager.Updater;
  */
 public class AtomicBTreeColumns extends ColumnFamily
 {
-    static final long EMPTY_SIZE = ObjectSizes.measure(new AtomicBTreeColumns(new CFMetaData("ks", "cf", ColumnFamilyType.Standard, new SimpleSparseCellNameType(UTF8Type.instance), null, null, null, null, null, null, null), null))
+    static final long EMPTY_SIZE = ObjectSizes.measure(new AtomicBTreeColumns(new CFMetaData("ks", "cf", ColumnFamilyType.Standard, new SimpleSparseCellNameType(UTF8Type.instance), null, null, null, null, null, null, null), null, null))
             + ObjectSizes.measure(new Holder(null, null));
 
     private static final Function<Cell, CellName> NAME = new Function<Cell, CellName>()
@@ -77,7 +77,7 @@ public class AtomicBTreeColumns extends ColumnFamily
         {
             if (insertReversed)
                 throw new IllegalArgumentException();
-            return new AtomicBTreeColumns(metadata, dbConfig.getMemtablePool());
+            return new AtomicBTreeColumns(metadata, dbConfig, dbConfig.getMemtablePool());
         }
     };
 
@@ -92,14 +92,14 @@ public class AtomicBTreeColumns extends ColumnFamily
 
     private final MemtablePool memtablePool;
 
-    private AtomicBTreeColumns(CFMetaData metadata, MemtablePool memtablePool)
+    private AtomicBTreeColumns(CFMetaData metadata, DBConfig dbConfig, MemtablePool memtablePool)
     {
-        this(metadata, EMPTY, memtablePool);
+        this(metadata, dbConfig, EMPTY, memtablePool);
     }
 
-    private AtomicBTreeColumns(CFMetaData metadata, Holder holder, MemtablePool memtablePool)
+    private AtomicBTreeColumns(CFMetaData metadata, DBConfig dbConfig, Holder holder, MemtablePool memtablePool)
     {
-        super(metadata);
+        super(metadata, dbConfig);
         this.ref = holder;
         this.memtablePool = memtablePool;
     }
@@ -111,7 +111,7 @@ public class AtomicBTreeColumns extends ColumnFamily
 
     public ColumnFamily cloneMe()
     {
-        return new AtomicBTreeColumns(metadata, ref, memtablePool);
+        return new AtomicBTreeColumns(metadata, dbConfig, ref, memtablePool);
     }
 
     public DeletionInfo deletionInfo()
