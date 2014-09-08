@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
@@ -34,8 +34,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
@@ -307,17 +305,17 @@ public abstract class SecondaryIndex
      * @return The secondary index instance for this column
      * @throws ConfigurationException
      */
-    public static SecondaryIndex createInstance(ColumnFamilyStore baseCfs, ColumnDefinition cdef) throws ConfigurationException
+    public static SecondaryIndex createInstance(ColumnFamilyStore baseCfs, ColumnDefinition cdef, DatabaseDescriptor databaseDescriptor, Schema schema, Tracing tracing, CFMetaDataFactory cfMetaDataFactory, ColumnFamilyStoreManager columnFamilyStoreManager, DBConfig dbConfig) throws ConfigurationException
     {
         SecondaryIndex index;
 
         switch (cdef.getIndexType())
         {
         case KEYS:
-            index = new KeysIndex();
+            index = new KeysIndex(databaseDescriptor, schema, tracing, cfMetaDataFactory, columnFamilyStoreManager, dbConfig);
             break;
         case COMPOSITES:
-            index = CompositesIndex.create(cdef);
+            index = CompositesIndex.create(cdef, databaseDescriptor, schema, tracing, cfMetaDataFactory, columnFamilyStoreManager, dbConfig);
             break;
         case CUSTOM:
             assert cdef.getIndexOptions() != null;

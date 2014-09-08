@@ -20,17 +20,14 @@ package org.apache.cassandra.db.index;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Future;
 
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.CFMetaDataFactory;
-import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.LocalPartitioner;
 import org.apache.cassandra.dht.LocalToken;
-import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
@@ -50,15 +47,34 @@ public abstract class AbstractSimplePerColumnSecondaryIndex extends PerColumnSec
     // TODO: we should fix SecondaryIndex API
     protected ColumnDefinition columnDef;
 
+    protected final DatabaseDescriptor databaseDescriptor;
+    protected final Schema schema;
+    protected final Tracing tracing;
+    protected final CFMetaDataFactory cfMetaDataFactory;
+    protected final ColumnFamilyStoreManager columnFamilyStoreManager;
+    protected final DBConfig dbConfig;
+    protected final IPartitioner partitioner;
+
+    protected AbstractSimplePerColumnSecondaryIndex(DatabaseDescriptor databaseDescriptor, Schema schema, Tracing tracing, CFMetaDataFactory cfMetaDataFactory, ColumnFamilyStoreManager columnFamilyStoreManager, DBConfig dbConfig)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.tracing = tracing;
+        this.cfMetaDataFactory = cfMetaDataFactory;
+        this.columnFamilyStoreManager = columnFamilyStoreManager;
+        this.dbConfig = dbConfig;
+        this.partitioner = dbConfig.getPartitioner();
+    }
+
     public void init()
     {
         assert baseCfs != null && columnDefs != null && columnDefs.size() == 1;
 
         columnDef = columnDefs.iterator().next();
 
-        CellNameType indexComparator = SecondaryIndex.getIndexComparator(baseCfs.metadata, columnDef, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
-        CFMetaData indexedCfMetadata = CFMetaDataFactory.instance.newIndexMetadata(baseCfs.metadata, columnDef, indexComparator);
-        indexCfs = ColumnFamilyStoreManager.instance.createColumnFamilyStore(baseCfs.keyspace,
+        CellNameType indexComparator = SecondaryIndex.getIndexComparator(baseCfs.metadata, columnDef, databaseDescriptor, tracing, dbConfig);
+        CFMetaData indexedCfMetadata = cfMetaDataFactory.newIndexMetadata(baseCfs.metadata, columnDef, indexComparator);
+        indexCfs = columnFamilyStoreManager.createColumnFamilyStore(baseCfs.keyspace,
                                                                              indexedCfMetadata.cfName,
                                                                              new LocalPartitioner(getIndexKeyComparator()),
                                                                              indexedCfMetadata);
@@ -72,7 +88,7 @@ public abstract class AbstractSimplePerColumnSecondaryIndex extends PerColumnSec
     @Override
     public DecoratedKey getIndexKeyFor(ByteBuffer value)
     {
-        return new BufferDecoratedKey(new LocalToken(getIndexKeyComparator(), value, LocatorConfig.instance.getPartitioner()), value);
+        return new BufferDecoratedKey(new LocalToken(getIndexKeyComparator(), value, partitioner), value);
     }
 
     @Override
@@ -103,7 +119,7 @@ public abstract class AbstractSimplePerColumnSecondaryIndex extends PerColumnSec
 
         DecoratedKey valueKey = getIndexKeyFor(getIndexedValue(rowKey, cell));
         int localDeletionTime = (int) (System.currentTimeMillis() / 1000);
-        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, DBConfig.instance, false, 1);
+        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, dbConfig, false, 1);
         cfi.addTombstone(makeIndexColumnName(rowKey, cell), localDeletionTime, cell.timestamp());
         indexCfs.apply(valueKey, cfi, SecondaryIndexManager.nullUpdater, opGroup, null);
         if (logger.isDebugEnabled())
@@ -113,7 +129,7 @@ public abstract class AbstractSimplePerColumnSecondaryIndex extends PerColumnSec
     public void insert(ByteBuffer rowKey, Cell cell, OpOrder.Group opGroup)
     {
         DecoratedKey valueKey = getIndexKeyFor(getIndexedValue(rowKey, cell));
-        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, DBConfig.instance, false, 1);
+        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, dbConfig, false, 1);
         CellName name = makeIndexColumnName(rowKey, cell);
         if (cell instanceof ExpiringCell)
         {

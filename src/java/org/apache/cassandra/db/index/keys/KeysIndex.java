@@ -20,8 +20,11 @@ package org.apache.cassandra.db.index.keys;
 import java.nio.ByteBuffer;
 import java.util.Set;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.Cell;
+import org.apache.cassandra.db.ColumnFamilyStoreManager;
 import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNames;
@@ -42,6 +45,11 @@ import org.apache.cassandra.tracing.Tracing;
  */
 public class KeysIndex extends AbstractSimplePerColumnSecondaryIndex
 {
+    public KeysIndex(DatabaseDescriptor databaseDescriptor, Schema schema, Tracing tracing, CFMetaDataFactory cfMetaDataFactory, ColumnFamilyStoreManager columnFamilyStoreManager, DBConfig dbConfig)
+    {
+        super(databaseDescriptor, schema, tracing, cfMetaDataFactory, columnFamilyStoreManager, dbConfig);
+    }
+
     protected ByteBuffer getIndexedValue(ByteBuffer rowKey, Cell cell)
     {
         return cell.value();
@@ -54,7 +62,7 @@ public class KeysIndex extends AbstractSimplePerColumnSecondaryIndex
 
     public SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns)
     {
-        return new KeysSearcher(baseCfs.indexManager, columns, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        return new KeysSearcher(baseCfs.indexManager, columns, databaseDescriptor, tracing, dbConfig);
     }
 
     public boolean isIndexEntryStale(ByteBuffer indexedValue, ColumnFamily data, long now)

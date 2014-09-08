@@ -254,7 +254,16 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         this.maxCompactionThreshold = new DefaultInteger(metadata.getMaxCompactionThreshold());
         this.partitioner = partitioner;
         this.directories = directories;
-        this.indexManager = new SecondaryIndexManager(this, SystemKeyspace.instance, CompactionManager.instance, StorageService.instance);
+        this.indexManager = new SecondaryIndexManager(this,
+                                                      DatabaseDescriptor.instance,
+                                                      Tracing.instance,
+                                                      Schema.instance,
+                                                      SystemKeyspace.instance,
+                                                      CFMetaDataFactory.instance,
+                                                      ColumnFamilyStoreManager.instance,
+                                                      CompactionManager.instance,
+                                                      StorageService.instance,
+                                                      DBConfig.instance);
         this.metric = new ColumnFamilyMetrics(this, KeyspaceManager.instance);
         fileIndexGenerator.set(generation);
         sampleLatencyNanos = DatabaseDescriptor.instance.getReadRpcTimeout() / 2;

@@ -33,20 +33,14 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Future;
 
+import org.apache.cassandra.config.*;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.config.IndexType;
-import org.apache.cassandra.db.Cell;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.IndexExpression;
-import org.apache.cassandra.db.Row;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.filter.ExtendedFilter;
@@ -101,20 +95,41 @@ public class SecondaryIndexManager
      * The underlying column family containing the source data for these indexes
      */
     public final ColumnFamilyStore baseCfs;
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Tracing tracing;
+    private final Schema schema;
     private final SystemKeyspace systemKeyspace;
+    private final CFMetaDataFactory cfMetaDataFactory;
+    private final ColumnFamilyStoreManager columnFamilyStoreManager;
     private final CompactionManager compactionManager;
     private final StorageService storageService;
+    private final DBConfig dbConfig;
 
-    public SecondaryIndexManager(ColumnFamilyStore baseCfs, SystemKeyspace systemKeyspace, CompactionManager compactionManager, StorageService storageService)
+    public SecondaryIndexManager(ColumnFamilyStore baseCfs,
+                                 DatabaseDescriptor databaseDescriptor,
+                                 Tracing tracing,
+                                 Schema schema,
+                                 SystemKeyspace systemKeyspace,
+                                 CFMetaDataFactory cfMetaDataFactory,
+                                 ColumnFamilyStoreManager columnFamilyStoreManager,
+                                 CompactionManager compactionManager,
+                                 StorageService storageService,
+                                 DBConfig dbConfig)
     {
         indexesByColumn = new ConcurrentSkipListMap<>();
         rowLevelIndexMap = new ConcurrentHashMap<>();
         allIndexes = Collections.newSetFromMap(new ConcurrentHashMap<SecondaryIndex, Boolean>());
 
         this.baseCfs = baseCfs;
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
+        this.schema = schema;
         this.systemKeyspace = systemKeyspace;
+        this.cfMetaDataFactory = cfMetaDataFactory;
+        this.columnFamilyStoreManager = columnFamilyStoreManager;
         this.compactionManager = compactionManager;
         this.storageService = storageService;
+        this.dbConfig = dbConfig;
     }
 
     /**
@@ -282,7 +297,14 @@ public class SecondaryIndexManager
         SecondaryIndex index;
         try
         {
-            index = SecondaryIndex.createInstance(baseCfs, cdef);
+            index = SecondaryIndex.createInstance(baseCfs,
+                                                  cdef,
+                                                  databaseDescriptor,
+                                                  schema,
+                                                  tracing,
+                                                  cfMetaDataFactory,
+                                                  columnFamilyStoreManager,
+                                                  dbConfig);
         }
         catch (ConfigurationException e)
         {

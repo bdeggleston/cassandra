@@ -1128,7 +1128,7 @@ public final class CFMetaData
                 }
 
                 // This method validates the column metadata but does not intialize the index
-                SecondaryIndex.createInstance(null, c);
+                SecondaryIndex.createInstance(null, c, databaseDescriptor, schema, tracing, cfMetaDataFactory, columnFamilyStoreManager, dbConfig);
             }
         }
 

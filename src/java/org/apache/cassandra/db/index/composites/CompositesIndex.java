@@ -22,12 +22,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.config.*;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.concurrent.OpOrder;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
@@ -46,6 +43,11 @@ public abstract class CompositesIndex extends AbstractSimplePerColumnSecondaryIn
 {
     private volatile CellNameType indexComparator;
 
+    protected CompositesIndex(DatabaseDescriptor databaseDescriptor, Schema schema, Tracing tracing, CFMetaDataFactory cfMetaDataFactory, ColumnFamilyStoreManager columnFamilyStoreManager, DBConfig dbConfig)
+    {
+        super(databaseDescriptor, schema, tracing, cfMetaDataFactory, columnFamilyStoreManager, dbConfig);
+    }
+
     protected CellNameType getIndexComparator()
     {
         // Yes, this is racy, but doing this more than once is not a big deal, we just want to avoid doing it every time
@@ -53,36 +55,36 @@ public abstract class CompositesIndex extends AbstractSimplePerColumnSecondaryIn
         if (indexComparator == null)
         {
             assert columnDef != null;
-            indexComparator = getIndexComparator(baseCfs.metadata, columnDef, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+            indexComparator = getIndexComparator(baseCfs.metadata, columnDef, databaseDescriptor, tracing, dbConfig);
         }
         return indexComparator;
     }
 
-    public static CompositesIndex create(ColumnDefinition cfDef)
+    public static CompositesIndex create(ColumnDefinition cfDef, DatabaseDescriptor databaseDescriptor, Schema schema, Tracing tracing, CFMetaDataFactory cfMetaDataFactory, ColumnFamilyStoreManager columnFamilyStoreManager, DBConfig dbConfig)
     {
         if (cfDef.type.isCollection())
         {
             switch (((CollectionType)cfDef.type).kind)
             {
                 case LIST:
-                    return new CompositesIndexOnCollectionValue();
+                    return new CompositesIndexOnCollectionValue(databaseDescriptor, schema, tracing, cfMetaDataFactory, columnFamilyStoreManager, dbConfig);
                 case SET:
-                    return new CompositesIndexOnCollectionKey();
+                    return new CompositesIndexOnCollectionKey(databaseDescriptor, schema, tracing, cfMetaDataFactory, columnFamilyStoreManager, dbConfig);
                 case MAP:
                     return cfDef.getIndexOptions().containsKey("index_keys")
-                         ? new CompositesIndexOnCollectionKey()
-                         : new CompositesIndexOnCollectionValue();
+                         ? new CompositesIndexOnCollectionKey(databaseDescriptor, schema, tracing, cfMetaDataFactory, columnFamilyStoreManager, dbConfig)
+                         : new CompositesIndexOnCollectionValue(databaseDescriptor, schema, tracing, cfMetaDataFactory, columnFamilyStoreManager, dbConfig);
             }
         }
 
         switch (cfDef.kind)
         {
             case CLUSTERING_COLUMN:
-                return new CompositesIndexOnClusteringKey();
+                return new CompositesIndexOnClusteringKey(databaseDescriptor, schema, tracing, cfMetaDataFactory, columnFamilyStoreManager, dbConfig);
             case REGULAR:
-                return new CompositesIndexOnRegular();
+                return new CompositesIndexOnRegular(databaseDescriptor, schema, tracing, cfMetaDataFactory, columnFamilyStoreManager, dbConfig);
             case PARTITION_KEY:
-                return new CompositesIndexOnPartitionKey();
+                return new CompositesIndexOnPartitionKey(databaseDescriptor, schema, tracing, cfMetaDataFactory, columnFamilyStoreManager, dbConfig);
             //case COMPACT_VALUE:
             //    return new CompositesIndexOnCompactValue();
         }
@@ -135,7 +137,7 @@ public abstract class CompositesIndex extends AbstractSimplePerColumnSecondaryIn
     public void delete(IndexedEntry entry, OpOrder.Group opGroup)
     {
         int localDeletionTime = (int) (System.currentTimeMillis() / 1000);
-        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, DBConfig.instance);
+        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, dbConfig);
         cfi.addTombstone(entry.indexEntry, localDeletionTime, entry.timestamp);
         indexCfs.apply(entry.indexValue, cfi, SecondaryIndexManager.nullUpdater, opGroup, null);
         if (logger.isDebugEnabled())
@@ -149,7 +151,7 @@ public abstract class CompositesIndex extends AbstractSimplePerColumnSecondaryIn
 
     public SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns)
     {
-        return new CompositesSearcher(baseCfs.indexManager, columns, DatabaseDescriptor.instance, Tracing.instance, Schema.instance, DBConfig.instance);
+        return new CompositesSearcher(baseCfs.indexManager, columns, databaseDescriptor, tracing, schema, dbConfig);
     }
 
     public void validateOptions() throws ConfigurationException

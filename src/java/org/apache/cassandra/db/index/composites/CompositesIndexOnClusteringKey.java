@@ -21,9 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.index.SecondaryIndex;
@@ -49,6 +47,11 @@ import org.apache.cassandra.tracing.Tracing;
  */
 public class CompositesIndexOnClusteringKey extends CompositesIndex
 {
+    public CompositesIndexOnClusteringKey(DatabaseDescriptor databaseDescriptor, Schema schema, Tracing tracing, CFMetaDataFactory cfMetaDataFactory, ColumnFamilyStoreManager columnFamilyStoreManager, DBConfig dbConfig)
+    {
+        super(databaseDescriptor, schema, tracing, cfMetaDataFactory, columnFamilyStoreManager, dbConfig);
+    }
+
     public static CellNameType buildIndexComparator(CFMetaData baseMetadata, ColumnDefinition columnDef, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         // Index cell names are rk ck_0 ... ck_{i-1} ck_{i+1} ck_n, so n
