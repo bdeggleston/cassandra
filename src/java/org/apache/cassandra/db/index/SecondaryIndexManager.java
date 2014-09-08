@@ -101,14 +101,20 @@ public class SecondaryIndexManager
      * The underlying column family containing the source data for these indexes
      */
     public final ColumnFamilyStore baseCfs;
+    private final SystemKeyspace systemKeyspace;
+    private final CompactionManager compactionManager;
+    private final StorageService storageService;
 
-    public SecondaryIndexManager(ColumnFamilyStore baseCfs)
+    public SecondaryIndexManager(ColumnFamilyStore baseCfs, SystemKeyspace systemKeyspace, CompactionManager compactionManager, StorageService storageService)
     {
         indexesByColumn = new ConcurrentSkipListMap<>();
         rowLevelIndexMap = new ConcurrentHashMap<>();
         allIndexes = Collections.newSetFromMap(new ConcurrentHashMap<SecondaryIndex, Boolean>());
 
         this.baseCfs = baseCfs;
+        this.systemKeyspace = systemKeyspace;
+        this.compactionManager = compactionManager;
+        this.storageService = storageService;
     }
 
     /**
@@ -161,8 +167,8 @@ public class SecondaryIndexManager
         logger.info(String.format("Submitting index build of %s for data in %s",
                                   idxNames, StringUtils.join(sstables, ", ")));
 
-        SecondaryIndexBuilder builder = new SecondaryIndexBuilder(baseCfs, idxNames, new ReducingKeyIterator(sstables), StorageService.instance);
-        Future<?> future = CompactionManager.instance.submitIndexBuild(builder);
+        SecondaryIndexBuilder builder = new SecondaryIndexBuilder(baseCfs, idxNames, new ReducingKeyIterator(sstables), storageService);
+        Future<?> future = compactionManager.submitIndexBuild(builder);
         FBUtilities.waitOnFuture(future);
 
         flushIndexesBlocking();
@@ -258,7 +264,7 @@ public class SecondaryIndexManager
         }
 
         index.removeIndex(column);
-        SystemKeyspace.instance.setIndexRemoved(baseCfs.metadata.ksName, index.getNameForSystemKeyspace(column));
+        systemKeyspace.setIndexRemoved(baseCfs.metadata.ksName, index.getNameForSystemKeyspace(column));
     }
 
     /**
