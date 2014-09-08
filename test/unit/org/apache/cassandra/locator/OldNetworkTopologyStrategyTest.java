@@ -59,7 +59,7 @@ public class OldNetworkTopologyStrategyTest
     public void init()
     {
         keyTokens = new ArrayList<Token>();
-        tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance.getPartitioner(), LocatorConfig.instance.getEndpointSnitch());
+        tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
         expectedResults = new HashMap<String, ArrayList<InetAddress>>();
     }
 
@@ -335,7 +335,7 @@ public class OldNetworkTopologyStrategyTest
     private TokenMetadata initTokenMetadata(BigIntegerToken[] tokens)
             throws UnknownHostException
     {
-        TokenMetadata tokenMetadataCurrent = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance.getPartitioner(), LocatorConfig.instance.getEndpointSnitch());
+        TokenMetadata tokenMetadataCurrent = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
 
         int lastIPPart = 1;
         for (BigIntegerToken token : tokens)

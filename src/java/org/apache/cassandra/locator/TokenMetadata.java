@@ -35,7 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
-import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.utils.BiMultiValMap;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.SortedBiMultiValMap;
@@ -105,24 +104,25 @@ public class TokenMetadata
     private volatile long ringVersion = 0;
 
     private final IFailureDetector failureDetector;
+    private final LocatorConfig locatorConfig;
     private final IPartitioner partitioner;
     private final IEndpointSnitch snitch;
 
-    public TokenMetadata(IFailureDetector failureDetector, IPartitioner partitioner, IEndpointSnitch snitch)
+    public TokenMetadata(IFailureDetector failureDetector, LocatorConfig locatorConfig)
     {
         this(failureDetector,
-             partitioner,
-             snitch,
+             locatorConfig,
              SortedBiMultiValMap.<Token, InetAddress>create(null, inetaddressCmp),
              HashBiMap.<InetAddress, UUID>create(),
-             new Topology(snitch));
+             new Topology(locatorConfig.getEndpointSnitch()));
     }
 
-    private TokenMetadata(IFailureDetector failureDetector, IPartitioner partitioner, IEndpointSnitch snitch, BiMultiValMap<Token, InetAddress> tokenToEndpointMap, BiMap<InetAddress, UUID> endpointsMap, Topology topology)
+    private TokenMetadata(IFailureDetector failureDetector, LocatorConfig locatorConfig, BiMultiValMap<Token, InetAddress> tokenToEndpointMap, BiMap<InetAddress, UUID> endpointsMap, Topology topology)
     {
         this.failureDetector = failureDetector;
-        this.partitioner = partitioner;
-        this.snitch = snitch;
+        this.locatorConfig = locatorConfig;
+        this.partitioner = locatorConfig.getPartitioner();
+        this.snitch = locatorConfig.getEndpointSnitch();
         this.tokenToEndpointMap = tokenToEndpointMap;
         this.topology = topology;
         endpointToHostIdMap = endpointsMap;
@@ -238,7 +238,7 @@ public class TokenMetadata
             InetAddress storedEp = endpointToHostIdMap.inverse().get(hostId);
             if (storedEp != null)
             {
-                if (!storedEp.equals(endpoint) && (FailureDetector.instance.isAlive(storedEp)))
+                if (!storedEp.equals(endpoint) && (failureDetector.isAlive(storedEp)))
                 {
                     throw new RuntimeException(String.format("Host ID collision between active endpoint %s and %s (id=%s)",
                                                              storedEp,
@@ -530,8 +530,7 @@ public class TokenMetadata
         try
         {
             return new TokenMetadata(failureDetector,
-                                     partitioner,
-                                     snitch,
+                                     locatorConfig,
                                      SortedBiMultiValMap.<Token, InetAddress>create(tokenToEndpointMap, null, inetaddressCmp),
                                      HashBiMap.create(endpointToHostIdMap),
                                      new Topology(topology, snitch));
@@ -637,7 +636,7 @@ public class TokenMetadata
     {
         Collection<Range<Token>> ranges = new ArrayList<Range<Token>>(tokens.size());
         for (Token right : tokens)
-            ranges.add(new Range<Token>(getPredecessor(right), right, LocatorConfig.instance.getPartitioner()));
+            ranges.add(new Range<Token>(getPredecessor(right), right, partitioner));
         return ranges;
     }
 
@@ -1089,7 +1088,7 @@ public class TokenMetadata
      */
     public Topology getTopology()
     {
-        assert this != LocatorConfig.instance.getTokenMetadata();
+        assert this != locatorConfig.getTokenMetadata();
         return topology;
     }
 

@@ -68,7 +68,7 @@ public class LocatorConfig
         conf = DatabaseDescriptor.instance.getConfig();
 
         snitch = createEndpointSnitch();
-        tokenMetadata = new TokenMetadata(FailureDetector.instance, DatabaseDescriptor.instance.getPartitioner(), snitch);
+        tokenMetadata = new TokenMetadata(FailureDetector.instance, this);
         endpointSnitchInfo = EndpointSnitchInfo.create(snitch);
 
         localDC = snitch.getDatacenter(getBroadcastAddress());
