@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.config.CFMetaData;
@@ -148,7 +149,7 @@ public abstract class CompositesIndex extends AbstractSimplePerColumnSecondaryIn
 
     public SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns)
     {
-        return new CompositesSearcher(baseCfs.indexManager, columns);
+        return new CompositesSearcher(baseCfs.indexManager, columns, DatabaseDescriptor.instance, Tracing.instance, Schema.instance, DBConfig.instance);
     }
 
     public void validateOptions() throws ConfigurationException

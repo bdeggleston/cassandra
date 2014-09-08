@@ -20,7 +20,9 @@ package org.apache.cassandra.db.index.keys;
 import java.nio.ByteBuffer;
 import java.util.Set;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.Cell;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNames;
 import org.apache.cassandra.db.ColumnFamily;
@@ -28,6 +30,7 @@ import org.apache.cassandra.db.index.AbstractSimplePerColumnSecondaryIndex;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.exceptions.ConfigurationException;
+import org.apache.cassandra.tracing.Tracing;
 
 /**
  * Implements a secondary index for a column family using a second column family.
@@ -51,7 +54,7 @@ public class KeysIndex extends AbstractSimplePerColumnSecondaryIndex
 
     public SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns)
     {
-        return new KeysSearcher(baseCfs.indexManager, columns);
+        return new KeysSearcher(baseCfs.indexManager, columns, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
     }
 
     public boolean isIndexEntryStale(ByteBuffer indexedValue, ColumnFamily data, long now)

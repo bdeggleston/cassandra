@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,9 +47,9 @@ public class KeysSearcher extends SecondaryIndexSearcher
 {
     private static final Logger logger = LoggerFactory.getLogger(KeysSearcher.class);
 
-    public KeysSearcher(SecondaryIndexManager indexManager, Set<ByteBuffer> columns)
+    public KeysSearcher(SecondaryIndexManager indexManager, Set<ByteBuffer> columns, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        super(indexManager, columns, Tracing.instance);
+        super(indexManager, columns, databaseDescriptor, tracing, dbConfig);
     }
 
     @Override
@@ -124,8 +125,8 @@ public class KeysSearcher extends SecondaryIndexSearcher
                                                                              false,
                                                                              rowsPerQuery,
                                                                              filter.timestamp,
-                                                                             DatabaseDescriptor.instance,
-                                                                             Tracing.instance);
+                                                                             databaseDescriptor,
+                                                                             tracing);
                         ColumnFamily indexRow = index.getIndexCfs().getColumnFamily(indexFilter);
                         logger.trace("fetched {}", indexRow);
                         if (indexRow == null)
@@ -180,7 +181,7 @@ public class KeysSearcher extends SecondaryIndexSearcher
                         ColumnFamily data = baseCfs.getColumnFamily(new QueryFilter(dk, baseCfs.name, filter.columnFilter(lastSeenKey.toByteBuffer()), filter.timestamp));
                         // While the column family we'll get in the end should contains the primary clause cell, the initialFilter may not have found it and can thus be null
                         if (data == null)
-                            data = ArrayBackedSortedColumns.factory.create(baseCfs.metadata, DBConfig.instance);
+                            data = ArrayBackedSortedColumns.factory.create(baseCfs.metadata, dbConfig);
 
                         // as in CFS.filter - extend the filter to ensure we include the columns
                         // from the index expressions, just in case they weren't included in the initialFilter

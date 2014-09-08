@@ -22,7 +22,9 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.service.MigrationManager;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,9 +47,9 @@ public class CompositesSearcher extends SecondaryIndexSearcher
 {
     private static final Logger logger = LoggerFactory.getLogger(CompositesSearcher.class);
 
-    public CompositesSearcher(SecondaryIndexManager indexManager, Set<ByteBuffer> columns)
+    public CompositesSearcher(SecondaryIndexManager indexManager, Set<ByteBuffer> columns, DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, DBConfig dbConfig)
     {
-        super(indexManager, columns, Tracing.instance);
+        super(indexManager, columns, databaseDescriptor, tracing, dbConfig);
     }
 
     @Override
@@ -175,8 +177,8 @@ public class CompositesSearcher extends SecondaryIndexSearcher
                                                                              false,
                                                                              rowsPerQuery,
                                                                              filter.timestamp,
-                                                                             DatabaseDescriptor.instance,
-                                                                             Tracing.instance);
+                                                                             databaseDescriptor,
+                                                                             tracing);
                         ColumnFamily indexRow = index.getIndexCfs().getColumnFamily(indexFilter);
                         if (indexRow == null || !indexRow.hasColumns())
                             return makeReturn(currentKey, data);
@@ -275,7 +277,7 @@ public class CompositesSearcher extends SecondaryIndexSearcher
                         ColumnSlice[] slices = baseCfs.metadata.hasStaticColumns()
                                              ? new ColumnSlice[]{ baseCfs.metadata.comparator.staticPrefix().slice(), dataSlice }
                                              : new ColumnSlice[]{ dataSlice };
-                        SliceQueryFilter dataFilter = new SliceQueryFilter(slices, false, Integer.MAX_VALUE, baseCfs.metadata.clusteringColumns().size(), DatabaseDescriptor.instance, Tracing.instance);
+                        SliceQueryFilter dataFilter = new SliceQueryFilter(slices, false, Integer.MAX_VALUE, baseCfs.metadata.clusteringColumns().size(), databaseDescriptor, tracing);
                         ColumnFamily newData = baseCfs.getColumnFamily(new QueryFilter(dk, baseCfs.name, dataFilter, filter.timestamp));
                         if (newData == null || index.isStale(entry, newData, filter.timestamp))
                         {
@@ -295,7 +297,7 @@ public class CompositesSearcher extends SecondaryIndexSearcher
                             continue;
 
                         if (data == null)
-                            data = ArrayBackedSortedColumns.factory.create(baseCfs.metadata, DBConfig.instance);
+                            data = ArrayBackedSortedColumns.factory.create(baseCfs.metadata, dbConfig);
                         data.addAll(newData);
                         columnsCount += dataFilter.lastCounted();
                     }

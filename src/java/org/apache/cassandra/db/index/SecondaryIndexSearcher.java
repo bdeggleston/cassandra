@@ -20,6 +20,7 @@ package org.apache.cassandra.db.index;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.exceptions.InvalidRequestException;
@@ -31,14 +32,18 @@ public abstract class SecondaryIndexSearcher
     protected final SecondaryIndexManager indexManager;
     protected final Set<ByteBuffer> columns;
     protected final ColumnFamilyStore baseCfs;
+    protected final DatabaseDescriptor databaseDescriptor;
     protected final Tracing tracing;
+    protected final DBConfig dbConfig;
 
-    public SecondaryIndexSearcher(SecondaryIndexManager indexManager, Set<ByteBuffer> columns, Tracing tracing)
+    public SecondaryIndexSearcher(SecondaryIndexManager indexManager, Set<ByteBuffer> columns, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         this.indexManager = indexManager;
         this.columns = columns;
         this.baseCfs = indexManager.baseCfs;
+        this.databaseDescriptor = databaseDescriptor;
         this.tracing = tracing;
+        this.dbConfig = dbConfig;
     }
 
     public SecondaryIndex highestSelectivityIndex(List<IndexExpression> clause)

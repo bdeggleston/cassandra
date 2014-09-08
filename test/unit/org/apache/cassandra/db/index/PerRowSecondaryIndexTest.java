@@ -213,7 +213,7 @@ public class PerRowSecondaryIndexTest
         @Override
         protected SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns)
         {
-            return new SecondaryIndexSearcher(baseCfs.indexManager, columns, Tracing.instance)
+            return new SecondaryIndexSearcher(baseCfs.indexManager, columns, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)
             {
                 
                 @Override
