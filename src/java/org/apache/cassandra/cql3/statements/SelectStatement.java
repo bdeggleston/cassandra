@@ -400,7 +400,14 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             // We should not share the slice filter amongst the commands (hence the cloneShallow), due to
             // SliceQueryFilter not being immutable due to its columnCounter used by the lastCounted() method
             // (this is fairly ugly and we should change that but that's probably not a tiny refactor to do that cleanly)
-            commands.add(ReadCommand.create(keyspace(), ByteBufferUtil.clone(key), columnFamily(), now, filter.cloneShallow()));
+            commands.add(ReadCommand.create(keyspace(),
+                                            ByteBufferUtil.clone(key),
+                                            columnFamily(),
+                                            now,
+                                            filter.cloneShallow(),
+                                            Schema.instance,
+                                            LocatorConfig.instance.getPartitioner(),
+                                            MessagingService.instance.readCommandSerializer));
         }
 
         return commands;

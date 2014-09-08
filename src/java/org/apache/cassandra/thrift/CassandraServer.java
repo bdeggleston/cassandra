@@ -443,7 +443,14 @@ public class CassandraServer implements Cassandra.Iface
             ThriftValidation.validateKey(metadata, key);
             // Note that we should not share a slice filter amongst the command, due to SliceQueryFilter not  being immutable
             // due to its columnCounter used by the lastCounted() method (also see SelectStatement.getSliceCommands)
-            commands.add(ReadCommand.create(keyspace, key, column_parent.getColumn_family(), timestamp, filter.cloneShallow()));
+            commands.add(ReadCommand.create(keyspace,
+                                            key,
+                                            column_parent.getColumn_family(),
+                                            timestamp,
+                                            filter.cloneShallow(),
+                                            Schema.instance,
+                                            LocatorConfig.instance.getPartitioner(),
+                                            MessagingService.instance.readCommandSerializer));
         }
 
         return getSlice(commands, column_parent.isSetSuper_column(), consistencyLevel);
@@ -494,7 +501,14 @@ public class CassandraServer implements Cassandra.Iface
             }
 
             long now = System.currentTimeMillis();
-            ReadCommand command = ReadCommand.create(keyspace, key, column_path.column_family, now, filter);
+            ReadCommand command = ReadCommand.create(keyspace,
+                                                     key,
+                                                     column_path.column_family,
+                                                     now,
+                                                     filter,
+                                                     Schema.instance,
+                                                     LocatorConfig.instance.getPartitioner(),
+                                                     MessagingService.instance.readCommandSerializer);
 
             Map<DecoratedKey, ColumnFamily> cfamilies = readColumnFamily(Arrays.asList(command), consistencyLevel);
 
@@ -2055,7 +2069,14 @@ public class CassandraServer implements Cassandra.Iface
             ColumnSlice[] deoverlapped = ColumnSlice.deoverlapSlices(slices, request.reversed ? metadata.comparator.reverseComparator() : metadata.comparator);
             SliceQueryFilter filter = new SliceQueryFilter(deoverlapped, request.reversed, request.count, DatabaseDescriptor.instance, Tracing.instance);
             ThriftValidation.validateKey(metadata, request.key);
-            commands.add(ReadCommand.create(keyspace, request.key, request.column_parent.getColumn_family(), System.currentTimeMillis(), filter));
+            commands.add(ReadCommand.create(keyspace,
+                                            request.key,
+                                            request.column_parent.getColumn_family(),
+                                            System.currentTimeMillis(),
+                                            filter,
+                                            Schema.instance,
+                                            LocatorConfig.instance.getPartitioner(),
+                                            MessagingService.instance.readCommandSerializer));
             return getSlice(commands, request.column_parent.isSetSuper_column(), consistencyLevel).entrySet().iterator().next().getValue();
         } 
         catch (RequestValidationException e)

@@ -44,7 +44,6 @@ import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.DataInputStream;
@@ -65,8 +64,9 @@ public class SerializationsTest extends AbstractSerializationsTester
     public SliceQueryFilter emptyRangePred = new SliceQueryFilter(emptyCol, emptyCol, false, 100, DatabaseDescriptor.instance, Tracing.instance);
     public SliceQueryFilter nonEmptyRangePred = new SliceQueryFilter(CellNames.simpleDense(startCol), CellNames.simpleDense(stopCol), true, 100, DatabaseDescriptor.instance, Tracing.instance);
     public SliceQueryFilter nonEmptyRangeSCPred = new SliceQueryFilter(CellNames.compositeDense(statics.SC, startCol), CellNames.compositeDense(statics.SC, stopCol), true, 100, DatabaseDescriptor.instance, Tracing.instance);
+    public SliceByNamesReadCommand.Serializer slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
+    public SliceFromReadCommand.Serializer slicefromReadSerializer = new SliceFromReadCommand.Serializer(Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
 
-    @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
         SchemaLoader.prepareServer();
@@ -129,21 +129,35 @@ public class SerializationsTest extends AbstractSerializationsTester
 
     private void testSliceByNamesReadCommandWrite() throws IOException
     {
-        SliceByNamesReadCommand standardCmd = new SliceByNamesReadCommand(statics.KS, statics.Key, statics.StandardCF, statics.readTs, namesPred);
-        SliceByNamesReadCommand superCmd = new SliceByNamesReadCommand(statics.KS, statics.Key, statics.SuperCF, statics.readTs, namesSCPred);
+        SliceByNamesReadCommand standardCmd = new SliceByNamesReadCommand(statics.KS,
+                                                                          statics.Key,
+                                                                          statics.StandardCF,
+                                                                          statics.readTs,
+                                                                          namesPred,
+                                                                          Schema.instance,
+                                                                          LocatorConfig.instance.getPartitioner(),
+                                                                          MessagingService.instance.readCommandSerializer);
+        SliceByNamesReadCommand superCmd = new SliceByNamesReadCommand(statics.KS,
+                                                                       statics.Key,
+                                                                       statics.SuperCF,
+                                                                       statics.readTs,
+                                                                       namesSCPred,
+                                                                       Schema.instance,
+                                                                       LocatorConfig.instance.getPartitioner(),
+                                                                       MessagingService.instance.readCommandSerializer);
 
         DataOutputStreamAndChannel out = getOutput("db.SliceByNamesReadCommand.bin");
-        SliceByNamesReadCommand.serializer.serialize(standardCmd, out, getVersion());
-        SliceByNamesReadCommand.serializer.serialize(superCmd, out, getVersion());
-        ReadCommand.serializer.serialize(standardCmd, out, getVersion());
-        ReadCommand.serializer.serialize(superCmd, out, getVersion());
+        slicesByNamesSerializer.serialize(standardCmd, out, getVersion());
+        slicesByNamesSerializer.serialize(superCmd, out, getVersion());
+        MessagingService.instance.readCommandSerializer.serialize(standardCmd, out, getVersion());
+        MessagingService.instance.readCommandSerializer.serialize(superCmd, out, getVersion());
         standardCmd.createMessage().serialize(out, getVersion());
         superCmd.createMessage().serialize(out, getVersion());
         out.close();
 
         // test serializedSize
-        testSerializedSize(standardCmd, SliceByNamesReadCommand.serializer);
-        testSerializedSize(superCmd, SliceByNamesReadCommand.serializer);
+        testSerializedSize(standardCmd, slicesByNamesSerializer);
+        testSerializedSize(superCmd, slicesByNamesSerializer);
     }
 
     @Test
@@ -153,10 +167,10 @@ public class SerializationsTest extends AbstractSerializationsTester
             testSliceByNamesReadCommandWrite();
 
         DataInputStream in = getInput("db.SliceByNamesReadCommand.bin");
-        assert SliceByNamesReadCommand.serializer.deserialize(in, getVersion()) != null;
-        assert SliceByNamesReadCommand.serializer.deserialize(in, getVersion()) != null;
-        assert ReadCommand.serializer.deserialize(in, getVersion()) != null;
-        assert ReadCommand.serializer.deserialize(in, getVersion()) != null;
+        assert slicesByNamesSerializer.deserialize(in, getVersion()) != null;
+        assert slicesByNamesSerializer.deserialize(in, getVersion()) != null;
+        assert MessagingService.instance.readCommandSerializer.deserialize(in, getVersion()) != null;
+        assert MessagingService.instance.readCommandSerializer.deserialize(in, getVersion()) != null;
         assert MessageIn.read(in, getVersion(), -1) != null;
         assert MessageIn.read(in, getVersion(), -1) != null;
         in.close();
@@ -164,22 +178,36 @@ public class SerializationsTest extends AbstractSerializationsTester
 
     private void testSliceFromReadCommandWrite() throws IOException
     {
-        SliceFromReadCommand standardCmd = new SliceFromReadCommand(statics.KS, statics.Key, statics.StandardCF, statics.readTs, nonEmptyRangePred);
-        SliceFromReadCommand superCmd = new SliceFromReadCommand(statics.KS, statics.Key, statics.SuperCF, statics.readTs, nonEmptyRangeSCPred);
-        
+        SliceFromReadCommand standardCmd = new SliceFromReadCommand(statics.KS,
+                                                                    statics.Key,
+                                                                    statics.StandardCF,
+                                                                    statics.readTs,
+                                                                    nonEmptyRangePred,
+                                                                    Schema.instance,
+                                                                    LocatorConfig.instance.getPartitioner(),
+                                                                    MessagingService.instance.readCommandSerializer);
+        SliceFromReadCommand superCmd = new SliceFromReadCommand(statics.KS,
+                                                                 statics.Key,
+                                                                 statics.SuperCF,
+                                                                 statics.readTs,
+                                                                 nonEmptyRangeSCPred,
+                                                                 Schema.instance,
+                                                                 LocatorConfig.instance.getPartitioner(),
+                                                                 MessagingService.instance.readCommandSerializer);
+
         DataOutputStreamAndChannel out = getOutput("db.SliceFromReadCommand.bin");
-        SliceFromReadCommand.serializer.serialize(standardCmd, out, getVersion());
-        SliceFromReadCommand.serializer.serialize(superCmd, out, getVersion());
-        ReadCommand.serializer.serialize(standardCmd, out, getVersion());
-        ReadCommand.serializer.serialize(superCmd, out, getVersion());
+        slicefromReadSerializer.serialize(standardCmd, out, getVersion());
+        slicefromReadSerializer.serialize(superCmd, out, getVersion());
+        MessagingService.instance.readCommandSerializer.serialize(standardCmd, out, getVersion());
+        MessagingService.instance.readCommandSerializer.serialize(superCmd, out, getVersion());
         standardCmd.createMessage().serialize(out, getVersion());
         superCmd.createMessage().serialize(out, getVersion());
 
         out.close();
 
         // test serializedSize
-        testSerializedSize(standardCmd, SliceFromReadCommand.serializer);
-        testSerializedSize(superCmd, SliceFromReadCommand.serializer);
+        testSerializedSize(standardCmd, slicefromReadSerializer);
+        testSerializedSize(superCmd, slicefromReadSerializer);
     }
 
     @Test
@@ -189,10 +217,10 @@ public class SerializationsTest extends AbstractSerializationsTester
             testSliceFromReadCommandWrite();
 
         DataInputStream in = getInput("db.SliceFromReadCommand.bin");
-        assert SliceFromReadCommand.serializer.deserialize(in, getVersion()) != null;
-        assert SliceFromReadCommand.serializer.deserialize(in, getVersion()) != null;
-        assert ReadCommand.serializer.deserialize(in, getVersion()) != null;
-        assert ReadCommand.serializer.deserialize(in, getVersion()) != null;
+        assert slicefromReadSerializer.deserialize(in, getVersion()) != null;
+        assert slicefromReadSerializer.deserialize(in, getVersion()) != null;
+        assert MessagingService.instance.readCommandSerializer.deserialize(in, getVersion()) != null;
+        assert MessagingService.instance.readCommandSerializer.deserialize(in, getVersion()) != null;
         assert MessageIn.read(in, getVersion(), -1) != null;
         assert MessageIn.read(in, getVersion(), -1) != null;
         in.close();

@@ -30,6 +30,7 @@ import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.exceptions.RequestValidationException;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageProxy;
 
@@ -139,7 +140,14 @@ public class QueryPagers
      */
     public static Iterator<ColumnFamily> pageRowLocally(final ColumnFamilyStore cfs, ByteBuffer key, final int pageSize, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, final DBConfig dbConfig)
     {
-        SliceFromReadCommand command = new SliceFromReadCommand(cfs.metadata.ksName, key, cfs.name, System.currentTimeMillis(), new IdentityQueryFilter());
+        SliceFromReadCommand command = new SliceFromReadCommand(cfs.metadata.ksName,
+                                                                key,
+                                                                cfs.name,
+                                                                System.currentTimeMillis(),
+                                                                new IdentityQueryFilter(),
+                                                                Schema.instance,
+                                                                LocatorConfig.instance.getPartitioner(),
+                                                                MessagingService.instance.readCommandSerializer);
         final SliceQueryPager pager = new SliceQueryPager(command, schema, null, true, keyspaceManager, storageProxy);
 
         return new Iterator<ColumnFamily>()
@@ -185,7 +193,14 @@ public class QueryPagers
                                  KeyspaceManager keyspaceManager,
                                  StorageProxy storageProxy) throws RequestValidationException, RequestExecutionException
     {
-        SliceFromReadCommand command = new SliceFromReadCommand(keyspace, key, columnFamily, now, filter);
+        SliceFromReadCommand command = new SliceFromReadCommand(keyspace,
+                                                                key,
+                                                                columnFamily,
+                                                                now,
+                                                                filter,
+                                                                Schema.instance,
+                                                                LocatorConfig.instance.getPartitioner(),
+                                                                MessagingService.instance.readCommandSerializer);
         final SliceQueryPager pager = new SliceQueryPager(command, schema, consistencyLevel, false, keyspaceManager, storageProxy);
 
         ColumnCounter counter = filter.columnCounter(schema.getCFMetaData(keyspace, columnFamily).comparator, now);

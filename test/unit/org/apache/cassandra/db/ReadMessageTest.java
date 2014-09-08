@@ -25,6 +25,8 @@ import java.nio.ByteBuffer;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -79,22 +81,43 @@ public class ReadMessageTest
         DecoratedKey dk = Util.dk("row1");
         long ts = System.currentTimeMillis();
 
-        rm = new SliceByNamesReadCommand(KEYSPACE1, dk.getKey(), "Standard1", ts, new NamesQueryFilter(colList));
+        rm = new SliceByNamesReadCommand(KEYSPACE1,
+                                         dk.getKey(),
+                                         "Standard1",
+                                         ts,
+                                         new NamesQueryFilter(colList),
+                                         Schema.instance,
+                                         LocatorConfig.instance.getPartitioner(),
+                                         MessagingService.instance.readCommandSerializer);
         rm2 = serializeAndDeserializeReadMessage(rm);
         assert rm2.toString().equals(rm.toString());
 
-        rm = new SliceFromReadCommand(KEYSPACE1, dk.getKey(), "Standard1", ts, new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, true, 2, DatabaseDescriptor.instance, Tracing.instance));
+        rm = new SliceFromReadCommand(KEYSPACE1,
+                                      dk.getKey(),
+                                      "Standard1",
+                                      ts,
+                                      new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, true, 2, DatabaseDescriptor.instance, Tracing.instance),
+                                      Schema.instance,
+                                      LocatorConfig.instance.getPartitioner(),
+                                      MessagingService.instance.readCommandSerializer);
         rm2 = serializeAndDeserializeReadMessage(rm);
         assert rm2.toString().equals(rm.toString());
 
-        rm = new SliceFromReadCommand(KEYSPACE1, dk.getKey(), "Standard1", ts, new SliceQueryFilter(Util.cellname("a"), Util.cellname("z"), true, 5, DatabaseDescriptor.instance, Tracing.instance));
+        rm = new SliceFromReadCommand(KEYSPACE1,
+                                      dk.getKey(),
+                                      "Standard1",
+                                      ts,
+                                      new SliceQueryFilter(Util.cellname("a"), Util.cellname("z"), true, 5, DatabaseDescriptor.instance, Tracing.instance),
+                                      Schema.instance,
+                                      LocatorConfig.instance.getPartitioner(),
+                                      MessagingService.instance.readCommandSerializer);
         rm2 = serializeAndDeserializeReadMessage(rm);
         assert rm2.toString().equals(rm.toString());
     }
 
     private ReadCommand serializeAndDeserializeReadMessage(ReadCommand rm) throws IOException
     {
-        ReadCommandSerializer rms = ReadCommand.serializer;
+        ReadCommand.Serializer rms = MessagingService.instance.readCommandSerializer;
         DataOutputBuffer out = new DataOutputBuffer();
         ByteArrayInputStream bis;
 
@@ -116,7 +139,14 @@ public class ReadMessageTest
         rm.add("Standard1", Util.cellname("Column1"), ByteBufferUtil.bytes("abcd"), 0);
         rm.apply();
 
-        ReadCommand command = new SliceByNamesReadCommand(KEYSPACE1, dk.getKey(), "Standard1", System.currentTimeMillis(), new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type)));
+        ReadCommand command = new SliceByNamesReadCommand(KEYSPACE1,
+                                                          dk.getKey(),
+                                                          "Standard1",
+                                                          System.currentTimeMillis(),
+                                                          new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type)),
+                                                          Schema.instance,
+                                                          LocatorConfig.instance.getPartitioner(),
+                                                          MessagingService.instance.readCommandSerializer);
         Row row = command.getRow(keyspace);
         Cell col = row.cf.getColumn(Util.cellname("Column1"));
         assertEquals(col.value(), ByteBuffer.wrap("abcd".getBytes()));

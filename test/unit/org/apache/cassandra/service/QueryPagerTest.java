@@ -149,7 +149,7 @@ public class QueryPagerTest
         SortedSet<CellName> s = new TreeSet<CellName>(cfs().metadata.comparator);
         for (String name : names)
             s.add(CellNames.simpleDense(bytes(name)));
-        return new SliceByNamesReadCommand(KEYSPACE1, bytes(key), CF_STANDARD, System.currentTimeMillis(), new NamesQueryFilter(s, true));
+        return new SliceByNamesReadCommand(KEYSPACE1, bytes(key), CF_STANDARD, System.currentTimeMillis(), new NamesQueryFilter(s, true), Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
     }
 
     private static ReadCommand sliceQuery(String key, String start, String end, int count)
@@ -161,7 +161,7 @@ public class QueryPagerTest
     {
         SliceQueryFilter filter = new SliceQueryFilter(CellNames.simpleDense(bytes(start)), CellNames.simpleDense(bytes(end)), reversed, count, DatabaseDescriptor.instance, Tracing.instance);
         // Note: for MultiQueryTest, we need the same timestamp/expireBefore for all queries, so we just use 0 as it doesn't matter here.
-        return new SliceFromReadCommand(KEYSPACE1, bytes(key), CF_STANDARD, 0, filter);
+        return new SliceFromReadCommand(KEYSPACE1, bytes(key), CF_STANDARD, 0, filter, Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
     }
 
     private static RangeSliceCommand rangeNamesQuery(AbstractBounds<RowPosition> range, int count, String... names)
@@ -378,7 +378,7 @@ public class QueryPagerTest
             QueryProcessor.instance.executeInternal(String.format("INSERT INTO %s.%s (k, c, v) VALUES ('k%d', 'c%d', null)", keyspace, table, 0, i));
 
         SliceQueryFilter filter = new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 100, DatabaseDescriptor.instance, Tracing.instance);
-        QueryPager pager = QueryPagers.localPager(new SliceFromReadCommand(keyspace, bytes("k0"), table, 0, filter), Schema.instance,
+        QueryPager pager = QueryPagers.localPager(new SliceFromReadCommand(keyspace, bytes("k0"), table, 0, filter, Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer), Schema.instance,
                                                   KeyspaceManager.instance, StorageProxy.instance, MessagingService.instance, LocatorConfig.instance.getPartitioner());
 
         for (int i = 0; i < 5; i++)

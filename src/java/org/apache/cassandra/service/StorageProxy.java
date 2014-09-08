@@ -228,7 +228,7 @@ public class StorageProxy implements StorageProxyMBean
             // read the current values and check they validate the conditions
             Tracing.instance.trace("Reading existing values for CAS precondition");
             long timestamp = System.currentTimeMillis();
-            ReadCommand readCommand = ReadCommand.create(keyspaceName, key, cfName, timestamp, request.readFilter());
+            ReadCommand readCommand = ReadCommand.create(keyspaceName, key, cfName, timestamp, request.readFilter(), Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
             List<Row> rows = read(Arrays.asList(readCommand), consistencyForPaxos == ConsistencyLevel.LOCAL_SERIAL? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM);
             ColumnFamily current = rows.get(0).cf;
             if (!request.appliesTo(current))

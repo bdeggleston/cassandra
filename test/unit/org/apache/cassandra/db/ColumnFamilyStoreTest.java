@@ -44,6 +44,7 @@ import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -843,7 +844,10 @@ public class ColumnFamilyStoreTest
         // fetch by the first column name; we should get the second version of the column value
         SliceByNamesReadCommand cmd = new SliceByNamesReadCommand(
             KEYSPACE1, ByteBufferUtil.bytes("k1"), cfname, System.currentTimeMillis(),
-            new NamesQueryFilter(FBUtilities.singleton(column1, cfs.getComparator())));
+            new NamesQueryFilter(FBUtilities.singleton(column1, cfs.getComparator())),
+            Schema.instance,
+            LocatorConfig.instance.getPartitioner(),
+            MessagingService.instance.readCommandSerializer);
 
         ColumnFamily cf = cmd.getRow(keyspace).cf;
         assertEquals(1, cf.getColumnCount());
@@ -854,7 +858,10 @@ public class ColumnFamilyStoreTest
         // fetch by the second column name; we should get the second version of the column value
         cmd = new SliceByNamesReadCommand(
             KEYSPACE1, ByteBufferUtil.bytes("k1"), cfname, System.currentTimeMillis(),
-            new NamesQueryFilter(FBUtilities.singleton(column2, cfs.getComparator())));
+            new NamesQueryFilter(FBUtilities.singleton(column2, cfs.getComparator())),
+            Schema.instance,
+            LocatorConfig.instance.getPartitioner(),
+            MessagingService.instance.readCommandSerializer);
 
         cf = cmd.getRow(keyspace).cf;
         assertEquals(1, cf.getColumnCount());
@@ -1087,7 +1094,14 @@ public class ColumnFamilyStoreTest
         SortedSet<CellName> sliceColNames = new TreeSet<CellName>(cfs.metadata.comparator);
         sliceColNames.add(CellNames.compositeDense(superColName, ByteBufferUtil.bytes("a")));
         sliceColNames.add(CellNames.compositeDense(superColName, ByteBufferUtil.bytes("b")));
-        SliceByNamesReadCommand cmd = new SliceByNamesReadCommand(keyspaceName, key.getKey(), cfName, System.currentTimeMillis(), new NamesQueryFilter(sliceColNames));
+        SliceByNamesReadCommand cmd = new SliceByNamesReadCommand(keyspaceName,
+                                                                  key.getKey(),
+                                                                  cfName,
+                                                                  System.currentTimeMillis(),
+                                                                  new NamesQueryFilter(sliceColNames),
+                                                                  Schema.instance,
+                                                                  LocatorConfig.instance.getPartitioner(),
+                                                                  MessagingService.instance.readCommandSerializer);
         ColumnFamily cfSliced = cmd.getRow(keyspace).cf;
 
         // Make sure the slice returns the same as the straight get
@@ -1123,7 +1137,14 @@ public class ColumnFamilyStoreTest
         putColsStandard(cfs, key, new BufferCell(cname, ByteBufferUtil.bytes("b"), 1));
 
         // Test fetching the cell by name returns the first cell
-        SliceByNamesReadCommand cmd = new SliceByNamesReadCommand(keyspaceName, key.getKey(), cfName, System.currentTimeMillis(), new NamesQueryFilter(FBUtilities.singleton(cname, cfs.getComparator())));
+        SliceByNamesReadCommand cmd = new SliceByNamesReadCommand(keyspaceName,
+                                                                  key.getKey(),
+                                                                  cfName,
+                                                                  System.currentTimeMillis(),
+                                                                  new NamesQueryFilter(FBUtilities.singleton(cname, cfs.getComparator())),
+                                                                  Schema.instance,
+                                                                  LocatorConfig.instance.getPartitioner(),
+                                                                  MessagingService.instance.readCommandSerializer);
         ColumnFamily cf = cmd.getRow(keyspace).cf;
         Cell cell = cf.getColumn(cname);
         assert cell.value().equals(ByteBufferUtil.bytes("a")) : "expecting a, got " + ByteBufferUtil.string(cell.value());

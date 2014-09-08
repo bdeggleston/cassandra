@@ -25,33 +25,31 @@ import com.google.common.base.Objects;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.filter.*;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class SliceByNamesReadCommand extends ReadCommand
 {
-    static final SliceByNamesReadCommandSerializer serializer = new SliceByNamesReadCommandSerializer();
-
     public final NamesQueryFilter filter;
 
-    public SliceByNamesReadCommand(String keyspaceName, ByteBuffer key, String cfName, long timestamp, NamesQueryFilter filter)
+    public SliceByNamesReadCommand(String keyspaceName, ByteBuffer key, String cfName, long timestamp, NamesQueryFilter filter, Schema schema, IPartitioner partitioner, ReadCommand.Serializer serializer)
     {
-        super(keyspaceName, key, cfName, timestamp, Type.GET_BY_NAMES);
+        super(keyspaceName, key, cfName, timestamp, Type.GET_BY_NAMES, schema, partitioner, serializer);
         this.filter = filter;
     }
 
     public ReadCommand copy()
     {
-        ReadCommand readCommand= new SliceByNamesReadCommand(ksName, key, cfName, timestamp, filter);
+        ReadCommand readCommand= new SliceByNamesReadCommand(ksName, key, cfName, timestamp, filter, schema, partitioner, serializer);
         readCommand.setDigestQuery(isDigestQuery());
         return readCommand;
     }
 
     public Row getRow(Keyspace keyspace)
     {
-        DecoratedKey dk = LocatorConfig.instance.getPartitioner().decorateKey(key);
+        DecoratedKey dk = partitioner.decorateKey(key);
         return keyspace.getRow(new QueryFilter(dk, cfName, filter, timestamp));
     }
 
@@ -71,52 +69,65 @@ public class SliceByNamesReadCommand extends ReadCommand
     {
         return filter;
     }
-}
 
-class SliceByNamesReadCommandSerializer implements IVersionedSerializer<ReadCommand>
-{
-    public void serialize(ReadCommand cmd, DataOutputPlus out, int version) throws IOException
+    public static class Serializer implements IVersionedSerializer<ReadCommand>
     {
-        SliceByNamesReadCommand command = (SliceByNamesReadCommand) cmd;
-        out.writeBoolean(command.isDigestQuery());
-        out.writeUTF(command.ksName);
-        ByteBufferUtil.writeWithShortLength(command.key, out);
-        out.writeUTF(command.cfName);
-        out.writeLong(cmd.timestamp);
 
-        CFMetaData metadata = Schema.instance.getCFMetaData(cmd.ksName, cmd.cfName);
-        metadata.comparator.namesQueryFilterSerializer().serialize(command.filter, out, version);
+        private final Schema schema;
+        private final IPartitioner partitioner;
+        private final ReadCommand.Serializer readCommandSerializer;
+
+        public Serializer(Schema schema, IPartitioner partitioner, ReadCommand.Serializer readCommandSerializer)
+        {
+            this.schema = schema;
+            this.partitioner = partitioner;
+            this.readCommandSerializer = readCommandSerializer;
+        }
+
+        public void serialize(ReadCommand cmd, DataOutputPlus out, int version) throws IOException
+        {
+            SliceByNamesReadCommand command = (SliceByNamesReadCommand) cmd;
+            out.writeBoolean(command.isDigestQuery());
+            out.writeUTF(command.ksName);
+            ByteBufferUtil.writeWithShortLength(command.key, out);
+            out.writeUTF(command.cfName);
+            out.writeLong(cmd.timestamp);
+
+            CFMetaData metadata = schema.getCFMetaData(cmd.ksName, cmd.cfName);
+            metadata.comparator.namesQueryFilterSerializer().serialize(command.filter, out, version);
+        }
+
+        public ReadCommand deserialize(DataInput in, int version) throws IOException
+        {
+            boolean isDigest = in.readBoolean();
+            String keyspaceName = in.readUTF();
+            ByteBuffer key = ByteBufferUtil.readWithShortLength(in);
+            String cfName = in.readUTF();
+            long timestamp = in.readLong();
+            CFMetaData metadata = schema.getCFMetaData(keyspaceName, cfName);
+            NamesQueryFilter filter = metadata.comparator.namesQueryFilterSerializer().deserialize(in, version);
+            ReadCommand command = new SliceByNamesReadCommand(keyspaceName, key, cfName, timestamp, filter, schema, partitioner, readCommandSerializer);
+            command.setDigestQuery(isDigest);
+            return command;
+        }
+
+        public long serializedSize(ReadCommand cmd, int version)
+        {
+            TypeSizes sizes = TypeSizes.NATIVE;
+            SliceByNamesReadCommand command = (SliceByNamesReadCommand) cmd;
+            int size = sizes.sizeof(command.isDigestQuery());
+            int keySize = command.key.remaining();
+
+            CFMetaData metadata = schema.getCFMetaData(cmd.ksName, cmd.cfName);
+
+            size += sizes.sizeof(command.ksName);
+            size += sizes.sizeof((short)keySize) + keySize;
+            size += sizes.sizeof(command.cfName);
+            size += sizes.sizeof(cmd.timestamp);
+            size += metadata.comparator.namesQueryFilterSerializer().serializedSize(command.filter, version);
+
+            return size;
+        }
     }
 
-    public ReadCommand deserialize(DataInput in, int version) throws IOException
-    {
-        boolean isDigest = in.readBoolean();
-        String keyspaceName = in.readUTF();
-        ByteBuffer key = ByteBufferUtil.readWithShortLength(in);
-        String cfName = in.readUTF();
-        long timestamp = in.readLong();
-        CFMetaData metadata = Schema.instance.getCFMetaData(keyspaceName, cfName);
-        NamesQueryFilter filter = metadata.comparator.namesQueryFilterSerializer().deserialize(in, version);
-        ReadCommand command = new SliceByNamesReadCommand(keyspaceName, key, cfName, timestamp, filter);
-        command.setDigestQuery(isDigest);
-        return command;
-    }
-
-    public long serializedSize(ReadCommand cmd, int version)
-    {
-        TypeSizes sizes = TypeSizes.NATIVE;
-        SliceByNamesReadCommand command = (SliceByNamesReadCommand) cmd;
-        int size = sizes.sizeof(command.isDigestQuery());
-        int keySize = command.key.remaining();
-
-        CFMetaData metadata = Schema.instance.getCFMetaData(cmd.ksName, cmd.cfName);
-
-        size += sizes.sizeof(command.ksName);
-        size += sizes.sizeof((short)keySize) + keySize;
-        size += sizes.sizeof(command.cfName);
-        size += sizes.sizeof(cmd.timestamp);
-        size += metadata.comparator.namesQueryFilterSerializer().serializedSize(command.filter, version);
-
-        return size;
-    }
 }

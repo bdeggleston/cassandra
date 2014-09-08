@@ -28,6 +28,8 @@ import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -376,7 +378,14 @@ public class CommitLogTest
         rm.add("Standard1", Util.cellname("Column1"), ByteBufferUtil.bytes("abcd"), 0);
         rm.apply();
 
-        ReadCommand command = new SliceByNamesReadCommand(KEYSPACE2, dk.getKey(), "Standard1", System.currentTimeMillis(), new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type)));
+        ReadCommand command = new SliceByNamesReadCommand(KEYSPACE2,
+                                                          dk.getKey(),
+                                                          "Standard1",
+                                                          System.currentTimeMillis(),
+                                                          new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type)),
+                                                          Schema.instance,
+                                                          LocatorConfig.instance.getPartitioner(),
+                                                          MessagingService.instance.readCommandSerializer);
         Row row = command.getRow(notDurableKs);
         Cell col = row.cf.getColumn(Util.cellname("Column1"));
         Assert.assertEquals(col.value(), ByteBuffer.wrap("abcd".getBytes()));

@@ -37,6 +37,7 @@ import com.google.common.collect.Lists;
 import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.gms.*;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.streaming.StreamManager;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.slf4j.Logger;
@@ -143,6 +144,7 @@ public final class MessagingService implements MessagingServiceMBean
     public final RangeSliceCommand.Serializer rangeSliceCommandSerializer = new RangeSliceCommand.Serializer(KeyspaceManager.instance, DBConfig.instance.boundsSerializer);
     public final PagedRangeCommand.Serializer pagedRangeCommandSerializer = new PagedRangeCommand.Serializer(Schema.instance, KeyspaceManager.instance, DBConfig.instance.boundsSerializer);
     public final RepairMessage.Serializer repairMessageSerializer = new RepairMessage.Serializer(DBConfig.instance);
+    public final ReadCommand.Serializer readCommandSerializer = new ReadCommand.Serializer(Schema.instance, LocatorConfig.instance.getPartitioner());
 
     public final EnumMap<MessagingService.Verb, Stage> verbStages = new EnumMap<MessagingService.Verb, Stage>(MessagingService.Verb.class)
     {{
@@ -207,7 +209,7 @@ public final class MessagingService implements MessagingServiceMBean
 
         put(Verb.MUTATION, MutationFactory.instance.serializer);
         put(Verb.READ_REPAIR, MutationFactory.instance.serializer);
-        put(Verb.READ, ReadCommand.serializer);
+        put(Verb.READ, readCommandSerializer);
         put(Verb.RANGE_SLICE, rangeSliceCommandSerializer);
         put(Verb.PAGED_RANGE, pagedRangeCommandSerializer);
         put(Verb.BOOTSTRAP_TOKEN, BootStrapper.StringSerializer.instance);
