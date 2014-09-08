@@ -80,7 +80,7 @@ public class Murmur3Partitioner extends AbstractPartitioner<LongToken>
 
     public LongToken getMinimumToken()
     {
-        return MINIMUM;
+        return new LongToken(Long.MIN_VALUE, this);
     }
 
     /**
@@ -92,7 +92,7 @@ public class Murmur3Partitioner extends AbstractPartitioner<LongToken>
     public LongToken getToken(ByteBuffer key)
     {
         if (key.remaining() == 0)
-            return MINIMUM;
+            return getMinimumToken();
 
         long[] hash = new long[2];
         MurmurHash.hash3_x64_128(key, key.position(), key.remaining(), 0, hash);

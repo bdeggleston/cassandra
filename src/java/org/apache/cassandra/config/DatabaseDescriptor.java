@@ -128,6 +128,8 @@ public class DatabaseDescriptor
         instance = databaseDescriptor;
         assert Gossiper.instance != null;
         assert Tracing.instance != null;
+        assert LocatorConfig.instance != null;
+        assert DBConfig.instance != null;
         assert KeyspaceManager.instance != null;
         assert MutationFactory.instance != null;
         assert MessagingService.instance != null;
@@ -139,7 +141,6 @@ public class DatabaseDescriptor
         assert CompactionManager.instance != null;
         assert FailureDetector.instance != null;
         assert DefsTables.instance != null;
-        assert LocatorConfig.instance != null;
         assert StorageService.instance != null;
 
     }

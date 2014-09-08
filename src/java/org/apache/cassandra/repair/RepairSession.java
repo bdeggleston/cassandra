@@ -29,6 +29,7 @@ import java.util.concurrent.locks.Condition;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.streaming.StreamManager;
@@ -120,6 +121,7 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
     private final ActiveRepairService activeRepairService;
     private final StreamManager streamManager;
     private final IFailureDetector failureDetector;
+    private final DBConfig dbConfig;
 
     /**
      * Create new repair session.
@@ -142,6 +144,7 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
                          ActiveRepairService activeRepairService,
                          StreamManager streamManager,
                          IFailureDetector failureDetector,
+                         DBConfig dbConfig,
                          String... cfnames)
     {
         this(parentRepairSession,
@@ -157,6 +160,7 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
              activeRepairService,
              streamManager,
              failureDetector,
+             dbConfig,
              cfnames);
     }
 
@@ -173,6 +177,7 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
                          ActiveRepairService activeRepairService,
                          StreamManager streamManager,
                          IFailureDetector failureDetector,
+                         DBConfig dbConfig,
                          String[] cfnames)
     {
         this.parentRepairSession = parentRepairSession;
@@ -190,6 +195,7 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
         this.activeRepairService = activeRepairService;
         this.streamManager = streamManager;
         this.failureDetector = failureDetector;
+        this.dbConfig = dbConfig;
     }
 
     public UUID getId()
@@ -341,7 +347,8 @@ public class RepairSession extends WrappedRunnable implements IEndpointStateChan
             // Create and queue a RepairJob for each column family
             for (String cfname : cfnames)
             {
-                RepairJob job = new RepairJob(this, parentRepairSession, id, keyspace, cfname, range, isSequential, taskExecutor, databaseDescriptor, Schema.instance, keyspaceManager, activeRepairService, StreamManager.instance, messagingService);
+                RepairJob job = new RepairJob(this, parentRepairSession, id, keyspace, cfname, range, isSequential, taskExecutor, databaseDescriptor,
+                                              schema, keyspaceManager, activeRepairService, streamManager, messagingService, dbConfig);
                 jobs.offer(job);
             }
             logger.debug("Sending tree requests to endpoints {}", endpoints);

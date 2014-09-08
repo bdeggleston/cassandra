@@ -3,10 +3,14 @@ package org.apache.cassandra.db;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.dht.AbstractBounds;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.LongToken;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.MerkleTree;
 import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.MemtableAllocator;
@@ -24,6 +28,12 @@ public class DBConfig
 
     public final ColumnFamilySerializer columnFamilySerializer;
     public final Row.RowSerializer rowSerializer;
+    public final Token.Serializer tokenSerializer;
+    public final MerkleTree.Hashable.HashableSerializer hashableSerializer;
+    public final MerkleTree.Inner.InnerSerializer innerSerializer;
+    public final RowPosition.Serializer rowPositionSerializer;
+    public final AbstractBounds.Serializer boundsSerializer;
+    public final MerkleTree.Serializer merkleTreeSerializer;
 
     public DBConfig()
     {
@@ -32,7 +42,14 @@ public class DBConfig
                 Integer.valueOf(System.getProperty("cassandra.memtable_row_overhead_computation_step", "100000")));
 
         columnFamilySerializer = new ColumnFamilySerializer(Schema.instance);
+        // don't change the partitioner after these are instantiated
         rowSerializer = new Row.RowSerializer(LocatorConfig.instance.getPartitioner(), columnFamilySerializer);
+        tokenSerializer = new Token.Serializer(LocatorConfig.instance.getPartitioner());
+        rowPositionSerializer = new RowPosition.Serializer(LocatorConfig.instance.getPartitioner(), tokenSerializer);
+        boundsSerializer = new AbstractBounds.Serializer(tokenSerializer, rowPositionSerializer);
+        hashableSerializer = new MerkleTree.Hashable.HashableSerializer(tokenSerializer);
+        innerSerializer = new MerkleTree.Inner.InnerSerializer(tokenSerializer, hashableSerializer);
+        merkleTreeSerializer = new MerkleTree.Serializer(tokenSerializer, hashableSerializer);
     }
 
     private int estimateRowOverhead(int count)
@@ -47,7 +64,7 @@ public class DBConfig
             rows.put(allocator.clone(new BufferDecoratedKey(new LongToken((long) i, getLocatorConfig().getPartitioner()), ByteBufferUtil.EMPTY_BYTE_BUFFER), group), val);
         double avgSize = ObjectSizes.measureDeep(rows) / (double) count;
         rowOverhead = (int) ((avgSize - Math.floor(avgSize)) < 0.05 ? Math.floor(avgSize) : Math.ceil(avgSize));
-        rowOverhead -= ObjectSizes.measureDeep(new LongToken((long) 0, getLocatorConfig().getPartitioner()));
+        rowOverhead -= ObjectSizes.measureDeep(new LongToken((long) 0, null));
         rowOverhead += AtomicBTreeColumns.EMPTY_SIZE;
         allocator.setDiscarding();
         allocator.setDiscarded();
@@ -77,6 +94,11 @@ public class DBConfig
     public LocatorConfig getLocatorConfig()
     {
         return LocatorConfig.instance;
+    }
+
+    public IPartitioner getPartitioner()
+    {
+        return LocatorConfig.instance.getPartitioner();
     }
 
     public DatabaseDescriptor getDatabaseDescriptor()

@@ -984,7 +984,7 @@ public class CompactionManager implements CompactionManagerMBean
                          duration,
                          depth,
                          numPartitions,
-                         MerkleTree.serializer.serializedSize(tree, 0),
+                         DBConfig.instance.merkleTreeSerializer.serializedSize(tree, 0),
                          validator.desc);
         }
     }

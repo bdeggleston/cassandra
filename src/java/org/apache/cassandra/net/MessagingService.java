@@ -140,6 +140,9 @@ public final class MessagingService implements MessagingServiceMBean
     public final RangeSliceReply.Serializer rangeSliceReplySerializer = new RangeSliceReply.Serializer(DBConfig.instance.rowSerializer);
     public final PrepareResponse.Serializer prepareResponseSerializer = new PrepareResponse.Serializer(DBConfig.instance.columnFamilySerializer);
     public final Commit.Serializer commitSerializer = new Commit.Serializer(DBConfig.instance.columnFamilySerializer);
+    public final RangeSliceCommand.Serializer rangeSliceCommandSerializer = new RangeSliceCommand.Serializer(DBConfig.instance.boundsSerializer);
+    public final PagedRangeCommand.Serializer pagedRangeCommandSerializer = new PagedRangeCommand.Serializer(DBConfig.instance.boundsSerializer);
+    public final RepairMessage.Serializer repairMessageSerializer = new RepairMessage.Serializer(DBConfig.instance);
 
     public final EnumMap<MessagingService.Verb, Stage> verbStages = new EnumMap<MessagingService.Verb, Stage>(MessagingService.Verb.class)
     {{
@@ -205,10 +208,10 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.MUTATION, MutationFactory.instance.serializer);
         put(Verb.READ_REPAIR, MutationFactory.instance.serializer);
         put(Verb.READ, ReadCommand.serializer);
-        put(Verb.RANGE_SLICE, RangeSliceCommand.serializer);
-        put(Verb.PAGED_RANGE, PagedRangeCommand.serializer);
+        put(Verb.RANGE_SLICE, rangeSliceCommandSerializer);
+        put(Verb.PAGED_RANGE, pagedRangeCommandSerializer);
         put(Verb.BOOTSTRAP_TOKEN, BootStrapper.StringSerializer.instance);
-        put(Verb.REPAIR_MESSAGE, RepairMessage.serializer);
+        put(Verb.REPAIR_MESSAGE, repairMessageSerializer);
         put(Verb.GOSSIP_DIGEST_ACK, GossipDigestAck.serializer);
         put(Verb.GOSSIP_DIGEST_ACK2, GossipDigestAck2.serializer);
         put(Verb.GOSSIP_DIGEST_SYN, GossipDigestSyn.serializer);
@@ -924,7 +927,7 @@ public final class MessagingService implements MessagingServiceMBean
                     logger.debug("Connection version {} from {}", version, socket.getInetAddress());
 
                     Thread thread = isStream
-                                  ? new IncomingStreamingConnection(version, socket, DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, StreamManager.instance)
+                                  ? new IncomingStreamingConnection(version, socket, DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, StreamManager.instance, DBConfig.instance)
                                   : new IncomingTcpConnection(version, MessagingService.getBits(header, 2, 1) == 1, socket, DatabaseDescriptor.instance, Gossiper.instance, MessagingService.instance);
                     thread.start();
                 }

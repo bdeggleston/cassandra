@@ -64,7 +64,8 @@ public abstract class ColumnFamily implements Iterable<Cell>, IRowCacheEntry
         assert metadata != null;
         this.metadata = metadata;
         this.dbConfig = dbConfig;
-        this.serializer = this.dbConfig.columnFamilySerializer;
+        // prevents columnFamilySerializer from being included in memory measurement
+        this.serializer = dbConfig != null ? dbConfig.columnFamilySerializer : null;
     }
 
     public <T extends ColumnFamily> T cloneMeShallow(ColumnFamily.Factory<T> factory, boolean reversedInsertOrder)

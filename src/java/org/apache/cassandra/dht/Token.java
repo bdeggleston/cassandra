@@ -27,14 +27,11 @@ import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
 {
     private static final long serialVersionUID = 1L;
-
-    public static final TokenSerializer serializer = new TokenSerializer();
 
     public final T token;
 
@@ -84,28 +81,32 @@ public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
         public abstract void validate(String token) throws ConfigurationException;
     }
 
-    public static class TokenSerializer implements ISerializer<Token>
+    public static class Serializer implements ISerializer<Token>
     {
+        private final IPartitioner partitioner;
+
+        public Serializer(IPartitioner partitioner)
+        {
+            this.partitioner = partitioner;
+        }
+
         public void serialize(Token token, DataOutputPlus out) throws IOException
         {
-            IPartitioner p = LocatorConfig.instance.getPartitioner();
-            ByteBuffer b = p.getTokenFactory().toByteArray(token);
+            ByteBuffer b = partitioner.getTokenFactory().toByteArray(token);
             ByteBufferUtil.writeWithLength(b, out);
         }
 
         public Token deserialize(DataInput in) throws IOException
         {
-            IPartitioner p = LocatorConfig.instance.getPartitioner();
             int size = in.readInt();
             byte[] bytes = new byte[size];
             in.readFully(bytes);
-            return p.getTokenFactory().fromByteArray(ByteBuffer.wrap(bytes));
+            return partitioner.getTokenFactory().fromByteArray(ByteBuffer.wrap(bytes));
         }
 
         public long serializedSize(Token object, TypeSizes typeSizes)
         {
-            IPartitioner p = LocatorConfig.instance.getPartitioner();
-            ByteBuffer b = p.getTokenFactory().toByteArray(object);
+            ByteBuffer b = partitioner.getTokenFactory().toByteArray(object);
             return TypeSizes.NATIVE.sizeof(b.remaining()) + b.remaining();
         }
     }
@@ -122,7 +123,7 @@ public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
 
     public boolean isMinimum()
     {
-        return isMinimum(LocatorConfig.instance.getPartitioner());
+        return isMinimum(partitioner);
     }
 
     /*
@@ -141,12 +142,12 @@ public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
      */
     public KeyBound minKeyBound(IPartitioner partitioner)
     {
-        return new KeyBound(this, true);
+        return new KeyBound(this, true, partitioner);
     }
 
     public KeyBound minKeyBound()
     {
-        return minKeyBound(null);
+        return minKeyBound(partitioner);
     }
 
     public KeyBound maxKeyBound(IPartitioner partitioner)
@@ -160,12 +161,12 @@ public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
          */
         if (isMinimum(partitioner))
             return minKeyBound();
-        return new KeyBound(this, false);
+        return new KeyBound(this, false, partitioner);
     }
 
     public KeyBound maxKeyBound()
     {
-        return maxKeyBound(LocatorConfig.instance.getPartitioner());
+        return maxKeyBound(partitioner);
     }
 
     public <R extends RingPosition> R upperBound(Class<R> klass)
@@ -180,11 +181,13 @@ public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
     {
         private final Token token;
         public final boolean isMinimumBound;
+        private final IPartitioner partitioner;
 
-        private KeyBound(Token t, boolean isMinimumBound)
+        private KeyBound(Token t, boolean isMinimumBound, IPartitioner partitioner)
         {
             this.token = t;
             this.isMinimumBound = isMinimumBound;
+            this.partitioner = partitioner;
         }
 
         public Token getToken()
@@ -214,7 +217,7 @@ public abstract class Token<T> implements RingPosition<Token<T>>, Serializable
 
         public boolean isMinimum()
         {
-            return isMinimum(LocatorConfig.instance.getPartitioner());
+            return isMinimum(partitioner);
         }
 
         public RowPosition.Kind kind()

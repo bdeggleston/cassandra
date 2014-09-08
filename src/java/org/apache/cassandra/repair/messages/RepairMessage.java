@@ -19,7 +19,10 @@ package org.apache.cassandra.repair.messages;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.util.EnumMap;
+import java.util.Map;
 
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.MessageOut;
@@ -33,27 +36,23 @@ import org.apache.cassandra.repair.RepairJobDesc;
  */
 public abstract class RepairMessage
 {
-    public static final IVersionedSerializer<RepairMessage> serializer = new RepairMessageSerializer();
-
     public static interface MessageSerializer<T extends RepairMessage> extends IVersionedSerializer<T> {}
 
     public static enum Type
     {
-        VALIDATION_REQUEST(0, ValidationRequest.serializer),
-        VALIDATION_COMPLETE(1, ValidationComplete.serializer),
-        SYNC_REQUEST(2, SyncRequest.serializer),
-        SYNC_COMPLETE(3, SyncComplete.serializer),
-        ANTICOMPACTION_REQUEST(4, AnticompactionRequest.serializer),
-        PREPARE_MESSAGE(5, PrepareMessage.serializer),
-        SNAPSHOT(6, SnapshotMessage.serializer);
+        VALIDATION_REQUEST(0),
+        VALIDATION_COMPLETE(1),
+        SYNC_REQUEST(2),
+        SYNC_COMPLETE(3),
+        ANTICOMPACTION_REQUEST(4),
+        PREPARE_MESSAGE(5),
+        SNAPSHOT(6);
 
         private final byte type;
-        private final MessageSerializer<RepairMessage> serializer;
 
-        private Type(int type, MessageSerializer<RepairMessage> serializer)
+        private Type(int type)
         {
             this.type = (byte) type;
-            this.serializer = serializer;
         }
 
         public static Type fromByte(byte b)
@@ -65,40 +64,69 @@ public abstract class RepairMessage
             }
             throw new IllegalArgumentException("Unknown RepairMessage.Type: " + b);
         }
+
+        public static Map<Type, MessageSerializer> getSerializerMap(Serializer serializer, DBConfig dbConfig)
+        {
+            RepairJobDesc.RepairJobDescSerializer repairJobDescSerializer = new RepairJobDesc.RepairJobDescSerializer(dbConfig.boundsSerializer);
+            Map <Type, MessageSerializer> serializers = new EnumMap<>(Type.class);
+            serializers.put(VALIDATION_REQUEST, new ValidationRequest.Serializer(serializer, repairJobDescSerializer));
+            serializers.put(VALIDATION_COMPLETE, new ValidationComplete.Serializer(serializer, dbConfig.merkleTreeSerializer, repairJobDescSerializer));
+            serializers.put(SYNC_REQUEST, new SyncRequest.Serializer(dbConfig.boundsSerializer, serializer, repairJobDescSerializer));
+            serializers.put(SYNC_COMPLETE, new SyncComplete.Serializer(serializer, repairJobDescSerializer));
+            serializers.put(ANTICOMPACTION_REQUEST, new AnticompactionRequest.Serializer(serializer));
+            serializers.put(PREPARE_MESSAGE, new PrepareMessage.Serializer(serializer, dbConfig.boundsSerializer));
+            serializers.put(SNAPSHOT, new SnapshotMessage.Serializer(serializer, repairJobDescSerializer));
+
+            return serializers;
+        }
     }
 
     public final Type messageType;
     public final RepairJobDesc desc;
+    protected final Serializer serializer;
 
-    protected RepairMessage(Type messageType, RepairJobDesc desc)
+    protected RepairMessage(Type messageType, RepairJobDesc desc, Serializer serializer)
     {
         this.messageType = messageType;
         this.desc = desc;
+        this.serializer = serializer;
     }
 
     public MessageOut<RepairMessage> createMessage()
     {
-        return new MessageOut<>(MessagingService.Verb.REPAIR_MESSAGE, this, RepairMessage.serializer);
+        return new MessageOut<>(MessagingService.Verb.REPAIR_MESSAGE, this, serializer);
     }
 
-    public static class RepairMessageSerializer implements IVersionedSerializer<RepairMessage>
+    public static class Serializer implements IVersionedSerializer<RepairMessage>
     {
+        private final Map<Type, MessageSerializer> serializers;
+
+        public Serializer(DBConfig dbConfig)
+        {
+            this.serializers = Type.getSerializerMap(this, dbConfig);
+        }
+
+        @SuppressWarnings("unchecked")
         public void serialize(RepairMessage message, DataOutputPlus out, int version) throws IOException
         {
             out.write(message.messageType.type);
-            message.messageType.serializer.serialize(message, out, version);
+            MessageSerializer serializer = serializers.get(message.messageType);
+            serializer.serialize(message, out, version);
         }
 
         public RepairMessage deserialize(DataInput in, int version) throws IOException
         {
             RepairMessage.Type messageType = RepairMessage.Type.fromByte(in.readByte());
-            return messageType.serializer.deserialize(in, version);
+            MessageSerializer serializer = serializers.get(messageType);
+            return (RepairMessage) serializer.deserialize(in, version);
         }
 
+        @SuppressWarnings("unchecked")
         public long serializedSize(RepairMessage message, int version)
         {
             long size = 1; // for messageType byte
-            size += message.messageType.serializer.serializedSize(message, version);
+            MessageSerializer serializer = serializers.get(message.messageType);
+            size += serializer.serializedSize(message, version);
             return size;
         }
     }

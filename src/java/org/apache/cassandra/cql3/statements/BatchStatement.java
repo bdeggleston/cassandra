@@ -25,6 +25,7 @@ import com.google.common.collect.*;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.tracing.Tracing;
 import org.github.jamm.MemoryMeter;
 import org.slf4j.Logger;
@@ -66,6 +67,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
     private final StorageProxy storageProxy;
     private final MutationFactory mutationFactory;
     private final CounterMutationFactory counterMutationFactory;
+    private final MessagingService messagingService;
     private final DBConfig dbConfig;
     private final LocatorConfig locatorConfig;
 
@@ -80,7 +82,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
     public BatchStatement(int boundTerms, Type type, List<ModificationStatement> statements, Attributes attrs,
                           DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, QueryProcessor queryProcessor,
                           KeyspaceManager keyspaceManager, StorageProxy storageProxy, MutationFactory mutationFactory,
-                          CounterMutationFactory counterMutationFactory, DBConfig dbConfig, LocatorConfig locatorConfig)
+                          CounterMutationFactory counterMutationFactory, MessagingService messagingService, DBConfig dbConfig, LocatorConfig locatorConfig)
     {
         boolean hasConditions = false;
         for (ModificationStatement statement : statements)
@@ -100,6 +102,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         this.storageProxy = storageProxy;
         this.mutationFactory = mutationFactory;
         this.counterMutationFactory = counterMutationFactory;
+        this.messagingService = messagingService;
         this.dbConfig = dbConfig;
         this.locatorConfig = locatorConfig;
     }
@@ -382,6 +385,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
                                                                               queryProcessor,
                                                                               keyspaceManager,
                                                                               storageProxy,
+                                                                              messagingService,
                                                                               locatorConfig));
     }
 
@@ -421,13 +425,14 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         private final StorageProxy storageProxy;
         private final MutationFactory mutationFactory;
         private final CounterMutationFactory counterMutationFactory;
+        private final MessagingService messagingService;
         private final DBConfig dbConfig;
         private final LocatorConfig locatorConfig;
 
         public Parsed(Type type, Attributes.Raw attrs, List<ModificationStatement.Parsed> parsedStatements,
                       DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, QueryProcessor queryProcessor,
                       KeyspaceManager keyspaceManager, StorageProxy storageProxy, MutationFactory mutationFactory,
-                      CounterMutationFactory counterMutationFactory, DBConfig dbConfig, LocatorConfig locatorConfig)
+                      CounterMutationFactory counterMutationFactory, MessagingService messagingService, DBConfig dbConfig, LocatorConfig locatorConfig)
         {
             super(null);
             this.type = type;
@@ -442,6 +447,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
             this.storageProxy = storageProxy;
             this.mutationFactory = mutationFactory;
             this.counterMutationFactory = counterMutationFactory;
+            this.messagingService = messagingService;
             this.dbConfig = dbConfig;
             this.locatorConfig = locatorConfig;
         }
@@ -467,7 +473,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
             BatchStatement batchStatement = new BatchStatement(boundNames.size(), type, statements, prepAttrs,
                                                                databaseDescriptor, tracing, schema, queryProcessor,
                                                                keyspaceManager, storageProxy, mutationFactory,
-                                                               counterMutationFactory, dbConfig, locatorConfig);
+                                                               counterMutationFactory, messagingService, dbConfig, locatorConfig);
             batchStatement.validate();
 
             return new ParsedStatement.Prepared(batchStatement, boundNames);

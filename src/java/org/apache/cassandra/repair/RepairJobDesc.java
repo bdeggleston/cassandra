@@ -39,8 +39,6 @@ import org.apache.cassandra.utils.UUIDSerializer;
  */
 public class RepairJobDesc
 {
-    public static final IVersionedSerializer<RepairJobDesc> serializer = new RepairJobDescSerializer();
-
     public final UUID parentSessionId;
     /** RepairSession id */
     public final UUID sessionId;
@@ -87,8 +85,16 @@ public class RepairJobDesc
         return Objects.hashCode(sessionId, keyspace, columnFamily, range);
     }
 
-    private static class RepairJobDescSerializer implements IVersionedSerializer<RepairJobDesc>
+    public static class RepairJobDescSerializer implements IVersionedSerializer<RepairJobDesc>
     {
+
+        private final AbstractBounds.Serializer abstractBoundsSerializer;
+
+        public RepairJobDescSerializer(AbstractBounds.Serializer abstractBoundsSerializer)
+        {
+            this.abstractBoundsSerializer = abstractBoundsSerializer;
+        }
+
         public void serialize(RepairJobDesc desc, DataOutputPlus out, int version) throws IOException
         {
             if (version >= MessagingService.VERSION_21)
@@ -100,7 +106,7 @@ public class RepairJobDesc
             UUIDSerializer.serializer.serialize(desc.sessionId, out, version);
             out.writeUTF(desc.keyspace);
             out.writeUTF(desc.columnFamily);
-            AbstractBounds.serializer.serialize(desc.range, out, version);
+            abstractBoundsSerializer.serialize(desc.range, out, version);
         }
 
         public RepairJobDesc deserialize(DataInput in, int version) throws IOException
@@ -114,7 +120,7 @@ public class RepairJobDesc
             UUID sessionId = UUIDSerializer.serializer.deserialize(in, version);
             String keyspace = in.readUTF();
             String columnFamily = in.readUTF();
-            Range<Token> range = (Range<Token>)AbstractBounds.serializer.deserialize(in, version);
+            Range<Token> range = (Range<Token>)abstractBoundsSerializer.deserialize(in, version);
             return new RepairJobDesc(parentSessionId, sessionId, keyspace, columnFamily, range);
         }
 
@@ -130,7 +136,7 @@ public class RepairJobDesc
             size += UUIDSerializer.serializer.serializedSize(desc.sessionId, version);
             size += TypeSizes.NATIVE.sizeof(desc.keyspace);
             size += TypeSizes.NATIVE.sizeof(desc.columnFamily);
-            size += AbstractBounds.serializer.serializedSize(desc.range, version);
+            size += abstractBoundsSerializer.serializedSize(desc.range, version);
             return size;
         }
     }

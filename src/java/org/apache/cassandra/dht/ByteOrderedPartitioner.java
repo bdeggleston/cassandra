@@ -18,6 +18,7 @@
 package org.apache.cassandra.dht;
 
 import org.apache.cassandra.utils.ObjectSizes;
+import org.apache.commons.lang3.ArrayUtils;
 
 import java.nio.ByteBuffer;
 
@@ -28,7 +29,7 @@ public class ByteOrderedPartitioner extends AbstractByteOrderedPartitioner
     public BytesToken getToken(ByteBuffer key)
     {
         if (key.remaining() == 0)
-            return MINIMUM;
+            return new BytesToken(ArrayUtils.EMPTY_BYTE_ARRAY, this);
         return new BytesToken(key, this);
     }
 

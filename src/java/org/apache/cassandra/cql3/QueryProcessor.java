@@ -31,6 +31,7 @@ import org.antlr.runtime.*;
 import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageProxy;
 import org.github.jamm.MemoryMeter;
 import org.slf4j.Logger;
@@ -286,6 +287,7 @@ public class QueryProcessor implements QueryHandler
                                                       Schema.instance,
                                                       KeyspaceManager.instance,
                                                       StorageProxy.instance,
+                                                      MessagingService.instance,
                                                       LocatorConfig.instance.getPartitioner());
             return UntypedResultSet.create(select, pager, pageSize);
         }

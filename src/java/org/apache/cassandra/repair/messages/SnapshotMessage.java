@@ -25,29 +25,36 @@ import org.apache.cassandra.repair.RepairJobDesc;
 
 public class SnapshotMessage extends RepairMessage
 {
-    public final static MessageSerializer serializer = new SnapshotMessageSerializer();
-
-    public SnapshotMessage(RepairJobDesc desc)
+    public SnapshotMessage(RepairJobDesc desc, RepairMessage.Serializer serializer)
     {
-        super(Type.SNAPSHOT, desc);
+        super(Type.SNAPSHOT, desc, serializer);
     }
 
-    public static class SnapshotMessageSerializer implements MessageSerializer<SnapshotMessage>
+    public static class Serializer implements MessageSerializer<SnapshotMessage>
     {
+        private final RepairMessage.Serializer repairMessageSerializer;
+        private final RepairJobDesc.RepairJobDescSerializer repairJobDescSerializer;
+
+        public Serializer(RepairMessage.Serializer repairMessageSerializer, RepairJobDesc.RepairJobDescSerializer repairJobDescSerializer)
+        {
+            this.repairMessageSerializer = repairMessageSerializer;
+            this.repairJobDescSerializer = repairJobDescSerializer;
+        }
+
         public void serialize(SnapshotMessage message, DataOutputPlus out, int version) throws IOException
         {
-            RepairJobDesc.serializer.serialize(message.desc, out, version);
+            repairJobDescSerializer.serialize(message.desc, out, version);
         }
 
         public SnapshotMessage deserialize(DataInput in, int version) throws IOException
         {
-            RepairJobDesc desc = RepairJobDesc.serializer.deserialize(in, version);
-            return new SnapshotMessage(desc);
+            RepairJobDesc desc = repairJobDescSerializer.deserialize(in, version);
+            return new SnapshotMessage(desc, repairMessageSerializer);
         }
 
         public long serializedSize(SnapshotMessage message, int version)
         {
-            return RepairJobDesc.serializer.serializedSize(message.desc, version);
+            return repairJobDescSerializer.serializedSize(message.desc, version);
         }
     }
 }

@@ -53,10 +53,12 @@ public class StreamRequest
     {
 
         private final IPartitioner partitioner;
+        private final Token.Serializer tokenSerializer;
 
-        public Serializer(IPartitioner partitioner)
+        public Serializer(IPartitioner partitioner, Token.Serializer tokenSerializer)
         {
             this.partitioner = partitioner;
+            this.tokenSerializer = tokenSerializer;
         }
 
         public void serialize(StreamRequest request, DataOutputPlus out, int version) throws IOException
@@ -66,8 +68,8 @@ public class StreamRequest
             out.writeInt(request.ranges.size());
             for (Range<Token> range : request.ranges)
             {
-                Token.serializer.serialize(range.left, out);
-                Token.serializer.serialize(range.right, out);
+                tokenSerializer.serialize(range.left, out);
+                tokenSerializer.serialize(range.right, out);
             }
             out.writeInt(request.columnFamilies.size());
             for (String cf : request.columnFamilies)
@@ -82,8 +84,8 @@ public class StreamRequest
             List<Range<Token>> ranges = new ArrayList<>(rangeCount);
             for (int i = 0; i < rangeCount; i++)
             {
-                Token left = Token.serializer.deserialize(in);
-                Token right = Token.serializer.deserialize(in);
+                Token left = tokenSerializer.deserialize(in);
+                Token right = tokenSerializer.deserialize(in);
                 ranges.add(new Range<>(left, right, LocatorConfig.instance.getPartitioner()));
             }
             int cfCount = in.readInt();
@@ -100,8 +102,8 @@ public class StreamRequest
             size += TypeSizes.NATIVE.sizeof(request.ranges.size());
             for (Range<Token> range : request.ranges)
             {
-                size += Token.serializer.serializedSize(range.left, TypeSizes.NATIVE);
-                size += Token.serializer.serializedSize(range.right, TypeSizes.NATIVE);
+                size += tokenSerializer.serializedSize(range.left, TypeSizes.NATIVE);
+                size += tokenSerializer.serializedSize(range.right, TypeSizes.NATIVE);
             }
             size += TypeSizes.NATIVE.sizeof(request.columnFamilies.size());
             for (String cf : request.columnFamilies)

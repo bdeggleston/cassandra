@@ -23,12 +23,13 @@ import java.util.*;
 
 import com.google.common.collect.AbstractIterator;
 import com.google.common.io.ByteArrayDataInput;
-import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 
+import junit.framework.Assert;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.service.StorageService;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.*;
@@ -55,6 +56,13 @@ public class MerkleTreeTest
     protected IPartitioner partitioner;
     protected MerkleTree mt;
 
+    static
+    {
+        System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
+        DatabaseDescriptor.init();
+        assert LocatorConfig.instance.getPartitioner() instanceof RandomPartitioner;
+    }
+
     private Range<Token> fullRange()
     {
         return new Range<>(partitioner.getMinimumToken(), partitioner.getMinimumToken(), LocatorConfig.instance.getPartitioner());
@@ -64,9 +72,8 @@ public class MerkleTreeTest
     public void clear()
     {
         TOKEN_SCALE = new BigInteger("8");
-        partitioner = new RandomPartitioner();
-        // TODO need to trickle TokenSerializer
-        DatabaseDescriptor.instance.setPartitioner(partitioner);
+        partitioner = LocatorConfig.instance.getPartitioner();
+        assert partitioner instanceof RandomPartitioner;
         mt = new MerkleTree(partitioner, fullRange(), RECOMMENDED_DEPTH, Integer.MAX_VALUE);
     }
 
@@ -385,7 +392,7 @@ public class MerkleTreeTest
     @Test
     public void testSerialization() throws Exception
     {
-        Range<Token> full = new Range<>(tok(-1), tok(-1), LocatorConfig.instance.getPartitioner());
+        Range<Token> full = new Range<>(tok(-1), tok(-1), partitioner);
 
         // populate and validate the tree
         mt.maxsize(256);
@@ -396,11 +403,11 @@ public class MerkleTreeTest
         byte[] initialhash = mt.hash(full);
 
         DataOutputBuffer out = new DataOutputBuffer();
-        MerkleTree.serializer.serialize(mt, out, MessagingService.current_version);
+        DBConfig.instance.merkleTreeSerializer.serialize(mt, out, MessagingService.current_version);
         byte[] serialized = out.toByteArray();
 
         ByteArrayDataInput in = ByteStreams.newDataInput(serialized);
-        MerkleTree restored = MerkleTree.serializer.deserialize(in, MessagingService.current_version);
+        MerkleTree restored = DBConfig.instance.merkleTreeSerializer.deserialize(in, MessagingService.current_version);
 
         assertHashEquals(initialhash, restored.hash(full));
     }

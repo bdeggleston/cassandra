@@ -19,6 +19,7 @@ package org.apache.cassandra.repair;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,8 +50,10 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
     private final KeyspaceManager keyspaceManager;
     private final StreamManager streamManager;
     private final MessagingService messagingService;
+    private final DBConfig dbConfig;
 
-    public StreamingRepairTask(RepairJobDesc desc, SyncRequest request, DatabaseDescriptor databaseDescriptor, Schema schema, ActiveRepairService activeRepairService, KeyspaceManager keyspaceManager, StreamManager streamManager, MessagingService messagingService)
+    public StreamingRepairTask(RepairJobDesc desc, SyncRequest request, DatabaseDescriptor databaseDescriptor, Schema schema,  ActiveRepairService activeRepairService,
+                               KeyspaceManager keyspaceManager, StreamManager streamManager, MessagingService messagingService, DBConfig dbConfig)
     {
         this.desc = desc;
         this.request = request;
@@ -60,6 +63,7 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
         this.keyspaceManager = keyspaceManager;
         this.streamManager = streamManager;
         this.messagingService = messagingService;
+        this.dbConfig = dbConfig;
     }
 
     public void run()
@@ -77,7 +81,7 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
             repairedAt = activeRepairService.getParentRepairSession(desc.parentSessionId).repairedAt;
 
         logger.info(String.format("[streaming task #%s] Performing streaming repair of %d ranges with %s", desc.sessionId, request.ranges.size(), request.dst));
-        StreamResultFuture op = new StreamPlan("Repair", repairedAt, 1, databaseDescriptor, schema, keyspaceManager, streamManager)
+        StreamResultFuture op = new StreamPlan("Repair", repairedAt, 1, databaseDescriptor, schema, keyspaceManager, streamManager, dbConfig)
                                     .flushBeforeTransfer(true)
                                     // request ranges from the remote node
                                     .requestRanges(request.dst, desc.keyspace, request.ranges, desc.columnFamily)
@@ -105,7 +109,7 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
     public void onSuccess(StreamState state)
     {
         logger.info(String.format("[repair #%s] streaming task succeed, returning response to %s", desc.sessionId, request.initiator));
-        messagingService.sendOneWay(new SyncComplete(desc, request.src, request.dst, true).createMessage(), request.initiator);
+        messagingService.sendOneWay(new SyncComplete(desc, request.src, request.dst, true, MessagingService.instance.repairMessageSerializer).createMessage(), request.initiator);
     }
 
     /**
@@ -113,6 +117,6 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
      */
     public void onFailure(Throwable t)
     {
-        messagingService.sendOneWay(new SyncComplete(desc, request.src, request.dst, false).createMessage(), request.initiator);
+        messagingService.sendOneWay(new SyncComplete(desc, request.src, request.dst, false, MessagingService.instance.repairMessageSerializer).createMessage(), request.initiator);
     }
 }

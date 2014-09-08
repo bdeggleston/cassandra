@@ -25,6 +25,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.gms.EndpointState;
 import org.apache.cassandra.streaming.StreamManager;
@@ -107,8 +108,8 @@ public class RangeStreamer
         }
     }
 
-    public RangeStreamer(TokenMetadata metadata, Collection<Token> tokens, InetAddress address, String description,
-                         DatabaseDescriptor databaseDescriptor, Schema schema, Gossiper gossiper, StreamManager streamManager, KeyspaceManager keyspaceManager)
+    public RangeStreamer(TokenMetadata metadata, Collection<Token> tokens, InetAddress address, String description, DatabaseDescriptor databaseDescriptor,
+                         Schema schema, Gossiper gossiper, StreamManager streamManager, KeyspaceManager keyspaceManager, DBConfig dbConfig)
     {
         this.metadata = metadata;
         this.tokens = tokens;
@@ -117,11 +118,11 @@ public class RangeStreamer
         this.databaseDescriptor = databaseDescriptor;
         this.gossiper = gossiper;
         this.keyspaceManager = keyspaceManager;
-        this.streamPlan = new StreamPlan(description, this.databaseDescriptor, schema, this.keyspaceManager, streamManager);
+        this.streamPlan = new StreamPlan(description, this.databaseDescriptor, schema, this.keyspaceManager, streamManager, dbConfig);
     }
 
     public RangeStreamer(TokenMetadata metadata, InetAddress address, String description, DatabaseDescriptor databaseDescriptor,
-                         Schema schema, Gossiper gossiper, StreamManager streamManager, KeyspaceManager keyspaceManager)
+                         Schema schema, Gossiper gossiper, StreamManager streamManager, KeyspaceManager keyspaceManager, DBConfig dbConfig)
     {
         this.metadata = metadata;
         this.tokens = null;
@@ -130,7 +131,7 @@ public class RangeStreamer
         this.databaseDescriptor = databaseDescriptor;
         this.gossiper = gossiper;
         this.keyspaceManager = keyspaceManager;
-        this.streamPlan = new StreamPlan(description, this.databaseDescriptor, schema, this.keyspaceManager, streamManager);
+        this.streamPlan = new StreamPlan(description, this.databaseDescriptor, schema, this.keyspaceManager, streamManager, dbConfig);
     }
 
     public void addSourceFilter(ISourceFilter filter)

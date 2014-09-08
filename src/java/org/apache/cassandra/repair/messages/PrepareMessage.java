@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -33,22 +34,31 @@ import org.apache.cassandra.utils.UUIDSerializer;
 
 public class PrepareMessage extends RepairMessage
 {
-    public final static MessageSerializer serializer = new PrepareMessageSerializer();
     public final List<UUID> cfIds;
     public final Collection<Range<Token>> ranges;
 
     public final UUID parentRepairSession;
 
-    public PrepareMessage(UUID parentRepairSession, List<UUID> cfIds, Collection<Range<Token>> ranges)
+    public PrepareMessage(UUID parentRepairSession, List<UUID> cfIds, Collection<Range<Token>> ranges, RepairMessage.Serializer serializer)
     {
-        super(Type.PREPARE_MESSAGE, null);
+        super(Type.PREPARE_MESSAGE, null, serializer);
         this.parentRepairSession = parentRepairSession;
         this.cfIds = cfIds;
         this.ranges = ranges;
     }
 
-    public static class PrepareMessageSerializer implements MessageSerializer<PrepareMessage>
+    public static class Serializer implements MessageSerializer<PrepareMessage>
     {
+
+        private final RepairMessage.Serializer repairMessageSerializer;
+        private final AbstractBounds.Serializer abstractBoundsSerializer;
+
+        public Serializer(RepairMessage.Serializer repairMessageSerializer, AbstractBounds.Serializer abstractBoundsSerializer)
+        {
+            this.repairMessageSerializer = repairMessageSerializer;
+            this.abstractBoundsSerializer = abstractBoundsSerializer;
+        }
+
         public void serialize(PrepareMessage message, DataOutputPlus out, int version) throws IOException
         {
             out.writeInt(message.cfIds.size());
@@ -57,7 +67,7 @@ public class PrepareMessage extends RepairMessage
             UUIDSerializer.serializer.serialize(message.parentRepairSession, out, version);
             out.writeInt(message.ranges.size());
             for (Range r : message.ranges)
-                Range.serializer.serialize(r, out, version);
+                abstractBoundsSerializer.serialize(r, out, version);
         }
 
         public PrepareMessage deserialize(DataInput in, int version) throws IOException
@@ -70,8 +80,8 @@ public class PrepareMessage extends RepairMessage
             int rangeCount = in.readInt();
             List<Range<Token>> ranges = new ArrayList<>(rangeCount);
             for (int i = 0; i < rangeCount; i++)
-                ranges.add((Range<Token>) Range.serializer.deserialize(in, version).toTokenBounds());
-            return new PrepareMessage(parentRepairSession, cfIds, ranges);
+                ranges.add((Range<Token>) abstractBoundsSerializer.deserialize(in, version).toTokenBounds());
+            return new PrepareMessage(parentRepairSession, cfIds, ranges, repairMessageSerializer);
         }
 
         public long serializedSize(PrepareMessage message, int version)
@@ -84,7 +94,7 @@ public class PrepareMessage extends RepairMessage
             size += UUIDSerializer.serializer.serializedSize(message.parentRepairSession, version);
             size += sizes.sizeof(message.ranges.size());
             for (Range r : message.ranges)
-                size += Range.serializer.serializedSize(r, version);
+                size += abstractBoundsSerializer.serializedSize(r, version);
             return size;
         }
     }

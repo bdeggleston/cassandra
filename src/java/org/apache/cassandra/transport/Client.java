@@ -42,6 +42,7 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.transport.messages.*;
@@ -263,6 +264,7 @@ public class Client extends SimpleClient
                                                                            StorageProxy.instance,
                                                                            MutationFactory.instance,
                                                                            CounterMutationFactory.instance,
+                                                                           MessagingService.instance,
                                                                            DBConfig.instance,
                                                                            LocatorConfig.instance);
         new Client(host, port, encryptionOptions, codecs).run();

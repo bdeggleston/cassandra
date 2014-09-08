@@ -26,17 +26,23 @@ import org.apache.cassandra.utils.UUIDSerializer;
 
 public class AnticompactionRequest extends RepairMessage
 {
-    public static MessageSerializer serializer = new AnticompactionRequestSerializer();
     public final UUID parentRepairSession;
 
-    public AnticompactionRequest(UUID parentRepairSession)
+    public AnticompactionRequest(UUID parentRepairSession, RepairMessage.Serializer serializer)
     {
-        super(Type.ANTICOMPACTION_REQUEST, null);
+        super(Type.ANTICOMPACTION_REQUEST, null, serializer);
         this.parentRepairSession = parentRepairSession;
     }
 
-    public static class AnticompactionRequestSerializer implements MessageSerializer<AnticompactionRequest>
+    public static class Serializer implements MessageSerializer<AnticompactionRequest>
     {
+        private final RepairMessage.Serializer repairMessageSerializer;
+
+        public Serializer(RepairMessage.Serializer repairMessageSerializer)
+        {
+            this.repairMessageSerializer = repairMessageSerializer;
+        }
+
         public void serialize(AnticompactionRequest message, DataOutputPlus out, int version) throws IOException
         {
             UUIDSerializer.serializer.serialize(message.parentRepairSession, out, version);
@@ -45,7 +51,7 @@ public class AnticompactionRequest extends RepairMessage
         public AnticompactionRequest deserialize(DataInput in, int version) throws IOException
         {
             UUID parentRepairSession = UUIDSerializer.serializer.deserialize(in, version);
-            return new AnticompactionRequest(parentRepairSession);
+            return new AnticompactionRequest(parentRepairSession, repairMessageSerializer);
         }
 
         public long serializedSize(AnticompactionRequest message, int version)

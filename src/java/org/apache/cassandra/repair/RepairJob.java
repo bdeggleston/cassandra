@@ -25,6 +25,7 @@ import java.util.concurrent.locks.Condition;
 import com.google.common.util.concurrent.*;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.streaming.StreamManager;
@@ -68,6 +69,7 @@ public class RepairJob
     private final ActiveRepairService activeRepairService;
     private final StreamManager streamManager;
     private final MessagingService messagingService;
+    private final DBConfig dbConfig;
 
     /**
      * Create repair job to run on specific columnfamily
@@ -85,7 +87,8 @@ public class RepairJob
                      KeyspaceManager keyspaceManager,
                      ActiveRepairService activeRepairService,
                      StreamManager streamManager,
-                     MessagingService messagingService1)
+                     MessagingService messagingService1,
+                     DBConfig dbConfig)
     {
         this.listener = listener;
         this.desc = new RepairJobDesc(parentSessionId, sessionId, keyspace, columnFamily, range);
@@ -97,11 +100,12 @@ public class RepairJob
         this.activeRepairService = activeRepairService;
         this.streamManager = streamManager;
         this.messagingService = messagingService1;
+        this.dbConfig = dbConfig;
         this.treeRequests = new RequestCoordinator<InetAddress>(isSequential)
         {
             public void send(InetAddress endpoint)
             {
-                ValidationRequest request = new ValidationRequest(desc, gcBefore);
+                ValidationRequest request = new ValidationRequest(desc, gcBefore, messagingService.repairMessageSerializer);
                 messagingService.sendOneWay(request.createMessage(), endpoint);
             }
         };
@@ -212,7 +216,8 @@ public class RepairJob
             for (int j = i + 1; j < trees.size(); ++j)
             {
                 TreeResponse r2 = trees.get(j);
-                Differencer differencer = new Differencer(desc, r1, r2, databaseDescriptor, schema, keyspaceManager, activeRepairService, streamManager, messagingService);
+                Differencer differencer = new Differencer(desc, r1, r2, databaseDescriptor, schema, keyspaceManager,
+                                                          activeRepairService, streamManager, messagingService, dbConfig);
                 differencers.add(differencer);
                 logger.debug("Queueing comparison {}", differencer);
             }

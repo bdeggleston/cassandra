@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.collect.*;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.dht.IPartitioner;
 import org.slf4j.Logger;
@@ -161,20 +162,20 @@ public class StreamSession implements IEndpointStateChangeSubscriber
      * @param factory is used for establishing connection
      */
     public StreamSession(InetAddress peer, StreamConnectionFactory factory, int index, InetAddress broadcastAddress, int maxRetries,
-                         Schema schema, KeyspaceManager keyspaceManager, StreamManager streamManager, IPartitioner partitioner)
+                         Schema schema, KeyspaceManager keyspaceManager, StreamManager streamManager, DBConfig dbConfig)
     {
         this.peer = peer;
         this.index = index;
         this.factory = factory;
-        Map<StreamMessage.Type, StreamMessage.Serializer> inputSerializers = StreamMessage.Type.getInputSerializers(keyspaceManager, schema, partitioner);
-        Map<StreamMessage.Type, StreamMessage.Serializer> outputSerializers = StreamMessage.Type.getOutputSerializers(partitioner);
+        Map<StreamMessage.Type, StreamMessage.Serializer> inputSerializers = StreamMessage.Type.getInputSerializers(keyspaceManager, schema, dbConfig);
+        Map<StreamMessage.Type, StreamMessage.Serializer> outputSerializers = StreamMessage.Type.getOutputSerializers(dbConfig);
         this.handler = new ConnectionHandler(this, broadcastAddress, inputSerializers, outputSerializers);
         this.metrics = StreamingMetrics.get(peer);
         this.maxRetries = maxRetries;
         this.schema = schema;
         this.keyspaceManager = keyspaceManager;
         this.streamManager = streamManager;
-        this.partitioner = partitioner;
+        this.partitioner = dbConfig.getPartitioner();
     }
 
     public UUID planId()

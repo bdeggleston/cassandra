@@ -38,20 +38,20 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
 {
-    public static final RangeSliceCommandSerializer serializer = new RangeSliceCommandSerializer();
-
     public final int maxResults;
     public final boolean countCQL3Rows;
     public final boolean isPaging;
+    private final Serializer serializer;
 
     public RangeSliceCommand(String keyspace,
                              String columnFamily,
                              long timestamp,
                              IDiskAtomFilter predicate,
                              AbstractBounds<RowPosition> range,
-                             int maxResults)
+                             int maxResults,
+                             Serializer serializer)
     {
-        this(keyspace, columnFamily, timestamp, predicate, range, null, maxResults, false, false);
+        this(keyspace, columnFamily, timestamp, predicate, range, null, maxResults, false, false, serializer);
     }
 
     public RangeSliceCommand(String keyspace,
@@ -60,9 +60,10 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                              IDiskAtomFilter predicate,
                              AbstractBounds<RowPosition> range,
                              List<IndexExpression> row_filter,
-                             int maxResults)
+                             int maxResults,
+                             Serializer serializer)
     {
-        this(keyspace, columnFamily, timestamp, predicate, range, row_filter, maxResults, false, false);
+        this(keyspace, columnFamily, timestamp, predicate, range, row_filter, maxResults, false, false, serializer);
     }
 
     public RangeSliceCommand(String keyspace,
@@ -73,12 +74,14 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                              List<IndexExpression> rowFilter,
                              int maxResults,
                              boolean countCQL3Rows,
-                             boolean isPaging)
+                             boolean isPaging,
+                             Serializer serializer)
     {
         super(keyspace, columnFamily, timestamp, range, predicate, rowFilter);
         this.maxResults = maxResults;
         this.countCQL3Rows = countCQL3Rows;
         this.isPaging = isPaging;
+        this.serializer = serializer;
     }
 
     public MessageOut<RangeSliceCommand> createMessage()
@@ -96,7 +99,8 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                                      rowFilter,
                                      maxResults,
                                      countCQL3Rows,
-                                     isPaging);
+                                     isPaging,
+                                     serializer);
     }
 
     public AbstractRangeCommand withUpdatedLimit(int newLimit)
@@ -109,7 +113,8 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                                      rowFilter,
                                      newLimit,
                                      countCQL3Rows,
-                                     isPaging);
+                                     isPaging,
+                                     serializer);
     }
 
     public int limit()
@@ -147,99 +152,108 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                       .add("timestamp", timestamp)
                       .toString();
     }
-}
 
-class RangeSliceCommandSerializer implements IVersionedSerializer<RangeSliceCommand>
-{
-    public void serialize(RangeSliceCommand sliceCommand, DataOutputPlus out, int version) throws IOException
+    public static class Serializer implements IVersionedSerializer<RangeSliceCommand>
     {
-        out.writeUTF(sliceCommand.keyspace);
-        out.writeUTF(sliceCommand.columnFamily);
-        out.writeLong(sliceCommand.timestamp);
 
-        CFMetaData metadata = Schema.instance.getCFMetaData(sliceCommand.keyspace, sliceCommand.columnFamily);
+        private final AbstractBounds.Serializer abstractBoundsSerializer;
 
-        metadata.comparator.diskAtomFilterSerializer().serialize(sliceCommand.predicate, out, version);
-
-        if (sliceCommand.rowFilter == null)
+        public Serializer(AbstractBounds.Serializer abstractBoundsSerializer)
         {
-            out.writeInt(0);
+            this.abstractBoundsSerializer = abstractBoundsSerializer;
         }
-        else
+
+        public void serialize(RangeSliceCommand sliceCommand, DataOutputPlus out, int version) throws IOException
         {
-            out.writeInt(sliceCommand.rowFilter.size());
-            for (IndexExpression expr : sliceCommand.rowFilter)
+            out.writeUTF(sliceCommand.keyspace);
+            out.writeUTF(sliceCommand.columnFamily);
+            out.writeLong(sliceCommand.timestamp);
+
+            CFMetaData metadata = Schema.instance.getCFMetaData(sliceCommand.keyspace, sliceCommand.columnFamily);
+
+            metadata.comparator.diskAtomFilterSerializer().serialize(sliceCommand.predicate, out, version);
+
+            if (sliceCommand.rowFilter == null)
             {
-                ByteBufferUtil.writeWithShortLength(expr.column, out);
-                out.writeInt(expr.operator.ordinal());
-                ByteBufferUtil.writeWithShortLength(expr.value, out);
+                out.writeInt(0);
             }
-        }
-        AbstractBounds.serializer.serialize(sliceCommand.keyRange, out, version);
-        out.writeInt(sliceCommand.maxResults);
-        out.writeBoolean(sliceCommand.countCQL3Rows);
-        out.writeBoolean(sliceCommand.isPaging);
-    }
-
-    public RangeSliceCommand deserialize(DataInput in, int version) throws IOException
-    {
-        String keyspace = in.readUTF();
-        String columnFamily = in.readUTF();
-        long timestamp = in.readLong();
-
-        CFMetaData metadata = Schema.instance.getCFMetaData(keyspace, columnFamily);
-
-        IDiskAtomFilter predicate = metadata.comparator.diskAtomFilterSerializer().deserialize(in, version);
-
-        List<IndexExpression> rowFilter;
-        int filterCount = in.readInt();
-        rowFilter = new ArrayList<>(filterCount);
-        for (int i = 0; i < filterCount; i++)
-        {
-            IndexExpression expr;
-            expr = new IndexExpression(ByteBufferUtil.readWithShortLength(in),
-                                       IndexExpression.Operator.findByOrdinal(in.readInt()),
-                                       ByteBufferUtil.readWithShortLength(in));
-            rowFilter.add(expr);
-        }
-        AbstractBounds<RowPosition> range = AbstractBounds.serializer.deserialize(in, version).toRowBounds();
-
-        int maxResults = in.readInt();
-        boolean countCQL3Rows = in.readBoolean();
-        boolean isPaging = in.readBoolean();
-        return new RangeSliceCommand(keyspace, columnFamily, timestamp, predicate, range, rowFilter, maxResults, countCQL3Rows, isPaging);
-    }
-
-    public long serializedSize(RangeSliceCommand rsc, int version)
-    {
-        long size = TypeSizes.NATIVE.sizeof(rsc.keyspace);
-        size += TypeSizes.NATIVE.sizeof(rsc.columnFamily);
-        size += TypeSizes.NATIVE.sizeof(rsc.timestamp);
-
-        CFMetaData metadata = Schema.instance.getCFMetaData(rsc.keyspace, rsc.columnFamily);
-
-        IDiskAtomFilter filter = rsc.predicate;
-
-        size += metadata.comparator.diskAtomFilterSerializer().serializedSize(filter, version);
-
-        if (rsc.rowFilter == null)
-        {
-            size += TypeSizes.NATIVE.sizeof(0);
-        }
-        else
-        {
-            size += TypeSizes.NATIVE.sizeof(rsc.rowFilter.size());
-            for (IndexExpression expr : rsc.rowFilter)
+            else
             {
-                size += TypeSizes.NATIVE.sizeofWithShortLength(expr.column);
-                size += TypeSizes.NATIVE.sizeof(expr.operator.ordinal());
-                size += TypeSizes.NATIVE.sizeofWithShortLength(expr.value);
+                out.writeInt(sliceCommand.rowFilter.size());
+                for (IndexExpression expr : sliceCommand.rowFilter)
+                {
+                    ByteBufferUtil.writeWithShortLength(expr.column, out);
+                    out.writeInt(expr.operator.ordinal());
+                    ByteBufferUtil.writeWithShortLength(expr.value, out);
+                }
             }
+            abstractBoundsSerializer.serialize(sliceCommand.keyRange, out, version);
+            out.writeInt(sliceCommand.maxResults);
+            out.writeBoolean(sliceCommand.countCQL3Rows);
+            out.writeBoolean(sliceCommand.isPaging);
         }
-        size += AbstractBounds.serializer.serializedSize(rsc.keyRange, version);
-        size += TypeSizes.NATIVE.sizeof(rsc.maxResults);
-        size += TypeSizes.NATIVE.sizeof(rsc.countCQL3Rows);
-        size += TypeSizes.NATIVE.sizeof(rsc.isPaging);
-        return size;
+
+        public RangeSliceCommand deserialize(DataInput in, int version) throws IOException
+        {
+            String keyspace = in.readUTF();
+            String columnFamily = in.readUTF();
+            long timestamp = in.readLong();
+
+            CFMetaData metadata = Schema.instance.getCFMetaData(keyspace, columnFamily);
+
+            IDiskAtomFilter predicate = metadata.comparator.diskAtomFilterSerializer().deserialize(in, version);
+
+            List<IndexExpression> rowFilter;
+            int filterCount = in.readInt();
+            rowFilter = new ArrayList<>(filterCount);
+            for (int i = 0; i < filterCount; i++)
+            {
+                IndexExpression expr;
+                expr = new IndexExpression(ByteBufferUtil.readWithShortLength(in),
+                                           IndexExpression.Operator.findByOrdinal(in.readInt()),
+                                           ByteBufferUtil.readWithShortLength(in));
+                rowFilter.add(expr);
+            }
+            AbstractBounds<RowPosition> range = abstractBoundsSerializer.deserialize(in, version).toRowBounds();
+
+            int maxResults = in.readInt();
+            boolean countCQL3Rows = in.readBoolean();
+            boolean isPaging = in.readBoolean();
+            return new RangeSliceCommand(keyspace, columnFamily, timestamp, predicate, range, rowFilter, maxResults, countCQL3Rows, isPaging, this);
+        }
+
+        public long serializedSize(RangeSliceCommand rsc, int version)
+        {
+            long size = TypeSizes.NATIVE.sizeof(rsc.keyspace);
+            size += TypeSizes.NATIVE.sizeof(rsc.columnFamily);
+            size += TypeSizes.NATIVE.sizeof(rsc.timestamp);
+
+            CFMetaData metadata = Schema.instance.getCFMetaData(rsc.keyspace, rsc.columnFamily);
+
+            IDiskAtomFilter filter = rsc.predicate;
+
+            size += metadata.comparator.diskAtomFilterSerializer().serializedSize(filter, version);
+
+            if (rsc.rowFilter == null)
+            {
+                size += TypeSizes.NATIVE.sizeof(0);
+            }
+            else
+            {
+                size += TypeSizes.NATIVE.sizeof(rsc.rowFilter.size());
+                for (IndexExpression expr : rsc.rowFilter)
+                {
+                    size += TypeSizes.NATIVE.sizeofWithShortLength(expr.column);
+                    size += TypeSizes.NATIVE.sizeof(expr.operator.ordinal());
+                    size += TypeSizes.NATIVE.sizeofWithShortLength(expr.value);
+                }
+            }
+            size += abstractBoundsSerializer.serializedSize(rsc.keyRange, version);
+            size += TypeSizes.NATIVE.sizeof(rsc.maxResults);
+            size += TypeSizes.NATIVE.sizeof(rsc.countCQL3Rows);
+            size += TypeSizes.NATIVE.sizeof(rsc.isPaging);
+            return size;
+        }
     }
+
 }

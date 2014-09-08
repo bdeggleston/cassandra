@@ -31,13 +31,11 @@ import org.apache.cassandra.repair.RepairJobDesc;
  */
 public class ValidationRequest extends RepairMessage
 {
-    public static MessageSerializer serializer = new ValidationRequestSerializer();
-
     public final int gcBefore;
 
-    public ValidationRequest(RepairJobDesc desc, int gcBefore)
+    public ValidationRequest(RepairJobDesc desc, int gcBefore, RepairMessage.Serializer serializer)
     {
-        super(Type.VALIDATION_REQUEST, desc);
+        super(Type.VALIDATION_REQUEST, desc, serializer);
         this.gcBefore = gcBefore;
     }
 
@@ -57,23 +55,33 @@ public class ValidationRequest extends RepairMessage
         return gcBefore;
     }
 
-    public static class ValidationRequestSerializer implements MessageSerializer<ValidationRequest>
+    public static class Serializer implements MessageSerializer<ValidationRequest>
     {
+
+        private final RepairMessage.Serializer repairMessageSerializer;
+        private final RepairJobDesc.RepairJobDescSerializer repairJobDescSerializer;
+
+        public Serializer(RepairMessage.Serializer repairMessageSerializer, RepairJobDesc.RepairJobDescSerializer repairJobDescSerializer)
+        {
+            this.repairMessageSerializer = repairMessageSerializer;
+            this.repairJobDescSerializer = repairJobDescSerializer;
+        }
+
         public void serialize(ValidationRequest message, DataOutputPlus out, int version) throws IOException
         {
-            RepairJobDesc.serializer.serialize(message.desc, out, version);
+            repairJobDescSerializer.serialize(message.desc, out, version);
             out.writeInt(message.gcBefore);
         }
 
         public ValidationRequest deserialize(DataInput dis, int version) throws IOException
         {
-            RepairJobDesc desc = RepairJobDesc.serializer.deserialize(dis, version);
-            return new ValidationRequest(desc, dis.readInt());
+            RepairJobDesc desc = repairJobDescSerializer.deserialize(dis, version);
+            return new ValidationRequest(desc, dis.readInt(), repairMessageSerializer);
         }
 
         public long serializedSize(ValidationRequest message, int version)
         {
-            long size = RepairJobDesc.serializer.serializedSize(message.desc, version);
+            long size = repairJobDescSerializer.serializedSize(message.desc, version);
             size += TypeSizes.NATIVE.sizeof(message.gcBefore);
             return size;
         }

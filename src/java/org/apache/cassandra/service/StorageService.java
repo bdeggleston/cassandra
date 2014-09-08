@@ -199,7 +199,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                                                                                                           CompactionManager.instance,
                                                                                                                           MessagingService.instance,
                                                                                                                           StreamManager.instance,
-                                                                                                                          LocatorConfig.instance.getPartitioner()));
+                                                                                                                          DBConfig.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.GOSSIP_SHUTDOWN, new GossipShutdownVerbHandler(Gossiper.instance, FailureDetector.instance));
 
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_SYN, new GossipDigestSynVerbHandler(DatabaseDescriptor.instance, Gossiper.instance, MessagingService.instance));
@@ -863,7 +863,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         logger.info("rebuild from dc: {}", sourceDc == null ? "(any dc)" : sourceDc);
 
         RangeStreamer streamer = new RangeStreamer(LocatorConfig.instance.getTokenMetadata(), DatabaseDescriptor.instance.getBroadcastAddress(), "Rebuild",
-                                                   DatabaseDescriptor.instance, Schema.instance, Gossiper.instance, StreamManager.instance, KeyspaceManager.instance);
+                                                   DatabaseDescriptor.instance, Schema.instance, Gossiper.instance, StreamManager.instance, KeyspaceManager.instance, DBConfig.instance);
         streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
         if (sourceDc != null)
             streamer.addSourceFilter(new RangeStreamer.SingleDatacenterFilter(LocatorConfig.instance.getEndpointSnitch(), sourceDc));
@@ -956,8 +956,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (!Gossiper.instance.seenAnySeed())
             throw new IllegalStateException("Unable to contact any seeds!");
         setMode(Mode.JOINING, "Starting to bootstrap...", true);
-        new BootStrapper(DatabaseDescriptor.instance.getBroadcastAddress(), tokens, LocatorConfig.instance.getTokenMetadata(),
-                         DatabaseDescriptor.instance, Schema.instance, Gossiper.instance, KeyspaceManager.instance, StreamManager.instance, this).bootstrap(); // handles token update
+        new BootStrapper(DatabaseDescriptor.instance.getBroadcastAddress(), tokens, LocatorConfig.instance.getTokenMetadata(), DatabaseDescriptor.instance,
+                         Schema.instance, Gossiper.instance, KeyspaceManager.instance, StreamManager.instance, this, DBConfig.instance).bootstrap(); // handles token update
         logger.info("Bootstrap completed! for the tokens {}", tokens);
     }
 
@@ -1842,7 +1842,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
 
         StreamPlan stream = new StreamPlan("Restore replica count", DatabaseDescriptor.instance, Schema.instance,
-                                           KeyspaceManager.instance, StreamManager.instance);
+                                           KeyspaceManager.instance, StreamManager.instance, DBConfig.instance);
         for (String keyspaceName : rangesToFetch.keySet())
         {
             for (Map.Entry<InetAddress, Collection<Range<Token>>> entry : rangesToFetch.get(keyspaceName))
@@ -2920,7 +2920,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             List<Range<Token>> ranges = Collections.singletonList(new Range<>(token, token, LocatorConfig.instance.getPartitioner()));
 
             return new StreamPlan("Hints", DatabaseDescriptor.instance, Schema.instance,
-                                  KeyspaceManager.instance, StreamManager.instance).transferRanges(hintsDestinationHost,
+                                  KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).transferRanges(hintsDestinationHost,
                                                                       Keyspace.SYSTEM_KS,
                                                                       ranges,
                                                                       SystemKeyspace.HINTS_CF)
@@ -3010,7 +3010,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private class RangeRelocator
     {
         private final StreamPlan streamPlan = new StreamPlan("Relocation", DatabaseDescriptor.instance, Schema.instance,
-                                                             KeyspaceManager.instance, StreamManager.instance);
+                                                             KeyspaceManager.instance, StreamManager.instance, DBConfig.instance);
 
         private RangeRelocator(Collection<Token> tokens, List<String> keyspaceNames)
         {
@@ -3587,7 +3587,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
 
         StreamPlan streamPlan = new StreamPlan("Unbootstrap", DatabaseDescriptor.instance, Schema.instance,
-                                               KeyspaceManager.instance, StreamManager.instance);
+                                               KeyspaceManager.instance, StreamManager.instance, DBConfig.instance);
         for (Map.Entry<String, Map<InetAddress, List<Range<Token>>>> entry : sessionsToStreamByKeyspace.entrySet())
         {
             String keyspaceName = entry.getKey();

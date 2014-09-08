@@ -29,6 +29,7 @@ import com.google.common.collect.Sets;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.streaming.StreamManager;
@@ -133,6 +134,7 @@ public class ActiveRepairService
                                                   this,
                                                   StreamManager.instance,
                                                   FailureDetector.instance,
+                                                  DBConfig.instance,
                                                   cfnames);
         if (session.endpoints.isEmpty())
             return null;
@@ -182,6 +184,7 @@ public class ActiveRepairService
                                                   this,
                                                   StreamManager.instance,
                                                   FailureDetector.instance,
+                                                  DBConfig.instance,
                                                   new String[]{desc.columnFamily});
         sessions.put(session.getId(), session);
         RepairFuture futureTask = new RepairFuture(session);
@@ -299,7 +302,7 @@ public class ActiveRepairService
 
         for(InetAddress neighbour : endpoints)
         {
-            PrepareMessage message = new PrepareMessage(parentRepairSession, cfIds, ranges);
+            PrepareMessage message = new PrepareMessage(parentRepairSession, cfIds, ranges, MessagingService.instance.repairMessageSerializer);
             MessageOut<RepairMessage> msg = message.createMessage();
             MessagingService.instance.sendRRWithFailure(msg, neighbour, callback);
         }
@@ -351,7 +354,7 @@ public class ActiveRepairService
             {
                 for (InetAddress neighbor : neighbors)
                 {
-                    AnticompactionRequest acr = new AnticompactionRequest(parentSession);
+                    AnticompactionRequest acr = new AnticompactionRequest(parentSession, MessagingService.instance.repairMessageSerializer);
                     MessageOut<RepairMessage> req = acr.createMessage();
                     MessagingService.instance.sendOneWay(req, neighbor);
                 }

@@ -29,6 +29,7 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -55,6 +56,7 @@ public class UpdateStatement extends ModificationStatement
                             DBConfig dbConfig,
                             MutationFactory mutationFactory,
                             CounterMutationFactory counterMutationFactory,
+                            MessagingService messagingService,
                             LocatorConfig locatorConfig)
     {
         super(type,
@@ -70,6 +72,7 @@ public class UpdateStatement extends ModificationStatement
               dbConfig,
               mutationFactory,
               counterMutationFactory,
+              messagingService,
               locatorConfig);
     }
 
@@ -143,6 +146,7 @@ public class UpdateStatement extends ModificationStatement
         private final DBConfig dbConfig;
         private final MutationFactory mutationFactory;
         private final CounterMutationFactory counterMutationFactory;
+        private final MessagingService messagingService;
         private final LocatorConfig locatorConfig;
 
         /**
@@ -166,6 +170,7 @@ public class UpdateStatement extends ModificationStatement
                             DBConfig dbConfig,
                             MutationFactory mutationFactory,
                             CounterMutationFactory counterMutationFactory,
+                            MessagingService messagingService,
                             LocatorConfig locatorConfig)
         {
             super(name, attrs, null, ifNotExists, false);
@@ -181,6 +186,7 @@ public class UpdateStatement extends ModificationStatement
             this.dbConfig = dbConfig;
             this.mutationFactory = mutationFactory;
             this.counterMutationFactory = counterMutationFactory;
+            this.messagingService = messagingService;
             this.locatorConfig = locatorConfig;
         }
 
@@ -199,6 +205,7 @@ public class UpdateStatement extends ModificationStatement
                                                        dbConfig,
                                                        mutationFactory,
                                                        counterMutationFactory,
+                                                       messagingService,
                                                        locatorConfig);
 
             // Created from an INSERT
@@ -255,6 +262,7 @@ public class UpdateStatement extends ModificationStatement
         private final DBConfig dbConfig;
         private final MutationFactory mutationFactory;
         private final CounterMutationFactory counterMutationFactory;
+        private final MessagingService messagingService;
         private final LocatorConfig locatorConfig;
 
         /**
@@ -280,6 +288,7 @@ public class UpdateStatement extends ModificationStatement
                             DBConfig dbConfig,
                             MutationFactory mutationFactory,
                             CounterMutationFactory counterMutationFactory,
+                            MessagingService messagingService,
                             LocatorConfig locatorConfig)
         {
             super(name, attrs, conditions, false, false);
@@ -295,6 +304,7 @@ public class UpdateStatement extends ModificationStatement
             this.dbConfig = dbConfig;
             this.mutationFactory = mutationFactory;
             this.counterMutationFactory = counterMutationFactory;
+            this.messagingService = messagingService;
             this.locatorConfig = locatorConfig;
         }
 
@@ -313,6 +323,7 @@ public class UpdateStatement extends ModificationStatement
                                                        dbConfig,
                                                        mutationFactory,
                                                        counterMutationFactory,
+                                                       messagingService,
                                                        locatorConfig);
 
             for (Pair<ColumnIdentifier, Operation.RawUpdate> entry : updates)

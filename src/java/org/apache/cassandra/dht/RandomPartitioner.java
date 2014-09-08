@@ -62,7 +62,7 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
 
     public BigIntegerToken getMinimumToken()
     {
-        return MINIMUM;
+        return new BigIntegerToken("-1", this);
     }
 
     public BigIntegerToken getRandomToken()

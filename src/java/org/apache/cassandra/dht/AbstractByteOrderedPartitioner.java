@@ -117,7 +117,7 @@ public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner
 
     public BytesToken getMinimumToken()
     {
-        return MINIMUM;
+        return new BytesToken(ArrayUtils.EMPTY_BYTE_ARRAY, this);
     }
 
     public BytesToken getRandomToken()

@@ -22,6 +22,7 @@ import java.util.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -51,17 +52,17 @@ public class StreamPlan
      *
      * @param description Stream type that describes this StreamPlan
      */
-    public StreamPlan(String description, DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, StreamManager streamManager)
+    public StreamPlan(String description, DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, StreamManager streamManager, DBConfig dbConfig)
     {
-        this(description, ActiveRepairService.UNREPAIRED_SSTABLE, 1, databaseDescriptor, schema, keyspaceManager, streamManager);
+        this(description, ActiveRepairService.UNREPAIRED_SSTABLE, 1, databaseDescriptor, schema, keyspaceManager, streamManager, dbConfig);
     }
 
-    public StreamPlan(String description, long repairedAt, int connectionsPerHost, DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, StreamManager streamManager)
+    public StreamPlan(String description, long repairedAt, int connectionsPerHost, DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, StreamManager streamManager, DBConfig dbConfig)
     {
         this.description = description;
         this.repairedAt = repairedAt;
         this.connectionFactory = new DefaultConnectionFactory(databaseDescriptor);
-        this.coordinator = new StreamCoordinator(connectionsPerHost, connectionFactory, databaseDescriptor, keyspaceManager, schema, streamManager);
+        this.coordinator = new StreamCoordinator(connectionsPerHost, connectionFactory, databaseDescriptor, keyspaceManager, schema, streamManager, dbConfig);
         this.streamManager = streamManager;
     }
 

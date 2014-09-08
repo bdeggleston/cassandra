@@ -63,6 +63,7 @@ options {
     import org.apache.cassandra.db.MutationFactory;
     import org.apache.cassandra.db.CounterMutationFactory;
     import org.apache.cassandra.db.KeyspaceManager;
+    import org.apache.cassandra.net.MessagingService;
 }
 
 @members {
@@ -307,6 +308,7 @@ selectStatement returns [SelectStatement.RawStatement expr]
                                                    QueryProcessor.instance,
                                                    KeyspaceManager.instance,
                                                    StorageProxy.instance,
+                                                   MessagingService.instance,
                                                    LocatorConfig.instance);
       }
     ;
@@ -389,6 +391,7 @@ insertStatement returns [UpdateStatement.ParsedInsert expr]
                                                    DBConfig.instance,
                                                    MutationFactory.instance,
                                                    CounterMutationFactory.instance,
+                                                   MessagingService.instance,
                                                    LocatorConfig.instance);
       }
     ;
@@ -433,6 +436,7 @@ updateStatement returns [UpdateStatement.ParsedUpdate expr]
                                                   DBConfig.instance,
                                                   MutationFactory.instance,
                                                   CounterMutationFactory.instance,
+                                                  MessagingService.instance,
                                                   LocatorConfig.instance);
      }
     ;
@@ -477,6 +481,7 @@ deleteStatement returns [DeleteStatement.Parsed expr]
                                             DBConfig.instance,
                                             MutationFactory.instance,
                                             CounterMutationFactory.instance,
+                                            MessagingService.instance,
                                             LocatorConfig.instance);
       }
     ;
@@ -543,6 +548,7 @@ batchStatement returns [BatchStatement.Parsed expr]
                                            StorageProxy.instance,
                                            MutationFactory.instance,
                                            CounterMutationFactory.instance,
+                                           MessagingService.instance,
                                            DBConfig.instance,
                                            LocatorConfig.instance);
       }

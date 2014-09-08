@@ -29,6 +29,7 @@ import com.google.common.collect.Iterators;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.tracing.Tracing;
 import org.github.jamm.MemoryMeter;
 
@@ -113,6 +114,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
     private final QueryProcessor queryProcessor;
     private final KeyspaceManager keyspaceManager;
     private final StorageProxy storageProxy;
+    private final MessagingService messagingService;
     private final LocatorConfig locatorConfig;
 
     public SelectStatement(CFMetaData cfm,
@@ -126,6 +128,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                            QueryProcessor queryProcessor,
                            KeyspaceManager keyspaceManager,
                            StorageProxy storageProxy,
+                           MessagingService messagingService,
                            LocatorConfig locatorConfig)
     {
         this.cfm = cfm;
@@ -142,6 +145,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         this.queryProcessor = queryProcessor;
         this.keyspaceManager = keyspaceManager;
         this.storageProxy = storageProxy;
+        this.messagingService = messagingService;
         this.locatorConfig = locatorConfig;
 
         // Now gather a few info on whether we should bother with static columns or not for this statement
@@ -184,6 +188,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                                         QueryProcessor queryProcessor,
                                         KeyspaceManager keyspaceManager,
                                         StorageProxy storageProxy,
+                                        MessagingService messagingService,
                                         LocatorConfig locatorConfig)
     {
         return new SelectStatement(cfm,
@@ -197,6 +202,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                                    queryProcessor,
                                    keyspaceManager,
                                    storageProxy,
+                                   messagingService,
                                    locatorConfig);
     }
 
@@ -261,7 +267,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         }
         else
         {
-            QueryPager pager = QueryPagers.pager(command, cl, options.getPagingState(), schema, keyspaceManager, storageProxy, locatorConfig.getPartitioner());
+            QueryPager pager = QueryPagers.pager(command, cl, options.getPagingState(), schema, keyspaceManager, storageProxy, messagingService, locatorConfig.getPartitioner());
             if (parameters.isCount)
                 return pageCountQuery(pager, options, pageSize, now, limit);
 
@@ -412,7 +418,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         AbstractBounds<RowPosition> keyBounds = getKeyBounds(options);
         return keyBounds == null
              ? null
-             : new RangeSliceCommand(keyspace(), columnFamily(), now,  filter, keyBounds, expressions, limit, !parameters.isDistinct, false);
+             : new RangeSliceCommand(keyspace(), columnFamily(), now,  filter, keyBounds, expressions, limit, !parameters.isDistinct, false, messagingService.rangeSliceCommandSerializer);
     }
 
     private AbstractBounds<RowPosition> getKeyBounds(QueryOptions options) throws InvalidRequestException
@@ -1406,6 +1412,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         private final QueryProcessor queryProcessor;
         private final KeyspaceManager keyspaceManager;
         private final StorageProxy storageProxy;
+        private final MessagingService messagingService;
         private final LocatorConfig locatorConfig;
 
         public RawStatement(CFName cfName,
@@ -1419,6 +1426,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                             QueryProcessor queryProcessor,
                             KeyspaceManager keyspaceManager,
                             StorageProxy storageProxy,
+                            MessagingService messagingService,
                             LocatorConfig locatorConfig)
         {
             super(cfName);
@@ -1433,6 +1441,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             this.queryProcessor = queryProcessor;
             this.keyspaceManager = keyspaceManager;
             this.storageProxy = storageProxy;
+            this.messagingService = messagingService;
             this.locatorConfig = locatorConfig;
         }
 
@@ -1460,6 +1469,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                                                        queryProcessor,
                                                        keyspaceManager,
                                                        storageProxy,
+                                                       messagingService,
                                                        locatorConfig);
 
             /*

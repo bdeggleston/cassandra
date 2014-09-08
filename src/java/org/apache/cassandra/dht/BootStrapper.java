@@ -23,6 +23,7 @@ import java.net.InetAddress;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.locator.LocatorConfig;
@@ -57,9 +58,10 @@ public class BootStrapper
     private final KeyspaceManager keyspaceManager;
     private final StreamManager streamManager;
     private final StorageService storageService;
+    private final DBConfig dbConfig;
 
-    public BootStrapper(InetAddress address, Collection<Token> tokens, TokenMetadata tmd, DatabaseDescriptor databaseDescriptor,
-                        Schema schema, Gossiper gossiper, KeyspaceManager keyspaceManager, StreamManager streamManager, StorageService storageService)
+    public BootStrapper(InetAddress address, Collection<Token> tokens, TokenMetadata tmd, DatabaseDescriptor databaseDescriptor, Schema schema,
+                        Gossiper gossiper, KeyspaceManager keyspaceManager, StreamManager streamManager, StorageService storageService, DBConfig dbConfig)
     {
         assert address != null;
         assert tokens != null && !tokens.isEmpty();
@@ -74,6 +76,7 @@ public class BootStrapper
         this.keyspaceManager = keyspaceManager;
         this.streamManager = streamManager;
         this.storageService = storageService;
+        this.dbConfig = dbConfig;
     }
 
     public void bootstrap()
@@ -81,7 +84,7 @@ public class BootStrapper
         if (logger.isDebugEnabled())
             logger.debug("Beginning bootstrap process");
 
-        RangeStreamer streamer = new RangeStreamer(tokenMetadata, tokens, address, "Bootstrap", databaseDescriptor, schema, gossiper, streamManager, keyspaceManager);
+        RangeStreamer streamer = new RangeStreamer(tokenMetadata, tokens, address, "Bootstrap", databaseDescriptor, schema, gossiper, streamManager, keyspaceManager, dbConfig);
         streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
 
         for (String keyspaceName : schema.getNonSystemKeyspaces())

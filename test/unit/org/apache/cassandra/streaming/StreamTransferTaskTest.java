@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
@@ -73,7 +74,7 @@ public class StreamTransferTaskTest
                                                   Schema.instance,
                                                   KeyspaceManager.instance,
                                                   StreamManager.instance,
-                                                  LocatorConfig.instance.getPartitioner());
+                                                  DBConfig.instance);
         ColumnFamilyStore cfs = KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf);
 
         // create two sstables

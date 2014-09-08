@@ -32,46 +32,54 @@ import org.apache.cassandra.repair.RepairJobDesc;
  */
 public class SyncComplete extends RepairMessage
 {
-    public static final MessageSerializer serializer = new SyncCompleteSerializer();
-
     /** nodes that involved in this sync */
     public final NodePair nodes;
     /** true if sync success, false otherwise */
     public final boolean success;
 
-    public SyncComplete(RepairJobDesc desc, NodePair nodes, boolean success)
+    public SyncComplete(RepairJobDesc desc, NodePair nodes, boolean success, RepairMessage.Serializer serializer)
     {
-        super(Type.SYNC_COMPLETE, desc);
+        super(Type.SYNC_COMPLETE, desc, serializer);
         this.nodes = nodes;
         this.success = success;
     }
 
-    public SyncComplete(RepairJobDesc desc, InetAddress endpoint1, InetAddress endpoint2, boolean success)
+    public SyncComplete(RepairJobDesc desc, InetAddress endpoint1, InetAddress endpoint2, boolean success, RepairMessage.Serializer serializer)
     {
-        super(Type.SYNC_COMPLETE, desc);
+        super(Type.SYNC_COMPLETE, desc, serializer);
         this.nodes = new NodePair(endpoint1, endpoint2);
         this.success = success;
     }
 
-    private static class SyncCompleteSerializer implements MessageSerializer<SyncComplete>
+    public static class Serializer implements MessageSerializer<SyncComplete>
     {
+
+        private final RepairMessage.Serializer repairMessageSerializer;
+        private final RepairJobDesc.RepairJobDescSerializer repairJobDescSerializer;
+
+        public Serializer(RepairMessage.Serializer repairMessageSerializer, RepairJobDesc.RepairJobDescSerializer repairJobDescSerializer)
+        {
+            this.repairMessageSerializer = repairMessageSerializer;
+            this.repairJobDescSerializer = repairJobDescSerializer;
+        }
+
         public void serialize(SyncComplete message, DataOutputPlus out, int version) throws IOException
         {
-            RepairJobDesc.serializer.serialize(message.desc, out, version);
+            repairJobDescSerializer.serialize(message.desc, out, version);
             NodePair.serializer.serialize(message.nodes, out, version);
             out.writeBoolean(message.success);
         }
 
         public SyncComplete deserialize(DataInput in, int version) throws IOException
         {
-            RepairJobDesc desc = RepairJobDesc.serializer.deserialize(in, version);
+            RepairJobDesc desc = repairJobDescSerializer.deserialize(in, version);
             NodePair nodes = NodePair.serializer.deserialize(in, version);
-            return new SyncComplete(desc, nodes, in.readBoolean());
+            return new SyncComplete(desc, nodes, in.readBoolean(), repairMessageSerializer);
         }
 
         public long serializedSize(SyncComplete message, int version)
         {
-            long size = RepairJobDesc.serializer.serializedSize(message.desc, version);
+            long size = repairJobDescSerializer.serializedSize(message.desc, version);
             size += NodePair.serializer.serializedSize(message.nodes, version);
             size += TypeSizes.NATIVE.sizeof(message.success);
             return size;

@@ -26,6 +26,7 @@ import java.util.concurrent.Future;
 import com.google.common.base.Predicate;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.streaming.StreamManager;
@@ -65,6 +66,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
     private final CompactionManager compactionManager;
     private final MessagingService messagingService;
     private final StreamManager streamManager;
+    private final DBConfig dbConfig;
     private final IPartitioner partitioner;
 
     public RepairMessageVerbHandler(DatabaseDescriptor databaseDescriptor,
@@ -75,7 +77,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                                     CompactionManager compactionManager,
                                     MessagingService messagingService,
                                     StreamManager streamManager,
-                                    IPartitioner partitioner)
+                                    DBConfig dbConfig)
     {
         this.databaseDescriptor = databaseDescriptor;
         this.stageManager = stageManager;
@@ -85,7 +87,8 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
         this.compactionManager = compactionManager;
         this.messagingService = messagingService;
         this.streamManager = streamManager;
-        this.partitioner = partitioner;
+        this.dbConfig = dbConfig;
+        this.partitioner = dbConfig.getPartitioner();
     }
 
     public void doVerb(MessageIn<RepairMessage> message, int id)
@@ -136,7 +139,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
             case SYNC_REQUEST:
                 // forwarded sync request
                 SyncRequest request = (SyncRequest) message.payload;
-                StreamingRepairTask task = new StreamingRepairTask(desc, request, databaseDescriptor, schema, activeRepairService, keyspaceManager, streamManager, messagingService);
+                StreamingRepairTask task = new StreamingRepairTask(desc, request, databaseDescriptor, schema, activeRepairService, keyspaceManager, streamManager, messagingService, dbConfig);
                 task.run();
                 break;
 

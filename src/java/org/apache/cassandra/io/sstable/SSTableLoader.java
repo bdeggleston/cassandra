@@ -30,6 +30,7 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Range;
@@ -160,7 +161,7 @@ public class SSTableLoader implements StreamEventHandler
         outputHandler.output("Established connection to initial hosts");
 
         StreamPlan plan = new StreamPlan("Bulk Load", 0, connectionsPerHost, DatabaseDescriptor.instance, Schema.instance,
-                                         KeyspaceManager.instance, StreamManager.instance).connectionFactory(client.getConnectionFactory());
+                                         KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).connectionFactory(client.getConnectionFactory());
 
         Map<InetAddress, Collection<Range<Token>>> endpointToRanges = client.getEndpointToRangesMap();
         openSSTables(endpointToRanges);

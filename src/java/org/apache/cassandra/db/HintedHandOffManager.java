@@ -604,7 +604,8 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                           predicate,
                                                           range,
                                                           null,
-                                                          LARGE_NUMBER);
+                                                          LARGE_NUMBER,
+                                                          MessagingService.instance.rangeSliceCommandSerializer);
             return StorageProxy.instance.getRangeSlice(cmd, ConsistencyLevel.ONE);
         }
         catch (Exception e)

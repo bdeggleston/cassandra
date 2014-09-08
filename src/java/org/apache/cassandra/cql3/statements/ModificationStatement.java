@@ -25,6 +25,7 @@ import com.google.common.collect.Iterables;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.tracing.Tracing;
 import org.github.jamm.MemoryMeter;
 
@@ -91,6 +92,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
     private final DBConfig dbConfig;
     private final MutationFactory mutationFactory;
     private final CounterMutationFactory counterMutationFactory;
+    private final MessagingService messagingService;
     private final LocatorConfig locatorConfig;
 
     protected ModificationStatement(StatementType type,
@@ -106,6 +108,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                     DBConfig dbConfig,
                                     MutationFactory mutationFactory,
                                     CounterMutationFactory counterMutationFactory,
+                                    MessagingService messagingService,
                                     LocatorConfig locatorConfig)
     {
         this.type = type;
@@ -122,6 +125,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         this.dbConfig = dbConfig;
         this.mutationFactory = mutationFactory;
         this.counterMutationFactory = counterMutationFactory;
+        this.messagingService = messagingService;
         this.locatorConfig = locatorConfig;
     }
 
@@ -599,6 +603,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                  queryProcessor,
                                  keyspaceManager,
                                  storageProxy,
+                                 messagingService,
                                  locatorConfig);
     }
 
@@ -615,6 +620,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                               QueryProcessor queryProcessor,
                                               KeyspaceManager keyspaceManager,
                                               StorageProxy storageProxy,
+                                              MessagingService messagingService,
                                               LocatorConfig locatorConfig)
     throws InvalidRequestException
     {
@@ -636,6 +642,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                                                  queryProcessor,
                                                                  keyspaceManager,
                                                                  storageProxy,
+                                                                 messagingService,
                                                                  locatorConfig));
     }
 
@@ -673,6 +680,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                                       QueryProcessor queryProcessor,
                                                       KeyspaceManager keyspaceManager,
                                                       StorageProxy storageProxy,
+                                                      MessagingService messagingService,
                                                       LocatorConfig locatorConfig)
     throws InvalidRequestException
     {
@@ -709,6 +717,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                      queryProcessor,
                                      keyspaceManager,
                                      storageProxy,
+                                     messagingService,
                                      locatorConfig).processColumnFamily(key, cf, options, now, builder);
 
         return builder.build();

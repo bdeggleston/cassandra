@@ -29,13 +29,11 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.Pair;
 
 public abstract class AbstractBounds<T extends RingPosition> implements Serializable
 {
     private static final long serialVersionUID = 1L;
-    public static final AbstractBoundsSerializer serializer = new AbstractBoundsSerializer();
 
     private enum Type
     {
@@ -127,8 +125,17 @@ public abstract class AbstractBounds<T extends RingPosition> implements Serializ
 
     public abstract AbstractBounds<T> withNewRight(T newRight);
 
-    public static class AbstractBoundsSerializer implements IVersionedSerializer<AbstractBounds<?>>
+    public static class Serializer implements IVersionedSerializer<AbstractBounds<?>>
     {
+        private final Token.Serializer tokenSerializer;
+        private final RowPosition.Serializer rowPositionSerializer;
+
+        public Serializer(Token.Serializer tokenSerializer, RowPosition.Serializer rowPositionSerializer)
+        {
+            this.tokenSerializer = tokenSerializer;
+            this.rowPositionSerializer = rowPositionSerializer;
+        }
+
         public void serialize(AbstractBounds<?> range, DataOutputPlus out, int version) throws IOException
         {
             /*
@@ -138,13 +145,13 @@ public abstract class AbstractBounds<T extends RingPosition> implements Serializ
             out.writeInt(kindInt(range));
             if (range.left instanceof Token)
             {
-                Token.serializer.serialize((Token) range.left, out);
-                Token.serializer.serialize((Token) range.right, out);
+                tokenSerializer.serialize((Token) range.left, out);
+                tokenSerializer.serialize((Token) range.right, out);
             }
             else
             {
-                RowPosition.serializer.serialize((RowPosition) range.left, out);
-                RowPosition.serializer.serialize((RowPosition) range.right, out);
+                rowPositionSerializer.serialize((RowPosition) range.left, out);
+                rowPositionSerializer.serialize((RowPosition) range.right, out);
             }
         }
 
@@ -166,13 +173,13 @@ public abstract class AbstractBounds<T extends RingPosition> implements Serializ
             RingPosition left, right;
             if (isToken)
             {
-                left = Token.serializer.deserialize(in);
-                right = Token.serializer.deserialize(in);
+                left = tokenSerializer.deserialize(in);
+                right = tokenSerializer.deserialize(in);
             }
             else
             {
-                left = RowPosition.serializer.deserialize(in);
-                right = RowPosition.serializer.deserialize(in);
+                left = rowPositionSerializer.deserialize(in);
+                right = rowPositionSerializer.deserialize(in);
             }
 
             if (kind == Type.RANGE.ordinal())
@@ -185,13 +192,13 @@ public abstract class AbstractBounds<T extends RingPosition> implements Serializ
             int size = TypeSizes.NATIVE.sizeof(kindInt(ab));
             if (ab.left instanceof Token)
             {
-                size += Token.serializer.serializedSize((Token) ab.left, TypeSizes.NATIVE);
-                size += Token.serializer.serializedSize((Token) ab.right, TypeSizes.NATIVE);
+                size += tokenSerializer.serializedSize((Token) ab.left, TypeSizes.NATIVE);
+                size += tokenSerializer.serializedSize((Token) ab.right, TypeSizes.NATIVE);
             }
             else
             {
-                size += RowPosition.serializer.serializedSize((RowPosition) ab.left, TypeSizes.NATIVE);
-                size += RowPosition.serializer.serializedSize((RowPosition) ab.right, TypeSizes.NATIVE);
+                size += rowPositionSerializer.serializedSize((RowPosition) ab.left, TypeSizes.NATIVE);
+                size += rowPositionSerializer.serializedSize((RowPosition) ab.right, TypeSizes.NATIVE);
             }
             return size;
         }

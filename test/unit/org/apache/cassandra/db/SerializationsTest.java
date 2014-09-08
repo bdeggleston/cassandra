@@ -82,17 +82,19 @@ public class SerializationsTest extends AbstractSerializationsTester
         IPartitioner part = LocatorConfig.instance.getPartitioner();
         AbstractBounds<RowPosition> bounds = new Range<Token>(part.getRandomToken(), part.getRandomToken(), LocatorConfig.instance.getPartitioner()).toRowBounds();
 
-        RangeSliceCommand namesCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, namesPred, bounds, 100);
+        RangeSliceCommand.Serializer serializer = MessagingService.instance.rangeSliceCommandSerializer;
+
+        RangeSliceCommand namesCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, namesPred, bounds, 100, serializer);
         MessageOut<RangeSliceCommand> namesCmdMsg = namesCmd.createMessage();
-        RangeSliceCommand emptyRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, emptyRangePred, bounds, 100);
+        RangeSliceCommand emptyRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, emptyRangePred, bounds, 100, serializer);
         MessageOut<RangeSliceCommand> emptyRangeCmdMsg = emptyRangeCmd.createMessage();
-        RangeSliceCommand regRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, nonEmptyRangePred, bounds, 100);
+        RangeSliceCommand regRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, nonEmptyRangePred, bounds, 100, serializer);
         MessageOut<RangeSliceCommand> regRangeCmdMsg = regRangeCmd.createMessage();
-        RangeSliceCommand namesCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, namesSCPred, bounds, 100);
+        RangeSliceCommand namesCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, namesSCPred, bounds, 100, serializer);
         MessageOut<RangeSliceCommand> namesCmdSupMsg = namesCmdSup.createMessage();
-        RangeSliceCommand emptyRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, emptyRangePred, bounds, 100);
+        RangeSliceCommand emptyRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, emptyRangePred, bounds, 100, serializer);
         MessageOut<RangeSliceCommand> emptyRangeCmdSupMsg = emptyRangeCmdSup.createMessage();
-        RangeSliceCommand regRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, nonEmptyRangeSCPred, bounds, 100);
+        RangeSliceCommand regRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, nonEmptyRangeSCPred, bounds, 100, serializer);
         MessageOut<RangeSliceCommand> regRangeCmdSupMsg = regRangeCmdSup.createMessage();
 
         DataOutputStreamAndChannel out = getOutput("db.RangeSliceCommand.bin");
@@ -105,12 +107,12 @@ public class SerializationsTest extends AbstractSerializationsTester
         out.close();
 
         // test serializedSize
-        testSerializedSize(namesCmd, RangeSliceCommand.serializer);
-        testSerializedSize(emptyRangeCmd, RangeSliceCommand.serializer);
-        testSerializedSize(regRangeCmd, RangeSliceCommand.serializer);
-        testSerializedSize(namesCmdSup, RangeSliceCommand.serializer);
-        testSerializedSize(emptyRangeCmdSup, RangeSliceCommand.serializer);
-        testSerializedSize(regRangeCmdSup, RangeSliceCommand.serializer);
+        testSerializedSize(namesCmd, serializer);
+        testSerializedSize(emptyRangeCmd, serializer);
+        testSerializedSize(regRangeCmd, serializer);
+        testSerializedSize(namesCmdSup, serializer);
+        testSerializedSize(emptyRangeCmdSup, serializer);
+        testSerializedSize(regRangeCmdSup, serializer);
     }
 
     @Test

@@ -40,55 +40,64 @@ import org.apache.cassandra.repair.RepairJobDesc;
  */
 public class SyncRequest extends RepairMessage
 {
-    public static MessageSerializer serializer = new SyncRequestSerializer();
-
     public final InetAddress initiator;
     public final InetAddress src;
     public final InetAddress dst;
     public final Collection<Range<Token>> ranges;
 
-    public SyncRequest(RepairJobDesc desc, InetAddress initiator, InetAddress src, InetAddress dst, Collection<Range<Token>> ranges)
+    public SyncRequest(RepairJobDesc desc, InetAddress initiator, InetAddress src, InetAddress dst, Collection<Range<Token>> ranges, RepairMessage.Serializer serializer)
     {
-        super(Type.SYNC_REQUEST, desc);
+        super(Type.SYNC_REQUEST, desc, serializer);
         this.initiator = initiator;
         this.src = src;
         this.dst = dst;
         this.ranges = ranges;
     }
 
-    public static class SyncRequestSerializer implements MessageSerializer<SyncRequest>
+    public static class Serializer implements MessageSerializer<SyncRequest>
     {
+        private final AbstractBounds.Serializer abstractBoundsSerializer;
+        private final RepairMessage.Serializer repairMessageSerializer;
+        private final RepairJobDesc.RepairJobDescSerializer repairJobDescSerializer;
+
+        public Serializer(AbstractBounds.Serializer abstractBoundsSerializer, RepairMessage.Serializer repairMessageSerializer, RepairJobDesc.RepairJobDescSerializer repairJobDescSerializer)
+        {
+            this.abstractBoundsSerializer = abstractBoundsSerializer;
+            this.repairMessageSerializer = repairMessageSerializer;
+            this.repairJobDescSerializer = repairJobDescSerializer;
+        }
+
         public void serialize(SyncRequest message, DataOutputPlus out, int version) throws IOException
         {
-            RepairJobDesc.serializer.serialize(message.desc, out, version);
+            repairJobDescSerializer.serialize(message.desc, out, version);
             CompactEndpointSerializationHelper.serialize(message.initiator, out);
             CompactEndpointSerializationHelper.serialize(message.src, out);
             CompactEndpointSerializationHelper.serialize(message.dst, out);
             out.writeInt(message.ranges.size());
             for (Range<Token> range : message.ranges)
-                AbstractBounds.serializer.serialize(range, out, version);
+                abstractBoundsSerializer.serialize(range, out, version);
         }
 
         public SyncRequest deserialize(DataInput in, int version) throws IOException
         {
-            RepairJobDesc desc = RepairJobDesc.serializer.deserialize(in, version);
+            RepairJobDesc desc = repairJobDescSerializer.deserialize(in, version);
             InetAddress owner = CompactEndpointSerializationHelper.deserialize(in);
             InetAddress src = CompactEndpointSerializationHelper.deserialize(in);
             InetAddress dst = CompactEndpointSerializationHelper.deserialize(in);
             int rangesCount = in.readInt();
             List<Range<Token>> ranges = new ArrayList<>(rangesCount);
             for (int i = 0; i < rangesCount; ++i)
-                ranges.add((Range<Token>) AbstractBounds.serializer.deserialize(in, version).toTokenBounds());
-            return new SyncRequest(desc, owner, src, dst, ranges);
+                ranges.add((Range<Token>) abstractBoundsSerializer.deserialize(in, version).toTokenBounds());
+            return new SyncRequest(desc, owner, src, dst, ranges, repairMessageSerializer);
         }
 
         public long serializedSize(SyncRequest message, int version)
         {
-            long size = RepairJobDesc.serializer.serializedSize(message.desc, version);
+            long size = repairJobDescSerializer.serializedSize(message.desc, version);
             size += 3 * CompactEndpointSerializationHelper.serializedSize(message.initiator);
             size += TypeSizes.NATIVE.sizeof(message.ranges.size());
             for (Range<Token> range : message.ranges)
-                size += AbstractBounds.serializer.serializedSize(range, version);
+                size += abstractBoundsSerializer.serializedSize(range, version);
             return size;
         }
     }

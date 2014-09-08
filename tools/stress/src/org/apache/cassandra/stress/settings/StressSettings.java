@@ -36,6 +36,7 @@ import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.stress.util.JavaDriverClient;
 import org.apache.cassandra.stress.util.SimpleThriftClient;
@@ -164,6 +165,7 @@ public class StressSettings implements Serializable
                                                                                                           StorageProxy.instance,
                                                                                                           MutationFactory.instance,
                                                                                                           CounterMutationFactory.instance,
+                                                                                                          MessagingService.instance,
                                                                                                           DBConfig.instance,
                                                                                                           LocatorConfig.instance));
             client.connect(false);

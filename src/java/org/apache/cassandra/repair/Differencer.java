@@ -24,6 +24,7 @@ import java.util.List;
 import com.google.common.base.Objects;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.streaming.StreamManager;
@@ -56,6 +57,7 @@ public class Differencer implements Runnable
     private final ActiveRepairService activeRepairService;
     private final StreamManager streamManager;
     private final MessagingService messagingService;
+    private final DBConfig dbConfig;
 
     public Differencer(RepairJobDesc desc,
                        TreeResponse r1,
@@ -65,7 +67,8 @@ public class Differencer implements Runnable
                        KeyspaceManager keyspaceManager,
                        ActiveRepairService activeRepairService,
                        StreamManager streamManager,
-                       MessagingService messagingService)
+                       MessagingService messagingService,
+                       DBConfig dbConfig)
     {
         this.desc = desc;
         this.r1 = r1;
@@ -76,6 +79,7 @@ public class Differencer implements Runnable
         this.activeRepairService = activeRepairService;
         this.streamManager = streamManager;
         this.messagingService = messagingService;
+        this.dbConfig = dbConfig;
     }
 
     /**
@@ -92,7 +96,8 @@ public class Differencer implements Runnable
         {
             logger.info(String.format(format, "are consistent"));
             // send back sync complete message
-            messagingService.sendOneWay(new SyncComplete(desc, r1.endpoint, r2.endpoint, true).createMessage(), databaseDescriptor.getLocalAddress());
+            messagingService.sendOneWay(new SyncComplete(desc, r1.endpoint, r2.endpoint, true, messagingService.repairMessageSerializer).createMessage(),
+                                        databaseDescriptor.getLocalAddress());
             return;
         }
 
@@ -112,8 +117,8 @@ public class Differencer implements Runnable
         InetAddress src = r2.endpoint.equals(local) ? r2.endpoint : r1.endpoint;
         InetAddress dst = r2.endpoint.equals(local) ? r1.endpoint : r2.endpoint;
 
-        SyncRequest request = new SyncRequest(desc, local, src, dst, differences);
-        StreamingRepairTask task = new StreamingRepairTask(desc, request, databaseDescriptor, schema, activeRepairService, keyspaceManager, streamManager, messagingService);
+        SyncRequest request = new SyncRequest(desc, local, src, dst, differences, messagingService.repairMessageSerializer);
+        StreamingRepairTask task = new StreamingRepairTask(desc, request, databaseDescriptor, schema, activeRepairService, keyspaceManager, streamManager, messagingService, dbConfig);
         task.run();
     }
 

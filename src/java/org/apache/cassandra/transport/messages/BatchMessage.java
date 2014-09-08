@@ -38,6 +38,7 @@ import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.PreparedQueryNotFoundException;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.tracing.Tracing;
@@ -58,12 +59,13 @@ public class BatchMessage extends Message.Request
         private final StorageProxy storageProxy;
         private final MutationFactory mutationFactory;
         private final CounterMutationFactory counterMutationFactory;
+        private final MessagingService messagingService;
         private final DBConfig dbConfig;
         private final LocatorConfig locatorConfig;
 
         public Codec(DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, QueryProcessor queryProcessor,
                      QueryHandler queryHandler, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MutationFactory mutationFactory,
-                     CounterMutationFactory counterMutationFactory, DBConfig dbConfig, LocatorConfig locatorConfig)
+                     CounterMutationFactory counterMutationFactory, MessagingService messagingService, DBConfig dbConfig, LocatorConfig locatorConfig)
         {
             this.databaseDescriptor = databaseDescriptor;
             this.tracing = tracing;
@@ -74,6 +76,7 @@ public class BatchMessage extends Message.Request
             this.storageProxy = storageProxy;
             this.mutationFactory = mutationFactory;
             this.counterMutationFactory = counterMutationFactory;
+            this.messagingService = messagingService;
             this.dbConfig = dbConfig;
             this.locatorConfig = locatorConfig;
         }
@@ -105,7 +108,7 @@ public class BatchMessage extends Message.Request
 
             return new BatchMessage(toType(type), queryOrIds, variables, options, databaseDescriptor, tracing, schema, queryProcessor,
                                     queryHandler, keyspaceManager, storageProxy, mutationFactory, counterMutationFactory,
-                                    dbConfig, locatorConfig);
+                                    messagingService, dbConfig, locatorConfig);
         }
 
         @Override
@@ -192,13 +195,14 @@ public class BatchMessage extends Message.Request
     private final StorageProxy storageProxy;
     private final MutationFactory mutationFactory;
     private final CounterMutationFactory counterMutationFactory;
+    private final MessagingService messagingService;
     private final DBConfig dbConfig;
     private final LocatorConfig locatorConfig;
 
     public BatchMessage(BatchStatement.Type type, List<Object> queryOrIdList, List<List<ByteBuffer>> values, QueryOptions options,
                         DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, QueryProcessor queryProcessor, QueryHandler queryHandler,
                         KeyspaceManager keyspaceManager, StorageProxy storageProxy, MutationFactory mutationFactory,
-                        CounterMutationFactory counterMutationFactory, DBConfig dbConfig, LocatorConfig locatorConfig)
+                        CounterMutationFactory counterMutationFactory, MessagingService messagingService, DBConfig dbConfig, LocatorConfig locatorConfig)
     {
         super(Message.Type.BATCH);
         this.batchType = type;
@@ -215,6 +219,7 @@ public class BatchMessage extends Message.Request
         this.storageProxy = storageProxy;
         this.mutationFactory = mutationFactory;
         this.counterMutationFactory = counterMutationFactory;
+        this.messagingService = messagingService;
         this.dbConfig = dbConfig;
         this.locatorConfig = locatorConfig;
     }
@@ -279,7 +284,7 @@ public class BatchMessage extends Message.Request
             // (and no value would be really correct, so we prefer passing a clearly wrong one).
             BatchStatement batch = new BatchStatement(-1, batchType, statements, Attributes.none(), databaseDescriptor,
                                                       tracing, schema, queryProcessor, keyspaceManager, storageProxy,
-                                                      mutationFactory, counterMutationFactory, dbConfig, locatorConfig);
+                                                      mutationFactory, counterMutationFactory, messagingService, dbConfig, locatorConfig);
             Message.Response response = queryHandler.processBatch(batch, state, batchOptions);
 
             if (tracingId != null)

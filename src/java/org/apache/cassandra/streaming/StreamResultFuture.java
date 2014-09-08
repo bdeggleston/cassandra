@@ -27,6 +27,7 @@ import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,14 +74,15 @@ public final class StreamResultFuture extends AbstractFuture<StreamState>
     }
 
     private StreamResultFuture(UUID planId, String description, DatabaseDescriptor databaseDescriptor,
-                               KeyspaceManager keyspaceManager, Schema schema, StreamManager streamManager)
+                               KeyspaceManager keyspaceManager, Schema schema, StreamManager streamManager, DBConfig dbConfig)
     {
         this(planId, description, new StreamCoordinator(0,
                                                         new DefaultConnectionFactory(databaseDescriptor),
                                                         databaseDescriptor,
                                                         keyspaceManager,
                                                         schema,
-                                                        streamManager));
+                                                        streamManager,
+                                                        dbConfig));
     }
 
     static StreamResultFuture init(UUID planId,
@@ -118,7 +120,8 @@ public final class StreamResultFuture extends AbstractFuture<StreamState>
                                                                     DatabaseDescriptor databaseDescriptor,
                                                                     KeyspaceManager keyspaceManager,
                                                                     Schema schema,
-                                                                    StreamManager streamManager) throws IOException
+                                                                    StreamManager streamManager,
+                                                                    DBConfig dbConfig) throws IOException
     {
         StreamResultFuture future = streamManager.getReceivingStream(planId);
         if (future == null)
@@ -126,7 +129,7 @@ public final class StreamResultFuture extends AbstractFuture<StreamState>
             logger.info("[Stream #{} ID#{}] Creating new streaming plan for {}", planId, sessionIndex, description);
 
             // The main reason we create a StreamResultFuture on the receiving side is for JMX exposure.
-            future = new StreamResultFuture(planId, description, databaseDescriptor, keyspaceManager, schema, streamManager);
+            future = new StreamResultFuture(planId, description, databaseDescriptor, keyspaceManager, schema, streamManager, dbConfig);
             streamManager.registerReceiving(future);
         }
         future.attachSocket(from, sessionIndex, socket, isForOutgoing, version);

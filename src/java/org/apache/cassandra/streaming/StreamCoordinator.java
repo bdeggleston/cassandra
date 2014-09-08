@@ -22,6 +22,7 @@ import java.util.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,8 +52,9 @@ public class StreamCoordinator
     private final KeyspaceManager keyspaceManager;
     private final Schema schema;
     private final StreamManager streamManager;
+    private final DBConfig dbConfig;
 
-    public StreamCoordinator(int connectionsPerHost, StreamConnectionFactory factory, DatabaseDescriptor databaseDescriptor, KeyspaceManager keyspaceManager, Schema schema, StreamManager streamManager)
+    public StreamCoordinator(int connectionsPerHost, StreamConnectionFactory factory, DatabaseDescriptor databaseDescriptor, KeyspaceManager keyspaceManager, Schema schema, StreamManager streamManager, DBConfig dbConfig)
     {
         this.connectionsPerHost = connectionsPerHost;
         this.databaseDescriptor = databaseDescriptor;
@@ -61,6 +63,7 @@ public class StreamCoordinator
         this.streamManager = streamManager;
         this.factory = factory;
         this.streamExecutor = this.streamManager.getStreamExecutor();
+        this.dbConfig = dbConfig;
     }
 
     public void setConnectionFactory(StreamConnectionFactory factory)
@@ -248,7 +251,7 @@ public class StreamCoordinator
                                                           schema,
                                                           keyspaceManager,
                                                           streamManager,
-                                                          databaseDescriptor.getPartitioner());
+                                                          dbConfig);
                 streamSessions.put(++lastReturned, session);
                 return session;
             }
@@ -288,7 +291,7 @@ public class StreamCoordinator
                                             schema,
                                             keyspaceManager,
                                             streamManager,
-                                            databaseDescriptor.getPartitioner());
+                                            dbConfig);
                 streamSessions.put(id, session);
             }
             return session;

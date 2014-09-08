@@ -56,7 +56,6 @@ import org.apache.cassandra.io.util.DataOutputPlus;
  */
 public class MerkleTree implements Serializable
 {
-    public static final MerkleTreeSerializer serializer = new MerkleTreeSerializer();
     private static final long serialVersionUID = 2L;
 
     public static final byte RECOMMENDED_DEPTH = Byte.MAX_VALUE - 1;
@@ -76,8 +75,17 @@ public class MerkleTree implements Serializable
     private long size;
     private Hashable root;
 
-    public static class MerkleTreeSerializer implements IVersionedSerializer<MerkleTree>
+    public static class Serializer implements IVersionedSerializer<MerkleTree>
     {
+        private final Token.Serializer tokenSerializer;
+        private final Hashable.HashableSerializer hashableSerializer;
+
+        public Serializer(Token.Serializer tokenSerializer, Hashable.HashableSerializer hashableSerializer)
+        {
+            this.tokenSerializer = tokenSerializer;
+            this.hashableSerializer = hashableSerializer;
+        }
+
         public void serialize(MerkleTree mt, DataOutputPlus out, int version) throws IOException
         {
             out.writeByte(mt.hashdepth);
@@ -85,9 +93,9 @@ public class MerkleTree implements Serializable
             out.writeLong(mt.size);
             out.writeUTF(mt.partitioner.getClass().getCanonicalName());
             // full range
-            Token.serializer.serialize(mt.fullRange.left, out);
-            Token.serializer.serialize(mt.fullRange.right, out);
-            Hashable.serializer.serialize(mt.root, out, version);
+            tokenSerializer.serialize(mt.fullRange.left, out);
+            tokenSerializer.serialize(mt.fullRange.right, out);
+            hashableSerializer.serialize(mt.root, out, version);
         }
 
         public MerkleTree deserialize(DataInput in, int version) throws IOException
@@ -106,13 +114,13 @@ public class MerkleTree implements Serializable
             }
 
             // full range
-            Token left = Token.serializer.deserialize(in);
-            Token right = Token.serializer.deserialize(in);
+            Token left = tokenSerializer.deserialize(in);
+            Token right = tokenSerializer.deserialize(in);
             Range<Token> fullRange = new Range<>(left, right, partitioner);
 
             MerkleTree mt = new MerkleTree(partitioner, fullRange, hashdepth, maxsize);
             mt.size = size;
-            mt.root = Hashable.serializer.deserialize(in, version);
+            mt.root = hashableSerializer.deserialize(in, version);
             return mt;
         }
 
@@ -124,10 +132,10 @@ public class MerkleTree implements Serializable
                  + TypeSizes.NATIVE.sizeof(mt.partitioner.getClass().getCanonicalName());
 
             // full range
-            size += Token.serializer.serializedSize(mt.fullRange.left, TypeSizes.NATIVE);
-            size += Token.serializer.serializedSize(mt.fullRange.right, TypeSizes.NATIVE);
+            size += tokenSerializer.serializedSize(mt.fullRange.left, TypeSizes.NATIVE);
+            size += tokenSerializer.serializedSize(mt.fullRange.right, TypeSizes.NATIVE);
 
-            size += Hashable.serializer.serializedSize(mt.root, version);
+            size += hashableSerializer.serializedSize(mt.root, version);
             return size;
         }
     }
@@ -727,15 +735,13 @@ public class MerkleTree implements Serializable
      * An inner node in the MerkleTree. Inners can contain cached hash values, which
      * are the binary hash of their two children.
      */
-    static class Inner extends Hashable
+    public static class Inner extends Hashable
     {
         public static final long serialVersionUID = 1L;
         static final byte IDENT = 2;
         public final Token token;
         private Hashable lchild;
         private Hashable rchild;
-
-        private static final InnerSerializer serializer = new InnerSerializer();
 
         /**
          * Constructs an Inner with the given token and children, and a null hash.
@@ -819,8 +825,18 @@ public class MerkleTree implements Serializable
             return buff.toString();
         }
 
-        private static class InnerSerializer implements IVersionedSerializer<Inner>
+        public static class InnerSerializer implements IVersionedSerializer<Inner>
         {
+
+            private final Token.Serializer tokenSerializer;
+            private final HashableSerializer hashableSerializer;
+
+            public InnerSerializer(Token.Serializer tokenSerializer, HashableSerializer hashableSerializer)
+            {
+                this.tokenSerializer = tokenSerializer;
+                this.hashableSerializer = hashableSerializer;
+            }
+
             public void serialize(Inner inner, DataOutputPlus out, int version) throws IOException
             {
                 if (inner.hash == null)
@@ -830,9 +846,9 @@ public class MerkleTree implements Serializable
                     out.writeInt(inner.hash.length);
                     out.write(inner.hash);
                 }
-                Token.serializer.serialize(inner.token, out);
-                Hashable.serializer.serialize(inner.lchild, out, version);
-                Hashable.serializer.serialize(inner.rchild, out, version);
+                tokenSerializer.serialize(inner.token, out);
+                hashableSerializer.serialize(inner.lchild, out, version);
+                hashableSerializer.serialize(inner.rchild, out, version);
             }
 
             public Inner deserialize(DataInput in, int version) throws IOException
@@ -841,9 +857,9 @@ public class MerkleTree implements Serializable
                 byte[] hash = hashLen >= 0 ? new byte[hashLen] : null;
                 if (hash != null)
                     in.readFully(hash);
-                Token token = Token.serializer.deserialize(in);
-                Hashable lchild = Hashable.serializer.deserialize(in, version);
-                Hashable rchild = Hashable.serializer.deserialize(in, version);
+                Token token = tokenSerializer.deserialize(in);
+                Hashable lchild = hashableSerializer.deserialize(in, version);
+                Hashable rchild = hashableSerializer.deserialize(in, version);
                 return new Inner(token, lchild, rchild);
             }
 
@@ -853,9 +869,9 @@ public class MerkleTree implements Serializable
                 ? TypeSizes.NATIVE.sizeof(-1)
                         : TypeSizes.NATIVE.sizeof(inner.hash().length) + inner.hash().length;
 
-                size += Token.serializer.serializedSize(inner.token, TypeSizes.NATIVE)
-                + Hashable.serializer.serializedSize(inner.lchild, version)
-                + Hashable.serializer.serializedSize(inner.rchild, version);
+                size += tokenSerializer.serializedSize(inner.token, TypeSizes.NATIVE)
+                + hashableSerializer.serializedSize(inner.lchild, version)
+                + hashableSerializer.serializedSize(inner.rchild, version);
                 return size;
             }
         }
@@ -960,10 +976,9 @@ public class MerkleTree implements Serializable
     /**
      * Abstract class containing hashing logic, and containing a single hash field.
      */
-    static abstract class Hashable implements Serializable
+    public static abstract class Hashable implements Serializable
     {
         private static final long serialVersionUID = 1L;
-        private static final IVersionedSerializer<Hashable> serializer = new HashableSerializer();
 
         protected byte[] hash;
         protected long sizeOfRange;
@@ -1041,14 +1056,21 @@ public class MerkleTree implements Serializable
             return "[" + Hex.bytesToHex(hash) + "]";
         }
 
-        private static class HashableSerializer implements IVersionedSerializer<Hashable>
+        public static class HashableSerializer implements IVersionedSerializer<Hashable>
         {
+            private final Inner.InnerSerializer innerSerializer;
+
+            public HashableSerializer(Token.Serializer tokenSerializer)
+            {
+                this.innerSerializer = new Inner.InnerSerializer(tokenSerializer, this);
+            }
+
             public void serialize(Hashable h, DataOutputPlus out, int version) throws IOException
             {
                 if (h instanceof Inner)
                 {
                     out.writeByte(Inner.IDENT);
-                    Inner.serializer.serialize((Inner)h, out, version);
+                    innerSerializer.serialize((Inner) h, out, version);
                 }
                 else if (h instanceof Leaf)
                 {
@@ -1063,7 +1085,7 @@ public class MerkleTree implements Serializable
             {
                 byte ident = in.readByte();
                 if (Inner.IDENT == ident)
-                    return Inner.serializer.deserialize(in, version);
+                    return innerSerializer.deserialize(in, version);
                 else if (Leaf.IDENT == ident)
                     return Leaf.serializer.deserialize(in, version);
                 else
@@ -1073,7 +1095,7 @@ public class MerkleTree implements Serializable
             public long serializedSize(Hashable h, int version)
             {
                 if (h instanceof Inner)
-                    return 1 + Inner.serializer.serializedSize((Inner) h, version);
+                    return 1 + innerSerializer.serializedSize((Inner) h, version);
                 else if (h instanceof Leaf)
                     return 1 + Leaf.serializer.serializedSize((Leaf) h, version);
                 throw new AssertionError(h.getClass());

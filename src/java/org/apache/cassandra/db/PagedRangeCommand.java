@@ -35,12 +35,11 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class PagedRangeCommand extends AbstractRangeCommand
 {
-    public static final IVersionedSerializer<PagedRangeCommand> serializer = new Serializer();
-
     public final Composite start;
     public final Composite stop;
     public final int limit;
     private final boolean countCQL3Rows;
+    private final Serializer serializer;
 
     public PagedRangeCommand(String keyspace,
                              String columnFamily,
@@ -51,13 +50,15 @@ public class PagedRangeCommand extends AbstractRangeCommand
                              Composite stop,
                              List<IndexExpression> rowFilter,
                              int limit,
-                             boolean countCQL3Rows)
+                             boolean countCQL3Rows,
+                             Serializer serializer)
     {
         super(keyspace, columnFamily, timestamp, keyRange, predicate, rowFilter);
         this.start = start;
         this.stop = stop;
         this.limit = limit;
         this.countCQL3Rows = countCQL3Rows;
+        this.serializer = serializer;
     }
 
     public MessageOut<PagedRangeCommand> createMessage()
@@ -78,7 +79,8 @@ public class PagedRangeCommand extends AbstractRangeCommand
                                      newStop,
                                      rowFilter,
                                      limit,
-                                     countCQL3Rows);
+                                     countCQL3Rows,
+                                     serializer);
     }
 
     public AbstractRangeCommand withUpdatedLimit(int newLimit)
@@ -92,7 +94,8 @@ public class PagedRangeCommand extends AbstractRangeCommand
                                      stop,
                                      rowFilter,
                                      newLimit,
-                                     countCQL3Rows);
+                                     countCQL3Rows,
+                                     serializer);
     }
 
     public int limit()
@@ -122,15 +125,23 @@ public class PagedRangeCommand extends AbstractRangeCommand
         return String.format("PagedRange(%s, %s, %d, %s, %s, %s, %s, %s, %d)", keyspace, columnFamily, timestamp, keyRange, predicate, start, stop, rowFilter, limit);
     }
 
-    private static class Serializer implements IVersionedSerializer<PagedRangeCommand>
+    public static class Serializer implements IVersionedSerializer<PagedRangeCommand>
     {
+
+        private final AbstractBounds.Serializer abstractBoundsSerializer;
+
+        public Serializer(AbstractBounds.Serializer abstractBoundsSerializer)
+        {
+            this.abstractBoundsSerializer = abstractBoundsSerializer;
+        }
+
         public void serialize(PagedRangeCommand cmd, DataOutputPlus out, int version) throws IOException
         {
             out.writeUTF(cmd.keyspace);
             out.writeUTF(cmd.columnFamily);
             out.writeLong(cmd.timestamp);
 
-            AbstractBounds.serializer.serialize(cmd.keyRange, out, version);
+            abstractBoundsSerializer.serialize(cmd.keyRange, out, version);
 
             CFMetaData metadata = Schema.instance.getCFMetaData(cmd.keyspace, cmd.columnFamily);
 
@@ -161,7 +172,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
             String columnFamily = in.readUTF();
             long timestamp = in.readLong();
 
-            AbstractBounds<RowPosition> keyRange = AbstractBounds.serializer.deserialize(in, version).toRowBounds();
+            AbstractBounds<RowPosition> keyRange = abstractBoundsSerializer.deserialize(in, version).toRowBounds();
 
             CFMetaData metadata = Schema.instance.getCFMetaData(keyspace, columnFamily);
 
@@ -184,7 +195,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
             boolean countCQL3Rows = version >= MessagingService.VERSION_21
                                   ? in.readBoolean()
                                   : predicate.compositesToGroup >= 0 || predicate.count != 1; // See #6857
-            return new PagedRangeCommand(keyspace, columnFamily, timestamp, keyRange, predicate, start, stop, rowFilter, limit, countCQL3Rows);
+            return new PagedRangeCommand(keyspace, columnFamily, timestamp, keyRange, predicate, start, stop, rowFilter, limit, countCQL3Rows, this);
         }
 
         public long serializedSize(PagedRangeCommand cmd, int version)
@@ -195,7 +206,7 @@ public class PagedRangeCommand extends AbstractRangeCommand
             size += TypeSizes.NATIVE.sizeof(cmd.columnFamily);
             size += TypeSizes.NATIVE.sizeof(cmd.timestamp);
 
-            size += AbstractBounds.serializer.serializedSize(cmd.keyRange, version);
+            size += abstractBoundsSerializer.serializedSize(cmd.keyRange, version);
 
             CFMetaData metadata = Schema.instance.getCFMetaData(cmd.keyspace, cmd.columnFamily);
 

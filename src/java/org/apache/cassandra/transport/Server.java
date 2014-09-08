@@ -38,6 +38,7 @@ import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,6 +101,7 @@ public class Server implements CassandraDaemon.Server
                                                                                      StorageProxy.instance,
                                                                                      MutationFactory.instance,
                                                                                      CounterMutationFactory.instance,
+                                                                                     MessagingService.instance,
                                                                                      DBConfig.instance,
                                                                                      LocatorConfig.instance);
 

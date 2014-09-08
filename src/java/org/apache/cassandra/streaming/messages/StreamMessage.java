@@ -24,8 +24,10 @@ import java.util.EnumMap;
 import java.util.Map;
 
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataOutputStreamAndChannel;
 import org.apache.cassandra.streaming.StreamRequest;
 import org.apache.cassandra.streaming.StreamSession;
@@ -106,11 +108,11 @@ public abstract class StreamMessage
             this.priority = priority;
         }
 
-        public static Map<Type, Serializer> getInputSerializers(KeyspaceManager keyspaceManager, Schema schema, IPartitioner partitioner)
+        public static Map<Type, Serializer> getInputSerializers(KeyspaceManager keyspaceManager, Schema schema, DBConfig dbConfig)
         {
             Map<Type, Serializer> serializers = new EnumMap<>(Type.class);
-            serializers.put(PREPARE, new PrepareMessage.Serializer(new StreamRequest.Serializer(partitioner)));
-            serializers.put(FILE, new IncomingFileMessage.MsgSerializer(keyspaceManager, schema, partitioner));
+            serializers.put(PREPARE, new PrepareMessage.Serializer(new StreamRequest.Serializer(dbConfig.getPartitioner(), dbConfig.tokenSerializer)));
+            serializers.put(FILE, new IncomingFileMessage.MsgSerializer(keyspaceManager, schema, dbConfig.getPartitioner()));
             serializers.put(RECEIVED, ReceivedMessage.serializer);
             serializers.put(RETRY, RetryMessage.serializer);
             serializers.put(COMPLETE, CompleteMessage.serializer);
@@ -118,10 +120,10 @@ public abstract class StreamMessage
             return serializers;
         }
 
-        public static Map<Type, Serializer> getOutputSerializers(IPartitioner partitioner)
+        public static Map<Type, Serializer> getOutputSerializers(DBConfig dbConfig)
         {
             Map<Type, Serializer> serializers = new EnumMap<>(Type.class);
-            serializers.put(PREPARE, new PrepareMessage.Serializer(new StreamRequest.Serializer(partitioner)));
+            serializers.put(PREPARE, new PrepareMessage.Serializer(new StreamRequest.Serializer(dbConfig.getPartitioner(), dbConfig.tokenSerializer)));
             serializers.put(FILE, OutgoingFileMessage.serializer);
             serializers.put(RECEIVED, ReceivedMessage.serializer);
             serializers.put(RETRY, RetryMessage.serializer);

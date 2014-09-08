@@ -64,6 +64,7 @@ public class SchemaLoader
     public static void prepareServer()
     {
         // Cleanup first
+        DatabaseDescriptor.init();
         cleanupAndLeaveDirs();
 
         CommitLog.instance.allocator.enableReserveSegmentCreation();

@@ -24,7 +24,6 @@ import java.nio.ByteBuffer;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public interface RowPosition extends RingPosition<RowPosition>
@@ -47,28 +46,36 @@ public interface RowPosition extends RingPosition<RowPosition>
     {
         public static RowPosition get(ByteBuffer key, IPartitioner p)
         {
-            return key == null || key.remaining() == 0 ? p.getMinimumToken().minKeyBound() : p.decorateKey(key);
+            return key == null || key.remaining() == 0 ? p.getMinimumToken().minKeyBound(p) : p.decorateKey(key);
         }
     }
-
-    public static final RowPositionSerializer serializer = new RowPositionSerializer();
 
     public Kind kind();
     public boolean isMinimum();
 
-    public static class RowPositionSerializer implements ISerializer<RowPosition>
+    public static class Serializer implements ISerializer<RowPosition>
     {
+
+        private final IPartitioner partitioner;
+        private final Token.Serializer tokenSerializer;
+
+        public Serializer(IPartitioner partitioner, Token.Serializer tokenSerializer)
+        {
+            this.partitioner = partitioner;
+            this.tokenSerializer = tokenSerializer;
+        }
+
         /*
-         * We need to be able to serialize both Token.KeyBound and
-         * DecoratedKey. To make this compact, we first write a byte whose
-         * meaning is:
-         *   - 0: DecoratedKey
-         *   - 1: a 'minimum' Token.KeyBound
-         *   - 2: a 'maximum' Token.KeyBound
-         * In the case of the DecoratedKey, we then serialize the key (the
-         * token is recreated on the other side). In the other cases, we then
-         * serialize the token.
-         */
+                 * We need to be able to serialize both Token.KeyBound and
+                 * DecoratedKey. To make this compact, we first write a byte whose
+                 * meaning is:
+                 *   - 0: DecoratedKey
+                 *   - 1: a 'minimum' Token.KeyBound
+                 *   - 2: a 'maximum' Token.KeyBound
+                 * In the case of the DecoratedKey, we then serialize the key (the
+                 * token is recreated on the other side). In the other cases, we then
+                 * serialize the token.
+                 */
         public void serialize(RowPosition pos, DataOutputPlus out) throws IOException
         {
             Kind kind = pos.kind();
@@ -76,7 +83,7 @@ public interface RowPosition extends RingPosition<RowPosition>
             if (kind == Kind.ROW_KEY)
                 ByteBufferUtil.writeWithShortLength(((DecoratedKey)pos).getKey(), out);
             else
-                Token.serializer.serialize(pos.getToken(), out);
+                tokenSerializer.serialize(pos.getToken(), out);
         }
 
         public RowPosition deserialize(DataInput in) throws IOException
@@ -85,12 +92,12 @@ public interface RowPosition extends RingPosition<RowPosition>
             if (kind == Kind.ROW_KEY)
             {
                 ByteBuffer k = ByteBufferUtil.readWithShortLength(in);
-                return LocatorConfig.instance.getPartitioner().decorateKey(k);
+                return partitioner.decorateKey(k);
             }
             else
             {
-                Token t = Token.serializer.deserialize(in);
-                return kind == Kind.MIN_BOUND ? t.minKeyBound() : t.maxKeyBound();
+                Token t = tokenSerializer.deserialize(in);
+                return kind == Kind.MIN_BOUND ? t.minKeyBound(partitioner) : t.maxKeyBound();
             }
         }
 
@@ -105,7 +112,7 @@ public interface RowPosition extends RingPosition<RowPosition>
             }
             else
             {
-                size += Token.serializer.serializedSize(pos.getToken(), typeSizes);
+                size += tokenSerializer.serializedSize(pos.getToken(), typeSizes);
             }
             return size;
         }

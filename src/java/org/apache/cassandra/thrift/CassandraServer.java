@@ -39,6 +39,7 @@ import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1185,7 +1186,8 @@ public class CassandraServer implements Cassandra.Iface
                                                                         filter,
                                                                         bounds,
                                                                         ThriftConversion.fromThrift(range.row_filter),
-                                                                        range.count),
+                                                                        range.count,
+                                                                        MessagingService.instance.rangeSliceCommandSerializer),
                                                   consistencyLevel);
             }
             finally
@@ -1272,7 +1274,7 @@ public class CassandraServer implements Cassandra.Iface
             try
             {
                 IDiskAtomFilter filter = ThriftValidation.asIFilter(predicate, metadata, null);
-                rows = StorageProxy.instance.getRangeSlice(new RangeSliceCommand(keyspace, column_family, now, filter, bounds, null, range.count, true, true), consistencyLevel);
+                rows = StorageProxy.instance.getRangeSlice(new RangeSliceCommand(keyspace, column_family, now, filter, bounds, null, range.count, true, true, MessagingService.instance.rangeSliceCommandSerializer), consistencyLevel);
             }
             finally
             {
@@ -1354,7 +1356,8 @@ public class CassandraServer implements Cassandra.Iface
                                                               filter,
                                                               bounds,
                                                               ThriftConversion.fromThrift(index_clause.expressions),
-                                                              index_clause.count);
+                                                              index_clause.count,
+                                                              MessagingService.instance.rangeSliceCommandSerializer);
 
             List<Row> rows = StorageProxy.instance.getRangeSlice(command, consistencyLevel);
             return thriftifyKeySlices(rows, column_parent, column_predicate, now);
