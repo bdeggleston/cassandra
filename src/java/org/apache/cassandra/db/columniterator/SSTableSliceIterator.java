@@ -19,10 +19,7 @@ package org.apache.cassandra.db.columniterator;
 
 import java.io.IOException;
 
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.OnDiskAtom;
-import org.apache.cassandra.db.RowIndexEntry;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.FileDataInput;
@@ -36,11 +33,11 @@ public class SSTableSliceIterator implements OnDiskAtomIterator
     private final OnDiskAtomIterator reader;
     private final DecoratedKey key;
 
-    public SSTableSliceIterator(SSTableReader sstable, DecoratedKey key, ColumnSlice[] slices, boolean reversed, Tracing tracing)
+    public SSTableSliceIterator(SSTableReader sstable, DecoratedKey key, ColumnSlice[] slices, boolean reversed, Tracing tracing, DBConfig dbConfig)
     {
         this.key = key;
         RowIndexEntry indexEntry = sstable.getPosition(key, SSTableReader.Operator.EQ);
-        this.reader = indexEntry == null ? null : createReader(sstable, indexEntry, null, slices, reversed, tracing);
+        this.reader = indexEntry == null ? null : createReader(sstable, indexEntry, null, slices, reversed, tracing, dbConfig);
     }
 
     /**
@@ -55,17 +52,17 @@ public class SSTableSliceIterator implements OnDiskAtomIterator
      * @param reversed Results are returned in reverse order iff reversed is true.
      * @param indexEntry position of the row
      */
-    public SSTableSliceIterator(SSTableReader sstable, FileDataInput file, DecoratedKey key, ColumnSlice[] slices, boolean reversed, RowIndexEntry indexEntry, Tracing tracing)
+    public SSTableSliceIterator(SSTableReader sstable, FileDataInput file, DecoratedKey key, ColumnSlice[] slices, boolean reversed, RowIndexEntry indexEntry, Tracing tracing, DBConfig dbConfig)
     {
         this.key = key;
-        reader = createReader(sstable, indexEntry, file, slices, reversed, tracing);
+        reader = createReader(sstable, indexEntry, file, slices, reversed, tracing, dbConfig);
     }
 
-    private static OnDiskAtomIterator createReader(SSTableReader sstable, RowIndexEntry indexEntry, FileDataInput file, ColumnSlice[] slices, boolean reversed, Tracing tracing)
+    private static OnDiskAtomIterator createReader(SSTableReader sstable, RowIndexEntry indexEntry, FileDataInput file, ColumnSlice[] slices, boolean reversed, Tracing tracing, DBConfig dbConfig)
     {
         return slices.length == 1 && slices[0].start.isEmpty() && !reversed
              ? new SimpleSliceReader(sstable, indexEntry, file, slices[0].finish, tracing)
-             : new IndexedSliceReader(sstable, indexEntry, file, slices, reversed, tracing);
+             : new IndexedSliceReader(sstable, indexEntry, file, slices, reversed, tracing, dbConfig);
     }
 
     public DecoratedKey getKey()

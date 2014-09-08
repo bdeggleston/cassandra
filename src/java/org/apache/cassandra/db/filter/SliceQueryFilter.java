@@ -180,12 +180,12 @@ public class SliceQueryFilter implements IDiskAtomFilter
 
     public OnDiskAtomIterator getSSTableColumnIterator(SSTableReader sstable, DecoratedKey key)
     {
-        return new SSTableSliceIterator(sstable, key, slices, reversed, Tracing.instance);
+        return new SSTableSliceIterator(sstable, key, slices, reversed, Tracing.instance, DBConfig.instance);
     }
 
     public OnDiskAtomIterator getSSTableColumnIterator(SSTableReader sstable, FileDataInput file, DecoratedKey key, RowIndexEntry indexEntry)
     {
-        return new SSTableSliceIterator(sstable, file, key, slices, reversed, indexEntry, Tracing.instance);
+        return new SSTableSliceIterator(sstable, file, key, slices, reversed, indexEntry, Tracing.instance, DBConfig.instance);
     }
 
     public Comparator<Cell> getColumnComparator(CellNameType comparator)

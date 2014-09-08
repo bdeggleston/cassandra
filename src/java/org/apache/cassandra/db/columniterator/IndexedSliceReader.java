@@ -64,7 +64,7 @@ class IndexedSliceReader extends AbstractIterator<OnDiskAtom> implements OnDiskA
      * finish (reverse start) elements. i.e. forward: [a,b],[d,e],[g,h] reverse: [h,g],[e,d],[b,a]. This reader also
      * assumes that validation has been performed in terms of intervals (no overlapping intervals).
      */
-    public IndexedSliceReader(SSTableReader sstable, RowIndexEntry indexEntry, FileDataInput input, ColumnSlice[] slices, boolean reversed, Tracing tracing)
+    public IndexedSliceReader(SSTableReader sstable, RowIndexEntry indexEntry, FileDataInput input, ColumnSlice[] slices, boolean reversed, Tracing tracing, DBConfig dbConfig)
     {
         tracing.trace("Seeking to partition indexed section in data file");
         this.sstable = sstable;
@@ -77,7 +77,7 @@ class IndexedSliceReader extends AbstractIterator<OnDiskAtom> implements OnDiskA
         try
         {
             this.indexes = indexEntry.columnsIndex();
-            emptyColumnFamily = ArrayBackedSortedColumns.factory.create(sstable.metadata, DBConfig.instance);
+            emptyColumnFamily = ArrayBackedSortedColumns.factory.create(sstable.metadata, dbConfig);
             if (indexes.isEmpty())
             {
                 setToRowStart(indexEntry, input);
