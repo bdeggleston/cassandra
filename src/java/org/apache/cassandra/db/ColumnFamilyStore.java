@@ -1748,7 +1748,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         final ViewFragment view = select(viewFilter(range.keyRange()));
         Tracing.instance.trace("Executing seq scan across {} sstables for {}", view.sstables.size(), range.keyRange().getString(metadata.getKeyValidator()));
 
-        final CloseableIterator<Row> iterator = RowIteratorFactory.getIterator(view.memtables, view.sstables, range, this, now);
+        final CloseableIterator<Row> iterator = RowIteratorFactory.getIterator(view.memtables, view.sstables, range, this, now, DBConfig.instance);
 
         // todo this could be pushed into SSTableScanner
         return new AbstractScanIterator()

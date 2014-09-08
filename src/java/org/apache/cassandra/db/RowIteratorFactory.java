@@ -55,7 +55,8 @@ public class RowIteratorFactory
                                                      final Collection<SSTableReader> sstables,
                                                      final DataRange range,
                                                      final ColumnFamilyStore cfs,
-                                                     final long now)
+                                                     final long now,
+                                                     final DBConfig dbConfig)
     {
         // fetch data from current memtable, historical memtables, and SSTables in the correct order.
         final List<CloseableIterator<OnDiskAtomIterator>> iterators = new ArrayList<>(Iterables.size(memtables) + sstables.size());
@@ -77,7 +78,7 @@ public class RowIteratorFactory
             @Override
             protected void onKeyChange()
             {
-                this.returnCF = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance, range.columnFilter.isReversed());
+                this.returnCF = ArrayBackedSortedColumns.factory.create(cfs.metadata, dbConfig, range.columnFilter.isReversed());
             }
 
             public void reduce(OnDiskAtomIterator current)
