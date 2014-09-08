@@ -41,6 +41,7 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
     public final int maxResults;
     public final boolean countCQL3Rows;
     public final boolean isPaging;
+    private final KeyspaceManager keyspaceManager;
     private final Serializer serializer;
 
     public RangeSliceCommand(String keyspace,
@@ -49,9 +50,10 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                              IDiskAtomFilter predicate,
                              AbstractBounds<RowPosition> range,
                              int maxResults,
+                             KeyspaceManager keyspaceManager,
                              Serializer serializer)
     {
-        this(keyspace, columnFamily, timestamp, predicate, range, null, maxResults, false, false, serializer);
+        this(keyspace, columnFamily, timestamp, predicate, range, null, maxResults, false, false, keyspaceManager, serializer);
     }
 
     public RangeSliceCommand(String keyspace,
@@ -61,9 +63,10 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                              AbstractBounds<RowPosition> range,
                              List<IndexExpression> row_filter,
                              int maxResults,
+                             KeyspaceManager keyspaceManager,
                              Serializer serializer)
     {
-        this(keyspace, columnFamily, timestamp, predicate, range, row_filter, maxResults, false, false, serializer);
+        this(keyspace, columnFamily, timestamp, predicate, range, row_filter, maxResults, false, false, keyspaceManager, serializer);
     }
 
     public RangeSliceCommand(String keyspace,
@@ -75,12 +78,14 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                              int maxResults,
                              boolean countCQL3Rows,
                              boolean isPaging,
+                             KeyspaceManager keyspaceManager,
                              Serializer serializer)
     {
         super(keyspace, columnFamily, timestamp, range, predicate, rowFilter);
         this.maxResults = maxResults;
         this.countCQL3Rows = countCQL3Rows;
         this.isPaging = isPaging;
+        this.keyspaceManager = keyspaceManager;
         this.serializer = serializer;
     }
 
@@ -100,6 +105,7 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                                      maxResults,
                                      countCQL3Rows,
                                      isPaging,
+                                     keyspaceManager,
                                      serializer);
     }
 
@@ -114,6 +120,7 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
                                      newLimit,
                                      countCQL3Rows,
                                      isPaging,
+                                     keyspaceManager,
                                      serializer);
     }
 
@@ -129,7 +136,7 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
 
     public List<Row> executeLocally()
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(keyspace).getColumnFamilyStore(columnFamily);
+        ColumnFamilyStore cfs = keyspaceManager.open(keyspace).getColumnFamilyStore(columnFamily);
 
         ExtendedFilter exFilter = cfs.makeExtendedFilter(keyRange, predicate, rowFilter, maxResults, countCQL3Rows, isPaging, timestamp);
         if (cfs.indexManager.hasIndexFor(rowFilter))
@@ -156,10 +163,12 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
     public static class Serializer implements IVersionedSerializer<RangeSliceCommand>
     {
 
+        private final KeyspaceManager keyspaceManager;
         private final AbstractBounds.Serializer abstractBoundsSerializer;
 
-        public Serializer(AbstractBounds.Serializer abstractBoundsSerializer)
+        public Serializer(KeyspaceManager keyspaceManager, AbstractBounds.Serializer abstractBoundsSerializer)
         {
+            this.keyspaceManager = keyspaceManager;
             this.abstractBoundsSerializer = abstractBoundsSerializer;
         }
 
@@ -219,7 +228,7 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
             int maxResults = in.readInt();
             boolean countCQL3Rows = in.readBoolean();
             boolean isPaging = in.readBoolean();
-            return new RangeSliceCommand(keyspace, columnFamily, timestamp, predicate, range, rowFilter, maxResults, countCQL3Rows, isPaging, this);
+            return new RangeSliceCommand(keyspace, columnFamily, timestamp, predicate, range, rowFilter, maxResults, countCQL3Rows, isPaging, keyspaceManager, this);
         }
 
         public long serializedSize(RangeSliceCommand rsc, int version)

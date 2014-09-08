@@ -418,7 +418,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         AbstractBounds<RowPosition> keyBounds = getKeyBounds(options);
         return keyBounds == null
              ? null
-             : new RangeSliceCommand(keyspace(), columnFamily(), now,  filter, keyBounds, expressions, limit, !parameters.isDistinct, false, messagingService.rangeSliceCommandSerializer);
+             : new RangeSliceCommand(keyspace(), columnFamily(), now,  filter, keyBounds, expressions, limit, !parameters.isDistinct, false, keyspaceManager, messagingService.rangeSliceCommandSerializer);
     }
 
     private AbstractBounds<RowPosition> getKeyBounds(QueryOptions options) throws InvalidRequestException

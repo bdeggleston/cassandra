@@ -169,13 +169,13 @@ public class QueryPagerTest
         SortedSet<CellName> s = new TreeSet<CellName>(cfs().metadata.comparator);
         for (String name : names)
             s.add(CellNames.simpleDense(bytes(name)));
-        return new RangeSliceCommand(KEYSPACE1, CF_STANDARD, System.currentTimeMillis(), new NamesQueryFilter(s, true), range, count, MessagingService.instance.rangeSliceCommandSerializer);
+        return new RangeSliceCommand(KEYSPACE1, CF_STANDARD, System.currentTimeMillis(), new NamesQueryFilter(s, true), range, count, KeyspaceManager.instance, MessagingService.instance.rangeSliceCommandSerializer);
     }
 
     private static RangeSliceCommand rangeSliceQuery(AbstractBounds<RowPosition> range, int count, String start, String end)
     {
         SliceQueryFilter filter = new SliceQueryFilter(CellNames.simpleDense(bytes(start)), CellNames.simpleDense(bytes(end)), false, Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance);
-        return new RangeSliceCommand(KEYSPACE1, CF_STANDARD, System.currentTimeMillis(), filter, range, count, MessagingService.instance.rangeSliceCommandSerializer);
+        return new RangeSliceCommand(KEYSPACE1, CF_STANDARD, System.currentTimeMillis(), filter, range, count, KeyspaceManager.instance, MessagingService.instance.rangeSliceCommandSerializer);
     }
 
     private static void assertRow(Row r, String key, String... names)

@@ -1187,6 +1187,7 @@ public class CassandraServer implements Cassandra.Iface
                                                                         bounds,
                                                                         ThriftConversion.fromThrift(range.row_filter),
                                                                         range.count,
+                                                                        KeyspaceManager.instance,
                                                                         MessagingService.instance.rangeSliceCommandSerializer),
                                                   consistencyLevel);
             }
@@ -1274,7 +1275,7 @@ public class CassandraServer implements Cassandra.Iface
             try
             {
                 IDiskAtomFilter filter = ThriftValidation.asIFilter(predicate, metadata, null);
-                rows = StorageProxy.instance.getRangeSlice(new RangeSliceCommand(keyspace, column_family, now, filter, bounds, null, range.count, true, true, MessagingService.instance.rangeSliceCommandSerializer), consistencyLevel);
+                rows = StorageProxy.instance.getRangeSlice(new RangeSliceCommand(keyspace, column_family, now, filter, bounds, null, range.count, true, true, KeyspaceManager.instance, MessagingService.instance.rangeSliceCommandSerializer), consistencyLevel);
             }
             finally
             {
@@ -1357,6 +1358,7 @@ public class CassandraServer implements Cassandra.Iface
                                                               bounds,
                                                               ThriftConversion.fromThrift(index_clause.expressions),
                                                               index_clause.count,
+                                                              KeyspaceManager.instance,
                                                               MessagingService.instance.rangeSliceCommandSerializer);
 
             List<Row> rows = StorageProxy.instance.getRangeSlice(command, consistencyLevel);
