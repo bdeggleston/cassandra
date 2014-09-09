@@ -34,10 +34,10 @@ import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.context.CounterContext;
 import org.apache.cassandra.db.filter.NamesQueryFilter;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.CacheService;
@@ -50,27 +50,36 @@ public class CounterMutation implements IMutation
     private final ConsistencyLevel consistency;
 
     private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
     private final CacheService cacheService;
     private final KeyspaceManager keyspaceManager;
     private final MutationFactory mutationFactory;
     private final SystemKeyspace systemKeyspace;
+    private final MessagingService messagingService;
     private final Tracing tracing;
+    private final DBConfig dbConfig;
+    private final IPartitioner partitioner;
     private final Serializer serializer;
     private final Striped<Lock> locks;
 
     CounterMutation(Mutation mutation, ConsistencyLevel consistency, DatabaseDescriptor databaseDescriptor,
-                    CacheService cacheService, KeyspaceManager keyspaceManager, MutationFactory mutationFactory,
-                    SystemKeyspace systemKeyspace, Tracing tracing, Serializer serializer, Striped<Lock> locks)
+                    Schema schema, CacheService cacheService, KeyspaceManager keyspaceManager, MutationFactory mutationFactory,
+                    SystemKeyspace systemKeyspace, MessagingService messagingService, Tracing tracing, DBConfig dbConfig,
+                    IPartitioner partitioner, Serializer serializer, Striped<Lock> locks)
     {
         this.mutation = mutation;
         this.consistency = consistency;
 
         this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
         this.cacheService = cacheService;
         this.keyspaceManager = keyspaceManager;
         this.mutationFactory = mutationFactory;
         this.systemKeyspace = systemKeyspace;
+        this.messagingService = messagingService;
         this.tracing = tracing;
+        this.dbConfig = dbConfig;
+        this.partitioner = partitioner;
         this.serializer = serializer;
         this.locks = locks;
     }
@@ -276,7 +285,7 @@ public class CounterMutation implements IMutation
             if (currentValues[i] == null)
                 names.add(counterUpdateCells.get(i).name());
 
-        ReadCommand cmd = new SliceByNamesReadCommand(getKeyspaceName(), key(), cfs.metadata.cfName, Long.MIN_VALUE, new NamesQueryFilter(names, DBConfig.instance), Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
+        ReadCommand cmd = new SliceByNamesReadCommand(getKeyspaceName(), key(), cfs.metadata.cfName, Long.MIN_VALUE, new NamesQueryFilter(names, dbConfig), schema, partitioner, messagingService.readCommandSerializer);
         Row row = cmd.getRow(cfs.keyspace);
         ColumnFamily cf = row == null ? null : row.cf;
 

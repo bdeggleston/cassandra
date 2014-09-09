@@ -2,6 +2,9 @@ package org.apache.cassandra.db;
 
 import com.google.common.util.concurrent.Striped;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.CacheService;
 import org.apache.cassandra.tracing.Tracing;
 
@@ -25,11 +28,15 @@ public class CounterMutationFactory
         return new CounterMutation(mutation,
                                    consistency,
                                    DatabaseDescriptor.instance,
+                                   Schema.instance,
                                    CacheService.instance,
                                    KeyspaceManager.instance,
                                    MutationFactory.instance,
                                    SystemKeyspace.instance,
+                                   MessagingService.instance,
                                    Tracing.instance,
+                                   DBConfig.instance,
+                                   LocatorConfig.instance.getPartitioner(),
                                    serializer,
                                    locks);
     }
