@@ -48,9 +48,14 @@ public class SSTableDeletingTask implements Runnable
     private DataTracker tracker;
     private final long size;
 
-    public SSTableDeletingTask(SSTableReader referent)
+    private final SystemKeyspace systemKeyspace;
+    private final StorageServiceExecutors storageServiceExecutors;
+
+    public SSTableDeletingTask(SSTableReader referent, SystemKeyspace systemKeyspace, StorageServiceExecutors storageServiceExecutors)
     {
         this.referent = referent;
+        this.systemKeyspace = systemKeyspace;
+        this.storageServiceExecutors = storageServiceExecutors;
         if (referent.isOpenEarly)
         {
             this.desc = referent.descriptor.asType(Descriptor.Type.TEMPLINK);
@@ -71,7 +76,7 @@ public class SSTableDeletingTask implements Runnable
 
     public void schedule()
     {
-        StorageServiceExecutors.instance.tasks.submit(this);
+        storageServiceExecutors.tasks.submit(this);
     }
 
     public void run()
@@ -80,7 +85,7 @@ public class SSTableDeletingTask implements Runnable
             tracker.notifyDeleting(referent);
 
         if (referent.readMeter != null)
-            SystemKeyspace.instance.clearSSTableReadMeter(referent.getKeyspaceName(), referent.getColumnFamilyName(), referent.descriptor.generation);
+            systemKeyspace.clearSSTableReadMeter(referent.getKeyspaceName(), referent.getColumnFamilyName(), referent.descriptor.generation);
 
         // If we can't successfully delete the DATA component, set the task to be retried later: see above
         File datafile = new File(desc.filenameFor(Component.DATA));
@@ -110,7 +115,7 @@ public class SSTableDeletingTask implements Runnable
     }
 
     /** for tests */
-    public static void waitForDeletions()
+    public static void waitForDeletions(StorageServiceExecutors storageServiceExecutors)
     {
         Runnable runnable = new Runnable()
         {
@@ -119,7 +124,7 @@ public class SSTableDeletingTask implements Runnable
             }
         };
 
-        FBUtilities.waitOnFuture(StorageServiceExecutors.instance.tasks.schedule(runnable, 0, TimeUnit.MILLISECONDS));
+        FBUtilities.waitOnFuture(storageServiceExecutors.tasks.schedule(runnable, 0, TimeUnit.MILLISECONDS));
     }
 }
 

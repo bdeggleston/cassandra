@@ -283,7 +283,7 @@ public class SSTableReader extends SSTable
         this.cacheService = cacheService;
         this.fileCacheService = fileCacheService;
 
-        deletingTask = new SSTableDeletingTask(this);
+        deletingTask = new SSTableDeletingTask(this, systemKeyspace, storageServiceExecutors);
 
         // Don't track read rates for tables in the system keyspace and don't bother trying to load or persist
         // the read meter when in client mode

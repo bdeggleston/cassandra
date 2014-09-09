@@ -36,6 +36,7 @@ import org.apache.cassandra.io.sstable.SSTableDeletingTask;
 import org.apache.cassandra.locator.OldNetworkTopologyStrategy;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.service.MigrationManager;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import static org.apache.cassandra.Util.cellname;
@@ -619,7 +620,7 @@ public class DefsTest
 
         // check
         Assert.assertTrue(cfs.indexManager.getIndexes().isEmpty());
-        SSTableDeletingTask.waitForDeletions();
+        SSTableDeletingTask.waitForDeletions(StorageServiceExecutors.instance);
         Assert.assertFalse(new File(desc.filenameFor(Component.DATA)).exists());
     }
 

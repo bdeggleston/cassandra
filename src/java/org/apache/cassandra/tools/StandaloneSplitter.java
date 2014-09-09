@@ -22,6 +22,7 @@ import java.io.File;
 import java.util.*;
 
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -145,7 +146,7 @@ public class StandaloneSplitter
                         e.printStackTrace(System.err);
                 }
             }
-            SSTableDeletingTask.waitForDeletions();
+            SSTableDeletingTask.waitForDeletions(StorageServiceExecutors.instance);
             System.exit(0); // We need that to stop non daemonized threads
         }
         catch (Exception e)

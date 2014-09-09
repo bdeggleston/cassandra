@@ -21,6 +21,7 @@ import java.util.*;
 
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -104,7 +105,7 @@ public class StandaloneUpgrader
                 }
             }
 
-            SSTableDeletingTask.waitForDeletions();
+            SSTableDeletingTask.waitForDeletions(StorageServiceExecutors.instance);
             System.exit(0);
         }
         catch (Exception e)

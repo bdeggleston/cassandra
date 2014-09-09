@@ -25,6 +25,7 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -134,7 +135,7 @@ public class StandaloneScrubber
             if (manifest != null)
                 checkManifest(manifest);
 
-            SSTableDeletingTask.waitForDeletions();
+            SSTableDeletingTask.waitForDeletions(StorageServiceExecutors.instance);
             System.exit(0); // We need that to stop non daemonized threads
         }
         catch (Exception e)

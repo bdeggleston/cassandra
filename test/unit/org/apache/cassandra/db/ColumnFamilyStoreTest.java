@@ -46,6 +46,7 @@ import com.google.common.collect.Sets;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -1897,7 +1898,7 @@ public class ColumnFamilyStoreTest
         String cf = CF_STANDARD1;
         ColumnFamilyStore cfs = KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf);
         cfs.truncateBlocking();
-        SSTableDeletingTask.waitForDeletions();
+        SSTableDeletingTask.waitForDeletions(StorageServiceExecutors.instance);
 
         final CFMetaData cfmeta = Schema.instance.getCFMetaData(ks, cf);
         Directories dir = new Directories(cfs.metadata, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance);
