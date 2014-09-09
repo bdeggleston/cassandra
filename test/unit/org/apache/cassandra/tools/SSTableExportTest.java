@@ -26,6 +26,7 @@ import java.io.PrintStream;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.io.sstable.SSTableReaderFactory;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -109,7 +110,7 @@ public class SSTableExportTest
         File temp = File.createTempFile("Standard1", ".txt");
         final Descriptor descriptor = Descriptor.fromFilename(writer.getFilename());
         SSTableExport.enumeratekeys(descriptor, new PrintStream(temp.getPath()),
-                CFMetaDataFactory.instance.sparseCFMetaData(descriptor.ksname, descriptor.cfname, BytesType.instance));
+                CFMetaDataFactory.instance.sparseCFMetaData(descriptor.ksname, descriptor.cfname, BytesType.instance), LocatorConfig.instance.getPartitioner());
 
 
         try (FileReader file = new FileReader(temp))

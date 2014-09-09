@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
 
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.cli.*;
 
@@ -223,10 +224,10 @@ public class SSTableExport
      * @param metadata Metadata to print keys in a proper format
      * @throws IOException on failure to read/write input/output
      */
-    public static void enumeratekeys(Descriptor desc, PrintStream outs, CFMetaData metadata)
+    public static void enumeratekeys(Descriptor desc, PrintStream outs, CFMetaData metadata, IPartitioner partitioner)
     throws IOException
     {
-        KeyIterator iter = new KeyIterator(desc);
+        KeyIterator iter = new KeyIterator(desc, partitioner);
         try
         {
             DecoratedKey lastKey = null;
@@ -457,7 +458,7 @@ public class SSTableExport
         {
             if (cmd.hasOption(ENUMERATEKEYS_OPTION))
             {
-                enumeratekeys(descriptor, System.out, cfStore.metadata);
+                enumeratekeys(descriptor, System.out, cfStore.metadata, LocatorConfig.instance.getPartitioner());
             }
             else
             {

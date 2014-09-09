@@ -24,6 +24,7 @@ import com.google.common.collect.AbstractIterator;
 
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.RowIndexEntry;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.util.RandomAccessReader;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
@@ -33,11 +34,13 @@ import org.apache.cassandra.utils.CloseableIterator;
 public class KeyIterator extends AbstractIterator<DecoratedKey> implements CloseableIterator<DecoratedKey>
 {
     private final RandomAccessReader in;
+    private final IPartitioner partitioner;
 
-    public KeyIterator(Descriptor desc)
+    public KeyIterator(Descriptor desc, IPartitioner partitioner)
     {
         File path = new File(desc.filenameFor(Component.PRIMARY_INDEX));
         in = RandomAccessReader.open(path);
+        this.partitioner = partitioner;
     }
 
     protected DecoratedKey computeNext()
@@ -46,7 +49,7 @@ public class KeyIterator extends AbstractIterator<DecoratedKey> implements Close
         {
             if (in.isEOF())
                 return endOfData();
-            DecoratedKey key = LocatorConfig.instance.getPartitioner().decorateKey(ByteBufferUtil.readWithShortLength(in));
+            DecoratedKey key = partitioner.decorateKey(ByteBufferUtil.readWithShortLength(in));
             RowIndexEntry.Serializer.skip(in); // skip remainder of the entry
             return key;
         }
