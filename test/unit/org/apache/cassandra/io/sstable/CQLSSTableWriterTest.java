@@ -22,7 +22,10 @@ import java.util.Iterator;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.KSMetaDataFactory;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.gms.Gossiper;
@@ -68,7 +71,7 @@ public class CQLSSTableWriterTest
                       + "  v2 int"
                       + ")";
         String insert = "INSERT INTO cql_keyspace.table1 (k, v1, v2) VALUES (?, ?, ?)";
-        CQLSSTableWriter writer = CQLSSTableWriter.builder()
+        CQLSSTableWriter writer = CQLSSTableWriter.builder(Schema.instance, QueryProcessor.instance, Auth.instance, KSMetaDataFactory.instance, DBConfig.instance)
                                                   .inDirectory(dataDir)
                                                   .forTable(schema)
                                                   .withPartitioner(LocatorConfig.instance.getPartitioner())

@@ -24,10 +24,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.CFMetaDataFactory;
-import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.auth.Auth;
+import org.apache.cassandra.config.*;
 import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.hadoop.AbstractBulkRecordWriter;
 import org.apache.cassandra.hadoop.BulkRecordWriter;
@@ -111,7 +111,7 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
         {
             if (writer == null)
             {
-                writer = CQLSSTableWriter.builder()
+                writer = CQLSSTableWriter.builder(Schema.instance, QueryProcessor.instance, Auth.instance, KSMetaDataFactory.instance, DBConfig.instance)
                     .forTable(schema)
                     .using(insertStatement)
                     .withPartitioner(ConfigHelper.getOutputPartitioner(conf))

@@ -92,9 +92,9 @@ public class CQLSSTableWriter implements Closeable
      *
      * @return the new builder.
      */
-    public static Builder builder()
+    public static Builder builder(Schema schema, QueryProcessor queryProcessor, Auth auth, KSMetaDataFactory ksMetaDataFactory, DBConfig dbConfig)
     {
-        return new Builder();
+        return new Builder(schema, queryProcessor, auth, ksMetaDataFactory, dbConfig);
     }
 
     /**
@@ -264,14 +264,27 @@ public class CQLSSTableWriter implements Closeable
         private File directory;
         private IPartitioner partitioner = new Murmur3Partitioner();
 
-        private CFMetaData schema;
+        private CFMetaData cfMetaData;
         private UpdateStatement insert;
         private List<ColumnSpecification> boundNames;
 
         private boolean sorted = false;
         private long bufferSizeInMB = 128;
 
-        private Builder() {}
+        private final Schema schema;
+        private final QueryProcessor queryProcessor;
+        private final Auth auth;
+        private final KSMetaDataFactory ksMetaDataFactory;
+        private final DBConfig dbConfig;
+
+        public Builder(Schema schema, QueryProcessor queryProcessor, Auth auth, KSMetaDataFactory ksMetaDataFactory, DBConfig dbConfig)
+        {
+            this.schema = schema;
+            this.queryProcessor = queryProcessor;
+            this.auth = auth;
+            this.ksMetaDataFactory = ksMetaDataFactory;
+            this.dbConfig = dbConfig;
+        }
 
         /**
          * The directory where to write the sstables.
@@ -317,32 +330,32 @@ public class CQLSSTableWriter implements Closeable
          * <p>
          * This is a mandatory option.
          *
-         * @param schema the schema of the table for which sstables are to be created.
+         * @param schemaDef the schema of the table for which sstables are to be created.
          * @return this builder.
          *
          * @throws IllegalArgumentException if {@code schema} is not a valid CREATE TABLE statement
          * or does not have a fully-qualified table name.
          */
-        public Builder forTable(String schema)
+        public Builder forTable(String schemaDef)
         {
             try
             {
-                this.schema = getStatement(schema, CreateTableStatement.class, "CREATE TABLE").left.getCFMetaData().rebuild();
+                this.cfMetaData = getStatement(schemaDef, CreateTableStatement.class, "CREATE TABLE").left.getCFMetaData().rebuild();
 
                 // We need to register the keyspace/table metadata through Schema, otherwise we won't be able to properly
                 // build the insert statement in using().
-                if (Schema.instance.getKSMetaData(this.schema.ksName) == null)
+                if (schema.getKSMetaData(this.cfMetaData.ksName) == null)
                 {
-                    KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(this.schema.ksName,
+                    KSMetaData ksm = ksMetaDataFactory.newKeyspace(this.cfMetaData.ksName,
                                                             AbstractReplicationStrategy.getClass("org.apache.cassandra.locator.SimpleStrategy"),
                                                             ImmutableMap.of("replication_factor", "1"),
                                                             true,
-                                                            Collections.singleton(this.schema));
-                    Schema.instance.load(ksm);
+                                                            Collections.singleton(this.cfMetaData));
+                    schema.load(ksm);
                 }
-                else if (Schema.instance.getCFMetaData(this.schema.ksName, this.schema.cfName) == null)
+                else if (schema.getCFMetaData(this.cfMetaData.ksName, this.cfMetaData.cfName) == null)
                 {
-                    Schema.instance.load(this.schema);
+                    schema.load(this.cfMetaData);
                 }
 
                 return this;
@@ -388,7 +401,7 @@ public class CQLSSTableWriter implements Closeable
          */
         public Builder using(String insertStatement)
         {
-            if (schema == null)
+            if (cfMetaData == null)
                 throw new IllegalStateException("You need to define the schema by calling forTable() prior to this call.");
 
             Pair<UpdateStatement, List<ColumnSpecification>> p = getStatement(insertStatement, UpdateStatement.class, "INSERT");
@@ -444,12 +457,12 @@ public class CQLSSTableWriter implements Closeable
             return this;
         }
 
-        private static <T extends CQLStatement> Pair<T, List<ColumnSpecification>> getStatement(String query, Class<T> klass, String type)
+        private <T extends CQLStatement> Pair<T, List<ColumnSpecification>> getStatement(String query, Class<T> klass, String type)
         {
             try
             {
-                ClientState state = ClientState.forInternalCalls(Auth.instance);
-                ParsedStatement.Prepared prepared = QueryProcessor.instance.getStatement(query, state);
+                ClientState state = ClientState.forInternalCalls(auth);
+                ParsedStatement.Prepared prepared = queryProcessor.getStatement(query, state);
                 CQLStatement stmt = prepared.statement;
                 stmt.validate(state);
 
@@ -468,7 +481,7 @@ public class CQLSSTableWriter implements Closeable
         {
             if (directory == null)
                 throw new IllegalStateException("No ouptut directory specified, you should provide a directory with inDirectory()");
-            if (schema == null)
+            if (cfMetaData == null)
                 throw new IllegalStateException("Missing schema, you should provide the schema for the SSTable to create with forTable()");
             if (insert == null)
                 throw new IllegalStateException("No insert statement specified, you should provide an insert statement through using()");
@@ -477,17 +490,17 @@ public class CQLSSTableWriter implements Closeable
             if (sorted)
             {
                 writer = new SSTableSimpleWriter(directory,
-                                                 schema,
+                                                 cfMetaData,
                                                  partitioner,
-                                                 DBConfig.instance);
+                                                 dbConfig);
             }
             else
             {
                 writer = new SSTableSimpleUnsortedWriter(directory,
-                                                         schema,
+                                                         cfMetaData,
                                                          partitioner,
                                                          bufferSizeInMB,
-                                                         DBConfig.instance);
+                                                         dbConfig);
             }
             return new CQLSSTableWriter(writer, insert, boundNames);
         }
