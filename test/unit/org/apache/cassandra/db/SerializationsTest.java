@@ -44,6 +44,7 @@ import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.DataInputStream;
@@ -53,6 +54,12 @@ import java.util.*;
 
 public class SerializationsTest extends AbstractSerializationsTester
 {
+    static
+    {
+        DatabaseDescriptor.init();
+    }
+
+
     Statics statics = new Statics();
 
     private static final String KEYSPACE1 = "Keyspace1";
@@ -75,6 +82,12 @@ public class SerializationsTest extends AbstractSerializationsTester
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, "Standard1"),
                                     SchemaLoader.superCFMD(KEYSPACE1, "Super1", LongType.instance));
+    }
+
+    @BeforeClass
+    public static void setUpClass() throws ConfigurationException
+    {
+        defineSchema();
     }
 
     private void testRangeSliceCommandWrite() throws IOException
