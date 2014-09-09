@@ -182,7 +182,7 @@ public class SecondaryIndexManager
         logger.info(String.format("Submitting index build of %s for data in %s",
                                   idxNames, StringUtils.join(sstables, ", ")));
 
-        SecondaryIndexBuilder builder = new SecondaryIndexBuilder(baseCfs, idxNames, new ReducingKeyIterator(sstables), storageService);
+        SecondaryIndexBuilder builder = new SecondaryIndexBuilder(baseCfs, idxNames, new ReducingKeyIterator(sstables, dbConfig.getPartitioner()), storageService);
         Future<?> future = compactionManager.submitIndexBuild(builder);
         FBUtilities.waitOnFuture(future);
 

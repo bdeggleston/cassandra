@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.IMergeIterator;
@@ -35,11 +36,11 @@ public class ReducingKeyIterator implements CloseableIterator<DecoratedKey>
 {
     private final IMergeIterator<DecoratedKey,DecoratedKey> mi;
 
-    public ReducingKeyIterator(Collection<SSTableReader> sstables)
+    public ReducingKeyIterator(Collection<SSTableReader> sstables, IPartitioner partitioner)
     {
         ArrayList<KeyIterator> iters = new ArrayList<KeyIterator>(sstables.size());
         for (SSTableReader sstable : sstables)
-            iters.add(new KeyIterator(sstable.descriptor, LocatorConfig.instance.getPartitioner()));
+            iters.add(new KeyIterator(sstable.descriptor, partitioner));
         mi = MergeIterator.get(iters, DecoratedKey.comparator, new MergeIterator.Reducer<DecoratedKey,DecoratedKey>()
         {
             DecoratedKey reduced = null;
