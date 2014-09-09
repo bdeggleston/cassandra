@@ -26,10 +26,7 @@ import java.util.List;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.util.concurrent.RateLimiter;
 
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.RowIndexEntry;
-import org.apache.cassandra.db.RowPosition;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.columniterator.IColumnIteratorFactory;
 import org.apache.cassandra.db.columniterator.LazyColumnIterator;
 import org.apache.cassandra.db.columniterator.OnDiskAtomIterator;
@@ -52,6 +49,7 @@ public class SSTableScanner implements ICompactionScanner
     private AbstractBounds<RowPosition> currentRange;
 
     private final DataRange dataRange;
+    private final DBConfig dbConfig;
 
     protected Iterator<OnDiskAtomIterator> iterator;
 
@@ -60,7 +58,7 @@ public class SSTableScanner implements ICompactionScanner
      * @param dataRange a single range to scan; must not be null
      * @param limiter background i/o RateLimiter; may be null
      */
-    SSTableScanner(SSTableReader sstable, DataRange dataRange, RateLimiter limiter)
+    SSTableScanner(SSTableReader sstable, DataRange dataRange, RateLimiter limiter, DBConfig dbConfig)
     {
         assert sstable != null;
 
@@ -68,6 +66,7 @@ public class SSTableScanner implements ICompactionScanner
         this.ifile = sstable.openIndexReader();
         this.sstable = sstable;
         this.dataRange = dataRange;
+        this.dbConfig = dbConfig;
 
         List<AbstractBounds<RowPosition>> boundsList = new ArrayList<>(2);
         if (dataRange.isWrapAround() && !dataRange.stopKey().isMinimum(sstable.partitioner))
@@ -89,7 +88,7 @@ public class SSTableScanner implements ICompactionScanner
      * @param tokenRanges A set of token ranges to scan
      * @param limiter background i/o RateLimiter; may be null
      */
-    SSTableScanner(SSTableReader sstable, Collection<Range<Token>> tokenRanges, RateLimiter limiter)
+    SSTableScanner(SSTableReader sstable, Collection<Range<Token>> tokenRanges, RateLimiter limiter, DBConfig dbConfig)
     {
         assert sstable != null;
 
@@ -97,6 +96,7 @@ public class SSTableScanner implements ICompactionScanner
         this.ifile = sstable.openIndexReader();
         this.sstable = sstable;
         this.dataRange = null;
+        this.dbConfig = dbConfig;
 
         List<Range<Token>> normalized = Range.normalize(tokenRanges);
         List<AbstractBounds<RowPosition>> boundsList = new ArrayList<>(normalized.size());
@@ -262,7 +262,7 @@ public class SSTableScanner implements ICompactionScanner
                     dfile.seek(currentEntry.position);
                     ByteBufferUtil.readWithShortLength(dfile); // key
                     long dataSize = readEnd - dfile.getFilePointer();
-                    return new SSTableIdentityIterator(sstable, dfile, currentKey, dataSize);
+                    return new SSTableIdentityIterator(sstable, dfile, currentKey, dataSize, dbConfig);
                 }
 
                 return new LazyColumnIterator(currentKey, new IColumnIteratorFactory()

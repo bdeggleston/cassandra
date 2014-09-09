@@ -37,6 +37,7 @@ public class SSTableIdentityIterator implements Comparable<SSTableIdentityIterat
     private final Iterator<OnDiskAtom> atomIterator;
     private final boolean validateColumns;
     private final String filename;
+    private final DBConfig dbConfig;
 
     /**
      * Used to iterate through the columns of a row.
@@ -45,9 +46,9 @@ public class SSTableIdentityIterator implements Comparable<SSTableIdentityIterat
      * @param key Key of this row.
      * @param dataSize length of row data
      */
-    public SSTableIdentityIterator(SSTableReader sstable, RandomAccessReader file, DecoratedKey key, long dataSize)
+    public SSTableIdentityIterator(SSTableReader sstable, RandomAccessReader file, DecoratedKey key, long dataSize, DBConfig dbConfig)
     {
-        this(sstable, file, key, dataSize, false);
+        this(sstable, file, key, dataSize, false, dbConfig);
     }
 
     /**
@@ -58,9 +59,9 @@ public class SSTableIdentityIterator implements Comparable<SSTableIdentityIterat
      * @param dataSize length of row data
      * @param checkData if true, do its best to deserialize and check the coherence of row data
      */
-    public SSTableIdentityIterator(SSTableReader sstable, RandomAccessReader file, DecoratedKey key, long dataSize, boolean checkData)
+    public SSTableIdentityIterator(SSTableReader sstable, RandomAccessReader file, DecoratedKey key, long dataSize, boolean checkData, DBConfig dbConfig)
     {
-        this(sstable.metadata, file, file.getPath(), key, dataSize, checkData, sstable, ColumnSerializer.Flag.LOCAL);
+        this(sstable.metadata, file, file.getPath(), key, dataSize, checkData, sstable, ColumnSerializer.Flag.LOCAL, dbConfig);
     }
 
     // sstable may be null *if* checkData is false
@@ -72,7 +73,8 @@ public class SSTableIdentityIterator implements Comparable<SSTableIdentityIterat
                                     long dataSize,
                                     boolean checkData,
                                     SSTableReader sstable,
-                                    ColumnSerializer.Flag flag)
+                                    ColumnSerializer.Flag flag,
+                                    DBConfig dbConfig)
     {
         assert !checkData || (sstable != null);
         this.in = in;
@@ -81,10 +83,11 @@ public class SSTableIdentityIterator implements Comparable<SSTableIdentityIterat
         this.dataSize = dataSize;
         this.flag = flag;
         this.validateColumns = checkData;
+        this.dbConfig = dbConfig;
 
         Descriptor.Version dataVersion = sstable == null ? Descriptor.Version.CURRENT : sstable.descriptor.version;
         int expireBefore = (int) (System.currentTimeMillis() / 1000);
-        columnFamily = ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance);
+        columnFamily = ArrayBackedSortedColumns.factory.create(metadata, dbConfig);
 
         try
         {

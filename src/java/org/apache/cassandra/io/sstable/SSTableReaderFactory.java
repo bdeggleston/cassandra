@@ -125,7 +125,8 @@ public class SSTableReaderFactory
                                                   SystemKeyspace.instance,
                                                   StorageServiceExecutors.instance,
                                                   CacheService.instance,
-                                                  FileCacheService.instance);
+                                                  FileCacheService.instance,
+                                                  DBConfig.instance);
 
         // special implementation of load to use non-pooled SegmentedFile builders
         SegmentedFile.Builder ibuilder = new BufferedSegmentedFile.Builder(DatabaseDescriptor.instance.getDiskAccessMode());
@@ -182,7 +183,8 @@ public class SSTableReaderFactory
                                                   SystemKeyspace.instance,
                                                   StorageServiceExecutors.instance,
                                                   CacheService.instance,
-                                                  FileCacheService.instance);
+                                                  FileCacheService.instance,
+                                                  DBConfig.instance);
 
         // load index and filter
         long start = System.nanoTime();
@@ -272,8 +274,8 @@ public class SSTableReaderFactory
                                  SystemKeyspace.instance,
                                  StorageServiceExecutors.instance,
                                  CacheService.instance,
-                                 FileCacheService.instance);
+                                 FileCacheService.instance,
+                                 DBConfig.instance);
     }
-
 
 }

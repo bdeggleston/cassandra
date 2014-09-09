@@ -255,6 +255,7 @@ public class SSTableReader extends SSTable
     private final StorageServiceExecutors storageServiceExecutors;
     private final CacheService cacheService;
     private final FileCacheService fileCacheService;
+    private final DBConfig dbConfig;
 
     SSTableReader(final Descriptor desc,
                   Set<Component> components,
@@ -269,7 +270,8 @@ public class SSTableReader extends SSTable
                   final SystemKeyspace systemKeyspace,
                   StorageServiceExecutors storageServiceExecutors,
                   CacheService cacheService,
-                  FileCacheService fileCacheService)
+                  FileCacheService fileCacheService,
+                  DBConfig dbConfig)
     {
         super(desc, components, metadata, partitioner);
         this.sstableMetadata = sstableMetadata;
@@ -282,6 +284,7 @@ public class SSTableReader extends SSTable
         this.storageServiceExecutors = storageServiceExecutors;
         this.cacheService = cacheService;
         this.fileCacheService = fileCacheService;
+        this.dbConfig = dbConfig;
 
         deletingTask = new SSTableDeletingTask(this, systemKeyspace, storageServiceExecutors);
 
@@ -326,10 +329,11 @@ public class SSTableReader extends SSTable
                   SystemKeyspace systemKeyspace,
                   StorageServiceExecutors storageServiceExecutors,
                   CacheService cacheService,
-                  FileCacheService fileCacheService)
+                  FileCacheService fileCacheService,
+                  DBConfig dbConfig)
     {
         this(desc, components, metadata, partitioner, maxDataAge, sstableMetadata, isOpenEarly, databaseDescriptor, tracing,
-             schema, systemKeyspace, storageServiceExecutors, cacheService, fileCacheService);
+             schema, systemKeyspace, storageServiceExecutors, cacheService, fileCacheService, dbConfig);
 
         this.ifile = ifile;
         this.dfile = dfile;
@@ -782,7 +786,8 @@ public class SSTableReader extends SSTable
                                                           systemKeyspace,
                                                           storageServiceExecutors,
                                                           cacheService,
-                                                          fileCacheService);
+                                                          fileCacheService,
+                                                          dbConfig);
             replacement.readMeter = this.readMeter;
             replacement.first = this.last.compareTo(newStart) > 0 ? newStart : this.last;
             replacement.last = this.last;
@@ -862,7 +867,8 @@ public class SSTableReader extends SSTable
                                                           systemKeyspace,
                                                           storageServiceExecutors,
                                                           cacheService,
-                                                          fileCacheService);
+                                                          fileCacheService,
+                                                          dbConfig);
             replacement.readMeter = this.readMeter;
             replacement.first = this.first;
             replacement.last = this.last;
@@ -1487,7 +1493,7 @@ public class SSTableReader extends SSTable
      */
     public SSTableScanner getScanner(DataRange dataRange)
     {
-        return new SSTableScanner(this, dataRange, null);
+        return new SSTableScanner(this, dataRange, null, dbConfig);
     }
 
     /**
@@ -1501,7 +1507,7 @@ public class SSTableReader extends SSTable
 
     public SSTableScanner getScanner(RateLimiter limiter)
     {
-        return new SSTableScanner(this, DataRange.allData(partitioner), limiter);
+        return new SSTableScanner(this, DataRange.allData(partitioner), limiter, dbConfig);
     }
 
     /**
@@ -1530,7 +1536,7 @@ public class SSTableReader extends SSTable
         if (positions.isEmpty())
             return new EmptyCompactionScanner(getFilename());
         else
-            return new SSTableScanner(this, ranges, limiter);
+            return new SSTableScanner(this, ranges, limiter, dbConfig);
     }
 
     public FileDataInput getFileDataInput(long position)
