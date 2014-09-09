@@ -20,22 +20,25 @@ package org.apache.cassandra.io.util;
 import org.apache.cassandra.io.compress.CompressedRandomAccessReader;
 import org.apache.cassandra.io.compress.CompressedSequentialWriter;
 import org.apache.cassandra.io.compress.CompressionMetadata;
+import org.apache.cassandra.service.FileCacheService;
 
 public class CompressedPoolingSegmentedFile extends PoolingSegmentedFile implements ICompressedFile
 {
     public final CompressionMetadata metadata;
 
-    public CompressedPoolingSegmentedFile(String path, CompressionMetadata metadata)
+    public CompressedPoolingSegmentedFile(String path, CompressionMetadata metadata, FileCacheService fileCacheService)
     {
-        super(path, metadata.dataLength, metadata.compressedFileLength);
+        super(path, metadata.dataLength, metadata.compressedFileLength, fileCacheService);
         this.metadata = metadata;
     }
 
     public static class Builder extends CompressedSegmentedFile.Builder
     {
-        public Builder(CompressedSequentialWriter writer)
+        private final FileCacheService fileCacheService;
+        public Builder(CompressedSequentialWriter writer, FileCacheService fileCacheService)
         {
             super(writer);
+            this.fileCacheService = fileCacheService;
         }
 
         public void addPotentialBoundary(long boundary)
@@ -45,12 +48,12 @@ public class CompressedPoolingSegmentedFile extends PoolingSegmentedFile impleme
 
         public SegmentedFile complete(String path)
         {
-            return new CompressedPoolingSegmentedFile(path, metadata(path, false));
+            return new CompressedPoolingSegmentedFile(path, metadata(path, false), fileCacheService);
         }
 
         public SegmentedFile openEarly(String path)
         {
-            return new CompressedPoolingSegmentedFile(path, metadata(path, true));
+            return new CompressedPoolingSegmentedFile(path, metadata(path, true), fileCacheService);
         }
     }
 

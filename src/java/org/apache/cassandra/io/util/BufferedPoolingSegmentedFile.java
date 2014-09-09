@@ -17,17 +17,26 @@
 */
 package org.apache.cassandra.io.util;
 
+import org.apache.cassandra.service.FileCacheService;
+
 import java.io.File;
 
 public class BufferedPoolingSegmentedFile extends PoolingSegmentedFile
 {
-    public BufferedPoolingSegmentedFile(String path, long length)
+    public BufferedPoolingSegmentedFile(String path, long length, FileCacheService fileCacheService)
     {
-        super(path, length);
+        super(path, length, fileCacheService);
     }
 
     public static class Builder extends SegmentedFile.Builder
     {
+        private final FileCacheService fileCacheService;
+
+        public Builder(FileCacheService fileCacheService)
+        {
+            this.fileCacheService = fileCacheService;
+        }
+
         public void addPotentialBoundary(long boundary)
         {
             // only one segment in a standard-io file
@@ -36,7 +45,7 @@ public class BufferedPoolingSegmentedFile extends PoolingSegmentedFile
         public SegmentedFile complete(String path)
         {
             long length = new File(path).length();
-            return new BufferedPoolingSegmentedFile(path, length);
+            return new BufferedPoolingSegmentedFile(path, length, fileCacheService);
         }
 
         public SegmentedFile openEarly(String path)

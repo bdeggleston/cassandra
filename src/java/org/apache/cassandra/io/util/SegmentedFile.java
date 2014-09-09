@@ -29,6 +29,7 @@ import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.compress.CompressedSequentialWriter;
+import org.apache.cassandra.service.FileCacheService;
 import org.apache.cassandra.utils.Pair;
 
 /**
@@ -67,21 +68,21 @@ public abstract class SegmentedFile
     /**
      * @return A SegmentedFile.Builder.
      */
-    public static Builder getBuilder(Config.DiskAccessMode mode)
+    public static Builder getBuilder(Config.DiskAccessMode mode, FileCacheService fileCacheService)
     {
         return mode == Config.DiskAccessMode.mmap
                ? new MmappedSegmentedFile.Builder()
-               : new BufferedPoolingSegmentedFile.Builder();
+               : new BufferedPoolingSegmentedFile.Builder(fileCacheService);
     }
 
-    public static Builder getCompressedBuilder()
+    public static Builder getCompressedBuilder(FileCacheService fileCacheService)
     {
-        return getCompressedBuilder(null);
+        return getCompressedBuilder(null, fileCacheService);
     }
 
-    public static Builder getCompressedBuilder(CompressedSequentialWriter writer)
+    public static Builder getCompressedBuilder(CompressedSequentialWriter writer, FileCacheService fileCacheService)
     {
-        return new CompressedPoolingSegmentedFile.Builder(writer);
+        return new CompressedPoolingSegmentedFile.Builder(writer, fileCacheService);
     }
 
     public abstract FileDataInput getSegment(long position);

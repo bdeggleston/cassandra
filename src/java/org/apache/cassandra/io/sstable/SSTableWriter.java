@@ -34,6 +34,7 @@ import java.util.Set;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.FileCacheService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,12 +131,12 @@ public class SSTableWriter extends SSTable
                                              descriptor.filenameFor(Component.COMPRESSION_INFO),
                                              metadata.compressionParameters(),
                                              sstableMetadataCollector);
-            dbuilder = SegmentedFile.getCompressedBuilder((CompressedSequentialWriter) dataFile);
+            dbuilder = SegmentedFile.getCompressedBuilder((CompressedSequentialWriter) dataFile, FileCacheService.instance);
         }
         else
         {
             dataFile = SequentialWriter.open(new File(getFilename()), new File(descriptor.filenameFor(Component.CRC)));
-            dbuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode());
+            dbuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), FileCacheService.instance);
         }
 
         this.sstableMetadataCollector = sstableMetadataCollector;
@@ -539,7 +540,7 @@ public class SSTableWriter extends SSTable
         IndexWriter(long keyCount)
         {
             indexFile = SequentialWriter.open(new File(descriptor.filenameFor(Component.PRIMARY_INDEX)));
-            builder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode());
+            builder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), FileCacheService.instance);
             summary = new IndexSummaryBuilder(keyCount, metadata.getMinIndexInterval(), Downsampling.BASE_SAMPLING_LEVEL);
             bf = FilterFactory.getFilter(keyCount, metadata.getBloomFilterFpChance(), true);
         }

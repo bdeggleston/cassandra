@@ -53,6 +53,7 @@ import com.google.common.util.concurrent.RateLimiter;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.FileCacheService;
 import org.apache.cassandra.service.StorageServiceExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -734,10 +735,10 @@ public class SSTableReader extends SSTable
      */
     private void load(boolean recreateBloomFilter, boolean saveSummaryIfCreated) throws IOException
     {
-        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode());
+        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), FileCacheService.instance);
         SegmentedFile.Builder dbuilder = compression
-                                         ? SegmentedFile.getCompressedBuilder()
-                                         : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode());
+                                         ? SegmentedFile.getCompressedBuilder(FileCacheService.instance)
+                                         : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), FileCacheService.instance);
 
         boolean summaryLoaded = loadSummary(ibuilder, dbuilder);
         if (recreateBloomFilter || !summaryLoaded)
@@ -989,10 +990,10 @@ public class SSTableReader extends SSTable
                 // we can use the existing index summary to make a smaller one
                 newSummary = IndexSummaryBuilder.downsample(indexSummary, samplingLevel, minIndexInterval, partitioner);
 
-                SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode());
+                SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), FileCacheService.instance);
                 SegmentedFile.Builder dbuilder = compression
-                                                 ? SegmentedFile.getCompressedBuilder()
-                                                 : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode());
+                                                 ? SegmentedFile.getCompressedBuilder(FileCacheService.instance)
+                                                 : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), FileCacheService.instance);
                 saveSummary(ibuilder, dbuilder, newSummary);
             }
             else
