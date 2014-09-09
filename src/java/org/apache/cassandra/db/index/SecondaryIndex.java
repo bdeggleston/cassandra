@@ -40,9 +40,6 @@ import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.composites.SimpleDenseCellNameType;
 import org.apache.cassandra.db.index.composites.CompositesIndex;
 import org.apache.cassandra.db.index.keys.KeysIndex;
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.BytesType;
-import org.apache.cassandra.db.marshal.LocalByPartionerType;
 import org.apache.cassandra.dht.LocalToken;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.sstable.ReducingKeyIterator;
@@ -60,10 +57,6 @@ public abstract class SecondaryIndex
     protected static final Logger logger = LoggerFactory.getLogger(SecondaryIndex.class);
 
     public static final String CUSTOM_INDEX_OPTION_NAME = "class_name";
-
-    public static final AbstractType<?> keyComparator = LocatorConfig.instance.getPartitioner().preservesOrder()
-                                                      ? BytesType.instance
-                                                      : new LocalByPartionerType(LocatorConfig.instance.getPartitioner());
 
     /**
      * Base CF that has many indexes
@@ -99,6 +92,7 @@ public abstract class SecondaryIndex
      * @return The name of the index
      */
     abstract public String getIndexName();
+
 
     /**
      * All internal 2ndary indexes will return "_internal_" for this. Custom
@@ -356,7 +350,7 @@ public abstract class SecondaryIndex
         switch (cdef.getIndexType())
         {
             case KEYS:
-                return new SimpleDenseCellNameType(keyComparator, databaseDescriptor, tracing, dbConfig);
+                return new SimpleDenseCellNameType(DBConfig.instance.keyComparator, databaseDescriptor, tracing, dbConfig);
             case COMPOSITES:
                 return CompositesIndex.getIndexComparator(baseMetadata, cdef, databaseDescriptor, tracing, dbConfig);
             case CUSTOM:

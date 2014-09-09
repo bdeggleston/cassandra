@@ -3,6 +3,9 @@ package org.apache.cassandra.db;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.BytesType;
+import org.apache.cassandra.db.marshal.LocalByPartionerType;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.LongToken;
@@ -40,6 +43,8 @@ public class DBConfig
 
     public final long preemptiveOpenInterval;
 
+    public final AbstractType<?> keyComparator;
+
     public DBConfig()
     {
         memtablePool = DatabaseDescriptor.instance.getMemtableAllocatorPool();
@@ -57,6 +62,7 @@ public class DBConfig
         merkleTreeSerializer = new MerkleTree.Serializer(tokenSerializer, hashableSerializer);
 
         preemptiveOpenInterval = calculatePreemptiveOpenInterval();
+        keyComparator = getPartitioner().preservesOrder() ? BytesType.instance : new LocalByPartionerType(getPartitioner());
     }
 
     private int estimateRowOverhead(int count)
