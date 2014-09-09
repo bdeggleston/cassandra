@@ -410,7 +410,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
      */
     public static void scrubDataDirectories(CFMetaData metadata, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        Directories directories = new Directories(metadata, DatabaseDescriptor.instance, StorageService.instance);
+        Directories directories = new Directories(metadata, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance);
 
         // remove any left-behind SSTables from failed/stalled streaming
         FileFilter filter = new FileFilter()

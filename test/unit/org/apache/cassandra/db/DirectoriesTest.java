@@ -140,7 +140,7 @@ public class DirectoriesTest
     {
         for (CFMetaData cfm : CFM)
         {
-            Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance);
+            Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance);
             assertEquals(cfDir(cfm), directories.getDirectoryForNewSSTables());
 
             Descriptor desc = new Descriptor(cfDir(cfm), KS, cfm.cfName, 1, Descriptor.Type.FINAL);
@@ -157,7 +157,7 @@ public class DirectoriesTest
     {
         for (CFMetaData cfm : CFM)
         {
-            Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance);
+            Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance);
             Directories.SSTableLister lister;
             Set<File> listed;
 
@@ -228,7 +228,7 @@ public class DirectoriesTest
                                             CFMetaDataFactory.instance,
                                             MutationFactory.instance,
                                             DBConfig.instance);
-            Directories dir = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance);
+            Directories dir = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance);
 
             for (File file : dir.getCFDirectories())
             {
@@ -252,7 +252,7 @@ public class DirectoriesTest
     {
         for (final CFMetaData cfm : CFM)
         {
-            final Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance);
+            final Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance);
             assertEquals(cfDir(cfm), directories.getDirectoryForNewSSTables());
             final String n = Long.toString(System.nanoTime());
             Callable<File> directoryGetter = new Callable<File>() {

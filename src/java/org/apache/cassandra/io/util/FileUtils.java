@@ -383,7 +383,7 @@ public class FileUtils
             storageService.stopTransports();
     }
     
-    public static void handleFSError(FSError e, Config.DiskFailurePolicy diskFailurePolicy, StorageService storageService)
+    public static void handleFSError(FSError e, Config.DiskFailurePolicy diskFailurePolicy, StorageService storageService, KeyspaceManager keyspaceManager)
     {
         switch (diskFailurePolicy)
         {
@@ -398,7 +398,7 @@ public class FileUtils
                 {
                     File directory = BlacklistedDirectories.maybeMarkUnreadable(e.path);
                     if (directory != null)
-                        KeyspaceManager.instance.removeUnreadableSSTables(directory);
+                        keyspaceManager.removeUnreadableSSTables(directory);
                 }
                 break;
             case ignore:

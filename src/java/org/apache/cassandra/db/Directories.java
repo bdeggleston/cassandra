@@ -181,7 +181,7 @@ public class Directories
      *
      * @param metadata metadata of ColumnFamily
      */
-    public Directories(CFMetaData metadata, DatabaseDescriptor databaseDescriptor, StorageService storageService)
+    public Directories(CFMetaData metadata, DatabaseDescriptor databaseDescriptor, StorageService storageService, KeyspaceManager keyspaceManager)
     {
         this.metadata = metadata;
         this.databaseDescriptor = databaseDescriptor;
@@ -236,7 +236,7 @@ public class Directories
             {
                 // don't just let the default exception handler do this, we need the create loop to continue
                 logger.error("Failed to create {} directory", dir);
-                FileUtils.handleFSError(e, this.databaseDescriptor.getDiskFailurePolicy(), this.storageService);
+                FileUtils.handleFSError(e, this.databaseDescriptor.getDiskFailurePolicy(), this.storageService, keyspaceManager);
             }
         }
     }
