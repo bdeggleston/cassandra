@@ -37,9 +37,9 @@ import org.apache.cassandra.dht.Token;
  */
 public class SimpleStrategy extends AbstractReplicationStrategy
 {
-    public SimpleStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions)
+    public SimpleStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions, LocatorConfig locatorConfig)
     {
-        super(keyspaceName, tokenMetadata, snitch, configOptions);
+        super(keyspaceName, tokenMetadata, snitch, configOptions, locatorConfig);
     }
 
     public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata)
@@ -52,7 +52,7 @@ public class SimpleStrategy extends AbstractReplicationStrategy
             return endpoints;
 
         // Add the token at the index by default
-        Iterator<Token> iter = TokenMetadata.ringIterator(tokens, token, false, LocatorConfig.instance.getPartitioner());
+        Iterator<Token> iter = TokenMetadata.ringIterator(tokens, token, false, locatorConfig.getPartitioner());
         while (endpoints.size() < replicas && iter.hasNext())
         {
             InetAddress ep = metadata.getEndpoint(iter.next());

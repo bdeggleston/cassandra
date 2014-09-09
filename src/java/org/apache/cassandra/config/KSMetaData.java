@@ -168,7 +168,7 @@ public final class KSMetaData
         // Attempt to instantiate the ARS, which will throw a ConfigException if the strategy_options aren't fully formed
         TokenMetadata tmd = locatorConfig.getTokenMetadata();
         IEndpointSnitch eps = locatorConfig.getEndpointSnitch();
-        AbstractReplicationStrategy.validateReplicationStrategy(name, strategyClass, tmd, eps, strategyOptions);
+        AbstractReplicationStrategy.validateReplicationStrategy(name, strategyClass, tmd, eps, strategyOptions, locatorConfig);
 
         for (CFMetaData cfm : cfMetaData.values())
             cfm.validate();

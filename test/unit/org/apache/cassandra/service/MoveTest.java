@@ -561,7 +561,8 @@ public class MoveTest
                 ksmd.strategyClass,
                 tmd,
                 new SimpleSnitch(LocatorConfig.instance),
-                ksmd.strategyOptions);
+                ksmd.strategyOptions,
+                LocatorConfig.instance);
     }
 
     private Token positionToken(int position)

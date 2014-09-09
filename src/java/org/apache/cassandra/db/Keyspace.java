@@ -227,7 +227,8 @@ public class Keyspace
                                                                                     ksm.strategyClass,
                                                                                     locatorConfig.getTokenMetadata(),
                                                                                     locatorConfig.getEndpointSnitch(),
-                                                                                    ksm.strategyOptions);
+                                                                                    ksm.strategyOptions,
+                                                                                    locatorConfig);
     }
 
     // best invoked on the compaction mananger.

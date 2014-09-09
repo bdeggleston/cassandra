@@ -81,7 +81,8 @@ public class AlterKeyspaceStatement extends SchemaAlteringStatement
                                                                     AbstractReplicationStrategy.getClass(attrs.getReplicationStrategyClass()),
                                                                     locatorConfig.getTokenMetadata(),
                                                                     locatorConfig.getEndpointSnitch(),
-                                                                    attrs.getReplicationOptions());
+                                                                    attrs.getReplicationOptions(),
+                                                                    LocatorConfig.instance);
         }
     }
 

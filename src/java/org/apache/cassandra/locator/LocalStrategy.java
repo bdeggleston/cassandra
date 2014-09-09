@@ -31,9 +31,9 @@ import org.apache.cassandra.dht.Token;
 
 public class LocalStrategy extends AbstractReplicationStrategy
 {
-    public LocalStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions)
+    public LocalStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions, LocatorConfig locatorConfig)
     {
-        super(keyspaceName, tokenMetadata, snitch, configOptions);
+        super(keyspaceName, tokenMetadata, snitch, configOptions, locatorConfig);
     }
 
     /**
@@ -45,13 +45,13 @@ public class LocalStrategy extends AbstractReplicationStrategy
     public ArrayList<InetAddress> getNaturalEndpoints(RingPosition searchPosition)
     {
         ArrayList<InetAddress> l = new ArrayList<InetAddress>(1);
-        l.add(DatabaseDescriptor.instance.getBroadcastAddress());
+        l.add(locatorConfig.getBroadcastAddress());
         return l;
     }
 
     public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata)
     {
-        return Collections.singletonList(DatabaseDescriptor.instance.getBroadcastAddress());
+        return Collections.singletonList(locatorConfig.getBroadcastAddress());
     }
 
     public int getReplicationFactor()

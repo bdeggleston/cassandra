@@ -24,7 +24,6 @@ import java.util.*;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,16 +59,19 @@ public abstract class AbstractReplicationStrategy
     private volatile long lastInvalidatedVersion = 0;
 
     public IEndpointSnitch snitch;
+    protected final LocatorConfig locatorConfig;
 
-    AbstractReplicationStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions)
+    AbstractReplicationStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions, LocatorConfig locatorConfig)
     {
         assert keyspaceName != null;
         assert snitch != null;
         assert tokenMetadata != null;
+        assert locatorConfig != null;
         this.tokenMetadata = tokenMetadata;
         this.snitch = snitch;
         this.configOptions = configOptions == null ? Collections.<String, String>emptyMap() : configOptions;
         this.keyspaceName = keyspaceName;
+        this.locatorConfig = locatorConfig;
         // lazy-initialize keyspace itself since we don't create them until after the replication strategies
     }
 
@@ -134,19 +136,19 @@ public abstract class AbstractReplicationStrategy
         if (consistency_level.isDatacenterLocal())
         {
             // block for in this context will be localnodes block.
-            return new DatacenterWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, getKeyspace(), callback, writeType, DatabaseDescriptor.instance);
+            return new DatacenterWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, getKeyspace(), callback, writeType, locatorConfig.getDatabaseDescriptor());
         }
         else if (consistency_level == ConsistencyLevel.EACH_QUORUM && (this instanceof NetworkTopologyStrategy))
         {
-            return new DatacenterSyncWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, getKeyspace(), callback, writeType, DatabaseDescriptor.instance);
+            return new DatacenterSyncWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, getKeyspace(), callback, writeType, locatorConfig.getDatabaseDescriptor());
         }
-        return new WriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, getKeyspace(), callback, writeType, DatabaseDescriptor.instance);
+        return new WriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, getKeyspace(), callback, writeType, locatorConfig.getDatabaseDescriptor());
     }
 
     private Keyspace getKeyspace()
     {
         if (keyspace == null)
-            keyspace = KeyspaceManager.instance.open(keyspaceName);
+            keyspace = locatorConfig.getKeyspaceManager().open(keyspaceName);
         return keyspace;
     }
 
@@ -230,15 +232,16 @@ public abstract class AbstractReplicationStrategy
                                                               Class<? extends AbstractReplicationStrategy> strategyClass,
                                                               TokenMetadata tokenMetadata,
                                                               IEndpointSnitch snitch,
-                                                              Map<String, String> strategyOptions)
+                                                              Map<String, String> strategyOptions,
+                                                              LocatorConfig locatorConfig)
         throws ConfigurationException
     {
         AbstractReplicationStrategy strategy;
-        Class [] parameterTypes = new Class[] {String.class, TokenMetadata.class, IEndpointSnitch.class, Map.class};
+        Class [] parameterTypes = new Class[] {String.class, TokenMetadata.class, IEndpointSnitch.class, Map.class, LocatorConfig.class};
         try
         {
             Constructor<? extends AbstractReplicationStrategy> constructor = strategyClass.getConstructor(parameterTypes);
-            strategy = constructor.newInstance(keyspaceName, tokenMetadata, snitch, strategyOptions);
+            strategy = constructor.newInstance(keyspaceName, tokenMetadata, snitch, strategyOptions, locatorConfig);
         }
         catch (Exception e)
         {
@@ -251,11 +254,12 @@ public abstract class AbstractReplicationStrategy
                                                                         Class<? extends AbstractReplicationStrategy> strategyClass,
                                                                         TokenMetadata tokenMetadata,
                                                                         IEndpointSnitch snitch,
-                                                                        Map<String, String> strategyOptions)
+                                                                        Map<String, String> strategyOptions,
+                                                                        LocatorConfig locatorConfig)
     {
         try
         {
-            AbstractReplicationStrategy strategy = createInternal(keyspaceName, strategyClass, tokenMetadata, snitch, strategyOptions);
+            AbstractReplicationStrategy strategy = createInternal(keyspaceName, strategyClass, tokenMetadata, snitch, strategyOptions, locatorConfig);
 
             // Because we used to not properly validate unrecognized options, we only log a warning if we find one.
             try
@@ -281,9 +285,10 @@ public abstract class AbstractReplicationStrategy
                                                    Class<? extends AbstractReplicationStrategy> strategyClass,
                                                    TokenMetadata tokenMetadata,
                                                    IEndpointSnitch snitch,
-                                                   Map<String, String> strategyOptions) throws ConfigurationException
+                                                   Map<String, String> strategyOptions,
+                                                   LocatorConfig locatorConfig) throws ConfigurationException
     {
-        AbstractReplicationStrategy strategy = createInternal(keyspaceName, strategyClass, tokenMetadata, snitch, strategyOptions);
+        AbstractReplicationStrategy strategy = createInternal(keyspaceName, strategyClass, tokenMetadata, snitch, strategyOptions, locatorConfig);
         strategy.validateExpectedOptions();
         strategy.validateOptions();
     }

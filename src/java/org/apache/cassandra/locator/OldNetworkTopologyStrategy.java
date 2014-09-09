@@ -37,9 +37,9 @@ import org.apache.cassandra.dht.Token;
  */
 public class OldNetworkTopologyStrategy extends AbstractReplicationStrategy
 {
-    public OldNetworkTopologyStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions)
+    public OldNetworkTopologyStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions, LocatorConfig locatorConfig)
     {
-        super(keyspaceName, tokenMetadata, snitch, configOptions);
+        super(keyspaceName, tokenMetadata, snitch, configOptions, locatorConfig);
     }
 
     public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata)
@@ -51,7 +51,7 @@ public class OldNetworkTopologyStrategy extends AbstractReplicationStrategy
         if (tokens.isEmpty())
             return endpoints;
 
-        Iterator<Token> iter = TokenMetadata.ringIterator(tokens, token, false, LocatorConfig.instance.getPartitioner());
+        Iterator<Token> iter = TokenMetadata.ringIterator(tokens, token, false, locatorConfig.getPartitioner());
         Token primaryToken = iter.next();
         endpoints.add(metadata.getEndpoint(primaryToken));
 
@@ -89,7 +89,7 @@ public class OldNetworkTopologyStrategy extends AbstractReplicationStrategy
         // loop through the list and add until we have N nodes.
         if (endpoints.size() < replicas)
         {
-            iter = TokenMetadata.ringIterator(tokens, token, false, LocatorConfig.instance.getPartitioner());
+            iter = TokenMetadata.ringIterator(tokens, token, false, locatorConfig.getPartitioner());
             while (endpoints.size() < replicas && iter.hasNext())
             {
                 Token t = iter.next();

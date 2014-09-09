@@ -312,4 +312,9 @@ public class LocatorConfig
     {
         return StorageServiceExecutors.instance;
     }
+
+    public KeyspaceManager getKeyspaceManager()
+    {
+        return KeyspaceManager.instance;
+    }
 }

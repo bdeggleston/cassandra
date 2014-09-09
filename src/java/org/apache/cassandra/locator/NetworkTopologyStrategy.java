@@ -46,14 +46,12 @@ import com.google.common.collect.Multimap;
  */
 public class NetworkTopologyStrategy extends AbstractReplicationStrategy
 {
-    private final IEndpointSnitch snitch;
     private final Map<String, Integer> datacenters;
     private static final Logger logger = LoggerFactory.getLogger(NetworkTopologyStrategy.class);
 
-    public NetworkTopologyStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions) throws ConfigurationException
+    public NetworkTopologyStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions, LocatorConfig locatorConfig) throws ConfigurationException
     {
-        super(keyspaceName, tokenMetadata, snitch, configOptions);
-        this.snitch = snitch;
+        super(keyspaceName, tokenMetadata, snitch, configOptions, locatorConfig);
 
         Map<String, Integer> newDatacenters = new HashMap<String, Integer>();
         if (configOptions != null)
@@ -106,7 +104,7 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy
             for (Map.Entry<String, Integer> dc : datacenters.entrySet())
                 put(dc.getKey(), new LinkedHashSet<InetAddress>());
         }};
-        Iterator<Token> tokenIter = TokenMetadata.ringIterator(tokenMetadata.sortedTokens(), searchToken, false, LocatorConfig.instance.getPartitioner());
+        Iterator<Token> tokenIter = TokenMetadata.ringIterator(tokenMetadata.sortedTokens(), searchToken, false, locatorConfig.getPartitioner());
         while (tokenIter.hasNext() && !hasSufficientReplicas(dcReplicas, allEndpoints))
         {
             Token next = tokenIter.next();

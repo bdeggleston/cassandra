@@ -126,9 +126,9 @@ public class ReplicationStrategyEndpointCacheTest
     {
         private boolean called = false;
 
-        public FakeSimpleStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions)
+        public FakeSimpleStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions, LocatorConfig locatorConfig)
         {
-            super(keyspaceName, tokenMetadata, snitch, configOptions);
+            super(keyspaceName, tokenMetadata, snitch, configOptions, locatorConfig);
         }
 
         public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata)
@@ -143,9 +143,9 @@ public class ReplicationStrategyEndpointCacheTest
     {
         private boolean called = false;
 
-        public FakeOldNetworkTopologyStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions)
+        public FakeOldNetworkTopologyStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions, LocatorConfig locatorConfig)
         {
-            super(keyspaceName, tokenMetadata, snitch, configOptions);
+            super(keyspaceName, tokenMetadata, snitch, configOptions, locatorConfig);
         }
 
         public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata)
@@ -160,9 +160,9 @@ public class ReplicationStrategyEndpointCacheTest
     {
         private boolean called = false;
 
-        public FakeNetworkTopologyStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions) throws ConfigurationException
+        public FakeNetworkTopologyStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions, LocatorConfig locatorConfig) throws ConfigurationException
         {
-            super(keyspaceName, tokenMetadata, snitch, configOptions);
+            super(keyspaceName, tokenMetadata, snitch, configOptions, locatorConfig);
         }
 
         public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata)
@@ -180,7 +180,8 @@ public class ReplicationStrategyEndpointCacheTest
                 AbstractReplicationStrategy.getClass(strategy.getClass().getName()),
                 newTmd,
                 strategy.snitch,
-                strategy.configOptions);
+                strategy.configOptions,
+                LocatorConfig.instance);
     }
 
 }

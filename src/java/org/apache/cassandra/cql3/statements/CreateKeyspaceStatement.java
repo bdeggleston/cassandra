@@ -100,7 +100,8 @@ public class CreateKeyspaceStatement extends SchemaAlteringStatement
                                                                 AbstractReplicationStrategy.getClass(attrs.getReplicationStrategyClass()),
                                                                 locatorConfig.getTokenMetadata(),
                                                                 locatorConfig.getEndpointSnitch(),
-                                                                attrs.getReplicationOptions());
+                                                                attrs.getReplicationOptions(),
+                                                                LocatorConfig.instance);
     }
 
     public boolean announceMigration(boolean isLocalOnly) throws RequestValidationException

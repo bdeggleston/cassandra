@@ -716,7 +716,8 @@ public class LeaveAndBootstrapTest
                 ksmd.strategyClass,
                 tmd,
                 new SimpleSnitch(LocatorConfig.instance),
-                ksmd.strategyOptions);
+                ksmd.strategyOptions,
+                LocatorConfig.instance);
     }
 
 }
