@@ -19,6 +19,10 @@ package org.apache.cassandra.db.index;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.db.Cell;
 import org.apache.cassandra.utils.FBUtilities;
@@ -29,6 +33,12 @@ import org.apache.cassandra.utils.FBUtilities;
  */
 public abstract class PerColumnSecondaryIndex extends SecondaryIndex
 {
+
+    protected PerColumnSecondaryIndex(SystemKeyspace systemKeyspace, CompactionManager compactionManager, StorageService storageService, DBConfig dbConfig)
+    {
+        super(systemKeyspace, compactionManager, storageService, dbConfig);
+    }
+
     /**
      * Delete a column from the index.
      *

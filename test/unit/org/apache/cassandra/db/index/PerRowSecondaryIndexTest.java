@@ -25,7 +25,9 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -165,6 +167,12 @@ public class PerRowSecondaryIndexTest
 
     public static class TestIndex extends PerRowSecondaryIndex
     {
+
+        public TestIndex(SystemKeyspace systemKeyspace, CompactionManager compactionManager, StorageService storageService, DBConfig dbConfig)
+        {
+            super(systemKeyspace, compactionManager, storageService, dbConfig);
+        }
+
         public static ColumnFamily LAST_INDEXED_ROW;
         public static ByteBuffer LAST_INDEXED_KEY;
 

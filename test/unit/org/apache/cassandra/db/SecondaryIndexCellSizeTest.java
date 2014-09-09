@@ -22,6 +22,8 @@ import java.nio.ByteBuffer;
 import java.util.Set;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.service.StorageService;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -61,8 +63,8 @@ public class SecondaryIndexCellSizeTest
         buffer.flip();
         Cell cell = new BufferCell(CellNames.simpleDense(ByteBufferUtil.bytes("test")), buffer, 0);
 
-        SecondaryIndexCellSizeTest.MockRowIndex mockRowIndex = new SecondaryIndexCellSizeTest.MockRowIndex();
-        SecondaryIndexCellSizeTest.MockColumnIndex mockColumnIndex = new SecondaryIndexCellSizeTest.MockColumnIndex();
+        SecondaryIndexCellSizeTest.MockRowIndex mockRowIndex = new SecondaryIndexCellSizeTest.MockRowIndex(SystemKeyspace.instance, CompactionManager.instance, StorageService.instance, DBConfig.instance);
+        SecondaryIndexCellSizeTest.MockColumnIndex mockColumnIndex = new SecondaryIndexCellSizeTest.MockColumnIndex(SystemKeyspace.instance, CompactionManager.instance, StorageService.instance, DBConfig.instance);
 
         assertTrue(mockRowIndex.validate(cell));
         assertFalse(mockColumnIndex.validate(cell));
@@ -79,6 +81,12 @@ public class SecondaryIndexCellSizeTest
 
     private class MockRowIndex extends PerRowSecondaryIndex
     {
+
+        private MockRowIndex(SystemKeyspace systemKeyspace, CompactionManager compactionManager, StorageService storageService, DBConfig dbConfig)
+        {
+            super(systemKeyspace, compactionManager, storageService, dbConfig);
+        }
+
         public void init()
         {
         }
@@ -148,6 +156,11 @@ public class SecondaryIndexCellSizeTest
 
     private class MockColumnIndex extends PerColumnSecondaryIndex
     {
+        private MockColumnIndex(SystemKeyspace systemKeyspace, CompactionManager compactionManager, StorageService storageService, DBConfig dbConfig)
+        {
+            super(systemKeyspace, compactionManager, storageService, dbConfig);
+        }
+
         @Override
         public void init()
         {

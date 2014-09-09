@@ -57,6 +57,7 @@ public abstract class AbstractSimplePerColumnSecondaryIndex extends PerColumnSec
 
     protected AbstractSimplePerColumnSecondaryIndex(DatabaseDescriptor databaseDescriptor, Schema schema, Tracing tracing, CFMetaDataFactory cfMetaDataFactory, ColumnFamilyStoreManager columnFamilyStoreManager, DBConfig dbConfig)
     {
+        super(dbConfig.getSystemKeyspace(), dbConfig.getCompactionManager(), dbConfig.getStorageService(), dbConfig);
         this.databaseDescriptor = databaseDescriptor;
         this.schema = schema;
         this.tracing = tracing;

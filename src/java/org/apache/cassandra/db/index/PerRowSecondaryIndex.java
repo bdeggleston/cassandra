@@ -20,10 +20,10 @@ package org.apache.cassandra.db.index;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 
+import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.concurrent.OpOrder;
-import org.apache.cassandra.db.Cell;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 /**
@@ -31,6 +31,12 @@ import org.apache.cassandra.utils.ByteBufferUtil;
  */
 public abstract class PerRowSecondaryIndex extends SecondaryIndex
 {
+
+    protected PerRowSecondaryIndex(SystemKeyspace systemKeyspace, CompactionManager compactionManager, StorageService storageService, DBConfig dbConfig)
+    {
+        super(systemKeyspace, compactionManager, storageService, dbConfig);
+    }
+
     /**
      * Index the given row.
      *

@@ -93,6 +93,18 @@ public abstract class SecondaryIndex
      */
     abstract public String getIndexName();
 
+    protected final SystemKeyspace systemKeyspace;
+    protected final CompactionManager compactionManager;
+    protected final StorageService storageService;
+    protected final DBConfig dbConfig;
+
+    protected SecondaryIndex(SystemKeyspace systemKeyspace, CompactionManager compactionManager, StorageService storageService, DBConfig dbConfig)
+    {
+        this.systemKeyspace = systemKeyspace;
+        this.compactionManager = compactionManager;
+        this.storageService = storageService;
+        this.dbConfig = dbConfig;
+    }
 
     /**
      * All internal 2ndary indexes will return "_internal_" for this. Custom
@@ -122,19 +134,19 @@ public abstract class SecondaryIndex
      */
     public boolean isIndexBuilt(ByteBuffer columnName)
     {
-        return SystemKeyspace.instance.isIndexBuilt(baseCfs.keyspace.getName(), getNameForSystemKeyspace(columnName));
+        return systemKeyspace.isIndexBuilt(baseCfs.keyspace.getName(), getNameForSystemKeyspace(columnName));
     }
 
     public void setIndexBuilt()
     {
         for (ColumnDefinition columnDef : columnDefs)
-            SystemKeyspace.instance.setIndexBuilt(baseCfs.keyspace.getName(), getNameForSystemKeyspace(columnDef.name.bytes));
+            systemKeyspace.setIndexBuilt(baseCfs.keyspace.getName(), getNameForSystemKeyspace(columnDef.name.bytes));
     }
 
     public void setIndexRemoved()
     {
         for (ColumnDefinition columnDef : columnDefs)
-            SystemKeyspace.instance.setIndexRemoved(baseCfs.keyspace.getName(), getNameForSystemKeyspace(columnDef.name.bytes));
+            systemKeyspace.setIndexRemoved(baseCfs.keyspace.getName(), getNameForSystemKeyspace(columnDef.name.bytes));
     }
 
     /**
@@ -190,8 +202,8 @@ public abstract class SecondaryIndex
             SecondaryIndexBuilder builder = new SecondaryIndexBuilder(baseCfs,
                                                                       Collections.singleton(getIndexName()),
                                                                       new ReducingKeyIterator(sstables, LocatorConfig.instance.getPartitioner()),
-                                                                      StorageService.instance);
-            Future<?> future = CompactionManager.instance.submitIndexBuild(builder);
+                                                                      storageService);
+            Future<?> future = compactionManager.submitIndexBuild(builder);
             FBUtilities.waitOnFuture(future);
             forceBlockingFlush();
             setIndexBuilt();
@@ -216,7 +228,7 @@ public abstract class SecondaryIndex
         boolean allAreBuilt = true;
         for (ColumnDefinition cdef : columnDefs)
         {
-            if (!SystemKeyspace.instance.isIndexBuilt(baseCfs.keyspace.getName(), getNameForSystemKeyspace(cdef.name.bytes)))
+            if (!systemKeyspace.isIndexBuilt(baseCfs.keyspace.getName(), getNameForSystemKeyspace(cdef.name.bytes)))
             {
                 allAreBuilt = false;
                 break;
@@ -350,7 +362,7 @@ public abstract class SecondaryIndex
         switch (cdef.getIndexType())
         {
             case KEYS:
-                return new SimpleDenseCellNameType(DBConfig.instance.keyComparator, databaseDescriptor, tracing, dbConfig);
+                return new SimpleDenseCellNameType(dbConfig.keyComparator, databaseDescriptor, tracing, dbConfig);
             case COMPOSITES:
                 return CompositesIndex.getIndexComparator(baseMetadata, cdef, databaseDescriptor, tracing, dbConfig);
             case CUSTOM:

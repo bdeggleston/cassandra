@@ -30,6 +30,7 @@ import java.util.concurrent.ExecutionException;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterators;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -601,6 +602,11 @@ public class RangeTombstoneTest
         public List<Cell> inserts = new ArrayList<>();
         public List<Cell> deletes = new ArrayList<>();
         public List<Cell> updates = new ArrayList<>();
+
+        public TestIndex(SystemKeyspace systemKeyspace, CompactionManager compactionManager, StorageService storageService, DBConfig dbConfig)
+        {
+            super(systemKeyspace, compactionManager, storageService, dbConfig);
+        }
 
         public void resetCounts()
         {
