@@ -163,7 +163,7 @@ public class CompactionTask extends AbstractCompactionTask
         long maxAge = getMaxDataAge(actuallyCompact);
         if (collector != null)
             collector.beginCompaction(ci);
-        SSTableRewriter writer = new SSTableRewriter(cfs, sstables, maxAge, compactionType, offline);
+        SSTableRewriter writer = new SSTableRewriter(cfs, sstables, maxAge, compactionType, offline, dbConfig);
         try
         {
             if (!iter.hasNext())

@@ -28,11 +28,7 @@ import java.util.Set;
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DataTracker;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.RowIndexEntry;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.AbstractCompactedRow;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.utils.CLibrary;
@@ -55,16 +51,6 @@ import org.apache.cassandra.utils.FBUtilities;
  */
 public class SSTableRewriter
 {
-
-    private static final long preemptiveOpenInterval;
-    static
-    {
-        long interval = DatabaseDescriptor.instance.getSSTablePreempiveOpenIntervalInMB() * (1L << 20);
-        if (interval < 0)
-            interval = Long.MAX_VALUE;
-        preemptiveOpenInterval = interval;
-    }
-
     private final DataTracker dataTracker;
     private final ColumnFamilyStore cfs;
 
@@ -83,7 +69,9 @@ public class SSTableRewriter
     private SSTableWriter writer;
     private Map<DecoratedKey, RowIndexEntry> cachedKeys = new HashMap<>();
 
-    public SSTableRewriter(ColumnFamilyStore cfs, Set<SSTableReader> rewriting, long maxAge, OperationType rewriteType, boolean isOffline)
+    private final DBConfig dbConfig;
+
+    public SSTableRewriter(ColumnFamilyStore cfs, Set<SSTableReader> rewriting, long maxAge, OperationType rewriteType, boolean isOffline, DBConfig dbConfig)
     {
         this.rewriting = rewriting;
         for (SSTableReader sstable : rewriting)
@@ -96,6 +84,7 @@ public class SSTableRewriter
         this.maxAge = maxAge;
         this.rewriteType = rewriteType;
         this.isOffline = isOffline;
+        this.dbConfig = dbConfig;
     }
 
     public SSTableWriter currentWriter()
@@ -159,7 +148,7 @@ public class SSTableRewriter
 
     private void maybeReopenEarly(DecoratedKey key)
     {
-        if (FBUtilities.isUnix() && writer.getFilePointer() - currentlyOpenedEarlyAt > preemptiveOpenInterval)
+        if (FBUtilities.isUnix() && writer.getFilePointer() - currentlyOpenedEarlyAt > dbConfig.preemptiveOpenInterval)
         {
             if (isOffline)
             {

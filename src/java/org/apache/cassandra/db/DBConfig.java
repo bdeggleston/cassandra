@@ -36,6 +36,8 @@ public class DBConfig
     public final AbstractBounds.Serializer boundsSerializer;
     public final MerkleTree.Serializer merkleTreeSerializer;
 
+    public final long preemptiveOpenInterval;
+
     public DBConfig()
     {
         memtablePool = DatabaseDescriptor.instance.getMemtableAllocatorPool();
@@ -51,6 +53,8 @@ public class DBConfig
         hashableSerializer = new MerkleTree.Hashable.HashableSerializer(tokenSerializer);
         innerSerializer = new MerkleTree.Inner.InnerSerializer(tokenSerializer, hashableSerializer);
         merkleTreeSerializer = new MerkleTree.Serializer(tokenSerializer, hashableSerializer);
+
+        preemptiveOpenInterval = calculatePreemptiveOpenInterval();
     }
 
     private int estimateRowOverhead(int count)
@@ -70,6 +74,14 @@ public class DBConfig
         allocator.setDiscarding();
         allocator.setDiscarded();
         return rowOverhead;
+    }
+
+    private long calculatePreemptiveOpenInterval()
+    {
+        long interval = DatabaseDescriptor.instance.getSSTablePreempiveOpenIntervalInMB() * (1L << 20);
+        if (interval < 0)
+            interval = Long.MAX_VALUE;
+        return interval;
     }
 
     public MemtablePool getMemtablePool()

@@ -684,7 +684,7 @@ public class CompactionManager implements CompactionManagerMBean
         CleanupInfo ci = new CleanupInfo(sstable, scanner, StorageService.instance);
 
         metrics.beginCompaction(ci);
-        SSTableRewriter writer = new SSTableRewriter(cfs, new HashSet<>(ImmutableSet.of(sstable)), sstable.maxDataAge, OperationType.CLEANUP, false);
+        SSTableRewriter writer = new SSTableRewriter(cfs, new HashSet<>(ImmutableSet.of(sstable)), sstable.maxDataAge, OperationType.CLEANUP, false, DBConfig.instance);
 
         try (CompactionController controller = new CompactionController(cfs, Collections.singleton(sstable), getDefaultGcBefore(cfs)))
         {
@@ -1050,8 +1050,8 @@ public class CompactionManager implements CompactionManagerMBean
         Set<SSTableReader> sstableAsSet = new HashSet<>(anticompactionGroup);
 
         File destination = cfs.directories.getDirectoryForNewSSTables();
-        SSTableRewriter repairedSSTableWriter = new SSTableRewriter(cfs, sstableAsSet, groupMaxDataAge, OperationType.ANTICOMPACTION, false);
-        SSTableRewriter unRepairedSSTableWriter = new SSTableRewriter(cfs, sstableAsSet, groupMaxDataAge, OperationType.ANTICOMPACTION, false);
+        SSTableRewriter repairedSSTableWriter = new SSTableRewriter(cfs, sstableAsSet, groupMaxDataAge, OperationType.ANTICOMPACTION, false, DBConfig.instance);
+        SSTableRewriter unRepairedSSTableWriter = new SSTableRewriter(cfs, sstableAsSet, groupMaxDataAge, OperationType.ANTICOMPACTION, false, DBConfig.instance);
 
         AbstractCompactionStrategy strategy = cfs.getCompactionStrategy();
         List<ICompactionScanner> scanners = strategy.getScanners(anticompactionGroup);
