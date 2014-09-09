@@ -33,6 +33,7 @@ import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.cql3.statements.*;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.*;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.dht.IPartitioner;
@@ -477,14 +478,16 @@ public class CQLSSTableWriter implements Closeable
             {
                 writer = new SSTableSimpleWriter(directory,
                                                  schema,
-                                                 partitioner);
+                                                 partitioner,
+                                                 DBConfig.instance);
             }
             else
             {
                 writer = new SSTableSimpleUnsortedWriter(directory,
                                                          schema,
                                                          partitioner,
-                                                         bufferSizeInMB);
+                                                         bufferSizeInMB,
+                                                         DBConfig.instance);
             }
             return new CQLSSTableWriter(writer, insert, boundNames);
         }

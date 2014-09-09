@@ -44,12 +44,16 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
     protected ColumnFamily columnFamily;
     protected ByteBuffer currentSuperColumn;
     protected final CounterId counterid = CounterId.generate();
+    protected final DBConfig dbConfig;
+    protected final LocatorConfig locatorConfig;
 
-    public AbstractSSTableSimpleWriter(File directory, CFMetaData metadata, IPartitioner partitioner)
+    public AbstractSSTableSimpleWriter(File directory, CFMetaData metadata, IPartitioner partitioner, DBConfig dbConfig)
     {
         this.metadata = metadata;
         this.directory = directory;
         DatabaseDescriptor.instance.setPartitioner(partitioner);
+        this.dbConfig = dbConfig;
+        this.locatorConfig = dbConfig.getLocatorConfig();
     }
 
     protected SSTableWriter getWriter()
@@ -59,7 +63,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
             0, // We don't care about the bloom filter
             ActiveRepairService.UNREPAIRED_SSTABLE,
             metadata,
-            LocatorConfig.instance.getPartitioner(),
+            locatorConfig.getPartitioner(),
             new MetadataCollector(metadata.comparator));
     }
 
@@ -97,7 +101,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
         if (currentKey != null && !columnFamily.isEmpty())
             writeRow(currentKey, columnFamily);
 
-        currentKey = LocatorConfig.instance.getPartitioner().decorateKey(key);
+        currentKey = locatorConfig.getPartitioner().decorateKey(key);
         columnFamily = getColumnFamily();
     }
 

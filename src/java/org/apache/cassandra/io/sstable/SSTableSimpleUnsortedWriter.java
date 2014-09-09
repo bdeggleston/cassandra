@@ -76,9 +76,11 @@ public class SSTableSimpleUnsortedWriter extends AbstractSSTableSimpleWriter
                                        AbstractType<?> comparator,
                                        AbstractType<?> subComparator,
                                        int bufferSizeInMB,
-                                       CompressionParameters compressParameters)
+                                       CompressionParameters compressParameters,
+                                       CFMetaDataFactory cfMetaDataFactory,
+                                       DBConfig dbConfig)
     {
-        this(directory, CFMetaDataFactory.instance.denseCFMetaData(keyspace, columnFamily, comparator, subComparator).compressionParameters(compressParameters), partitioner, bufferSizeInMB);
+        this(directory, cfMetaDataFactory.denseCFMetaData(keyspace, columnFamily, comparator, subComparator).compressionParameters(compressParameters), partitioner, bufferSizeInMB, dbConfig);
     }
 
     public SSTableSimpleUnsortedWriter(File directory,
@@ -87,21 +89,23 @@ public class SSTableSimpleUnsortedWriter extends AbstractSSTableSimpleWriter
                                        String columnFamily,
                                        AbstractType<?> comparator,
                                        AbstractType<?> subComparator,
-                                       int bufferSizeInMB)
+                                       int bufferSizeInMB,
+                                       CFMetaDataFactory cfMetaDataFactory,
+                                       DBConfig dbConfig)
     {
-        this(directory, partitioner, keyspace, columnFamily, comparator, subComparator, bufferSizeInMB, new CompressionParameters(null));
+        this(directory, partitioner, keyspace, columnFamily, comparator, subComparator, bufferSizeInMB, new CompressionParameters(null), cfMetaDataFactory, dbConfig);
     }
 
-    public SSTableSimpleUnsortedWriter(File directory, CFMetaData metadata, IPartitioner partitioner, long bufferSizeInMB)
+    public SSTableSimpleUnsortedWriter(File directory, CFMetaData metadata, IPartitioner partitioner, long bufferSizeInMB, DBConfig dbConfig)
     {
-        super(directory, metadata, partitioner);
+        super(directory, metadata, partitioner, dbConfig);
         this.bufferSize = bufferSizeInMB * 1024L * 1024L;
         this.diskWriter.start();
     }
 
     protected void writeRow(DecoratedKey key, ColumnFamily columnFamily) throws IOException
     {
-        currentSize += key.getKey().remaining() + DBConfig.instance.columnFamilySerializer.serializedSize(columnFamily, MessagingService.current_version) * 1.2;
+        currentSize += key.getKey().remaining() + dbConfig.columnFamilySerializer.serializedSize(columnFamily, MessagingService.current_version) * 1.2;
 
         if (currentSize > bufferSize)
             sync();
@@ -113,14 +117,14 @@ public class SSTableSimpleUnsortedWriter extends AbstractSSTableSimpleWriter
         // If the CF already exist in memory, we'll just continue adding to it
         if (previous == null)
         {
-            previous = ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance);
+            previous = ArrayBackedSortedColumns.factory.create(metadata, dbConfig);
             buffer.put(currentKey, previous);
         }
         else
         {
             // We will reuse a CF that we have counted already. But because it will be easier to add the full size
             // of the CF in the next writeRow call than to find out the delta, we just remove the size until that next call
-            currentSize -= currentKey.getKey().remaining() + DBConfig.instance.columnFamilySerializer.serializedSize(previous, MessagingService.current_version) * 1.2;
+            currentSize -= currentKey.getKey().remaining() + dbConfig.columnFamilySerializer.serializedSize(previous, MessagingService.current_version) * 1.2;
         }
         return previous;
     }

@@ -22,6 +22,7 @@ import java.util.List;
 
 import com.google.common.io.Files;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
@@ -75,7 +76,7 @@ public class SSTableLoaderTest
         SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(dataDir,
                                                                              cfmeta,
                                                                              LocatorConfig.instance.getPartitioner(),
-                                                                             1);
+                                                                             1, DBConfig.instance);
         DecoratedKey key = Util.dk("key1");
         writer.newRow(key.getKey());
         writer.addColumn(ByteBufferUtil.bytes("col1"), ByteBufferUtil.bytes(100), 1);

@@ -1784,7 +1784,7 @@ public class ColumnFamilyStoreTest
         ByteBuffer key = bytes("key");
 
         // 1st sstable
-        SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(), cfmeta, LocatorConfig.instance.getPartitioner());
+        SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(), cfmeta, LocatorConfig.instance.getPartitioner(), DBConfig.instance);
         writer.newRow(key);
         writer.addColumn(bytes("col"), bytes("val"), 1);
         writer.close();
@@ -1797,7 +1797,7 @@ public class ColumnFamilyStoreTest
 
         // simulate incomplete compaction
         writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                         cfmeta, LocatorConfig.instance.getPartitioner())
+                                         cfmeta, LocatorConfig.instance.getPartitioner(), DBConfig.instance)
         {
             protected SSTableWriter getWriter()
             {
@@ -1852,7 +1852,7 @@ public class ColumnFamilyStoreTest
         // Write SSTable generation 3 that has ancestors 1 and 2
         final Set<Integer> ancestors = Sets.newHashSet(1, 2);
         SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                                cfmeta, LocatorConfig.instance.getPartitioner())
+                                                cfmeta, LocatorConfig.instance.getPartitioner(), DBConfig.instance)
         {
             protected SSTableWriter getWriter()
             {
@@ -1919,13 +1919,13 @@ public class ColumnFamilyStoreTest
         ByteBuffer key = bytes("key");
 
         SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                                             cfmeta, LocatorConfig.instance.getPartitioner());
+                                                             cfmeta, LocatorConfig.instance.getPartitioner(), DBConfig.instance);
         writer.newRow(key);
         writer.addColumn(bytes("col"), bytes("val"), 1);
         writer.close();
 
         writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                         cfmeta, LocatorConfig.instance.getPartitioner());
+                                         cfmeta, LocatorConfig.instance.getPartitioner(), DBConfig.instance);
         writer.newRow(key);
         writer.addColumn(bytes("col"), bytes("val"), 1);
         writer.close();

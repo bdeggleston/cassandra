@@ -20,6 +20,7 @@ package org.apache.cassandra.io.sstable;
 
 import java.io.File;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.BeforeClass;
@@ -66,7 +67,7 @@ public class SSTableSimpleWriterTest
         assert dir.exists();
 
         IPartitioner partitioner = LocatorConfig.instance.getPartitioner();
-        SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(dir, partitioner, keyspaceName, cfname, IntegerType.instance, null, 16);
+        SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(dir, partitioner, keyspaceName, cfname, IntegerType.instance, null, 16, CFMetaDataFactory.instance, DBConfig.instance);
 
         int k = 0;
 

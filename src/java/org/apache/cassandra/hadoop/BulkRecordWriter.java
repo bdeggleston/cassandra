@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.io.sstable.SSTableLoader;
@@ -60,29 +61,33 @@ public final class BulkRecordWriter extends AbstractBulkRecordWriter<ByteBuffer,
     private final CFMetaDataFactory cfMetaDataFactory;
     private final SSTableReaderFactory ssTableReaderFactory;
     private final LocatorConfig locatorConfig;
+    private final DBConfig dbConfig;
 
-    BulkRecordWriter(TaskAttemptContext context, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, LocatorConfig locatorConfig)
+    BulkRecordWriter(TaskAttemptContext context, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, DBConfig dbConfig)
     {
         super(context, databaseDescriptor);
         this.cfMetaDataFactory = cfMetaDataFactory;
         this.ssTableReaderFactory = ssTableReaderFactory;
-        this.locatorConfig = locatorConfig;
+        this.dbConfig = dbConfig;
+        this.locatorConfig = dbConfig.getLocatorConfig();
     }
 
-    BulkRecordWriter(Configuration conf, Progressable progress, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, LocatorConfig locatorConfig)
+    BulkRecordWriter(Configuration conf, Progressable progress, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, DBConfig dbConfig)
     {
         super(conf, progress, databaseDescriptor);
         this.cfMetaDataFactory = cfMetaDataFactory;
         this.ssTableReaderFactory = ssTableReaderFactory;
-        this.locatorConfig = locatorConfig;
+        this.dbConfig = dbConfig;
+        this.locatorConfig = dbConfig.getLocatorConfig();
     }
 
-    BulkRecordWriter(Configuration conf, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, LocatorConfig locatorConfig)
+    BulkRecordWriter(Configuration conf, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, DBConfig dbConfig)
     {
         super(conf, databaseDescriptor);
         this.cfMetaDataFactory = cfMetaDataFactory;
         this.ssTableReaderFactory = ssTableReaderFactory;
-        this.locatorConfig = locatorConfig;
+        this.dbConfig = dbConfig;
+        this.locatorConfig = dbConfig.getLocatorConfig();
     }
 
     private void setTypes(Mutation mutation)
@@ -125,7 +130,9 @@ public final class BulkRecordWriter extends AbstractBulkRecordWriter<ByteBuffer,
                     BytesType.instance,
                     subcomparator,
                     Integer.parseInt(conf.get(BUFFER_SIZE_IN_MB, "64")),
-                    ConfigHelper.getOutputCompressionParamaters(conf));
+                    ConfigHelper.getOutputCompressionParamaters(conf),
+                    cfMetaDataFactory,
+                    dbConfig);
 
             this.loader = new SSTableLoader(outputDir, new ExternalClient(conf, cfMetaDataFactory, locatorConfig, databaseDescriptor), new NullOutputHandler(),
                                             databaseDescriptor, ssTableReaderFactory);
