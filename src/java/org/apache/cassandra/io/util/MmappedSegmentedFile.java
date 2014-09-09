@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.cassandra.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -125,9 +126,9 @@ public class MmappedSegmentedFile extends SegmentedFile
         // used to allow merging multiple too-large-to-mmap segments, into a single buffered segment.
         private long currentSize = 0;
 
-        public Builder()
+        public Builder(Config.DiskAccessMode diskAccessMode)
         {
-            super();
+            super(diskAccessMode);
             boundaries = new ArrayList<Long>();
             boundaries.add(0L);
         }

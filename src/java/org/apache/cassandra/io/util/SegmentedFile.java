@@ -71,18 +71,18 @@ public abstract class SegmentedFile
     public static Builder getBuilder(Config.DiskAccessMode mode, FileCacheService fileCacheService)
     {
         return mode == Config.DiskAccessMode.mmap
-               ? new MmappedSegmentedFile.Builder()
-               : new BufferedPoolingSegmentedFile.Builder(fileCacheService);
+               ? new MmappedSegmentedFile.Builder(DatabaseDescriptor.instance.getDiskAccessMode())
+               : new BufferedPoolingSegmentedFile.Builder(fileCacheService, DatabaseDescriptor.instance.getDiskAccessMode());
     }
 
-    public static Builder getCompressedBuilder(FileCacheService fileCacheService)
+    public static Builder getCompressedBuilder(FileCacheService fileCacheService, Config.DiskAccessMode diskAccessMode)
     {
-        return getCompressedBuilder(null, fileCacheService);
+        return getCompressedBuilder(null, fileCacheService, diskAccessMode);
     }
 
-    public static Builder getCompressedBuilder(CompressedSequentialWriter writer, FileCacheService fileCacheService)
+    public static Builder getCompressedBuilder(CompressedSequentialWriter writer, FileCacheService fileCacheService, Config.DiskAccessMode diskAccessMode)
     {
-        return new CompressedPoolingSegmentedFile.Builder(writer, fileCacheService);
+        return new CompressedPoolingSegmentedFile.Builder(writer, fileCacheService, diskAccessMode);
     }
 
     public abstract FileDataInput getSegment(long position);
@@ -105,6 +105,14 @@ public abstract class SegmentedFile
      */
     public static abstract class Builder
     {
+
+        private final Config.DiskAccessMode diskAccessMode;
+
+        protected Builder(Config.DiskAccessMode diskAccessMode)
+        {
+            this.diskAccessMode = diskAccessMode;
+        }
+
         /**
          * Adds a position that would be a safe place for a segment boundary in the file. For a block/row based file
          * format, safe boundaries are block/row edges.

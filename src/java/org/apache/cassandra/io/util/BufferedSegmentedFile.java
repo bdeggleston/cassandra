@@ -17,6 +17,8 @@
  */
 package org.apache.cassandra.io.util;
 
+import org.apache.cassandra.config.Config;
+
 import java.io.File;
 
 public class BufferedSegmentedFile extends SegmentedFile
@@ -28,6 +30,11 @@ public class BufferedSegmentedFile extends SegmentedFile
 
     public static class Builder extends SegmentedFile.Builder
     {
+        public Builder(Config.DiskAccessMode diskAccessMode)
+        {
+            super(diskAccessMode);
+        }
+
         public void addPotentialBoundary(long boundary)
         {
             // only one segment in a standard-io file

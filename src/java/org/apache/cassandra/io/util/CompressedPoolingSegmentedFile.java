@@ -17,6 +17,7 @@
 */
 package org.apache.cassandra.io.util;
 
+import org.apache.cassandra.config.Config;
 import org.apache.cassandra.io.compress.CompressedRandomAccessReader;
 import org.apache.cassandra.io.compress.CompressedSequentialWriter;
 import org.apache.cassandra.io.compress.CompressionMetadata;
@@ -35,9 +36,9 @@ public class CompressedPoolingSegmentedFile extends PoolingSegmentedFile impleme
     public static class Builder extends CompressedSegmentedFile.Builder
     {
         private final FileCacheService fileCacheService;
-        public Builder(CompressedSequentialWriter writer, FileCacheService fileCacheService)
+        public Builder(CompressedSequentialWriter writer, FileCacheService fileCacheService, Config.DiskAccessMode diskAccessMode)
         {
-            super(writer);
+            super(writer, diskAccessMode);
             this.fileCacheService = fileCacheService;
         }
 

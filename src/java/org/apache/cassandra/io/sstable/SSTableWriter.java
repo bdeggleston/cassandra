@@ -131,7 +131,7 @@ public class SSTableWriter extends SSTable
                                              descriptor.filenameFor(Component.COMPRESSION_INFO),
                                              metadata.compressionParameters(),
                                              sstableMetadataCollector);
-            dbuilder = SegmentedFile.getCompressedBuilder((CompressedSequentialWriter) dataFile, FileCacheService.instance);
+            dbuilder = SegmentedFile.getCompressedBuilder((CompressedSequentialWriter) dataFile, FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode());
         }
         else
         {

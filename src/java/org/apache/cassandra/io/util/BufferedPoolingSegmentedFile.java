@@ -17,6 +17,7 @@
 */
 package org.apache.cassandra.io.util;
 
+import org.apache.cassandra.config.Config;
 import org.apache.cassandra.service.FileCacheService;
 
 import java.io.File;
@@ -32,8 +33,9 @@ public class BufferedPoolingSegmentedFile extends PoolingSegmentedFile
     {
         private final FileCacheService fileCacheService;
 
-        public Builder(FileCacheService fileCacheService)
+        public Builder(FileCacheService fileCacheService, Config.DiskAccessMode diskAccessMode)
         {
+            super(diskAccessMode);
             this.fileCacheService = fileCacheService;
         }
 

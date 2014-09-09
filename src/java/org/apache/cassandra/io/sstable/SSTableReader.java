@@ -332,10 +332,10 @@ public class SSTableReader extends SSTable
                                                   false);
 
         // special implementation of load to use non-pooled SegmentedFile builders
-        SegmentedFile.Builder ibuilder = new BufferedSegmentedFile.Builder();
+        SegmentedFile.Builder ibuilder = new BufferedSegmentedFile.Builder(DatabaseDescriptor.instance.getDiskAccessMode());
         SegmentedFile.Builder dbuilder = sstable.compression
-                                       ? new CompressedSegmentedFile.Builder(null)
-                                       : new BufferedSegmentedFile.Builder();
+                                       ? new CompressedSegmentedFile.Builder(null, DatabaseDescriptor.instance.getDiskAccessMode())
+                                       : new BufferedSegmentedFile.Builder(DatabaseDescriptor.instance.getDiskAccessMode());
         if (!sstable.loadSummary(ibuilder, dbuilder))
             sstable.buildSummary(false, ibuilder, dbuilder, false, Downsampling.BASE_SAMPLING_LEVEL);
         sstable.ifile = ibuilder.complete(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
@@ -737,7 +737,7 @@ public class SSTableReader extends SSTable
     {
         SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), FileCacheService.instance);
         SegmentedFile.Builder dbuilder = compression
-                                         ? SegmentedFile.getCompressedBuilder(FileCacheService.instance)
+                                         ? SegmentedFile.getCompressedBuilder(FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode())
                                          : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), FileCacheService.instance);
 
         boolean summaryLoaded = loadSummary(ibuilder, dbuilder);
@@ -992,7 +992,7 @@ public class SSTableReader extends SSTable
 
                 SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), FileCacheService.instance);
                 SegmentedFile.Builder dbuilder = compression
-                                                 ? SegmentedFile.getCompressedBuilder(FileCacheService.instance)
+                                                 ? SegmentedFile.getCompressedBuilder(FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode())
                                                  : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), FileCacheService.instance);
                 saveSummary(ibuilder, dbuilder, newSummary);
             }
