@@ -64,7 +64,7 @@ public class SequentialWriter extends OutputStream implements WritableByteChanne
     public final DataOutputPlus stream;
     protected long lastFlushOffset;
 
-    public SequentialWriter(File file, int bufferSize)
+    public SequentialWriter(File file, int bufferSize, DatabaseDescriptor databaseDescriptor)
     {
         try
         {
@@ -78,8 +78,8 @@ public class SequentialWriter extends OutputStream implements WritableByteChanne
         filePath = file.getAbsolutePath();
 
         buffer = new byte[bufferSize];
-        this.trickleFsync = DatabaseDescriptor.instance.getTrickleFsync();
-        this.trickleFsyncByteInterval = DatabaseDescriptor.instance.getTrickleFsyncIntervalInKb() * 1024;
+        this.trickleFsync = databaseDescriptor.getTrickleFsync();
+        this.trickleFsyncByteInterval = databaseDescriptor.getTrickleFsyncIntervalInKb() * 1024;
 
         try
         {
@@ -94,27 +94,28 @@ public class SequentialWriter extends OutputStream implements WritableByteChanne
         stream = new DataOutputStreamAndChannel(this, this);
     }
 
-    public static SequentialWriter open(File file)
+    public static SequentialWriter open(File file, DatabaseDescriptor databaseDescriptor)
     {
-        return open(file, RandomAccessReader.DEFAULT_BUFFER_SIZE);
+        return open(file, RandomAccessReader.DEFAULT_BUFFER_SIZE, databaseDescriptor);
     }
 
-    public static SequentialWriter open(File file, int bufferSize)
+    public static SequentialWriter open(File file, int bufferSize, DatabaseDescriptor databaseDescriptor)
     {
-        return new SequentialWriter(file, bufferSize);
+        return new SequentialWriter(file, bufferSize, databaseDescriptor);
     }
 
-    public static ChecksummedSequentialWriter open(File file, File crcPath)
+    public static ChecksummedSequentialWriter open(File file, File crcPath, DatabaseDescriptor databaseDescriptor)
     {
-        return new ChecksummedSequentialWriter(file, RandomAccessReader.DEFAULT_BUFFER_SIZE, crcPath);
+        return new ChecksummedSequentialWriter(file, RandomAccessReader.DEFAULT_BUFFER_SIZE, crcPath, databaseDescriptor);
     }
 
     public static CompressedSequentialWriter open(String dataFilePath,
                                                   String offsetsPath,
                                                   CompressionParameters parameters,
-                                                  MetadataCollector sstableMetadataCollector)
+                                                  MetadataCollector sstableMetadataCollector,
+                                                  DatabaseDescriptor databaseDescriptor)
     {
-        return new CompressedSequentialWriter(new File(dataFilePath), offsetsPath, parameters, sstableMetadataCollector);
+        return new CompressedSequentialWriter(new File(dataFilePath), offsetsPath, parameters, sstableMetadataCollector, databaseDescriptor);
     }
 
     public void write(int value) throws ClosedChannelException

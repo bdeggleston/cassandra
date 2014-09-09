@@ -130,12 +130,13 @@ public class SSTableWriter extends SSTable
             dataFile = SequentialWriter.open(getFilename(),
                                              descriptor.filenameFor(Component.COMPRESSION_INFO),
                                              metadata.compressionParameters(),
-                                             sstableMetadataCollector);
+                                             sstableMetadataCollector,
+                                             DatabaseDescriptor.instance);
             dbuilder = SegmentedFile.getCompressedBuilder((CompressedSequentialWriter) dataFile, FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode());
         }
         else
         {
-            dataFile = SequentialWriter.open(new File(getFilename()), new File(descriptor.filenameFor(Component.CRC)));
+            dataFile = SequentialWriter.open(new File(getFilename()), new File(descriptor.filenameFor(Component.CRC)), DatabaseDescriptor.instance);
             dbuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), FileCacheService.instance);
         }
 
@@ -480,7 +481,7 @@ public class SSTableWriter extends SSTable
 
     private static void writeMetadata(Descriptor desc, Map<MetadataType, MetadataComponent> components)
     {
-        SequentialWriter out = SequentialWriter.open(new File(desc.filenameFor(Component.STATS)));
+        SequentialWriter out = SequentialWriter.open(new File(desc.filenameFor(Component.STATS)), DatabaseDescriptor.instance);
         try
         {
             desc.getMetadataSerializer().serialize(components, out.stream);
@@ -539,7 +540,7 @@ public class SSTableWriter extends SSTable
 
         IndexWriter(long keyCount)
         {
-            indexFile = SequentialWriter.open(new File(descriptor.filenameFor(Component.PRIMARY_INDEX)));
+            indexFile = SequentialWriter.open(new File(descriptor.filenameFor(Component.PRIMARY_INDEX)), DatabaseDescriptor.instance);
             builder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), FileCacheService.instance);
             summary = new IndexSummaryBuilder(keyCount, metadata.getMinIndexInterval(), Downsampling.BASE_SAMPLING_LEVEL);
             bf = FilterFactory.getFilter(keyCount, metadata.getBloomFilterFpChance(), true);

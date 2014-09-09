@@ -19,6 +19,7 @@ package org.apache.cassandra.io.util;
 
 import java.io.File;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.sstable.Descriptor;
 
 public class ChecksummedSequentialWriter extends SequentialWriter
@@ -26,10 +27,10 @@ public class ChecksummedSequentialWriter extends SequentialWriter
     private final SequentialWriter crcWriter;
     private final DataIntegrityMetadata.ChecksumWriter crcMetadata;
 
-    public ChecksummedSequentialWriter(File file, int bufferSize, File crcPath)
+    public ChecksummedSequentialWriter(File file, int bufferSize, File crcPath, DatabaseDescriptor databaseDescriptor)
     {
-        super(file, bufferSize);
-        crcWriter = new SequentialWriter(crcPath, 8 * 1024);
+        super(file, bufferSize, databaseDescriptor);
+        crcWriter = new SequentialWriter(crcPath, 8 * 1024, databaseDescriptor);
         crcMetadata = new DataIntegrityMetadata.ChecksumWriter(crcWriter.stream);
         crcMetadata.writeChunkSize(buffer.length);
     }

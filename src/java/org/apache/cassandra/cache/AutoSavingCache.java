@@ -270,7 +270,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
         {
             File path = getCachePath(pathInfo.keyspace, pathInfo.columnFamily, pathInfo.cfId, CURRENT_VERSION);
             File tmpFile = FileUtils.createTempFile(path.getName(), null, path.getParentFile());
-            return SequentialWriter.open(tmpFile);
+            return SequentialWriter.open(tmpFile, databaseDescriptor);
         }
 
         private void deleteOldCacheFiles()

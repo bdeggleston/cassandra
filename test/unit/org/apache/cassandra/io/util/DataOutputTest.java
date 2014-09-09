@@ -34,6 +34,7 @@ import java.nio.channels.Channels;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -134,7 +135,7 @@ public class DataOutputTest
     public void testSequentialWriter() throws IOException
     {
         File file = FileUtils.createTempFile("dataoutput", "test");
-        final SequentialWriter writer = new SequentialWriter(file, 32);
+        final SequentialWriter writer = new SequentialWriter(file, 32, DatabaseDescriptor.instance);
         DataOutputStreamAndChannel write = new DataOutputStreamAndChannel(writer, writer);
         DataInput canon = testWrite(write);
         write.flush();

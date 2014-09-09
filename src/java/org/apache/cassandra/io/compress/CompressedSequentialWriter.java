@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.zip.Adler32;
 import java.util.zip.Checksum;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.sstable.CorruptSSTableException;
@@ -57,9 +58,10 @@ public class CompressedSequentialWriter extends SequentialWriter
     public CompressedSequentialWriter(File file,
                                       String offsetsPath,
                                       CompressionParameters parameters,
-                                      MetadataCollector sstableMetadataCollector)
+                                      MetadataCollector sstableMetadataCollector,
+                                      DatabaseDescriptor databaseDescriptor)
     {
-        super(file, parameters.chunkLength());
+        super(file, parameters.chunkLength(), databaseDescriptor);
         this.compressor = parameters.sstableCompressor;
 
         // buffer for compression should be the same size as buffer itself
