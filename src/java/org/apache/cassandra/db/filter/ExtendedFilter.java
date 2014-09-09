@@ -202,7 +202,7 @@ public abstract class ExtendedFilter
                 if (cfs.getMaxRowSize() < databaseDescriptor.getColumnIndexSize())
                 {
                     logger.trace("Expanding slice filter to entire row to cover additional expressions");
-                    return new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, ((SliceQueryFilter)filter).reversed, Integer.MAX_VALUE, databaseDescriptor, tracing);
+                    return new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, ((SliceQueryFilter)filter).reversed, Integer.MAX_VALUE, databaseDescriptor, tracing, dbConfig);
                 }
             }
             else

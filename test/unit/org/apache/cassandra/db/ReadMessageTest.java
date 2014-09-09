@@ -96,7 +96,7 @@ public class ReadMessageTest
                                       dk.getKey(),
                                       "Standard1",
                                       ts,
-                                      new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, true, 2, DatabaseDescriptor.instance, Tracing.instance),
+                                      new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, true, 2, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                       Schema.instance,
                                       LocatorConfig.instance.getPartitioner(),
                                       MessagingService.instance.readCommandSerializer);
@@ -107,7 +107,7 @@ public class ReadMessageTest
                                       dk.getKey(),
                                       "Standard1",
                                       ts,
-                                      new SliceQueryFilter(Util.cellname("a"), Util.cellname("z"), true, 5, DatabaseDescriptor.instance, Tracing.instance),
+                                      new SliceQueryFilter(Util.cellname("a"), Util.cellname("z"), true, 5, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                       Schema.instance,
                                       LocatorConfig.instance.getPartitioner(),
                                       MessagingService.instance.readCommandSerializer);

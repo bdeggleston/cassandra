@@ -117,7 +117,7 @@ public class KeyspaceTest
                 cf = cfStore.getColumnFamily(Util.namesQueryFilter(cfStore, TEST_KEY));
                 assertColumns(cf);
 
-                cf = cfStore.getColumnFamily(QueryFilter.getSliceFilter(TEST_KEY, "Standard3", Composites.EMPTY, Composites.EMPTY, false, 0, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance));
+                cf = cfStore.getColumnFamily(QueryFilter.getSliceFilter(TEST_KEY, "Standard3", Composites.EMPTY, Composites.EMPTY, false, 0, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
                 assertColumns(cf);
 
                 cf = cfStore.getColumnFamily(Util.namesQueryFilter(cfStore, TEST_KEY, "col99"));

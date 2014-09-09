@@ -54,37 +54,38 @@ public class SliceQueryFilter implements IDiskAtomFilter
     private ColumnCounter columnCounter;
     private final DatabaseDescriptor databaseDescriptor;
     private final Tracing tracing;
+    private final DBConfig dbConfig;
 
-    public SliceQueryFilter(Composite start, Composite finish, boolean reversed, int count, DatabaseDescriptor databaseDescriptor, Tracing tracing)
+    public SliceQueryFilter(Composite start, Composite finish, boolean reversed, int count, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        this(new ColumnSlice(start, finish), reversed, count, databaseDescriptor, tracing);
+        this(new ColumnSlice(start, finish), reversed, count, databaseDescriptor, tracing, dbConfig);
     }
 
-    public SliceQueryFilter(Composite start, Composite finish, boolean reversed, int count, int compositesToGroup, DatabaseDescriptor databaseDescriptor, Tracing tracing)
+    public SliceQueryFilter(Composite start, Composite finish, boolean reversed, int count, int compositesToGroup, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        this(new ColumnSlice(start, finish), reversed, count, compositesToGroup, databaseDescriptor, tracing);
+        this(new ColumnSlice(start, finish), reversed, count, compositesToGroup, databaseDescriptor, tracing, dbConfig);
     }
 
-    public SliceQueryFilter(ColumnSlice slice, boolean reversed, int count, DatabaseDescriptor databaseDescriptor, Tracing tracing)
+    public SliceQueryFilter(ColumnSlice slice, boolean reversed, int count, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        this(new ColumnSlice[]{ slice }, reversed, count, databaseDescriptor, tracing);
+        this(new ColumnSlice[]{ slice }, reversed, count, databaseDescriptor, tracing, dbConfig);
     }
 
-    public SliceQueryFilter(ColumnSlice slice, boolean reversed, int count, int compositesToGroup, DatabaseDescriptor databaseDescriptor, Tracing tracing)
+    public SliceQueryFilter(ColumnSlice slice, boolean reversed, int count, int compositesToGroup, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        this(new ColumnSlice[]{ slice }, reversed, count, compositesToGroup, databaseDescriptor, tracing);
+        this(new ColumnSlice[]{ slice }, reversed, count, compositesToGroup, databaseDescriptor, tracing, dbConfig);
     }
 
     /**
      * Constructor that accepts multiple slices. All slices are assumed to be in the same direction (forward or
      * reversed).
      */
-    public SliceQueryFilter(ColumnSlice[] slices, boolean reversed, int count, DatabaseDescriptor databaseDescriptor, Tracing tracing)
+    public SliceQueryFilter(ColumnSlice[] slices, boolean reversed, int count, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        this(slices, reversed, count, -1, databaseDescriptor, tracing);
+        this(slices, reversed, count, -1, databaseDescriptor, tracing, dbConfig);
     }
 
-    public SliceQueryFilter(ColumnSlice[] slices, boolean reversed, int count, int compositesToGroup, DatabaseDescriptor databaseDescriptor, Tracing tracing)
+    public SliceQueryFilter(ColumnSlice[] slices, boolean reversed, int count, int compositesToGroup, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         this.slices = slices;
         this.reversed = reversed;
@@ -92,21 +93,22 @@ public class SliceQueryFilter implements IDiskAtomFilter
         this.compositesToGroup = compositesToGroup;
         this.databaseDescriptor = databaseDescriptor;
         this.tracing = tracing;
+        this.dbConfig = dbConfig;
     }
 
     public SliceQueryFilter cloneShallow()
     {
-        return new SliceQueryFilter(slices, reversed, count, compositesToGroup, databaseDescriptor, tracing);
+        return new SliceQueryFilter(slices, reversed, count, compositesToGroup, databaseDescriptor, tracing, dbConfig);
     }
 
     public SliceQueryFilter withUpdatedCount(int newCount)
     {
-        return new SliceQueryFilter(slices, reversed, newCount, compositesToGroup, databaseDescriptor, tracing);
+        return new SliceQueryFilter(slices, reversed, newCount, compositesToGroup, databaseDescriptor, tracing, dbConfig);
     }
 
     public SliceQueryFilter withUpdatedSlices(ColumnSlice[] newSlices)
     {
-        return new SliceQueryFilter(newSlices, reversed, count, compositesToGroup, databaseDescriptor, tracing);
+        return new SliceQueryFilter(newSlices, reversed, count, compositesToGroup, databaseDescriptor, tracing, dbConfig);
     }
 
     public SliceQueryFilter withUpdatedStart(Composite newStart, CellNameType comparator)
@@ -433,7 +435,7 @@ public class SliceQueryFilter implements IDiskAtomFilter
             int compositesToGroup = -1;
             compositesToGroup = in.readInt();
 
-            return new SliceQueryFilter(slices, reversed, count, compositesToGroup, databaseDescriptor, tracing);
+            return new SliceQueryFilter(slices, reversed, count, compositesToGroup, databaseDescriptor, tracing, dbConfig);
         }
 
         public long serializedSize(SliceQueryFilter f, int version)

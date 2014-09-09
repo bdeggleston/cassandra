@@ -382,13 +382,13 @@ public class CassandraServer implements Cassandra.Iface
             CellNameType columnType = new SimpleDenseCellNameType(metadata.comparator.subtype(parent.isSetSuper_column() ? 1 : 0), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
             Composite start = columnType.fromByteBuffer(range.start);
             Composite finish = columnType.fromByteBuffer(range.finish);
-            SliceQueryFilter filter = new SliceQueryFilter(start, finish, range.reversed, range.count, DatabaseDescriptor.instance, Tracing.instance);
+            SliceQueryFilter filter = new SliceQueryFilter(start, finish, range.reversed, range.count, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
             return SuperColumns.fromSCSliceFilter(metadata.comparator, parent.bufferForSuper_column(), filter, DatabaseDescriptor.instance, Tracing.instance);
         }
 
         Composite start = metadata.comparator.fromByteBuffer(range.start);
         Composite finish = metadata.comparator.fromByteBuffer(range.finish);
-        return new SliceQueryFilter(start, finish, range.reversed, range.count, DatabaseDescriptor.instance, Tracing.instance);
+        return new SliceQueryFilter(start, finish, range.reversed, range.count, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
     }
 
     private IDiskAtomFilter toInternalFilter(CFMetaData metadata, ColumnParent parent, SlicePredicate predicate)
@@ -2069,7 +2069,7 @@ public class CassandraServer implements Cassandra.Iface
                 slices[i] = new ColumnSlice(start, finish);
             }
             ColumnSlice[] deoverlapped = ColumnSlice.deoverlapSlices(slices, request.reversed ? metadata.comparator.reverseComparator() : metadata.comparator);
-            SliceQueryFilter filter = new SliceQueryFilter(deoverlapped, request.reversed, request.count, DatabaseDescriptor.instance, Tracing.instance);
+            SliceQueryFilter filter = new SliceQueryFilter(deoverlapped, request.reversed, request.count, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
             ThriftValidation.validateKey(metadata, request.key);
             commands.add(ReadCommand.create(keyspace,
                                             request.key,
@@ -2152,7 +2152,7 @@ public class CassandraServer implements Cassandra.Iface
         public IDiskAtomFilter readFilter()
         {
             return expected == null || expected.isEmpty()
-                 ? new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 1, DatabaseDescriptor.instance, Tracing.instance)
+                 ? new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 1, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)
                  : new NamesQueryFilter(ImmutableSortedSet.copyOf(expected.getComparator(), expected.getColumnNames()), DBConfig.instance);
         }
 

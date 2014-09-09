@@ -191,7 +191,7 @@ public class SuperColumns
                 // This is why we call toByteBuffer() and rebuild a  Composite of the right type before call slice().
                 slices[i++] = type.make(name.toByteBuffer()).slice();
             }
-            return new SliceQueryFilter(slices, false, slices.length, 1, databaseDescriptor, tracing);
+            return new SliceQueryFilter(slices, false, slices.length, 1, databaseDescriptor, tracing, DBConfig.instance);
         }
         else
         {
@@ -215,7 +215,7 @@ public class SuperColumns
             Composite finish = filter.finish().isEmpty()
                              ? Composites.EMPTY
                              : builder.buildWith(filter.finish().toByteBuffer()).withEOC(filter.reversed ? Composite.EOC.START : Composite.EOC.END);
-            return new SliceQueryFilter(start, finish, filter.reversed, filter.count, 1, databaseDescriptor, tracing);
+            return new SliceQueryFilter(start, finish, filter.reversed, filter.count, 1, databaseDescriptor, tracing, DBConfig.instance);
         }
         else
         {
@@ -226,7 +226,7 @@ public class SuperColumns
             Composite end = filter.finish().isEmpty()
                           ? builder.build().withEOC(filter.reversed ? Composite.EOC.START : Composite.EOC.END)
                           : builder.buildWith(filter.finish().toByteBuffer());
-            return new SliceQueryFilter(start, end, filter.reversed, filter.count, databaseDescriptor, tracing);
+            return new SliceQueryFilter(start, end, filter.reversed, filter.count, databaseDescriptor, tracing, DBConfig.instance);
         }
     }
 }

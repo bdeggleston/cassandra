@@ -180,7 +180,7 @@ public class Util
     {
         IDiskAtomFilter filter = superColumn == null
                                ? new IdentityQueryFilter()
-                               : new SliceQueryFilter(SuperColumns.startOf(superColumn), SuperColumns.endOf(superColumn), false, Integer.MAX_VALUE, databaseDescriptor, tracing);
+                               : new SliceQueryFilter(SuperColumns.startOf(superColumn), SuperColumns.endOf(superColumn), false, Integer.MAX_VALUE, databaseDescriptor, tracing, DBConfig.instance);
 
         Token min = LocatorConfig.instance.getPartitioner().getMinimumToken();
         return cfs.getRangeSlice(new Bounds<Token>(min, min, LocatorConfig.instance.getPartitioner()).toRowBounds(), null, filter, 10000);

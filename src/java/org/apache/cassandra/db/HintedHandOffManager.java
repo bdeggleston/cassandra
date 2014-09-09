@@ -374,7 +374,8 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                             pageSize,
                                                             now,
                                                             DatabaseDescriptor.instance,
-                                                            Tracing.instance);
+                                                            Tracing.instance,
+                                                            DBConfig.instance);
 
             ColumnFamily hintsPage = ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter), (int) (now / 1000));
 
@@ -589,7 +590,8 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                           false,
                                                           columnCount,
                                                           DatabaseDescriptor.instance,
-                                                          Tracing.instance);
+                                                          Tracing.instance,
+                                                          DBConfig.instance);
 
         // From keys "" to ""...
         IPartitioner<?> partitioner = LocatorConfig.instance.getPartitioner();

@@ -159,7 +159,7 @@ public class QueryPagerTest
 
     private static ReadCommand sliceQuery(String key, String start, String end, boolean reversed, int count)
     {
-        SliceQueryFilter filter = new SliceQueryFilter(CellNames.simpleDense(bytes(start)), CellNames.simpleDense(bytes(end)), reversed, count, DatabaseDescriptor.instance, Tracing.instance);
+        SliceQueryFilter filter = new SliceQueryFilter(CellNames.simpleDense(bytes(start)), CellNames.simpleDense(bytes(end)), reversed, count, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         // Note: for MultiQueryTest, we need the same timestamp/expireBefore for all queries, so we just use 0 as it doesn't matter here.
         return new SliceFromReadCommand(KEYSPACE1, bytes(key), CF_STANDARD, 0, filter, Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
     }
@@ -174,7 +174,7 @@ public class QueryPagerTest
 
     private static RangeSliceCommand rangeSliceQuery(AbstractBounds<RowPosition> range, int count, String start, String end)
     {
-        SliceQueryFilter filter = new SliceQueryFilter(CellNames.simpleDense(bytes(start)), CellNames.simpleDense(bytes(end)), false, Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance);
+        SliceQueryFilter filter = new SliceQueryFilter(CellNames.simpleDense(bytes(start)), CellNames.simpleDense(bytes(end)), false, Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         return new RangeSliceCommand(KEYSPACE1, CF_STANDARD, System.currentTimeMillis(), filter, range, count, DatabaseDescriptor.instance, KeyspaceManager.instance, MessagingService.instance.rangeSliceCommandSerializer);
     }
 
@@ -377,7 +377,7 @@ public class QueryPagerTest
         for (int i = 0; i < 5; i++)
             QueryProcessor.instance.executeInternal(String.format("INSERT INTO %s.%s (k, c, v) VALUES ('k%d', 'c%d', null)", keyspace, table, 0, i));
 
-        SliceQueryFilter filter = new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 100, DatabaseDescriptor.instance, Tracing.instance);
+        SliceQueryFilter filter = new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         QueryPager pager = QueryPagers.localPager(new SliceFromReadCommand(keyspace, bytes("k0"), table, 0, filter, Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer),
                                                   DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, StorageProxy.instance, MessagingService.instance, LocatorConfig.instance.getPartitioner());
 

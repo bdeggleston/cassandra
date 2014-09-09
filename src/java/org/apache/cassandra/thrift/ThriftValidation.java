@@ -659,7 +659,8 @@ public class ThriftValidation
                                           sr.reversed,
                                           sr.count,
                                           DatabaseDescriptor.instance,
-                                          Tracing.instance);
+                                          Tracing.instance,
+                                          DBConfig.instance);
         }
 
         if (metadata.isSuper())

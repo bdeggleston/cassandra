@@ -126,7 +126,8 @@ public class KeysSearcher extends SecondaryIndexSearcher
                                                                              rowsPerQuery,
                                                                              filter.timestamp,
                                                                              databaseDescriptor,
-                                                                             tracing);
+                                                                             tracing,
+                                                                             dbConfig);
                         ColumnFamily indexRow = index.getIndexCfs().getColumnFamily(indexFilter);
                         logger.trace("fetched {}", indexRow);
                         if (indexRow == null)

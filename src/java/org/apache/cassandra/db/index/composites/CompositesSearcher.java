@@ -178,7 +178,8 @@ public class CompositesSearcher extends SecondaryIndexSearcher
                                                                              rowsPerQuery,
                                                                              filter.timestamp,
                                                                              databaseDescriptor,
-                                                                             tracing);
+                                                                             tracing,
+                                                                             dbConfig);
                         ColumnFamily indexRow = index.getIndexCfs().getColumnFamily(indexFilter);
                         if (indexRow == null || !indexRow.hasColumns())
                             return makeReturn(currentKey, data);
@@ -277,7 +278,7 @@ public class CompositesSearcher extends SecondaryIndexSearcher
                         ColumnSlice[] slices = baseCfs.metadata.hasStaticColumns()
                                              ? new ColumnSlice[]{ baseCfs.metadata.comparator.staticPrefix().slice(), dataSlice }
                                              : new ColumnSlice[]{ dataSlice };
-                        SliceQueryFilter dataFilter = new SliceQueryFilter(slices, false, Integer.MAX_VALUE, baseCfs.metadata.clusteringColumns().size(), databaseDescriptor, tracing);
+                        SliceQueryFilter dataFilter = new SliceQueryFilter(slices, false, Integer.MAX_VALUE, baseCfs.metadata.clusteringColumns().size(), databaseDescriptor, tracing, dbConfig);
                         ColumnFamily newData = baseCfs.getColumnFamily(new QueryFilter(dk, baseCfs.name, dataFilter, filter.timestamp));
                         if (newData == null || index.isStale(entry, newData, filter.timestamp))
                         {

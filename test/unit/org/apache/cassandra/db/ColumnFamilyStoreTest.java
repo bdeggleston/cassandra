@@ -225,7 +225,7 @@ public class ColumnFamilyStoreTest
             public void runMayThrow() throws IOException
             {
                 QueryFilter sliceFilter = QueryFilter.getSliceFilter(Util.dk("key1"), CF_STANDARD2, Composites.EMPTY, Composites.EMPTY, false,
-                                                                     1, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance);
+                                                                     1, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
                 ColumnFamily cf = store.getColumnFamily(sliceFilter);
                 assertTrue(cf.isMarkedForDelete());
                 assertFalse(cf.hasColumns());
@@ -320,7 +320,7 @@ public class ColumnFamilyStoreTest
         assert rows.get(0).cf.getColumnCount() == 1 : rows.get(0).cf;
 
         // once more, this time with a slice rowset that needs to be expanded
-        SliceQueryFilter emptyFilter = new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, false, 0, DatabaseDescriptor.instance, Tracing.instance);
+        SliceQueryFilter emptyFilter = new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, false, 0, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         rows = cfs.search(range, clause, emptyFilter, 100);
 
         assert rows.size() == 1 : StringUtils.join(rows, ",");
@@ -1157,7 +1157,7 @@ public class ColumnFamilyStoreTest
         int columns = 0;
         for (Row row : rows)
         {
-            columns += row.getLiveCount(new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, expectedCount, DatabaseDescriptor.instance, Tracing.instance), System.currentTimeMillis());
+            columns += row.getLiveCount(new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, expectedCount, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), System.currentTimeMillis());
         }
         assert columns == expectedCount : "Expected " + expectedCount + " live columns but got " + columns + ": " + rows;
     }
@@ -1351,7 +1351,8 @@ public class ColumnFamilyStoreTest
                                                    false,
                                                    0,
                                                    DatabaseDescriptor.instance,
-                                                   Tracing.instance);
+                                                   Tracing.instance,
+                                                   DBConfig.instance);
         rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(ka, kc, LocatorConfig.instance.getPartitioner()), sf, cellname("c2"), cellname("c1"), null, 2, true, System.currentTimeMillis()));
         assert rows.size() == 2 : "Expected 2 rows, got " + toString(rows);
         iter = rows.iterator();
@@ -1534,10 +1535,10 @@ public class ColumnFamilyStoreTest
 
         cfs.forceBlockingFlush();
 
-        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, Tracing.instance);
+        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForward, "a", "colA", "colC", "colD", "colI");
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForwardWithCounting, "a", "colA", "colC", "colD");
@@ -1583,10 +1584,10 @@ public class ColumnFamilyStoreTest
 
         cfs.forceBlockingFlush();
 
-        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, Tracing.instance);
+        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForward, "a", "colA", "colC", "colD", "colI");
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForwardWithCounting, "a", "colA", "colC", "colD");
@@ -1632,10 +1633,10 @@ public class ColumnFamilyStoreTest
 
         cfs.forceBlockingFlush();
 
-        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, Tracing.instance);
+        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForward, "a", "colA", "colC", "colD", "colE", "colF", "colG", "colI");
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForwardWithCounting, "a", "colA", "colC", "colD");
@@ -1682,10 +1683,10 @@ public class ColumnFamilyStoreTest
 
         cfs.forceBlockingFlush();
 
-        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, Tracing.instance);
+        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForward, "a", "colA", "colC", "colD", "colE", "colF", "colG", "colI");
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForwardWithCounting, "a", "colA", "colC", "colD");
@@ -1743,10 +1744,10 @@ public class ColumnFamilyStoreTest
         // range2 [colG, ColG]
         // range3 [colI, ____]
 
-        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, Tracing.instance);
-        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, Tracing.instance);
+        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForward, "a", "colA", "colC", "colD", "colE", "colG", "colI");
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForwardWithCounting, "a", "colA", "colC", "colD");
@@ -2037,42 +2038,42 @@ public class ColumnFamilyStoreTest
                 new ColumnSlice[] { new ColumnSlice(Composites.EMPTY, cellname("colj")) };
 
         SliceQueryFilter startOnlyFilter = new SliceQueryFilter(startOnlyRange, false,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         SliceQueryFilter startOnlyFilterReversed = new SliceQueryFilter(startOnlyRangeReversed, true,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         SliceQueryFilter startOnlyFilterWithCounting = new SliceQueryFilter(startOnlyRange, false, 1,
-                                                                            DatabaseDescriptor.instance, Tracing.instance);
+                                                                            DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         SliceQueryFilter startOnlyFilterReversedWithCounting = new SliceQueryFilter(startOnlyRangeReversed,
-                true, 1, DatabaseDescriptor.instance, Tracing.instance);
+                true, 1, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
         SliceQueryFilter middleOnlyFilter = new SliceQueryFilter(middleOnlyRanges,
                 false,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         SliceQueryFilter middleOnlyFilterReversed = new SliceQueryFilter(middleOnlyRangesReversed, true,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         SliceQueryFilter middleOnlyFilterWithCounting = new SliceQueryFilter(middleOnlyRanges, false, 1,
-                                                                             DatabaseDescriptor.instance, Tracing.instance);
+                                                                             DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         SliceQueryFilter middleOnlyFilterReversedWithCounting = new SliceQueryFilter(middleOnlyRangesReversed,
-                true, 1, DatabaseDescriptor.instance, Tracing.instance);
+                true, 1, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
         SliceQueryFilter endOnlyFilter = new SliceQueryFilter(endOnlyRanges, false,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         SliceQueryFilter endOnlyReversed = new SliceQueryFilter(endOnlyRangesReversed, true,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         SliceQueryFilter endOnlyWithCounting = new SliceQueryFilter(endOnlyRanges, false, 1,
-                                                                    DatabaseDescriptor.instance, Tracing.instance);
+                                                                    DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         SliceQueryFilter endOnlyWithReversedCounting = new SliceQueryFilter(endOnlyRangesReversed,
-                true, 1, DatabaseDescriptor.instance, Tracing.instance);
+                true, 1, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
         SliceQueryFilter startMiddleAndEndFilter = new SliceQueryFilter(startMiddleAndEndRanges, false,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         SliceQueryFilter startMiddleAndEndFilterReversed = new SliceQueryFilter(startMiddleAndEndRangesReversed, true,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         SliceQueryFilter startMiddleAndEndFilterWithCounting = new SliceQueryFilter(startMiddleAndEndRanges, false,
-                1, DatabaseDescriptor.instance, Tracing.instance);
+                1, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         SliceQueryFilter startMiddleAndEndFilterReversedWithCounting = new SliceQueryFilter(
                 startMiddleAndEndRangesReversed, true,
-                1, DatabaseDescriptor.instance, Tracing.instance);
+                1, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
         findRowGetSlicesAndAssertColsFound(cfs, startOnlyFilter, "a", "cola");
         findRowGetSlicesAndAssertColsFound(cfs, startOnlyFilterReversed, "a", "cola");

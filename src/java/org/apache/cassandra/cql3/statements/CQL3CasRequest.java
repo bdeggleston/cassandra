@@ -124,7 +124,7 @@ public class CQL3CasRequest implements CASRequest
         int toGroup = cfm.comparator.isDense() ? -1 : cfm.clusteringColumns().size();
         slices = ColumnSlice.deoverlapSlices(slices, cfm.comparator);
         assert ColumnSlice.validateSlices(slices, cfm.comparator, false);
-        return new SliceQueryFilter(slices, false, slices.length, toGroup, databaseDescriptor, tracing);
+        return new SliceQueryFilter(slices, false, slices.length, toGroup, databaseDescriptor, tracing, dbConfig);
     }
 
     public boolean appliesTo(ColumnFamily current) throws InvalidRequestException

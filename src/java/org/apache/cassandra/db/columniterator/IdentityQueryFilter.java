@@ -18,6 +18,7 @@
 package org.apache.cassandra.db.columniterator;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.composites.Composites;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.tracing.Tracing;
@@ -29,7 +30,7 @@ public class IdentityQueryFilter extends SliceQueryFilter
      */
     public IdentityQueryFilter()
     {
-        super(Composites.EMPTY, Composites.EMPTY, false, Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance);
+        super(Composites.EMPTY, Composites.EMPTY, false, Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
     }
 
     @Override

@@ -212,9 +212,10 @@ public class QueryFilter
                                              int limit,
                                              long timestamp,
                                              DatabaseDescriptor databaseDescriptor,
-                                             Tracing tracing)
+                                             Tracing tracing,
+                                             DBConfig dbConfig)
     {
-        return new QueryFilter(key, cfName, new SliceQueryFilter(start, finish, reversed, limit, databaseDescriptor, tracing), timestamp);
+        return new QueryFilter(key, cfName, new SliceQueryFilter(start, finish, reversed, limit, databaseDescriptor, tracing, dbConfig), timestamp);
     }
 
     /**
