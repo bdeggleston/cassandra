@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.io.sstable.SSTableReaderFactory;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.thrift.Mutation;
 import org.apache.hadoop.mapreduce.*;
@@ -32,12 +33,14 @@ public class BulkOutputFormat extends AbstractBulkOutputFormat<ByteBuffer,List<M
 {
     private final DatabaseDescriptor databaseDescriptor;
     private final CFMetaDataFactory cfMetaDataFactory;
+    private final SSTableReaderFactory ssTableReaderFactory;
     private final LocatorConfig locatorConfig;
 
-    public BulkOutputFormat(DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig)
+    public BulkOutputFormat(DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, LocatorConfig locatorConfig)
     {
         this.databaseDescriptor = databaseDescriptor;
         this.cfMetaDataFactory = cfMetaDataFactory;
+        this.ssTableReaderFactory = ssTableReaderFactory;
         this.locatorConfig = locatorConfig;
     }
 
@@ -45,12 +48,12 @@ public class BulkOutputFormat extends AbstractBulkOutputFormat<ByteBuffer,List<M
     @Deprecated
     public BulkRecordWriter getRecordWriter(org.apache.hadoop.fs.FileSystem filesystem, org.apache.hadoop.mapred.JobConf job, String name, org.apache.hadoop.util.Progressable progress) throws IOException
     {
-        return new BulkRecordWriter(job, progress, databaseDescriptor, cfMetaDataFactory, locatorConfig);
+        return new BulkRecordWriter(job, progress, databaseDescriptor, cfMetaDataFactory, ssTableReaderFactory, locatorConfig);
     }
 
     @Override
     public BulkRecordWriter getRecordWriter(final TaskAttemptContext context) throws IOException, InterruptedException
     {
-        return new BulkRecordWriter(context, databaseDescriptor, cfMetaDataFactory, locatorConfig);
+        return new BulkRecordWriter(context, databaseDescriptor, cfMetaDataFactory, ssTableReaderFactory, locatorConfig);
     }
 }

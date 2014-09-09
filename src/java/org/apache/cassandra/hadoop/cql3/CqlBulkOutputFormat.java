@@ -26,6 +26,7 @@ import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.hadoop.AbstractBulkOutputFormat;
 import org.apache.cassandra.hadoop.ConfigHelper;
+import org.apache.cassandra.io.sstable.SSTableReaderFactory;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -59,12 +60,14 @@ public class CqlBulkOutputFormat extends AbstractBulkOutputFormat<Object, List<B
 
     private final DatabaseDescriptor databaseDescriptor;
     private final CFMetaDataFactory cfMetaDataFactory;
+    private final SSTableReaderFactory ssTableReaderFactory;
     private final LocatorConfig locatorConfig;
 
-    public CqlBulkOutputFormat(DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig)
+    public CqlBulkOutputFormat(DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, LocatorConfig locatorConfig)
     {
         this.databaseDescriptor = databaseDescriptor;
         this.cfMetaDataFactory = cfMetaDataFactory;
+        this.ssTableReaderFactory = ssTableReaderFactory;
         this.locatorConfig = locatorConfig;
     }
 
@@ -72,7 +75,7 @@ public class CqlBulkOutputFormat extends AbstractBulkOutputFormat<Object, List<B
     @Deprecated
     public CqlBulkRecordWriter getRecordWriter(FileSystem filesystem, JobConf job, String name, Progressable progress) throws IOException
     {
-        return new CqlBulkRecordWriter(job, progress, databaseDescriptor, cfMetaDataFactory, locatorConfig);
+        return new CqlBulkRecordWriter(job, progress, databaseDescriptor, cfMetaDataFactory, ssTableReaderFactory, locatorConfig);
     }
 
     /**
@@ -85,7 +88,7 @@ public class CqlBulkOutputFormat extends AbstractBulkOutputFormat<Object, List<B
      */
     public CqlBulkRecordWriter getRecordWriter(final TaskAttemptContext context) throws IOException, InterruptedException
     {
-        return new CqlBulkRecordWriter(context, databaseDescriptor, cfMetaDataFactory, locatorConfig);
+        return new CqlBulkRecordWriter(context, databaseDescriptor, cfMetaDataFactory, ssTableReaderFactory, locatorConfig);
     }
     
     public static void setColumnFamilySchema(Configuration conf, String columnFamily, String schema)

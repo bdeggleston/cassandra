@@ -35,6 +35,7 @@ import org.apache.cassandra.hadoop.ConfigHelper;
 import org.apache.cassandra.hadoop.HadoopCompat;
 import org.apache.cassandra.io.sstable.CQLSSTableWriter;
 import org.apache.cassandra.io.sstable.SSTableLoader;
+import org.apache.cassandra.io.sstable.SSTableReaderFactory;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
@@ -63,28 +64,32 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
     private File outputDir;
 
     private final CFMetaDataFactory cfMetaDataFactory;
+    private final SSTableReaderFactory ssTableReaderFactory;
     private final LocatorConfig locatorConfig;
 
-    CqlBulkRecordWriter(TaskAttemptContext context, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig) throws IOException
+    CqlBulkRecordWriter(TaskAttemptContext context, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, LocatorConfig locatorConfig) throws IOException
     {
         super(context, databaseDescriptor);
         this.cfMetaDataFactory = cfMetaDataFactory;
+        this.ssTableReaderFactory = ssTableReaderFactory;
         this.locatorConfig = locatorConfig;
         setConfigs();
     }
 
-    CqlBulkRecordWriter(Configuration conf, Progressable progress, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig) throws IOException
+    CqlBulkRecordWriter(Configuration conf, Progressable progress, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, LocatorConfig locatorConfig) throws IOException
     {
         super(conf, progress, databaseDescriptor);
         this.cfMetaDataFactory = cfMetaDataFactory;
+        this.ssTableReaderFactory = ssTableReaderFactory;
         this.locatorConfig = locatorConfig;
         setConfigs();
     }
 
-    CqlBulkRecordWriter(Configuration conf, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig) throws IOException
+    CqlBulkRecordWriter(Configuration conf, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, LocatorConfig locatorConfig) throws IOException
     {
         super(conf, databaseDescriptor);
         this.cfMetaDataFactory = cfMetaDataFactory;
+        this.ssTableReaderFactory = ssTableReaderFactory;
         this.locatorConfig = locatorConfig;
         setConfigs();
     }
@@ -116,11 +121,11 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
             }
             if (loader == null)
             {
-                ExternalClient externalClient = new ExternalClient(conf, cfMetaDataFactory, locatorConfig);
+                ExternalClient externalClient = new ExternalClient(conf, cfMetaDataFactory, locatorConfig, databaseDescriptor);
                 
                 externalClient.addKnownCfs(keyspace, schema);
 
-                this.loader = new SSTableLoader(outputDir, externalClient, new BulkRecordWriter.NullOutputHandler());
+                this.loader = new SSTableLoader(outputDir, externalClient, new BulkRecordWriter.NullOutputHandler(), databaseDescriptor, ssTableReaderFactory);
             }
         }
         catch (Exception e)
@@ -177,9 +182,9 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
     {
         private Map<String, Map<String, CFMetaData>> knownCqlCfs = new HashMap<>();
         
-        public ExternalClient(Configuration conf, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig)
+        public ExternalClient(Configuration conf, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor)
         {
-            super(conf, cfMetaDataFactory, locatorConfig);
+            super(conf, cfMetaDataFactory, locatorConfig, databaseDescriptor);
         }
 
         public void addKnownCfs(String keyspace, String cql)

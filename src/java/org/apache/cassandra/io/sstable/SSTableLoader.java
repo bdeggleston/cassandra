@@ -63,18 +63,32 @@ public class SSTableLoader implements StreamEventHandler
         Config.setClientMode(true);
     }
 
-    public SSTableLoader(File directory, Client client, OutputHandler outputHandler)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final SSTableReaderFactory ssTableReaderFactory;
+
+    public SSTableLoader(File directory,
+                         Client client,
+                         OutputHandler outputHandler,
+                         DatabaseDescriptor databaseDescriptor,
+                         SSTableReaderFactory ssTableReaderFactory)
     {
-        this(directory, client, outputHandler, 1);
+        this(directory, client, outputHandler, 1, databaseDescriptor, ssTableReaderFactory);
     }
 
-    public SSTableLoader(File directory, Client client, OutputHandler outputHandler, int connectionsPerHost)
+    public SSTableLoader(File directory,
+                         Client client,
+                         OutputHandler outputHandler,
+                         int connectionsPerHost,
+                         DatabaseDescriptor databaseDescriptor,
+                         SSTableReaderFactory ssTableReaderFactory)
     {
         this.directory = directory;
         this.keyspace = directory.getParentFile().getName();
         this.client = client;
         this.outputHandler = outputHandler;
         this.connectionsPerHost = connectionsPerHost;
+        this.databaseDescriptor = databaseDescriptor;
+        this.ssTableReaderFactory = ssTableReaderFactory;
     }
 
     protected Collection<SSTableReader> openSSTables(final Map<InetAddress, Collection<Range<Token>>> ranges)
@@ -120,7 +134,7 @@ public class SSTableLoader implements StreamEventHandler
                     // To conserve memory, open SSTableReaders without bloom filters and discard
                     // the index summary after calculating the file sections to stream and the estimated
                     // number of keys for each endpoint. See CASSANDRA-5555 for details.
-                    SSTableReader sstable = SSTableReaderFactory.instance.openForBatch(desc, components, metadata, client.getPartitioner());
+                    SSTableReader sstable = ssTableReaderFactory.openForBatch(desc, components, metadata, client.getPartitioner());
                     sstables.add(sstable);
 
                     // calculate the sstable sections to stream as well as the estimated number of
@@ -160,7 +174,7 @@ public class SSTableLoader implements StreamEventHandler
         client.init(keyspace);
         outputHandler.output("Established connection to initial hosts");
 
-        StreamPlan plan = new StreamPlan("Bulk Load", 0, connectionsPerHost, DatabaseDescriptor.instance, Schema.instance,
+        StreamPlan plan = new StreamPlan("Bulk Load", 0, connectionsPerHost, databaseDescriptor, Schema.instance,
                                          KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).connectionFactory(client.getConnectionFactory());
 
         Map<InetAddress, Collection<Range<Token>>> endpointToRanges = client.getEndpointToRangesMap();
@@ -235,6 +249,13 @@ public class SSTableLoader implements StreamEventHandler
         private final Map<InetAddress, Collection<Range<Token>>> endpointToRanges = new HashMap<>();
         private IPartitioner partitioner;
 
+        private final DatabaseDescriptor databaseDescriptor;
+
+        public Client(DatabaseDescriptor databaseDescriptor)
+        {
+            this.databaseDescriptor = databaseDescriptor;
+        }
+
         /**
          * Initialize the client.
          * Perform any step necessary so that after the call to the this
@@ -259,7 +280,7 @@ public class SSTableLoader implements StreamEventHandler
          */
         public StreamConnectionFactory getConnectionFactory()
         {
-            return new DefaultConnectionFactory(DatabaseDescriptor.instance);
+            return new DefaultConnectionFactory(databaseDescriptor);
         }
 
         /**
@@ -281,8 +302,7 @@ public class SSTableLoader implements StreamEventHandler
         protected void setPartitioner(IPartitioner partitioner)
         {
             this.partitioner = partitioner;
-            // the following is still necessary since Range/Token reference partitioner through StorageService.instance.getPartitioner
-            DatabaseDescriptor.instance.setPartitioner(partitioner);
+            databaseDescriptor.setPartitioner(partitioner);
         }
 
         public IPartitioner getPartitioner()

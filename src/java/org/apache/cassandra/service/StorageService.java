@@ -50,6 +50,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.Uninterruptibles;
 
 import org.apache.cassandra.config.*;
+import org.apache.cassandra.io.sstable.SSTableReaderFactory;
 import org.apache.commons.lang3.StringUtils;
 
 import org.slf4j.Logger;
@@ -3682,7 +3683,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (!dir.exists() || !dir.isDirectory())
             throw new IllegalArgumentException("Invalid directory " + directory);
 
-        SSTableLoader.Client client = new SSTableLoader.Client()
+        SSTableLoader.Client client = new SSTableLoader.Client(DatabaseDescriptor.instance)
         {
             public void init(String keyspace)
             {
@@ -3708,7 +3709,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
         };
 
-        SSTableLoader loader = new SSTableLoader(dir, client, new OutputHandler.LogOutput());
+        SSTableLoader loader = new SSTableLoader(dir, client, new OutputHandler.LogOutput(), DatabaseDescriptor.instance, SSTableReaderFactory.instance);
         return loader.stream();
     }
 

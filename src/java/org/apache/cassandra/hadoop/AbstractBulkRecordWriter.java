@@ -72,6 +72,7 @@ implements org.apache.hadoop.mapred.RecordWriter<K, V>
     protected SSTableLoader loader;
     protected Progressable progress;
     protected TaskAttemptContext context;
+    protected final DatabaseDescriptor databaseDescriptor;
 
     protected AbstractBulkRecordWriter(TaskAttemptContext context, DatabaseDescriptor databaseDescriptor)
     {
@@ -87,6 +88,7 @@ implements org.apache.hadoop.mapred.RecordWriter<K, V>
 
     protected AbstractBulkRecordWriter(Configuration conf, DatabaseDescriptor databaseDescriptor)
     {
+        this.databaseDescriptor = databaseDescriptor;
         Config.setClientMode(true);
         Config.setOutboundBindAny(true);
         this.conf = conf;
@@ -163,9 +165,9 @@ implements org.apache.hadoop.mapred.RecordWriter<K, V>
         protected final CFMetaDataFactory cfMetaDataFactory;
         protected final LocatorConfig locatorConfig;
 
-        public ExternalClient(Configuration conf, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig)
+        public ExternalClient(Configuration conf, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor)
         {
-          super();
+          super(databaseDescriptor);
           this.conf = conf;
           this.hostlist = ConfigHelper.getOutputInitialAddress(conf);
           this.rpcPort = ConfigHelper.getOutputRpcPort(conf);

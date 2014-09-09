@@ -80,7 +80,7 @@ public class CQLSSTableWriterTest
         writer.addRow(ImmutableMap.<String, Object>of("k", 3, "v2", 12));
         writer.close();
 
-        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client()
+        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client(DatabaseDescriptor.instance)
         {
             public void init(String keyspace)
             {
@@ -93,7 +93,7 @@ public class CQLSSTableWriterTest
             {
                 return Schema.instance.getCFMetaData(keyspace, cfName);
             }
-        }, new OutputHandler.SystemOutput(false, false));
+        }, new OutputHandler.SystemOutput(false, false), DatabaseDescriptor.instance, SSTableReaderFactory.instance);
 
         loader.stream().get();
 
