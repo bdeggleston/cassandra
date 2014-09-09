@@ -179,7 +179,7 @@ public class Util
     public static List<Row> getRangeSlice(ColumnFamilyStore cfs, ByteBuffer superColumn, DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
         IDiskAtomFilter filter = superColumn == null
-                               ? new IdentityQueryFilter()
+                               ? new IdentityQueryFilter(databaseDescriptor, tracing, DBConfig.instance)
                                : new SliceQueryFilter(SuperColumns.startOf(superColumn), SuperColumns.endOf(superColumn), false, Integer.MAX_VALUE, databaseDescriptor, tracing, DBConfig.instance);
 
         Token min = LocatorConfig.instance.getPartitioner().getMinimumToken();
@@ -210,7 +210,7 @@ public class Util
     {
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore(cfName);
         assert cfStore != null : "Table " + cfName + " has not been defined";
-        return cfStore.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis()));
+        return cfStore.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
     }
 
     public static byte[] concatByteArrays(byte[] first, byte[]... remaining)

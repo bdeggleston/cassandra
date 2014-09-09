@@ -18,6 +18,8 @@
 */
 package org.apache.cassandra.db;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -65,7 +67,7 @@ public class RemoveColumnFamilyTest
         rm.delete("Standard1", 1);
         rm.applyUnsafe();
 
-        ColumnFamily retrieved = store.getColumnFamily(QueryFilter.getIdentityFilter(dk, "Standard1", System.currentTimeMillis()));
+        ColumnFamily retrieved = store.getColumnFamily(QueryFilter.getIdentityFilter(dk, "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
         assert retrieved.isMarkedForDelete();
         assertNull(retrieved.getColumn(Util.cellname("Column1")));
         assertNull(Util.cloneAndRemoveDeleted(retrieved, Integer.MAX_VALUE));

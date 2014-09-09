@@ -26,6 +26,7 @@ import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -141,7 +142,10 @@ public class DefsTables
         ColumnFamilyStore cfsStore = SystemKeyspace.instance.schemaCFS(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF);
         return new Row(ksNameKey, cfsStore.getColumnFamily(QueryFilter.getIdentityFilter(ksNameKey,
                                                                                          SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF,
-                                                                                         System.currentTimeMillis())));
+                                                                                         System.currentTimeMillis(),
+                                                                                         DatabaseDescriptor.instance,
+                                                                                         Tracing.instance,
+                                                                                         DBConfig.instance)));
     }
 
     private Row serializedUserTypes(DecoratedKey ksNameKey)
@@ -149,7 +153,10 @@ public class DefsTables
         ColumnFamilyStore cfsStore = SystemKeyspace.instance.schemaCFS(SystemKeyspace.SCHEMA_USER_TYPES_CF);
         return new Row(ksNameKey, cfsStore.getColumnFamily(QueryFilter.getIdentityFilter(ksNameKey,
                                                                                          SystemKeyspace.SCHEMA_USER_TYPES_CF,
-                                                                                         System.currentTimeMillis())));
+                                                                                         System.currentTimeMillis(),
+                                                                                         DatabaseDescriptor.instance,
+                                                                                         Tracing.instance,
+                                                                                         DBConfig.instance)));
     }
 
     /**

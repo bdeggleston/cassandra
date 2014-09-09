@@ -202,7 +202,7 @@ public class StreamingTransferTest
         {
             String key = "key" + offs[i];
             String col = "col" + offs[i];
-            assert cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk(key), cfs.name, System.currentTimeMillis())) != null;
+            assert cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk(key), cfs.name, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)) != null;
             assert rows.get(i).key.getKey().equals(ByteBufferUtil.bytes(key));
             assert rows.get(i).cf.getColumn(cellname(col)) != null;
         }
@@ -282,7 +282,7 @@ public class StreamingTransferTest
                                                        IndexExpression.Operator.EQ,
                                                        ByteBufferUtil.bytes(val));
             List<IndexExpression> clause = Arrays.asList(expr);
-            IDiskAtomFilter filter = new IdentityQueryFilter();
+            IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
             Range<RowPosition> range = Util.range("", "");
             List<Row> rows = cfs.search(range, clause, filter, 100);
             assertEquals(1, rows.size());
@@ -426,10 +426,10 @@ public class StreamingTransferTest
         assert rows.get(1).cf.getColumnCount() == 1;
 
         // these keys fall outside of the ranges and should not be transferred
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer1"), "Standard1", System.currentTimeMillis())) == null;
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer2"), "Standard1", System.currentTimeMillis())) == null;
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test2"), "Standard1", System.currentTimeMillis())) == null;
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test3"), "Standard1", System.currentTimeMillis())) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer1"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer2"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test2"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test3"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)) == null;
     }
 
     @Test

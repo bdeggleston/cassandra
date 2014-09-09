@@ -22,6 +22,8 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.fail;
@@ -195,7 +197,7 @@ public class CompositeTypeTest
         addColumn(rm, cname3);
         rm.applyUnsafe();
 
-        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("k"), CF_STANDARDCOMPOSITE, System.currentTimeMillis()));
+        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("k"), CF_STANDARDCOMPOSITE, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
 
         Iterator<Cell> iter = cf.getSortedColumns().iterator();
 

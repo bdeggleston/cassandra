@@ -18,6 +18,8 @@
 */
 package org.apache.cassandra.db;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -71,7 +73,10 @@ public class RemoveCellTest
         assertNull(Util.cloneAndRemoveDeleted(retrieved, Integer.MAX_VALUE));
         assertNull(Util.cloneAndRemoveDeleted(store.getColumnFamily(QueryFilter.getIdentityFilter(dk,
                                                                                                   "Standard1",
-                                                                                                  System.currentTimeMillis())),
+                                                                                                  System.currentTimeMillis(),
+                                                                                                  DatabaseDescriptor.instance,
+                                                                                                  Tracing.instance,
+                                                                                                  DBConfig.instance)),
                                               Integer.MAX_VALUE));
     }
 

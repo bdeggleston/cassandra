@@ -448,7 +448,7 @@ public class SSTableReaderTest
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr);
         Range<RowPosition> range = Util.range("", "");
-        List<Row> rows = indexedCFS.search(range, clause, new IdentityQueryFilter(), 100);
+        List<Row> rows = indexedCFS.search(range, clause, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 100);
         assert rows.size() == 1;
     }
 

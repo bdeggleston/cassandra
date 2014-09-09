@@ -39,6 +39,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.UUIDGen;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.BeforeClass;
@@ -99,13 +100,13 @@ public class ScrubTest
 
         // insert data and verify we get it back w/ range query
         fillCF(cfs, 1);
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
         assertEquals(1, rows.size());
 
         CompactionManager.instance.performScrub(cfs, false);
 
         // check data is still there
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
         assertEquals(1, rows.size());
     }
 
@@ -119,7 +120,7 @@ public class ScrubTest
 
         fillCounterCF(cfs, 2);
 
-        List<Row> rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(), 1000);
+        List<Row> rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
         assertEquals(2, rows.size());
 
         SSTableReader sstable = cfs.getSSTables().iterator().next();
@@ -151,7 +152,7 @@ public class ScrubTest
         assertEquals(1, cfs.getSSTables().size());
 
         // verify that we can read all of the rows, and there is now one less row
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
         assertEquals(1, rows.size());
     }
 
@@ -185,13 +186,13 @@ public class ScrubTest
 
         // insert data and verify we get it back w/ range query
         fillCF(cfs, 10);
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
         assertEquals(10, rows.size());
 
         CompactionManager.instance.performScrub(cfs, false);
 
         // check data is still there
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
         assertEquals(10, rows.size());
     }
 
@@ -254,7 +255,7 @@ public class ScrubTest
         scrubber.scrub();
 
         cfs.loadNewSSTables();
-        List<Row> rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(), 1000);
+        List<Row> rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
         assert isRowOrdered(rows) : "Scrub failed: " + rows;
         assert rows.size() == 6 : "Got " + rows.size();
     }

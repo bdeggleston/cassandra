@@ -32,6 +32,7 @@ import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -754,7 +755,7 @@ public class SystemKeyspace
 
         return schemaCFS(schemaCfName).getRangeSlice(new Range<RowPosition>(minToken.minKeyBound(), minToken.maxKeyBound(), LocatorConfig.instance.getPartitioner()),
                                                      null,
-                                                     new IdentityQueryFilter(),
+                                                     new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                                      Integer.MAX_VALUE,
                                                      System.currentTimeMillis());
     }
@@ -828,7 +829,7 @@ public class SystemKeyspace
         DecoratedKey key = LocatorConfig.instance.getPartitioner().decorateKey(getSchemaKSKey(ksName));
 
         ColumnFamilyStore schemaCFS = schemaCFS(schemaCfName);
-        ColumnFamily result = schemaCFS.getColumnFamily(QueryFilter.getIdentityFilter(key, schemaCfName, System.currentTimeMillis()));
+        ColumnFamily result = schemaCFS.getColumnFamily(QueryFilter.getIdentityFilter(key, schemaCfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
 
         return new Row(key, result);
     }

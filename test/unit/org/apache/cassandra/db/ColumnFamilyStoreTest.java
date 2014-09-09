@@ -205,7 +205,7 @@ public class ColumnFamilyStoreTest
         List<SSTableReader> ssTables = keyspace.getAllSSTables();
         assertEquals(1, ssTables.size());
         ssTables.get(0).forceFilterFailures();
-        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("key2"), CF_STANDARD1, System.currentTimeMillis()));
+        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("key2"), CF_STANDARD1, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
         assertNull(cf);
     }
 
@@ -285,7 +285,7 @@ public class ColumnFamilyStoreTest
         // basic single-expression query
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter();
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = cfs.search(range, clause, filter, 100);
 
@@ -354,7 +354,7 @@ public class ColumnFamilyStoreTest
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(34L));
         IndexExpression expr2 = new IndexExpression(ByteBufferUtil.bytes("notbirthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr, expr2);
-        IDiskAtomFilter filter = new IdentityQueryFilter();
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = cfs.search(range, clause, filter, 100);
 
@@ -379,7 +379,7 @@ public class ColumnFamilyStoreTest
 
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter();
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = cfs.search(range, clause, filter, 100);
         assert rows.size() == 1 : StringUtils.join(rows, ",");
@@ -479,7 +479,7 @@ public class ColumnFamilyStoreTest
 
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter();
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = cfs.search(range, clause, filter, 100);
         assert rows.size() == 0;
@@ -515,7 +515,7 @@ public class ColumnFamilyStoreTest
 
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(100L));
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter();
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = keyspace.getColumnFamilyStore("Indexed1").search(range, clause, filter, 100);
         assertEquals(1, rows.size());
@@ -577,7 +577,7 @@ public class ColumnFamilyStoreTest
         rm.applyUnsafe();
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, val1);
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter();
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(1, rows.size());
@@ -599,7 +599,7 @@ public class ColumnFamilyStoreTest
         // now check for the updated value
         expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, val2);
         clause = Arrays.asList(expr);
-        filter = new IdentityQueryFilter();
+        filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         range = Util.range("", "");
         rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(0, rows.size());
@@ -612,7 +612,7 @@ public class ColumnFamilyStoreTest
 
         expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         clause = Arrays.asList(expr);
-        filter = new IdentityQueryFilter();
+        filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         range = Util.range("", "");
         rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(0, rows.size());
@@ -647,7 +647,7 @@ public class ColumnFamilyStoreTest
         // test that the index query fetches this version
         IndexExpression expr = new IndexExpression(colName, IndexExpression.Operator.EQ, val1);
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter();
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(1, rows.size());
@@ -671,7 +671,7 @@ public class ColumnFamilyStoreTest
         // now check for the updated value
         expr = new IndexExpression(colName, IndexExpression.Operator.EQ, val2);
         clause = Arrays.asList(expr);
-        filter = new IdentityQueryFilter();
+        filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         range = Util.range("", "");
         rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(0, rows.size());
@@ -684,7 +684,7 @@ public class ColumnFamilyStoreTest
 
         expr = new IndexExpression(colName, IndexExpression.Operator.EQ, val1);
         clause = Arrays.asList(expr);
-        filter = new IdentityQueryFilter();
+        filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         range = Util.range("", "");
         rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(0, rows.size());
@@ -730,7 +730,7 @@ public class ColumnFamilyStoreTest
         // haven't read yet nor compacted) but the data read itself will return null
         IndexExpression expr = new IndexExpression(colName, IndexExpression.Operator.EQ, val1);
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter();
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(0, rows.size());
@@ -770,7 +770,7 @@ public class ColumnFamilyStoreTest
         IndexExpression expr1 = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         IndexExpression expr2 = new IndexExpression(ByteBufferUtil.bytes("notbirthdate"), IndexExpression.Operator.GT, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr1, expr2);
-        IDiskAtomFilter filter = new IdentityQueryFilter();
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = cfs.search(range, clause, filter, 1);
 
@@ -814,7 +814,7 @@ public class ColumnFamilyStoreTest
     {
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter();
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         List<Row> rows = keyspace.getColumnFamilyStore(CF_INDEX2).search(Util.range("", ""), clause, filter, 100);
         assert rows.size() == 1 : StringUtils.join(rows, ",");
         assertEquals("k1", ByteBufferUtil.string(rows.get(0).key.getKey()));
@@ -1086,7 +1086,7 @@ public class ColumnFamilyStoreTest
                                              new BufferCell(cellname("b"), ByteBufferUtil.bytes("B"), 1));
 
         // Get the entire supercolumn like normal
-        ColumnFamily cfGet = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis()));
+        ColumnFamily cfGet = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
         assertEquals(ByteBufferUtil.bytes("A"), cfGet.getColumn(CellNames.compositeDense(superColName, ByteBufferUtil.bytes("a"))).value());
         assertEquals(ByteBufferUtil.bytes("B"), cfGet.getColumn(CellNames.compositeDense(superColName, ByteBufferUtil.bytes("b"))).value());
 
@@ -1492,7 +1492,7 @@ public class ColumnFamilyStoreTest
 
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, LongType.instance.decompose(1L));
         // explicitly tell to the KeysSearcher to use column limiting for rowsPerQuery to trigger bogus columnsRead--; (CASSANDRA-3996)
-        List<Row> rows = store.search(store.makeExtendedFilter(Util.range("", ""), new IdentityQueryFilter(), Arrays.asList(expr), 10, true, false, System.currentTimeMillis()));
+        List<Row> rows = store.search(store.makeExtendedFilter(Util.range("", ""), new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), Arrays.asList(expr), 10, true, false, System.currentTimeMillis()));
 
         assert rows.size() == 10;
     }
@@ -2241,7 +2241,7 @@ public class ColumnFamilyStoreTest
     {
         DecoratedKey ROW = Util.dk(rowKey);
         System.err.println("Original:");
-        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(ROW, CF_STANDARD1, System.currentTimeMillis()));
+        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(ROW, CF_STANDARD1, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
         System.err.println("Row key: " + rowKey + " Cols: "
                 + Iterables.transform(cf.getSortedColumns(), new Function<Cell, String>()
                 {

@@ -28,9 +28,9 @@ public class IdentityQueryFilter extends SliceQueryFilter
     /**
      * Will read entire CF into memory.  Use with caution.
      */
-    public IdentityQueryFilter()
+    public IdentityQueryFilter(DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        super(Composites.EMPTY, Composites.EMPTY, false, Integer.MAX_VALUE, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        super(Composites.EMPTY, Composites.EMPTY, false, Integer.MAX_VALUE, databaseDescriptor, tracing, dbConfig);
     }
 
     @Override

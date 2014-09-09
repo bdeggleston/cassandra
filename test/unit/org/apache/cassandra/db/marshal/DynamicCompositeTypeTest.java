@@ -25,6 +25,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.fail;
@@ -198,7 +200,7 @@ public class DynamicCompositeTypeTest
         addColumn(rm, cname3);
         rm.applyUnsafe();
 
-        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("k"), CF_STANDARDDYNCOMPOSITE, System.currentTimeMillis()));
+        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("k"), CF_STANDARDDYNCOMPOSITE, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
 
         Iterator<Cell> iter = cf.getSortedColumns().iterator();
 

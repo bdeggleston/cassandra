@@ -26,12 +26,14 @@ import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.Iterables;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.net.*;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -150,7 +152,7 @@ public class RowDataResolver extends AbstractRowResolver
         // mimic the collectCollatedColumn + removeDeleted path that getColumnFamily takes.
         // this will handle removing columns and subcolumns that are suppressed by a row or
         // supercolumn tombstone.
-        QueryFilter filter = new QueryFilter(null, resolved.metadata().cfName, new IdentityQueryFilter(), now);
+        QueryFilter filter = new QueryFilter(null, resolved.metadata().cfName, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), now);
         List<CloseableIterator<Cell>> iters = new ArrayList<>(Iterables.size(versions));
         for (ColumnFamily version : versions)
             if (version != null)

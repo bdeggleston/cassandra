@@ -21,8 +21,10 @@ package org.apache.cassandra.io.sstable;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -95,7 +97,7 @@ public class SSTableScannerTest
 
     private static void assertScanMatches(SSTableReader sstable, int scanStart, int scanEnd, int expectedStart, int expectedEnd)
     {
-        SSTableScanner scanner = sstable.getScanner(new DataRange(boundsFor(scanStart, scanEnd), new IdentityQueryFilter()));
+        SSTableScanner scanner = sstable.getScanner(new DataRange(boundsFor(scanStart, scanEnd), new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)));
         for (int i = expectedStart; i <= expectedEnd; i++)
             assertEquals(toKey(i), new String(scanner.next().getKey().getKey().array()));
         assertFalse(scanner.hasNext());
@@ -103,7 +105,7 @@ public class SSTableScannerTest
 
     private static void assertScanEmpty(SSTableReader sstable, int scanStart, int scanEnd)
     {
-        SSTableScanner scanner = sstable.getScanner(new DataRange(boundsFor(scanStart, scanEnd), new IdentityQueryFilter()));
+        SSTableScanner scanner = sstable.getScanner(new DataRange(boundsFor(scanStart, scanEnd), new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)));
         assertFalse(String.format("scan of (%03d, %03d] should be empty", scanStart, scanEnd), scanner.hasNext());
     }
 

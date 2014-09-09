@@ -340,7 +340,15 @@ public class Keyspace
      * @param cfs ColumnFamily to index row in
      * @param idxNames columns to index, in comparator order
      */
-    public static void indexRow(DecoratedKey key, ColumnFamilyStore cfs, Set<String> idxNames, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, DBConfig dbConfig)
+    public static void indexRow(DecoratedKey key,
+                                ColumnFamilyStore cfs,
+                                Set<String> idxNames,
+                                DatabaseDescriptor databaseDescriptor,
+                                Tracing tracing,
+                                Schema schema,
+                                KeyspaceManager keyspaceManager,
+                                StorageProxy storageProxy,
+                                DBConfig dbConfig)
     {
         if (logger.isDebugEnabled())
             logger.debug("Indexing row {} ", cfs.metadata.getKeyValidator().getString(key.getKey()));
@@ -349,7 +357,15 @@ public class Keyspace
         {
             Set<SecondaryIndex> indexes = cfs.indexManager.getIndexesByNames(idxNames);
 
-            Iterator<ColumnFamily> pager = QueryPagers.pageRowLocally(cfs, key.getKey(), DEFAULT_PAGE_SIZE, schema, keyspaceManager, storageProxy, dbConfig);
+            Iterator<ColumnFamily> pager = QueryPagers.pageRowLocally(cfs,
+                                                                      key.getKey(),
+                                                                      DEFAULT_PAGE_SIZE,
+                                                                      databaseDescriptor,
+                                                                      tracing,
+                                                                      schema,
+                                                                      keyspaceManager,
+                                                                      storageProxy,
+                                                                      dbConfig);
             while (pager.hasNext())
             {
                 ColumnFamily cf = pager.next();

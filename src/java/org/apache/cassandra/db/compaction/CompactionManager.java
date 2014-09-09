@@ -1119,7 +1119,7 @@ public class CompactionManager implements CompactionManagerMBean
                 metrics.beginCompaction(builder);
                 try
                 {
-                    builder.build(Schema.instance, KeyspaceManager.instance, StorageProxy.instance, DBConfig.instance);
+                    builder.build(DatabaseDescriptor.instance, Tracing.instance, Schema.instance, KeyspaceManager.instance, StorageProxy.instance, DBConfig.instance);
                 }
                 finally
                 {

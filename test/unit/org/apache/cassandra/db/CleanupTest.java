@@ -126,7 +126,7 @@ public class CleanupTest
         // verify we get it back w/ index query too
         IndexExpression expr = new IndexExpression(COLUMN, IndexExpression.Operator.EQ, VALUE);
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter();
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         Range<RowPosition> range = Util.range("", "");
         rows = keyspace.getColumnFamilyStore(CF1).search(range, clause, filter, Integer.MAX_VALUE);
         assertEquals(LOOPS, rows.size());

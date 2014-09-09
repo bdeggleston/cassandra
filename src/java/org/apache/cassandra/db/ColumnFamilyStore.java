@@ -1380,7 +1380,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             // If we are explicitely asked to fill the cache with full partitions, we go ahead and query the whole thing
             if (metadata.getCaching().rowCache.cacheFullPartitions())
             {
-                data = getTopLevelColumns(QueryFilter.getIdentityFilter(filter.key, name, filter.timestamp), Integer.MIN_VALUE);
+                data = getTopLevelColumns(QueryFilter.getIdentityFilter(filter.key, name, filter.timestamp, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), Integer.MIN_VALUE);
                 toCache = data;
                 Tracing.instance.trace("Populating row cache with the whole partition");
                 if (sentinelSuccess && toCache != null)

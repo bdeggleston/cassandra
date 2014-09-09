@@ -369,7 +369,7 @@ public class RangeTombstoneTest
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(key), CFNAME, System.currentTimeMillis()));
+        cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(key), CFNAME, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
 
         for (int i = 0; i < 5; i++)
             assertTrue("Cell " + i + " should be live", isLive(cf, cf.getColumn(b(i))));
@@ -380,7 +380,7 @@ public class RangeTombstoneTest
 
         // Compact everything and re-test
         CompactionManager.instance.performMaximal(cfs);
-        cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(key), CFNAME, System.currentTimeMillis()));
+        cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(key), CFNAME, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
 
         for (int i = 0; i < 5; i++)
             assertTrue("Cell " + i + " should be live", isLive(cf, cf.getColumn(b(i))));

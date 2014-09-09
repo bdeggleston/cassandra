@@ -222,9 +222,9 @@ public class QueryFilter
      * return a QueryFilter object that includes every column in the row.
      * This is dangerous on large rows; avoid except for test code.
      */
-    public static QueryFilter getIdentityFilter(DecoratedKey key, String cfName, long timestamp)
+    public static QueryFilter getIdentityFilter(DecoratedKey key, String cfName, long timestamp, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        return new QueryFilter(key, cfName, new IdentityQueryFilter(), timestamp);
+        return new QueryFilter(key, cfName, new IdentityQueryFilter(databaseDescriptor, tracing, dbConfig), timestamp);
     }
 
     /**

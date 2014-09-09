@@ -21,6 +21,8 @@ package org.apache.cassandra.db;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -76,7 +78,7 @@ public class RemoveSubCellTest
         rm.delete("Super1", cname, 1);
         rm.applyUnsafe();
 
-        ColumnFamily retrieved = store.getColumnFamily(QueryFilter.getIdentityFilter(dk, "Super1", System.currentTimeMillis()));
+        ColumnFamily retrieved = store.getColumnFamily(QueryFilter.getIdentityFilter(dk, "Super1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
         assertFalse(retrieved.getColumn(cname).isLive());
         assertNull(Util.cloneAndRemoveDeleted(retrieved, Integer.MAX_VALUE));
     }
@@ -104,7 +106,7 @@ public class RemoveSubCellTest
 
         // Mark current time and make sure the next insert happens at least
         // one second after the previous one (since gc resolution is the second)
-        QueryFilter filter = QueryFilter.getIdentityFilter(dk, "Super1", System.currentTimeMillis());
+        QueryFilter filter = QueryFilter.getIdentityFilter(dk, "Super1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
 
         // remove the column itself

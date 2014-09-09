@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -85,7 +86,7 @@ public class KeyCollisionTest
         insert("key1", "key2", "key3"); // token = 4
         insert("longKey1", "longKey2"); // token = 8
 
-        List<Row> rows = cfs.getRangeSlice(new Bounds<RowPosition>(dk("k2"), dk("key2"), LocatorConfig.instance.getPartitioner()), null, new IdentityQueryFilter(), 10000);
+        List<Row> rows = cfs.getRangeSlice(new Bounds<RowPosition>(dk("k2"), dk("key2"), LocatorConfig.instance.getPartitioner()), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 10000);
         assert rows.size() == 4 : "Expecting 4 keys, got " + rows.size();
         assert rows.get(0).key.getKey().equals(ByteBufferUtil.bytes("k2"));
         assert rows.get(1).key.getKey().equals(ByteBufferUtil.bytes("k3"));

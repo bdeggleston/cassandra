@@ -20,6 +20,7 @@ package org.apache.cassandra.db.index;
 import java.io.IOException;
 import java.util.Set;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.CompactionInfo;
@@ -28,6 +29,7 @@ import org.apache.cassandra.db.compaction.CompactionInterruptedException;
 import org.apache.cassandra.io.sstable.ReducingKeyIterator;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 
 /**
  * Manages building an entire index from column family data. Runs on to compaction manager.
@@ -54,14 +56,14 @@ public class SecondaryIndexBuilder extends CompactionInfo.Holder
                                   iter.getTotalBytes());
     }
 
-    public void build(Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, DBConfig dbConfig)
+    public void build(DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, DBConfig dbConfig)
     {
         while (iter.hasNext())
         {
             if (isStopRequested())
                 throw new CompactionInterruptedException(getCompactionInfo());
             DecoratedKey key = iter.next();
-            Keyspace.indexRow(key, cfs, idxNames, schema, keyspaceManager, storageProxy, dbConfig);
+            Keyspace.indexRow(key, cfs, idxNames, databaseDescriptor, tracing, schema, keyspaceManager, storageProxy, dbConfig);
         }
 
         try

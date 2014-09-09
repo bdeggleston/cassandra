@@ -18,6 +18,7 @@
 */
 package org.apache.cassandra.db;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -94,7 +95,7 @@ public class CollationControllerTest
         // SliceQueryFilter goes down another path (through collectAllData())
         // We will read "only" the last sstable in that case, but because the 2nd sstable has a tombstone that is more
         // recent than the maxTimestamp of the very first sstable we flushed, we should only read the 2 first sstables.
-        filter = QueryFilter.getIdentityFilter(dk, cfs.name, System.currentTimeMillis());
+        filter = QueryFilter.getIdentityFilter(dk, cfs.name, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         controller = new CollationController(cfs, filter, Integer.MIN_VALUE, DBConfig.instance, KeyspaceManager.instance, Tracing.instance);
         controller.getTopLevelColumns(true);
         assertEquals(2, controller.getSstablesIterated());
@@ -132,7 +133,7 @@ public class CollationControllerTest
         CollationController controller = new CollationController(cfs, filter, gcBefore, DBConfig.instance, KeyspaceManager.instance, Tracing.instance);
         assert ColumnFamilyStore.removeDeleted(controller.getTopLevelColumns(true), gcBefore) == null;
 
-        filter = QueryFilter.getIdentityFilter(dk, cfs.name, queryAt);
+        filter = QueryFilter.getIdentityFilter(dk, cfs.name, queryAt, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         controller = new CollationController(cfs, filter, gcBefore, DBConfig.instance, KeyspaceManager.instance, Tracing.instance);
         assert ColumnFamilyStore.removeDeleted(controller.getTopLevelColumns(true), gcBefore) == null;
     }

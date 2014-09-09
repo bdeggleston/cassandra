@@ -34,6 +34,7 @@ import org.apache.cassandra.exceptions.RequestValidationException;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageProxy;
+import org.apache.cassandra.tracing.Tracing;
 
 /**
  * Static utility methods to create query pagers.
@@ -139,13 +140,21 @@ public class QueryPagers
      * Convenience method to (locally) page an internal row.
      * Used to 2ndary index a wide row without dying.
      */
-    public static Iterator<ColumnFamily> pageRowLocally(final ColumnFamilyStore cfs, ByteBuffer key, final int pageSize, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, final DBConfig dbConfig)
+    public static Iterator<ColumnFamily> pageRowLocally(final ColumnFamilyStore cfs,
+                                                        ByteBuffer key,
+                                                        final int pageSize,
+                                                        DatabaseDescriptor databaseDescriptor,
+                                                        Tracing tracing,
+                                                        Schema schema,
+                                                        KeyspaceManager keyspaceManager,
+                                                        StorageProxy storageProxy,
+                                                        final DBConfig dbConfig)
     {
         SliceFromReadCommand command = new SliceFromReadCommand(cfs.metadata.ksName,
                                                                 key,
                                                                 cfs.name,
                                                                 System.currentTimeMillis(),
-                                                                new IdentityQueryFilter(),
+                                                                new IdentityQueryFilter(databaseDescriptor, tracing, dbConfig),
                                                                 Schema.instance,
                                                                 LocatorConfig.instance.getPartitioner(),
                                                                 MessagingService.instance.readCommandSerializer);

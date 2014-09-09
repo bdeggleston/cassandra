@@ -24,6 +24,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -126,7 +128,7 @@ public class IndexSummaryManagerTest
         for (int i = 0; i < numRows; i++)
         {
             DecoratedKey key = Util.dk(String.format("%3d", i));
-            QueryFilter filter = QueryFilter.getIdentityFilter(key, cfs.getColumnFamilyName(), System.currentTimeMillis());
+            QueryFilter filter = QueryFilter.getIdentityFilter(key, cfs.getColumnFamilyName(), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
             ColumnFamily row = cfs.getColumnFamily(filter);
             assertNotNull(row);
             Cell cell = row.getColumn(Util.cellname("column"));

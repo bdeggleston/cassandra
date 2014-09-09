@@ -22,11 +22,13 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.dht.*;
+import org.apache.cassandra.tracing.Tracing;
 
 /**
  * Groups key range and column filter for range queries.
@@ -70,7 +72,7 @@ public class DataRange
 
     public static DataRange forKeyRange(Range<Token> keyRange)
     {
-        return new DataRange(keyRange.toRowBounds(), new IdentityQueryFilter());
+        return new DataRange(keyRange.toRowBounds(), new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
     }
 
     public AbstractBounds<RowPosition> keyRange()

@@ -512,7 +512,7 @@ public class CompactionsTest
 
         Collection<SSTableReader> sstablesBefore = cfs.getSSTables();
 
-        QueryFilter filter = QueryFilter.getIdentityFilter(key, cfname, System.currentTimeMillis());
+        QueryFilter filter = QueryFilter.getIdentityFilter(key, cfname, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         assertTrue(cfs.getColumnFamily(filter).hasColumns());
 
         // Remove key
