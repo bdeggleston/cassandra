@@ -26,6 +26,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.io.sstable.SSTableWriterFactory;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -303,7 +304,7 @@ public class SSTableImport
         Object[] data = parser.readValueAs(new TypeReference<Object[]>(){});
 
         keyCountToImport = (keyCountToImport == null) ? data.length : keyCountToImport;
-        SSTableWriter writer = new SSTableWriter(ssTablePath, keyCountToImport, ActiveRepairService.UNREPAIRED_SSTABLE);
+        SSTableWriter writer = SSTableWriterFactory.instance.create(ssTablePath, keyCountToImport, ActiveRepairService.UNREPAIRED_SSTABLE);
 
         System.out.printf("Importing %s keys...%n", keyCountToImport);
 
@@ -376,7 +377,7 @@ public class SSTableImport
         System.out.printf("Importing %s keys...%n", keyCountToImport);
 
         parser = getParser(jsonFile); // renewing parser
-        SSTableWriter writer = new SSTableWriter(ssTablePath, keyCountToImport, ActiveRepairService.UNREPAIRED_SSTABLE);
+        SSTableWriter writer = SSTableWriterFactory.instance.create(ssTablePath, keyCountToImport, ActiveRepairService.UNREPAIRED_SSTABLE);
 
         int lineNumber = 1;
         DecoratedKey prevStoredKey = null;

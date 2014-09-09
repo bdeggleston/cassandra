@@ -124,9 +124,9 @@ public class SSTableUtils
     /**
      * @return A Context with chainable methods to configure and write a SSTable.
      */
-    public static Context prepare()
+    public static Context prepare(SSTableWriterFactory ssTableWriterFactory)
     {
-        return new Context();
+        return new Context(ssTableWriterFactory);
     }
 
     public static class Context
@@ -136,8 +136,12 @@ public class SSTableUtils
         private Descriptor dest = null;
         private boolean cleanup = true;
         private int generation = 0;
+        private final SSTableWriterFactory ssTableWriterFactory;
 
-        Context() {}
+        Context(SSTableWriterFactory ssTableWriterFactory)
+        {
+            this.ssTableWriterFactory = ssTableWriterFactory;
+        }
 
         public Context ks(String ksname)
         {
@@ -212,7 +216,9 @@ public class SSTableUtils
         public SSTableReader write(int expectedSize, Appender appender) throws IOException
         {
             File datafile = (dest == null) ? tempSSTableFile(ksname, cfname, generation) : new File(dest.filenameFor(Component.DATA));
-            SSTableWriter writer = new SSTableWriter(datafile.getAbsolutePath(), expectedSize, ActiveRepairService.UNREPAIRED_SSTABLE);
+            SSTableWriter writer = ssTableWriterFactory.create(datafile.getAbsolutePath(),
+                                                               expectedSize,
+                                                               ActiveRepairService.UNREPAIRED_SSTABLE);
             while (appender.append(writer)) { /* pass */ }
             SSTableReader reader = writer.closeAndOpenReader();
             // mark all components for removal

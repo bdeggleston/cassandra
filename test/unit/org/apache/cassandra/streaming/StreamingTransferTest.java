@@ -28,6 +28,7 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.io.sstable.SSTableWriterFactory;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
@@ -362,7 +363,7 @@ public class StreamingTransferTest
 
                 entries.put(key, cf);
                 cleanedEntries.put(key, cfCleaned);
-                cfs.addSSTable(SSTableUtils.prepare()
+                cfs.addSSTable(SSTableUtils.prepare(SSTableWriterFactory.instance)
                     .ks(keyspace.getName())
                     .cf(cfs.name)
                     .generation(0)
@@ -372,7 +373,7 @@ public class StreamingTransferTest
 
         // filter pre-cleaned entries locally, and ensure that the end result is equal
         cleanedEntries.keySet().retainAll(keys);
-        SSTableReader cleaned = SSTableUtils.prepare()
+        SSTableReader cleaned = SSTableUtils.prepare(SSTableWriterFactory.instance)
             .ks(keyspace.getName())
             .cf(cfs.name)
             .generation(0)
@@ -395,7 +396,7 @@ public class StreamingTransferTest
         content.add("test");
         content.add("test2");
         content.add("test3");
-        SSTableReader sstable = new SSTableUtils(KEYSPACE1, CF_STANDARD).prepare().write(content);
+        SSTableReader sstable = new SSTableUtils(KEYSPACE1, CF_STANDARD).prepare(SSTableWriterFactory.instance).write(content);
         String keyspaceName = sstable.getKeyspaceName();
         String cfname = sstable.getColumnFamilyName();
 
@@ -403,7 +404,7 @@ public class StreamingTransferTest
         content.add("transfer1");
         content.add("transfer2");
         content.add("transfer3");
-        SSTableReader sstable2 = SSTableUtils.prepare().write(content);
+        SSTableReader sstable2 = SSTableUtils.prepare(SSTableWriterFactory.instance).write(content);
 
         // transfer the first and last key
         IPartitioner p = LocatorConfig.instance.getPartitioner();
@@ -447,7 +448,7 @@ public class StreamingTransferTest
             content.add("data-" + cf + "-1");
             content.add("data-" + cf + "-2");
             content.add("data-" + cf + "-3");
-            SSTableUtils.Context context = SSTableUtils.prepare().ks(keyspace).cf(cf);
+            SSTableUtils.Context context = SSTableUtils.prepare(SSTableWriterFactory.instance).ks(keyspace).cf(cf);
             ssTableReaders.add(context.write(content));
 
             // collect dks for each string key

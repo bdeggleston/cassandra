@@ -24,8 +24,8 @@ import java.nio.channels.ReadableByteChannel;
 
 import com.google.common.base.Throwables;
 
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
-import org.apache.cassandra.dht.IPartitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,9 +50,9 @@ public class CompressedStreamReader extends StreamReader
     protected final CompressionInfo compressionInfo;
 
     public CompressedStreamReader(FileMessageHeader header, StreamSession session, KeyspaceManager keyspaceManager,
-                                  Schema schema, IPartitioner partitioner)
+                                  Schema schema, DBConfig dbConfig)
     {
-        super(header, session, keyspaceManager, schema, partitioner);
+        super(header, session, keyspaceManager, schema, dbConfig);
         this.compressionInfo = header.compressionInfo;
     }
 

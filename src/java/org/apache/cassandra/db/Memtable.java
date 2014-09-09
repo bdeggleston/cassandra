@@ -375,12 +375,12 @@ public class Memtable
         public SSTableWriter createFlushWriter(String filename)
         {
             MetadataCollector sstableMetadataCollector = new MetadataCollector(cfs.metadata.comparator).replayPosition(context);
-            return new SSTableWriter(filename,
-                                     rows.size(),
-                                     ActiveRepairService.UNREPAIRED_SSTABLE,
-                                     cfs.metadata,
-                                     cfs.partitioner,
-                                     sstableMetadataCollector);
-        }
+            return dbConfig.getSSTableWriterFactory().create(filename,
+                                                             rows.size(),
+                                                             ActiveRepairService.UNREPAIRED_SSTABLE,
+                                                             cfs.metadata,
+                                                             cfs.partitioner,
+                                                             sstableMetadataCollector);
+       }
     }
 }

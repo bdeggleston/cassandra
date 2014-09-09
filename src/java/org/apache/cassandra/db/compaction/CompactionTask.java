@@ -275,7 +275,7 @@ public class CompactionTask extends AbstractCompactionTask
 
     private SSTableWriter createCompactionWriter(File sstableDirectory, long keysPerSSTable, long repairedAt)
     {
-        return new SSTableWriter(cfs.getTempSSTablePath(sstableDirectory),
+        return dbConfig.getSSTableWriterFactory().create(cfs.getTempSSTablePath(sstableDirectory),
                                  keysPerSSTable,
                                  repairedAt,
                                  cfs.metadata,

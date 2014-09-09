@@ -23,6 +23,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.sstable.SSTableWriter;
@@ -40,21 +41,21 @@ public class IncomingFileMessage extends StreamMessage
     {
         private final KeyspaceManager keyspaceManager;
         private final Schema schema;
-        private final IPartitioner partitioner;
+        private final DBConfig dbConfig;
 
-        public MsgSerializer(KeyspaceManager keyspaceManager, Schema schema, IPartitioner partitioner)
+        public MsgSerializer(KeyspaceManager keyspaceManager, Schema schema, DBConfig dbConfig)
         {
             this.keyspaceManager = keyspaceManager;
             this.schema = schema;
-            this.partitioner = partitioner;
+            this.dbConfig = dbConfig;
         }
 
         public IncomingFileMessage deserialize(ReadableByteChannel in, int version, StreamSession session) throws IOException
         {
             DataInputStream input = new DataInputStream(Channels.newInputStream(in));
             FileMessageHeader header = FileMessageHeader.serializer.deserialize(input, version);
-            StreamReader reader = header.compressionInfo == null ? new StreamReader(header, session, keyspaceManager, schema, partitioner)
-                    : new CompressedStreamReader(header, session, keyspaceManager, schema, partitioner);
+            StreamReader reader = header.compressionInfo == null ? new StreamReader(header, session, keyspaceManager, schema, dbConfig)
+                    : new CompressedStreamReader(header, session, keyspaceManager, schema, dbConfig);
 
             try
             {

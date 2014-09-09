@@ -58,7 +58,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
 
     protected SSTableWriter getWriter()
     {
-        return new SSTableWriter(
+        return dbConfig.getSSTableWriterFactory().create(
             makeFilename(directory, metadata.ksName, metadata.cfName),
             0, // We don't care about the bloom filter
             ActiveRepairService.UNREPAIRED_SSTABLE,

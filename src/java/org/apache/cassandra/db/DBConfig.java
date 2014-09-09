@@ -7,6 +7,8 @@ import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.LongToken;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.sstable.SSTableReaderFactory;
+import org.apache.cassandra.io.sstable.SSTableWriterFactory;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
@@ -127,5 +129,15 @@ public class DBConfig
     public StorageService getStorageService()
     {
         return StorageService.instance;
+    }
+
+    public SSTableReaderFactory getSSTableReaderFactory()
+    {
+        return SSTableReaderFactory.instance;
+    }
+
+    public SSTableWriterFactory getSSTableWriterFactory()
+    {
+        return SSTableWriterFactory.instance;
     }
 }

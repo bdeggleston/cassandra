@@ -54,6 +54,7 @@ import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.RateLimiter;
 
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.tracing.Tracing;
@@ -72,11 +73,6 @@ import org.apache.cassandra.db.index.SecondaryIndexBuilder;
 import org.apache.cassandra.dht.Bounds;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
-import org.apache.cassandra.io.sstable.Descriptor;
-import org.apache.cassandra.io.sstable.SSTableIdentityIterator;
-import org.apache.cassandra.io.sstable.SSTableReader;
-import org.apache.cassandra.io.sstable.SSTableRewriter;
-import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.metrics.CompactionMetrics;
@@ -850,7 +846,7 @@ public class CompactionManager implements CompactionManagerMBean
                                              SSTableReader sstable)
     {
         FileUtils.createDirectory(compactionFileLocation);
-        return new SSTableWriter(cfs.getTempSSTablePath(compactionFileLocation),
+        return SSTableWriterFactory.instance.create(cfs.getTempSSTablePath(compactionFileLocation),
                                  expectedBloomFilterSize,
                                  repairedAt,
                                  cfs.metadata,
@@ -880,7 +876,7 @@ public class CompactionManager implements CompactionManagerMBean
                 break;
             }
         }
-        return new SSTableWriter(cfs.getTempSSTablePath(compactionFileLocation),
+        return SSTableWriterFactory.instance.create(cfs.getTempSSTablePath(compactionFileLocation),
                                  expectedBloomFilterSize,
                                  repairedAt,
                                  cfs.metadata,

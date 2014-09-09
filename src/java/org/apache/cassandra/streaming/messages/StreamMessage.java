@@ -112,7 +112,7 @@ public abstract class StreamMessage
         {
             Map<Type, Serializer> serializers = new EnumMap<>(Type.class);
             serializers.put(PREPARE, new PrepareMessage.Serializer(new StreamRequest.Serializer(dbConfig.getPartitioner(), dbConfig.tokenSerializer)));
-            serializers.put(FILE, new IncomingFileMessage.MsgSerializer(keyspaceManager, schema, dbConfig.getPartitioner()));
+            serializers.put(FILE, new IncomingFileMessage.MsgSerializer(keyspaceManager, schema, dbConfig));
             serializers.put(RECEIVED, ReceivedMessage.serializer);
             serializers.put(RETRY, RetryMessage.serializer);
             serializers.put(COMPLETE, CompleteMessage.serializer);

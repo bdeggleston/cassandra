@@ -28,7 +28,6 @@ import java.util.UUID;
 
 import com.google.common.base.Throwables;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.dht.IPartitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,12 +56,12 @@ public class StreamReader
     protected final long repairedAt;
     protected final KeyspaceManager keyspaceManager;
     protected final Schema schema;
-    protected final IPartitioner partitioner;
+    protected final DBConfig dbConfig;
 
     protected Descriptor desc;
 
     public StreamReader(FileMessageHeader header, StreamSession session, KeyspaceManager keyspaceManager,
-                        Schema schema, IPartitioner partitioner)
+                        Schema schema, DBConfig dbConfig)
     {
         this.session = session;
         this.cfId = header.cfId;
@@ -72,7 +71,7 @@ public class StreamReader
         this.repairedAt = header.repairedAt;
         this.keyspaceManager = keyspaceManager;
         this.schema = schema;
-        this.partitioner = partitioner;
+        this.dbConfig = dbConfig;
     }
 
     /**
@@ -119,7 +118,7 @@ public class StreamReader
             throw new IOException("Insufficient disk space to store " + totalSize + " bytes");
         desc = Descriptor.fromFilename(cfs.getTempSSTablePath(cfs.directories.getLocationForDisk(localDir)));
 
-        return new SSTableWriter(desc.filenameFor(Component.DATA), estimatedKeys, repairedAt);
+        return dbConfig.getSSTableWriterFactory().create(desc.filenameFor(Component.DATA), estimatedKeys, repairedAt);
     }
 
     protected void drain(InputStream dis, long bytesRead) throws IOException
@@ -151,7 +150,7 @@ public class StreamReader
 
     protected void writeRow(SSTableWriter writer, DataInput in, ColumnFamilyStore cfs) throws IOException
     {
-        DecoratedKey key = partitioner.decorateKey(ByteBufferUtil.readWithShortLength(in));
+        DecoratedKey key = dbConfig.getPartitioner().decorateKey(ByteBufferUtil.readWithShortLength(in));
         writer.appendFromStream(key, cfs.metadata, in, inputVersion);
         cfs.invalidateCachedRow(key);
     }
