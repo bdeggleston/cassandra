@@ -309,7 +309,8 @@ selectStatement returns [SelectStatement.RawStatement expr]
                                                    KeyspaceManager.instance,
                                                    StorageProxy.instance,
                                                    MessagingService.instance,
-                                                   LocatorConfig.instance);
+                                                   LocatorConfig.instance,
+                                                   DBConfig.instance);
       }
     ;
 

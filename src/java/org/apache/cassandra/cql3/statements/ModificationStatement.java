@@ -607,7 +607,8 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                  keyspaceManager,
                                  storageProxy,
                                  messagingService,
-                                 locatorConfig);
+                                 locatorConfig,
+                                 dbConfig);
     }
 
     public static ResultSet buildCasResultSet(String ksName,
@@ -624,7 +625,8 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                               KeyspaceManager keyspaceManager,
                                               StorageProxy storageProxy,
                                               MessagingService messagingService,
-                                              LocatorConfig locatorConfig)
+                                              LocatorConfig locatorConfig,
+                                              DBConfig dbConfig)
     throws InvalidRequestException
     {
         boolean success = cf == null;
@@ -646,7 +648,8 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                                                  keyspaceManager,
                                                                  storageProxy,
                                                                  messagingService,
-                                                                 locatorConfig));
+                                                                 locatorConfig,
+                                                                 dbConfig));
     }
 
     private static ResultSet merge(ResultSet left, ResultSet right)
@@ -684,7 +687,8 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                                       KeyspaceManager keyspaceManager,
                                                       StorageProxy storageProxy,
                                                       MessagingService messagingService,
-                                                      LocatorConfig locatorConfig)
+                                                      LocatorConfig locatorConfig,
+                                                      DBConfig dbConfig)
     throws InvalidRequestException
     {
         CFMetaData cfm = cf.metadata();
@@ -721,7 +725,8 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                      keyspaceManager,
                                      storageProxy,
                                      messagingService,
-                                     locatorConfig).processColumnFamily(key, cf, options, now, builder);
+                                     locatorConfig,
+                                     dbConfig).processColumnFamily(key, cf, options, now, builder);
 
         return builder.build();
     }

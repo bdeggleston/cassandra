@@ -54,12 +54,13 @@ public abstract class ExtendedFilter
                                         boolean countCQL3Rows,
                                         long timestamp,
                                         DatabaseDescriptor databaseDescriptor,
-                                        Tracing tracing)
+                                        Tracing tracing,
+                                        DBConfig dbConfig)
     {
         if (clause == null || clause.isEmpty())
             return new EmptyClauseFilter(cfs, dataRange, maxResults, countCQL3Rows, timestamp);
 
-        return new WithClauses(cfs, dataRange, clause, maxResults, countCQL3Rows, timestamp, databaseDescriptor, tracing);
+        return new WithClauses(cfs, dataRange, clause, maxResults, countCQL3Rows, timestamp, databaseDescriptor, tracing, dbConfig);
     }
 
     protected ExtendedFilter(ColumnFamilyStore cfs, DataRange dataRange, int maxResults, boolean countCQL3Rows, long timestamp)
@@ -157,6 +158,7 @@ public abstract class ExtendedFilter
         private final IDiskAtomFilter optimizedFilter;
         private final DatabaseDescriptor databaseDescriptor;
         private final Tracing tracing;
+        private final DBConfig dbConfig;
 
         public WithClauses(ColumnFamilyStore cfs,
                            DataRange range,
@@ -165,11 +167,13 @@ public abstract class ExtendedFilter
                            boolean countCQL3Rows,
                            long timestamp,
                            DatabaseDescriptor databaseDescriptor,
-                           Tracing tracing)
+                           Tracing tracing,
+                           DBConfig dbConfig)
         {
             super(cfs, range, maxResults, countCQL3Rows, timestamp);
             this.databaseDescriptor = databaseDescriptor;
             this.tracing = tracing;
+            this.dbConfig = dbConfig;
             assert clause != null;
             this.clause = clause;
             this.optimizedFilter = computeOptimizedFilter();
@@ -274,7 +278,7 @@ public abstract class ExtendedFilter
                     columns.add(name);
             }
             assert !columns.isEmpty();
-            return new NamesQueryFilter(columns);
+            return new NamesQueryFilter(columns, dbConfig);
         }
 
         public ColumnFamily prune(DecoratedKey rowKey, ColumnFamily data)

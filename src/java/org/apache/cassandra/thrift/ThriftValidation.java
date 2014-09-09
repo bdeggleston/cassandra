@@ -650,7 +650,7 @@ public class ThriftValidation
             SortedSet<CellName> ss = new TreeSet<CellName>(comparator);
             for (ByteBuffer bb : sp.column_names)
                 ss.add(comparator.cellFromByteBuffer(bb));
-            filter = new NamesQueryFilter(ss);
+            filter = new NamesQueryFilter(ss, DBConfig.instance);
         }
         else
         {

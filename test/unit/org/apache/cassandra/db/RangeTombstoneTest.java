@@ -121,7 +121,7 @@ public class RangeTombstoneTest
             columns.add(b(i));
         for (int i : dead)
             columns.add(b(i));
-        cf = cfs.getColumnFamily(QueryFilter.getNamesFilter(dk(key), CFNAME, columns, System.currentTimeMillis()));
+        cf = cfs.getColumnFamily(QueryFilter.getNamesFilter(dk(key), CFNAME, columns, System.currentTimeMillis(), DBConfig.instance));
 
         for (int i : live)
             assertTrue("Cell " + i + " should be live", isLive(cf, cf.getColumn(b(i))));

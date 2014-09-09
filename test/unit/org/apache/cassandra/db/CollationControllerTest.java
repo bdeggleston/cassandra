@@ -128,7 +128,7 @@ public class CollationControllerTest
         long queryAt = System.currentTimeMillis() + 1000;
         int gcBefore = cfs.gcBefore(queryAt);
 
-        filter = QueryFilter.getNamesFilter(dk, cfs.name, FBUtilities.singleton(cellName, cfs.getComparator()), queryAt);
+        filter = QueryFilter.getNamesFilter(dk, cfs.name, FBUtilities.singleton(cellName, cfs.getComparator()), queryAt, DBConfig.instance);
         CollationController controller = new CollationController(cfs, filter, gcBefore, DBConfig.instance, KeyspaceManager.instance, Tracing.instance);
         assert ColumnFamilyStore.removeDeleted(controller.getTopLevelColumns(true), gcBefore) == null;
 

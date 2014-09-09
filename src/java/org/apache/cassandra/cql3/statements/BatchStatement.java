@@ -386,7 +386,8 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
                                                                               keyspaceManager,
                                                                               storageProxy,
                                                                               messagingService,
-                                                                              locatorConfig));
+                                                                              locatorConfig,
+                                                                              dbConfig));
     }
 
     public ResultMessage executeInternal(QueryState queryState, QueryOptions options) throws RequestValidationException, RequestExecutionException

@@ -131,7 +131,7 @@ public abstract class AbstractCellNameType extends AbstractCType implements Cell
         };
         columnSerializer = new ColumnSerializer(this);
         onDiskAtomSerializer = new OnDiskAtom.Serializer(this);
-        namesQueryFilterSerializer = new NamesQueryFilter.Serializer(this);
+        namesQueryFilterSerializer = new NamesQueryFilter.Serializer(this, dbConfig);
         diskAtomFilterSerializer = new IDiskAtomFilter.Serializer(this);
     }
 

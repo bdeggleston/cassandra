@@ -403,14 +403,14 @@ public class CassandraServer implements Cassandra.Iface
                 SortedSet<CellName> s = new TreeSet<>(columnType);
                 for (ByteBuffer bb : predicate.column_names)
                     s.add(columnType.cellFromByteBuffer(bb));
-                filter = SuperColumns.fromSCNamesFilter(metadata.comparator, parent.bufferForSuper_column(), new NamesQueryFilter(s), DatabaseDescriptor.instance, Tracing.instance);
+                filter = SuperColumns.fromSCNamesFilter(metadata.comparator, parent.bufferForSuper_column(), new NamesQueryFilter(s, DBConfig.instance), DatabaseDescriptor.instance, Tracing.instance);
             }
             else
             {
                 SortedSet<CellName> s = new TreeSet<CellName>(metadata.comparator);
                 for (ByteBuffer bb : predicate.column_names)
                     s.add(metadata.comparator.cellFromByteBuffer(bb));
-                filter = new NamesQueryFilter(s);
+                filter = new NamesQueryFilter(s, DBConfig.instance);
             }
         }
         else
@@ -490,14 +490,14 @@ public class CassandraServer implements Cassandra.Iface
                 CellNameType columnType = new SimpleDenseCellNameType(metadata.comparator.subtype(column_path.column == null ? 0 : 1), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
                 SortedSet<CellName> names = new TreeSet<CellName>(columnType);
                 names.add(columnType.cellFromByteBuffer(column_path.column == null ? column_path.super_column : column_path.column));
-                filter = SuperColumns.fromSCNamesFilter(metadata.comparator, column_path.column == null ? null : column_path.bufferForSuper_column(), new NamesQueryFilter(names),
+                filter = SuperColumns.fromSCNamesFilter(metadata.comparator, column_path.column == null ? null : column_path.bufferForSuper_column(), new NamesQueryFilter(names, DBConfig.instance),
                                                         DatabaseDescriptor.instance, Tracing.instance);
             }
             else
             {
                 SortedSet<CellName> names = new TreeSet<CellName>(metadata.comparator);
                 names.add(metadata.comparator.cellFromByteBuffer(column_path.column));
-                filter = new NamesQueryFilter(names);
+                filter = new NamesQueryFilter(names, DBConfig.instance);
             }
 
             long now = System.currentTimeMillis();
@@ -2153,7 +2153,7 @@ public class CassandraServer implements Cassandra.Iface
         {
             return expected == null || expected.isEmpty()
                  ? new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 1, DatabaseDescriptor.instance, Tracing.instance)
-                 : new NamesQueryFilter(ImmutableSortedSet.copyOf(expected.getComparator(), expected.getColumnNames()));
+                 : new NamesQueryFilter(ImmutableSortedSet.copyOf(expected.getComparator(), expected.getColumnNames()), DBConfig.instance);
         }
 
         public boolean appliesTo(ColumnFamily current)

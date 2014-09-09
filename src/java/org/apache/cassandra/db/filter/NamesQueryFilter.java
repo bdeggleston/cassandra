@@ -49,16 +49,18 @@ public class NamesQueryFilter implements IDiskAtomFilter
     // If true, getLiveCount will always return either 0 or 1. This uses the fact that we know 
     // CQL3 will never use a name filter with cell names spanning multiple CQL3 rows.
     private final boolean countCQL3Rows;
+    private final DBConfig dbConfig;
 
-    public NamesQueryFilter(SortedSet<CellName> columns)
+    public NamesQueryFilter(SortedSet<CellName> columns, DBConfig dbConfig)
     {
-        this(columns, false);
+        this(columns, false, dbConfig);
     }
 
-    public NamesQueryFilter(SortedSet<CellName> columns, boolean countCQL3Rows)
+    public NamesQueryFilter(SortedSet<CellName> columns, boolean countCQL3Rows, DBConfig dbConfig)
     {
         this.columns = columns;
         this.countCQL3Rows = countCQL3Rows;
+        this.dbConfig = dbConfig;
     }
 
     public NamesQueryFilter cloneShallow()
@@ -69,7 +71,7 @@ public class NamesQueryFilter implements IDiskAtomFilter
 
     public NamesQueryFilter withUpdatedColumns(SortedSet<CellName> newColumns)
     {
-       return new NamesQueryFilter(newColumns, countCQL3Rows);
+       return new NamesQueryFilter(newColumns, countCQL3Rows, dbConfig);
     }
 
     @SuppressWarnings("unchecked")
@@ -231,10 +233,12 @@ public class NamesQueryFilter implements IDiskAtomFilter
     public static class Serializer implements IVersionedSerializer<NamesQueryFilter>
     {
         private CellNameType type;
+        private final DBConfig dbConfig;
 
-        public Serializer(CellNameType type)
+        public Serializer(CellNameType type, DBConfig dbConfig)
         {
             this.type = type;
+            this.dbConfig = dbConfig;
         }
 
         public void serialize(NamesQueryFilter f, DataOutputPlus out, int version) throws IOException
@@ -256,7 +260,7 @@ public class NamesQueryFilter implements IDiskAtomFilter
             for (int i = 0; i < size; ++i)
                 columns.add(serializer.deserialize(in));
             boolean countCQL3Rows = in.readBoolean();
-            return new NamesQueryFilter(columns, countCQL3Rows);
+            return new NamesQueryFilter(columns, countCQL3Rows, dbConfig);
         }
 
         public long serializedSize(NamesQueryFilter f, int version)

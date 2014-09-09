@@ -844,7 +844,7 @@ public class ColumnFamilyStoreTest
         // fetch by the first column name; we should get the second version of the column value
         SliceByNamesReadCommand cmd = new SliceByNamesReadCommand(
             KEYSPACE1, ByteBufferUtil.bytes("k1"), cfname, System.currentTimeMillis(),
-            new NamesQueryFilter(FBUtilities.singleton(column1, cfs.getComparator())),
+            new NamesQueryFilter(FBUtilities.singleton(column1, cfs.getComparator()), DBConfig.instance),
             Schema.instance,
             LocatorConfig.instance.getPartitioner(),
             MessagingService.instance.readCommandSerializer);
@@ -858,7 +858,7 @@ public class ColumnFamilyStoreTest
         // fetch by the second column name; we should get the second version of the column value
         cmd = new SliceByNamesReadCommand(
             KEYSPACE1, ByteBufferUtil.bytes("k1"), cfname, System.currentTimeMillis(),
-            new NamesQueryFilter(FBUtilities.singleton(column2, cfs.getComparator())),
+            new NamesQueryFilter(FBUtilities.singleton(column2, cfs.getComparator()), DBConfig.instance),
             Schema.instance,
             LocatorConfig.instance.getPartitioner(),
             MessagingService.instance.readCommandSerializer);
@@ -1098,7 +1098,7 @@ public class ColumnFamilyStoreTest
                                                                   key.getKey(),
                                                                   cfName,
                                                                   System.currentTimeMillis(),
-                                                                  new NamesQueryFilter(sliceColNames),
+                                                                  new NamesQueryFilter(sliceColNames, DBConfig.instance),
                                                                   Schema.instance,
                                                                   LocatorConfig.instance.getPartitioner(),
                                                                   MessagingService.instance.readCommandSerializer);
@@ -1141,7 +1141,7 @@ public class ColumnFamilyStoreTest
                                                                   key.getKey(),
                                                                   cfName,
                                                                   System.currentTimeMillis(),
-                                                                  new NamesQueryFilter(FBUtilities.singleton(cname, cfs.getComparator())),
+                                                                  new NamesQueryFilter(FBUtilities.singleton(cname, cfs.getComparator()), DBConfig.instance),
                                                                   Schema.instance,
                                                                   LocatorConfig.instance.getPartitioner(),
                                                                   MessagingService.instance.readCommandSerializer);

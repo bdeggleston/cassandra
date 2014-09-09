@@ -276,7 +276,7 @@ public class CounterMutation implements IMutation
             if (currentValues[i] == null)
                 names.add(counterUpdateCells.get(i).name());
 
-        ReadCommand cmd = new SliceByNamesReadCommand(getKeyspaceName(), key(), cfs.metadata.cfName, Long.MIN_VALUE, new NamesQueryFilter(names), Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
+        ReadCommand cmd = new SliceByNamesReadCommand(getKeyspaceName(), key(), cfs.metadata.cfName, Long.MIN_VALUE, new NamesQueryFilter(names, DBConfig.instance), Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
         Row row = cmd.getRow(cfs.keyspace);
         ColumnFamily cf = row == null ? null : row.cf;
 

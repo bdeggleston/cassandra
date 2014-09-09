@@ -514,7 +514,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         IPartitioner p = LocatorConfig.instance.getPartitioner();
         RowPosition minPos = p.getMinimumToken().minKeyBound();
         Range<RowPosition> range = new Range<RowPosition>(minPos, minPos, p);
-        IDiskAtomFilter filter = new NamesQueryFilter(ImmutableSortedSet.<CellName>of());
+        IDiskAtomFilter filter = new NamesQueryFilter(ImmutableSortedSet.<CellName>of(), DBConfig.instance);
         List<Row> rows = hintStore.getRangeSlice(range, null, filter, Integer.MAX_VALUE, System.currentTimeMillis());
         for (Row row : rows)
         {

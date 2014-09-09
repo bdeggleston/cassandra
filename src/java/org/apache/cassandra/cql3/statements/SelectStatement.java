@@ -116,6 +116,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
     private final StorageProxy storageProxy;
     private final MessagingService messagingService;
     private final LocatorConfig locatorConfig;
+    private final DBConfig dbConfig;
 
     public SelectStatement(CFMetaData cfm,
                            int boundTerms,
@@ -129,7 +130,8 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                            KeyspaceManager keyspaceManager,
                            StorageProxy storageProxy,
                            MessagingService messagingService,
-                           LocatorConfig locatorConfig)
+                           LocatorConfig locatorConfig,
+                           DBConfig dbConfig)
     {
         this.cfm = cfm;
         this.boundTerms = boundTerms;
@@ -147,6 +149,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         this.storageProxy = storageProxy;
         this.messagingService = messagingService;
         this.locatorConfig = locatorConfig;
+        this.dbConfig = dbConfig;
 
         // Now gather a few info on whether we should bother with static columns or not for this statement
         initStaticColumnsInfo();
@@ -189,7 +192,8 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                                         KeyspaceManager keyspaceManager,
                                         StorageProxy storageProxy,
                                         MessagingService messagingService,
-                                        LocatorConfig locatorConfig)
+                                        LocatorConfig locatorConfig,
+                                        DBConfig dbConfig)
     {
         return new SelectStatement(cfm,
                                    0,
@@ -203,7 +207,8 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                                    keyspaceManager,
                                    storageProxy,
                                    messagingService,
-                                   locatorConfig);
+                                   locatorConfig,
+                                   dbConfig);
     }
 
     public ResultSet.Metadata getResultMetadata()
@@ -592,7 +597,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             if (cellNames == null) // in case of IN () for the last column of the key
                 return null;
             queryProcessor.validateCellNames(cellNames, cfm.comparator);
-            return new NamesQueryFilter(cellNames, true);
+            return new NamesQueryFilter(cellNames, true, dbConfig);
         }
     }
 
@@ -1421,6 +1426,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         private final StorageProxy storageProxy;
         private final MessagingService messagingService;
         private final LocatorConfig locatorConfig;
+        private final DBConfig dbConfig;
 
         public RawStatement(CFName cfName,
                             Parameters parameters,
@@ -1434,7 +1440,8 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                             KeyspaceManager keyspaceManager,
                             StorageProxy storageProxy,
                             MessagingService messagingService,
-                            LocatorConfig locatorConfig)
+                            LocatorConfig locatorConfig,
+                            DBConfig dbConfig)
         {
             super(cfName);
             this.parameters = parameters;
@@ -1450,6 +1457,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             this.storageProxy = storageProxy;
             this.messagingService = messagingService;
             this.locatorConfig = locatorConfig;
+            this.dbConfig = dbConfig;
         }
 
         public ParsedStatement.Prepared prepare() throws InvalidRequestException
@@ -1477,7 +1485,8 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                                                        keyspaceManager,
                                                        storageProxy,
                                                        messagingService,
-                                                       locatorConfig);
+                                                       locatorConfig,
+                                                       dbConfig);
 
             /*
              * WHERE clause. For a given entity, rules are:

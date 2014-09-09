@@ -124,7 +124,7 @@ public class TimeSortTest
         TreeSet<CellName> columnNames = new TreeSet<CellName>(cfStore.getComparator());
         columnNames.add(cellname(10));
         columnNames.add(cellname(0));
-        cf = cfStore.getColumnFamily(QueryFilter.getNamesFilter(Util.dk("900"), CF_STANDARD1, columnNames, System.currentTimeMillis()));
+        cf = cfStore.getColumnFamily(QueryFilter.getNamesFilter(Util.dk("900"), CF_STANDARD1, columnNames, System.currentTimeMillis(), DBConfig.instance));
         assert "c".equals(ByteBufferUtil.string(cf.getColumn(cellname(0)).value()));
         assert "c".equals(ByteBufferUtil.string(cf.getColumn(cellname(10)).value()));
     }

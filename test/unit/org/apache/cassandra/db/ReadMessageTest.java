@@ -85,7 +85,7 @@ public class ReadMessageTest
                                          dk.getKey(),
                                          "Standard1",
                                          ts,
-                                         new NamesQueryFilter(colList),
+                                         new NamesQueryFilter(colList, DBConfig.instance),
                                          Schema.instance,
                                          LocatorConfig.instance.getPartitioner(),
                                          MessagingService.instance.readCommandSerializer);
@@ -143,7 +143,7 @@ public class ReadMessageTest
                                                           dk.getKey(),
                                                           "Standard1",
                                                           System.currentTimeMillis(),
-                                                          new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type)),
+                                                          new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), DBConfig.instance),
                                                           Schema.instance,
                                                           LocatorConfig.instance.getPartitioner(),
                                                           MessagingService.instance.readCommandSerializer);

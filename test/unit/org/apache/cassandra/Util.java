@@ -334,7 +334,7 @@ public class Util
     public static QueryFilter namesQueryFilter(ColumnFamilyStore cfs, DecoratedKey key)
     {
         SortedSet<CellName> s = new TreeSet<CellName>(cfs.getComparator());
-        return QueryFilter.getNamesFilter(key, cfs.name, s, System.currentTimeMillis());
+        return QueryFilter.getNamesFilter(key, cfs.name, s, System.currentTimeMillis(), DBConfig.instance);
     }
 
     public static QueryFilter namesQueryFilter(ColumnFamilyStore cfs, DecoratedKey key, String... names)
@@ -342,7 +342,7 @@ public class Util
         SortedSet<CellName> s = new TreeSet<CellName>(cfs.getComparator());
         for (String str : names)
             s.add(cellname(str));
-        return QueryFilter.getNamesFilter(key, cfs.name, s, System.currentTimeMillis());
+        return QueryFilter.getNamesFilter(key, cfs.name, s, System.currentTimeMillis(), DBConfig.instance);
     }
 
     public static QueryFilter namesQueryFilter(ColumnFamilyStore cfs, DecoratedKey key, CellName... names)
@@ -350,7 +350,7 @@ public class Util
         SortedSet<CellName> s = new TreeSet<CellName>(cfs.getComparator());
         for (CellName n : names)
             s.add(n);
-        return QueryFilter.getNamesFilter(key, cfs.name, s, System.currentTimeMillis());
+        return QueryFilter.getNamesFilter(key, cfs.name, s, System.currentTimeMillis(), DBConfig.instance);
     }
 
     public static NamesQueryFilter namesFilter(ColumnFamilyStore cfs, String... names)
@@ -358,7 +358,7 @@ public class Util
         SortedSet<CellName> s = new TreeSet<CellName>(cfs.getComparator());
         for (String str : names)
             s.add(cellname(str));
-        return new NamesQueryFilter(s);
+        return new NamesQueryFilter(s, DBConfig.instance);
     }
 
     public static String string(ByteBuffer bb)

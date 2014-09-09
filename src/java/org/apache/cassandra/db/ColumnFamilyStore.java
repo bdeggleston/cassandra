@@ -1829,7 +1829,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                                              long now)
     {
         DataRange dataRange = new DataRange.Paging(keyRange, columnRange, columnStart, columnStop, metadata.comparator);
-        return ExtendedFilter.create(this, dataRange, rowFilter, maxResults, countCQL3Rows, now, DatabaseDescriptor.instance, Tracing.instance);
+        return ExtendedFilter.create(this, dataRange, rowFilter, maxResults, countCQL3Rows, now, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
     }
 
     public List<Row> getRangeSlice(AbstractBounds<RowPosition> range,
@@ -1864,7 +1864,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         {
             dataRange = new DataRange(range, columnFilter);
         }
-        return ExtendedFilter.create(this, dataRange, rowFilter, maxResults, countCQL3Rows, timestamp, DatabaseDescriptor.instance, Tracing.instance);
+        return ExtendedFilter.create(this, dataRange, rowFilter, maxResults, countCQL3Rows, timestamp, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
     }
 
     public List<Row> getRangeSlice(ExtendedFilter filter)

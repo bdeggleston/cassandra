@@ -444,7 +444,7 @@ public class CacheService implements CacheServiceMBean
                     QueryFilter filter = QueryFilter.getNamesFilter(key,
                                                                     cfs.metadata.cfName,
                                                                     FBUtilities.singleton(cellName, cfs.metadata.comparator),
-                                                                    Long.MIN_VALUE);
+                                                                    Long.MIN_VALUE, DBConfig.instance);
                     ColumnFamily cf = cfs.getTopLevelColumns(filter, Integer.MIN_VALUE);
                     if (cf == null)
                         return null;
