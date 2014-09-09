@@ -37,6 +37,7 @@ import org.apache.cassandra.db.marshal.CounterColumnType;
 import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.RequestExecutionException;
+import org.apache.cassandra.io.sstable.SSTableReaderFactory;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
@@ -235,7 +236,7 @@ public class ScrubTest
 
         try
         {
-            SSTableReader.open(desc, metadata);
+            SSTableReaderFactory.instance.open(desc, metadata);
             fail("SSTR validation should have caught the out-of-order rows");
         }
         catch (IllegalStateException ise) { /* this is expected */ }
@@ -249,7 +250,7 @@ public class ScrubTest
         components.add(Component.STATS);
         components.add(Component.SUMMARY);
         components.add(Component.TOC);
-        SSTableReader sstable = SSTableReader.openNoValidation(desc, components, metadata);
+        SSTableReader sstable = SSTableReaderFactory.instance.openNoValidation(desc, components, metadata);
 
         Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, false, true, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
         scrubber.scrub();

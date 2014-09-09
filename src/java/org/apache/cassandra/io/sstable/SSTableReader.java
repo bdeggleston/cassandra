@@ -30,13 +30,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -52,7 +48,6 @@ import com.google.common.primitives.Longs;
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.FileCacheService;
 import org.apache.cassandra.service.StorageServiceExecutors;
 import org.slf4j.Logger;
@@ -63,26 +58,20 @@ import com.clearspring.analytics.stream.cardinality.ICardinality;
 import org.apache.cassandra.cache.CachingOptions;
 import org.apache.cassandra.cache.InstrumentingCache;
 import org.apache.cassandra.cache.KeyCacheKey;
-import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
 import org.apache.cassandra.db.columniterator.OnDiskAtomIterator;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.db.compaction.ICompactionScanner;
-import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.IPartitioner;
-import org.apache.cassandra.dht.LocalPartitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.compress.CompressedRandomAccessReader;
 import org.apache.cassandra.io.compress.CompressedThrottledReader;
 import org.apache.cassandra.io.compress.CompressionMetadata;
 import org.apache.cassandra.io.sstable.metadata.CompactionMetadata;
-import org.apache.cassandra.io.sstable.metadata.MetadataComponent;
 import org.apache.cassandra.io.sstable.metadata.MetadataType;
 import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
 import org.apache.cassandra.io.sstable.metadata.ValidationMetadata;
-import org.apache.cassandra.io.util.BufferedSegmentedFile;
-import org.apache.cassandra.io.util.CompressedSegmentedFile;
 import org.apache.cassandra.io.util.DataOutputStreamAndChannel;
 import org.apache.cassandra.io.util.FileDataInput;
 import org.apache.cassandra.io.util.FileUtils;
@@ -98,13 +87,10 @@ import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CLibrary;
 import org.apache.cassandra.utils.EstimatedHistogram;
-import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.FilterFactory;
 import org.apache.cassandra.utils.IFilter;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.concurrent.OpOrder;
-
-import static org.apache.cassandra.db.Directories.SECONDARY_INDEX_NAME_SEPARATOR;
 
 /**
  * SSTableReaders are open()ed by Keyspace.onStart; after that they are created by SSTableWriter.renameAndOpen.
@@ -254,146 +240,6 @@ public class SSTableReader extends SSTable
         return count;
     }
 
-    public static SSTableReader open(Descriptor descriptor) throws IOException
-    {
-        CFMetaData metadata;
-        if (descriptor.cfname.contains(SECONDARY_INDEX_NAME_SEPARATOR))
-        {
-            int i = descriptor.cfname.indexOf(SECONDARY_INDEX_NAME_SEPARATOR);
-            String parentName = descriptor.cfname.substring(0, i);
-            CFMetaData parent = Schema.instance.getCFMetaData(descriptor.ksname, parentName);
-            ColumnDefinition def = parent.getColumnDefinitionForIndex(descriptor.cfname.substring(i + 1));
-            metadata = CFMetaDataFactory.instance.newIndexMetadata(parent, def, SecondaryIndex.getIndexComparator(parent, def, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
-        }
-        else
-        {
-            metadata = Schema.instance.getCFMetaData(descriptor.ksname, descriptor.cfname);
-        }
-        return open(descriptor, metadata);
-    }
-
-    public static SSTableReader open(Descriptor desc, CFMetaData metadata) throws IOException
-    {
-        IPartitioner p = desc.cfname.contains(SECONDARY_INDEX_NAME_SEPARATOR)
-                       ? new LocalPartitioner(metadata.getKeyValidator())
-                       : LocatorConfig.instance.getPartitioner();
-        return open(desc, componentsFor(desc), metadata, p);
-    }
-
-    public static SSTableReader open(Descriptor descriptor, Set<Component> components, CFMetaData metadata, IPartitioner partitioner) throws IOException
-    {
-        return open(descriptor, components, metadata, partitioner, true);
-    }
-
-    public static SSTableReader openNoValidation(Descriptor descriptor, Set<Component> components, CFMetaData metadata) throws IOException
-    {
-        return open(descriptor, components, metadata, LocatorConfig.instance.getPartitioner(), false);
-    }
-
-    /**
-     * Open SSTable reader to be used in batch mode(such as sstableloader).
-     *
-     * @param descriptor
-     * @param components
-     * @param metadata
-     * @param partitioner
-     * @return opened SSTableReader
-     * @throws IOException
-     */
-    public static SSTableReader openForBatch(Descriptor descriptor, Set<Component> components, CFMetaData metadata, IPartitioner partitioner) throws IOException
-    {
-        // Minimum components without which we can't do anything
-        assert components.contains(Component.DATA) : "Data component is missing for sstable" + descriptor;
-        assert components.contains(Component.PRIMARY_INDEX) : "Primary index component is missing for sstable " + descriptor;
-
-        Map<MetadataType, MetadataComponent> sstableMetadata = descriptor.getMetadataSerializer().deserialize(descriptor,
-                                                                                                               EnumSet.of(MetadataType.VALIDATION, MetadataType.STATS));
-        ValidationMetadata validationMetadata = (ValidationMetadata) sstableMetadata.get(MetadataType.VALIDATION);
-        StatsMetadata statsMetadata = (StatsMetadata) sstableMetadata.get(MetadataType.STATS);
-
-        // Check if sstable is created using same partitioner.
-        // Partitioner can be null, which indicates older version of sstable or no stats available.
-        // In that case, we skip the check.
-        String partitionerName = partitioner.getClass().getCanonicalName();
-        if (validationMetadata != null && !partitionerName.equals(validationMetadata.partitioner))
-        {
-            logger.error(String.format("Cannot open %s; partitioner %s does not match system partitioner %s.  Note that the default partitioner starting with Cassandra 1.2 is Murmur3Partitioner, so you will need to edit that to match your old partitioner if upgrading.",
-                                              descriptor, validationMetadata.partitioner, partitionerName));
-            System.exit(1);
-        }
-
-        logger.info("Opening {} ({} bytes)", descriptor, new File(descriptor.filenameFor(Component.DATA)).length());
-        SSTableReader sstable = new SSTableReader(descriptor,
-                                                  components,
-                                                  metadata,
-                                                  partitioner,
-                                                  System.currentTimeMillis(),
-                                                  statsMetadata,
-                                                  false);
-
-        // special implementation of load to use non-pooled SegmentedFile builders
-        SegmentedFile.Builder ibuilder = new BufferedSegmentedFile.Builder(DatabaseDescriptor.instance.getDiskAccessMode());
-        SegmentedFile.Builder dbuilder = sstable.compression
-                                       ? new CompressedSegmentedFile.Builder(null, DatabaseDescriptor.instance.getDiskAccessMode())
-                                       : new BufferedSegmentedFile.Builder(DatabaseDescriptor.instance.getDiskAccessMode());
-        if (!sstable.loadSummary(ibuilder, dbuilder))
-            sstable.buildSummary(false, ibuilder, dbuilder, false, Downsampling.BASE_SAMPLING_LEVEL);
-        sstable.ifile = ibuilder.complete(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
-        sstable.dfile = dbuilder.complete(sstable.descriptor.filenameFor(Component.DATA));
-        sstable.bf = FilterFactory.AlwaysPresent;
-
-        return sstable;
-    }
-
-    private static SSTableReader open(Descriptor descriptor,
-                                      Set<Component> components,
-                                      CFMetaData metadata,
-                                      IPartitioner partitioner,
-                                      boolean validate) throws IOException
-    {
-        // Minimum components without which we can't do anything
-        assert components.contains(Component.DATA) : "Data component is missing for sstable" + descriptor;
-        assert components.contains(Component.PRIMARY_INDEX) : "Primary index component is missing for sstable " + descriptor;
-
-        Map<MetadataType, MetadataComponent> sstableMetadata = descriptor.getMetadataSerializer().deserialize(descriptor,
-                                                                                                               EnumSet.of(MetadataType.VALIDATION, MetadataType.STATS));
-        ValidationMetadata validationMetadata = (ValidationMetadata) sstableMetadata.get(MetadataType.VALIDATION);
-        StatsMetadata statsMetadata = (StatsMetadata) sstableMetadata.get(MetadataType.STATS);
-
-        // Check if sstable is created using same partitioner.
-        // Partitioner can be null, which indicates older version of sstable or no stats available.
-        // In that case, we skip the check.
-        String partitionerName = partitioner.getClass().getCanonicalName();
-        if (validationMetadata != null && !partitionerName.equals(validationMetadata.partitioner))
-        {
-            logger.error(String.format("Cannot open %s; partitioner %s does not match system partitioner %s.  Note that the default partitioner starting with Cassandra 1.2 is Murmur3Partitioner, so you will need to edit that to match your old partitioner if upgrading.",
-                                              descriptor, validationMetadata.partitioner, partitionerName));
-            System.exit(1);
-        }
-
-        logger.info("Opening {} ({} bytes)", descriptor, new File(descriptor.filenameFor(Component.DATA)).length());
-        SSTableReader sstable = new SSTableReader(descriptor,
-                                                  components,
-                                                  metadata,
-                                                  partitioner,
-                                                  System.currentTimeMillis(),
-                                                  statsMetadata,
-                                                  false);
-
-        // load index and filter
-        long start = System.nanoTime();
-        sstable.load(validationMetadata);
-        logger.debug("INDEX LOAD TIME for {}: {} ms.", descriptor, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
-
-        if (validate)
-            sstable.validate();
-
-        if (sstable.getKeyCache() != null)
-            logger.debug("key cache contains {}/{} keys", sstable.getKeyCache().size(), sstable.getKeyCache().getCapacity());
-
-        return sstable;
-    }
-
     public static void logOpenException(Descriptor descriptor, IOException e)
     {
         if (e instanceof FileNotFoundException)
@@ -402,85 +248,13 @@ public class SSTableReader extends SSTable
             logger.error("Corrupt sstable {}; skipped", descriptor, e);
     }
 
-    public static Collection<SSTableReader> openAll(Set<Map.Entry<Descriptor, Set<Component>>> entries,
-                                                      final CFMetaData metadata,
-                                                      final IPartitioner partitioner)
-    {
-        final Collection<SSTableReader> sstables = new LinkedBlockingQueue<>();
-
-        ExecutorService executor = DebuggableThreadPoolExecutor.createWithFixedPoolSize("SSTableBatchOpen", FBUtilities.getAvailableProcessors(), Tracing.instance);
-        for (final Map.Entry<Descriptor, Set<Component>> entry : entries)
-        {
-            Runnable runnable = new Runnable()
-            {
-                public void run()
-                {
-                    SSTableReader sstable;
-                    try
-                    {
-                        sstable = open(entry.getKey(), entry.getValue(), metadata, partitioner);
-                    }
-                    catch (IOException ex)
-                    {
-                        logger.error("Corrupt sstable {}; skipped", entry, ex);
-                        return;
-                    }
-                    sstables.add(sstable);
-                }
-            };
-            executor.submit(runnable);
-        }
-
-        executor.shutdown();
-        try
-        {
-            executor.awaitTermination(7, TimeUnit.DAYS);
-        }
-        catch (InterruptedException e)
-        {
-            throw new AssertionError(e);
-        }
-
-        return sstables;
-
-    }
-
-    /**
-     * Open a RowIndexedReader which already has its state initialized (by SSTableWriter).
-     */
-    static SSTableReader internalOpen(Descriptor desc,
-                                      Set<Component> components,
-                                      CFMetaData metadata,
-                                      IPartitioner partitioner,
-                                      SegmentedFile ifile,
-                                      SegmentedFile dfile,
-                                      IndexSummary isummary,
-                                      IFilter bf,
-                                      long maxDataAge,
-                                      StatsMetadata sstableMetadata,
-                                      boolean isOpenEarly)
-    {
-        assert desc != null && partitioner != null && ifile != null && dfile != null && isummary != null && bf != null && sstableMetadata != null;
-        return new SSTableReader(desc,
-                                 components,
-                                 metadata,
-                                 partitioner,
-                                 ifile, dfile,
-                                 isummary,
-                                 bf,
-                                 maxDataAge,
-                                 sstableMetadata,
-                                 isOpenEarly);
-    }
-
-
-    private SSTableReader(final Descriptor desc,
-                          Set<Component> components,
-                          CFMetaData metadata,
-                          IPartitioner partitioner,
-                          long maxDataAge,
-                          StatsMetadata sstableMetadata,
-                          boolean isOpenEarly)
+    SSTableReader(final Descriptor desc,
+                  Set<Component> components,
+                  CFMetaData metadata,
+                  IPartitioner partitioner,
+                  long maxDataAge,
+                  StatsMetadata sstableMetadata,
+                  boolean isOpenEarly)
     {
         super(desc, components, metadata, partitioner);
         this.sstableMetadata = sstableMetadata;
@@ -513,17 +287,17 @@ public class SSTableReader extends SSTable
         }, 1, 5, TimeUnit.MINUTES);
     }
 
-    private SSTableReader(Descriptor desc,
-                          Set<Component> components,
-                          CFMetaData metadata,
-                          IPartitioner partitioner,
-                          SegmentedFile ifile,
-                          SegmentedFile dfile,
-                          IndexSummary indexSummary,
-                          IFilter bloomFilter,
-                          long maxDataAge,
-                          StatsMetadata sstableMetadata,
-                          boolean isOpenEarly)
+    SSTableReader(Descriptor desc,
+                  Set<Component> components,
+                  CFMetaData metadata,
+                  IPartitioner partitioner,
+                  SegmentedFile ifile,
+                  SegmentedFile dfile,
+                  IndexSummary indexSummary,
+                  IFilter bloomFilter,
+                  long maxDataAge,
+                  StatsMetadata sstableMetadata,
+                  boolean isOpenEarly)
     {
         this(desc, components, metadata, partitioner, maxDataAge, sstableMetadata, isOpenEarly);
 
@@ -531,6 +305,21 @@ public class SSTableReader extends SSTable
         this.dfile = dfile;
         this.indexSummary = indexSummary;
         this.bf = bloomFilter;
+    }
+
+    void setIfile(SegmentedFile ifile)
+    {
+        this.ifile = ifile;
+    }
+
+    void setDfile(SegmentedFile dfile)
+    {
+        this.dfile = dfile;
+    }
+
+    void setBf(IFilter bf)
+    {
+        this.bf = bf;
     }
 
     public static long getTotalBytes(Iterable<SSTableReader> sstables)
@@ -683,7 +472,7 @@ public class SSTableReader extends SSTable
         keyCache = CacheService.instance.keyCache;
     }
 
-    private void load(ValidationMetadata validation) throws IOException
+    void load(ValidationMetadata validation) throws IOException
     {
         if (metadata.getBloomFilterFpChance() == 1.0)
         {
@@ -759,7 +548,7 @@ public class SSTableReader extends SSTable
      * @param summaryLoaded true if index summary is already loaded and not need to build again
      * @throws IOException
      */
-    private void buildSummary(boolean recreateBloomFilter, SegmentedFile.Builder ibuilder, SegmentedFile.Builder dbuilder, boolean summaryLoaded, int samplingLevel) throws IOException
+    void buildSummary(boolean recreateBloomFilter, SegmentedFile.Builder ibuilder, SegmentedFile.Builder dbuilder, boolean summaryLoaded, int samplingLevel) throws IOException
     {
         // we read the positions in a BRAF so we don't have to worry about an entry spanning a mmap boundary.
         RandomAccessReader primaryIndex = RandomAccessReader.open(new File(descriptor.filenameFor(Component.PRIMARY_INDEX)));
@@ -1068,7 +857,7 @@ public class SSTableReader extends SSTable
         indexSummary = null;
     }
 
-    private void validate()
+    void validate()
     {
         if (this.first.compareTo(this.last) > 0)
             throw new IllegalStateException(String.format("SSTable first key %s > last key %s", this.first, this.last));

@@ -112,7 +112,7 @@ public class StandaloneSplitter
             {
                 try
                 {
-                    SSTableReader sstable = SSTableReader.openNoValidation(fn.getKey(), fn.getValue(), cfs.metadata);
+                    SSTableReader sstable = SSTableReaderFactory.instance.openNoValidation(fn.getKey(), fn.getValue(), cfs.metadata);
                     sstables.add(sstable);
 
                     if (options.snapshot) {
