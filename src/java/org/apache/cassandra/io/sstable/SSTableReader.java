@@ -248,18 +248,40 @@ public class SSTableReader extends SSTable
             logger.error("Corrupt sstable {}; skipped", descriptor, e);
     }
 
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Tracing tracing;
+    private final Schema schema;
+    private final SystemKeyspace systemKeyspace;
+    private final StorageServiceExecutors storageServiceExecutors;
+    private final CacheService cacheService;
+    private final FileCacheService fileCacheService;
+
     SSTableReader(final Descriptor desc,
                   Set<Component> components,
                   CFMetaData metadata,
                   IPartitioner partitioner,
                   long maxDataAge,
                   StatsMetadata sstableMetadata,
-                  boolean isOpenEarly)
+                  boolean isOpenEarly,
+                  DatabaseDescriptor databaseDescriptor,
+                  Tracing tracing,
+                  Schema schema,
+                  final SystemKeyspace systemKeyspace,
+                  StorageServiceExecutors storageServiceExecutors,
+                  CacheService cacheService,
+                  FileCacheService fileCacheService)
     {
         super(desc, components, metadata, partitioner);
         this.sstableMetadata = sstableMetadata;
         this.maxDataAge = maxDataAge;
         this.isOpenEarly = isOpenEarly;
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
+        this.schema = schema;
+        this.systemKeyspace = systemKeyspace;
+        this.storageServiceExecutors = storageServiceExecutors;
+        this.cacheService = cacheService;
+        this.fileCacheService = fileCacheService;
 
         deletingTask = new SSTableDeletingTask(this);
 
@@ -272,7 +294,7 @@ public class SSTableReader extends SSTable
             return;
         }
 
-        readMeter = SystemKeyspace.instance.getSSTableReadMeter(desc.ksname, desc.cfname, desc.generation);
+        readMeter = systemKeyspace.getSSTableReadMeter(desc.ksname, desc.cfname, desc.generation);
         // sync the average read rate to system.sstable_activity every five minutes, starting one minute from now
         readMeterSyncFuture = syncExecutor.scheduleAtFixedRate(new Runnable()
         {
@@ -281,7 +303,7 @@ public class SSTableReader extends SSTable
                 if (!isCompacted.get())
                 {
                     meterSyncThrottle.acquire();
-                    SystemKeyspace.instance.persistSSTableReadMeter(desc.ksname, desc.cfname, desc.generation, readMeter);
+                    systemKeyspace.persistSSTableReadMeter(desc.ksname, desc.cfname, desc.generation, readMeter);
                 }
             }
         }, 1, 5, TimeUnit.MINUTES);
@@ -297,9 +319,17 @@ public class SSTableReader extends SSTable
                   IFilter bloomFilter,
                   long maxDataAge,
                   StatsMetadata sstableMetadata,
-                  boolean isOpenEarly)
+                  boolean isOpenEarly,
+                  DatabaseDescriptor databaseDescriptor,
+                  Tracing tracing,
+                  Schema schema,
+                  SystemKeyspace systemKeyspace,
+                  StorageServiceExecutors storageServiceExecutors,
+                  CacheService cacheService,
+                  FileCacheService fileCacheService)
     {
-        this(desc, components, metadata, partitioner, maxDataAge, sstableMetadata, isOpenEarly);
+        this(desc, components, metadata, partitioner, maxDataAge, sstableMetadata, isOpenEarly, databaseDescriptor, tracing,
+             schema, systemKeyspace, storageServiceExecutors, cacheService, fileCacheService);
 
         this.ifile = ifile;
         this.dfile = dfile;
@@ -395,7 +425,7 @@ public class SSTableReader extends SSTable
         if (references.get() != 0)
             throw new IllegalStateException("SSTable is not fully released (" + references.get() + " references)");
 
-        final ColumnFamilyStore cfs = Schema.instance.getColumnFamilyStoreInstance(metadata.cfId);
+        final ColumnFamilyStore cfs = schema.getColumnFamilyStoreInstance(metadata.cfId);
         final OpOrder.Barrier barrier;
         if (cfs != null)
         {
@@ -405,7 +435,7 @@ public class SSTableReader extends SSTable
         else
             barrier = null;
 
-        StorageServiceExecutors.instance.tasks.execute(new Runnable()
+        storageServiceExecutors.tasks.execute(new Runnable()
         {
             public void run()
             {
@@ -469,7 +499,7 @@ public class SSTableReader extends SSTable
         // under normal operation we can do this at any time, but SSTR is also used outside C* proper,
         // e.g. by BulkLoader, which does not initialize the cache.  As a kludge, we set up the cache
         // here when we know we're being wired into the rest of the server infrastructure.
-        keyCache = CacheService.instance.keyCache;
+        keyCache = cacheService.keyCache;
     }
 
     void load(ValidationMetadata validation) throws IOException
@@ -524,10 +554,10 @@ public class SSTableReader extends SSTable
      */
     private void load(boolean recreateBloomFilter, boolean saveSummaryIfCreated) throws IOException
     {
-        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), FileCacheService.instance);
+        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(databaseDescriptor.getIndexAccessMode(), fileCacheService);
         SegmentedFile.Builder dbuilder = compression
-                                         ? SegmentedFile.getCompressedBuilder(FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode())
-                                         : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), FileCacheService.instance);
+                                         ? SegmentedFile.getCompressedBuilder(fileCacheService, databaseDescriptor.getDiskAccessMode())
+                                         : SegmentedFile.getBuilder(databaseDescriptor.getDiskAccessMode(), fileCacheService);
 
         boolean summaryLoaded = loadSummary(ibuilder, dbuilder);
         if (recreateBloomFilter || !summaryLoaded)
@@ -735,7 +765,24 @@ public class SSTableReader extends SSTable
 
             if (readMeterSyncFuture != null)
                 readMeterSyncFuture.cancel(false);
-            SSTableReader replacement = new SSTableReader(descriptor, components, metadata, partitioner, ifile, dfile, indexSummary.readOnlyClone(), bf, maxDataAge, sstableMetadata, isOpenEarly);
+            SSTableReader replacement = new SSTableReader(descriptor,
+                                                          components,
+                                                          metadata,
+                                                          partitioner,
+                                                          ifile,
+                                                          dfile,
+                                                          indexSummary.readOnlyClone(),
+                                                          bf,
+                                                          maxDataAge,
+                                                          sstableMetadata,
+                                                          isOpenEarly,
+                                                          databaseDescriptor,
+                                                          tracing,
+                                                          schema,
+                                                          systemKeyspace,
+                                                          storageServiceExecutors,
+                                                          cacheService,
+                                                          fileCacheService);
             replacement.readMeter = this.readMeter;
             replacement.first = this.last.compareTo(newStart) > 0 ? newStart : this.last;
             replacement.last = this.last;
@@ -779,10 +826,10 @@ public class SSTableReader extends SSTable
                 // we can use the existing index summary to make a smaller one
                 newSummary = IndexSummaryBuilder.downsample(indexSummary, samplingLevel, minIndexInterval, partitioner);
 
-                SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), FileCacheService.instance);
+                SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(databaseDescriptor.getIndexAccessMode(), fileCacheService);
                 SegmentedFile.Builder dbuilder = compression
-                                                 ? SegmentedFile.getCompressedBuilder(FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode())
-                                                 : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), FileCacheService.instance);
+                                                 ? SegmentedFile.getCompressedBuilder(fileCacheService, databaseDescriptor.getDiskAccessMode())
+                                                 : SegmentedFile.getBuilder(databaseDescriptor.getDiskAccessMode(), fileCacheService);
                 saveSummary(ibuilder, dbuilder, newSummary);
             }
             else
@@ -798,7 +845,24 @@ public class SSTableReader extends SSTable
             if (readMeterSyncFuture != null)
                 readMeterSyncFuture.cancel(false);
 
-            SSTableReader replacement = new SSTableReader(descriptor, components, metadata, partitioner, ifile, dfile, newSummary, bf, maxDataAge, sstableMetadata, isOpenEarly);
+            SSTableReader replacement = new SSTableReader(descriptor,
+                                                          components,
+                                                          metadata,
+                                                          partitioner,
+                                                          ifile,
+                                                          dfile,
+                                                          newSummary,
+                                                          bf,
+                                                          maxDataAge,
+                                                          sstableMetadata,
+                                                          isOpenEarly,
+                                                          databaseDescriptor,
+                                                          tracing,
+                                                          schema,
+                                                          systemKeyspace,
+                                                          storageServiceExecutors,
+                                                          cacheService,
+                                                          fileCacheService);
             replacement.readMeter = this.readMeter;
             replacement.first = this.first;
             replacement.last = this.last;
@@ -1165,7 +1229,7 @@ public class SSTableReader extends SSTable
             assert key instanceof DecoratedKey; // EQ only make sense if the key is a valid row key
             if (!bf.isPresent(((DecoratedKey)key).getKey()))
             {
-                Tracing.instance.trace("Bloom filter allows skipping sstable {}", descriptor.generation);
+                tracing.trace("Bloom filter allows skipping sstable {}", descriptor.generation);
                 return null;
             }
         }
@@ -1178,7 +1242,7 @@ public class SSTableReader extends SSTable
             RowIndexEntry cachedPosition = getCachedPosition(cacheKey, updateCacheAndStats);
             if (cachedPosition != null)
             {
-                Tracing.instance.trace("Key cache hit for sstable {}", descriptor.generation);
+                tracing.trace("Key cache hit for sstable {}", descriptor.generation);
                 return cachedPosition;
             }
         }
@@ -1191,7 +1255,7 @@ public class SSTableReader extends SSTable
 
             if (op.apply(1) < 0)
             {
-                Tracing.instance.trace("Check against min and max keys allows skipping sstable {}", descriptor.generation);
+                tracing.trace("Check against min and max keys allows skipping sstable {}", descriptor.generation);
                 return null;
             }
         }
@@ -1241,7 +1305,7 @@ public class SSTableReader extends SSTable
                         exactMatch = (comparison == 0);
                         if (v < 0)
                         {
-                            Tracing.instance.trace("Partition index lookup allows skipping sstable {}", descriptor.generation);
+                            tracing.trace("Partition index lookup allows skipping sstable {}", descriptor.generation);
                             return null;
                         }
                     }
@@ -1270,7 +1334,7 @@ public class SSTableReader extends SSTable
                         }
                         if (op == Operator.EQ && updateCacheAndStats)
                             bloomFilterTracker.addTruePositive();
-                        Tracing.instance.trace("Partition index with {} entries found for sstable {}", indexEntry.columnsIndex().size(), descriptor.generation);
+                        tracing.trace("Partition index with {} entries found for sstable {}", indexEntry.columnsIndex().size(), descriptor.generation);
                         return indexEntry;
                     }
 
@@ -1290,7 +1354,7 @@ public class SSTableReader extends SSTable
 
         if (op == Operator.EQ && updateCacheAndStats)
             bloomFilterTracker.addFalsePositive();
-        Tracing.instance.trace("Partition index lookup complete (bloom filter false positive) for sstable {}", descriptor.generation);
+        tracing.trace("Partition index lookup complete (bloom filter false positive) for sstable {}", descriptor.generation);
         return null;
     }
 

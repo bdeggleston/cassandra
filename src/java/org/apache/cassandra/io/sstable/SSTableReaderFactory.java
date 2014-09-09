@@ -3,6 +3,7 @@ package org.apache.cassandra.io.sstable;
 import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.LocalPartitioner;
@@ -14,6 +15,9 @@ import org.apache.cassandra.io.util.BufferedSegmentedFile;
 import org.apache.cassandra.io.util.CompressedSegmentedFile;
 import org.apache.cassandra.io.util.SegmentedFile;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.CacheService;
+import org.apache.cassandra.service.FileCacheService;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.FilterFactory;
@@ -114,7 +118,14 @@ public class SSTableReaderFactory
                                                   partitioner,
                                                   System.currentTimeMillis(),
                                                   statsMetadata,
-                                                  false);
+                                                  false,
+                                                  DatabaseDescriptor.instance,
+                                                  Tracing.instance,
+                                                  Schema.instance,
+                                                  SystemKeyspace.instance,
+                                                  StorageServiceExecutors.instance,
+                                                  CacheService.instance,
+                                                  FileCacheService.instance);
 
         // special implementation of load to use non-pooled SegmentedFile builders
         SegmentedFile.Builder ibuilder = new BufferedSegmentedFile.Builder(DatabaseDescriptor.instance.getDiskAccessMode());
@@ -164,7 +175,14 @@ public class SSTableReaderFactory
                                                   partitioner,
                                                   System.currentTimeMillis(),
                                                   statsMetadata,
-                                                  false);
+                                                  false,
+                                                  DatabaseDescriptor.instance,
+                                                  Tracing.instance,
+                                                  Schema.instance,
+                                                  SystemKeyspace.instance,
+                                                  StorageServiceExecutors.instance,
+                                                  CacheService.instance,
+                                                  FileCacheService.instance);
 
         // load index and filter
         long start = System.nanoTime();
@@ -247,7 +265,14 @@ public class SSTableReaderFactory
                                  bf,
                                  maxDataAge,
                                  sstableMetadata,
-                                 isOpenEarly);
+                                 isOpenEarly,
+                                 DatabaseDescriptor.instance,
+                                 Tracing.instance,
+                                 Schema.instance,
+                                 SystemKeyspace.instance,
+                                 StorageServiceExecutors.instance,
+                                 CacheService.instance,
+                                 FileCacheService.instance);
     }
 
 
