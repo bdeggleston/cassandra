@@ -21,21 +21,29 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.util.UUID;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.io.ISSTableSerializer;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.UUIDSerializer;
 
 public class ColumnFamilySerializer implements IVersionedSerializer<ColumnFamily>, ISSTableSerializer<ColumnFamily>
 {
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Tracing tracing;
     private final Schema schema;
+    private final DBConfig dbConfig;
 
-    public ColumnFamilySerializer(Schema schema)
+    public ColumnFamilySerializer(DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, DBConfig dbConfig)
     {
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
         this.schema = schema;
+        this.dbConfig = dbConfig;
     }
 
     /*
@@ -100,11 +108,11 @@ public class ColumnFamilySerializer implements IVersionedSerializer<ColumnFamily
         if (!in.readBoolean())
             return null;
 
-        ColumnFamily cf = factory.create(schema.getCFMetaData(deserializeCfId(in, version)), DBConfig.instance);
+        ColumnFamily cf = factory.create(schema.getCFMetaData(deserializeCfId(in, version)), dbConfig);
 
         if (cf.metadata().isSuper() && version < MessagingService.VERSION_20)
         {
-            SuperColumns.deserializerSuperColumnFamily(in, cf, flag, version);
+            SuperColumns.deserializerSuperColumnFamily(in, cf, flag, version, databaseDescriptor, tracing, dbConfig);
         }
         else
         {

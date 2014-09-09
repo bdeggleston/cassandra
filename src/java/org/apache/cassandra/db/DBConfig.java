@@ -9,6 +9,7 @@ import org.apache.cassandra.dht.LongToken;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.MerkleTree;
 import org.apache.cassandra.utils.ObjectSizes;
@@ -41,7 +42,7 @@ public class DBConfig
         memtableRowOverhead = estimateRowOverhead(
                 Integer.valueOf(System.getProperty("cassandra.memtable_row_overhead_computation_step", "100000")));
 
-        columnFamilySerializer = new ColumnFamilySerializer(Schema.instance);
+        columnFamilySerializer = new ColumnFamilySerializer(DatabaseDescriptor.instance, Tracing.instance, Schema.instance, this);
         // don't change the partitioner after these are instantiated
         rowSerializer = new Row.RowSerializer(LocatorConfig.instance.getPartitioner(), columnFamilySerializer);
         tokenSerializer = new Token.Serializer(LocatorConfig.instance.getPartitioner());

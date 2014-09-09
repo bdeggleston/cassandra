@@ -37,18 +37,18 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class SuperColumns
 {
-    public static Iterator<OnDiskAtom> onDiskIterator(DataInput in, int superColumnCount, ColumnSerializer.Flag flag, int expireBefore, CellNameType type)
+    public static Iterator<OnDiskAtom> onDiskIterator(DataInput in, int superColumnCount, ColumnSerializer.Flag flag, int expireBefore, CellNameType type, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        return new SCIterator(in, superColumnCount, flag, expireBefore, type);
+        return new SCIterator(in, superColumnCount, flag, expireBefore, type, databaseDescriptor, tracing, dbConfig);
     }
 
-    public static void deserializerSuperColumnFamily(DataInput in, ColumnFamily cf, ColumnSerializer.Flag flag, int version) throws IOException
+    public static void deserializerSuperColumnFamily(DataInput in, ColumnFamily cf, ColumnSerializer.Flag flag, int version, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig) throws IOException
     {
         // Note that there was no way to insert a range tombstone in a SCF in 1.2
         cf.delete(cf.getComparator().deletionInfoSerializer().deserialize(in, version));
         assert !cf.deletionInfo().rangeIterator().hasNext();
 
-        Iterator<OnDiskAtom> iter = onDiskIterator(in, in.readInt(), flag, Integer.MIN_VALUE, cf.getComparator());
+        Iterator<OnDiskAtom> iter = onDiskIterator(in, in.readInt(), flag, Integer.MIN_VALUE, cf.getComparator(), databaseDescriptor, tracing, dbConfig);
         while (iter.hasNext())
             cf.addAtom(iter.next());
     }
@@ -66,14 +66,20 @@ public class SuperColumns
         private int read;
         private ByteBuffer scName;
         private Iterator<Cell> subColumnsIterator;
+        private final DatabaseDescriptor databaseDescriptor;
+        private final Tracing tracing;
+        private final DBConfig dbConfig;
 
-        private SCIterator(DataInput in, int superColumnCount, ColumnSerializer.Flag flag, int expireBefore, CellNameType type)
+        private SCIterator(DataInput in, int superColumnCount, ColumnSerializer.Flag flag, int expireBefore, CellNameType type, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
         {
             this.in = in;
             this.scCount = superColumnCount;
             this.flag = flag;
             this.expireBefore = expireBefore;
             this.type = type;
+            this.databaseDescriptor = databaseDescriptor;
+            this.tracing = tracing;
+            this.dbConfig = dbConfig;
         }
 
         public boolean hasNext()
@@ -101,7 +107,7 @@ public class SuperColumns
                 int size = in.readInt();
                 List<Cell> subCells = new ArrayList<>(size);
 
-                ColumnSerializer colSer = subType(type, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance).columnSerializer();
+                ColumnSerializer colSer = subType(type, databaseDescriptor, tracing, dbConfig).columnSerializer();
                 for (int i = 0; i < size; ++i)
                     subCells.add(colSer.deserialize(in, flag, expireBefore));
 
@@ -170,15 +176,15 @@ public class SuperColumns
         return CellNames.compositeDense(scName).end();
     }
 
-    public static IDiskAtomFilter fromSCFilter(CellNameType type, ByteBuffer scName, IDiskAtomFilter filter, DatabaseDescriptor databaseDescriptor, Tracing tracing)
+    public static IDiskAtomFilter fromSCFilter(CellNameType type, ByteBuffer scName, IDiskAtomFilter filter, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         if (filter instanceof NamesQueryFilter)
-            return fromSCNamesFilter(type, scName, (NamesQueryFilter)filter, databaseDescriptor, tracing);
+            return fromSCNamesFilter(type, scName, (NamesQueryFilter)filter, databaseDescriptor, tracing, dbConfig);
         else
-            return fromSCSliceFilter(type, scName, (SliceQueryFilter)filter, databaseDescriptor, tracing);
+            return fromSCSliceFilter(type, scName, (SliceQueryFilter)filter, databaseDescriptor, tracing, dbConfig);
     }
 
-    public static IDiskAtomFilter fromSCNamesFilter(CellNameType type, ByteBuffer scName, NamesQueryFilter filter, DatabaseDescriptor databaseDescriptor, Tracing tracing)
+    public static IDiskAtomFilter fromSCNamesFilter(CellNameType type, ByteBuffer scName, NamesQueryFilter filter, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         if (scName == null)
         {
@@ -191,7 +197,7 @@ public class SuperColumns
                 // This is why we call toByteBuffer() and rebuild a  Composite of the right type before call slice().
                 slices[i++] = type.make(name.toByteBuffer()).slice();
             }
-            return new SliceQueryFilter(slices, false, slices.length, 1, databaseDescriptor, tracing, DBConfig.instance);
+            return new SliceQueryFilter(slices, false, slices.length, 1, databaseDescriptor, tracing, dbConfig);
         }
         else
         {
@@ -202,7 +208,7 @@ public class SuperColumns
         }
     }
 
-    public static SliceQueryFilter fromSCSliceFilter(CellNameType type, ByteBuffer scName, SliceQueryFilter filter, DatabaseDescriptor databaseDescriptor, Tracing tracing)
+    public static SliceQueryFilter fromSCSliceFilter(CellNameType type, ByteBuffer scName, SliceQueryFilter filter, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         assert filter.slices.length == 1;
         if (scName == null)
@@ -215,7 +221,7 @@ public class SuperColumns
             Composite finish = filter.finish().isEmpty()
                              ? Composites.EMPTY
                              : builder.buildWith(filter.finish().toByteBuffer()).withEOC(filter.reversed ? Composite.EOC.START : Composite.EOC.END);
-            return new SliceQueryFilter(start, finish, filter.reversed, filter.count, 1, databaseDescriptor, tracing, DBConfig.instance);
+            return new SliceQueryFilter(start, finish, filter.reversed, filter.count, 1, databaseDescriptor, tracing, dbConfig);
         }
         else
         {
@@ -226,7 +232,7 @@ public class SuperColumns
             Composite end = filter.finish().isEmpty()
                           ? builder.build().withEOC(filter.reversed ? Composite.EOC.START : Composite.EOC.END)
                           : builder.buildWith(filter.finish().toByteBuffer());
-            return new SliceQueryFilter(start, end, filter.reversed, filter.count, databaseDescriptor, tracing, DBConfig.instance);
+            return new SliceQueryFilter(start, end, filter.reversed, filter.count, databaseDescriptor, tracing, dbConfig);
         }
     }
 }

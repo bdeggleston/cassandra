@@ -664,7 +664,7 @@ public class ThriftValidation
         }
 
         if (metadata.isSuper())
-            filter = SuperColumns.fromSCFilter(metadata.comparator, superColumn, filter, DatabaseDescriptor.instance, Tracing.instance);
+            filter = SuperColumns.fromSCFilter(metadata.comparator, superColumn, filter, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         return filter;
     }
 }

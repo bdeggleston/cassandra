@@ -383,7 +383,7 @@ public class CassandraServer implements Cassandra.Iface
             Composite start = columnType.fromByteBuffer(range.start);
             Composite finish = columnType.fromByteBuffer(range.finish);
             SliceQueryFilter filter = new SliceQueryFilter(start, finish, range.reversed, range.count, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
-            return SuperColumns.fromSCSliceFilter(metadata.comparator, parent.bufferForSuper_column(), filter, DatabaseDescriptor.instance, Tracing.instance);
+            return SuperColumns.fromSCSliceFilter(metadata.comparator, parent.bufferForSuper_column(), filter, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         }
 
         Composite start = metadata.comparator.fromByteBuffer(range.start);
@@ -403,7 +403,7 @@ public class CassandraServer implements Cassandra.Iface
                 SortedSet<CellName> s = new TreeSet<>(columnType);
                 for (ByteBuffer bb : predicate.column_names)
                     s.add(columnType.cellFromByteBuffer(bb));
-                filter = SuperColumns.fromSCNamesFilter(metadata.comparator, parent.bufferForSuper_column(), new NamesQueryFilter(s, DBConfig.instance), DatabaseDescriptor.instance, Tracing.instance);
+                filter = SuperColumns.fromSCNamesFilter(metadata.comparator, parent.bufferForSuper_column(), new NamesQueryFilter(s, DBConfig.instance), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
             }
             else
             {
@@ -491,7 +491,7 @@ public class CassandraServer implements Cassandra.Iface
                 SortedSet<CellName> names = new TreeSet<CellName>(columnType);
                 names.add(columnType.cellFromByteBuffer(column_path.column == null ? column_path.super_column : column_path.column));
                 filter = SuperColumns.fromSCNamesFilter(metadata.comparator, column_path.column == null ? null : column_path.bufferForSuper_column(), new NamesQueryFilter(names, DBConfig.instance),
-                                                        DatabaseDescriptor.instance, Tracing.instance);
+                                                        DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
             }
             else
             {
