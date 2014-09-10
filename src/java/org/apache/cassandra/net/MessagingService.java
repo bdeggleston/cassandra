@@ -737,7 +737,7 @@ public final class MessagingService implements MessagingServiceMBean
             return;
         }
 
-        Runnable runnable = new MessageDeliveryTask(message, id, timestamp);
+        Runnable runnable = new MessageDeliveryTask(message, id, timestamp, this, Gossiper.instance);
         TracingAwareExecutorService stage = StageManager.instance.getStage(message.getMessageType());
         assert stage != null : "No stage for message type " + message.verb;
 
