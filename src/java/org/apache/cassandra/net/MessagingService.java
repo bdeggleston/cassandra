@@ -580,7 +580,8 @@ public final class MessagingService implements MessagingServiceMBean
                                                                     message,
                                                                     callbackDeserializers.get(message.verb),
                                                                     consistencyLevel,
-                                                                    allowHints),
+                                                                    allowHints,
+                                                                    StorageProxy.instance),
                                                                     timeout);
         assert previous == null : String.format("Callback already exists for id %d! (%s)", messageId, previous);
         return messageId;

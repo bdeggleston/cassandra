@@ -29,19 +29,22 @@ public class WriteCallbackInfo extends CallbackInfo
     public final MessageOut sentMessage;
     private final ConsistencyLevel consistencyLevel;
     private final boolean allowHints;
+    private final StorageProxy storageProxy;
 
     public WriteCallbackInfo(InetAddress target,
                              IAsyncCallback callback,
                              MessageOut message,
                              IVersionedSerializer<?> serializer,
                              ConsistencyLevel consistencyLevel,
-                             boolean allowHints)
+                             boolean allowHints,
+                             StorageProxy storageProxy)
     {
         super(target, callback, serializer);
         assert message != null;
         this.sentMessage = message;
         this.consistencyLevel = consistencyLevel;
         this.allowHints = allowHints;
+        this.storageProxy = storageProxy;
     }
 
     public boolean shouldHint()
@@ -49,6 +52,6 @@ public class WriteCallbackInfo extends CallbackInfo
         return allowHints
             && sentMessage.verb != MessagingService.Verb.COUNTER_MUTATION
             && consistencyLevel != ConsistencyLevel.ANY
-            && StorageProxy.instance.shouldHint(target);
+            && storageProxy.shouldHint(target);
     }
 }
