@@ -899,7 +899,7 @@ dataResource returns [DataResource res]
  */
 createUserStatement returns [CreateUserStatement stmt]
     @init {
-        UserOptions opts = new UserOptions();
+        UserOptions opts = new UserOptions(Auth.instance);
         boolean superuser = false;
         boolean ifNotExists = false;
     }
@@ -914,7 +914,7 @@ createUserStatement returns [CreateUserStatement stmt]
  */
 alterUserStatement returns [AlterUserStatement stmt]
     @init {
-        UserOptions opts = new UserOptions();
+        UserOptions opts = new UserOptions(Auth.instance);
         Boolean superuser = null;
     }
     : K_ALTER K_USER username

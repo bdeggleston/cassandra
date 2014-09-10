@@ -22,13 +22,18 @@ import java.util.Map;
 
 import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.auth.IAuthenticator;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.utils.FBUtilities;
 
 public class UserOptions
 {
     private final Map<IAuthenticator.Option, Object> options = new HashMap<IAuthenticator.Option, Object>();
+    private final Auth auth;
+
+    public UserOptions(Auth auth)
+    {
+        this.auth = auth;
+    }
 
     public void put(String name, Object value)
     {
@@ -49,9 +54,9 @@ public class UserOptions
     {
         for (IAuthenticator.Option option : options.keySet())
         {
-            if (!Auth.instance.getAuthenticator().supportedOptions().contains(option))
+            if (!auth.getAuthenticator().supportedOptions().contains(option))
                 throw new InvalidRequestException(String.format("%s doesn't support %s option",
-                                                                Auth.instance.getAuthenticator().getClass().getName(),
+                                                                auth.getAuthenticator().getClass().getName(),
                                                                 option));
         }
     }
