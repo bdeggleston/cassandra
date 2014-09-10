@@ -132,7 +132,7 @@ public class Auth
                 SystemKeyspace.SCHEMA_COLUMNS_CF,
                 SystemKeyspace.SCHEMA_USER_TYPES_CF};
         for (String cf : cfs)
-            readableSystemResources.add(DataResource.columnFamily(Keyspace.SYSTEM_KS, cf));
+            readableSystemResources.add(DataResource.columnFamily(Keyspace.SYSTEM_KS, cf, getSchema()));
 
         protectedAuthResources.addAll(authenticator.protectedResources());
         protectedAuthResources.addAll(authorizer.protectedResources());
@@ -502,12 +502,12 @@ public class Auth
     {
         public void onDropKeyspace(String ksName)
         {
-            authorizer.revokeAll(DataResource.keyspace(ksName));
+            authorizer.revokeAll(DataResource.keyspace(ksName, getSchema()));
         }
 
         public void onDropColumnFamily(String ksName, String cfName)
         {
-            authorizer.revokeAll(DataResource.columnFamily(ksName, cfName));
+            authorizer.revokeAll(DataResource.columnFamily(ksName, cfName, getSchema()));
         }
 
         public void onDropUserType(String ksName, String userType)

@@ -54,7 +54,7 @@ public abstract class PermissionAlteringStatement extends AuthorizationStatement
             throw new InvalidRequestException(String.format("User %s doesn't exist", username));
 
         // if a keyspace is omitted when GRANT/REVOKE ON TABLE <table>, we need to correct the resource.
-        resource = maybeCorrectResource(resource, state);
+        resource = maybeCorrectResource(resource, state, auth.getSchema());
         if (!resource.exists())
             throw new InvalidRequestException(String.format("%s doesn't exist", resource));
     }

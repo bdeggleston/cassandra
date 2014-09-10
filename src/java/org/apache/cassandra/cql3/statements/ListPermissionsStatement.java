@@ -72,7 +72,7 @@ public class ListPermissionsStatement extends AuthorizationStatement
 
         if (resource != null)
         {
-            resource = maybeCorrectResource(resource, state);
+            resource = maybeCorrectResource(resource, state, auth.getSchema());
             if (!resource.exists())
                 throw new InvalidRequestException(String.format("%s doesn't exist", resource));
         }

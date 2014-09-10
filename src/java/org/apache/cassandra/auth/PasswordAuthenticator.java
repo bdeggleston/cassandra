@@ -159,7 +159,7 @@ public class PasswordAuthenticator implements ISaslAwareAuthenticator
 
     public Set<DataResource> protectedResources()
     {
-        return ImmutableSet.of(DataResource.columnFamily(Auth.AUTH_KS, CREDENTIALS_CF));
+        return ImmutableSet.of(DataResource.columnFamily(Auth.AUTH_KS, CREDENTIALS_CF, auth.getSchema()));
     }
 
     public void validateConfiguration() throws ConfigurationException

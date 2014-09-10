@@ -19,6 +19,7 @@ package org.apache.cassandra.cql3.statements;
 
 
 import org.apache.cassandra.auth.DataResource;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.CQLStatement;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.exceptions.*;
@@ -53,10 +54,10 @@ public abstract class AuthorizationStatement extends ParsedStatement implements 
         throw new UnsupportedOperationException();
     }
 
-    public static DataResource maybeCorrectResource(DataResource resource, ClientState state) throws InvalidRequestException
+    public static DataResource maybeCorrectResource(DataResource resource, ClientState state, Schema schema) throws InvalidRequestException
     {
         if (resource.isColumnFamilyLevel() && resource.getKeyspace() == null)
-            return DataResource.columnFamily(state.getKeyspace(), resource.getColumnFamily());
+            return DataResource.columnFamily(state.getKeyspace(), resource.getColumnFamily(), schema);
         return resource;
     }
 }

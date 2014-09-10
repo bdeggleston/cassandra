@@ -26,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.auth.*;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.Keyspace;
@@ -141,14 +140,14 @@ public class ClientState
 
     public void hasKeyspaceAccess(String keyspace, Permission perm) throws UnauthorizedException, InvalidRequestException
     {
-        hasAccess(keyspace, perm, DataResource.keyspace(keyspace));
+        hasAccess(keyspace, perm, DataResource.keyspace(keyspace, auth.getSchema()));
     }
 
     public void hasColumnFamilyAccess(String keyspace, String columnFamily, Permission perm)
     throws UnauthorizedException, InvalidRequestException
     {
         ThriftValidation.validateColumnFamily(keyspace, columnFamily);
-        hasAccess(keyspace, perm, DataResource.columnFamily(keyspace, columnFamily));
+        hasAccess(keyspace, perm, DataResource.columnFamily(keyspace, columnFamily, auth.getSchema()));
     }
 
     private void hasAccess(String keyspace, Permission perm, DataResource resource)

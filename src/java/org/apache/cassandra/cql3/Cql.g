@@ -889,9 +889,9 @@ resource returns [IResource res]
 
 dataResource returns [DataResource res]
     : K_ALL K_KEYSPACES { $res = DataResource.root(); }
-    | K_KEYSPACE ks = keyspaceName { $res = DataResource.keyspace($ks.id); }
+    | K_KEYSPACE ks = keyspaceName { $res = DataResource.keyspace($ks.id, Schema.instance); }
     | ( K_COLUMNFAMILY )? cf = columnFamilyName
-      { $res = DataResource.columnFamily($cf.name.getKeyspace(), $cf.name.getColumnFamily()); }
+      { $res = DataResource.columnFamily($cf.name.getKeyspace(), $cf.name.getColumnFamily(), Schema.instance); }
     ;
 
 /**

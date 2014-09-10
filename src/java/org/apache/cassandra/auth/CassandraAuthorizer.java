@@ -147,7 +147,7 @@ public class CassandraAuthorizer implements IAuthorizer
                     Permission permission = Permission.valueOf(p);
                     if (permissions.contains(permission))
                         details.add(new PermissionDetails(row.getString(USERNAME),
-                                                          DataResource.fromName(row.getString(RESOURCE)),
+                                                          DataResource.fromName(row.getString(RESOURCE), auth.getSchema()),
                                                           permission));
                 }
             }
@@ -235,7 +235,7 @@ public class CassandraAuthorizer implements IAuthorizer
 
     public Set<DataResource> protectedResources()
     {
-        return ImmutableSet.of(DataResource.columnFamily(Auth.AUTH_KS, PERMISSIONS_CF));
+        return ImmutableSet.of(DataResource.columnFamily(Auth.AUTH_KS, PERMISSIONS_CF, auth.getSchema()));
     }
 
     public void validateConfiguration() throws ConfigurationException

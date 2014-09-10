@@ -43,26 +43,30 @@ public class DataResource implements IResource
     private final Level level;
     private final String keyspace;
     private final String columnFamily;
+    private final Schema schema;
 
     private DataResource()
     {
         level = Level.ROOT;
         keyspace = null;
         columnFamily = null;
+        this.schema = null;
     }
 
-    private DataResource(String keyspace)
+    private DataResource(String keyspace, Schema schema)
     {
         level = Level.KEYSPACE;
         this.keyspace = keyspace;
         columnFamily = null;
+        this.schema = schema;
     }
 
-    private DataResource(String keyspace, String columnFamily)
+    private DataResource(String keyspace, String columnFamily, Schema schema)
     {
         level = Level.COLUMN_FAMILY;
         this.keyspace = keyspace;
         this.columnFamily = columnFamily;
+        this.schema = schema;
     }
 
     /**
@@ -79,9 +83,9 @@ public class DataResource implements IResource
      * @param keyspace Name of the keyspace.
      * @return DataResource instance representing the keyspace.
      */
-    public static DataResource keyspace(String keyspace)
+    public static DataResource keyspace(String keyspace, Schema schema)
     {
-        return new DataResource(keyspace);
+        return new DataResource(keyspace, schema);
     }
 
     /**
@@ -91,9 +95,9 @@ public class DataResource implements IResource
      * @param columnFamily Name of the column family.
      * @return DataResource instance representing the column family.
      */
-    public static DataResource columnFamily(String keyspace, String columnFamily)
+    public static DataResource columnFamily(String keyspace, String columnFamily, Schema schema)
     {
-        return new DataResource(keyspace, columnFamily);
+        return new DataResource(keyspace, columnFamily, schema);
     }
 
     /**
@@ -102,7 +106,7 @@ public class DataResource implements IResource
      * @param name Name of the data resource.
      * @return DataResource instance matching the name.
      */
-    public static DataResource fromName(String name)
+    public static DataResource fromName(String name, Schema schema)
     {
         String[] parts = StringUtils.split(name, '/');
 
@@ -113,9 +117,9 @@ public class DataResource implements IResource
             return root();
 
         if (parts.length == 2)
-            return keyspace(parts[1]);
+            return keyspace(parts[1], schema);
 
-        return columnFamily(parts[1], parts[2]);
+        return columnFamily(parts[1], parts[2], schema);
     }
 
     /**
@@ -145,7 +149,7 @@ public class DataResource implements IResource
             case KEYSPACE:
                 return root();
             case COLUMN_FAMILY:
-                return keyspace(keyspace);
+                return keyspace(keyspace, schema);
         }
         throw new IllegalStateException("Root-level resource can't have a parent");
     }
@@ -202,9 +206,9 @@ public class DataResource implements IResource
             case ROOT:
                 return true;
             case KEYSPACE:
-                return Schema.instance.getKeyspaces().contains(keyspace);
+                return schema.getKeyspaces().contains(keyspace);
             case COLUMN_FAMILY:
-                return Schema.instance.getCFMetaData(keyspace, columnFamily) != null;
+                return schema.getCFMetaData(keyspace, columnFamily) != null;
         }
         throw new AssertionError();
     }
