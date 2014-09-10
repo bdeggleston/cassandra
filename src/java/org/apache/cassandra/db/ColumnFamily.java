@@ -57,12 +57,14 @@ public abstract class ColumnFamily implements Iterable<Cell>, IRowCacheEntry
 {
     protected final CFMetaData metadata;
     protected final DBConfig dbConfig;
+    protected final MessagingService messagingService;
     protected final ColumnFamilySerializer serializer;
 
     protected ColumnFamily(CFMetaData metadata, DBConfig dbConfig)
     {
         assert metadata != null;
         this.metadata = metadata;
+        this.messagingService = dbConfig.getLocatorConfig().getMessagingService();
         this.dbConfig = dbConfig;
         // prevents columnFamilySerializer from being included in memory measurement
         this.serializer = dbConfig != null ? dbConfig.columnFamilySerializer : null;
@@ -387,7 +389,7 @@ public abstract class ColumnFamily implements Iterable<Cell>, IRowCacheEntry
     {
         for (Cell cell : this)
             cell.updateDigest(digest);
-        if (MessagingService.instance.areAllNodesAtLeast21())
+        if (messagingService.areAllNodesAtLeast21())
             deletionInfo().updateDigest(digest);
     }
 
