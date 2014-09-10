@@ -72,7 +72,15 @@ public abstract class AbstractReadExecutor
         this.stageManager = stageManager;
         this.dbConfig = dbConfig;
         resolver = new RowDigestResolver(command.ksName, command.key, this.dbConfig.getPartitioner());
-        handler = new ReadCallback<>(resolver, consistencyLevel, command, targetReplicas, dbConfig.getLocatorConfig(), this.messagingService, this.stageManager, keyspaceManager);
+        handler = new ReadCallback<>(resolver,
+                                     consistencyLevel,
+                                     command,
+                                     targetReplicas,
+                                     dbConfig.getLocatorConfig(),
+                                     this.databaseDescriptor,
+                                     this.messagingService,
+                                     this.stageManager,
+                                     keyspaceManager);
     }
 
     private boolean isLocalRequest(InetAddress replica)

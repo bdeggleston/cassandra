@@ -89,7 +89,7 @@ public class SerializationsTest extends AbstractSerializationsTester
             assert DESC.equals(message.desc);
             assert ((ValidationRequest) message).gcBefore == 1234;
 
-            assert MessageIn.read(in, getVersion(), -1) != null;
+            assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
         }
     }
 
@@ -148,7 +148,7 @@ public class SerializationsTest extends AbstractSerializationsTester
 
             // MessageOuts
             for (int i = 0; i < 3; i++)
-                assert MessageIn.read(in, getVersion(), -1) != null;
+                assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
         }
     }
 
@@ -182,7 +182,7 @@ public class SerializationsTest extends AbstractSerializationsTester
             assert dest.equals(((SyncRequest) message).dst);
             assert ((SyncRequest) message).ranges.size() == 1 && ((SyncRequest) message).ranges.contains(FULL_RANGE);
 
-            assert MessageIn.read(in, getVersion(), -1) != null;
+            assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
         }
     }
 
@@ -228,7 +228,7 @@ public class SerializationsTest extends AbstractSerializationsTester
 
             // MessageOuts
             for (int i = 0; i < 2; i++)
-                assert MessageIn.read(in, getVersion(), -1) != null;
+                assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
         }
     }
 }

@@ -170,7 +170,7 @@ public class IncomingTcpConnection extends Thread
         if (databaseDescriptor.hasCrossNodeTimeout())
             timestamp = (timestamp & 0xFFFFFFFF00000000L) | (((partial & 0xFFFFFFFFL) << 2) >> 2);
 
-        MessageIn message = MessageIn.read(input, version, id);
+        MessageIn message = MessageIn.read(input, version, id, databaseDescriptor, messagingService);
         if (message == null)
         {
             // callback expired; nothing to do

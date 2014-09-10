@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.locator.IEndpointSnitch;
@@ -64,6 +65,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
     private final InetAddress broadcastAddress;
     private final IPartitioner partitioner;
     private final IEndpointSnitch snitch;
+    private final DatabaseDescriptor databaseDescriptor;
     private final MessagingService messagingService;
     private final StageManager stageManager;
 
@@ -71,7 +73,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
      * Constructor when response count has to be calculated and blocked for.
      */
     public ReadCallback(IResponseResolver<TMessage, TResolved> resolver, ConsistencyLevel consistencyLevel, IReadCommand command, List<InetAddress> filteredEndpoints,
-                        LocatorConfig locatorConfig, MessagingService messagingService, StageManager stageManager, KeyspaceManager keyspaceManager)
+                        LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager, KeyspaceManager keyspaceManager)
     {
         this(resolver,
              consistencyLevel,
@@ -80,6 +82,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
              keyspaceManager.open(command.getKeyspace()),
              filteredEndpoints,
              locatorConfig,
+             databaseDescriptor,
              messagingService,
              stageManager);
         if (logger.isTraceEnabled())
@@ -87,7 +90,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
     }
 
     public ReadCallback(IResponseResolver<TMessage, TResolved> resolver, ConsistencyLevel consistencyLevel, int blockfor, IReadCommand command, Keyspace keyspace, List<InetAddress> endpoints,
-                        LocatorConfig locatorConfig, MessagingService messagingService, StageManager stageManager)
+                        LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager)
     {
         this.command = command;
         this.keyspace = keyspace;
@@ -100,6 +103,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
         this.snitch = locatorConfig.getEndpointSnitch();
         this.partitioner = locatorConfig.getPartitioner();
         this.broadcastAddress = locatorConfig.getBroadcastAddress();
+        this.databaseDescriptor = databaseDescriptor;
         this.messagingService = messagingService;
         this.stageManager = stageManager;
         // we don't support read repair (or rapid read protection) for range scans yet (CASSANDRA-6897)
@@ -172,7 +176,9 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
                                                        result,
                                                        Collections.<String, byte[]>emptyMap(),
                                                        MessagingService.Verb.INTERNAL_RESPONSE,
-                                                       MessagingService.current_version);
+                                                       MessagingService.current_version,
+                                                       databaseDescriptor,
+                                                       messagingService);
         response(message);
     }
 
