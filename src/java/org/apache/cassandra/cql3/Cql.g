@@ -1238,7 +1238,7 @@ comparatorType returns [CQL3Type.Raw t]
     : n=native_type     { $t = CQL3Type.Raw.from(n); }
     | c=collection_type { $t = c; }
     | tt=tuple_type     { $t = tt; }
-    | id=userTypeName   { $t = CQL3Type.Raw.userType(id); }
+    | id=userTypeName   { $t = CQL3Type.Raw.userType(id, Schema.instance); }
     | K_FROZEN '<' f=comparatorType '>'
       {
         try {

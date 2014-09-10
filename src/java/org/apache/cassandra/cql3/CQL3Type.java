@@ -309,9 +309,9 @@ public interface CQL3Type
             return new RawType(type);
         }
 
-        public static Raw userType(UTName name)
+        public static Raw userType(UTName name, Schema schema)
         {
-            return new RawUT(name);
+            return new RawUT(name, schema);
         }
 
         public static Raw map(CQL3Type.Raw t1, CQL3Type.Raw t2) throws InvalidRequestException
@@ -441,10 +441,12 @@ public interface CQL3Type
         private static class RawUT extends Raw
         {
             private final UTName name;
+            private final Schema schema;
 
-            private RawUT(UTName name)
+            private RawUT(UTName name, Schema schema)
             {
                 this.name = name;
+                this.schema = schema;
             }
 
             public CQL3Type prepare(String keyspace) throws InvalidRequestException
@@ -463,7 +465,7 @@ public interface CQL3Type
                     name.setKeyspace(keyspace);
                 }
 
-                KSMetaData ksm = Schema.instance.getKSMetaData(name.getKeyspace());
+                KSMetaData ksm = schema.getKSMetaData(name.getKeyspace());
                 if (ksm == null)
                     throw new InvalidRequestException("Unknown keyspace " + name.getKeyspace());
                 UserType type = ksm.userTypes.getType(name.getUserTypeName());
