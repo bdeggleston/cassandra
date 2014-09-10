@@ -53,8 +53,9 @@ public class CQL3CasRequest implements CASRequest
     private final DatabaseDescriptor databaseDescriptor;
     private final DBConfig dbConfig;
     private final Tracing tracing;
+    private final QueryProcessor queryProcessor;
 
-    public CQL3CasRequest(CFMetaData cfm, ByteBuffer key, boolean isBatch, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig, Tracing tracing)
+    public CQL3CasRequest(CFMetaData cfm, ByteBuffer key, boolean isBatch, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig, Tracing tracing, QueryProcessor queryProcessor)
     {
         this.cfm = cfm;
         // When checking if conditions apply, we want to use a fixed reference time for a whole request to check
@@ -67,6 +68,7 @@ public class CQL3CasRequest implements CASRequest
         this.databaseDescriptor = databaseDescriptor;
         this.dbConfig = dbConfig;
         this.tracing = tracing;
+        this.queryProcessor = queryProcessor;
     }
 
     public void addRowUpdate(Composite prefix, ModificationStatement stmt, QueryOptions options, long timestamp)
@@ -184,7 +186,7 @@ public class CQL3CasRequest implements CASRequest
                 }
             }
 
-            UpdateParameters params = new UpdateParameters(cfm, options, timestamp, stmt.getTimeToLive(options), map);
+            UpdateParameters params = new UpdateParameters(cfm, options, timestamp, stmt.getTimeToLive(options), map, queryProcessor);
             stmt.addUpdateForKey(updates, key, rowPrefix, params);
         }
     }

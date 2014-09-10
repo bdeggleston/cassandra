@@ -80,12 +80,14 @@ public class CQLSSTableWriter implements Closeable
     private final AbstractSSTableSimpleWriter writer;
     private final UpdateStatement insert;
     private final List<ColumnSpecification> boundNames;
+    private final QueryProcessor queryProcessor;
 
-    private CQLSSTableWriter(AbstractSSTableSimpleWriter writer, UpdateStatement insert, List<ColumnSpecification> boundNames)
+    private CQLSSTableWriter(AbstractSSTableSimpleWriter writer, UpdateStatement insert, List<ColumnSpecification> boundNames, QueryProcessor queryProcessor)
     {
         this.writer = writer;
         this.insert = insert;
         this.boundNames = boundNames;
+        this.queryProcessor = queryProcessor;
     }
 
     /**
@@ -208,7 +210,8 @@ public class CQLSSTableWriter implements Closeable
                                                        options,
                                                        insert.getTimestamp(now, options),
                                                        insert.getTimeToLive(options),
-                                                       Collections.<ByteBuffer, CQL3Row>emptyMap());
+                                                       Collections.<ByteBuffer, CQL3Row>emptyMap(),
+                                                       queryProcessor);
 
         for (ByteBuffer key: keys)
         {
@@ -503,7 +506,7 @@ public class CQLSSTableWriter implements Closeable
                                                          bufferSizeInMB,
                                                          dbConfig);
             }
-            return new CQLSSTableWriter(writer, insert, boundNames);
+            return new CQLSSTableWriter(writer, insert, boundNames, queryProcessor);
         }
     }
 }

@@ -350,7 +350,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
                 key = pks.get(0);
                 ksName = statement.cfm.ksName;
                 cfName = statement.cfm.cfName;
-                casRequest = new CQL3CasRequest(statement.cfm, key, true, databaseDescriptor, dbConfig, tracing);
+                casRequest = new CQL3CasRequest(statement.cfm, key, true, databaseDescriptor, dbConfig, tracing, queryProcessor);
             }
             else if (!key.equals(pks.get(0)))
             {

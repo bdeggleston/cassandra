@@ -556,7 +556,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         long now = options.getTimestamp(queryState);
         Composite prefix = createClusteringPrefix(options);
 
-        CQL3CasRequest request = new CQL3CasRequest(cfm, key, false, databaseDescriptor, dbConfig, tracing);
+        CQL3CasRequest request = new CQL3CasRequest(cfm, key, false, databaseDescriptor, dbConfig, tracing, queryProcessor);
         addConditions(prefix, request, options);
         request.addRowUpdate(prefix, this, options, now);
 
@@ -786,7 +786,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
     {
         // Some lists operation requires reading
         Map<ByteBuffer, CQL3Row> rows = readRequiredRows(keys, prefix, local, options.getConsistency());
-        return new UpdateParameters(cfm, options, getTimestamp(now, options), getTimeToLive(options), rows);
+        return new UpdateParameters(cfm, options, getTimestamp(now, options), getTimeToLive(options), rows, queryProcessor);
     }
 
     public static abstract class Parsed extends CFStatement

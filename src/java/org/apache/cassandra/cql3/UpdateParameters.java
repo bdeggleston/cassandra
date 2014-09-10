@@ -43,7 +43,9 @@ public class UpdateParameters
     // For lists operation that require a read-before-write. Will be null otherwise.
     private final Map<ByteBuffer, CQL3Row> prefetchedLists;
 
-    public UpdateParameters(CFMetaData metadata, QueryOptions options, long timestamp, int ttl, Map<ByteBuffer, CQL3Row> prefetchedLists)
+    private final QueryProcessor queryProcessor;
+
+    public UpdateParameters(CFMetaData metadata, QueryOptions options, long timestamp, int ttl, Map<ByteBuffer, CQL3Row> prefetchedLists, QueryProcessor queryProcessor)
     {
         this.metadata = metadata;
         this.options = options;
@@ -51,37 +53,38 @@ public class UpdateParameters
         this.ttl = ttl;
         this.localDeletionTime = (int)(System.currentTimeMillis() / 1000);
         this.prefetchedLists = prefetchedLists;
+        this.queryProcessor = queryProcessor;
     }
 
     public Cell makeColumn(CellName name, ByteBuffer value) throws InvalidRequestException
     {
-        QueryProcessor.instance.validateCellName(name, metadata.comparator);
+        queryProcessor.validateCellName(name, metadata.comparator);
         return AbstractCell.create(name, value, timestamp, ttl, metadata);
     }
 
      public Cell makeCounter(CellName name, long delta) throws InvalidRequestException
      {
-         QueryProcessor.instance.validateCellName(name, metadata.comparator);
+         queryProcessor.validateCellName(name, metadata.comparator);
          return new BufferCounterUpdateCell(name, delta, FBUtilities.timestampMicros());
      }
 
     public Cell makeTombstone(CellName name) throws InvalidRequestException
     {
-        QueryProcessor.instance.validateCellName(name, metadata.comparator);
+        queryProcessor.validateCellName(name, metadata.comparator);
         return new BufferDeletedCell(name, localDeletionTime, timestamp);
     }
 
     public RangeTombstone makeRangeTombstone(ColumnSlice slice) throws InvalidRequestException
     {
-        QueryProcessor.instance.validateComposite(slice.start, metadata.comparator);
-        QueryProcessor.instance.validateComposite(slice.finish, metadata.comparator);
+        queryProcessor.validateComposite(slice.start, metadata.comparator);
+        queryProcessor.validateComposite(slice.finish, metadata.comparator);
         return new RangeTombstone(slice.start, slice.finish, timestamp, localDeletionTime);
     }
 
     public RangeTombstone makeTombstoneForOverwrite(ColumnSlice slice) throws InvalidRequestException
     {
-        QueryProcessor.instance.validateComposite(slice.start, metadata.comparator);
-        QueryProcessor.instance.validateComposite(slice.finish, metadata.comparator);
+        queryProcessor.validateComposite(slice.start, metadata.comparator);
+        queryProcessor.validateComposite(slice.finish, metadata.comparator);
         return new RangeTombstone(slice.start, slice.finish, timestamp - 1, localDeletionTime);
     }
 
