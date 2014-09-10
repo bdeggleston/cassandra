@@ -44,6 +44,13 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
 
     private static final long EMPTY_SIZE = ObjectSizes.measure(MINIMUM);
 
+    private final LocatorConfig locatorConfig;
+
+    public OrderPreservingPartitioner(LocatorConfig locatorConfig)
+    {
+        this.locatorConfig = locatorConfig;
+    }
+
     public DecoratedKey decorateKey(ByteBuffer key)
     {
         return new BufferDecoratedKey(getToken(key), key);
@@ -56,7 +63,7 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
         BigInteger right = bigForString(((StringToken)rtoken).token, sigchars);
 
         Pair<BigInteger,Boolean> midpair = FBUtilities.midpoint(left, right, 16*sigchars);
-        return new StringToken(stringForBig(midpair.left, sigchars, midpair.right), LocatorConfig.instance.getPartitioner());
+        return new StringToken(stringForBig(midpair.left, sigchars, midpair.right), locatorConfig.getPartitioner());
     }
 
     /**
@@ -111,7 +118,7 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
         for (int j = 0; j < 16; j++) {
             buffer.append(chars.charAt(r.nextInt(chars.length())));
         }
-        return new StringToken(buffer.toString(), LocatorConfig.instance.getPartitioner());
+        return new StringToken(buffer.toString(), locatorConfig.getPartitioner());
     }
 
     private final Token.TokenFactory<String> tokenFactory = new Token.TokenFactory<String>()
@@ -125,7 +132,7 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
         {
             try
             {
-                return new StringToken(ByteBufferUtil.string(bytes), LocatorConfig.instance.getPartitioner());
+                return new StringToken(ByteBufferUtil.string(bytes), locatorConfig.getPartitioner());
             }
             catch (CharacterCodingException e)
             {
@@ -146,7 +153,7 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
 
         public Token<String> fromString(String string)
         {
-            return new StringToken(string, LocatorConfig.instance.getPartitioner());
+            return new StringToken(string, locatorConfig.getPartitioner());
         }
     };
 
@@ -171,7 +178,7 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
         {
             skey = ByteBufferUtil.bytesToHex(key);
         }
-        return new StringToken(skey, LocatorConfig.instance.getPartitioner());
+        return new StringToken(skey, locatorConfig.getPartitioner());
     }
 
     public long getHeapSizeOf(StringToken token)
@@ -190,18 +197,18 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
         for (Token node : sortedTokens)
         {
             allTokens.put(node, new Float(0.0));
-            sortedRanges.add(new Range<Token>(lastToken, node, LocatorConfig.instance.getPartitioner()));
+            sortedRanges.add(new Range<Token>(lastToken, node, locatorConfig.getPartitioner()));
             lastToken = node;
         }
 
-        for (String ks : Schema.instance.getKeyspaces())
+        for (String ks : locatorConfig.getSchema().getKeyspaces())
         {
-            for (CFMetaData cfmd : Schema.instance.getKSMetaData(ks).cfMetaData().values())
+            for (CFMetaData cfmd : locatorConfig.getSchema().getKSMetaData(ks).cfMetaData().values())
             {
                 for (Range<Token> r : sortedRanges)
                 {
                     // Looping over every KS:CF:Range, get the splits size and add it to the count
-                    allTokens.put(r.right, allTokens.get(r.right) + StorageService.instance.getSplits(ks, cfmd.cfName, r, cfmd.getMinIndexInterval()).size());
+                    allTokens.put(r.right, allTokens.get(r.right) + locatorConfig.getStorageService().getSplits(ks, cfmd.cfName, r, cfmd.getMinIndexInterval()).size());
                 }
             }
         }

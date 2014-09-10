@@ -18,6 +18,7 @@
 */
 package org.apache.cassandra.dht;
 
+import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -35,7 +36,7 @@ public class OrderPreservingPartitionerTest extends PartitionerTestCase<StringTo
 
     public void initPartitioner()
     {
-        partitioner = new OrderPreservingPartitioner();
+        partitioner = new OrderPreservingPartitioner(LocatorConfig.instance);
     }
 
     @Test

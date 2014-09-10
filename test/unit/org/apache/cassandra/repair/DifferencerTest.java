@@ -27,6 +27,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.streaming.StreamManager;
 import org.junit.After;
 import org.junit.BeforeClass;
@@ -56,19 +57,23 @@ import static org.junit.Assert.assertTrue;
 
 public class DifferencerTest
 {
-    private static final IPartitioner partirioner = new Murmur3Partitioner();
+
+    private static IPartitioner partitioner;
     public static final String KEYSPACE1 = "DifferencerTest";
     public static final String CF_STANDARD = "Standard1";
 
     @BeforeClass
     public static void defineSchema() throws Exception
     {
+        System.setProperty("cassandra.partitioner", Murmur3Partitioner.class.getName());
         DatabaseDescriptor.init();
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD));
+        partitioner = LocatorConfig.instance.getPartitioner();
+        assert partitioner instanceof Murmur3Partitioner;
     }
 
     @After
@@ -106,7 +111,7 @@ public class DifferencerTest
                 return null;
             }
         });
-        Range<Token> range = new Range<>(partirioner.getMinimumToken(), partirioner.getRandomToken(), partirioner);
+        Range<Token> range = new Range<>(partitioner.getMinimumToken(), partitioner.getRandomToken(), partitioner);
         RepairJobDesc desc = new RepairJobDesc(UUID.randomUUID(), UUID.randomUUID(), KEYSPACE1, "Standard1", range);
 
         MerkleTree tree1 = createInitialTree(desc);
@@ -125,7 +130,7 @@ public class DifferencerTest
     @Test
     public void testDifference() throws Throwable
     {
-        Range<Token> range = new Range<>(partirioner.getMinimumToken(), partirioner.getRandomToken(), partirioner);
+        Range<Token> range = new Range<>(partitioner.getMinimumToken(), partitioner.getRandomToken(), partitioner);
         UUID parentRepairSession = UUID.randomUUID();
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Standard1");
@@ -138,7 +143,7 @@ public class DifferencerTest
         MerkleTree tree2 = createInitialTree(desc);
 
         // change a range in one of the trees
-        Token token = partirioner.midpoint(range.left, range.right);
+        Token token = partitioner.midpoint(range.left, range.right);
         tree1.invalidate(token);
         MerkleTree.TreeRange changed = tree1.get(token);
         changed.hash("non-empty hash!".getBytes());
@@ -159,7 +164,7 @@ public class DifferencerTest
 
     private MerkleTree createInitialTree(RepairJobDesc desc)
     {
-        MerkleTree tree = new MerkleTree(partirioner, desc.range, MerkleTree.RECOMMENDED_DEPTH, (int)Math.pow(2, 15));
+        MerkleTree tree = new MerkleTree(partitioner, desc.range, MerkleTree.RECOMMENDED_DEPTH, (int)Math.pow(2, 15));
         tree.init();
         for (MerkleTree.TreeRange r : tree.invalids())
         {

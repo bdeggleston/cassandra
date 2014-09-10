@@ -41,6 +41,7 @@ import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.RequestValidationException;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.utils.Pair;
 
@@ -262,7 +263,7 @@ public class CQLSSTableWriter implements Closeable
     public static class Builder
     {
         private File directory;
-        private IPartitioner partitioner = new Murmur3Partitioner();
+        private IPartitioner partitioner = new Murmur3Partitioner(LocatorConfig.instance);
 
         private CFMetaData cfMetaData;
         private UpdateStatement insert;

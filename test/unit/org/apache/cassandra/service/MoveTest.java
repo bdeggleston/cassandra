@@ -30,7 +30,6 @@ import static org.junit.Assert.*;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.locator.LocatorConfig;
-import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -49,7 +48,6 @@ import org.apache.cassandra.locator.TokenMetadata;
 
 public class MoveTest
 {
-    private static IPartitioner oldPartitioner;
     private static final String KEYSPACE1 = "MoveTestKeyspace1";
     private static final String KEYSPACE2 = "MoveTestKeyspace2";
     private static final String KEYSPACE3 = "MoveTestKeyspace3";
@@ -68,12 +66,6 @@ public class MoveTest
         DatabaseDescriptor.init();
         SchemaLoader.loadSchema();
         SchemaLoader.schemaDefinition("MoveTest");
-    }
-
-    @AfterClass
-    public static void tearDown()
-    {
-        StorageService.instance.setPartitionerUnsafe(oldPartitioner);
     }
 
     @Before

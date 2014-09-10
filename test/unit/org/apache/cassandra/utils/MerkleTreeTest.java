@@ -25,11 +25,9 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteStreams;
 
-import junit.framework.Assert;
 import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.*;
@@ -45,6 +43,13 @@ import static org.junit.Assert.*;
 
 public class MerkleTreeTest
 {
+    static
+    {
+        System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
+        DatabaseDescriptor.init();
+        assert LocatorConfig.instance.getPartitioner() instanceof RandomPartitioner;
+    }
+
     public static byte[] DUMMY = "blah".getBytes();
 
     /**
@@ -55,13 +60,6 @@ public class MerkleTreeTest
 
     protected IPartitioner partitioner;
     protected MerkleTree mt;
-
-    static
-    {
-        System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
-        DatabaseDescriptor.init();
-        assert LocatorConfig.instance.getPartitioner() instanceof RandomPartitioner;
-    }
 
     private Range<Token> fullRange()
     {

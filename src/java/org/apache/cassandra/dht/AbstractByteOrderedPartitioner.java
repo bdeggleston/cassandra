@@ -42,6 +42,13 @@ public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner
 
     public static final BigInteger BYTE_MASK = new BigInteger("255");
 
+    protected final LocatorConfig locatorConfig;
+
+    protected AbstractByteOrderedPartitioner(LocatorConfig locatorConfig)
+    {
+        this.locatorConfig = locatorConfig;
+    }
+
     public DecoratedKey decorateKey(ByteBuffer key)
     {
         return new BufferDecoratedKey(getToken(key), key);
@@ -78,7 +85,7 @@ public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner
         BigInteger right = bigForBytes(rb, sigbytes);
 
         Pair<BigInteger,Boolean> midpair = FBUtilities.midpoint(left, right, 8*sigbytes);
-        return new BytesToken(bytesForBig(midpair.left, sigbytes, midpair.right), LocatorConfig.instance.getPartitioner());
+        return new BytesToken(bytesForBig(midpair.left, sigbytes, midpair.right), locatorConfig.getPartitioner());
     }
 
     /**
@@ -125,7 +132,7 @@ public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner
         Random r = new Random();
         byte[] buffer = new byte[16];
         r.nextBytes(buffer);
-        return new BytesToken(buffer, LocatorConfig.instance.getPartitioner());
+        return new BytesToken(buffer, locatorConfig.getPartitioner());
     }
 
     private final Token.TokenFactory<byte[]> tokenFactory = new Token.TokenFactory<byte[]>() {
@@ -136,7 +143,7 @@ public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner
 
         public Token<byte[]> fromByteArray(ByteBuffer bytes)
         {
-            return new BytesToken(bytes, LocatorConfig.instance.getPartitioner());
+            return new BytesToken(bytes, locatorConfig.getPartitioner());
         }
 
         public String toString(Token<byte[]> bytesToken)
@@ -162,7 +169,7 @@ public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner
         {
             if (string.length() % 2 == 1)
                 string = "0" + string;
-            return new BytesToken(Hex.hexToBytes(string), LocatorConfig.instance.getPartitioner());
+            return new BytesToken(Hex.hexToBytes(string), locatorConfig.getPartitioner());
         }
     };
 
@@ -189,18 +196,18 @@ public abstract class AbstractByteOrderedPartitioner extends AbstractPartitioner
         for (Token node : sortedTokens)
         {
             allTokens.put(node, new Float(0.0));
-            sortedRanges.add(new Range<Token>(lastToken, node, LocatorConfig.instance.getPartitioner()));
+            sortedRanges.add(new Range<Token>(lastToken, node, locatorConfig.getPartitioner()));
             lastToken = node;
         }
 
-        for (String ks : Schema.instance.getKeyspaces())
+        for (String ks : locatorConfig.getSchema().getKeyspaces())
         {
-            for (CFMetaData cfmd : Schema.instance.getKSMetaData(ks).cfMetaData().values())
+            for (CFMetaData cfmd : locatorConfig.getSchema().getKSMetaData(ks).cfMetaData().values())
             {
                 for (Range<Token> r : sortedRanges)
                 {
                     // Looping over every KS:CF:Range, get the splits size and add it to the count
-                    allTokens.put(r.right, allTokens.get(r.right) + StorageService.instance.getSplits(ks, cfmd.cfName, r, 1).size());
+                    allTokens.put(r.right, allTokens.get(r.right) + locatorConfig.getStorageService().getSplits(ks, cfmd.cfName, r, 1).size());
                 }
             }
         }

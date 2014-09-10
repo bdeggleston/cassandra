@@ -8,10 +8,7 @@ import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.dht.IPartitioner;
-import org.apache.cassandra.dht.Range;
-import org.apache.cassandra.dht.RingPosition;
-import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.dht.*;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
@@ -97,17 +94,27 @@ public class LocatorConfig
 
     private IPartitioner<?> createPartitioner() throws ConfigurationException
     {
-        if (conf.partitioner == null)
-        {
+        String className = System.getProperty("cassandra.partitioner", conf.partitioner);
+
+        if (className == null)
             throw new ConfigurationException("Missing directive: partitioner");
-        }
+
+        if (!className.contains("."))
+            className = "org.apache.cassandra.dht." + className;
+        Class<IPartitioner> cls = FBUtilities.classForName(className, "partitioner");
+        Constructor<IPartitioner> constructor = FBUtilities.getConstructor(cls, LocatorConfig.class);
         try
         {
-            return FBUtilities.newPartitioner(System.getProperty("cassandra.partitioner", conf.partitioner));
+            return constructor != null ? constructor.newInstance(this) : cls.newInstance();
         }
-        catch (Exception e)
+        catch (InvocationTargetException | InstantiationException | IllegalAccessException e)
         {
-            throw new ConfigurationException("Invalid partitioner class " + conf.partitioner);
+            String msg = String.format(
+                    "Error instantiating IAuthorizer: %s" +
+                            "IAuthorizer implementations must support empty constructors, \n" +
+                            "or constructors taking a single org.apache.cassandra.auth.Auth argument",
+                    className);
+            throw new ConfigurationException(msg, e);
         }
     }
 
@@ -371,5 +378,10 @@ public class LocatorConfig
     public KeyspaceManager getKeyspaceManager()
     {
         return KeyspaceManager.instance;
+    }
+
+    public Schema getSchema()
+    {
+        return Schema.instance;
     }
 }

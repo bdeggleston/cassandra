@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.dht;
 
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.commons.lang3.ArrayUtils;
 
@@ -25,6 +26,11 @@ import java.nio.ByteBuffer;
 public class ByteOrderedPartitioner extends AbstractByteOrderedPartitioner
 {
     private static final long EMPTY_SIZE = ObjectSizes.measure(MINIMUM);
+
+    public ByteOrderedPartitioner(LocatorConfig locatorConfig)
+    {
+        super(locatorConfig);
+    }
 
     public BytesToken getToken(ByteBuffer key)
     {

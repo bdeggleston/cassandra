@@ -46,6 +46,13 @@ public class Murmur3Partitioner extends AbstractPartitioner<LongToken>
 
     private static final int HEAP_SIZE = (int) ObjectSizes.measureDeep(MINIMUM);
 
+    protected final LocatorConfig locatorConfig;
+
+    public Murmur3Partitioner(LocatorConfig locatorConfig)
+    {
+        this.locatorConfig = locatorConfig;
+    }
+
     public DecoratedKey decorateKey(ByteBuffer key)
     {
         return new BufferDecoratedKey(getToken(key), key);
@@ -169,7 +176,7 @@ public class Murmur3Partitioner extends AbstractPartitioner<LongToken>
 
         public Token<Long> fromByteArray(ByteBuffer bytes)
         {
-            return new LongToken(ByteBufferUtil.toLong(bytes), LocatorConfig.instance.getPartitioner());
+            return new LongToken(ByteBufferUtil.toLong(bytes), locatorConfig.getPartitioner());
         }
 
         public String toString(Token<Long> longToken)
@@ -193,7 +200,7 @@ public class Murmur3Partitioner extends AbstractPartitioner<LongToken>
         {
             try
             {
-                return new LongToken(Long.valueOf(string), LocatorConfig.instance.getPartitioner());
+                return new LongToken(Long.valueOf(string), locatorConfig.getPartitioner());
             }
             catch (NumberFormatException e)
             {

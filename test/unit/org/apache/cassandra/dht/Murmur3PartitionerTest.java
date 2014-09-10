@@ -20,11 +20,13 @@
  */
 package org.apache.cassandra.dht;
 
+import org.apache.cassandra.locator.LocatorConfig;
+
 public class Murmur3PartitionerTest extends PartitionerTestCase<LongToken>
 {
     public void initPartitioner()
     {
-        partitioner = new Murmur3Partitioner();
+        partitioner = new Murmur3Partitioner(LocatorConfig.instance);
     }
 
     @Override

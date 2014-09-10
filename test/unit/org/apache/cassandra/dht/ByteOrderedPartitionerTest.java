@@ -18,10 +18,12 @@
 */
 package org.apache.cassandra.dht;
 
+import org.apache.cassandra.locator.LocatorConfig;
+
 public class ByteOrderedPartitionerTest extends PartitionerTestCase<BytesToken>
 {
     public void initPartitioner()
     {
-        partitioner = new ByteOrderedPartitioner();
+        partitioner = new ByteOrderedPartitioner(LocatorConfig.instance);
     }
 }

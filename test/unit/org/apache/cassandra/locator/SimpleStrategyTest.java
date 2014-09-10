@@ -76,7 +76,7 @@ public class SimpleStrategyTest
     @Test
     public void testStringEndpoints() throws UnknownHostException
     {
-        IPartitioner partitioner = new OrderPreservingPartitioner();
+        IPartitioner partitioner = new OrderPreservingPartitioner(LocatorConfig.instance);
 
         List<Token> endpointTokens = new ArrayList<Token>();
         List<Token> keyTokens = new ArrayList<Token>();
