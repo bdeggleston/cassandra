@@ -1072,7 +1072,7 @@ functionArgs returns [List<Term.Raw> a]
 
 term returns [Term.Raw term]
     : v=value                          { $term = v; }
-    | f=functionName args=functionArgs { $term = new FunctionCall.Raw(f, args, Schema.instance); }
+    | f=functionName args=functionArgs { $term = new FunctionCall.Raw(f, args, Schema.instance, LocatorConfig.instance.getPartitioner()); }
     | '(' c=comparatorType ')' t=term  { $term = new TypeCast(c, t); }
     ;
 

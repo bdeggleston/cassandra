@@ -30,14 +30,15 @@ import org.apache.cassandra.locator.LocatorConfig;
 
 public class TokenFct extends NativeFunction
 {
-    // The actual token function depends on the partitioner used
-    private static final IPartitioner partitioner = LocatorConfig.instance.getPartitioner();
-
     private final CFMetaData cfm;
 
-    public TokenFct(CFMetaData cfm)
+    // The actual token function depends on the partitioner used
+    private final IPartitioner partitioner;
+
+    public TokenFct(CFMetaData cfm, IPartitioner partitioner)
     {
         super("token", partitioner.getTokenValidator(), getKeyTypes(cfm));
+        this.partitioner = partitioner;
         this.cfm = cfm;
     }
 

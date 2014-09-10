@@ -1471,7 +1471,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
 
             Selection selection = selectClause.isEmpty()
                                 ? Selection.wildcard(cfm)
-                                : Selection.fromSelectors(cfm, selectClause, schema);
+                                : Selection.fromSelectors(cfm, selectClause, schema, locatorConfig.getPartitioner());
 
             SelectStatement stmt = new SelectStatement(cfm,
                                                        boundNames.size(),

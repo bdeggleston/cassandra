@@ -39,6 +39,7 @@ import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.db.marshal.UserType;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
@@ -108,7 +109,7 @@ public abstract class Selection
         return idx;
     }
 
-    private static Selector makeSelector(CFMetaData cfm, RawSelector raw, List<ColumnDefinition> defs, List<ColumnSpecification> metadata, Schema schema) throws InvalidRequestException
+    private static Selector makeSelector(CFMetaData cfm, RawSelector raw, List<ColumnDefinition> defs, List<ColumnSpecification> metadata, Schema schema, IPartitioner partitioner) throws InvalidRequestException
     {
         if (raw.selectable instanceof ColumnIdentifier)
         {
@@ -137,7 +138,7 @@ public abstract class Selection
         else if (raw.selectable instanceof Selectable.WithFieldSelection)
         {
             Selectable.WithFieldSelection withField = (Selectable.WithFieldSelection)raw.selectable;
-            Selector selected = makeSelector(cfm, new RawSelector(withField.selected, null), defs, null, schema);
+            Selector selected = makeSelector(cfm, new RawSelector(withField.selected, null), defs, null, schema, partitioner);
             AbstractType<?> type = selected.getType();
             if (!(type instanceof UserType))
                 throw new InvalidRequestException(String.format("Invalid field selection: %s of type %s is not a user type", withField.selected, type.asCQL3Type()));
@@ -159,10 +160,10 @@ public abstract class Selection
             Selectable.WithFunction withFun = (Selectable.WithFunction)raw.selectable;
             List<Selector> args = new ArrayList<>(withFun.args.size());
             for (Selectable rawArg : withFun.args)
-                args.add(makeSelector(cfm, new RawSelector(rawArg, null), defs, null, schema));
+                args.add(makeSelector(cfm, new RawSelector(rawArg, null), defs, null, schema, partitioner));
 
             // resolve built-in functions before user defined functions
-            Function fun = Functions.get(cfm.ksName, withFun.functionName, args, cfm.ksName, cfm.cfName, schema);
+            Function fun = Functions.get(cfm.ksName, withFun.functionName, args, cfm.ksName, cfm.cfName, schema, partitioner);
             if (fun == null)
                 throw new InvalidRequestException(String.format("Unknown function '%s'", withFun.functionName));
             if (metadata != null)
@@ -206,7 +207,7 @@ public abstract class Selection
         return new ColumnSpecification(cfm.ksName, cfm.cfName, alias, type);
     }
 
-    public static Selection fromSelectors(CFMetaData cfm, List<RawSelector> rawSelectors, Schema schema) throws InvalidRequestException
+    public static Selection fromSelectors(CFMetaData cfm, List<RawSelector> rawSelectors, Schema schema, IPartitioner partitioner) throws InvalidRequestException
     {
         boolean usesFunction = isUsingFunction(rawSelectors);
 
@@ -219,7 +220,7 @@ public abstract class Selection
             boolean collectTTLs = false;
             for (RawSelector rawSelector : rawSelectors)
             {
-                Selector selector = makeSelector(cfm, rawSelector, defs, metadata, schema);
+                Selector selector = makeSelector(cfm, rawSelector, defs, metadata, schema, partitioner);
                 selectors.add(selector);
                 if (selector instanceof WritetimeOrTTLSelector)
                 {

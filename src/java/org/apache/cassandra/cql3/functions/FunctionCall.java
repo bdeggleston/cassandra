@@ -27,6 +27,7 @@ import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.MapType;
 import org.apache.cassandra.db.marshal.SetType;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.serializers.MarshalException;
@@ -114,17 +115,19 @@ public class FunctionCall extends Term.NonTerminal
         private final FunctionName name;
         private final List<Term.Raw> terms;
         private final Schema schema;
+        private final IPartitioner partitioner;
 
-        public Raw(FunctionName name, List<Term.Raw> terms, Schema schema)
+        public Raw(FunctionName name, List<Term.Raw> terms, Schema schema, IPartitioner partitioner)
         {
             this.name = name;
             this.terms = terms;
             this.schema = schema;
+            this.partitioner = partitioner;
         }
 
         public Term prepare(String keyspace, ColumnSpecification receiver) throws InvalidRequestException
         {
-            Function fun = Functions.get(keyspace, name, terms, receiver.ksName, receiver.cfName, schema);
+            Function fun = Functions.get(keyspace, name, terms, receiver.ksName, receiver.cfName, schema, partitioner);
             if (fun == null)
                 throw new InvalidRequestException(String.format("Unknown function %s called", name));
 
@@ -173,7 +176,7 @@ public class FunctionCall extends Term.NonTerminal
             // later with a more helpful error message that if we were to return false here.
             try
             {
-                Function fun = Functions.get(keyspace, name, terms, receiver.ksName, receiver.cfName, schema);
+                Function fun = Functions.get(keyspace, name, terms, receiver.ksName, receiver.cfName, schema, partitioner);
                 if (fun != null && receiver.type.equals(fun.returnType()))
                     return AssignmentTestable.TestResult.EXACT_MATCH;
                 else if (fun == null || receiver.type.isValueCompatibleWith(fun.returnType()))

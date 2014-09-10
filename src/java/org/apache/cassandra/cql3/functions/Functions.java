@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.collect.ArrayListMultimap;
+import org.apache.cassandra.dht.IPartitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,11 +98,12 @@ public abstract class Functions
                                List<? extends AssignmentTestable> providedArgs,
                                String receiverKs,
                                String receiverCf,
-                               Schema schema)
+                               Schema schema,
+                               IPartitioner partitioner)
     throws InvalidRequestException
     {
         if (name.equals(TOKEN_FUNCTION_NAME))
-            return new TokenFct(schema.getCFMetaData(receiverKs, receiverCf));
+            return new TokenFct(schema.getCFMetaData(receiverKs, receiverCf), partitioner);
 
         List<Function> candidates = declared.get(name);
         if (candidates.isEmpty())
