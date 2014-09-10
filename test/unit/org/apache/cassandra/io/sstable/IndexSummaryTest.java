@@ -87,7 +87,7 @@ public class IndexSummaryTest
         dos.writeUTF("JUNK");
         FileUtils.closeQuietly(dos);
         DataInputStream dis = new DataInputStream(new ByteArrayInputStream(dos.toByteArray()));
-        IndexSummary is = IndexSummary.serializer.deserialize(dis, DatabaseDescriptor.instance.getPartitioner(), false, 1, 1);
+        IndexSummary is = IndexSummary.serializer.deserialize(dis, LocatorConfig.instance.getPartitioner(), false, 1, 1);
         for (int i = 0; i < 100; i++)
             assertEquals(i, is.binarySearch(random.left.get(i)));
         // read the junk
@@ -178,7 +178,7 @@ public class IndexSummaryTest
         int downsamplingRound = 1;
         for (int samplingLevel = BASE_SAMPLING_LEVEL - 1; samplingLevel >= 1; samplingLevel--)
         {
-            IndexSummary downsampled = downsample(original, samplingLevel, 128, DatabaseDescriptor.instance.getPartitioner());
+            IndexSummary downsampled = downsample(original, samplingLevel, 128, LocatorConfig.instance.getPartitioner());
             assertEquals(entriesAtSamplingLevel(samplingLevel, original.getMaxNumberOfEntries()), downsampled.size());
 
             int sampledCount = 0;
@@ -199,7 +199,7 @@ public class IndexSummaryTest
         downsamplingRound = 1;
         for (int downsampleLevel = BASE_SAMPLING_LEVEL - 1; downsampleLevel >= 1; downsampleLevel--)
         {
-            IndexSummary downsampled = downsample(previous, downsampleLevel, 128, DatabaseDescriptor.instance.getPartitioner());
+            IndexSummary downsampled = downsample(previous, downsampleLevel, 128, LocatorConfig.instance.getPartitioner());
             assertEquals(entriesAtSamplingLevel(downsampleLevel, original.getMaxNumberOfEntries()), downsampled.size());
 
             int sampledCount = 0;

@@ -67,12 +67,12 @@ public class KeyCollisionTest
     protected void setUp()
     {
         oldPartitioner = LocatorConfig.instance.getPartitioner();
-        DatabaseDescriptor.instance.setPartitioner(new LengthPartitioner());
+        LocatorConfig.instance.setPartitioner(new LengthPartitioner());
     }
 
     protected void tearDown()
     {
-        DatabaseDescriptor.instance.setPartitioner(oldPartitioner);
+        LocatorConfig.instance.setPartitioner(oldPartitioner);
     }
 
     @Test

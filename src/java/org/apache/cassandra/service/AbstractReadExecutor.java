@@ -59,9 +59,10 @@ public abstract class AbstractReadExecutor
     protected final MessagingService messagingService;
     protected final Schema schema;
     protected final StageManager stageManager;
+    protected final DBConfig dbConfig;
 
     AbstractReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel, List<InetAddress> targetReplicas,
-                         DatabaseDescriptor databaseDescriptor, MessagingService messagingService, Schema schema, StageManager stageManager, KeyspaceManager keyspaceManager)
+                         DatabaseDescriptor databaseDescriptor, MessagingService messagingService, Schema schema, StageManager stageManager, KeyspaceManager keyspaceManager, DBConfig dbConfig)
     {
         this.command = command;
         this.targetReplicas = targetReplicas;
@@ -69,8 +70,9 @@ public abstract class AbstractReadExecutor
         this.messagingService = messagingService;
         this.schema = schema;
         this.stageManager = stageManager;
-        resolver = new RowDigestResolver(command.ksName, command.key, this.databaseDescriptor.getPartitioner());
-        handler = new ReadCallback<>(resolver, consistencyLevel, command, targetReplicas, this.databaseDescriptor, this.messagingService, this.stageManager, keyspaceManager);
+        this.dbConfig = dbConfig;
+        resolver = new RowDigestResolver(command.ksName, command.key, this.dbConfig.getPartitioner());
+        handler = new ReadCallback<>(resolver, consistencyLevel, command, targetReplicas, dbConfig.getLocatorConfig(), this.messagingService, this.stageManager, keyspaceManager);
     }
 
     private boolean isLocalRequest(InetAddress replica)
@@ -151,7 +153,7 @@ public abstract class AbstractReadExecutor
      * @return an executor appropriate for the configured speculative read policy
      */
     public static AbstractReadExecutor getReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel, DatabaseDescriptor databaseDescriptor, MessagingService messagingService,
-                                                       Schema schema, StageManager stageManager, KeyspaceManager keyspaceManager, StorageProxy storageProxy, StorageService storageService) throws UnavailableException
+                                                       Schema schema, StageManager stageManager, KeyspaceManager keyspaceManager, StorageProxy storageProxy, StorageService storageService, DBConfig dbConfig) throws UnavailableException
     {
         Keyspace keyspace = keyspaceManager.open(command.ksName);
         List<InetAddress> allReplicas = storageProxy.getLiveSortedEndpoints(keyspace, command.key);
@@ -164,7 +166,7 @@ public abstract class AbstractReadExecutor
         // Fat client. Speculating read executors need access to cfs metrics and sampled latency, and fat clients
         // can't provide that. So, for now, fat clients will always use NeverSpeculatingReadExecutor.
         if (storageService.isClientMode())
-            return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
+            return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager, dbConfig);
 
         if (repairDecision != ReadRepairDecision.NONE)
             ReadRepairMetrics.attempted.mark();
@@ -174,14 +176,14 @@ public abstract class AbstractReadExecutor
 
         // Speculative retry is disabled *OR* there are simply no extra replicas to speculate.
         if (retryType == RetryType.NONE || consistencyLevel.blockFor(keyspace, databaseDescriptor.getLocalDataCenter()) == allReplicas.size())
-            return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
+            return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager, dbConfig);
 
         if (targetReplicas.size() == allReplicas.size())
         {
             // CL.ALL, RRD.GLOBAL or RRD.DC_LOCAL and a single-DC.
             // We are going to contact every node anyway, so ask for 2 full data requests instead of 1, for redundancy
             // (same amount of requests in total, but we turn 1 digest request into a full blown data request).
-            return new AlwaysSpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
+            return new AlwaysSpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager, dbConfig);
         }
 
         // RRD.NONE or RRD.DC_LOCAL w/ multiple DCs.
@@ -202,17 +204,17 @@ public abstract class AbstractReadExecutor
         targetReplicas.add(extraReplica);
 
         if (retryType == RetryType.ALWAYS)
-            return new AlwaysSpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
+            return new AlwaysSpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager, dbConfig);
         else // PERCENTILE or CUSTOM.
-            return new SpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
+            return new SpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager, dbConfig);
     }
 
     private static class NeverSpeculatingReadExecutor extends AbstractReadExecutor
     {
         public NeverSpeculatingReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel, List<InetAddress> targetReplicas,
-                                            DatabaseDescriptor databaseDescriptor, MessagingService messagingService, Schema schema, StageManager stageManager, KeyspaceManager keyspaceManager)
+                                            DatabaseDescriptor databaseDescriptor, MessagingService messagingService, Schema schema, StageManager stageManager, KeyspaceManager keyspaceManager, DBConfig dbConfig)
         {
-            super(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
+            super(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager, dbConfig);
         }
 
         public void executeAsync()
@@ -246,9 +248,10 @@ public abstract class AbstractReadExecutor
                                        MessagingService messagingService,
                                        Schema schema,
                                        StageManager stageManager,
-                                       KeyspaceManager keyspaceManager)
+                                       KeyspaceManager keyspaceManager,
+                                       DBConfig dbConfig)
         {
-            super(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
+            super(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager, dbConfig);
             this.cfs = cfs;
         }
 
@@ -322,9 +325,10 @@ public abstract class AbstractReadExecutor
                                              MessagingService messagingService,
                                              Schema schema,
                                              StageManager stageManager,
-                                             KeyspaceManager keyspaceManager)
+                                             KeyspaceManager keyspaceManager,
+                                             DBConfig dbConfig)
         {
-            super(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager);
+            super(command, consistencyLevel, targetReplicas, databaseDescriptor, messagingService, schema, stageManager, keyspaceManager, dbConfig);
             this.cfs = cfs;
         }
 

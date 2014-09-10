@@ -49,7 +49,6 @@ import org.apache.cassandra.locator.TokenMetadata;
 
 public class MoveTest
 {
-    private static final IPartitioner partitioner = new RandomPartitioner();
     private static IPartitioner oldPartitioner;
     private static final String KEYSPACE1 = "MoveTestKeyspace1";
     private static final String KEYSPACE2 = "MoveTestKeyspace2";
@@ -65,8 +64,8 @@ public class MoveTest
     @BeforeClass
     public static void setup() throws ConfigurationException
     {
+        System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
         DatabaseDescriptor.init();
-        oldPartitioner = StorageService.instance.setPartitionerUnsafe(partitioner);
         SchemaLoader.loadSchema();
         SchemaLoader.schemaDefinition("MoveTest");
     }
@@ -96,14 +95,14 @@ public class MoveTest
         final int MOVING_NODE = 3; // index of the moving node
 
         TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
-        VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
+        VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(LocatorConfig.instance.getPartitioner());
 
         ArrayList<Token> endpointTokens = new ArrayList<Token>();
         ArrayList<Token> keyTokens = new ArrayList<Token>();
         List<InetAddress> hosts = new ArrayList<InetAddress>();
         List<UUID> hostIds = new ArrayList<UUID>();
 
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE);
+        Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), endpointTokens, keyTokens, hosts, hostIds, RING_SIZE);
 
         Map<Token, List<InetAddress>> expectedEndpoints = new HashMap<Token, List<InetAddress>>();
         for (Token token : keyTokens)

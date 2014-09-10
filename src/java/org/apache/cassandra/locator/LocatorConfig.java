@@ -57,6 +57,8 @@ public class LocatorConfig
 
     private final Config conf;
     private TokenMetadata tokenMetadata;
+    private IPartitioner<?> partitioner;
+    private final String partitionerName;
     private IEndpointSnitch snitch;
     private final EndpointSnitchInfo endpointSnitchInfo;
 
@@ -66,6 +68,12 @@ public class LocatorConfig
     public LocatorConfig() throws ConfigurationException
     {
         conf = DatabaseDescriptor.instance.getConfig();
+
+        partitioner = createPartitioner();
+        partitionerName = partitioner.getClass().getCanonicalName();
+        if (conf.initial_token != null)
+            for (String token : tokensFromString(conf.initial_token))
+                partitioner.getTokenFactory().validate(token);
 
         snitch = createEndpointSnitch();
         tokenMetadata = new TokenMetadata(FailureDetector.instance, this);
@@ -85,6 +93,22 @@ public class LocatorConfig
                 return 0;
             }
         };
+    }
+
+    private IPartitioner<?> createPartitioner() throws ConfigurationException
+    {
+        if (conf.partitioner == null)
+        {
+            throw new ConfigurationException("Missing directive: partitioner");
+        }
+        try
+        {
+            return FBUtilities.newPartitioner(System.getProperty("cassandra.partitioner", conf.partitioner));
+        }
+        catch (Exception e)
+        {
+            throw new ConfigurationException("Invalid partitioner class " + conf.partitioner);
+        }
     }
 
     private IEndpointSnitch createEndpointSnitch() throws ConfigurationException
@@ -111,8 +135,39 @@ public class LocatorConfig
 
     public IPartitioner getPartitioner()
     {
-        return DatabaseDescriptor.instance.getPartitioner();
+        return partitioner;
     }
+
+    /* For tests ONLY, don't use otherwise or all hell will break loose */
+    public void setPartitioner(IPartitioner<?> newPartitioner)
+    {
+        partitioner = newPartitioner;
+    }
+
+    public String getPartitionerName()
+    {
+        return partitionerName;
+    }
+
+    public Collection<String> getInitialTokens()
+    {
+        return tokensFromString(System.getProperty("cassandra.initial_token", conf.initial_token));
+    }
+
+    public Collection<String> getReplaceTokens()
+    {
+        return tokensFromString(System.getProperty("cassandra.replace_token", null));
+    }
+
+    public Collection<String> tokensFromString(String tokenString)
+    {
+        List<String> tokens = new ArrayList<String>();
+        if (tokenString != null)
+            for (String token : tokenString.split(","))
+                tokens.add(token.replaceAll("^\\s+", "").replaceAll("\\s+$", ""));
+        return tokens;
+    }
+
 
     public TokenMetadata getTokenMetadata()
     {

@@ -203,7 +203,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                                                                                                           DBConfig.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.GOSSIP_SHUTDOWN, new GossipShutdownVerbHandler(Gossiper.instance, FailureDetector.instance));
 
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_SYN, new GossipDigestSynVerbHandler(DatabaseDescriptor.instance, Gossiper.instance, MessagingService.instance));
+        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_SYN, new GossipDigestSynVerbHandler(DatabaseDescriptor.instance, Gossiper.instance, MessagingService.instance, LocatorConfig.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_ACK, new GossipDigestAckVerbHandler(Gossiper.instance, MessagingService.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_ACK2, new GossipDigestAck2VerbHandler(Gossiper.instance));
 
@@ -603,7 +603,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
             if (DatabaseDescriptor.instance.isReplacing() && !(Boolean.parseBoolean(System.getProperty("cassandra.join_ring", "true"))))
                 throw new ConfigurationException("Cannot set both join_ring=false and attempt to replace a node");
-            if (DatabaseDescriptor.instance.getReplaceTokens().size() > 0 || DatabaseDescriptor.instance.getReplaceNode() != null)
+            if (LocatorConfig.instance.getReplaceTokens().size() > 0 || DatabaseDescriptor.instance.getReplaceNode() != null)
                 throw new RuntimeException("Replace method removed; use cassandra.replace_address instead");
             if (DatabaseDescriptor.instance.isReplacing())
             {
@@ -710,7 +710,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     throw new UnsupportedOperationException(s);
                 }
                 setMode(Mode.JOINING, "getting bootstrap token", true);
-                bootstrapTokens = BootStrapper.getBootstrapTokens(LocatorConfig.instance.getTokenMetadata(), DatabaseDescriptor.instance, LocatorConfig.instance.getPartitioner());
+                bootstrapTokens = BootStrapper.getBootstrapTokens(LocatorConfig.instance.getTokenMetadata(), DatabaseDescriptor.instance, LocatorConfig.instance);
             }
             else
             {
@@ -767,7 +767,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             bootstrapTokens = SystemKeyspace.instance.getSavedTokens();
             if (bootstrapTokens.isEmpty())
             {
-                Collection<String> initialTokens = DatabaseDescriptor.instance.getInitialTokens();
+                Collection<String> initialTokens = LocatorConfig.instance.getInitialTokens();
                 if (initialTokens.size() < 1)
                 {
                     bootstrapTokens = BootStrapper.getRandomTokens(LocatorConfig.instance.getTokenMetadata(), DatabaseDescriptor.instance.getNumTokens());
@@ -3403,7 +3403,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     IPartitioner setPartitionerUnsafe(IPartitioner newPartitioner)
     {
         IPartitioner oldPartitioner = LocatorConfig.instance.getPartitioner();
-        DatabaseDescriptor.instance.setPartitioner(newPartitioner);
+        LocatorConfig.instance.setPartitioner(newPartitioner);
         valueFactory = new VersionedValue.VersionedValueFactory(LocatorConfig.instance.getPartitioner());
         return oldPartitioner;
     }
@@ -3683,7 +3683,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (!dir.exists() || !dir.isDirectory())
             throw new IllegalArgumentException("Invalid directory " + directory);
 
-        SSTableLoader.Client client = new SSTableLoader.Client(DatabaseDescriptor.instance)
+        SSTableLoader.Client client = new SSTableLoader.Client(DatabaseDescriptor.instance, DBConfig.instance)
         {
             public void init(String keyspace)
             {
@@ -3794,7 +3794,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     /** Returns the cluster partitioner */
     public String getPartitionerName()
     {
-        return DatabaseDescriptor.instance.getPartitionerName();
+        return LocatorConfig.instance.getPartitionerName();
     }
 
     public int getTombstoneWarnThreshold()

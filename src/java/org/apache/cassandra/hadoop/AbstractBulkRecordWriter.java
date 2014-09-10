@@ -37,6 +37,7 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.sstable.SSTableLoader;
@@ -165,9 +166,9 @@ implements org.apache.hadoop.mapred.RecordWriter<K, V>
         protected final CFMetaDataFactory cfMetaDataFactory;
         protected final LocatorConfig locatorConfig;
 
-        public ExternalClient(Configuration conf, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor)
+        public ExternalClient(Configuration conf, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig)
         {
-          super(databaseDescriptor);
+          super(databaseDescriptor, dbConfig);
           this.conf = conf;
           this.hostlist = ConfigHelper.getOutputInitialAddress(conf);
           this.rpcPort = ConfigHelper.getOutputRpcPort(conf);

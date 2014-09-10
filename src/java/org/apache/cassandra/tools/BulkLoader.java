@@ -25,6 +25,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.io.sstable.SSTableReaderFactory;
 import org.apache.commons.cli.*;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -87,7 +88,8 @@ public class BulkLoader
                         options.storagePort,
                         options.sslStoragePort,
                         options.serverEncOptions,
-                        DatabaseDescriptor.instance),
+                        DatabaseDescriptor.instance,
+                        DBConfig.instance),
                 handler,
                 options.connectionsPerHost,
                 DatabaseDescriptor.instance,
@@ -274,9 +276,10 @@ public class BulkLoader
                               int storagePort,
                               int sslStoragePort,
                               EncryptionOptions.ServerEncryptionOptions serverEncryptionOptions,
-                              DatabaseDescriptor databaseDescriptor)
+                              DatabaseDescriptor databaseDescriptor,
+                              DBConfig dbConfig)
         {
-            super(databaseDescriptor);
+            super(databaseDescriptor, dbConfig);
             this.hosts = hosts;
             this.rpcPort = port;
             this.user = user;

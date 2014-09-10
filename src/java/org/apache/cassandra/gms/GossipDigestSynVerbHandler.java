@@ -20,6 +20,7 @@ package org.apache.cassandra.gms;
 import java.net.InetAddress;
 import java.util.*;
 
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,12 +37,14 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
     private final DatabaseDescriptor databaseDescriptor;
     private final Gossiper gossiper;
     private final MessagingService messagingService;
+    private final LocatorConfig locatorConfig;
 
-    public GossipDigestSynVerbHandler(DatabaseDescriptor databaseDescriptor, Gossiper gossiper, MessagingService messagingService)
+    public GossipDigestSynVerbHandler(DatabaseDescriptor databaseDescriptor, Gossiper gossiper, MessagingService messagingService, LocatorConfig locatorConfig)
     {
         this.databaseDescriptor = databaseDescriptor;
         this.gossiper = gossiper;
         this.messagingService = messagingService;
+        this.locatorConfig = locatorConfig;
     }
 
     public void doVerb(MessageIn<GossipDigestSyn> message, int id)
@@ -64,9 +67,9 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
             return;
         }
 
-        if (gDigestMessage.partioner != null && !gDigestMessage.partioner.equals(databaseDescriptor.getPartitionerName()))
+        if (gDigestMessage.partioner != null && !gDigestMessage.partioner.equals(locatorConfig.getPartitionerName()))
         {
-            logger.warn("Partitioner mismatch from {} {}!={}", from, gDigestMessage.partioner, databaseDescriptor.getPartitionerName());
+            logger.warn("Partitioner mismatch from {} {}!={}", from, gDigestMessage.partioner, locatorConfig.getPartitionerName());
             return;
         }
 

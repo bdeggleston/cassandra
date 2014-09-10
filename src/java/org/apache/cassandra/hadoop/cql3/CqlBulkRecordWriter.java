@@ -121,7 +121,7 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
             }
             if (loader == null)
             {
-                ExternalClient externalClient = new ExternalClient(conf, cfMetaDataFactory, locatorConfig, databaseDescriptor);
+                ExternalClient externalClient = new ExternalClient(conf, cfMetaDataFactory, locatorConfig, databaseDescriptor, DBConfig.instance);
                 
                 externalClient.addKnownCfs(keyspace, schema);
 
@@ -182,9 +182,9 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
     {
         private Map<String, Map<String, CFMetaData>> knownCqlCfs = new HashMap<>();
         
-        public ExternalClient(Configuration conf, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor)
+        public ExternalClient(Configuration conf, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig)
         {
-            super(conf, cfMetaDataFactory, locatorConfig, databaseDescriptor);
+            super(conf, cfMetaDataFactory, locatorConfig, databaseDescriptor, dbConfig);
         }
 
         public void addKnownCfs(String keyspace, String cql)

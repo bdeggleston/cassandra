@@ -51,7 +51,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
     {
         this.metadata = metadata;
         this.directory = directory;
-        DatabaseDescriptor.instance.setPartitioner(partitioner);
+        LocatorConfig.instance.setPartitioner(partitioner);
         this.dbConfig = dbConfig;
         this.locatorConfig = dbConfig.getLocatorConfig();
     }

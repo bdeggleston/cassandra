@@ -134,7 +134,7 @@ public final class BulkRecordWriter extends AbstractBulkRecordWriter<ByteBuffer,
                     cfMetaDataFactory,
                     dbConfig);
 
-            this.loader = new SSTableLoader(outputDir, new ExternalClient(conf, cfMetaDataFactory, locatorConfig, databaseDescriptor), new NullOutputHandler(),
+            this.loader = new SSTableLoader(outputDir, new ExternalClient(conf, cfMetaDataFactory, locatorConfig, databaseDescriptor, dbConfig), new NullOutputHandler(),
                                             databaseDescriptor, ssTableReaderFactory);
         }
     }

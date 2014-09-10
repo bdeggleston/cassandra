@@ -147,7 +147,7 @@ public class SystemKeyspace
                                                     String.valueOf(Server.CURRENT_VERSION),
                                                     snitch.getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress()),
                                                     snitch.getRack(DatabaseDescriptor.instance.getBroadcastAddress()),
-                                                    DatabaseDescriptor.instance.getPartitioner().getClass().getName());
+                                                    LocatorConfig.instance.getPartitioner().getClass().getName());
     }
 
     // TODO: In 3.0, remove this and the index_interval column from system.schema_columnfamilies

@@ -1224,7 +1224,8 @@ public class StorageProxy implements StorageProxyMBean
                                                                                  StageManager.instance,
                                                                                  KeyspaceManager.instance,
                                                                                  this,
-                                                                                 StorageService.instance);
+                                                                                 StorageService.instance,
+                                                                                 DBConfig.instance);
                 exec.executeAsync();
                 readExecutors[i] = exec;
             }
@@ -1278,7 +1279,7 @@ public class StorageProxy implements StorageProxyMBean
                     RowDataResolver resolver = new RowDataResolver(exec.command.ksName,
                                                                    exec.command.key,
                                                                    exec.command.filter(),
-                                                                   DatabaseDescriptor.instance.getPartitioner(),
+                                                                   LocatorConfig.instance.getPartitioner(),
                                                                    MessagingService.instance,
                                                                    exec.command.timestamp);
                     ReadCallback<ReadResponse, Row> repairHandler = new ReadCallback<>(resolver,
@@ -1287,7 +1288,7 @@ public class StorageProxy implements StorageProxyMBean
                                                                                        exec.command,
                                                                                        KeyspaceManager.instance.open(exec.command.getKeyspace()),
                                                                                        exec.handler.endpoints,
-                                                                                       DatabaseDescriptor.instance,
+                                                                                       LocatorConfig.instance,
                                                                                        MessagingService.instance,
                                                                                        StageManager.instance);
 
@@ -1587,7 +1588,7 @@ public class StorageProxy implements StorageProxyMBean
                     // collect replies and resolve according to consistency level
                     RangeSliceResponseResolver resolver = new RangeSliceResponseResolver(nodeCmd.keyspace, command.timestamp);
                     List<InetAddress> minimalEndpoints = filteredEndpoints.subList(0, Math.min(filteredEndpoints.size(), consistency_level.blockFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter())));
-                    ReadCallback<RangeSliceReply, Iterable<Row>> handler = new ReadCallback<>(resolver, consistency_level, nodeCmd, minimalEndpoints, DatabaseDescriptor.instance, MessagingService.instance, StageManager.instance, KeyspaceManager.instance);
+                    ReadCallback<RangeSliceReply, Iterable<Row>> handler = new ReadCallback<>(resolver, consistency_level, nodeCmd, minimalEndpoints, LocatorConfig.instance, MessagingService.instance, StageManager.instance, KeyspaceManager.instance);
                     handler.assureSufficientLiveNodes();
                     resolver.setSources(filteredEndpoints);
                     if (filteredEndpoints.size() == 1

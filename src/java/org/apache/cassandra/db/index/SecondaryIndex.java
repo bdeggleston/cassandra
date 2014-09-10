@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.db.index;
 
+import java.lang.reflect.Constructor;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Collections;
@@ -329,7 +330,9 @@ public abstract class SecondaryIndex
             assert class_name != null;
             try
             {
-                index = (SecondaryIndex) Class.forName(class_name).newInstance();
+                Class<SecondaryIndex> cls = FBUtilities.classForName(class_name, "secondary index");
+                Constructor<SecondaryIndex> constructor = cls.getConstructor(SystemKeyspace.class, CompactionManager.class, StorageService.class, DBConfig.class);
+                index = constructor.newInstance(dbConfig.getSystemKeyspace(), dbConfig.getCompactionManager(), dbConfig.getStorageService(), dbConfig);
             }
             catch (Exception e)
             {

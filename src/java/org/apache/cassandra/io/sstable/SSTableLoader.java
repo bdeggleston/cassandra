@@ -250,10 +250,12 @@ public class SSTableLoader implements StreamEventHandler
         private IPartitioner partitioner;
 
         private final DatabaseDescriptor databaseDescriptor;
+        private final DBConfig dbConfig;
 
-        public Client(DatabaseDescriptor databaseDescriptor)
+        public Client(DatabaseDescriptor databaseDescriptor, DBConfig dbConfig)
         {
             this.databaseDescriptor = databaseDescriptor;
+            this.dbConfig = dbConfig;
         }
 
         /**
@@ -302,7 +304,7 @@ public class SSTableLoader implements StreamEventHandler
         protected void setPartitioner(IPartitioner partitioner)
         {
             this.partitioner = partitioner;
-            databaseDescriptor.setPartitioner(partitioner);
+            dbConfig.getLocatorConfig().setPartitioner(partitioner);
         }
 
         public IPartitioner getPartitioner()

@@ -134,7 +134,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
                 if (gDigests.size() > 0)
                 {
                     GossipDigestSyn digestSynMessage = new GossipDigestSyn(DatabaseDescriptor.instance.getClusterName(),
-                                                                           DatabaseDescriptor.instance.getPartitionerName(),
+                                                                           LocatorConfig.instance.getPartitionerName(),
                                                                            gDigests);
                     MessageOut<GossipDigestSyn> message = new MessageOut<GossipDigestSyn>(MessagingService.Verb.GOSSIP_DIGEST_SYN,
                                                                                           digestSynMessage,
@@ -1179,7 +1179,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         // send a completely empty syn
         List<GossipDigest> gDigests = new ArrayList<GossipDigest>();
         GossipDigestSyn digestSynMessage = new GossipDigestSyn(DatabaseDescriptor.instance.getClusterName(),
-                DatabaseDescriptor.instance.getPartitionerName(),
+                LocatorConfig.instance.getPartitionerName(),
                 gDigests);
         MessageOut<GossipDigestSyn> message = new MessageOut<GossipDigestSyn>(MessagingService.Verb.GOSSIP_DIGEST_SYN,
                 digestSynMessage,

@@ -24,8 +24,6 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
@@ -51,7 +49,6 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.config.Config.RequestSchedulerId;
 import org.apache.cassandra.config.EncryptionOptions.ClientEncryptionOptions;
 import org.apache.cassandra.config.EncryptionOptions.ServerEncryptionOptions;
-import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.util.FileUtils;
@@ -84,10 +81,6 @@ public class DatabaseDescriptor
     private InetAddress rpcAddress;
     private InetAddress broadcastRpcAddress;
     private SeedProvider seedProvider;
-
-    /* Hashing strategy Random or OPHF */
-    private IPartitioner<?> partitioner;
-    private String paritionerName;
 
     private Config.DiskAccessMode indexAccessMode;
 
@@ -263,21 +256,6 @@ public class DatabaseDescriptor
             indexAccessMode = conf.disk_access_mode;
             logger.info("Non-unix environment detected.  DiskAccessMode set to {}, indexAccessMode {}", conf.disk_access_mode, indexAccessMode);
         }
-
-        /* Hashing strategy */
-        if (conf.partitioner == null)
-        {
-            throw new ConfigurationException("Missing directive: partitioner");
-        }
-        try
-        {
-            partitioner = FBUtilities.newPartitioner(System.getProperty("cassandra.partitioner", conf.partitioner));
-        }
-        catch (Exception e)
-        {
-            throw new ConfigurationException("Invalid partitioner class " + conf.partitioner);
-        }
-        paritionerName = partitioner.getClass().getCanonicalName();
 
         if (conf.max_hint_window_in_ms == null)
         {
@@ -547,10 +525,6 @@ public class DatabaseDescriptor
         if (conf.concurrent_compactors <= 0)
             throw new ConfigurationException("concurrent_compactors should be strictly greater than 0");
 
-        if (conf.initial_token != null)
-            for (String token : tokensFromString(conf.initial_token))
-                partitioner.getTokenFactory().validate(token);
-
         if (conf.num_tokens == null)
         	conf.num_tokens = 1;
         else if (conf.num_tokens > MAX_NUM_TOKENS)
@@ -742,23 +716,6 @@ public class DatabaseDescriptor
         }
     }
 
-    @Deprecated  // use LocatorConfig.instance.getPartitioner
-    public IPartitioner<?> getPartitioner()
-    {
-        return partitioner;
-    }
-
-    public String getPartitionerName()
-    {
-        return paritionerName;
-    }
-
-    /* For tests ONLY, don't use otherwise or all hell will break loose */
-    public void setPartitioner(IPartitioner<?> newPartitioner)
-    {
-        partitioner = newPartitioner;
-    }
-
     @Deprecated  // use LocatorConfig.instance.getEndpointSnitch
     public IEndpointSnitch getEndpointSnitch()
     {
@@ -790,20 +747,6 @@ public class DatabaseDescriptor
         return conf.batch_size_warn_threshold_in_kb * 1024;
     }
 
-    public Collection<String> getInitialTokens()
-    {
-        return tokensFromString(System.getProperty("cassandra.initial_token", conf.initial_token));
-    }
-
-    public Collection<String> tokensFromString(String tokenString)
-    {
-        List<String> tokens = new ArrayList<String>();
-        if (tokenString != null)
-            for (String token : tokenString.split(","))
-                tokens.add(token.replaceAll("^\\s+", "").replaceAll("\\s+$", ""));
-        return tokens;
-    }
-
     public Integer getNumTokens()
     {
         return conf.num_tokens;
@@ -823,11 +766,6 @@ public class DatabaseDescriptor
         {
             return null;
         }
-    }
-
-    public Collection<String> getReplaceTokens()
-    {
-        return tokensFromString(System.getProperty("cassandra.replace_token", null));
     }
 
     public UUID getReplaceNode()

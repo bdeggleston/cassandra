@@ -26,13 +26,13 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.locator.IEndpointSnitch;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
@@ -71,15 +71,23 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
      * Constructor when response count has to be calculated and blocked for.
      */
     public ReadCallback(IResponseResolver<TMessage, TResolved> resolver, ConsistencyLevel consistencyLevel, IReadCommand command, List<InetAddress> filteredEndpoints,
-                        DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager, KeyspaceManager keyspaceManager)
+                        LocatorConfig locatorConfig, MessagingService messagingService, StageManager stageManager, KeyspaceManager keyspaceManager)
     {
-        this(resolver, consistencyLevel, consistencyLevel.blockFor(keyspaceManager.open(command.getKeyspace()), databaseDescriptor.getLocalDataCenter()), command, keyspaceManager.open(command.getKeyspace()), filteredEndpoints, databaseDescriptor, messagingService, stageManager);
+        this(resolver,
+             consistencyLevel,
+             consistencyLevel.blockFor(keyspaceManager.open(command.getKeyspace()), locatorConfig.getLocalDC()),
+             command,
+             keyspaceManager.open(command.getKeyspace()),
+             filteredEndpoints,
+             locatorConfig,
+             messagingService,
+             stageManager);
         if (logger.isTraceEnabled())
             logger.trace(String.format("Blockfor is %s; setting up requests to %s", blockfor, StringUtils.join(this.endpoints, ",")));
     }
 
     public ReadCallback(IResponseResolver<TMessage, TResolved> resolver, ConsistencyLevel consistencyLevel, int blockfor, IReadCommand command, Keyspace keyspace, List<InetAddress> endpoints,
-                        DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager)
+                        LocatorConfig locatorConfig, MessagingService messagingService, StageManager stageManager)
     {
         this.command = command;
         this.keyspace = keyspace;
@@ -88,10 +96,10 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
         this.resolver = resolver;
         this.start = System.nanoTime();
         this.endpoints = endpoints;
-        this.localDc = databaseDescriptor.getLocalDataCenter();
-        this.snitch = databaseDescriptor.getEndpointSnitch();
-        this.partitioner = databaseDescriptor.getPartitioner();
-        this.broadcastAddress = databaseDescriptor.getBroadcastAddress();
+        this.localDc = locatorConfig.getLocalDC();
+        this.snitch = locatorConfig.getEndpointSnitch();
+        this.partitioner = locatorConfig.getPartitioner();
+        this.broadcastAddress = locatorConfig.getBroadcastAddress();
         this.messagingService = messagingService;
         this.stageManager = stageManager;
         // we don't support read repair (or rapid read protection) for range scans yet (CASSANDRA-6897)
