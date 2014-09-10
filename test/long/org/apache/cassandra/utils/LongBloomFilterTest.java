@@ -20,6 +20,7 @@ package org.apache.cassandra.utils;
 
 import java.util.Random;
 
+import org.apache.cassandra.db.DBConfig;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +36,7 @@ public class LongBloomFilterTest
     public void testBigInt()
     {
         int size = 10 * 1000 * 1000;
-        IFilter bf = FilterFactory.getFilter(size, FilterTestHelper.spec.bucketsPerElement, false);
+        IFilter bf = FilterFactory.getFilter(size, FilterTestHelper.spec.bucketsPerElement, false, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
         double fp = FilterTestHelper.testFalsePositives(bf,
                                                         new KeyGenerator.IntGenerator(size),
                                                         new KeyGenerator.IntGenerator(size, size * 2));
@@ -46,7 +47,7 @@ public class LongBloomFilterTest
     public void testBigRandom()
     {
         int size = 10 * 1000 * 1000;
-        IFilter bf = FilterFactory.getFilter(size, FilterTestHelper.spec.bucketsPerElement, false);
+        IFilter bf = FilterFactory.getFilter(size, FilterTestHelper.spec.bucketsPerElement, false, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
         double fp = FilterTestHelper.testFalsePositives(bf,
                                                         new KeyGenerator.RandomStringGenerator(new Random().nextInt(), size),
                                                         new KeyGenerator.RandomStringGenerator(new Random().nextInt(), size));
@@ -57,7 +58,7 @@ public class LongBloomFilterTest
     public void timeit()
     {
         int size = 300 * FilterTestHelper.ELEMENTS;
-        IFilter bf = FilterFactory.getFilter(size, FilterTestHelper.spec.bucketsPerElement, false);
+        IFilter bf = FilterFactory.getFilter(size, FilterTestHelper.spec.bucketsPerElement, false, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
         double sumfp = 0;
         for (int i = 0; i < 10; i++)
         {

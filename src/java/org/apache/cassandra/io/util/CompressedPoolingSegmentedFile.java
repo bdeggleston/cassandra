@@ -36,9 +36,9 @@ public class CompressedPoolingSegmentedFile extends PoolingSegmentedFile impleme
     public static class Builder extends CompressedSegmentedFile.Builder
     {
         private final FileCacheService fileCacheService;
-        public Builder(CompressedSequentialWriter writer, FileCacheService fileCacheService, Config.DiskAccessMode diskAccessMode)
+        public Builder(CompressedSequentialWriter writer, FileCacheService fileCacheService, Config.DiskAccessMode diskAccessMode, IAllocator allocator)
         {
-            super(writer, diskAccessMode);
+            super(writer, diskAccessMode, allocator);
             this.fileCacheService = fileCacheService;
         }
 

@@ -20,7 +20,6 @@ package org.apache.cassandra.io.util;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.utils.FastByteOperations;
 import org.apache.cassandra.utils.memory.MemoryUtil;
 import sun.misc.Unsafe;
@@ -32,7 +31,7 @@ import sun.nio.ch.DirectBuffer;
 public class Memory
 {
     private static final Unsafe unsafe = NativeAllocator.unsafe;
-    private static final IAllocator allocator = DatabaseDescriptor.instance.getoffHeapMemoryAllocator();
+//    private static final IAllocator allocator = DatabaseDescriptor.instance.getoffHeapMemoryAllocator();
     private static final long BYTE_ARRAY_BASE_OFFSET = unsafe.arrayBaseOffset(byte[].class);
 
     private static final boolean bigEndian = ByteOrder.nativeOrder().equals(ByteOrder.BIG_ENDIAN);
@@ -48,19 +47,21 @@ public class Memory
     protected long peer;
     // size of the memory region
     private final long size;
+    protected final IAllocator allocator;
 
-    protected Memory(long bytes)
+    protected Memory(long bytes, IAllocator allocator)
     {
         size = bytes;
+        this.allocator = allocator;
         peer = allocator.allocate(size);
     }
 
-    public static Memory allocate(long bytes)
+    public static Memory allocate(long bytes, IAllocator allocator)
     {
         if (bytes < 0)
             throw new IllegalArgumentException();
 
-        return new Memory(bytes);
+        return new Memory(bytes, allocator);
     }
 
     public void setByte(long offset, byte b)
@@ -289,7 +290,7 @@ public class Memory
 
     public Memory copy(long newSize)
     {
-        Memory copy = Memory.allocate(newSize);
+        Memory copy = Memory.allocate(newSize, allocator);
         copy.put(0, this, 0, Math.min(size(), newSize));
         return copy;
     }

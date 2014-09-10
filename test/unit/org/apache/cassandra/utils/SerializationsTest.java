@@ -19,6 +19,8 @@
 package org.apache.cassandra.utils;
 
 import org.apache.cassandra.AbstractSerializationsTester;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.io.util.DataOutputStreamAndChannel;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.StorageService;
@@ -31,14 +33,18 @@ import java.io.IOException;
 
 public class SerializationsTest extends AbstractSerializationsTester
 {
+    static
+    {
+        DatabaseDescriptor.init();
+    }
 
     private void testBloomFilterWrite(boolean offheap) throws IOException
     {
-        IFilter bf = FilterFactory.getFilter(1000000, 0.0001, offheap);
+        IFilter bf = FilterFactory.getFilter(1000000, 0.0001, offheap, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
         for (int i = 0; i < 100; i++)
             bf.add(LocatorConfig.instance.getPartitioner().getTokenFactory().toByteArray(LocatorConfig.instance.getPartitioner().getRandomToken()));
         DataOutputStreamAndChannel out = getOutput("utils.BloomFilter.bin");
-        FilterFactory.serialize(bf, out);
+        FilterFactory.serialize(bf, out, DBConfig.instance.murmur3BloomFilterSerializer);
         out.close();
     }
 
@@ -49,7 +55,7 @@ public class SerializationsTest extends AbstractSerializationsTester
             testBloomFilterWrite(true);
 
         DataInputStream in = getInput("utils.BloomFilter.bin");
-        assert FilterFactory.deserialize(in, true) != null;
+        assert FilterFactory.deserialize(in, true, DBConfig.instance.murmur3BloomFilterSerializer) != null;
         in.close();
     }
 

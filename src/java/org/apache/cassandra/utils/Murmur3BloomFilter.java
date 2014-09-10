@@ -20,15 +20,16 @@ package org.apache.cassandra.utils;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.io.util.IAllocator;
 import org.apache.cassandra.utils.obs.IBitSet;
 
 public class Murmur3BloomFilter extends BloomFilter
 {
-    public static final Murmur3BloomFilterSerializer serializer = new Murmur3BloomFilterSerializer();
-
-    public Murmur3BloomFilter(int hashes, IBitSet bs)
+    private final Serializer serializer;
+    public Murmur3BloomFilter(int hashes, IBitSet bs, Serializer serializer)
     {
         super(hashes, bs);
+        this.serializer = serializer;
     }
 
     public long serializedSize()
@@ -41,11 +42,17 @@ public class Murmur3BloomFilter extends BloomFilter
         MurmurHash.hash3_x64_128(b, b.position(), b.remaining(), seed, result);
     }
 
-    public static class Murmur3BloomFilterSerializer extends BloomFilterSerializer
+    public static class Serializer extends BloomFilterSerializer
     {
+        public Serializer(IAllocator allocator)
+        {
+            super(allocator);
+        }
+
         protected BloomFilter createFilter(int hashes, IBitSet bs)
         {
-            return new Murmur3BloomFilter(hashes, bs);
+            return new Murmur3BloomFilter(hashes, bs, this);
+
         }
     }
 }

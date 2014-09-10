@@ -147,7 +147,7 @@ public class SSTableWriter extends SSTable
                                              metadata.compressionParameters(),
                                              sstableMetadataCollector,
                                              dbConfig.getDatabaseDescriptor());
-            dbuilder = SegmentedFile.getCompressedBuilder((CompressedSequentialWriter) dataFile, fileCacheService, dbConfig.getDatabaseDescriptor().getDiskAccessMode());
+            dbuilder = SegmentedFile.getCompressedBuilder((CompressedSequentialWriter) dataFile, fileCacheService, dbConfig.getDatabaseDescriptor().getDiskAccessMode(), dbConfig.offHeapAllocator);
         }
         else
         {
@@ -557,8 +557,8 @@ public class SSTableWriter extends SSTable
         {
             indexFile = SequentialWriter.open(new File(descriptor.filenameFor(Component.PRIMARY_INDEX)), dbConfig.getDatabaseDescriptor());
             builder = SegmentedFile.getBuilder(dbConfig.getDatabaseDescriptor().getIndexAccessMode(), fileCacheService);
-            summary = new IndexSummaryBuilder(keyCount, metadata.getMinIndexInterval(), Downsampling.BASE_SAMPLING_LEVEL);
-            bf = FilterFactory.getFilter(keyCount, metadata.getBloomFilterFpChance(), true);
+            summary = new IndexSummaryBuilder(keyCount, metadata.getMinIndexInterval(), Downsampling.BASE_SAMPLING_LEVEL, dbConfig.getDatabaseDescriptor().getoffHeapMemoryAllocator());
+            bf = FilterFactory.getFilter(keyCount, metadata.getBloomFilterFpChance(), true, dbConfig.offHeapAllocator, dbConfig.murmur3BloomFilterSerializer);
         }
 
         // finds the last (-offset) decorated key that can be guaranteed to occur fully in the flushed portion of the index file
@@ -602,7 +602,7 @@ public class SSTableWriter extends SSTable
                     // bloom filter
                     FileOutputStream fos = new FileOutputStream(path);
                     DataOutputStreamAndChannel stream = new DataOutputStreamAndChannel(fos);
-                    FilterFactory.serialize(bf, stream);
+                    FilterFactory.serialize(bf, stream, dbConfig.murmur3BloomFilterSerializer);
                     stream.flush();
                     fos.getFD().sync();
                     stream.close();

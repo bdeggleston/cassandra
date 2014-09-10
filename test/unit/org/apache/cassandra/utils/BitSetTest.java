@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Random;
 
 import com.google.common.collect.Lists;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.junit.Test;
 
 import org.junit.Assert;
@@ -44,8 +46,8 @@ public class BitSetTest
     @Test
     public void compareBitSets()
     {
-        BloomFilter bf2 = (BloomFilter) FilterFactory.getFilter(FilterTestHelper.ELEMENTS / 2, FilterTestHelper.MAX_FAILURE_RATE, false);
-        BloomFilter bf3 = (BloomFilter) FilterFactory.getFilter(FilterTestHelper.ELEMENTS / 2, FilterTestHelper.MAX_FAILURE_RATE, true);
+        BloomFilter bf2 = (BloomFilter) FilterFactory.getFilter(FilterTestHelper.ELEMENTS / 2, FilterTestHelper.MAX_FAILURE_RATE, false, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
+        BloomFilter bf3 = (BloomFilter) FilterFactory.getFilter(FilterTestHelper.ELEMENTS / 2, FilterTestHelper.MAX_FAILURE_RATE, true, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
 
         RandomStringGenerator gen1 = new KeyGenerator.RandomStringGenerator(new Random().nextInt(), FilterTestHelper.ELEMENTS);
 
@@ -70,7 +72,7 @@ public class BitSetTest
     @Test
     public void testOffHeapSerialization() throws IOException
     {
-        OffHeapBitSet bs = new OffHeapBitSet(100000);
+        OffHeapBitSet bs = new OffHeapBitSet(100000, DatabaseDescriptor.instance.getoffHeapMemoryAllocator());
         populateAndReserialize(bs);
     }
 
@@ -90,7 +92,7 @@ public class BitSetTest
         DataOutputBuffer out = new DataOutputBuffer();
         bs.serialize(out);
         DataInputStream in = new DataInputStream(new ByteArrayInputStream(out.getData()));
-        OffHeapBitSet newbs = OffHeapBitSet.deserialize(in);
+        OffHeapBitSet newbs = OffHeapBitSet.deserialize(in, DatabaseDescriptor.instance.getoffHeapMemoryAllocator());
         compare(bs, newbs);
     }
 
@@ -105,7 +107,7 @@ public class BitSetTest
     public void testBitClear() throws IOException
     {
         int size = Integer.MAX_VALUE / 4000;
-        OffHeapBitSet bitset = new OffHeapBitSet(size);
+        OffHeapBitSet bitset = new OffHeapBitSet(size, DatabaseDescriptor.instance.getoffHeapMemoryAllocator());
         List<Integer> randomBits = Lists.newArrayList();
         for (int i = 0; i < 10; i++)
             randomBits.add(random.nextInt(size));

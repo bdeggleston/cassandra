@@ -35,10 +35,12 @@ public class CompressedSegmentedFile extends SegmentedFile implements ICompresse
     public static class Builder extends SegmentedFile.Builder
     {
         protected final CompressedSequentialWriter writer;
-        public Builder(CompressedSequentialWriter writer, Config.DiskAccessMode diskAccessMode)
+        protected final IAllocator allocator;
+        public Builder(CompressedSequentialWriter writer, Config.DiskAccessMode diskAccessMode, IAllocator allocator)
         {
             super(diskAccessMode);
             this.writer = writer;
+            this.allocator = allocator;
         }
 
         public void addPotentialBoundary(long boundary)
@@ -49,7 +51,7 @@ public class CompressedSegmentedFile extends SegmentedFile implements ICompresse
         protected CompressionMetadata metadata(String path, boolean early)
         {
             if (writer == null)
-                return CompressionMetadata.create(path);
+                return CompressionMetadata.create(path, allocator);
             else if (early)
                 return writer.openEarly();
             else

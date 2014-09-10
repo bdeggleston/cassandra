@@ -313,7 +313,7 @@ public class SSTableReaderTest
 
         SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), FileCacheService.instance);
         SegmentedFile.Builder dbuilder = sstable.compression
-                                          ? SegmentedFile.getCompressedBuilder(FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode())
+                                          ? SegmentedFile.getCompressedBuilder(FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode(), DBConfig.instance.offHeapAllocator)
                                           : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), FileCacheService.instance);
         sstable.saveSummary(ibuilder, dbuilder);
 

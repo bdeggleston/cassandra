@@ -19,6 +19,7 @@ package org.apache.cassandra.cache;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
+import org.apache.cassandra.io.util.IAllocator;
 import org.apache.cassandra.io.util.Memory;
 
 public class RefCountedMemory extends Memory implements AutoCloseable
@@ -26,9 +27,9 @@ public class RefCountedMemory extends Memory implements AutoCloseable
     private volatile int references = 1;
     private static final AtomicIntegerFieldUpdater<RefCountedMemory> UPDATER = AtomicIntegerFieldUpdater.newUpdater(RefCountedMemory.class, "references");
 
-    public RefCountedMemory(long size)
+    public RefCountedMemory(long size, IAllocator allocator)
     {
-        super(size);
+        super(size, allocator);
     }
 
     /**
@@ -56,7 +57,7 @@ public class RefCountedMemory extends Memory implements AutoCloseable
 
     public RefCountedMemory copy(long newSize)
     {
-        RefCountedMemory copy = new RefCountedMemory(newSize);
+        RefCountedMemory copy = new RefCountedMemory(newSize, allocator);
         copy.put(0, this, 0, Math.min(size(), newSize));
         return copy;
     }

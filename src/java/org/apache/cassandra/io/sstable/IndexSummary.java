@@ -22,6 +22,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.io.util.IAllocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,8 +49,6 @@ import static org.apache.cassandra.io.sstable.Downsampling.BASE_SAMPLING_LEVEL;
 public class IndexSummary implements Closeable
 {
     private static final Logger logger = LoggerFactory.getLogger(IndexSummary.class);
-
-    public static final IndexSummarySerializer serializer = new IndexSummarySerializer();
 
     /**
      * A lower bound for the average number of partitions in between each index summary entry. A lower value means
@@ -206,8 +205,15 @@ public class IndexSummary implements Closeable
         return Downsampling.getEffectiveIndexIntervalAfterIndex(index, samplingLevel, minIndexInterval);
     }
 
-    public static class IndexSummarySerializer
+    public static class Serializer
     {
+        private final IAllocator allocator;
+
+        public Serializer(IAllocator allocator)
+        {
+            this.allocator = allocator;
+        }
+
         public void serialize(IndexSummary t, DataOutputPlus out, boolean withSamplingLevel) throws IOException
         {
             out.writeInt(t.minIndexInterval);
@@ -251,7 +257,7 @@ public class IndexSummary implements Closeable
                                                     " the current max index interval (%d)", effectiveIndexInterval, maxIndexInterval));
             }
 
-            RefCountedMemory memory = new RefCountedMemory(offheapSize);
+            RefCountedMemory memory = new RefCountedMemory(offheapSize, allocator);
             FBUtilities.copy(in, new MemoryOutputStream(memory), offheapSize);
             return new IndexSummary(partitioner, memory, summarySize, fullSamplingSummarySize, minIndexInterval, samplingLevel);
         }

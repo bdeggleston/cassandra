@@ -20,6 +20,7 @@ package org.apache.cassandra.cache;
 import java.io.IOException;
 import java.util.Set;
 
+import org.apache.cassandra.io.util.IAllocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,10 +46,12 @@ public class SerializingCache<K, V> implements ICache<K, V>
 
     private final ConcurrentLinkedHashMap<K, RefCountedMemory> map;
     private final ISerializer<V> serializer;
+    private final IAllocator allocator;
 
-    private SerializingCache(long capacity, Weigher<RefCountedMemory> weigher, ISerializer<V> serializer)
+    private SerializingCache(long capacity, Weigher<RefCountedMemory> weigher, ISerializer<V> serializer, IAllocator allocator)
     {
         this.serializer = serializer;
+        this.allocator = allocator;
 
         EvictionListener<K,RefCountedMemory> listener = new EvictionListener<K, RefCountedMemory>()
         {
@@ -66,12 +69,12 @@ public class SerializingCache<K, V> implements ICache<K, V>
                    .build();
     }
 
-    public static <K, V> SerializingCache<K, V> create(long weightedCapacity, Weigher<RefCountedMemory> weigher, ISerializer<V> serializer)
+    public static <K, V> SerializingCache<K, V> create(long weightedCapacity, Weigher<RefCountedMemory> weigher, ISerializer<V> serializer, IAllocator allocator)
     {
-        return new SerializingCache<>(weightedCapacity, weigher, serializer);
+        return new SerializingCache<>(weightedCapacity, weigher, serializer, allocator);
     }
 
-    public static <K, V> SerializingCache<K, V> create(long weightedCapacity, ISerializer<V> serializer)
+    public static <K, V> SerializingCache<K, V> create(long weightedCapacity, ISerializer<V> serializer, IAllocator allocator)
     {
         return create(weightedCapacity, new Weigher<RefCountedMemory>()
         {
@@ -81,7 +84,7 @@ public class SerializingCache<K, V> implements ICache<K, V>
                 assert size < Integer.MAX_VALUE : "Serialized size cannot be more than 2GB";
                 return (int) size;
             }
-        }, serializer);
+        }, serializer, allocator);
     }
 
     private V deserialize(RefCountedMemory mem)
@@ -106,7 +109,7 @@ public class SerializingCache<K, V> implements ICache<K, V>
         RefCountedMemory freeableMemory;
         try
         {
-            freeableMemory = new RefCountedMemory(serializedSize);
+            freeableMemory = new RefCountedMemory(serializedSize, allocator);
         }
         catch (OutOfMemoryError e)
         {

@@ -49,6 +49,7 @@ import org.apache.cassandra.io.sstable.CorruptSSTableException;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.io.util.IAllocator;
 import org.apache.cassandra.io.util.Memory;
 import org.apache.cassandra.utils.Pair;
 
@@ -64,6 +65,7 @@ public class CompressionMetadata
     private final long chunkOffsetsSize;
     public final String indexFilePath;
     public final CompressionParameters parameters;
+    private final IAllocator allocator;
 
     /**
      * Create metadata about given compressed file including uncompressed data length, chunk size
@@ -76,17 +78,18 @@ public class CompressionMetadata
      *
      * @return metadata about given compressed file.
      */
-    public static CompressionMetadata create(String dataFilePath)
+    public static CompressionMetadata create(String dataFilePath, IAllocator allocator)
     {
         Descriptor desc = Descriptor.fromFilename(dataFilePath);
-        return new CompressionMetadata(desc.filenameFor(Component.COMPRESSION_INFO), new File(dataFilePath).length(), desc.version.hasPostCompressionAdlerChecksums);
+        return new CompressionMetadata(desc.filenameFor(Component.COMPRESSION_INFO), new File(dataFilePath).length(), desc.version.hasPostCompressionAdlerChecksums, allocator);
     }
 
     @VisibleForTesting
-    CompressionMetadata(String indexFilePath, long compressedLength, boolean hasPostCompressionAdlerChecksums)
+    CompressionMetadata(String indexFilePath, long compressedLength, boolean hasPostCompressionAdlerChecksums, IAllocator allocator)
     {
         this.indexFilePath = indexFilePath;
         this.hasPostCompressionAdlerChecksums = hasPostCompressionAdlerChecksums;
+        this.allocator = allocator;
 
         DataInputStream stream;
         try
@@ -134,7 +137,7 @@ public class CompressionMetadata
         this.chunkOffsetsSize = chunkOffsets.size();
     }
 
-    private CompressionMetadata(String filePath, CompressionParameters parameters, RefCountedMemory offsets, long offsetsSize, long dataLength, long compressedLength, boolean hasPostCompressionAdlerChecksums)
+    private CompressionMetadata(String filePath, CompressionParameters parameters, RefCountedMemory offsets, long offsetsSize, long dataLength, long compressedLength, boolean hasPostCompressionAdlerChecksums, IAllocator allocator)
     {
         this.indexFilePath = filePath;
         this.parameters = parameters;
@@ -144,6 +147,7 @@ public class CompressionMetadata
         this.chunkOffsets = offsets;
         offsets.reference();
         this.chunkOffsetsSize = offsetsSize;
+        this.allocator = allocator;
     }
 
     public ICompressor compressor()
@@ -168,7 +172,7 @@ public class CompressionMetadata
         try
         {
             int chunkCount = input.readInt();
-            Memory offsets = Memory.allocate(chunkCount * 8);
+            Memory offsets = Memory.allocate(chunkCount * 8, allocator);
 
             for (int i = 0; i < chunkCount; i++)
             {
@@ -260,18 +264,21 @@ public class CompressionMetadata
         private final CompressionParameters parameters;
         private final String filePath;
         private int maxCount = 100;
-        private RefCountedMemory offsets = new RefCountedMemory(maxCount * 8);
+        private RefCountedMemory offsets;
         private int count = 0;
+        private final IAllocator allocator;
 
-        private Writer(CompressionParameters parameters, String path)
+        private Writer(CompressionParameters parameters, String path, IAllocator allocator)
         {
             this.parameters = parameters;
+            this.allocator = allocator;
             filePath = path;
+            offsets = new RefCountedMemory(maxCount * 8, allocator);
         }
 
-        public static Writer open(CompressionParameters parameters, String path)
+        public static Writer open(CompressionParameters parameters, String path, IAllocator allocator)
         {
-            return new Writer(parameters, path);
+            return new Writer(parameters, path, allocator);
         }
 
         public void addOffset(long offset)
@@ -311,14 +318,14 @@ public class CompressionMetadata
 
         public CompressionMetadata openEarly(long dataLength, long compressedLength)
         {
-            return new CompressionMetadata(filePath, parameters, offsets, count * 8L, dataLength, compressedLength, Descriptor.Version.CURRENT.hasPostCompressionAdlerChecksums);
+            return new CompressionMetadata(filePath, parameters, offsets, count * 8L, dataLength, compressedLength, Descriptor.Version.CURRENT.hasPostCompressionAdlerChecksums, allocator);
         }
 
         public CompressionMetadata openAfterClose(long dataLength, long compressedLength)
         {
             RefCountedMemory newOffsets = offsets.copy(count * 8L);
             offsets.unreference();
-            return new CompressionMetadata(filePath, parameters, newOffsets, count * 8L, dataLength, compressedLength, Descriptor.Version.CURRENT.hasPostCompressionAdlerChecksums);
+            return new CompressionMetadata(filePath, parameters, newOffsets, count * 8L, dataLength, compressedLength, Descriptor.Version.CURRENT.hasPostCompressionAdlerChecksums, allocator);
         }
 
         /**

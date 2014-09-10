@@ -131,7 +131,7 @@ public class SSTableReaderFactory
         // special implementation of load to use non-pooled SegmentedFile builders
         SegmentedFile.Builder ibuilder = new BufferedSegmentedFile.Builder(DatabaseDescriptor.instance.getDiskAccessMode());
         SegmentedFile.Builder dbuilder = sstable.compression
-                ? new CompressedSegmentedFile.Builder(null, DatabaseDescriptor.instance.getDiskAccessMode())
+                ? new CompressedSegmentedFile.Builder(null, DatabaseDescriptor.instance.getDiskAccessMode(), DBConfig.instance.offHeapAllocator)
                 : new BufferedSegmentedFile.Builder(DatabaseDescriptor.instance.getDiskAccessMode());
         if (!sstable.loadSummary(ibuilder, dbuilder))
             sstable.buildSummary(false, ibuilder, dbuilder, false, Downsampling.BASE_SAMPLING_LEVEL);

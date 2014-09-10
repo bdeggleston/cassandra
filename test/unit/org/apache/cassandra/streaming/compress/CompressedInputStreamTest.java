@@ -81,7 +81,7 @@ public class CompressedInputStreamTest
         }
         writer.close();
 
-        CompressionMetadata comp = CompressionMetadata.create(tmp.getAbsolutePath());
+        CompressionMetadata comp = CompressionMetadata.create(tmp.getAbsolutePath(), DatabaseDescriptor.instance.getoffHeapMemoryAllocator());
         List<Pair<Long, Long>> sections = new ArrayList<Pair<Long, Long>>();
         for (long l : valuesToCheck)
         {

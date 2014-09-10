@@ -25,6 +25,7 @@ import org.apache.cassandra.db.ColumnFamilySerializer;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.io.util.IAllocator;
 import org.apache.cassandra.net.MessagingService;
 
 public class SerializingCacheProvider
@@ -37,9 +38,9 @@ public class SerializingCacheProvider
         this.columnFamilySerializer = columnFamilySerializer;
     }
 
-    public ICache<RowCacheKey, IRowCacheEntry> create(long capacity)
+    public ICache<RowCacheKey, IRowCacheEntry> create(long capacity, IAllocator allocator)
     {
-        return SerializingCache.create(capacity, new RowCacheSerializer(columnFamilySerializer));
+        return SerializingCache.create(capacity, new RowCacheSerializer(columnFamilySerializer), allocator);
     }
 
     // Package protected for tests

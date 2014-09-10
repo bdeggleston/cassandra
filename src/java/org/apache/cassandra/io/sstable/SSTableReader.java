@@ -543,7 +543,7 @@ public class SSTableReader extends SSTable
         try
         {
             stream = new DataInputStream(new BufferedInputStream(new FileInputStream(descriptor.filenameFor(Component.FILTER))));
-            bf = FilterFactory.deserialize(stream, true);
+            bf = FilterFactory.deserialize(stream, true, dbConfig.murmur3BloomFilterSerializer);
         }
         finally
         {
@@ -560,7 +560,7 @@ public class SSTableReader extends SSTable
     {
         SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(databaseDescriptor.getIndexAccessMode(), fileCacheService);
         SegmentedFile.Builder dbuilder = compression
-                                         ? SegmentedFile.getCompressedBuilder(fileCacheService, databaseDescriptor.getDiskAccessMode())
+                                         ? SegmentedFile.getCompressedBuilder(fileCacheService, databaseDescriptor.getDiskAccessMode(), dbConfig.offHeapAllocator)
                                          : SegmentedFile.getBuilder(databaseDescriptor.getDiskAccessMode(), fileCacheService);
 
         boolean summaryLoaded = loadSummary(ibuilder, dbuilder);
@@ -596,11 +596,11 @@ public class SSTableReader extends SSTable
                                : estimateRowsFromIndex(primaryIndex); // statistics is supposed to be optional
 
             if (recreateBloomFilter)
-                bf = FilterFactory.getFilter(estimatedKeys, metadata.getBloomFilterFpChance(), true);
+                bf = FilterFactory.getFilter(estimatedKeys, metadata.getBloomFilterFpChance(), true, dbConfig.offHeapAllocator, dbConfig.murmur3BloomFilterSerializer);
 
             IndexSummaryBuilder summaryBuilder = null;
             if (!summaryLoaded)
-                summaryBuilder = new IndexSummaryBuilder(estimatedKeys, metadata.getMinIndexInterval(), samplingLevel);
+                summaryBuilder = new IndexSummaryBuilder(estimatedKeys, metadata.getMinIndexInterval(), samplingLevel, databaseDescriptor.getoffHeapMemoryAllocator());
 
             long indexPosition;
             while ((indexPosition = primaryIndex.getFilePointer()) != indexSize)
@@ -656,7 +656,7 @@ public class SSTableReader extends SSTable
         try
         {
             iStream = new DataInputStream(new FileInputStream(summariesFile));
-            indexSummary = IndexSummary.serializer.deserialize(iStream, partitioner, descriptor.version.hasSamplingLevel, metadata.getMinIndexInterval(), metadata.getMaxIndexInterval());
+            indexSummary = dbConfig.indexSummarySerializer.deserialize(iStream, partitioner, descriptor.version.hasSamplingLevel, metadata.getMinIndexInterval(), metadata.getMaxIndexInterval());
             first = partitioner.decorateKey(ByteBufferUtil.readWithLength(iStream));
             last = partitioner.decorateKey(ByteBufferUtil.readWithLength(iStream));
             ibuilder.deserializeBounds(iStream);
@@ -700,7 +700,7 @@ public class SSTableReader extends SSTable
         try
         {
             oStream = new DataOutputStreamAndChannel(new FileOutputStream(summariesFile));
-            IndexSummary.serializer.serialize(summary, oStream, descriptor.version.hasSamplingLevel);
+            dbConfig.indexSummarySerializer.serialize(summary, oStream, descriptor.version.hasSamplingLevel);
             ByteBufferUtil.writeWithLength(first.getKey(), oStream);
             ByteBufferUtil.writeWithLength(last.getKey(), oStream);
             ibuilder.serializeBounds(oStream);
@@ -829,11 +829,11 @@ public class SSTableReader extends SSTable
             else if (samplingLevel < indexSummary.getSamplingLevel())
             {
                 // we can use the existing index summary to make a smaller one
-                newSummary = IndexSummaryBuilder.downsample(indexSummary, samplingLevel, minIndexInterval, partitioner);
+                newSummary = IndexSummaryBuilder.downsample(indexSummary, samplingLevel, minIndexInterval, partitioner, databaseDescriptor.getoffHeapMemoryAllocator());
 
                 SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(databaseDescriptor.getIndexAccessMode(), fileCacheService);
                 SegmentedFile.Builder dbuilder = compression
-                                                 ? SegmentedFile.getCompressedBuilder(fileCacheService, databaseDescriptor.getDiskAccessMode())
+                                                 ? SegmentedFile.getCompressedBuilder(fileCacheService, databaseDescriptor.getDiskAccessMode(), dbConfig.offHeapAllocator)
                                                  : SegmentedFile.getBuilder(databaseDescriptor.getDiskAccessMode(), fileCacheService);
                 saveSummary(ibuilder, dbuilder, newSummary);
             }
@@ -884,7 +884,7 @@ public class SSTableReader extends SSTable
         try
         {
             long indexSize = primaryIndex.length();
-            IndexSummaryBuilder summaryBuilder = new IndexSummaryBuilder(estimatedKeys(), metadata.getMinIndexInterval(), newSamplingLevel);
+            IndexSummaryBuilder summaryBuilder = new IndexSummaryBuilder(estimatedKeys(), metadata.getMinIndexInterval(), newSamplingLevel, databaseDescriptor.getoffHeapMemoryAllocator());
 
             long indexPosition;
             while ((indexPosition = primaryIndex.getFilePointer()) != indexSize)

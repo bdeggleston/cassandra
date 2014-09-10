@@ -68,7 +68,7 @@ public class CompressedSequentialWriter extends SequentialWriter
         compressed = new ICompressor.WrappedArray(new byte[compressor.initialCompressedBufferLength(buffer.length)]);
 
         /* Index File (-CompressionInfo.db component) and it's header */
-        metadataWriter = CompressionMetadata.Writer.open(parameters, offsetsPath);
+        metadataWriter = CompressionMetadata.Writer.open(parameters, offsetsPath, databaseDescriptor.getoffHeapMemoryAllocator());
 
         this.sstableMetadataCollector = sstableMetadataCollector;
         crcMetadata = new DataIntegrityMetadata.ChecksumWriter(out);

@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import org.apache.cassandra.io.util.IAllocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,11 +45,13 @@ public class IndexSummaryBuilder
     private long keysWritten = 0;
     private long indexIntervalMatches = 0;
     private long offheapSize = 0;
+    private final IAllocator allocator;
 
-    public IndexSummaryBuilder(long expectedKeys, int minIndexInterval, int samplingLevel)
+    public IndexSummaryBuilder(long expectedKeys, int minIndexInterval, int samplingLevel, IAllocator allocator)
     {
         this.samplingLevel = samplingLevel;
         this.startPoints = Downsampling.getStartPoints(BASE_SAMPLING_LEVEL, samplingLevel);
+        this.allocator = allocator;
 
         long maxExpectedEntries = expectedKeys / minIndexInterval;
         if (maxExpectedEntries > Integer.MAX_VALUE)
@@ -148,7 +151,7 @@ public class IndexSummaryBuilder
 
         // first we write out the position in the *summary* for each key in the summary,
         // then we write out (key, actual index position) pairs
-        RefCountedMemory memory = new RefCountedMemory(offheapSize + (length * 4));
+        RefCountedMemory memory = new RefCountedMemory(offheapSize + (length * 4), allocator);
         int idxPosition = 0;
         int keyPosition = length * 4;
         for (int i = 0; i < length; i++)
@@ -202,7 +205,7 @@ public class IndexSummaryBuilder
      * @param partitioner the partitioner used for the index summary
      * @return a new IndexSummary
      */
-    public static IndexSummary downsample(IndexSummary existing, int newSamplingLevel, int minIndexInterval, IPartitioner partitioner)
+    public static IndexSummary downsample(IndexSummary existing, int newSamplingLevel, int minIndexInterval, IPartitioner partitioner, IAllocator allocator)
     {
         // To downsample the old index summary, we'll go through (potentially) several rounds of downsampling.
         // Conceptually, each round starts at position X and then removes every Nth item.  The value of X follows
@@ -232,7 +235,7 @@ public class IndexSummaryBuilder
 
         // Subtract (removedKeyCount * 4) from the new size to account for fewer entries in the first section, which
         // stores the position of the actual entries in the summary.
-        RefCountedMemory memory = new RefCountedMemory(newOffHeapSize - (removedKeyCount * 4));
+        RefCountedMemory memory = new RefCountedMemory(newOffHeapSize - (removedKeyCount * 4), allocator);
 
         // Copy old entries to our new Memory.
         int idxPosition = 0;

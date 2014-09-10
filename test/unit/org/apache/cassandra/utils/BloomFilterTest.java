@@ -30,6 +30,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DBConfig;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -42,20 +44,24 @@ import org.apache.cassandra.io.util.FileUtils;
 public class BloomFilterTest
 {
     public IFilter bf;
+    static
+    {
+        DatabaseDescriptor.init();
+    }
 
     public BloomFilterTest()
     {
-        bf = FilterFactory.getFilter(10000L, FilterTestHelper.MAX_FAILURE_RATE, true);
+        bf = FilterFactory.getFilter(10000L, FilterTestHelper.MAX_FAILURE_RATE, true, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
     }
 
     public static IFilter testSerialize(IFilter f) throws IOException
     {
         f.add(ByteBufferUtil.bytes("a"));
         DataOutputBuffer out = new DataOutputBuffer();
-        FilterFactory.serialize(f, out);
+        FilterFactory.serialize(f, out, DBConfig.instance.murmur3BloomFilterSerializer);
 
         ByteArrayInputStream in = new ByteArrayInputStream(out.getData(), 0, out.getLength());
-        IFilter f2 = FilterFactory.deserialize(new DataInputStream(in), true);
+        IFilter f2 = FilterFactory.deserialize(new DataInputStream(in), true, DBConfig.instance.murmur3BloomFilterSerializer);
 
         assert f2.isPresent(ByteBufferUtil.bytes("a"));
         assert !f2.isPresent(ByteBufferUtil.bytes("b"));
@@ -109,7 +115,7 @@ public class BloomFilterTest
         {
             return;
         }
-        IFilter bf2 = FilterFactory.getFilter(KeyGenerator.WordGenerator.WORDS / 2, FilterTestHelper.MAX_FAILURE_RATE, true);
+        IFilter bf2 = FilterFactory.getFilter(KeyGenerator.WordGenerator.WORDS / 2, FilterTestHelper.MAX_FAILURE_RATE, true, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
         int skipEven = KeyGenerator.WordGenerator.WORDS % 2 == 0 ? 0 : 2;
         FilterTestHelper.testFalsePositives(bf2,
                                             new KeyGenerator.WordGenerator(skipEven, 2),
@@ -131,7 +137,7 @@ public class BloomFilterTest
         {
             hashes.clear();
             ByteBuffer buf = keys.next();
-            BloomFilter bf = (BloomFilter) FilterFactory.getFilter(10, 1, false);
+            BloomFilter bf = (BloomFilter) FilterFactory.getFilter(10, 1, false, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
             for (long hashIndex : bf.getHashBuckets(buf, MAX_HASH_COUNT, 1024 * 1024))
             {
                 hashes.add(hashIndex);
@@ -151,7 +157,7 @@ public class BloomFilterTest
     public void testOffHeapException()
     {
         long numKeys = (Integer.MAX_VALUE * 64) + 1; // approx 128 Billion
-        FilterFactory.getFilter(numKeys, 0.01d, true);
+        FilterFactory.getFilter(numKeys, 0.01d, true, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
     }
 
     @Test
@@ -161,15 +167,15 @@ public class BloomFilterTest
         ByteBuffer test = ByteBuffer.wrap(new byte[] {0, 1});
 
         File file = FileUtils.createTempFile("bloomFilterTest-", ".dat");
-        BloomFilter filter = (BloomFilter) FilterFactory.getFilter(((long)Integer.MAX_VALUE / 8) + 1, 0.01d, true);
+        BloomFilter filter = (BloomFilter) FilterFactory.getFilter(((long)Integer.MAX_VALUE / 8) + 1, 0.01d, true, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
         filter.add(test);
         DataOutputStreamAndChannel out = new DataOutputStreamAndChannel(new FileOutputStream(file));
-        FilterFactory.serialize(filter, out);
+        FilterFactory.serialize(filter, out, DBConfig.instance.murmur3BloomFilterSerializer);
         filter.bitset.serialize(out);
         out.close();
         
         DataInputStream in = new DataInputStream(new FileInputStream(file));
-        BloomFilter filter2 = (BloomFilter) FilterFactory.deserialize(in, true);
+        BloomFilter filter2 = (BloomFilter) FilterFactory.deserialize(in, true, DBConfig.instance.murmur3BloomFilterSerializer);
         Assert.assertTrue(filter2.isPresent(test));
         FileUtils.closeQuietly(in);
     }

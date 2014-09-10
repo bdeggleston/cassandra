@@ -75,14 +75,14 @@ public abstract class SegmentedFile
                : new BufferedPoolingSegmentedFile.Builder(fileCacheService, DatabaseDescriptor.instance.getDiskAccessMode());
     }
 
-    public static Builder getCompressedBuilder(FileCacheService fileCacheService, Config.DiskAccessMode diskAccessMode)
+    public static Builder getCompressedBuilder(FileCacheService fileCacheService, Config.DiskAccessMode diskAccessMode, IAllocator allocator)
     {
-        return getCompressedBuilder(null, fileCacheService, diskAccessMode);
+        return getCompressedBuilder(null, fileCacheService, diskAccessMode, allocator);
     }
 
-    public static Builder getCompressedBuilder(CompressedSequentialWriter writer, FileCacheService fileCacheService, Config.DiskAccessMode diskAccessMode)
+    public static Builder getCompressedBuilder(CompressedSequentialWriter writer, FileCacheService fileCacheService, Config.DiskAccessMode diskAccessMode, IAllocator allocator)
     {
-        return new CompressedPoolingSegmentedFile.Builder(writer, fileCacheService, diskAccessMode);
+        return new CompressedPoolingSegmentedFile.Builder(writer, fileCacheService, diskAccessMode, allocator);
     }
 
     public abstract FileDataInput getSegment(long position);
