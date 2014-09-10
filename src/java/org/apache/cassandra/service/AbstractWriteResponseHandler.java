@@ -43,6 +43,7 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
     protected final Collection<InetAddress> pendingEndpoints;
     private final WriteType writeType;
     protected final DatabaseDescriptor databaseDescriptor;
+    private final EndpointIsAlivePredicate endpointIsAlivePredicate;
 
     /**
      * @param callback A callback to be called when the write is successful.
@@ -53,7 +54,8 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
                                            ConsistencyLevel consistencyLevel,
                                            Runnable callback,
                                            WriteType writeType,
-                                           DatabaseDescriptor databaseDescriptor)
+                                           DatabaseDescriptor databaseDescriptor,
+                                           EndpointIsAlivePredicate endpointIsAlivePredicate)
     {
         this.keyspace = keyspace;
         this.pendingEndpoints = pendingEndpoints;
@@ -63,6 +65,7 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
         this.callback = callback;
         this.writeType = writeType;
         this.databaseDescriptor = databaseDescriptor;
+        this.endpointIsAlivePredicate = endpointIsAlivePredicate;
     }
 
     public void get() throws WriteTimeoutException
@@ -110,7 +113,7 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
 
     public void assureSufficientLiveNodes() throws UnavailableException
     {
-        consistencyLevel.assureSufficientLiveNodes(keyspace, Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), isAlive), databaseDescriptor.getLocalDataCenter(), databaseDescriptor.getEndpointSnitch());
+        consistencyLevel.assureSufficientLiveNodes(keyspace, Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), endpointIsAlivePredicate), databaseDescriptor.getLocalDataCenter(), databaseDescriptor.getEndpointSnitch());
     }
 
     protected void signal()

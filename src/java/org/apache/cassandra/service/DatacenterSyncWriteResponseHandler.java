@@ -44,10 +44,11 @@ public class DatacenterSyncWriteResponseHandler extends AbstractWriteResponseHan
                                               Keyspace keyspace,
                                               Runnable callback,
                                               WriteType writeType,
-                                              DatabaseDescriptor databaseDescriptor)
+                                              DatabaseDescriptor databaseDescriptor,
+                                              EndpointIsAlivePredicate endpointIsAlivePredicate)
     {
         // Response is been managed by the map so make it 1 for the superclass.
-        super(keyspace, naturalEndpoints, pendingEndpoints, consistencyLevel, callback, writeType, databaseDescriptor);
+        super(keyspace, naturalEndpoints, pendingEndpoints, consistencyLevel, callback, writeType, databaseDescriptor, endpointIsAlivePredicate);
         assert consistencyLevel == ConsistencyLevel.EACH_QUORUM;
 
         strategy = (NetworkTopologyStrategy) keyspace.getReplicationStrategy();

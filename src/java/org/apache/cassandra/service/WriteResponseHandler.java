@@ -49,20 +49,21 @@ public class WriteResponseHandler extends AbstractWriteResponseHandler
                                 Keyspace keyspace,
                                 Runnable callback,
                                 WriteType writeType,
-                                DatabaseDescriptor databaseDescriptor)
+                                DatabaseDescriptor databaseDescriptor,
+                                EndpointIsAlivePredicate endpointIsAlivePredicate)
     {
-        super(keyspace, writeEndpoints, pendingEndpoints, consistencyLevel, callback, writeType, databaseDescriptor);
+        super(keyspace, writeEndpoints, pendingEndpoints, consistencyLevel, callback, writeType, databaseDescriptor, endpointIsAlivePredicate);
         responses = totalBlockFor();
     }
 
-    public WriteResponseHandler(InetAddress endpoint, WriteType writeType, Runnable callback, DatabaseDescriptor databaseDescriptor)
+    public WriteResponseHandler(InetAddress endpoint, WriteType writeType, Runnable callback, DatabaseDescriptor databaseDescriptor, EndpointIsAlivePredicate endpointIsAlivePredicate)
     {
-        this(Arrays.asList(endpoint), Collections.<InetAddress>emptyList(), ConsistencyLevel.ONE, null, callback, writeType, databaseDescriptor);
+        this(Arrays.asList(endpoint), Collections.<InetAddress>emptyList(), ConsistencyLevel.ONE, null, callback, writeType, databaseDescriptor, endpointIsAlivePredicate);
     }
 
-    public WriteResponseHandler(InetAddress endpoint, WriteType writeType, DatabaseDescriptor databaseDescriptor)
+    public WriteResponseHandler(InetAddress endpoint, WriteType writeType, DatabaseDescriptor databaseDescriptor, EndpointIsAlivePredicate endpointIsAlivePredicate)
     {
-        this(endpoint, writeType, null, databaseDescriptor);
+        this(endpoint, writeType, null, databaseDescriptor, endpointIsAlivePredicate);
     }
 
     public void response(MessageIn m)

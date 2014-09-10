@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import com.google.common.base.Predicate;
 
 import org.apache.cassandra.gms.FailureDetector;
+import org.apache.cassandra.gms.IFailureDetector;
 
 /**
  * implementors of IAsyncCallback need to make sure that any public methods
@@ -31,11 +32,18 @@ import org.apache.cassandra.gms.FailureDetector;
  */
 public interface IAsyncCallback<T>
 {
-    public static Predicate<InetAddress> isAlive = new Predicate<InetAddress>()
+    public static class EndpointIsAlivePredicate implements Predicate<InetAddress>
     {
+        private final IFailureDetector failureDetector;
+
+        public EndpointIsAlivePredicate(IFailureDetector failureDetector)
+        {
+            this.failureDetector = failureDetector;
+        }
+
         public boolean apply(InetAddress endpoint)
         {
-            return FailureDetector.instance.isAlive(endpoint);
+            return failureDetector.isAlive(endpoint);
         }
     };
 

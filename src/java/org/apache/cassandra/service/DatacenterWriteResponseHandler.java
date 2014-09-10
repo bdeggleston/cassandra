@@ -38,9 +38,10 @@ public class DatacenterWriteResponseHandler extends WriteResponseHandler
                                           Keyspace keyspace,
                                           Runnable callback,
                                           WriteType writeType,
-                                          DatabaseDescriptor databaseDescriptor)
+                                          DatabaseDescriptor databaseDescriptor,
+                                          EndpointIsAlivePredicate endpointIsAlivePredicate)
     {
-        super(naturalEndpoints, pendingEndpoints, consistencyLevel, keyspace, callback, writeType, databaseDescriptor);
+        super(naturalEndpoints, pendingEndpoints, consistencyLevel, keyspace, callback, writeType, databaseDescriptor, endpointIsAlivePredicate);
         assert consistencyLevel.isDatacenterLocal();
     }
 

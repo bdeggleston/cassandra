@@ -35,6 +35,7 @@ import com.google.common.util.concurrent.RateLimiter;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.IAsyncCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +54,6 @@ import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageProxy;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.WriteResponseHandler;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
@@ -403,7 +403,7 @@ public class BatchlogManager implements BatchlogManagerMBean
             if (liveEndpoints.isEmpty())
                 return null;
 
-            ReplayWriteResponseHandler handler = new ReplayWriteResponseHandler(liveEndpoints, DatabaseDescriptor.instance);
+            ReplayWriteResponseHandler handler = new ReplayWriteResponseHandler(liveEndpoints, DatabaseDescriptor.instance, new IAsyncCallback.EndpointIsAlivePredicate(FailureDetector.instance));
             MessageOut<Mutation> message = mutation.createMessage();
             for (InetAddress endpoint : liveEndpoints)
                 MessagingService.instance.sendRR(message, endpoint, handler, false);
@@ -426,9 +426,9 @@ public class BatchlogManager implements BatchlogManagerMBean
         {
             private final Set<InetAddress> undelivered = Collections.newSetFromMap(new ConcurrentHashMap<InetAddress, Boolean>());
 
-            public ReplayWriteResponseHandler(Collection<InetAddress> writeEndpoints, DatabaseDescriptor databaseDescriptor)
+            public ReplayWriteResponseHandler(Collection<InetAddress> writeEndpoints, DatabaseDescriptor databaseDescriptor, EndpointIsAlivePredicate endpointIsAlivePredicate)
             {
-                super(writeEndpoints, Collections.<InetAddress>emptySet(), null, null, null, WriteType.UNLOGGED_BATCH, databaseDescriptor);
+                super(writeEndpoints, Collections.<InetAddress>emptySet(), null, null, null, WriteType.UNLOGGED_BATCH, databaseDescriptor, endpointIsAlivePredicate);
                 undelivered.addAll(writeEndpoints);
             }
 

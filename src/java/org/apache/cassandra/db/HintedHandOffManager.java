@@ -37,6 +37,7 @@ import com.google.common.util.concurrent.Uninterruptibles;
 
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -456,7 +457,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                         deleteHint(hostIdBytes, hint.name(), hint.timestamp());
                     }
                 };
-                WriteResponseHandler responseHandler = new WriteResponseHandler(endpoint, WriteType.SIMPLE, callback, DatabaseDescriptor.instance);
+                WriteResponseHandler responseHandler = new WriteResponseHandler(endpoint, WriteType.SIMPLE, callback, DatabaseDescriptor.instance, new IAsyncCallback.EndpointIsAlivePredicate(FailureDetector.instance));
                 MessagingService.instance.sendRR(message, endpoint, responseHandler, false);
                 responseHandlers.add(responseHandler);
             }

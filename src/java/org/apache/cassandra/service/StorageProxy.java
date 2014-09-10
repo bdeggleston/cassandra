@@ -93,6 +93,7 @@ public class StorageProxy implements StorageProxyMBean
     private final ClientRequestMetrics writeMetrics = new ClientRequestMetrics("Write");
 
     private static final double CONCURRENT_SUBREQUESTS_MARGIN = 0.10;
+    public final IAsyncCallback.EndpointIsAlivePredicate endpointIsAlivePredicate = new IAsyncCallback.EndpointIsAlivePredicate(FailureDetector.instance);
 
     public static StorageProxy create(boolean registerMBean)
     {
@@ -294,7 +295,7 @@ public class StorageProxy implements StorageProxyMBean
             pendingEndpoints = ImmutableList.copyOf(Iterables.filter(pendingEndpoints, isLocalDc));
         }
         int requiredParticipants = pendingEndpoints.size() + 1 + naturalEndpoints.size() / 2; // See CASSANDRA-833
-        List<InetAddress> liveEndpoints = ImmutableList.copyOf(Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), IAsyncCallback.isAlive));
+        List<InetAddress> liveEndpoints = ImmutableList.copyOf(Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), endpointIsAlivePredicate));
         if (liveEndpoints.size() < requiredParticipants)
             throw new UnavailableException(consistencyForPaxos, requiredParticipants, liveEndpoints.size());
         return Pair.create(liveEndpoints, requiredParticipants);
@@ -428,7 +429,7 @@ public class StorageProxy implements StorageProxyMBean
         if (shouldBlock)
         {
             AbstractReplicationStrategy rs = keyspace.getReplicationStrategy();
-            responseHandler = rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistencyLevel, null, WriteType.SIMPLE);
+            responseHandler = rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistencyLevel, null, WriteType.SIMPLE, endpointIsAlivePredicate);
         }
 
         MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_COMMIT, proposal, MessagingService.instance.commitSerializer);
@@ -623,7 +624,8 @@ public class StorageProxy implements StorageProxyMBean
                                                                         KeyspaceManager.instance.open(Keyspace.SYSTEM_KS),
                                                                         null,
                                                                         WriteType.BATCH_LOG,
-                                                                        DatabaseDescriptor.instance);
+                                                                        DatabaseDescriptor.instance,
+                                                                        endpointIsAlivePredicate);
 
         MessageOut<Mutation> message = BatchlogManager.getBatchlogMutationFor(mutations, uuid, MessagingService.current_version)
                                                       .createMessage();
@@ -659,7 +661,8 @@ public class StorageProxy implements StorageProxyMBean
                                                                         KeyspaceManager.instance.open(Keyspace.SYSTEM_KS),
                                                                         null,
                                                                         WriteType.SIMPLE,
-                                                                        DatabaseDescriptor.instance);
+                                                                        DatabaseDescriptor.instance,
+                                                                        endpointIsAlivePredicate);
         Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(uuid));
         mutation.delete(SystemKeyspace.BATCHLOG_CF, FBUtilities.timestampMicros());
         MessageOut<Mutation> message = mutation.createMessage();
@@ -714,7 +717,7 @@ public class StorageProxy implements StorageProxyMBean
         List<InetAddress> naturalEndpoints = LocatorConfig.instance.getNaturalEndpoints(keyspaceName, tk);
         Collection<InetAddress> pendingEndpoints = LocatorConfig.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspaceName);
 
-        AbstractWriteResponseHandler responseHandler = rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, callback, writeType);
+        AbstractWriteResponseHandler responseHandler = rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, callback, writeType, endpointIsAlivePredicate);
 
         // exit early if we can't fulfill the CL at this time
         responseHandler.assureSufficientLiveNodes();
@@ -731,7 +734,7 @@ public class StorageProxy implements StorageProxyMBean
         Token tk = LocatorConfig.instance.getPartitioner().getToken(mutation.key());
         List<InetAddress> naturalEndpoints = LocatorConfig.instance.getNaturalEndpoints(keyspaceName, tk);
         Collection<InetAddress> pendingEndpoints = LocatorConfig.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspaceName);
-        AbstractWriteResponseHandler responseHandler = rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, null, writeType);
+        AbstractWriteResponseHandler responseHandler = rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, null, writeType, endpointIsAlivePredicate);
         return new WriteResponseHandlerWrapper(responseHandler, mutation);
     }
 
@@ -1011,10 +1014,10 @@ public class StorageProxy implements StorageProxyMBean
             List<InetAddress> naturalEndpoints = LocatorConfig.instance.getNaturalEndpoints(keyspaceName, tk);
             Collection<InetAddress> pendingEndpoints = LocatorConfig.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspaceName);
 
-            rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, cm.consistency(), null, WriteType.COUNTER).assureSufficientLiveNodes();
+            rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, cm.consistency(), null, WriteType.COUNTER, endpointIsAlivePredicate).assureSufficientLiveNodes();
 
             // Forward the actual update to the chosen leader replica
-            AbstractWriteResponseHandler responseHandler = new WriteResponseHandler(endpoint, WriteType.COUNTER, DatabaseDescriptor.instance);
+            AbstractWriteResponseHandler responseHandler = new WriteResponseHandler(endpoint, WriteType.COUNTER, DatabaseDescriptor.instance, endpointIsAlivePredicate);
 
             Tracing.instance.trace("Enqueuing counter update to {}", endpoint);
             MessagingService.instance.sendRR(cm.makeMutationMessage(), endpoint, responseHandler, false);
