@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.ListType;
@@ -112,16 +113,18 @@ public class FunctionCall extends Term.NonTerminal
     {
         private final FunctionName name;
         private final List<Term.Raw> terms;
+        private final Schema schema;
 
-        public Raw(FunctionName name, List<Term.Raw> terms)
+        public Raw(FunctionName name, List<Term.Raw> terms, Schema schema)
         {
             this.name = name;
             this.terms = terms;
+            this.schema = schema;
         }
 
         public Term prepare(String keyspace, ColumnSpecification receiver) throws InvalidRequestException
         {
-            Function fun = Functions.get(keyspace, name, terms, receiver.ksName, receiver.cfName);
+            Function fun = Functions.get(keyspace, name, terms, receiver.ksName, receiver.cfName, schema);
             if (fun == null)
                 throw new InvalidRequestException(String.format("Unknown function %s called", name));
 
@@ -170,7 +173,7 @@ public class FunctionCall extends Term.NonTerminal
             // later with a more helpful error message that if we were to return false here.
             try
             {
-                Function fun = Functions.get(keyspace, name, terms, receiver.ksName, receiver.cfName);
+                Function fun = Functions.get(keyspace, name, terms, receiver.ksName, receiver.cfName, schema);
                 if (fun != null && receiver.type.equals(fun.returnType()))
                     return AssignmentTestable.TestResult.EXACT_MATCH;
                 else if (fun == null || receiver.type.isValueCompatibleWith(fun.returnType()))

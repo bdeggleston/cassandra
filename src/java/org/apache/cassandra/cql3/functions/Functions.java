@@ -77,10 +77,10 @@ public abstract class Functions
     /**
      * Loading existing UDFs from the schema.
      */
-    public static void loadUDFFromSchema()
+    public static void loadUDFFromSchema(QueryProcessor queryProcessor)
     {
         logger.debug("Loading UDFs");
-        for (UntypedResultSet.Row row : QueryProcessor.instance.executeOnceInternal(SELECT_UDFS))
+        for (UntypedResultSet.Row row : queryProcessor.executeOnceInternal(SELECT_UDFS))
             addFunction(UDFunction.fromSchema(row));
     }
 
@@ -96,11 +96,12 @@ public abstract class Functions
                                FunctionName name,
                                List<? extends AssignmentTestable> providedArgs,
                                String receiverKs,
-                               String receiverCf)
+                               String receiverCf,
+                               Schema schema)
     throws InvalidRequestException
     {
         if (name.equals(TOKEN_FUNCTION_NAME))
-            return new TokenFct(Schema.instance.getCFMetaData(receiverKs, receiverCf));
+            return new TokenFct(schema.getCFMetaData(receiverKs, receiverCf));
 
         List<Function> candidates = declared.get(name);
         if (candidates.isEmpty())

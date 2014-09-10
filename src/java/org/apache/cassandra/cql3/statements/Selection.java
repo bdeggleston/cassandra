@@ -24,6 +24,7 @@ import java.util.List;
 
 import com.google.common.collect.Iterators;
 
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.cql3.functions.Function;
 import org.apache.cassandra.cql3.functions.Functions;
@@ -107,7 +108,7 @@ public abstract class Selection
         return idx;
     }
 
-    private static Selector makeSelector(CFMetaData cfm, RawSelector raw, List<ColumnDefinition> defs, List<ColumnSpecification> metadata) throws InvalidRequestException
+    private static Selector makeSelector(CFMetaData cfm, RawSelector raw, List<ColumnDefinition> defs, List<ColumnSpecification> metadata, Schema schema) throws InvalidRequestException
     {
         if (raw.selectable instanceof ColumnIdentifier)
         {
@@ -136,7 +137,7 @@ public abstract class Selection
         else if (raw.selectable instanceof Selectable.WithFieldSelection)
         {
             Selectable.WithFieldSelection withField = (Selectable.WithFieldSelection)raw.selectable;
-            Selector selected = makeSelector(cfm, new RawSelector(withField.selected, null), defs, null);
+            Selector selected = makeSelector(cfm, new RawSelector(withField.selected, null), defs, null, schema);
             AbstractType<?> type = selected.getType();
             if (!(type instanceof UserType))
                 throw new InvalidRequestException(String.format("Invalid field selection: %s of type %s is not a user type", withField.selected, type.asCQL3Type()));
@@ -158,10 +159,10 @@ public abstract class Selection
             Selectable.WithFunction withFun = (Selectable.WithFunction)raw.selectable;
             List<Selector> args = new ArrayList<>(withFun.args.size());
             for (Selectable rawArg : withFun.args)
-                args.add(makeSelector(cfm, new RawSelector(rawArg, null), defs, null));
+                args.add(makeSelector(cfm, new RawSelector(rawArg, null), defs, null, schema));
 
             // resolve built-in functions before user defined functions
-            Function fun = Functions.get(cfm.ksName, withFun.functionName, args, cfm.ksName, cfm.cfName);
+            Function fun = Functions.get(cfm.ksName, withFun.functionName, args, cfm.ksName, cfm.cfName, schema);
             if (fun == null)
                 throw new InvalidRequestException(String.format("Unknown function '%s'", withFun.functionName));
             if (metadata != null)
@@ -205,7 +206,7 @@ public abstract class Selection
         return new ColumnSpecification(cfm.ksName, cfm.cfName, alias, type);
     }
 
-    public static Selection fromSelectors(CFMetaData cfm, List<RawSelector> rawSelectors) throws InvalidRequestException
+    public static Selection fromSelectors(CFMetaData cfm, List<RawSelector> rawSelectors, Schema schema) throws InvalidRequestException
     {
         boolean usesFunction = isUsingFunction(rawSelectors);
 
@@ -218,7 +219,7 @@ public abstract class Selection
             boolean collectTTLs = false;
             for (RawSelector rawSelector : rawSelectors)
             {
-                Selector selector = makeSelector(cfm, rawSelector, defs, metadata);
+                Selector selector = makeSelector(cfm, rawSelector, defs, metadata, schema);
                 selectors.add(selector);
                 if (selector instanceof WritetimeOrTTLSelector)
                 {
