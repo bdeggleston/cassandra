@@ -35,18 +35,20 @@ public class CommitVerbHandler implements IVerbHandler<Commit>
     private final SystemKeyspace systemKeyspace;
     private final KeyspaceManager keyspaceManager;
     private final MessagingService messagingService;
+    private final PaxosManager paxosManager;
 
-    public CommitVerbHandler(Tracing tracing, SystemKeyspace systemKeyspace, KeyspaceManager keyspaceManager, MessagingService messagingService)
+    public CommitVerbHandler(Tracing tracing, SystemKeyspace systemKeyspace, KeyspaceManager keyspaceManager, MessagingService messagingService, PaxosManager paxosManager)
     {
         this.tracing = tracing;
         this.systemKeyspace = systemKeyspace;
         this.keyspaceManager = keyspaceManager;
         this.messagingService = messagingService;
+        this.paxosManager = paxosManager;
     }
 
     public void doVerb(MessageIn<Commit> message, int id)
     {
-        PaxosState.commit(message.payload, tracing, systemKeyspace, keyspaceManager);
+        paxosManager.commit(message.payload, tracing, systemKeyspace, keyspaceManager);
 
         WriteResponse response = new WriteResponse();
         tracing.trace("Enqueuing acknowledge to {}", message.from);

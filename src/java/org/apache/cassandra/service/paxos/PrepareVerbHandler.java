@@ -33,19 +33,21 @@ public class PrepareVerbHandler implements IVerbHandler<Commit>
     private final Tracing tracing;
     private final SystemKeyspace systemKeyspace;
     private final MessagingService messagingService;
+    private final PaxosManager paxosManager;
     private final PrepareResponse.Serializer serializer;
 
-    public PrepareVerbHandler(Tracing tracing, SystemKeyspace systemKeyspace, MessagingService messagingService, PrepareResponse.Serializer serializer)
+    public PrepareVerbHandler(Tracing tracing, SystemKeyspace systemKeyspace, MessagingService messagingService, PaxosManager paxosManager, PrepareResponse.Serializer serializer)
     {
         this.tracing = tracing;
         this.systemKeyspace = systemKeyspace;
         this.messagingService = messagingService;
+        this.paxosManager = paxosManager;
         this.serializer = serializer;
     }
 
     public void doVerb(MessageIn<Commit> message, int id)
     {
-        PrepareResponse response = PaxosState.prepare(message.payload, tracing, systemKeyspace);
+        PrepareResponse response = paxosManager.prepare(message.payload, tracing, systemKeyspace);
         MessageOut<PrepareResponse> reply = new MessageOut<PrepareResponse>(MessagingService.Verb.REQUEST_RESPONSE, response, serializer);
         messagingService.sendReply(reply, id, message.from);
     }

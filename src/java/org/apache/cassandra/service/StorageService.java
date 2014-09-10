@@ -51,6 +51,7 @@ import com.google.common.util.concurrent.Uninterruptibles;
 
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.io.sstable.SSTableReaderFactory;
+import org.apache.cassandra.service.paxos.PaxosManager;
 import org.apache.commons.lang3.StringUtils;
 
 import org.slf4j.Logger;
@@ -184,9 +185,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAGED_RANGE, new RangeSliceVerbHandler(Tracing.instance, MessagingService.instance, this, MessagingService.instance.rangeSliceReplySerializer));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.COUNTER_MUTATION, new CounterMutationVerbHandler(LocatorConfig.instance, MessagingService.instance, StorageProxy.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.TRUNCATE, new TruncateVerbHandler(Tracing.instance, KeyspaceManager.instance, MessagingService.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PREPARE, new PrepareVerbHandler(Tracing.instance, SystemKeyspace.instance, MessagingService.instance, MessagingService.instance.prepareResponseSerializer));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PROPOSE, new ProposeVerbHandler(Tracing.instance, SystemKeyspace.instance, MessagingService.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_COMMIT, new CommitVerbHandler(Tracing.instance, SystemKeyspace.instance, KeyspaceManager.instance, MessagingService.instance));
+        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PREPARE, new PrepareVerbHandler(Tracing.instance, SystemKeyspace.instance, MessagingService.instance, PaxosManager.instance, MessagingService.instance.prepareResponseSerializer));
+        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PROPOSE, new ProposeVerbHandler(Tracing.instance, SystemKeyspace.instance, MessagingService.instance, PaxosManager.instance));
+        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_COMMIT, new CommitVerbHandler(Tracing.instance, SystemKeyspace.instance, KeyspaceManager.instance, MessagingService.instance, PaxosManager.instance));
 
         // see BootStrapper for a summary of how the bootstrap verbs interact
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.REPLICATION_FINISHED, new ReplicationFinishedVerbHandler(MessagingService.instance, this));
