@@ -93,9 +93,9 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
         this.serializer = serializer;
     }
 
-    public MessageOut<RangeSliceCommand> createMessage()
+    public MessageOut<RangeSliceCommand> createMessage(MessagingService messagingService)
     {
-        return new MessageOut<>(MessagingService.Verb.RANGE_SLICE, this, serializer);
+        return new MessageOut<>(messagingService, MessagingService.Verb.RANGE_SLICE, this, serializer);
     }
 
     public AbstractRangeCommand forSubRange(AbstractBounds<RowPosition> subRange)

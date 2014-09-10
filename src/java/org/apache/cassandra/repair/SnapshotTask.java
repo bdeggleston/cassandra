@@ -45,7 +45,7 @@ public class SnapshotTask extends AbstractFuture<InetAddress> implements Runnabl
 
     public void run()
     {
-        messagingService.sendRRWithFailure(new SnapshotMessage(desc, messagingService.repairMessageSerializer).createMessage(),
+        messagingService.sendRRWithFailure(new SnapshotMessage(desc, messagingService.repairMessageSerializer).createMessage(messagingService),
                 endpoint,
                 new SnapshotCallback(this));
     }

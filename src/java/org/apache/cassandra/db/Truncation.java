@@ -41,9 +41,9 @@ public class Truncation
         this.columnFamily = columnFamily;
     }
 
-    public MessageOut<Truncation> createMessage()
+    public MessageOut<Truncation> createMessage(MessagingService messagingService)
     {
-        return new MessageOut<Truncation>(MessagingService.Verb.TRUNCATE, this, serializer);
+        return new MessageOut<Truncation>(messagingService, MessagingService.Verb.TRUNCATE, this, serializer);
     }
 
     public String toString()

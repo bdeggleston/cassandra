@@ -85,7 +85,8 @@ public class GossipDigestAckVerbHandler implements IVerbHandler<GossipDigestAck>
                 deltaEpStateMap.put(addr, localEpStatePtr);
         }
 
-        MessageOut<GossipDigestAck2> gDigestAck2Message = new MessageOut<GossipDigestAck2>(MessagingService.Verb.GOSSIP_DIGEST_ACK2,
+        MessageOut<GossipDigestAck2> gDigestAck2Message = new MessageOut<GossipDigestAck2>(messagingService,
+                                                                                           MessagingService.Verb.GOSSIP_DIGEST_ACK2,
                                                                                            new GossipDigestAck2(deltaEpStateMap),
                                                                                            GossipDigestAck2.serializer);
         if (logger.isTraceEnabled())

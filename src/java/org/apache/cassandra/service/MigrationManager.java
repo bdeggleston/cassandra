@@ -408,7 +408,8 @@ public class MigrationManager
 
     private void pushSchemaMutation(InetAddress endpoint, Collection<Mutation> schema)
     {
-        MessageOut<Collection<Mutation>> msg = new MessageOut<>(MessagingService.Verb.DEFINITIONS_UPDATE,
+        MessageOut<Collection<Mutation>> msg = new MessageOut<>(MessagingService.instance,
+                                                                MessagingService.Verb.DEFINITIONS_UPDATE,
                                                                 schema,
                                                                 MigrationsSerializer.instance);
         MessagingService.instance.sendOneWay(msg, endpoint);

@@ -42,9 +42,9 @@ public class RangeSliceReply
         this.serializer = serializer;
     }
 
-    public MessageOut<RangeSliceReply> createMessage()
+    public MessageOut<RangeSliceReply> createMessage(MessagingService messagingService)
     {
-        return new MessageOut<RangeSliceReply>(MessagingService.Verb.REQUEST_RESPONSE, this, serializer);
+        return new MessageOut<RangeSliceReply>(messagingService, MessagingService.Verb.REQUEST_RESPONSE, this, serializer);
     }
 
     @Override

@@ -66,7 +66,7 @@ public class SerializationsTest extends AbstractSerializationsTester
             }
             // also serialize MessageOut
             for (RepairMessage message : messages)
-                message.createMessage().serialize(out,  getVersion());
+                message.createMessage(MessagingService.instance).serialize(out,  getVersion());
         }
     }
 

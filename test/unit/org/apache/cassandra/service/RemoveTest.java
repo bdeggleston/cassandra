@@ -146,7 +146,7 @@ public class RemoveTest
 
         for (InetAddress host : hosts)
         {
-            MessageOut msg = new MessageOut(host, MessagingService.Verb.REPLICATION_FINISHED, null, null, Collections.<String, byte[]>emptyMap());
+            MessageOut msg = new MessageOut(MessagingService.instance, host, MessagingService.Verb.REPLICATION_FINISHED, null, null, Collections.<String, byte[]>emptyMap());
             MessagingService.instance.sendRR(msg, DatabaseDescriptor.instance.getBroadcastAddress());
         }
 

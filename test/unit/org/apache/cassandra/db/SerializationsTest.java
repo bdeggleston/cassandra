@@ -98,17 +98,17 @@ public class SerializationsTest extends AbstractSerializationsTester
         RangeSliceCommand.Serializer serializer = MessagingService.instance.rangeSliceCommandSerializer;
 
         RangeSliceCommand namesCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, namesPred, bounds, 100, DatabaseDescriptor.instance, KeyspaceManager.instance, serializer);
-        MessageOut<RangeSliceCommand> namesCmdMsg = namesCmd.createMessage();
+        MessageOut<RangeSliceCommand> namesCmdMsg = namesCmd.createMessage(MessagingService.instance);
         RangeSliceCommand emptyRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, emptyRangePred, bounds, 100, DatabaseDescriptor.instance, KeyspaceManager.instance, serializer);
-        MessageOut<RangeSliceCommand> emptyRangeCmdMsg = emptyRangeCmd.createMessage();
+        MessageOut<RangeSliceCommand> emptyRangeCmdMsg = emptyRangeCmd.createMessage(MessagingService.instance);
         RangeSliceCommand regRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, nonEmptyRangePred, bounds, 100, DatabaseDescriptor.instance, KeyspaceManager.instance, serializer);
-        MessageOut<RangeSliceCommand> regRangeCmdMsg = regRangeCmd.createMessage();
+        MessageOut<RangeSliceCommand> regRangeCmdMsg = regRangeCmd.createMessage(MessagingService.instance);
         RangeSliceCommand namesCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, namesSCPred, bounds, 100, DatabaseDescriptor.instance, KeyspaceManager.instance, serializer);
-        MessageOut<RangeSliceCommand> namesCmdSupMsg = namesCmdSup.createMessage();
+        MessageOut<RangeSliceCommand> namesCmdSupMsg = namesCmdSup.createMessage(MessagingService.instance);
         RangeSliceCommand emptyRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, emptyRangePred, bounds, 100, DatabaseDescriptor.instance, KeyspaceManager.instance, serializer);
-        MessageOut<RangeSliceCommand> emptyRangeCmdSupMsg = emptyRangeCmdSup.createMessage();
+        MessageOut<RangeSliceCommand> emptyRangeCmdSupMsg = emptyRangeCmdSup.createMessage(MessagingService.instance);
         RangeSliceCommand regRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, nonEmptyRangeSCPred, bounds, 100, DatabaseDescriptor.instance, KeyspaceManager.instance, serializer);
-        MessageOut<RangeSliceCommand> regRangeCmdSupMsg = regRangeCmdSup.createMessage();
+        MessageOut<RangeSliceCommand> regRangeCmdSupMsg = regRangeCmdSup.createMessage(MessagingService.instance);
 
         DataOutputStreamAndChannel out = getOutput("db.RangeSliceCommand.bin");
         namesCmdMsg.serialize(out, getVersion());
@@ -164,8 +164,8 @@ public class SerializationsTest extends AbstractSerializationsTester
         slicesByNamesSerializer.serialize(superCmd, out, getVersion());
         MessagingService.instance.readCommandSerializer.serialize(standardCmd, out, getVersion());
         MessagingService.instance.readCommandSerializer.serialize(superCmd, out, getVersion());
-        standardCmd.createMessage().serialize(out, getVersion());
-        superCmd.createMessage().serialize(out, getVersion());
+        standardCmd.createMessage(MessagingService.instance).serialize(out, getVersion());
+        superCmd.createMessage(MessagingService.instance).serialize(out, getVersion());
         out.close();
 
         // test serializedSize
@@ -213,8 +213,8 @@ public class SerializationsTest extends AbstractSerializationsTester
         slicefromReadSerializer.serialize(superCmd, out, getVersion());
         MessagingService.instance.readCommandSerializer.serialize(standardCmd, out, getVersion());
         MessagingService.instance.readCommandSerializer.serialize(superCmd, out, getVersion());
-        standardCmd.createMessage().serialize(out, getVersion());
-        superCmd.createMessage().serialize(out, getVersion());
+        standardCmd.createMessage(MessagingService.instance).serialize(out, getVersion());
+        superCmd.createMessage(MessagingService.instance).serialize(out, getVersion());
 
         out.close();
 
@@ -285,11 +285,11 @@ public class SerializationsTest extends AbstractSerializationsTester
         MutationFactory.instance.serializer.serialize(superRm, out, getVersion());
         MutationFactory.instance.serializer.serialize(mixedRm, out, getVersion());
 
-        standardRowRm.createMessage().serialize(out, getVersion());
-        superRowRm.createMessage().serialize(out, getVersion());
-        standardRm.createMessage().serialize(out, getVersion());
-        superRm.createMessage().serialize(out, getVersion());
-        mixedRm.createMessage().serialize(out, getVersion());
+        standardRowRm.createMessage(MessagingService.instance).serialize(out, getVersion());
+        superRowRm.createMessage(MessagingService.instance).serialize(out, getVersion());
+        standardRm.createMessage(MessagingService.instance).serialize(out, getVersion());
+        superRm.createMessage(MessagingService.instance).serialize(out, getVersion());
+        mixedRm.createMessage(MessagingService.instance).serialize(out, getVersion());
 
         out.close();
 
@@ -332,9 +332,9 @@ public class SerializationsTest extends AbstractSerializationsTester
         TruncateResponse.serializer.serialize(aff, out, getVersion());
         TruncateResponse.serializer.serialize(neg, out, getVersion());
 
-        tr.createMessage().serialize(out, getVersion());
-        aff.createMessage().serialize(out, getVersion());
-        neg.createMessage().serialize(out, getVersion());
+        tr.createMessage(MessagingService.instance).serialize(out, getVersion());
+        aff.createMessage(MessagingService.instance).serialize(out, getVersion());
+        neg.createMessage(MessagingService.instance).serialize(out, getVersion());
         // todo: notice how CF names weren't validated.
         out.close();
 

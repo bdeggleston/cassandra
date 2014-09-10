@@ -32,9 +32,9 @@ public class WriteResponse
 {
     public static final WriteResponseSerializer serializer = new WriteResponseSerializer();
 
-    public MessageOut<WriteResponse> createMessage()
+    public MessageOut<WriteResponse> createMessage(MessagingService messagingService)
     {
-        return new MessageOut<WriteResponse>(MessagingService.Verb.REQUEST_RESPONSE, this, serializer);
+        return new MessageOut<WriteResponse>(messagingService, MessagingService.Verb.REQUEST_RESPONSE, this, serializer);
     }
 
     public static class WriteResponseSerializer implements IVersionedSerializer<WriteResponse>

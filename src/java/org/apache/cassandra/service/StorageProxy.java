@@ -381,7 +381,7 @@ public class StorageProxy implements StorageProxyMBean
      */
     private void sendCommit(Commit commit, Iterable<InetAddress> replicas)
     {
-        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_COMMIT, commit, MessagingService.instance.commitSerializer);
+        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.instance, MessagingService.Verb.PAXOS_COMMIT, commit, MessagingService.instance.commitSerializer);
         for (InetAddress target : replicas)
             MessagingService.instance.sendOneWay(message, target);
     }
@@ -390,7 +390,7 @@ public class StorageProxy implements StorageProxyMBean
     throws WriteTimeoutException
     {
         PrepareCallback callback = new PrepareCallback(toPrepare.key, toPrepare.update.metadata(), requiredParticipants, consistencyForPaxos, DatabaseDescriptor.instance.getWriteRpcTimeout());
-        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_PREPARE, toPrepare, MessagingService.instance.commitSerializer);
+        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.instance, MessagingService.Verb.PAXOS_PREPARE, toPrepare, MessagingService.instance.commitSerializer);
         for (InetAddress target : endpoints)
             MessagingService.instance.sendRR(message, target, callback);
         callback.await();
@@ -401,7 +401,7 @@ public class StorageProxy implements StorageProxyMBean
     throws WriteTimeoutException
     {
         ProposeCallback callback = new ProposeCallback(endpoints.size(), requiredParticipants, !timeoutIfPartial, consistencyLevel, DatabaseDescriptor.instance.getWriteRpcTimeout());
-        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_PROPOSE, proposal, MessagingService.instance.commitSerializer);
+        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.instance, MessagingService.Verb.PAXOS_PROPOSE, proposal, MessagingService.instance.commitSerializer);
         for (InetAddress target : endpoints)
             MessagingService.instance.sendRR(message, target, callback);
 
@@ -432,7 +432,7 @@ public class StorageProxy implements StorageProxyMBean
             responseHandler = rs.getWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistencyLevel, null, WriteType.SIMPLE, endpointIsAlivePredicate);
         }
 
-        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_COMMIT, proposal, MessagingService.instance.commitSerializer);
+        MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.instance, MessagingService.Verb.PAXOS_COMMIT, proposal, MessagingService.instance.commitSerializer);
         for (InetAddress destination : Iterables.concat(naturalEndpoints, pendingEndpoints))
         {
             if (FailureDetector.instance.isAlive(destination))
@@ -628,7 +628,7 @@ public class StorageProxy implements StorageProxyMBean
                                                                         endpointIsAlivePredicate);
 
         MessageOut<Mutation> message = BatchlogManager.getBatchlogMutationFor(mutations, uuid, MessagingService.current_version)
-                                                      .createMessage();
+                                                      .createMessage(MessagingService.instance);
         for (InetAddress target : endpoints)
         {
             int targetVersion = MessagingService.instance.getVersion(target);
@@ -643,7 +643,7 @@ public class StorageProxy implements StorageProxyMBean
             else
             {
                 MessagingService.instance.sendRR(BatchlogManager.getBatchlogMutationFor(mutations, uuid, targetVersion)
-                                                                  .createMessage(),
+                                                                  .createMessage(MessagingService.instance),
                                                    target,
                                                    handler,
                                                    false);
@@ -665,7 +665,7 @@ public class StorageProxy implements StorageProxyMBean
                                                                         endpointIsAlivePredicate);
         Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(uuid));
         mutation.delete(SystemKeyspace.BATCHLOG_CF, FBUtilities.timestampMicros());
-        MessageOut<Mutation> message = mutation.createMessage();
+        MessageOut<Mutation> message = mutation.createMessage(MessagingService.instance);
         for (InetAddress target : endpoints)
         {
             if (target.equals(DatabaseDescriptor.instance.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS)
@@ -827,7 +827,7 @@ public class StorageProxy implements StorageProxyMBean
                 {
                     // belongs on a different server
                     if (message == null)
-                        message = mutation.createMessage();
+                        message = mutation.createMessage(MessagingService.instance);
                     String dc = LocatorConfig.instance.getEndpointSnitch().getDatacenter(destination);
                     // direct writes to local DC or old Cassandra versions
                     // (1.1 knows how to forward old-style String message IDs; updated to int in 2.0)
@@ -864,7 +864,7 @@ public class StorageProxy implements StorageProxyMBean
         {
             // for each datacenter, send the message to one node to relay the write to other replicas
             if (message == null)
-                message = mutation.createMessage();
+                message = mutation.createMessage(MessagingService.instance);
 
             for (Collection<InetAddress> dcTargets : dcGroups.values())
                 sendMessagesToNonlocalDC(message, dcTargets, responseHandler);
@@ -1304,7 +1304,7 @@ public class StorageProxy implements StorageProxyMBean
                     repairCommands.add(exec.command);
                     repairResponseHandlers.add(repairHandler);
 
-                    MessageOut<ReadCommand> message = exec.command.createMessage();
+                    MessageOut<ReadCommand> message = exec.command.createMessage(MessagingService.instance);
                     for (InetAddress endpoint : exec.getContactedReplicas())
                     {
                         Tracing.instance.trace("Enqueuing full data read to {}", endpoint);
@@ -1603,7 +1603,7 @@ public class StorageProxy implements StorageProxyMBean
                     }
                     else
                     {
-                        MessageOut<? extends AbstractRangeCommand> message = nodeCmd.createMessage();
+                        MessageOut<? extends AbstractRangeCommand> message = nodeCmd.createMessage(MessagingService.instance);
                         for (InetAddress endpoint : filteredEndpoints)
                         {
                             Tracing.instance.trace("Enqueuing request to {}", endpoint);
@@ -1757,7 +1757,7 @@ public class StorageProxy implements StorageProxyMBean
             }
         };
         // an empty message acts as a request to the SchemaCheckVerbHandler.
-        MessageOut message = new MessageOut(MessagingService.Verb.SCHEMA_CHECK);
+        MessageOut message = new MessageOut(MessagingService.instance, MessagingService.Verb.SCHEMA_CHECK);
         for (InetAddress endpoint : liveHosts)
             MessagingService.instance.sendRR(message, endpoint, cb);
 
@@ -2013,7 +2013,7 @@ public class StorageProxy implements StorageProxyMBean
         // Send out the truncate calls and track the responses with the callbacks.
         Tracing.instance.trace("Enqueuing truncate messages to hosts {}", allEndpoints);
         final Truncation truncation = new Truncation(keyspace, cfname);
-        MessageOut<Truncation> message = truncation.createMessage();
+        MessageOut<Truncation> message = truncation.createMessage(MessagingService.instance);
         for (InetAddress endpoint : allEndpoints)
             MessagingService.instance.sendRR(message, endpoint, responseHandler);
 

@@ -124,7 +124,7 @@ public class RowDataResolver extends AbstractRowResolver
             Mutation mutation = MutationFactory.instance.create(keyspaceName, key.getKey(), diffCf);
             // use a separate verb here because we don't want these to be get the white glove hint-
             // on-timeout behavior that a "real" mutation gets
-            results.add(messagingService.sendRR(mutation.createMessage(MessagingService.Verb.READ_REPAIR),
+            results.add(messagingService.sendRR(mutation.createMessage(messagingService, MessagingService.Verb.READ_REPAIR),
                                                 endpoints.get(i)));
         }
 

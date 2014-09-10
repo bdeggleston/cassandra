@@ -48,7 +48,7 @@ public class PrepareVerbHandler implements IVerbHandler<Commit>
     public void doVerb(MessageIn<Commit> message, int id)
     {
         PrepareResponse response = paxosManager.prepare(message.payload, tracing, systemKeyspace);
-        MessageOut<PrepareResponse> reply = new MessageOut<PrepareResponse>(MessagingService.Verb.REQUEST_RESPONSE, response, serializer);
+        MessageOut<PrepareResponse> reply = new MessageOut<PrepareResponse>(messagingService, MessagingService.Verb.REQUEST_RESPONSE, response, serializer);
         messagingService.sendReply(reply, id, message.from);
     }
 }

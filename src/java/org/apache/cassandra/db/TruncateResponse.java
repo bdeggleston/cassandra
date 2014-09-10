@@ -44,9 +44,9 @@ public class TruncateResponse
         this.success = success;
     }
 
-    public MessageOut<TruncateResponse> createMessage()
+    public MessageOut<TruncateResponse> createMessage(MessagingService messagingService)
     {
-        return new MessageOut<TruncateResponse>(MessagingService.Verb.REQUEST_RESPONSE, this, serializer);
+        return new MessageOut<TruncateResponse>(messagingService, MessagingService.Verb.REQUEST_RESPONSE, this, serializer);
     }
 
     public static class TruncateResponseSerializer implements IVersionedSerializer<TruncateResponse>

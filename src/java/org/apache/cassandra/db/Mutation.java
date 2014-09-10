@@ -228,14 +228,14 @@ public class Mutation implements IMutation
         keyspaceManager.open(keyspaceName).apply(this, false);
     }
 
-    public MessageOut<Mutation> createMessage()
+    public MessageOut<Mutation> createMessage(MessagingService messagingService)
     {
-        return createMessage(MessagingService.Verb.MUTATION);
+        return createMessage(messagingService, MessagingService.Verb.MUTATION);
     }
 
-    public MessageOut<Mutation> createMessage(MessagingService.Verb verb)
+    public MessageOut<Mutation> createMessage(MessagingService messagingService, MessagingService.Verb verb)
     {
-        return new MessageOut<>(verb, this, serializer);
+        return new MessageOut<>(messagingService, verb, this, serializer);
     }
 
     public long getTimeout()

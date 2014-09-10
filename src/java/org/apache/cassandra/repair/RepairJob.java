@@ -106,7 +106,7 @@ public class RepairJob
             public void send(InetAddress endpoint)
             {
                 ValidationRequest request = new ValidationRequest(desc, gcBefore, messagingService.repairMessageSerializer);
-                messagingService.sendOneWay(request.createMessage(), endpoint);
+                messagingService.sendOneWay(request.createMessage(messagingService), endpoint);
             }
         };
     }

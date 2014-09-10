@@ -27,11 +27,9 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 
 import org.apache.cassandra.concurrent.Stage;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.UUIDGen;
 
 import static org.apache.cassandra.tracing.Tracing.TRACE_HEADER;
@@ -43,52 +41,55 @@ public class MessageOut<T>
     public final T payload;
     public final IVersionedSerializer<T> serializer;
     public final Map<String, byte[]> parameters;
+    private final MessagingService messagingService;
 
     // we do support messages that just consist of a verb
-    public MessageOut(MessagingService.Verb verb)
+    public MessageOut(MessagingService messagingService, MessagingService.Verb verb)
     {
-        this(verb, null, null);
+        this(messagingService, verb, null, null);
     }
 
-    public MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer)
+    public MessageOut(MessagingService messagingService, MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer)
     {
-        this(verb,
+        this(messagingService,
+             verb,
              payload,
              serializer,
-             Tracing.instance.isTracing() ? ImmutableMap.of(TRACE_HEADER, UUIDGen.decompose(Tracing.instance.getSessionId()))
+             messagingService.getTracing().isTracing() ? ImmutableMap.of(TRACE_HEADER, UUIDGen.decompose(messagingService.getTracing().getSessionId()))
                          : Collections.<String, byte[]>emptyMap());
     }
 
-    private MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer, Map<String, byte[]> parameters)
+    private MessageOut(MessagingService messagingService, MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer, Map<String, byte[]> parameters)
     {
-        this(DatabaseDescriptor.instance.getBroadcastAddress(), verb, payload, serializer, parameters);
+        this(messagingService, messagingService.getBroadcastAddress(), verb, payload, serializer, parameters);
     }
 
     @VisibleForTesting
-    public MessageOut(InetAddress from, MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer, Map<String, byte[]> parameters)
+    public MessageOut(MessagingService messagingService, InetAddress from, MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer, Map<String, byte[]> parameters)
     {
         this.from = from;
         this.verb = verb;
         this.payload = payload;
         this.serializer = serializer;
         this.parameters = parameters;
+        this.messagingService = messagingService;
     }
 
     public MessageOut<T> withParameter(String key, byte[] value)
     {
         ImmutableMap.Builder<String, byte[]> builder = ImmutableMap.builder();
         builder.putAll(parameters).put(key, value);
-        return new MessageOut<T>(verb, payload, serializer, builder.build());
+        return new MessageOut<T>(messagingService, verb, payload, serializer, builder.build());
     }
 
     public Stage getStage()
     {
-        return MessagingService.instance.verbStages.get(verb);
+        return messagingService.verbStages.get(verb);
     }
 
     public long getTimeout()
     {
-        return DatabaseDescriptor.instance.getTimeout(verb);
+        return messagingService.getTimeout(verb);
     }
 
     public String toString()

@@ -56,9 +56,9 @@ public abstract class ReadCommand implements IReadCommand, Pageable
         }
     }
 
-    public MessageOut<ReadCommand> createMessage()
+    public MessageOut<ReadCommand> createMessage(MessagingService messagingService)
     {
-        return new MessageOut<>(MessagingService.Verb.READ, this, serializer);
+        return new MessageOut<>(messagingService, MessagingService.Verb.READ, this, serializer);
     }
 
     public final String ksName;

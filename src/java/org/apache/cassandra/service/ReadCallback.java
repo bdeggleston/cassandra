@@ -217,7 +217,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
                 final RowDataResolver repairResolver = new RowDataResolver(readCommand.ksName, readCommand.key, readCommand.filter(), partitioner, messagingService, readCommand.timestamp);
                 AsyncRepairCallback repairHandler = new AsyncRepairCallback(repairResolver, endpoints.size(), stageManager);
 
-                MessageOut<ReadCommand> message = ((ReadCommand) command).createMessage();
+                MessageOut<ReadCommand> message = ((ReadCommand) command).createMessage(messagingService);
                 for (InetAddress endpoint : endpoints)
                     messagingService.sendRR(message, endpoint, repairHandler);
             }

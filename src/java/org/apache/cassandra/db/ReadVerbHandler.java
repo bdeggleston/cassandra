@@ -67,7 +67,8 @@ public class ReadVerbHandler implements IVerbHandler<ReadCommand>
             return;
         }
 
-        MessageOut<ReadResponse> reply = new MessageOut<ReadResponse>(MessagingService.Verb.REQUEST_RESPONSE,
+        MessageOut<ReadResponse> reply = new MessageOut<ReadResponse>(messagingService,
+                                                                      MessagingService.Verb.REQUEST_RESPONSE,
                                                                       getResponse(command, row),
                                                                       serializer);
         tracing.trace("Enqueuing response to {}", message.from);

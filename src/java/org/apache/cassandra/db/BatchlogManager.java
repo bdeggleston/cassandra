@@ -404,7 +404,7 @@ public class BatchlogManager implements BatchlogManagerMBean
                 return null;
 
             ReplayWriteResponseHandler handler = new ReplayWriteResponseHandler(liveEndpoints, DatabaseDescriptor.instance, new IAsyncCallback.EndpointIsAlivePredicate(FailureDetector.instance));
-            MessageOut<Mutation> message = mutation.createMessage();
+            MessageOut<Mutation> message = mutation.createMessage(MessagingService.instance);
             for (InetAddress endpoint : liveEndpoints)
                 MessagingService.instance.sendRR(message, endpoint, handler, false);
             return handler;

@@ -52,6 +52,6 @@ public class CommitVerbHandler implements IVerbHandler<Commit>
 
         WriteResponse response = new WriteResponse();
         tracing.trace("Enqueuing acknowledge to {}", message.from);
-        messagingService.sendReply(response.createMessage(), id, message.from);
+        messagingService.sendReply(response.createMessage(messagingService), id, message.from);
     }
 }

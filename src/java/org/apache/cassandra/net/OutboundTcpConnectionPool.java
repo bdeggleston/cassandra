@@ -48,7 +48,7 @@ public class OutboundTcpConnectionPool
     private final DatabaseDescriptor databaseDescriptor;
     private final SystemKeyspace systemKeyspace;
 
-    OutboundTcpConnectionPool(InetAddress remoteEp, DatabaseDescriptor databaseDescriptor, Tracing tracing, SystemKeyspace systemKeyspace, MessagingService messagingService)
+    OutboundTcpConnectionPool(InetAddress remoteEp, DatabaseDescriptor databaseDescriptor, Tracing tracing, SystemKeyspace systemKeyspace, MessagingService messagingService, MessageOut closeSentinel)
     {
         id = remoteEp;
         this.databaseDescriptor = databaseDescriptor;
@@ -56,8 +56,8 @@ public class OutboundTcpConnectionPool
         resetedEndpoint = this.systemKeyspace.getPreferredIP(remoteEp);
         started = new CountDownLatch(1);
 
-        cmdCon = new OutboundTcpConnection(this, this.databaseDescriptor, tracing, messagingService);
-        ackCon = new OutboundTcpConnection(this, this.databaseDescriptor, tracing, messagingService);
+        cmdCon = new OutboundTcpConnection(this, this.databaseDescriptor, tracing, messagingService, closeSentinel);
+        ackCon = new OutboundTcpConnection(this, this.databaseDescriptor, tracing, messagingService, closeSentinel);
     }
 
     /**

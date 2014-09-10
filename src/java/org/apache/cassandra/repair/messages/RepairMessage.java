@@ -92,9 +92,9 @@ public abstract class RepairMessage
         this.serializer = serializer;
     }
 
-    public MessageOut<RepairMessage> createMessage()
+    public MessageOut<RepairMessage> createMessage(MessagingService messagingService)
     {
-        return new MessageOut<>(MessagingService.Verb.REPAIR_MESSAGE, this, serializer);
+        return new MessageOut<>(messagingService, MessagingService.Verb.REPAIR_MESSAGE, this, serializer);
     }
 
     public static class Serializer implements IVersionedSerializer<RepairMessage>

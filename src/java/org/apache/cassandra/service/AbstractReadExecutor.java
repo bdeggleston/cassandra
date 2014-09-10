@@ -100,7 +100,7 @@ public abstract class AbstractReadExecutor
             else
             {
                 logger.trace("reading data from {}", endpoint);
-                messagingService.sendRR(command.createMessage(), endpoint, handler);
+                messagingService.sendRR(command.createMessage(messagingService), endpoint, handler);
             }
         }
         if (readLocal)
@@ -114,7 +114,7 @@ public abstract class AbstractReadExecutor
     {
         ReadCommand digestCommand = command.copy();
         digestCommand.setDigestQuery(true);
-        MessageOut<?> message = digestCommand.createMessage();
+        MessageOut<?> message = digestCommand.createMessage(messagingService);
         for (InetAddress endpoint : endpoints)
         {
             if (isLocalRequest(endpoint))
@@ -306,7 +306,7 @@ public abstract class AbstractReadExecutor
 
                 InetAddress extraReplica = Iterables.getLast(targetReplicas);
                 logger.trace("speculating read retry on {}", extraReplica);
-                messagingService.sendRR(retryCommand.createMessage(), extraReplica, handler);
+                messagingService.sendRR(retryCommand.createMessage(messagingService), extraReplica, handler);
                 speculated = true;
 
                 cfs.metric.speculativeRetries.inc();

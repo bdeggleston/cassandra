@@ -67,7 +67,7 @@ public class CounterMutationVerbHandler implements IVerbHandler<CounterMutation>
             {
                 public void run()
                 {
-                    messagingService.sendReply(new WriteResponse().createMessage(), id, message.from);
+                    messagingService.sendReply(new WriteResponse().createMessage(messagingService), id, message.from);
                 }
             });
         }

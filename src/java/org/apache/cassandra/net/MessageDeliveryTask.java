@@ -69,7 +69,8 @@ public class MessageDeliveryTask implements Runnable
         {
             if (message.doCallbackOnFailure())
             {
-                MessageOut response = new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE)
+                MessageOut response = new MessageOut(messagingService,
+                                                     MessagingService.Verb.INTERNAL_RESPONSE)
                                                     .withParameter(MessagingService.FAILURE_RESPONSE_PARAM, MessagingService.ONE_BYTE);
                 messagingService.sendReply(response, id, message.from);
             }

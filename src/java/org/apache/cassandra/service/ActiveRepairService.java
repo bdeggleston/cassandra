@@ -303,7 +303,7 @@ public class ActiveRepairService
         for(InetAddress neighbour : endpoints)
         {
             PrepareMessage message = new PrepareMessage(parentRepairSession, cfIds, ranges, MessagingService.instance.repairMessageSerializer);
-            MessageOut<RepairMessage> msg = message.createMessage();
+            MessageOut<RepairMessage> msg = message.createMessage(MessagingService.instance);
             MessagingService.instance.sendRRWithFailure(msg, neighbour, callback);
         }
         try
@@ -355,7 +355,7 @@ public class ActiveRepairService
                 for (InetAddress neighbor : neighbors)
                 {
                     AnticompactionRequest acr = new AnticompactionRequest(parentSession, MessagingService.instance.repairMessageSerializer);
-                    MessageOut<RepairMessage> req = acr.createMessage();
+                    MessageOut<RepairMessage> req = acr.createMessage(MessagingService.instance);
                     MessagingService.instance.sendOneWay(req, neighbor);
                 }
                 List<Future<?>> futures = doAntiCompaction(parentSession);

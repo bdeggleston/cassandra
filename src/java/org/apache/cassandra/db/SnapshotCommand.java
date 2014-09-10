@@ -42,9 +42,9 @@ public class SnapshotCommand
         this.clear_snapshot = clearSnapshot;
     }
 
-    public MessageOut createMessage()
+    public MessageOut createMessage(MessagingService messagingService)
     {
-        return new MessageOut<SnapshotCommand>(MessagingService.Verb.SNAPSHOT, this, serializer);
+        return new MessageOut<SnapshotCommand>(messagingService, MessagingService.Verb.SNAPSHOT, this, serializer);
     }
 
     @Override

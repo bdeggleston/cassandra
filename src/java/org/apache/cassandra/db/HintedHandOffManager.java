@@ -447,7 +447,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                     continue;
                 }
 
-                MessageOut<Mutation> message = mutation.createMessage();
+                MessageOut<Mutation> message = mutation.createMessage(MessagingService.instance);
                 rateLimiter.acquire(message.serializedSize(MessagingService.current_version));
                 Runnable callback = new Runnable()
                 {

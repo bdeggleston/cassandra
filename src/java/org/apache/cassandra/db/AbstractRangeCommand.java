@@ -23,6 +23,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.net.MessageOut;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.IReadCommand;
 
 public abstract class AbstractRangeCommand implements IReadCommand
@@ -52,7 +53,7 @@ public abstract class AbstractRangeCommand implements IReadCommand
         return keyspace;
     }
 
-    public abstract MessageOut<? extends AbstractRangeCommand> createMessage();
+    public abstract MessageOut<? extends AbstractRangeCommand> createMessage(MessagingService messagingService);
     public abstract AbstractRangeCommand forSubRange(AbstractBounds<RowPosition> range);
     public abstract AbstractRangeCommand withUpdatedLimit(int newLimit);
 

@@ -65,7 +65,7 @@ public class MutationVerbHandler implements IVerbHandler<Mutation>
             message.payload.apply();
             WriteResponse response = new WriteResponse();
             tracing.trace("Enqueuing response to {}", replyTo);
-            messagingService.sendReply(response.createMessage(), id, replyTo);
+            messagingService.sendReply(response.createMessage(messagingService), id, replyTo);
         }
         catch (IOException e)
         {
@@ -83,7 +83,7 @@ public class MutationVerbHandler implements IVerbHandler<Mutation>
         int size = in.readInt();
 
         // tell the recipients who to send their ack to
-        MessageOut<Mutation> message = new MessageOut<>(verb, mutation, mutationSerializer).withParameter(Mutation.FORWARD_FROM, from.getAddress());
+        MessageOut<Mutation> message = new MessageOut<>(messagingService, verb, mutation, mutationSerializer).withParameter(Mutation.FORWARD_FROM, from.getAddress());
         // Send a message to each of the addresses on our Forward List
         for (int i = 0; i < size; i++)
         {

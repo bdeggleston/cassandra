@@ -313,6 +313,7 @@ public final class MessagingService implements MessagingServiceMBean
     private final ConcurrentMap<InetAddress, Integer> versions = new NonBlockingHashMap<InetAddress, Integer>();
 
     public static final MessagingService instance = new MessagingService();
+    private final MessageOut closeSentinel;
 
     private MessagingService()
     {
@@ -324,6 +325,7 @@ public final class MessagingService implements MessagingServiceMBean
 
         listenGate = new SimpleCondition();
         verbHandlers = new EnumMap<Verb, IVerbHandler>(Verb.class);
+        closeSentinel = new MessageOut(this, MessagingService.Verb.INTERNAL_RESPONSE);
         Runnable logDropped = new Runnable()
         {
             public void run()
@@ -373,6 +375,21 @@ public final class MessagingService implements MessagingServiceMBean
         {
             throw new RuntimeException(e);
         }
+    }
+
+    public InetAddress getBroadcastAddress()
+    {
+        return LocatorConfig.instance.getBroadcastAddress();
+    }
+
+    public Tracing getTracing()
+    {
+        return Tracing.instance;
+    }
+
+    public long getTimeout(Verb verb)
+    {
+        return DatabaseDescriptor.instance.getTimeout(verb);
     }
 
     /**
@@ -513,7 +530,7 @@ public final class MessagingService implements MessagingServiceMBean
         OutboundTcpConnectionPool cp = connectionManagers.get(to);
         if (cp == null)
         {
-            cp = new OutboundTcpConnectionPool(to, DatabaseDescriptor.instance, Tracing.instance, SystemKeyspace.instance, this);
+            cp = new OutboundTcpConnectionPool(to, DatabaseDescriptor.instance, Tracing.instance, SystemKeyspace.instance, this, closeSentinel);
             OutboundTcpConnectionPool existingPool = connectionManagers.putIfAbsent(to, cp);
             if (existingPool != null)
                 cp = existingPool;

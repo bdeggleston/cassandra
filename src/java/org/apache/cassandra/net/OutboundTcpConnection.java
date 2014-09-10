@@ -60,7 +60,6 @@ public class OutboundTcpConnection extends Thread
 {
     private static final Logger logger = LoggerFactory.getLogger(OutboundTcpConnection.class);
 
-    private static final MessageOut CLOSE_SENTINEL = new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE);
     private volatile boolean isStopped = false;
 
     private static final int OPEN_RETRY_DELAY = 100; // ms between retries
@@ -83,14 +82,16 @@ public class OutboundTcpConnection extends Thread
     private final DatabaseDescriptor databaseDescriptor;
     private final Tracing tracing;
     private final MessagingService messagingService;
+    private final MessageOut closeSentinel;
 
-    public OutboundTcpConnection(OutboundTcpConnectionPool pool, DatabaseDescriptor databaseDescriptor, Tracing tracing, MessagingService messagingService)
+    public OutboundTcpConnection(OutboundTcpConnectionPool pool, DatabaseDescriptor databaseDescriptor, Tracing tracing, MessagingService messagingService, MessageOut closeSentinel)
     {
         super("WRITE-" + pool.endPoint());
         this.poolReference = pool;
         this.databaseDescriptor = databaseDescriptor;
         this.tracing = tracing;
         this.messagingService = messagingService;
+        this.closeSentinel = closeSentinel;
     }
 
     private static boolean isLocalDC(InetAddress targetHost, IEndpointSnitch snitch, DatabaseDescriptor databaseDescriptor)
@@ -118,12 +119,12 @@ public class OutboundTcpConnection extends Thread
     {
         backlog.clear();
         isStopped = destroyThread; // Exit loop to stop the thread
-        enqueue(CLOSE_SENTINEL, -1);
+        enqueue(closeSentinel, -1);
     }
 
     void softCloseSocket()
     {
-        enqueue(CLOSE_SENTINEL, -1);
+        enqueue(closeSentinel, -1);
     }
 
     public int getTargetVersion()
@@ -158,7 +159,7 @@ public class OutboundTcpConnection extends Thread
                 try
                 {
                     MessageOut<?> m = qm.message;
-                    if (m == CLOSE_SENTINEL)
+                    if (m == closeSentinel)
                     {
                         disconnect();
                         if (isStopped)
