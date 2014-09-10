@@ -21,9 +21,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.cassandra.auth.Permission;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.cql3.functions.*;
+import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.RequestValidationException;
@@ -49,6 +51,8 @@ public final class CreateFunctionStatement extends SchemaAlteringStatement
     private final CQL3Type.Raw rawReturnType;
 
     private final MigrationManager migrationManager;
+    private final MutationFactory mutationFactory;
+    private final CFMetaDataFactory cfMetaDataFactory;
 
     public CreateFunctionStatement(FunctionName functionName,
                                    String language,
@@ -59,7 +63,9 @@ public final class CreateFunctionStatement extends SchemaAlteringStatement
                                    CQL3Type.Raw rawReturnType,
                                    boolean orReplace,
                                    boolean ifNotExists,
-                                   MigrationManager migrationManager)
+                                   MigrationManager migrationManager,
+                                   MutationFactory mutationFactory,
+                                   CFMetaDataFactory cfMetaDataFactory)
     {
         this.functionName = functionName;
         this.language = language;
@@ -71,6 +77,8 @@ public final class CreateFunctionStatement extends SchemaAlteringStatement
         this.orReplace = orReplace;
         this.ifNotExists = ifNotExists;
         this.migrationManager = migrationManager;
+        this.mutationFactory = mutationFactory;
+        this.cfMetaDataFactory = cfMetaDataFactory;
     }
 
     public void checkAccess(ClientState state) throws UnauthorizedException
@@ -118,7 +126,7 @@ public final class CreateFunctionStatement extends SchemaAlteringStatement
                                                                 functionName, returnType.asCQL3Type(), old.returnType().asCQL3Type()));
         }
 
-        migrationManager.announceNewFunction(UDFunction.create(functionName, argNames, argTypes, returnType, language, body, deterministic), isLocalOnly);
+        migrationManager.announceNewFunction(UDFunction.create(functionName, argNames, argTypes, returnType, language, body, deterministic, mutationFactory, cfMetaDataFactory), isLocalOnly);
         return true;
     }
 }

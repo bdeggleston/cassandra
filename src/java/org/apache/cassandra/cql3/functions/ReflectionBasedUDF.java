@@ -24,7 +24,9 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.cql3.*;
+import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 
@@ -44,10 +46,12 @@ class ReflectionBasedUDF extends UDFunction
                        AbstractType<?> returnType,
                        String language,
                        String body,
-                       boolean deterministic)
+                       boolean deterministic,
+                       MutationFactory mutationFactory,
+                       CFMetaDataFactory cfMetaDataFactory)
     throws InvalidRequestException
     {
-        super(name, argNames, argTypes, returnType, language, body, deterministic);
+        super(name, argNames, argTypes, returnType, language, body, deterministic, mutationFactory, cfMetaDataFactory);
         assert language.equals("class");
         this.method = resolveClassMethod();
     }

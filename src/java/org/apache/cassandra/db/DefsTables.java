@@ -399,7 +399,7 @@ public class DefsTables
             if (!cfFunctions.hasColumns())
                 continue;
 
-            for (UDFunction udf : UDFunction.fromSchema(new Row(entry.getKey(), cfFunctions)).values())
+            for (UDFunction udf : UDFunction.fromSchema(new Row(entry.getKey(), cfFunctions), QueryProcessor.instance, MutationFactory.instance, CFMetaDataFactory.instance).values())
                 addFunction(udf);
         }
 
@@ -411,18 +411,18 @@ public class DefsTables
 
             if (!prevCFFunctions.hasColumns()) // whole namespace was deleted and now it's re-created
             {
-                for (UDFunction udf : UDFunction.fromSchema(new Row(namespace, newCFFunctions)).values())
+                for (UDFunction udf : UDFunction.fromSchema(new Row(namespace, newCFFunctions), QueryProcessor.instance, MutationFactory.instance, CFMetaDataFactory.instance).values())
                     addFunction(udf);
             }
             else if (!newCFFunctions.hasColumns()) // whole namespace is deleted
             {
-                for (UDFunction udf : UDFunction.fromSchema(new Row(namespace, prevCFFunctions)).values())
+                for (UDFunction udf : UDFunction.fromSchema(new Row(namespace, prevCFFunctions), QueryProcessor.instance, MutationFactory.instance, CFMetaDataFactory.instance).values())
                     dropFunction(udf);
             }
             else // has modifications in the functions, need to perform nested diff to determine what was really changed
             {
-                MapDifference<ByteBuffer, UDFunction> functionsDiff = Maps.difference(UDFunction.fromSchema(new Row(namespace, prevCFFunctions)),
-                                                                                      UDFunction.fromSchema(new Row(namespace, newCFFunctions)));
+                MapDifference<ByteBuffer, UDFunction> functionsDiff = Maps.difference(UDFunction.fromSchema(new Row(namespace, prevCFFunctions), QueryProcessor.instance, MutationFactory.instance, CFMetaDataFactory.instance),
+                                                                                      UDFunction.fromSchema(new Row(namespace, newCFFunctions), QueryProcessor.instance, MutationFactory.instance, CFMetaDataFactory.instance));
 
                 for (UDFunction udf : functionsDiff.entriesOnlyOnRight().values())
                     addFunction(udf);

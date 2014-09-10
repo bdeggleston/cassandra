@@ -50,19 +50,26 @@ public abstract class UDFunction extends AbstractFunction
     protected final String body;
     private final boolean deterministic;
 
+    private final MutationFactory mutationFactory;
+    private final CFMetaDataFactory cfMetaDataFactory;
+
     protected UDFunction(FunctionName name,
                          List<ColumnIdentifier> argNames,
                          List<AbstractType<?>> argTypes,
                          AbstractType<?> returnType,
                          String language,
                          String body,
-                         boolean deterministic)
+                         boolean deterministic,
+                         MutationFactory mutationFactory,
+                         CFMetaDataFactory cfMetaDataFactory)
     {
         super(name, argTypes, returnType);
         this.argNames = argNames;
         this.language = language;
         this.body = body;
         this.deterministic = deterministic;
+        this.mutationFactory = mutationFactory;
+        this.cfMetaDataFactory = cfMetaDataFactory;
     }
 
     public static UDFunction create(FunctionName name,
@@ -71,12 +78,14 @@ public abstract class UDFunction extends AbstractFunction
                                     AbstractType<?> returnType,
                                     String language,
                                     String body,
-                                    boolean deterministic)
+                                    boolean deterministic,
+                                    MutationFactory mutationFactory,
+                                    CFMetaDataFactory cfMetaDataFactory)
     throws InvalidRequestException
     {
         switch (language)
         {
-            case "class": return new ReflectionBasedUDF(name, argNames, argTypes, returnType, language, body, deterministic);
+            case "class": return new ReflectionBasedUDF(name, argNames, argTypes, returnType, language, body, deterministic, mutationFactory, cfMetaDataFactory);
             default: throw new InvalidRequestException(String.format("Invalid language %s for '%s'", language, name));
         }
     }
@@ -96,9 +105,11 @@ public abstract class UDFunction extends AbstractFunction
                                                   AbstractType<?> returnType,
                                                   String language,
                                                   String body,
-                                                  final InvalidRequestException reason)
+                                                  final InvalidRequestException reason,
+                                                  MutationFactory mutationFactory,
+                                                  CFMetaDataFactory cfMetaDataFactory)
     {
-        return new UDFunction(name, argNames, argTypes, returnType, language, body, true)
+        return new UDFunction(name, argNames, argTypes, returnType, language, body, true, mutationFactory, cfMetaDataFactory)
         {
             public ByteBuffer execute(List<ByteBuffer> parameters) throws InvalidRequestException
             {
@@ -132,10 +143,10 @@ public abstract class UDFunction extends AbstractFunction
         return false;
     }
 
-    private static Mutation makeSchemaMutation(FunctionName name)
+    private Mutation makeSchemaMutation(FunctionName name)
     {
-        CompositeType kv = (CompositeType) CFMetaDataFactory.instance.SchemaFunctionsCf.getKeyValidator();
-        return MutationFactory.instance.create(Keyspace.SYSTEM_KS, kv.decompose(name.namespace, name.name));
+        CompositeType kv = (CompositeType) cfMetaDataFactory.SchemaFunctionsCf.getKeyValidator();
+        return mutationFactory.create(Keyspace.SYSTEM_KS, kv.decompose(name.namespace, name.name));
     }
 
     public Mutation toSchemaDrop(long timestamp)
@@ -143,7 +154,7 @@ public abstract class UDFunction extends AbstractFunction
         Mutation mutation = makeSchemaMutation(name);
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_FUNCTIONS_CF);
 
-        Composite prefix = CFMetaDataFactory.instance.SchemaFunctionsCf.comparator.make(computeSignature(argTypes));
+        Composite prefix = cfMetaDataFactory.SchemaFunctionsCf.comparator.make(computeSignature(argTypes));
         int ldt = (int) (System.currentTimeMillis() / 1000);
         cf.addAtom(new RangeTombstone(prefix, prefix.end(), timestamp, ldt));
 
@@ -155,7 +166,7 @@ public abstract class UDFunction extends AbstractFunction
         Mutation mutation = makeSchemaMutation(name);
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_FUNCTIONS_CF);
 
-        Composite prefix = CFMetaDataFactory.instance.SchemaFunctionsCf.comparator.make(computeSignature(argTypes));
+        Composite prefix = cfMetaDataFactory.SchemaFunctionsCf.comparator.make(computeSignature(argTypes));
         CFRowAdder adder = new CFRowAdder(cf, prefix, timestamp);
 
         adder.resetCollection("argument_names");
@@ -174,7 +185,7 @@ public abstract class UDFunction extends AbstractFunction
         return mutation;
     }
 
-    public static UDFunction fromSchema(UntypedResultSet.Row row)
+    public static UDFunction fromSchema(UntypedResultSet.Row row, MutationFactory mutationFactory, CFMetaDataFactory cfMetaDataFactory)
     {
         String namespace = row.getString("namespace");
         String fname = row.getString("name");
@@ -199,12 +210,12 @@ public abstract class UDFunction extends AbstractFunction
 
         try
         {
-            return create(name, argNames, argTypes, returnType, language, body, deterministic);
+            return create(name, argNames, argTypes, returnType, language, body, deterministic, mutationFactory, cfMetaDataFactory);
         }
         catch (InvalidRequestException e)
         {
             logger.error(String.format("Cannot load function '%s' from schema: this function won't be available (on this node)", name), e);
-            return createBrokenFunction(name, argNames, argTypes, returnType, language, body, e);
+            return createBrokenFunction(name, argNames, argTypes, returnType, language, body, e, mutationFactory, cfMetaDataFactory);
         }
     }
 
@@ -221,12 +232,12 @@ public abstract class UDFunction extends AbstractFunction
         }
     }
 
-    public static Map<ByteBuffer, UDFunction> fromSchema(Row row)
+    public static Map<ByteBuffer, UDFunction> fromSchema(Row row, QueryProcessor queryProcessor, MutationFactory mutationFactory, CFMetaDataFactory cfMetaDataFactory)
     {
-        UntypedResultSet results = QueryProcessor.instance.resultify("SELECT * FROM system." + SystemKeyspace.SCHEMA_FUNCTIONS_CF, row);
+        UntypedResultSet results = queryProcessor.resultify("SELECT * FROM system." + SystemKeyspace.SCHEMA_FUNCTIONS_CF, row);
         Map<ByteBuffer, UDFunction> udfs = new HashMap<>(results.size());
         for (UntypedResultSet.Row result : results)
-            udfs.put(result.getBlob("signature"), fromSchema(result));
+            udfs.put(result.getBlob("signature"), fromSchema(result, mutationFactory, cfMetaDataFactory));
         return udfs;
     }
 

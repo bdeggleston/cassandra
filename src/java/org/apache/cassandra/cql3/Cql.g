@@ -596,7 +596,7 @@ createFunctionStatement returns [CreateFunctionStatement expr]
             )
           )
       )
-      { $expr = new CreateFunctionStatement(fn, language.toLowerCase(), bodyOrClassName, deterministic, argsNames, argsTypes, rt, orReplace, ifNotExists, MigrationManager.instance); }
+      { $expr = new CreateFunctionStatement(fn, language.toLowerCase(), bodyOrClassName, deterministic, argsNames, argsTypes, rt, orReplace, ifNotExists, MigrationManager.instance, MutationFactory.instance, CFMetaDataFactory.instance); }
     ;
 
 dropFunctionStatement returns [DropFunctionStatement expr]

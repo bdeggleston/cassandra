@@ -33,6 +33,7 @@ import javax.management.StandardMBean;
 
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.utils.*;
@@ -237,7 +238,7 @@ public class CassandraDaemon
 
         // load keyspace && function descriptions.
         DatabaseDescriptor.instance.loadSchemas();
-        Functions.loadUDFFromSchema(QueryProcessor.instance);
+        Functions.loadUDFFromSchema(QueryProcessor.instance, MutationFactory.instance, CFMetaDataFactory.instance);
 
         // clean up compaction leftovers
         Map<Pair<String, String>, Map<Integer, UUID>> unfinishedCompactions = SystemKeyspace.instance.getUnfinishedCompactions();

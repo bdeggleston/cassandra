@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.collect.ArrayListMultimap;
+import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.dht.IPartitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,11 +80,11 @@ public abstract class Functions
     /**
      * Loading existing UDFs from the schema.
      */
-    public static void loadUDFFromSchema(QueryProcessor queryProcessor)
+    public static void loadUDFFromSchema(QueryProcessor queryProcessor, MutationFactory mutationFactory, CFMetaDataFactory cfMetaDataFactory)
     {
         logger.debug("Loading UDFs");
         for (UntypedResultSet.Row row : queryProcessor.executeOnceInternal(SELECT_UDFS))
-            addFunction(UDFunction.fromSchema(row));
+            addFunction(UDFunction.fromSchema(row, mutationFactory, cfMetaDataFactory));
     }
 
     public static ColumnSpecification makeArgSpec(String receiverKs, String receiverCf, Function fun, int i)
