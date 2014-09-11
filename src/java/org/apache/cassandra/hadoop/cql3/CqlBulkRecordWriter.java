@@ -59,38 +59,90 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
 {
     private String keyspace;
     private String columnFamily;
-    private String schema;
+    private String schemaDesc;
     private String insertStatement;
     private File outputDir;
 
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+    private final QueryProcessor queryProcessor;
     private final CFMetaDataFactory cfMetaDataFactory;
+    private final KSMetaDataFactory ksMetaDataFactory;
     private final SSTableReaderFactory ssTableReaderFactory;
+    private final Auth auth;
     private final LocatorConfig locatorConfig;
+    private final DBConfig dbConfig;
 
-    CqlBulkRecordWriter(TaskAttemptContext context, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, LocatorConfig locatorConfig) throws IOException
+    CqlBulkRecordWriter(TaskAttemptContext context,
+                        DatabaseDescriptor databaseDescriptor,
+                        Schema schema,
+                        QueryProcessor queryProcessor,
+                        CFMetaDataFactory cfMetaDataFactory,
+                        KSMetaDataFactory ksMetaDataFactory,
+                        SSTableReaderFactory ssTableReaderFactory,
+                        Auth auth,
+                        LocatorConfig locatorConfig,
+                        DBConfig dbConfig) throws IOException
     {
         super(context, databaseDescriptor);
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.queryProcessor = queryProcessor;
         this.cfMetaDataFactory = cfMetaDataFactory;
+        this.ksMetaDataFactory = ksMetaDataFactory;
         this.ssTableReaderFactory = ssTableReaderFactory;
+        this.auth = auth;
         this.locatorConfig = locatorConfig;
+        this.dbConfig = dbConfig;
         setConfigs();
     }
 
-    CqlBulkRecordWriter(Configuration conf, Progressable progress, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, LocatorConfig locatorConfig) throws IOException
+    CqlBulkRecordWriter(Configuration conf,
+                        Progressable progress,
+                        DatabaseDescriptor databaseDescriptor,
+                        Schema schema,
+                        QueryProcessor queryProcessor,
+                        CFMetaDataFactory cfMetaDataFactory,
+                        KSMetaDataFactory ksMetaDataFactory,
+                        SSTableReaderFactory ssTableReaderFactory,
+                        Auth auth,
+                        LocatorConfig locatorConfig,
+                        DBConfig dbConfig) throws IOException
     {
         super(conf, progress, databaseDescriptor);
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.queryProcessor = queryProcessor;
         this.cfMetaDataFactory = cfMetaDataFactory;
+        this.ksMetaDataFactory = ksMetaDataFactory;
         this.ssTableReaderFactory = ssTableReaderFactory;
+        this.auth = auth;
         this.locatorConfig = locatorConfig;
+        this.dbConfig = dbConfig;
         setConfigs();
     }
 
-    CqlBulkRecordWriter(Configuration conf, DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, LocatorConfig locatorConfig) throws IOException
+    CqlBulkRecordWriter(Configuration conf,
+                        DatabaseDescriptor databaseDescriptor,
+                        Schema schema,
+                        QueryProcessor queryProcessor,
+                        CFMetaDataFactory cfMetaDataFactory,
+                        KSMetaDataFactory ksMetaDataFactory,
+                        SSTableReaderFactory ssTableReaderFactory,
+                        Auth auth,
+                        LocatorConfig locatorConfig,
+                        DBConfig dbConfig) throws IOException
     {
         super(conf, databaseDescriptor);
+        this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.queryProcessor = queryProcessor;
         this.cfMetaDataFactory = cfMetaDataFactory;
+        this.ksMetaDataFactory = ksMetaDataFactory;
         this.ssTableReaderFactory = ssTableReaderFactory;
+        this.auth = auth;
         this.locatorConfig = locatorConfig;
+        this.dbConfig = dbConfig;
         setConfigs();
     }
     
@@ -99,7 +151,7 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
         // if anything is missing, exceptions will be thrown here, instead of on write()
         keyspace = ConfigHelper.getOutputKeyspace(conf);
         columnFamily = ConfigHelper.getOutputColumnFamily(conf);
-        schema = CqlBulkOutputFormat.getColumnFamilySchema(conf, columnFamily);
+        schemaDesc = CqlBulkOutputFormat.getColumnFamilySchema(conf, columnFamily);
         insertStatement = CqlBulkOutputFormat.getColumnFamilyInsertStatement(conf, columnFamily);
         outputDir = getColumnFamilyDirectory();
     }
@@ -111,8 +163,8 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
         {
             if (writer == null)
             {
-                writer = CQLSSTableWriter.builder(Schema.instance, QueryProcessor.instance, Auth.instance, KSMetaDataFactory.instance, DBConfig.instance)
-                    .forTable(schema)
+                writer = CQLSSTableWriter.builder(schema, queryProcessor, auth, ksMetaDataFactory, dbConfig)
+                    .forTable(schemaDesc)
                     .using(insertStatement)
                     .withPartitioner(ConfigHelper.getOutputPartitioner(conf))
                     .inDirectory(outputDir)
@@ -121,9 +173,9 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
             }
             if (loader == null)
             {
-                ExternalClient externalClient = new ExternalClient(conf, cfMetaDataFactory, locatorConfig, databaseDescriptor, DBConfig.instance);
+                ExternalClient externalClient = new ExternalClient(conf, queryProcessor, cfMetaDataFactory, locatorConfig, databaseDescriptor, dbConfig);
                 
-                externalClient.addKnownCfs(keyspace, schema);
+                externalClient.addKnownCfs(keyspace, schemaDesc);
 
                 this.loader = new SSTableLoader(outputDir, externalClient, new BulkRecordWriter.NullOutputHandler(), databaseDescriptor, ssTableReaderFactory);
             }
@@ -181,10 +233,12 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
     public static class ExternalClient extends AbstractBulkRecordWriter.ExternalClient
     {
         private Map<String, Map<String, CFMetaData>> knownCqlCfs = new HashMap<>();
+        private final QueryProcessor queryProcessor;
         
-        public ExternalClient(Configuration conf, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig)
+        public ExternalClient(Configuration conf, QueryProcessor queryProcessor, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig)
         {
             super(conf, cfMetaDataFactory, locatorConfig, databaseDescriptor, dbConfig);
+            this.queryProcessor = queryProcessor;
         }
 
         public void addKnownCfs(String keyspace, String cql)
@@ -197,7 +251,7 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
                 knownCqlCfs.put(keyspace, cfs);
             }
             
-            CFMetaData metadata = CFMetaDataFactory.instance.compile(cql, keyspace, QueryProcessor.instance);
+            CFMetaData metadata = cfMetaDataFactory.compile(cql, keyspace, queryProcessor);
             cfs.put(metadata.cfName, metadata);
         }
         

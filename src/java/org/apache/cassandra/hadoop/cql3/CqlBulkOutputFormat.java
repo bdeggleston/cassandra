@@ -22,8 +22,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.KSMetaDataFactory;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.hadoop.AbstractBulkOutputFormat;
 import org.apache.cassandra.hadoop.ConfigHelper;
 import org.apache.cassandra.io.sstable.SSTableReaderFactory;
@@ -59,23 +64,33 @@ public class CqlBulkOutputFormat extends AbstractBulkOutputFormat<Object, List<B
     private static final String OUTPUT_CQL_INSERT_PREFIX = "cassandra.columnfamily.insert.";
 
     private final DatabaseDescriptor databaseDescriptor;
+    private final Schema schema;
+    private final QueryProcessor queryProcessor;
     private final CFMetaDataFactory cfMetaDataFactory;
+    private final KSMetaDataFactory ksMetaDataFactory;
     private final SSTableReaderFactory ssTableReaderFactory;
+    private final Auth auth;
     private final LocatorConfig locatorConfig;
+    private final DBConfig dbConfig;
 
-    public CqlBulkOutputFormat(DatabaseDescriptor databaseDescriptor, CFMetaDataFactory cfMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, LocatorConfig locatorConfig)
+    public CqlBulkOutputFormat(DatabaseDescriptor databaseDescriptor, Schema schema, QueryProcessor queryProcessor, CFMetaDataFactory cfMetaDataFactory, KSMetaDataFactory ksMetaDataFactory, SSTableReaderFactory ssTableReaderFactory, Auth auth, LocatorConfig locatorConfig, DBConfig dbConfig)
     {
         this.databaseDescriptor = databaseDescriptor;
+        this.schema = schema;
+        this.queryProcessor = queryProcessor;
         this.cfMetaDataFactory = cfMetaDataFactory;
+        this.ksMetaDataFactory = ksMetaDataFactory;
         this.ssTableReaderFactory = ssTableReaderFactory;
+        this.auth = auth;
         this.locatorConfig = locatorConfig;
+        this.dbConfig = dbConfig;
     }
 
     /** Fills the deprecated OutputFormat interface for streaming. */
     @Deprecated
     public CqlBulkRecordWriter getRecordWriter(FileSystem filesystem, JobConf job, String name, Progressable progress) throws IOException
     {
-        return new CqlBulkRecordWriter(job, progress, databaseDescriptor, cfMetaDataFactory, ssTableReaderFactory, locatorConfig);
+        return new CqlBulkRecordWriter(job, progress, databaseDescriptor, schema, queryProcessor, cfMetaDataFactory, ksMetaDataFactory, ssTableReaderFactory, auth, locatorConfig, dbConfig);
     }
 
     /**
@@ -88,7 +103,7 @@ public class CqlBulkOutputFormat extends AbstractBulkOutputFormat<Object, List<B
      */
     public CqlBulkRecordWriter getRecordWriter(final TaskAttemptContext context) throws IOException, InterruptedException
     {
-        return new CqlBulkRecordWriter(context, databaseDescriptor, cfMetaDataFactory, ssTableReaderFactory, locatorConfig);
+        return new CqlBulkRecordWriter(context, databaseDescriptor, schema, queryProcessor, cfMetaDataFactory, ksMetaDataFactory, ssTableReaderFactory, auth, locatorConfig, dbConfig);
     }
     
     public static void setColumnFamilySchema(Configuration conf, String columnFamily, String schema)
