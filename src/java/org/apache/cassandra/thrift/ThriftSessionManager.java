@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.cassandra.auth.Auth;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +60,7 @@ public class ThriftSessionManager
         ThriftClientState cState = activeSocketSessions.get(socket);
         if (cState == null)
         {
-            cState = new ThriftClientState(socket, Auth.instance);
+            cState = new ThriftClientState(socket, Auth.instance, DatabaseDescriptor.instance, Tracing.instance);
             activeSocketSessions.put(socket, cState);
         }
         return cState;

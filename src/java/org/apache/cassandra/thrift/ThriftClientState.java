@@ -35,11 +35,13 @@ import org.apache.cassandra.tracing.Tracing;
 public class ThriftClientState extends ClientState
 {
     private final QueryState queryState;
+    private final DatabaseDescriptor databaseDescriptor;
 
-    public ThriftClientState(SocketAddress remoteAddress, Auth auth)
+    public ThriftClientState(SocketAddress remoteAddress, Auth auth, DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
         super(remoteAddress, auth);
-        this.queryState = new QueryState(this, Tracing.instance);
+        this.queryState = new QueryState(this, tracing);
+        this.databaseDescriptor = databaseDescriptor;
     }
 
     public QueryState getQueryState()
@@ -49,7 +51,7 @@ public class ThriftClientState extends ClientState
 
     public String getSchedulingValue()
     {
-        switch(DatabaseDescriptor.instance.getRequestSchedulerId())
+        switch(databaseDescriptor.getRequestSchedulerId())
         {
             case keyspace: return getRawKeyspace();
         }
