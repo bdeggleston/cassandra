@@ -167,7 +167,10 @@ public class StressSettings implements Serializable
                                                                                                           CounterMutationFactory.instance,
                                                                                                           MessagingService.instance,
                                                                                                           DBConfig.instance,
-                                                                                                          LocatorConfig.instance));
+                                                                                                          LocatorConfig.instance),
+                                                   Tracing.instance,
+                                                   Auth.instance,
+                                                   QueryHandlerInstance.instance);
             client.connect(false);
             client.execute("USE \"" + schema.keyspace + "\";", org.apache.cassandra.db.ConsistencyLevel.ONE);
             return client;

@@ -31,7 +31,7 @@ import javax.net.ssl.SSLEngine;
 
 import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.cql3.QueryHandlerInstance;
+import org.apache.cassandra.cql3.QueryHandler;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,18 +91,25 @@ public class SimpleClient
         }
     };
 
-    public SimpleClient(String host, int port, ClientEncryptionOptions encryptionOptions, Map<Message.Type, Message.Codec> codecs)
+    protected final Tracing tracing;
+    protected final Auth auth;
+    protected final QueryHandler queryHandler;
+
+    public SimpleClient(String host, int port, ClientEncryptionOptions encryptionOptions, Map<Message.Type, Message.Codec> codecs, Tracing tracing, Auth auth, QueryHandler queryHandler)
     {
         this.host = host;
         this.port = port;
         this.encryptionOptions = encryptionOptions;
+        this.tracing = tracing;
+        this.auth = auth;
+        this.queryHandler = queryHandler;
         messageDecoder = new Message.ProtocolDecoder(codecs);
         messageEncoder = new Message.ProtocolEncoder(codecs);
     }
 
-    public SimpleClient(String host, int port, Map<Message.Type, Message.Codec> codecs)
+    public SimpleClient(String host, int port, Map<Message.Type, Message.Codec> codecs, Tracing tracing, Auth auth, QueryHandler queryHandler)
     {
-        this(host, port, new ClientEncryptionOptions(), codecs);
+        this(host, port, new ClientEncryptionOptions(), codecs, tracing, auth, queryHandler);
     }
 
     public void connect(boolean useCompression) throws IOException
@@ -116,7 +123,7 @@ public class SimpleClient
             options.put(StartupMessage.COMPRESSION, "snappy");
             connection.setCompressor(FrameCompressor.SnappyCompressor.instance);
         }
-        execute(new StartupMessage(options, Auth.instance.getAuthenticator()));
+        execute(new StartupMessage(options, auth.getAuthenticator()));
     }
 
     protected void establishConnection() throws IOException
@@ -149,7 +156,7 @@ public class SimpleClient
 
     public void login(Map<String, String> credentials)
     {
-        CredentialsMessage msg = new CredentialsMessage(Auth.instance.getAuthenticator());
+        CredentialsMessage msg = new CredentialsMessage(auth.getAuthenticator());
         msg.credentials.putAll(credentials);
         execute(msg);
     }
@@ -161,21 +168,21 @@ public class SimpleClient
 
     public ResultMessage execute(String query, List<ByteBuffer> values, ConsistencyLevel consistencyLevel)
     {
-        Message.Response msg = execute(new QueryMessage(query, QueryOptions.forInternalCalls(consistencyLevel, values), Tracing.instance, QueryHandlerInstance.instance));
+        Message.Response msg = execute(new QueryMessage(query, QueryOptions.forInternalCalls(consistencyLevel, values), tracing, queryHandler));
         assert msg instanceof ResultMessage;
         return (ResultMessage)msg;
     }
 
     public ResultMessage.Prepared prepare(String query)
     {
-        Message.Response msg = execute(new PrepareMessage(query, Tracing.instance, QueryHandlerInstance.instance));
+        Message.Response msg = execute(new PrepareMessage(query, tracing, queryHandler));
         assert msg instanceof ResultMessage.Prepared;
         return (ResultMessage.Prepared)msg;
     }
 
     public ResultMessage executePrepared(byte[] statementId, List<ByteBuffer> values, ConsistencyLevel consistency)
     {
-        Message.Response msg = execute(new ExecuteMessage(MD5Digest.wrap(statementId), QueryOptions.forInternalCalls(consistency, values), Tracing.instance, QueryHandlerInstance.instance));
+        Message.Response msg = execute(new ExecuteMessage(MD5Digest.wrap(statementId), QueryOptions.forInternalCalls(consistency, values), tracing, queryHandler));
         assert msg instanceof ResultMessage;
         return (ResultMessage)msg;
     }

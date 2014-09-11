@@ -35,6 +35,7 @@ import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.auth.IAuthenticator;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.cql3.QueryHandler;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.QueryProcessor;
@@ -53,9 +54,9 @@ import static org.apache.cassandra.config.EncryptionOptions.ClientEncryptionOpti
 
 public class Client extends SimpleClient
 {
-    public Client(String host, int port, ClientEncryptionOptions encryptionOptions, Map<Message.Type, Message.Codec> codecs)
+    public Client(String host, int port, ClientEncryptionOptions encryptionOptions, Map<Message.Type, Message.Codec> codecs, Tracing tracing, Auth auth, QueryHandler queryHandler)
     {
-        super(host, port, encryptionOptions, codecs);
+        super(host, port, encryptionOptions, codecs, tracing, auth, queryHandler);
     }
 
     public void run() throws IOException
@@ -116,7 +117,7 @@ public class Client extends SimpleClient
                    connection.setCompressor(FrameCompressor.SnappyCompressor.instance);
                }
             }
-            return new StartupMessage(options, Auth.instance.getAuthenticator());
+            return new StartupMessage(options, auth.getAuthenticator());
         }
         else if (msgType.equals("QUERY"))
         {
@@ -137,12 +138,12 @@ public class Client extends SimpleClient
                     return null;
                 }
             }
-            return new QueryMessage(query, QueryOptions.create(ConsistencyLevel.ONE, Collections.<ByteBuffer>emptyList(), false, pageSize, null, null), Tracing.instance, QueryHandlerInstance.instance);
+            return new QueryMessage(query, QueryOptions.create(ConsistencyLevel.ONE, Collections.<ByteBuffer>emptyList(), false, pageSize, null, null), tracing, queryHandler);
         }
         else if (msgType.equals("PREPARE"))
         {
             String query = line.substring(8);
-            return new PrepareMessage(query, Tracing.instance, QueryHandlerInstance.instance);
+            return new PrepareMessage(query, tracing, queryHandler);
         }
         else if (msgType.equals("EXECUTE"))
         {
@@ -165,7 +166,7 @@ public class Client extends SimpleClient
                     }
                     values.add(bb);
                 }
-                return new ExecuteMessage(MD5Digest.wrap(id), QueryOptions.forInternalCalls(ConsistencyLevel.ONE, values), Tracing.instance, QueryHandlerInstance.instance);
+                return new ExecuteMessage(MD5Digest.wrap(id), QueryOptions.forInternalCalls(ConsistencyLevel.ONE, values), tracing, queryHandler);
             }
             catch (Exception e)
             {
@@ -179,7 +180,7 @@ public class Client extends SimpleClient
         else if (msgType.equals("CREDENTIALS"))
         {
             System.err.println("[WARN] CREDENTIALS command is deprecated, use AUTHENTICATE instead");
-            CredentialsMessage msg = new CredentialsMessage(Auth.instance.getAuthenticator());
+            CredentialsMessage msg = new CredentialsMessage(auth.getAuthenticator());
             msg.credentials.putAll(readCredentials(iter));
             return msg;
         }
@@ -267,7 +268,7 @@ public class Client extends SimpleClient
                                                                            MessagingService.instance,
                                                                            DBConfig.instance,
                                                                            LocatorConfig.instance);
-        new Client(host, port, encryptionOptions, codecs).run();
+        new Client(host, port, encryptionOptions, codecs, Tracing.instance, Auth.instance, QueryHandlerInstance.instance).run();
         System.exit(0);
     }
 }
