@@ -52,7 +52,7 @@ public class TServerCustomFactory implements TServerFactory
         }
         else if(ThriftServer.ASYNC.equalsIgnoreCase(serverType))
         {
-            server = new CustomTNonBlockingServer.Factory().buildTServer(args);
+            server = new CustomTNonBlockingServer.Factory(databaseDescriptor, thriftSessionManager).buildTServer(args);
             logger.info(String.format("Using non-blocking/asynchronous thrift server on %s : %s", args.addr.getHostName(), args.addr.getPort()));
         }
         else if(ThriftServer.HSHA.equalsIgnoreCase(serverType))

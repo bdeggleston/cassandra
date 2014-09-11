@@ -31,25 +31,36 @@ import org.apache.thrift.transport.TTransportException;
 
 public class CustomTNonBlockingServer extends TNonblockingServer
 {
-    public CustomTNonBlockingServer(Args args)
+    private final ThriftSessionManager thriftSessionManager;
+    public CustomTNonBlockingServer(Args args, ThriftSessionManager thriftSessionManager)
     {
         super(args);
+        this.thriftSessionManager = thriftSessionManager;
     }
 
     @Override
     protected boolean requestInvoke(FrameBuffer frameBuffer)
     {
         TNonblockingSocket socket = (TNonblockingSocket)((CustomFrameBuffer)frameBuffer).getTransport();
-        ThriftSessionManager.instance.setCurrentSocket(socket.getSocketChannel().socket().getRemoteSocketAddress());
+        thriftSessionManager.setCurrentSocket(socket.getSocketChannel().socket().getRemoteSocketAddress());
         frameBuffer.invoke();
         return true;
     }
 
     public static class Factory implements TServerFactory
     {
+        private final DatabaseDescriptor databaseDescriptor;
+        private final ThriftSessionManager thriftSessionManager;
+
+        public Factory(DatabaseDescriptor databaseDescriptor, ThriftSessionManager thriftSessionManager)
+        {
+            this.databaseDescriptor = databaseDescriptor;
+            this.thriftSessionManager = thriftSessionManager;
+        }
+
         public TServer buildTServer(Args args)
         {
-            if (DatabaseDescriptor.instance.getClientEncryptionOptions().enabled)
+            if (databaseDescriptor.getClientEncryptionOptions().enabled)
                 throw new RuntimeException("Client SSL is not supported for non-blocking sockets. Please remove client ssl from the configuration.");
 
             final InetSocketAddress addr = args.addr;
@@ -70,7 +81,7 @@ public class CustomTNonBlockingServer extends TNonblockingServer
                                                                                              .inputProtocolFactory(args.tProtocolFactory)
                                                                                              .outputProtocolFactory(args.tProtocolFactory)
                                                                                              .processor(args.processor);
-            return new CustomTNonBlockingServer(serverArgs);
+            return new CustomTNonBlockingServer(serverArgs, thriftSessionManager);
         }
     }
 
