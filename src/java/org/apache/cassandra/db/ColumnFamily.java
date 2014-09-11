@@ -64,9 +64,9 @@ public abstract class ColumnFamily implements Iterable<Cell>, IRowCacheEntry
     {
         assert metadata != null;
         this.metadata = metadata;
-        this.messagingService = dbConfig.getLocatorConfig().getMessagingService();
         this.dbConfig = dbConfig;
-        // prevents columnFamilySerializer from being included in memory measurement
+        // prevents columnFamilySerializer & messagingService from being included in memory measurement
+        this.messagingService = dbConfig != null ? dbConfig.getLocatorConfig().getMessagingService() : null;
         this.serializer = dbConfig != null ? dbConfig.columnFamilySerializer : null;
     }
 
