@@ -73,7 +73,7 @@ public class TriggersTest
         StorageService.instance.initServer(0);
         if (thriftServer == null || ! thriftServer.isRunning())
         {
-            thriftServer = new ThriftServer(InetAddress.getLocalHost(), 9170, 50);
+            thriftServer = new ThriftServer(InetAddress.getLocalHost(), 9170, 50, DatabaseDescriptor.instance, ThriftSessionManager.instance);
             thriftServer.start();
         }
 

@@ -43,11 +43,16 @@ public class ThriftServer implements CassandraDaemon.Server
     protected final int backlog;
     private volatile ThriftServerThread server;
 
-    public ThriftServer(InetAddress address, int port, int backlog)
+    private final DatabaseDescriptor databaseDescriptor;
+    private final ThriftSessionManager thriftSessionManager;
+
+    public ThriftServer(InetAddress address, int port, int backlog, DatabaseDescriptor databaseDescriptor, ThriftSessionManager thriftSessionManager)
     {
         this.address = address;
         this.port = port;
         this.backlog = backlog;
+        this.databaseDescriptor = databaseDescriptor;
+        this.thriftSessionManager = thriftSessionManager;
     }
 
     public void start()
@@ -55,7 +60,7 @@ public class ThriftServer implements CassandraDaemon.Server
         if (server == null)
         {
             CassandraServer iface = getCassandraServer();
-            server = new ThriftServerThread(address, port, backlog, getProcessor(iface), getTransportFactory());
+            server = new ThriftServerThread(address, port, backlog, getProcessor(iface), getTransportFactory(), databaseDescriptor, thriftSessionManager);
             server.start();
         }
     }
@@ -97,7 +102,7 @@ public class ThriftServer implements CassandraDaemon.Server
 
     protected TTransportFactory getTransportFactory()
     {
-        int tFramedTransportSize = DatabaseDescriptor.instance.getThriftFramedTransportSize();
+        int tFramedTransportSize = databaseDescriptor.getThriftFramedTransportSize();
         return new TFramedTransport.Factory(tFramedTransportSize);
     }
 
@@ -113,7 +118,9 @@ public class ThriftServer implements CassandraDaemon.Server
                                   int listenPort,
                                   int listenBacklog,
                                   TProcessor processor,
-                                  TTransportFactory transportFactory)
+                                  TTransportFactory transportFactory,
+                                  DatabaseDescriptor databaseDescriptor,
+                                  ThriftSessionManager thriftSessionManager)
         {
             // now we start listening for clients
             logger.info(String.format("Binding thrift service to %s:%s", listenAddr, listenPort));
@@ -123,12 +130,12 @@ public class ThriftServer implements CassandraDaemon.Server
             args.addr = new InetSocketAddress(listenAddr, listenPort);
             args.listenBacklog = listenBacklog;
             args.processor = processor;
-            args.keepAlive = DatabaseDescriptor.instance.getRpcKeepAlive();
-            args.sendBufferSize = DatabaseDescriptor.instance.getRpcSendBufferSize();
-            args.recvBufferSize = DatabaseDescriptor.instance.getRpcRecvBufferSize();
+            args.keepAlive = databaseDescriptor.getRpcKeepAlive();
+            args.sendBufferSize = databaseDescriptor.getRpcSendBufferSize();
+            args.recvBufferSize = databaseDescriptor.getRpcRecvBufferSize();
             args.inTransportFactory = transportFactory;
             args.outTransportFactory = transportFactory;
-            serverEngine = new TServerCustomFactory(DatabaseDescriptor.instance.getRpcServerType(), DatabaseDescriptor.instance, ThriftSessionManager.instance).buildTServer(args);
+            serverEngine = new TServerCustomFactory(databaseDescriptor.getRpcServerType(), databaseDescriptor, thriftSessionManager).buildTServer(args);
         }
 
         public void run()

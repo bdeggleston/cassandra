@@ -36,6 +36,7 @@ import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.thrift.ThriftSessionManager;
 import org.apache.cassandra.utils.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -372,7 +373,7 @@ public class CassandraDaemon
         InetAddress rpcAddr = DatabaseDescriptor.instance.getRpcAddress();
         int rpcPort = DatabaseDescriptor.instance.getRpcPort();
         int listenBacklog = DatabaseDescriptor.instance.getRpcListenBacklog();
-        thriftServer = new ThriftServer(rpcAddr, rpcPort, listenBacklog);
+        thriftServer = new ThriftServer(rpcAddr, rpcPort, listenBacklog, DatabaseDescriptor.instance, ThriftSessionManager.instance);
 
         // Native transport
         InetAddress nativeAddr = DatabaseDescriptor.instance.getRpcAddress();
