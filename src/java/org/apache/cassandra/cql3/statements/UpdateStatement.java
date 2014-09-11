@@ -173,7 +173,7 @@ public class UpdateStatement extends ModificationStatement
                             MessagingService messagingService,
                             LocatorConfig locatorConfig)
         {
-            super(name, attrs, null, ifNotExists, false);
+            super(name, attrs, null, ifNotExists, false, schema);
             this.columnNames = columnNames;
             this.columnValues = columnValues;
 
@@ -291,7 +291,7 @@ public class UpdateStatement extends ModificationStatement
                             MessagingService messagingService,
                             LocatorConfig locatorConfig)
         {
-            super(name, attrs, conditions, false, false);
+            super(name, attrs, conditions, false, false, schema);
             this.updates = updates;
             this.whereClause = whereClause;
 

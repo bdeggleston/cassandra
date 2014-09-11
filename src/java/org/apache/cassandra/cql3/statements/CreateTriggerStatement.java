@@ -67,7 +67,7 @@ public class CreateTriggerStatement extends SchemaAlteringStatement
 
     public void validate(ClientState state) throws RequestValidationException
     {
-        ThriftValidation.validateColumnFamily(keyspace(), columnFamily());
+        ThriftValidation.validateColumnFamily(keyspace(), columnFamily(), schema);
         try
         {
             triggerExecutor.loadTriggerInstance(triggerClass);

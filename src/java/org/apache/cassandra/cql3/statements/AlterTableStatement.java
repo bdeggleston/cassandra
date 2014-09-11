@@ -24,6 +24,7 @@ import java.util.Map;
 import org.apache.cassandra.auth.Permission;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.*;
@@ -47,6 +48,7 @@ public class AlterTableStatement extends SchemaAlteringStatement
     private final Map<ColumnIdentifier, ColumnIdentifier> renames;
     private final boolean isStatic; // Only for ALTER ADD
 
+    private final Schema schema;
     private final MigrationManager migrationManager;
 
     public AlterTableStatement(CFName name,
@@ -56,6 +58,7 @@ public class AlterTableStatement extends SchemaAlteringStatement
                                CFPropDefs cfProps,
                                Map<ColumnIdentifier, ColumnIdentifier> renames,
                                boolean isStatic,
+                               Schema schema,
                                MigrationManager migrationManager)
     {
         super(name);
@@ -65,6 +68,7 @@ public class AlterTableStatement extends SchemaAlteringStatement
         this.cfProps = cfProps;
         this.renames = renames;
         this.isStatic = isStatic;
+        this.schema = schema;
         this.migrationManager = migrationManager;
     }
 
@@ -80,7 +84,7 @@ public class AlterTableStatement extends SchemaAlteringStatement
 
     public boolean announceMigration(boolean isLocalOnly) throws RequestValidationException
     {
-        CFMetaData meta = validateColumnFamily(keyspace(), columnFamily());
+        CFMetaData meta = validateColumnFamily(keyspace(), columnFamily(), schema);
         CFMetaData cfm = meta.copy();
 
         CQL3Type validator = this.validator == null ? null : this.validator.prepare(keyspace());

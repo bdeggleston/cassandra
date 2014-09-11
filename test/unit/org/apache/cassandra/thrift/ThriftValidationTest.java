@@ -20,6 +20,7 @@ package org.apache.cassandra.thrift;
  *
  */
 
+import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -63,13 +64,13 @@ public class ThriftValidationTest
     @Test(expected=org.apache.cassandra.exceptions.InvalidRequestException.class)
     public void testValidateCommutativeWithStandard() throws org.apache.cassandra.exceptions.InvalidRequestException
     {
-        ThriftValidation.validateColumnFamily(KEYSPACE1, "Standard1", true);
+        ThriftValidation.validateColumnFamily(KEYSPACE1, "Standard1", true, Schema.instance);
     }
 
     @Test
     public void testValidateCommutativeWithCounter() throws org.apache.cassandra.exceptions.InvalidRequestException
     {
-        ThriftValidation.validateColumnFamily(KEYSPACE1, "Counter1", true);
+        ThriftValidation.validateColumnFamily(KEYSPACE1, "Counter1", true, Schema.instance);
     }
 
     @Test
@@ -114,7 +115,7 @@ public class ThriftValidationTest
         Column column = new Column(ByteBufferUtil.bytes("id"));
         column.setValue(ByteBufferUtil.bytes("not a long"));
         column.setTimestamp(1234);
-        ThriftValidation.validateColumnData(newMetadata, null, column);
+        ThriftValidation.validateColumnData(newMetadata, null, column, KeyspaceManager.instance);
     }
 
     @Test
@@ -129,10 +130,10 @@ public class ThriftValidationTest
         Column column = new Column(ByteBufferUtil.bytes(CFMetaData.DEFAULT_KEY_ALIAS));
         column.setValue(ByteBufferUtil.bytes("not a uuid"));
         column.setTimestamp(1234);
-        ThriftValidation.validateColumnData(metaData, null, column);
+        ThriftValidation.validateColumnData(metaData, null, column, KeyspaceManager.instance);
 
         IndexExpression expression = new IndexExpression(ByteBufferUtil.bytes(CFMetaData.DEFAULT_KEY_ALIAS), IndexOperator.EQ, ByteBufferUtil.bytes("a"));
-        ThriftValidation.validateFilterClauses(metaData, Arrays.asList(expression));
+        ThriftValidation.validateFilterClauses(metaData, Arrays.asList(expression), KeyspaceManager.instance);
     }
 
     @Test
@@ -146,7 +147,7 @@ public class ThriftValidationTest
         Column column = new Column(ByteBufferUtil.bytes(CFMetaData.DEFAULT_COLUMN_ALIAS + 1));
         column.setValue(ByteBufferUtil.bytes("not a long"));
         column.setTimestamp(1234);
-        ThriftValidation.validateColumnData(metaData, null, column);
+        ThriftValidation.validateColumnData(metaData, null, column, KeyspaceManager.instance);
     }
 
     @Test

@@ -1462,7 +1462,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
 
         public ParsedStatement.Prepared prepare() throws InvalidRequestException
         {
-            CFMetaData cfm = ThriftValidation.validateColumnFamily(keyspace(), columnFamily());
+            CFMetaData cfm = ThriftValidation.validateColumnFamily(keyspace(), columnFamily(), schema);
             VariableSpecifications boundNames = getBoundVariables();
 
             // Select clause

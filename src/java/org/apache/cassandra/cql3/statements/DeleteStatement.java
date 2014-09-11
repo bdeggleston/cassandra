@@ -153,7 +153,7 @@ public class DeleteStatement extends ModificationStatement
                       MessagingService messagingService,
                       LocatorConfig locatorConfig)
         {
-            super(name, attrs, conditions, false, ifExists);
+            super(name, attrs, conditions, false, ifExists, schema);
             this.deletions = deletions;
             this.whereClause = whereClause;
 

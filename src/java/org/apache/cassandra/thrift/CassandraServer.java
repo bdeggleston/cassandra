@@ -428,7 +428,7 @@ public class CassandraServer implements Cassandra.Iface
                                                                              ConsistencyLevel consistency_level)
     throws org.apache.cassandra.exceptions.InvalidRequestException, UnavailableException, TimedOutException
     {
-        CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_parent.column_family);
+        CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_parent.column_family, Schema.instance);
         ThriftValidation.validateColumnParent(metadata, column_parent);
         ThriftValidation.validatePredicate(metadata, column_parent, predicate);
 
@@ -477,7 +477,7 @@ public class CassandraServer implements Cassandra.Iface
             String keyspace = cState.getKeyspace();
             cState.hasColumnFamilyAccess(keyspace, column_path.column_family, Permission.SELECT);
 
-            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_path.column_family);
+            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_path.column_family, Schema.instance);
             ThriftValidation.validateColumnPath(metadata, column_path);
             org.apache.cassandra.db.ConsistencyLevel consistencyLevel = ThriftConversion.fromThrift(consistency_level);
             consistencyLevel.validateForRead(keyspace);
@@ -672,7 +672,7 @@ public class CassandraServer implements Cassandra.Iface
         String keyspace = cState.getKeyspace();
         cState.hasColumnFamilyAccess(keyspace, column_parent.column_family, Permission.MODIFY);
 
-        CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_parent.column_family, false);
+        CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_parent.column_family, false, Schema.instance);
         ThriftValidation.validateKey(metadata, key);
         ThriftValidation.validateColumnParent(metadata, column_parent);
         // SuperColumn field is usually optional, but not when we're inserting
@@ -681,7 +681,7 @@ public class CassandraServer implements Cassandra.Iface
             throw new org.apache.cassandra.exceptions.InvalidRequestException("missing mandatory super column name for super CF " + column_parent.column_family);
         }
         ThriftValidation.validateColumnNames(metadata, column_parent, Arrays.asList(column.name));
-        ThriftValidation.validateColumnData(metadata, column_parent.super_column, column);
+        ThriftValidation.validateColumnData(metadata, column_parent.super_column, column, KeyspaceManager.instance);
 
         org.apache.cassandra.db.Mutation mutation;
         try
@@ -760,7 +760,7 @@ public class CassandraServer implements Cassandra.Iface
             // CAS updates can be used to simulate a get request, so should require Permission.SELECT.
             cState.hasColumnFamilyAccess(keyspace, column_family, Permission.SELECT);
 
-            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_family, false);
+            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_family, false, Schema.instance);
             ThriftValidation.validateKey(metadata, key);
             if (metadata.cfType == ColumnFamilyType.Super)
                 throw new org.apache.cassandra.exceptions.InvalidRequestException("CAS does not support supercolumns");
@@ -774,7 +774,7 @@ public class CassandraServer implements Cassandra.Iface
             });
             ThriftValidation.validateColumnNames(metadata, new ColumnParent(column_family), names);
             for (Column column : updates)
-                ThriftValidation.validateColumnData(metadata, null, column);
+                ThriftValidation.validateColumnData(metadata, null, column, KeyspaceManager.instance);
 
             CFMetaData cfm = Schema.instance.getCFMetaData(cState.getKeyspace(), column_family);
             ColumnFamily cfUpdates = ArrayBackedSortedColumns.factory.create(cfm, DBConfig.instance);
@@ -847,7 +847,7 @@ public class CassandraServer implements Cassandra.Iface
 
                 cState.hasColumnFamilyAccess(keyspace, cfName, Permission.MODIFY);
 
-                CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, cfName);
+                CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, cfName, Schema.instance);
                 ThriftValidation.validateKey(metadata, key);
 
                 org.apache.cassandra.db.Mutation mutation;
@@ -865,7 +865,7 @@ public class CassandraServer implements Cassandra.Iface
 
                 for (Mutation m : columnFamilyMutations.getValue())
                 {
-                    ThriftValidation.validateMutation(metadata, m);
+                    ThriftValidation.validateMutation(metadata, m, KeyspaceManager.instance);
 
                     if (m.deletion != null)
                     {
@@ -1032,7 +1032,7 @@ public class CassandraServer implements Cassandra.Iface
         String keyspace = cState.getKeyspace();
         cState.hasColumnFamilyAccess(keyspace, column_path.column_family, Permission.MODIFY);
 
-        CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_path.column_family, isCommutativeOp);
+        CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_path.column_family, isCommutativeOp, Schema.instance);
         ThriftValidation.validateKey(metadata, key);
         ThriftValidation.validateColumnPathOrParent(metadata, column_path);
         if (isCommutativeOp)
@@ -1163,10 +1163,10 @@ public class CassandraServer implements Cassandra.Iface
             String keyspace = cState.getKeyspace();
             cState.hasColumnFamilyAccess(keyspace, column_parent.column_family, Permission.SELECT);
 
-            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_parent.column_family);
+            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_parent.column_family, Schema.instance);
             ThriftValidation.validateColumnParent(metadata, column_parent);
             ThriftValidation.validatePredicate(metadata, column_parent, predicate);
-            ThriftValidation.validateKeyRange(metadata, column_parent.super_column, range);
+            ThriftValidation.validateKeyRange(metadata, column_parent.super_column, range, KeyspaceManager.instance, LocatorConfig.instance);
 
             org.apache.cassandra.db.ConsistencyLevel consistencyLevel = ThriftConversion.fromThrift(consistency_level);
             consistencyLevel.validateForRead(keyspace);
@@ -1193,7 +1193,7 @@ public class CassandraServer implements Cassandra.Iface
             schedule(DatabaseDescriptor.instance.getRangeRpcTimeout());
             try
             {
-                IDiskAtomFilter filter = ThriftValidation.asIFilter(predicate, metadata, column_parent.super_column);
+                IDiskAtomFilter filter = ThriftValidation.asIFilter(predicate, metadata, column_parent.super_column, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
                 rows = StorageProxy.instance.getRangeSlice(new RangeSliceCommand(keyspace,
                                                                         column_parent.column_family,
                                                                         now,
@@ -1255,8 +1255,8 @@ public class CassandraServer implements Cassandra.Iface
             String keyspace = cState.getKeyspace();
             cState.hasColumnFamilyAccess(keyspace, column_family, Permission.SELECT);
 
-            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_family);
-            ThriftValidation.validateKeyRange(metadata, null, range);
+            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_family, Schema.instance);
+            ThriftValidation.validateKeyRange(metadata, null, range, KeyspaceManager.instance, LocatorConfig.instance);
 
             org.apache.cassandra.db.ConsistencyLevel consistencyLevel = ThriftConversion.fromThrift(consistency_level);
             consistencyLevel.validateForRead(keyspace);
@@ -1289,7 +1289,7 @@ public class CassandraServer implements Cassandra.Iface
             schedule(DatabaseDescriptor.instance.getRangeRpcTimeout());
             try
             {
-                IDiskAtomFilter filter = ThriftValidation.asIFilter(predicate, metadata, null);
+                IDiskAtomFilter filter = ThriftValidation.asIFilter(predicate, metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
                 rows = StorageProxy.instance.getRangeSlice(new RangeSliceCommand(keyspace, column_family, now, filter, bounds, null, range.count, true, true, DatabaseDescriptor.instance, KeyspaceManager.instance, MessagingService.instance.rangeSliceCommandSerializer), consistencyLevel);
             }
             finally
@@ -1352,10 +1352,10 @@ public class CassandraServer implements Cassandra.Iface
             ThriftClientState cState = state();
             String keyspace = cState.getKeyspace();
             cState.hasColumnFamilyAccess(keyspace, column_parent.column_family, Permission.SELECT);
-            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_parent.column_family, false);
+            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_parent.column_family, false, Schema.instance);
             ThriftValidation.validateColumnParent(metadata, column_parent);
             ThriftValidation.validatePredicate(metadata, column_parent, column_predicate);
-            ThriftValidation.validateIndexClauses(metadata, index_clause);
+            ThriftValidation.validateIndexClauses(metadata, index_clause, KeyspaceManager.instance);
             org.apache.cassandra.db.ConsistencyLevel consistencyLevel = ThriftConversion.fromThrift(consistency_level);
             consistencyLevel.validateForRead(keyspace);
 
@@ -1364,7 +1364,7 @@ public class CassandraServer implements Cassandra.Iface
                                                                          p.getMinimumToken().minKeyBound(),
                                                                          LocatorConfig.instance.getPartitioner());
 
-            IDiskAtomFilter filter = ThriftValidation.asIFilter(column_predicate, metadata, column_parent.super_column);
+            IDiskAtomFilter filter = ThriftValidation.asIFilter(column_predicate, metadata, column_parent.super_column, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
             long now = System.currentTimeMillis();
             RangeSliceCommand command = new RangeSliceCommand(keyspace,
                                                               column_parent.column_family,
@@ -1596,7 +1596,7 @@ public class CassandraServer implements Cassandra.Iface
         {
             ThriftValidation.validateKeyspaceNotSystem(ks_def.name);
             state().hasAllKeyspacesAccess(Permission.CREATE);
-            ThriftValidation.validateKeyspaceNotYetExisting(ks_def.name);
+            ThriftValidation.validateKeyspaceNotYetExisting(ks_def.name, Schema.instance);
 
             // generate a meaningful error if the user setup keyspace and/or column definition incorrectly
             for (CfDef cf : ks_def.cf_defs)
@@ -1659,7 +1659,7 @@ public class CassandraServer implements Cassandra.Iface
         {
             ThriftValidation.validateKeyspaceNotSystem(ks_def.name);
             state().hasKeyspaceAccess(ks_def.name, Permission.ALTER);
-            ThriftValidation.validateKeyspace(ks_def.name);
+            ThriftValidation.validateKeyspace(ks_def.name, Schema.instance);
             if (ks_def.getCf_defs() != null && ks_def.getCf_defs().size() > 0)
                 throw new InvalidRequestException("Keyspace update must not contain any table definitions.");
 
@@ -1799,7 +1799,7 @@ public class CassandraServer implements Cassandra.Iface
 
             cState.hasColumnFamilyAccess(keyspace, column_parent.column_family, Permission.MODIFY);
 
-            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_parent.column_family, true);
+            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, column_parent.column_family, true, Schema.instance);
             ThriftValidation.validateKey(metadata, key);
             ThriftConversion.fromThrift(consistency_level).validateCounterForWrite(metadata);
             ThriftValidation.validateColumnParent(metadata, column_parent);
@@ -2045,7 +2045,7 @@ public class CassandraServer implements Cassandra.Iface
             ClientState cState = state();
             String keyspace = cState.getKeyspace();
             state().hasColumnFamilyAccess(keyspace, request.getColumn_parent().column_family, Permission.SELECT);
-            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, request.getColumn_parent().column_family);
+            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace, request.getColumn_parent().column_family, Schema.instance);
             if (metadata.cfType == ColumnFamilyType.Super)
                 throw new org.apache.cassandra.exceptions.InvalidRequestException("get_multi_slice does not support super columns");
             ThriftValidation.validateColumnParent(metadata, request.getColumn_parent());

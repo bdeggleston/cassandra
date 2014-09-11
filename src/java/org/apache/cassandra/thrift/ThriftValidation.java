@@ -79,17 +79,17 @@ public class ThriftValidation
         }
     }
 
-    public static void validateKeyspace(String keyspaceName) throws KeyspaceNotDefinedException
+    public static void validateKeyspace(String keyspaceName, Schema schema) throws KeyspaceNotDefinedException
     {
-        if (!Schema.instance.getKeyspaces().contains(keyspaceName))
+        if (!schema.getKeyspaces().contains(keyspaceName))
         {
             throw new KeyspaceNotDefinedException("Keyspace " + keyspaceName + " does not exist");
         }
     }
 
-    public static CFMetaData validateColumnFamily(String keyspaceName, String cfName, boolean isCommutativeOp) throws org.apache.cassandra.exceptions.InvalidRequestException
+    public static CFMetaData validateColumnFamily(String keyspaceName, String cfName, boolean isCommutativeOp, Schema schema) throws org.apache.cassandra.exceptions.InvalidRequestException
     {
-        CFMetaData metadata = validateColumnFamily(keyspaceName, cfName);
+        CFMetaData metadata = validateColumnFamily(keyspaceName, cfName, schema);
 
         if (isCommutativeOp)
         {
@@ -105,13 +105,13 @@ public class ThriftValidation
     }
 
     // To be used when the operation should be authorized whether this is a counter CF or not
-    public static CFMetaData validateColumnFamily(String keyspaceName, String cfName) throws org.apache.cassandra.exceptions.InvalidRequestException
+    public static CFMetaData validateColumnFamily(String keyspaceName, String cfName, Schema schema) throws org.apache.cassandra.exceptions.InvalidRequestException
     {
-        validateKeyspace(keyspaceName);
+        validateKeyspace(keyspaceName, schema);
         if (cfName.isEmpty())
             throw new org.apache.cassandra.exceptions.InvalidRequestException("non-empty table is required");
 
-        CFMetaData metadata = Schema.instance.getCFMetaData(keyspaceName, cfName);
+        CFMetaData metadata = schema.getCFMetaData(keyspaceName, cfName);
         if (metadata == null)
             throw new org.apache.cassandra.exceptions.InvalidRequestException("unconfigured table " + cfName);
 
@@ -295,7 +295,7 @@ public class ThriftValidation
         }
     }
 
-    public static void validateColumnOrSuperColumn(CFMetaData metadata, ColumnOrSuperColumn cosc)
+    public static void validateColumnOrSuperColumn(CFMetaData metadata, ColumnOrSuperColumn cosc, KeyspaceManager keyspaceManager)
             throws org.apache.cassandra.exceptions.InvalidRequestException
     {
         boolean isCommutative = metadata.isCounter();
@@ -316,7 +316,7 @@ public class ThriftValidation
 
             validateTtl(cosc.column);
             validateColumnPath(metadata, new ColumnPath(metadata.cfName).setSuper_column((ByteBuffer)null).setColumn(cosc.column.name));
-            validateColumnData(metadata, null, cosc.column);
+            validateColumnData(metadata, null, cosc.column, keyspaceManager);
         }
 
         if (cosc.super_column != null)
@@ -327,7 +327,7 @@ public class ThriftValidation
             for (Column c : cosc.super_column.columns)
             {
                 validateColumnPath(metadata, new ColumnPath(metadata.cfName).setSuper_column(cosc.super_column.name).setColumn(c.name));
-                validateColumnData(metadata, cosc.super_column.name, c);
+                validateColumnData(metadata, cosc.super_column.name, c, keyspaceManager);
             }
         }
 
@@ -366,7 +366,7 @@ public class ThriftValidation
         }
     }
 
-    public static void validateMutation(CFMetaData metadata, Mutation mut)
+    public static void validateMutation(CFMetaData metadata, Mutation mut, KeyspaceManager keyspaceManager)
             throws org.apache.cassandra.exceptions.InvalidRequestException
     {
         ColumnOrSuperColumn cosc = mut.column_or_supercolumn;
@@ -383,7 +383,7 @@ public class ThriftValidation
 
         if (cosc != null)
         {
-            validateColumnOrSuperColumn(metadata, cosc);
+            validateColumnOrSuperColumn(metadata, cosc, keyspaceManager);
         }
         else
         {
@@ -432,7 +432,7 @@ public class ThriftValidation
     /**
      * Validates the data part of the column (everything in the column object but the name, which is assumed to be valid)
      */
-    public static void validateColumnData(CFMetaData metadata, ByteBuffer scName, Column column) throws org.apache.cassandra.exceptions.InvalidRequestException
+    public static void validateColumnData(CFMetaData metadata, ByteBuffer scName, Column column, KeyspaceManager keyspaceManager) throws org.apache.cassandra.exceptions.InvalidRequestException
     {
         validateTtl(column);
         if (!column.isSetValue())
@@ -462,7 +462,7 @@ public class ThriftValidation
         }
 
         // Indexed column values cannot be larger than 64K.  See CASSANDRA-3057/4240 for more details
-        if (!KeyspaceManager.instance.open(metadata.ksName).getColumnFamilyStore(metadata.cfName).indexManager.validate(asDBColumn(cn, column)))
+        if (!keyspaceManager.open(metadata.ksName).getColumnFamilyStore(metadata.cfName).indexManager.validate(asDBColumn(cn, column)))
                     throw new org.apache.cassandra.exceptions.InvalidRequestException(String.format("Can't index column value of size %d for index %s in CF %s of KS %s",
                                                                               column.value.remaining(),
                                                                               metadata.getColumnDefinition(cn).getIndexName(),
@@ -505,7 +505,7 @@ public class ThriftValidation
             validateColumnNames(metadata, column_parent, predicate.column_names);
     }
 
-    public static void validateKeyRange(CFMetaData metadata, ByteBuffer superColumn, KeyRange range) throws org.apache.cassandra.exceptions.InvalidRequestException
+    public static void validateKeyRange(CFMetaData metadata, ByteBuffer superColumn, KeyRange range, KeyspaceManager keyspaceManager, LocatorConfig locatorConfig) throws org.apache.cassandra.exceptions.InvalidRequestException
     {
         if ((range.start_key == null) == (range.start_token == null)
             || (range.end_key == null) == (range.end_token == null))
@@ -517,7 +517,7 @@ public class ThriftValidation
         if (range.start_token != null && range.end_key != null)
             throw new org.apache.cassandra.exceptions.InvalidRequestException("start token + end key is not a supported key range");
 
-        IPartitioner p = LocatorConfig.instance.getPartitioner();
+        IPartitioner p = locatorConfig.getPartitioner();
 
         if (range.start_key != null && range.end_key != null)
         {
@@ -539,7 +539,7 @@ public class ThriftValidation
                 throw new org.apache.cassandra.exceptions.InvalidRequestException("Start key's token sorts after end token");
         }
 
-        validateFilterClauses(metadata, range.row_filter);
+        validateFilterClauses(metadata, range.row_filter, keyspaceManager);
 
         if (!isEmpty(range.row_filter) && superColumn != null)
         {
@@ -557,25 +557,25 @@ public class ThriftValidation
         return clause == null || clause.isEmpty();
     }
 
-    public static void validateIndexClauses(CFMetaData metadata, IndexClause index_clause)
+    public static void validateIndexClauses(CFMetaData metadata, IndexClause index_clause, KeyspaceManager keyspaceManager)
     throws org.apache.cassandra.exceptions.InvalidRequestException
     {
         if (index_clause.expressions.isEmpty())
             throw new org.apache.cassandra.exceptions.InvalidRequestException("index clause list may not be empty");
 
-        if (!validateFilterClauses(metadata, index_clause.expressions))
+        if (!validateFilterClauses(metadata, index_clause.expressions, keyspaceManager))
             throw new org.apache.cassandra.exceptions.InvalidRequestException("No indexed columns present in index clause with operator EQ");
     }
 
     // return true if index_clause contains an indexed columns with operator EQ
-    public static boolean validateFilterClauses(CFMetaData metadata, List<IndexExpression> index_clause)
+    public static boolean validateFilterClauses(CFMetaData metadata, List<IndexExpression> index_clause, KeyspaceManager keyspaceManager)
     throws org.apache.cassandra.exceptions.InvalidRequestException
     {
         if (isEmpty(index_clause))
             // no filter to apply
             return false;
 
-        SecondaryIndexManager idxManager = KeyspaceManager.instance.open(metadata.ksName).getColumnFamilyStore(metadata.cfName).indexManager;
+        SecondaryIndexManager idxManager = keyspaceManager.open(metadata.ksName).getColumnFamilyStore(metadata.cfName).indexManager;
         AbstractType<?> nameValidator = SuperColumns.getComparatorFor(metadata, null);
 
         boolean isIndexed = false;
@@ -616,12 +616,12 @@ public class ThriftValidation
         return isIndexed;
     }
 
-    public static void validateKeyspaceNotYetExisting(String newKsName) throws org.apache.cassandra.exceptions.InvalidRequestException
+    public static void validateKeyspaceNotYetExisting(String newKsName, Schema schema) throws org.apache.cassandra.exceptions.InvalidRequestException
     {
         // keyspace names must be unique case-insensitively because the keyspace name becomes the directory
         // where we store CF sstables.  Names that differ only in case would thus cause problems on
         // case-insensitive filesystems (NTFS, most installations of HFS+).
-        for (String ksName : Schema.instance.getKeyspaces())
+        for (String ksName : schema.getKeyspaces())
         {
             if (ksName.equalsIgnoreCase(newKsName))
                 throw new org.apache.cassandra.exceptions.InvalidRequestException(String.format("Keyspace names must be case-insensitively unique (\"%s\" conflicts with \"%s\")",
@@ -636,7 +636,7 @@ public class ThriftValidation
             throw new org.apache.cassandra.exceptions.InvalidRequestException("system keyspace is not user-modifiable");
     }
 
-    public static IDiskAtomFilter asIFilter(SlicePredicate sp, CFMetaData metadata, ByteBuffer superColumn)
+    public static IDiskAtomFilter asIFilter(SlicePredicate sp, CFMetaData metadata, ByteBuffer superColumn, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         SliceRange sr = sp.slice_range;
         IDiskAtomFilter filter;
@@ -658,13 +658,13 @@ public class ThriftValidation
                                           comparator.fromByteBuffer(sr.finish),
                                           sr.reversed,
                                           sr.count,
-                                          DatabaseDescriptor.instance,
-                                          Tracing.instance,
-                                          DBConfig.instance);
+                                          databaseDescriptor,
+                                          tracing,
+                                          dbConfig);
         }
 
         if (metadata.isSuper())
-            filter = SuperColumns.fromSCFilter(metadata.comparator, superColumn, filter, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+            filter = SuperColumns.fromSCFilter(metadata.comparator, superColumn, filter, databaseDescriptor, tracing, dbConfig);
         return filter;
     }
 }

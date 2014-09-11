@@ -146,7 +146,7 @@ public class ClientState
     public void hasColumnFamilyAccess(String keyspace, String columnFamily, Permission perm)
     throws UnauthorizedException, InvalidRequestException
     {
-        ThriftValidation.validateColumnFamily(keyspace, columnFamily);
+        ThriftValidation.validateColumnFamily(keyspace, columnFamily, auth.getSchema());
         hasAccess(keyspace, perm, DataResource.columnFamily(keyspace, columnFamily, auth.getSchema()));
     }
 

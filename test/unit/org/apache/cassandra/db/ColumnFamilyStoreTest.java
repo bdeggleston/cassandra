@@ -909,7 +909,7 @@ public class ColumnFamilyStoreTest
         sp.getSlice_range().setStart(ArrayUtils.EMPTY_BYTE_ARRAY);
         sp.getSlice_range().setFinish(ArrayUtils.EMPTY_BYTE_ARRAY);
 
-        assertRowAndColCount(1, 6, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName), 100));
+        assertRowAndColCount(1, 6, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 100));
 
         // delete
         Mutation rm = MutationFactory.instance.create(keyspace.getName(), key.getKey());
@@ -917,13 +917,13 @@ public class ColumnFamilyStoreTest
         rm.applyUnsafe();
 
         // verify delete.
-        assertRowAndColCount(1, 0, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName), 100));
+        assertRowAndColCount(1, 0, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 100));
 
         // flush
         cfs.forceBlockingFlush();
 
         // re-verify delete.
-        assertRowAndColCount(1, 0, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName), 100));
+        assertRowAndColCount(1, 0, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 100));
 
         // late insert.
         putColsSuper(cfs, key, scfName,
@@ -931,14 +931,14 @@ public class ColumnFamilyStoreTest
                 new BufferCell(cellname(7L), ByteBufferUtil.bytes("val7"), 1L));
 
         // re-verify delete.
-        assertRowAndColCount(1, 0, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName), 100));
+        assertRowAndColCount(1, 0, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 100));
 
         // make sure new writes are recognized.
         putColsSuper(cfs, key, scfName,
                 new BufferCell(cellname(3L), ByteBufferUtil.bytes("val3"), 3),
                 new BufferCell(cellname(8L), ByteBufferUtil.bytes("val8"), 3),
                 new BufferCell(cellname(9L), ByteBufferUtil.bytes("val9"), 3));
-        assertRowAndColCount(1, 3, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName), 100));
+        assertRowAndColCount(1, 3, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 100));
     }
 
     private static void assertRowAndColCount(int rowCount, int colCount, boolean isDeleted, Collection<Row> rows) throws CharacterCodingException
@@ -997,14 +997,14 @@ public class ColumnFamilyStoreTest
 
         // insert
         putColsStandard(cfs, key, column("col1", "val1", 1), column("col2", "val2", 1));
-        assertRowAndColCount(1, 2, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null), 100));
+        assertRowAndColCount(1, 2, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 100));
 
         // flush.
         cfs.forceBlockingFlush();
 
         // insert, don't flush
         putColsStandard(cfs, key, column("col3", "val3", 1), column("col4", "val4", 1));
-        assertRowAndColCount(1, 4, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null), 100));
+        assertRowAndColCount(1, 4, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 100));
 
         // delete (from sstable and memtable)
         Mutation rm = MutationFactory.instance.create(keyspace.getName(), key.getKey());
@@ -1012,27 +1012,27 @@ public class ColumnFamilyStoreTest
         rm.applyUnsafe();
 
         // verify delete
-        assertRowAndColCount(1, 0, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null), 100));
+        assertRowAndColCount(1, 0, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 100));
 
         // flush
         cfs.forceBlockingFlush();
 
         // re-verify delete. // first breakage is right here because of CASSANDRA-1837.
-        assertRowAndColCount(1, 0, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null), 100));
+        assertRowAndColCount(1, 0, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 100));
 
         // simulate a 'late' insertion that gets put in after the deletion. should get inserted, but fail on read.
         putColsStandard(cfs, key, column("col5", "val5", 1), column("col2", "val2", 1));
 
         // should still be nothing there because we deleted this row. 2nd breakage, but was undetected because of 1837.
-        assertRowAndColCount(1, 0, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null), 100));
+        assertRowAndColCount(1, 0, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 100));
 
         // make sure that new writes are recognized.
         putColsStandard(cfs, key, column("col6", "val6", 3), column("col7", "val7", 3));
-        assertRowAndColCount(1, 2, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null), 100));
+        assertRowAndColCount(1, 2, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 100));
 
         // and it remains so after flush. (this wasn't failing before, but it's good to check.)
         cfs.forceBlockingFlush();
-        assertRowAndColCount(1, 2, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null), 100));
+        assertRowAndColCount(1, 2, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 100));
     }
 
 
@@ -1185,7 +1185,7 @@ public class ColumnFamilyStoreTest
 
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                               3,
                                               System.currentTimeMillis(),
                                               true,
@@ -1193,7 +1193,7 @@ public class ColumnFamilyStoreTest
                             3);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                               5,
                                               System.currentTimeMillis(),
                                               true,
@@ -1201,7 +1201,7 @@ public class ColumnFamilyStoreTest
                             5);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                               8,
                                               System.currentTimeMillis(),
                                               true,
@@ -1209,7 +1209,7 @@ public class ColumnFamilyStoreTest
                             8);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                               10,
                                               System.currentTimeMillis(),
                                               true,
@@ -1217,7 +1217,7 @@ public class ColumnFamilyStoreTest
                             10);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                               100,
                                               System.currentTimeMillis(),
                                               true,
@@ -1235,7 +1235,7 @@ public class ColumnFamilyStoreTest
 
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                               1,
                                               System.currentTimeMillis(),
                                               true,
@@ -1243,7 +1243,7 @@ public class ColumnFamilyStoreTest
                             3);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                               4,
                                               System.currentTimeMillis(),
                                               true,
@@ -1251,7 +1251,7 @@ public class ColumnFamilyStoreTest
                             5);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                               5,
                                               System.currentTimeMillis(),
                                               true,
@@ -1259,7 +1259,7 @@ public class ColumnFamilyStoreTest
                             5);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                               6,
                                               System.currentTimeMillis(),
                                               true,
@@ -1267,7 +1267,7 @@ public class ColumnFamilyStoreTest
                             8);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                               100,
                                               System.currentTimeMillis(),
                                               true,
@@ -1307,7 +1307,7 @@ public class ColumnFamilyStoreTest
 
         Collection<Row> rows;
         Row row, row1, row2;
-        IDiskAtomFilter filter = ThriftValidation.asIFilter(sp, cfs.metadata, null);
+        IDiskAtomFilter filter = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
         rows = cfs.getRangeSlice(cfs.makeExtendedFilter(Util.range("", ""), filter, null, 3, true, true, System.currentTimeMillis()));
         assert rows.size() == 1 : "Expected 1 row, got " + toString(rows);
@@ -1315,7 +1315,7 @@ public class ColumnFamilyStoreTest
         assertColumnNames(row, "c0", "c1", "c2");
 
         sp.getSlice_range().setStart(ByteBufferUtil.getArray(ByteBufferUtil.bytes("c2")));
-        filter = ThriftValidation.asIFilter(sp, cfs.metadata, null);
+        filter = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(ka, min, LocatorConfig.instance.getPartitioner()), filter, null, 3, true, true, System.currentTimeMillis()));
         assert rows.size() == 2 : "Expected 2 rows, got " + toString(rows);
         Iterator<Row> iter = rows.iterator();
@@ -1325,14 +1325,14 @@ public class ColumnFamilyStoreTest
         assertColumnNames(row2, "c0");
 
         sp.getSlice_range().setStart(ByteBufferUtil.getArray(ByteBufferUtil.bytes("c0")));
-        filter = ThriftValidation.asIFilter(sp, cfs.metadata, null);
+        filter = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(row2.key, min, LocatorConfig.instance.getPartitioner()), filter, null, 3, true, true, System.currentTimeMillis()));
         assert rows.size() == 1 : "Expected 1 row, got " + toString(rows);
         row = rows.iterator().next();
         assertColumnNames(row, "c0", "c1", "c2");
 
         sp.getSlice_range().setStart(ByteBufferUtil.getArray(ByteBufferUtil.bytes("c2")));
-        filter = ThriftValidation.asIFilter(sp, cfs.metadata, null);
+        filter = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(row.key, min, LocatorConfig.instance.getPartitioner()), filter, null, 3, true, true, System.currentTimeMillis()));
         assert rows.size() == 2 : "Expected 2 rows, got " + toString(rows);
         iter = rows.iterator();
@@ -1438,7 +1438,7 @@ public class ColumnFamilyStoreTest
         sp.getSlice_range().setCount(1);
         sp.getSlice_range().setStart(ArrayUtils.EMPTY_BYTE_ARRAY);
         sp.getSlice_range().setFinish(ArrayUtils.EMPTY_BYTE_ARRAY);
-        IDiskAtomFilter qf = ThriftValidation.asIFilter(sp, cfs.metadata, null);
+        IDiskAtomFilter qf = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
 
         List<Row> rows;
 

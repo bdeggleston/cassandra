@@ -59,7 +59,7 @@ public class DropTriggerStatement extends SchemaAlteringStatement
 
     public void validate(ClientState state) throws RequestValidationException
     {
-        ThriftValidation.validateColumnFamily(keyspace(), columnFamily());
+        ThriftValidation.validateColumnFamily(keyspace(), columnFamily(), schema);
     }
 
     public boolean announceMigration(boolean isLocalOnly) throws ConfigurationException, InvalidRequestException

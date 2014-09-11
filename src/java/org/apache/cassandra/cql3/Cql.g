@@ -771,7 +771,7 @@ alterTableStatement returns [AlterTableStatement expr]
                ( K_AND idn=cident K_TO toIdn=cident { renames.put(idn, toIdn); } )*
           )
     {
-        $expr = new AlterTableStatement(cf, type, id, v, props, renames, isStatic, MigrationManager.instance);
+        $expr = new AlterTableStatement(cf, type, id, v, props, renames, isStatic, Schema.instance, MigrationManager.instance);
     }
     ;
 
@@ -830,7 +830,7 @@ dropIndexStatement returns [DropIndexStatement expr]
   * TRUNCATE <CF>;
   */
 truncateStatement returns [TruncateStatement stmt]
-    : K_TRUNCATE cf=columnFamilyName { $stmt = new TruncateStatement(cf, StorageProxy.instance); }
+    : K_TRUNCATE cf=columnFamilyName { $stmt = new TruncateStatement(cf, Schema.instance, StorageProxy.instance); }
     ;
 
 /**

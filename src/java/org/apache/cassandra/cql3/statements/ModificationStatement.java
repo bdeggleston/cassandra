@@ -795,14 +795,16 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         protected final List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions;
         private final boolean ifNotExists;
         private final boolean ifExists;
+        private final Schema schema;
 
-        protected Parsed(CFName name, Attributes.Raw attrs, List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions, boolean ifNotExists, boolean ifExists)
+        protected Parsed(CFName name, Attributes.Raw attrs, List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions, boolean ifNotExists, boolean ifExists, Schema schema)
         {
             super(name);
             this.attrs = attrs;
             this.conditions = conditions == null ? Collections.<Pair<ColumnIdentifier, ColumnCondition.Raw>>emptyList() : conditions;
             this.ifNotExists = ifNotExists;
             this.ifExists = ifExists;
+            this.schema = schema;
         }
 
         public ParsedStatement.Prepared prepare() throws InvalidRequestException
@@ -814,7 +816,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 
         public ModificationStatement prepare(VariableSpecifications boundNames) throws InvalidRequestException
         {
-            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace(), columnFamily());
+            CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace(), columnFamily(), schema);
 
             Attributes preparedAttributes = attrs.prepare(keyspace(), columnFamily());
             preparedAttributes.collectMarkerSpecification(boundNames);

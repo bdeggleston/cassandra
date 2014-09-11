@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.cassandra.auth.Permission;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.transport.messages.ResultMessage;
@@ -31,11 +32,13 @@ import org.apache.cassandra.thrift.ThriftValidation;
 
 public class TruncateStatement extends CFStatement implements CQLStatement
 {
+    private final Schema schema;
     private final StorageProxy storageProxy;
 
-    public TruncateStatement(CFName name, StorageProxy storageProxy)
+    public TruncateStatement(CFName name, Schema schema, StorageProxy storageProxy)
     {
         super(name);
+        this.schema = schema;
         this.storageProxy = storageProxy;
     }
 
@@ -56,7 +59,7 @@ public class TruncateStatement extends CFStatement implements CQLStatement
 
     public void validate(ClientState state) throws InvalidRequestException
     {
-        ThriftValidation.validateColumnFamily(keyspace(), columnFamily());
+        ThriftValidation.validateColumnFamily(keyspace(), columnFamily(), schema);
     }
 
     public ResultMessage execute(QueryState state, QueryOptions options) throws InvalidRequestException, TruncateException
