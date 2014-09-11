@@ -35,15 +35,17 @@ public class THsHaDisruptorServer extends TDisruptorServer
 {
     private static final Logger logger = LoggerFactory.getLogger(THsHaDisruptorServer.class.getName());
 
+    private final ThriftSessionManager thriftSessionManager;
     /**
      * All the arguments to Non Blocking Server will apply here. In addition,
      * executor pool will be responsible for creating the internal threads which
      * will process the data. threads for selection usually are equal to the
      * number of cpu's
      */
-    public THsHaDisruptorServer(Args args)
+    public THsHaDisruptorServer(Args args, ThriftSessionManager thriftSessionManager)
     {
         super(args);
+        this.thriftSessionManager = thriftSessionManager;
         logger.info("Starting up {}", this);
     }
 
@@ -51,20 +53,29 @@ public class THsHaDisruptorServer extends TDisruptorServer
     protected void beforeInvoke(Message buffer)
     {
         TNonblockingSocket socket = (TNonblockingSocket) buffer.transport;
-        ThriftSessionManager.instance.setCurrentSocket(socket.getSocketChannel().socket().getRemoteSocketAddress());
+        thriftSessionManager.setCurrentSocket(socket.getSocketChannel().socket().getRemoteSocketAddress());
     }
 
     public void beforeClose(Message buffer)
     {
         TNonblockingSocket socket = (TNonblockingSocket) buffer.transport;
-        ThriftSessionManager.instance.connectionComplete(socket.getSocketChannel().socket().getRemoteSocketAddress());
+        thriftSessionManager.connectionComplete(socket.getSocketChannel().socket().getRemoteSocketAddress());
     }
 
     public static class Factory implements TServerFactory
     {
+        private final DatabaseDescriptor databaseDescriptor;
+        private final ThriftSessionManager thriftSessionManager;
+
+        public Factory(DatabaseDescriptor databaseDescriptor, ThriftSessionManager thriftSessionManager)
+        {
+            this.databaseDescriptor = databaseDescriptor;
+            this.thriftSessionManager = thriftSessionManager;
+        }
+
         public TServer buildTServer(Args args)
         {
-            if (DatabaseDescriptor.instance.getClientEncryptionOptions().enabled)
+            if (databaseDescriptor.getClientEncryptionOptions().enabled)
                 throw new RuntimeException("Client SSL is not supported for non-blocking sockets (hsha). Please remove client ssl from the configuration.");
 
             final InetSocketAddress addr = args.addr;
@@ -86,10 +97,10 @@ public class THsHaDisruptorServer extends TDisruptorServer
                                                                                          .inputProtocolFactory(protocolFactory)
                                                                                          .outputProtocolFactory(protocolFactory)
                                                                                          .processor(args.processor)
-                                                                                         .maxFrameSizeInBytes(DatabaseDescriptor.instance.getThriftFramedTransportSize())
+                                                                                         .maxFrameSizeInBytes(databaseDescriptor.getThriftFramedTransportSize())
                                                                                          .alwaysReallocateBuffers(true);
 
-            return new THsHaDisruptorServer(serverArgs);
+            return new THsHaDisruptorServer(serverArgs, thriftSessionManager);
         }
     }
 }
