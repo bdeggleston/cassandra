@@ -32,11 +32,15 @@ public class TServerCustomFactory implements TServerFactory
 {
     private static Logger logger = LoggerFactory.getLogger(TServerCustomFactory.class);
     private final String serverType;
+    private final DatabaseDescriptor databaseDescriptor;
+    private final ThriftSessionManager thriftSessionManager;
 
-    public TServerCustomFactory(String serverType)
+    public TServerCustomFactory(String serverType, DatabaseDescriptor databaseDescriptor, ThriftSessionManager thriftSessionManager)
     {
         assert serverType != null;
         this.serverType = serverType;
+        this.databaseDescriptor = databaseDescriptor;
+        this.thriftSessionManager = thriftSessionManager;
     }
 
     public TServer buildTServer(TServerFactory.Args args)
@@ -44,7 +48,7 @@ public class TServerCustomFactory implements TServerFactory
         TServer server;
         if (ThriftServer.SYNC.equalsIgnoreCase(serverType))
         {
-            server = new CustomTThreadPoolServer.Factory().buildTServer(args);
+            server = new CustomTThreadPoolServer.Factory(databaseDescriptor, thriftSessionManager).buildTServer(args);
         }
         else if(ThriftServer.ASYNC.equalsIgnoreCase(serverType))
         {

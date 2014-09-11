@@ -72,12 +72,13 @@ public class CustomTThreadPoolServer extends TServer
 
     //Track and Limit the number of connected clients
     private final AtomicInteger activeClients = new AtomicInteger(0);
+    private final ThriftSessionManager thriftSessionManager;
 
-
-    public CustomTThreadPoolServer(TThreadPoolServer.Args args, ExecutorService executorService) {
+    public CustomTThreadPoolServer(TThreadPoolServer.Args args, ExecutorService executorService, ThriftSessionManager thriftSessionManager) {
         super(args);
         this.executorService = executorService;
         this.args = args;
+        this.thriftSessionManager = thriftSessionManager;
     }
 
     public void serve()
@@ -105,7 +106,7 @@ public class CustomTThreadPoolServer extends TServer
             {
                 TTransport client = serverTransport_.accept();
                 activeClients.incrementAndGet();
-                WorkerProcess wp = new WorkerProcess(client);
+                WorkerProcess wp = new WorkerProcess(client, thriftSessionManager);
                 executorService.execute(wp);
             }
             catch (TTransportException ttx)
@@ -169,10 +170,14 @@ public class CustomTThreadPoolServer extends TServer
          *
          * @param client Transport to process
          */
-        private WorkerProcess(TTransport client)
+        private WorkerProcess(TTransport client, ThriftSessionManager thriftSessionManager)
         {
             client_ = client;
+            this.thriftSessionManager = thriftSessionManager;
         }
+
+        private ThriftSessionManager thriftSessionManager;
+
 
         /**
          * Loops on processing a client forever
@@ -188,7 +193,7 @@ public class CustomTThreadPoolServer extends TServer
             try
             {
                 socket = ((TCustomSocket) client_).getSocket().getRemoteSocketAddress();
-                ThriftSessionManager.instance.setCurrentSocket(socket);
+                thriftSessionManager.setCurrentSocket(socket);
                 processor = processorFactory_.getProcessor(client_);
                 inputTransport = inputTransportFactory_.getTransport(client_);
                 outputTransport = outputTransportFactory_.getTransport(client_);
@@ -221,7 +226,7 @@ public class CustomTThreadPoolServer extends TServer
             finally
             {
                 if (socket != null)
-                    ThriftSessionManager.instance.connectionComplete(socket);
+                    thriftSessionManager.connectionComplete(socket);
                 if (inputTransport != null)
                     inputTransport.close();
                 if (outputTransport != null)
@@ -233,13 +238,22 @@ public class CustomTThreadPoolServer extends TServer
 
     public static class Factory implements TServerFactory
     {
+        private final DatabaseDescriptor databaseDescriptor;
+        private final ThriftSessionManager thriftSessionManager;
+
+        public Factory(DatabaseDescriptor databaseDescriptor, ThriftSessionManager thriftSessionManager)
+        {
+            this.databaseDescriptor = databaseDescriptor;
+            this.thriftSessionManager = thriftSessionManager;
+        }
+
         public TServer buildTServer(Args args)
         {
             final InetSocketAddress addr = args.addr;
             TServerTransport serverTransport;
             try
             {
-                final ClientEncryptionOptions clientEnc = DatabaseDescriptor.instance.getClientEncryptionOptions();
+                final ClientEncryptionOptions clientEnc = databaseDescriptor.getClientEncryptionOptions();
                 if (clientEnc.enabled)
                 {
                     logger.info("enabling encrypted thrift connections between client and server");
@@ -264,8 +278,8 @@ public class CustomTThreadPoolServer extends TServer
             }
             // ThreadPool Server and will be invocation per connection basis...
             TThreadPoolServer.Args serverArgs = new TThreadPoolServer.Args(serverTransport)
-                                                                     .minWorkerThreads(DatabaseDescriptor.instance.getRpcMinThreads())
-                                                                     .maxWorkerThreads(DatabaseDescriptor.instance.getRpcMaxThreads())
+                                                                     .minWorkerThreads(databaseDescriptor.getRpcMinThreads())
+                                                                     .maxWorkerThreads(databaseDescriptor.getRpcMaxThreads())
                                                                      .inputTransportFactory(args.inTransportFactory)
                                                                      .outputTransportFactory(args.outTransportFactory)
                                                                      .inputProtocolFactory(args.tProtocolFactory)
@@ -277,7 +291,7 @@ public class CustomTThreadPoolServer extends TServer
                                                                      TimeUnit.SECONDS,
                                                                      new SynchronousQueue<Runnable>(),
                                                                      new NamedThreadFactory("Thrift"));
-            return new CustomTThreadPoolServer(serverArgs, executorService);
+            return new CustomTThreadPoolServer(serverArgs, executorService, thriftSessionManager);
         }
     }
 }
