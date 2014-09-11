@@ -33,10 +33,16 @@ import javax.management.StandardMBean;
 
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.metrics.ClientMetrics;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.thrift.ThriftSessionManager;
+import org.apache.cassandra.transport.Message;
 import org.apache.cassandra.utils.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -378,7 +384,21 @@ public class CassandraDaemon
         // Native transport
         InetAddress nativeAddr = DatabaseDescriptor.instance.getRpcAddress();
         int nativePort = DatabaseDescriptor.instance.getNativeTransportPort();
-        nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort);
+        Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
+                                                                           Tracing.instance,
+                                                                           Schema.instance,
+                                                                           Auth.instance.getAuthenticator(),
+                                                                           QueryHandlerInstance.instance,
+                                                                           QueryProcessor.instance,
+                                                                           KeyspaceManager.instance,
+                                                                           StorageProxy.instance,
+                                                                           MutationFactory.instance,
+                                                                           CounterMutationFactory.instance,
+                                                                           MessagingService.instance,
+                                                                           DBConfig.instance,
+                                                                           LocatorConfig.instance);
+        nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort, codecs, DatabaseDescriptor.instance, Tracing.instance,
+                                                                 Auth.instance, ClientMetrics.instance, StorageService.instance, MigrationManager.instance);
     }
 
     /**

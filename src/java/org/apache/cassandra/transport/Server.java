@@ -30,15 +30,6 @@ import javax.net.ssl.SSLEngine;
 
 import io.netty.util.Version;
 import org.apache.cassandra.auth.Auth;
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.cql3.QueryHandlerInstance;
-import org.apache.cassandra.cql3.QueryProcessor;
-import org.apache.cassandra.db.CounterMutationFactory;
-import org.apache.cassandra.db.DBConfig;
-import org.apache.cassandra.db.KeyspaceManager;
-import org.apache.cassandra.db.MutationFactory;
-import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +73,7 @@ public class Server implements CassandraDaemon.Server
         public Connection newConnection(Channel channel, int version)
         {
             return new ServerConnection(channel, version, connectionTracker,
-                                        Tracing.instance, Auth.instance.getAuthenticator(), Auth.instance);
+                                        tracing, auth.getAuthenticator(), auth);
         }
     };
 
@@ -91,42 +82,89 @@ public class Server implements CassandraDaemon.Server
 
     private EventLoopGroup workerGroup;
     private EventExecutor eventExecutorGroup;
-    private final Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
-                                                                                     Tracing.instance,
-                                                                                     Schema.instance,
-                                                                                     Auth.instance.getAuthenticator(),
-                                                                                     QueryHandlerInstance.instance,
-                                                                                     QueryProcessor.instance,
-                                                                                     KeyspaceManager.instance,
-                                                                                     StorageProxy.instance,
-                                                                                     MutationFactory.instance,
-                                                                                     CounterMutationFactory.instance,
-                                                                                     MessagingService.instance,
-                                                                                     DBConfig.instance,
-                                                                                     LocatorConfig.instance);
+    private final Map<Message.Type, Message.Codec> codecs;
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Tracing tracing;
+    private final Auth auth;
+    private final ClientMetrics clientMetrics;
 
-    public Server(InetSocketAddress socket)
+    public Server(InetSocketAddress socket,
+                  Map<Message.Type, Message.Codec> codecs,
+                  DatabaseDescriptor databaseDescriptor,
+                  Tracing tracing,
+                  Auth auth,
+                  ClientMetrics clientMetrics,
+                  StorageService storageService,
+                  MigrationManager migrationManager)
     {
         this.socket = socket;
-        EventNotifier notifier = new EventNotifier(this);
-        StorageService.instance.register(notifier);
-        MigrationManager.instance.register(notifier);
+        EventNotifier notifier = new EventNotifier(this, storageService);
+        this.codecs = codecs;
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
+        this.auth = auth;
+        this.clientMetrics = clientMetrics;
+        storageService.register(notifier);
+        migrationManager.register(notifier);
         registerMetrics();
     }
 
-    public Server(String hostname, int port)
+    public Server(String hostname,
+                  int port,
+                  Map<Message.Type, Message.Codec> codecs,
+                  DatabaseDescriptor databaseDescriptor,
+                  Tracing tracing,
+                  Auth auth,
+                  ClientMetrics clientMetrics,
+                  StorageService storageService,
+                  MigrationManager migrationManager)
     {
-        this(new InetSocketAddress(hostname, port));
+        this(new InetSocketAddress(hostname, port),
+             codecs,
+             databaseDescriptor,
+             tracing,
+             auth,
+             clientMetrics,
+             storageService,
+             migrationManager);
     }
 
-    public Server(InetAddress host, int port)
+    public Server(InetAddress host, int port,
+                  Map<Message.Type, Message.Codec> codecs,
+                  DatabaseDescriptor databaseDescriptor,
+                  Tracing tracing,
+                  Auth auth,
+                  ClientMetrics clientMetrics,
+                  StorageService storageService,
+                  MigrationManager migrationManager)
     {
-        this(new InetSocketAddress(host, port));
+        this(new InetSocketAddress(host, port),
+             codecs,
+             databaseDescriptor,
+             tracing,
+             auth,
+             clientMetrics,
+             storageService,
+             migrationManager);
     }
 
-    public Server(int port)
+    public Server(int port,
+                  Map<Message.Type, Message.Codec> codecs,
+                  DatabaseDescriptor databaseDescriptor,
+                  Tracing tracing,
+                  Auth auth,
+                  ClientMetrics clientMetrics,
+                  StorageService storageService,
+                  MigrationManager migrationManager)
     {
-        this(new InetSocketAddress(port));
+        this(new InetSocketAddress(port),
+             codecs,
+             databaseDescriptor,
+             tracing,
+             auth,
+             clientMetrics,
+             storageService,
+             migrationManager);
     }
 
     public void start()
@@ -152,7 +190,7 @@ public class Server implements CassandraDaemon.Server
     {
         // Check that a SaslAuthenticator can be provided by the configured
         // IAuthenticator. If not, don't start the server.
-        IAuthenticator authenticator = Auth.instance.getAuthenticator();
+        IAuthenticator authenticator = auth.getAuthenticator();
         if (authenticator.requireAuthentication() && !(authenticator instanceof ISaslAwareAuthenticator))
         {
             logger.error("Not starting native transport as the configured IAuthenticator is not capable of SASL authentication");
@@ -161,27 +199,27 @@ public class Server implements CassandraDaemon.Server
         }
 
         // Configure the server.
-        eventExecutorGroup = new RequestThreadPoolExecutor(DatabaseDescriptor.instance.getNativeTransportMaxThreads(), Tracing.instance);
+        eventExecutorGroup = new RequestThreadPoolExecutor(databaseDescriptor.getNativeTransportMaxThreads(), tracing);
         workerGroup = new NioEventLoopGroup();
 
         ServerBootstrap bootstrap = new ServerBootstrap()
                                     .group(workerGroup)
                                     .channel(NioServerSocketChannel.class)
                                     .childOption(ChannelOption.TCP_NODELAY, true)
-                                    .childOption(ChannelOption.SO_KEEPALIVE, DatabaseDescriptor.instance.getRpcKeepAlive())
+                                    .childOption(ChannelOption.SO_KEEPALIVE, databaseDescriptor.getRpcKeepAlive())
                                     .childOption(ChannelOption.ALLOCATOR, CBUtil.allocator)
                                     .childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 32 * 1024)
                                     .childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);
 
-        final EncryptionOptions.ClientEncryptionOptions clientEnc = DatabaseDescriptor.instance.getClientEncryptionOptions();
+        final EncryptionOptions.ClientEncryptionOptions clientEnc = databaseDescriptor.getClientEncryptionOptions();
         if (clientEnc.enabled)
         {
             logger.info("Enabling encrypted CQL connections between client and server");
-            bootstrap.childHandler(new SecureInitializer(this, clientEnc, codecs));
+            bootstrap.childHandler(new SecureInitializer(this, clientEnc, codecs, databaseDescriptor));
         }
         else
         {
-            bootstrap.childHandler(new Initializer(this, codecs));
+            bootstrap.childHandler(new Initializer(this, codecs, databaseDescriptor));
         }
 
         // Bind and start to accept incoming connections.
@@ -194,7 +232,7 @@ public class Server implements CassandraDaemon.Server
 
     private void registerMetrics()
     {
-        ClientMetrics.instance.addCounter("connectedNativeClients", new Callable<Integer>()
+        clientMetrics.addCounter("connectedNativeClients", new Callable<Integer>()
         {
             @Override
             public Integer call() throws Exception
@@ -277,10 +315,12 @@ public class Server implements CassandraDaemon.Server
         private static final Message.Dispatcher dispatcher = new Message.Dispatcher();
 
         private final Server server;
+        private final DatabaseDescriptor databaseDescriptor;
 
-        public Initializer(Server server, Map<Message.Type, Message.Codec> codecs)
+        public Initializer(Server server, Map<Message.Type, Message.Codec> codecs, DatabaseDescriptor databaseDescriptor)
         {
             this.server = server;
+            this.databaseDescriptor = databaseDescriptor;
             messageDecoder = new Message.ProtocolDecoder(codecs);
             messageEncoder = new Message.ProtocolEncoder(codecs);
         }
@@ -292,7 +332,7 @@ public class Server implements CassandraDaemon.Server
             //pipeline.addLast("debug", new LoggingHandler());
 
             pipeline.addLast("frameDecoder", new Frame.Decoder(server.connectionFactory,
-                                                               DatabaseDescriptor.instance.getNativeTransportMaxFrameSize()));
+                                                               databaseDescriptor.getNativeTransportMaxFrameSize()));
             pipeline.addLast("frameEncoder", frameEncoder);
 
             pipeline.addLast("frameDecompressor", frameDecompressor);
@@ -310,9 +350,9 @@ public class Server implements CassandraDaemon.Server
         private final SSLContext sslContext;
         private final EncryptionOptions encryptionOptions;
 
-        public SecureInitializer(Server server, EncryptionOptions encryptionOptions, Map<Message.Type, Message.Codec> codecs)
+        public SecureInitializer(Server server, EncryptionOptions encryptionOptions, Map<Message.Type, Message.Codec> codecs, DatabaseDescriptor databaseDescriptor)
         {
-            super(server, codecs);
+            super(server, codecs, databaseDescriptor);
             this.encryptionOptions = encryptionOptions;
             try
             {
@@ -352,16 +392,19 @@ public class Server implements CassandraDaemon.Server
             }
         }
 
-        private EventNotifier(Server server)
+        private final StorageService storageService;
+
+        private EventNotifier(Server server, StorageService storageService)
         {
             this.server = server;
+            this.storageService = storageService;
         }
 
         private InetAddress getRpcAddress(InetAddress endpoint)
         {
             try
             {
-                InetAddress rpcAddress = InetAddress.getByName(StorageService.instance.getRpcaddress(endpoint));
+                InetAddress rpcAddress = InetAddress.getByName(storageService.getRpcaddress(endpoint));
                 // If rpcAddress == 0.0.0.0 (i.e. bound on all addresses), returning that is not very helpful,
                 // so return the internal address (which is ok since "we're bound on all addresses").
                 // Note that after all nodes are running a version that includes CASSANDRA-5899, rpcAddress should
