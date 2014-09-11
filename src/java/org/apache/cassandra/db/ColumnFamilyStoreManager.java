@@ -5,8 +5,10 @@ import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.sstable.Component;
@@ -16,7 +18,9 @@ import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.CompactionMetadata;
 import org.apache.cassandra.io.sstable.metadata.MetadataType;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.CacheService;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +70,23 @@ public class ColumnFamilyStoreManager
         Collections.sort(generations);
         int value = (generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
 
-        return new ColumnFamilyStore(keyspace, columnFamily, partitioner, value, metadata, directories, loadSSTables, taskExecutors);
+        return new ColumnFamilyStore(keyspace,
+                                     columnFamily,
+                                     partitioner,
+                                     value,
+                                     metadata,
+                                     directories,
+                                     loadSSTables,
+                                     taskExecutors,
+                                     Schema.instance,
+                                     Tracing.instance,
+                                     CFMetaDataFactory.instance,
+                                     this,
+                                     KeyspaceManager.instance,
+                                     DBConfig.instance,
+                                     CommitLog.instance,
+                                     CacheService.instance,
+                                     StorageServiceExecutors.instance);
     }
 
     /**
