@@ -20,7 +20,6 @@ package org.apache.cassandra.cql3.statements;
 import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.auth.AuthenticatedUser;
 import org.apache.cassandra.auth.IAuthenticator;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.UserOptions;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.RequestExecutionException;
@@ -78,7 +77,7 @@ public class AlterUserStatement extends AuthenticationStatement
         {
             for (IAuthenticator.Option option : opts.getOptions().keySet())
             {
-                if (!Auth.instance.getAuthenticator().alterableOptions().contains(option))
+                if (!auth.getAuthenticator().alterableOptions().contains(option))
                     throw new UnauthorizedException(String.format("You aren't allowed to alter %s option", option));
             }
         }
@@ -87,7 +86,7 @@ public class AlterUserStatement extends AuthenticationStatement
     public ResultMessage execute(ClientState state) throws RequestValidationException, RequestExecutionException
     {
         if (!opts.isEmpty())
-            Auth.instance.getAuthenticator().alter(username, opts.getOptions());
+            auth.getAuthenticator().alter(username, opts.getOptions());
         if (superuser != null)
             auth.insertUser(username, superuser.booleanValue());
         return null;

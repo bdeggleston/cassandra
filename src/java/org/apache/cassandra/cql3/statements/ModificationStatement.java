@@ -482,8 +482,8 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                                   now,
                                                   new SliceQueryFilter(slices, false, Integer.MAX_VALUE, databaseDescriptor, tracing, dbConfig),
                                                   Schema.instance,
-                                                  LocatorConfig.instance.getPartitioner(),
-                                                  MessagingService.instance.readCommandSerializer));
+                                                  locatorConfig.getPartitioner(),
+                                                  messagingService.readCommandSerializer));
 
         List<Row> rows = local
                        ? SelectStatement.readLocally(keyspace(), commands, keyspaceManager)

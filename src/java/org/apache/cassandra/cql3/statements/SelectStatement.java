@@ -411,8 +411,8 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                                             now,
                                             filter.cloneShallow(),
                                             Schema.instance,
-                                            LocatorConfig.instance.getPartitioner(),
-                                            MessagingService.instance.readCommandSerializer));
+                                            locatorConfig.getPartitioner(),
+                                            messagingService.readCommandSerializer));
         }
 
         return commands;
