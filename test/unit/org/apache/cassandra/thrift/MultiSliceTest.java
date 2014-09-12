@@ -28,10 +28,23 @@ import java.util.List;
 import junit.framework.Assert;
 
 import org.apache.cassandra.SchemaLoader;
-import org.apache.cassandra.config.KSMetaData;
+import org.apache.cassandra.auth.Auth;
+import org.apache.cassandra.config.*;
+import org.apache.cassandra.cql3.QueryHandlerInstance;
+import org.apache.cassandra.db.CounterMutationFactory;
+import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.exceptions.ConfigurationException;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.locator.SimpleStrategy;
+import org.apache.cassandra.metrics.ClientMetrics;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.EmbeddedCassandraService;
+import org.apache.cassandra.service.MigrationManager;
+import org.apache.cassandra.service.StorageProxy;
+import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.thrift.TException;
 import org.junit.BeforeClass;
@@ -53,7 +66,15 @@ public class MultiSliceTest
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD));
-        server = new CassandraServer();
+        server = new CassandraServer(DatabaseDescriptor.instance, Tracing.instance,
+                                     Schema.instance, Auth.instance, StorageProxy.instance,
+                                     MessagingService.instance, KeyspaceManager.instance,
+                                     MutationFactory.instance, CounterMutationFactory.instance,
+                                     StorageService.instance, CFMetaDataFactory.instance,
+                                     MigrationManager.instance, KSMetaDataFactory.instance,
+                                     QueryHandlerInstance.instance, LocatorConfig.instance,
+                                     DBConfig.instance, ThriftSessionManager.instance,
+                                     ClientMetrics.instance);
         server.set_keyspace(KEYSPACE1);
     }
 

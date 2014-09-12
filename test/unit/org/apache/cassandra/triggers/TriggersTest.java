@@ -22,10 +22,20 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Collections;
 
+import org.apache.cassandra.auth.Auth;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.KSMetaDataFactory;
+import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Mutation;
+import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.metrics.ClientMetrics;
+import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.service.MigrationManager;
+import org.apache.cassandra.service.StorageProxy;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -73,7 +83,16 @@ public class TriggersTest
         StorageService.instance.initServer(0);
         if (thriftServer == null || ! thriftServer.isRunning())
         {
-            thriftServer = new ThriftServer(InetAddress.getLocalHost(), 9170, 50, DatabaseDescriptor.instance, ThriftSessionManager.instance);
+            thriftServer = new ThriftServer(InetAddress.getLocalHost(), 9170, 50,
+                                            DatabaseDescriptor.instance, Tracing.instance,
+                                            Schema.instance, Auth.instance, StorageProxy.instance,
+                                            MessagingService.instance, KeyspaceManager.instance,
+                                            MutationFactory.instance, CounterMutationFactory.instance,
+                                            StorageService.instance, CFMetaDataFactory.instance,
+                                            MigrationManager.instance, KSMetaDataFactory.instance,
+                                            QueryHandlerInstance.instance, LocatorConfig.instance,
+                                            DBConfig.instance, ThriftSessionManager.instance,
+                                            ClientMetrics.instance);
             thriftServer.start();
         }
 

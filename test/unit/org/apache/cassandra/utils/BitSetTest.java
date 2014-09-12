@@ -27,6 +27,7 @@ import java.util.Random;
 import com.google.common.collect.Lists;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DBConfig;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.junit.Assert;
@@ -40,6 +41,12 @@ import static org.junit.Assert.assertEquals;
 
 public class BitSetTest
 {
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     /**
      * Test bitsets in a "real-world" environment, i.e., bloom filters
      */

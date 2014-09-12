@@ -20,6 +20,23 @@ package org.apache.cassandra.thrift;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
+import org.apache.cassandra.auth.Auth;
+import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.KSMetaDataFactory;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.cql3.QueryHandler;
+import org.apache.cassandra.cql3.QueryHandlerInstance;
+import org.apache.cassandra.db.CounterMutationFactory;
+import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.MutationFactory;
+import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.metrics.ClientMetrics;
+import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.service.MigrationManager;
+import org.apache.cassandra.service.StorageProxy;
+import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,15 +61,47 @@ public class ThriftServer implements CassandraDaemon.Server
     private volatile ThriftServerThread server;
 
     private final DatabaseDescriptor databaseDescriptor;
+    private final Tracing tracing;
+    private final Schema schema;
+    private final Auth auth;
+    private final StorageProxy storageProxy;
+    private final MessagingService messagingService;
+    private final KeyspaceManager keyspaceManager;
+    private final MutationFactory mutationFactory;
+    private final CounterMutationFactory counterMutationFactory;
+    private final StorageService storageService;
+    private final CFMetaDataFactory cfMetaDataFactory;
+    private final MigrationManager migrationManager;
+    private final KSMetaDataFactory ksMetaDataFactory;
+    private final QueryHandler queryHandler;
+    private final LocatorConfig locatorConfig;
+    private final DBConfig dbConfig;
     private final ThriftSessionManager thriftSessionManager;
+    private final ClientMetrics clientMetrics;
 
-    public ThriftServer(InetAddress address, int port, int backlog, DatabaseDescriptor databaseDescriptor, ThriftSessionManager thriftSessionManager)
+    public ThriftServer(InetAddress address, int port, int backlog, DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, Auth auth, StorageProxy storageProxy, MessagingService messagingService, KeyspaceManager keyspaceManager, MutationFactory mutationFactory, CounterMutationFactory counterMutationFactory, StorageService storageService, CFMetaDataFactory cfMetaDataFactory, MigrationManager migrationManager, KSMetaDataFactory ksMetaDataFactory, QueryHandler queryHandler, LocatorConfig locatorConfig, DBConfig dbConfig, ThriftSessionManager thriftSessionManager, ClientMetrics clientMetrics)
     {
         this.address = address;
         this.port = port;
         this.backlog = backlog;
         this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
+        this.schema = schema;
+        this.auth = auth;
+        this.storageProxy = storageProxy;
+        this.messagingService = messagingService;
+        this.keyspaceManager = keyspaceManager;
+        this.mutationFactory = mutationFactory;
+        this.counterMutationFactory = counterMutationFactory;
+        this.storageService = storageService;
+        this.cfMetaDataFactory = cfMetaDataFactory;
+        this.migrationManager = migrationManager;
+        this.ksMetaDataFactory = ksMetaDataFactory;
+        this.queryHandler = queryHandler;
+        this.locatorConfig = locatorConfig;
+        this.dbConfig = dbConfig;
         this.thriftSessionManager = thriftSessionManager;
+        this.clientMetrics = clientMetrics;
     }
 
     public void start()
@@ -92,7 +141,11 @@ public class ThriftServer implements CassandraDaemon.Server
      */
     protected CassandraServer getCassandraServer()
     {
-        return new CassandraServer();
+        return new CassandraServer(databaseDescriptor, tracing, schema, auth,
+                                   storageProxy, messagingService, keyspaceManager,
+                                   mutationFactory, counterMutationFactory, storageService,
+                                   cfMetaDataFactory, migrationManager, ksMetaDataFactory, queryHandler,
+                                   locatorConfig, dbConfig, thriftSessionManager, clientMetrics);
     }
 
     protected TProcessor getProcessor(CassandraServer server)

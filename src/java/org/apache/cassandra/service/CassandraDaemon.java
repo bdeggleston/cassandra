@@ -34,7 +34,7 @@ import javax.management.StandardMBean;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.cassandra.auth.Auth;
-import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.*;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
@@ -51,9 +51,6 @@ import com.addthis.metrics.reporter.config.ReporterConfig;
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.functions.Functions;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.compaction.CompactionManager;
@@ -379,7 +376,16 @@ public class CassandraDaemon
         InetAddress rpcAddr = DatabaseDescriptor.instance.getRpcAddress();
         int rpcPort = DatabaseDescriptor.instance.getRpcPort();
         int listenBacklog = DatabaseDescriptor.instance.getRpcListenBacklog();
-        thriftServer = new ThriftServer(rpcAddr, rpcPort, listenBacklog, DatabaseDescriptor.instance, ThriftSessionManager.instance);
+        thriftServer = new ThriftServer(rpcAddr, rpcPort, listenBacklog,
+                                        DatabaseDescriptor.instance, Tracing.instance,
+                                        Schema.instance, Auth.instance, StorageProxy.instance,
+                                        MessagingService.instance, KeyspaceManager.instance,
+                                        MutationFactory.instance, CounterMutationFactory.instance,
+                                        StorageService.instance, CFMetaDataFactory.instance,
+                                        MigrationManager.instance, KSMetaDataFactory.instance,
+                                        QueryHandlerInstance.instance, LocatorConfig.instance,
+                                        DBConfig.instance, ThriftSessionManager.instance,
+                                        ClientMetrics.instance);
 
         // Native transport
         InetAddress nativeAddr = DatabaseDescriptor.instance.getRpcAddress();
