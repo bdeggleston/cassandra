@@ -52,8 +52,9 @@ public class CollationController
     private final DBConfig dbConfig;
     private final KeyspaceManager keyspaceManager;
     private final Tracing tracing;
+    private final MutationFactory mutationFactory;
 
-    public CollationController(ColumnFamilyStore cfs, QueryFilter filter, int gcBefore, DBConfig dbConfig, KeyspaceManager keyspaceManager, Tracing tracing)
+    public CollationController(ColumnFamilyStore cfs, QueryFilter filter, int gcBefore, DBConfig dbConfig, KeyspaceManager keyspaceManager, Tracing tracing, MutationFactory mutationFactory)
     {
         this.cfs = cfs;
         this.filter = filter;
@@ -62,6 +63,7 @@ public class CollationController
         this.dbConfig = dbConfig;
         this.keyspaceManager = keyspaceManager;
         this.tracing = tracing;
+        this.mutationFactory = mutationFactory;
     }
 
     public ColumnFamily getTopLevelColumns(boolean copyOnHeap)
@@ -162,7 +164,7 @@ public class CollationController
                 && cfs.getCompactionStrategy() instanceof SizeTieredCompactionStrategy)
             {
                 tracing.trace("Defragmenting requested data");
-                Mutation mutation = MutationFactory.instance.create(cfs.keyspace.getName(), filter.key.getKey(), returnCF.cloneMe());
+                Mutation mutation = mutationFactory.create(cfs.keyspace.getName(), filter.key.getKey(), returnCF.cloneMe());
                 // skipping commitlog and index updates is fine since we're just de-fragmenting existing data
                 keyspaceManager.open(mutation.getKeyspaceName()).apply(mutation, false, false);
             }

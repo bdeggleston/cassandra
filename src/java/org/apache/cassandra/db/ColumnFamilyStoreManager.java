@@ -86,7 +86,8 @@ public class ColumnFamilyStoreManager
                                      DBConfig.instance,
                                      CommitLog.instance,
                                      CacheService.instance,
-                                     StorageServiceExecutors.instance);
+                                     StorageServiceExecutors.instance,
+                                     MutationFactory.instance);
     }
 
     /**

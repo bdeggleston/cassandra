@@ -241,6 +241,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     private final CommitLog commitLog;
     private final CacheService cacheService;
     private final StorageServiceExecutors storageServiceExecutors;
+    private final MutationFactory mutationFactory;
 
     private final DatabaseDescriptor databaseDescriptor;
     private final SystemKeyspace systemKeyspace;
@@ -264,7 +265,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                               DBConfig dbConfig,
                               CommitLog commitLog,
                               CacheService cacheService,
-                              StorageServiceExecutors storageServiceExecutors)
+                              StorageServiceExecutors storageServiceExecutors,
+                              MutationFactory mutationFactory)
     {
         assert metadata != null : "null metadata for " + keyspace + ":" + columnFamilyName;
 
@@ -276,6 +278,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         this.maxCompactionThreshold = new DefaultInteger(metadata.getMaxCompactionThreshold());
         this.partitioner = partitioner;
         this.directories = directories;
+        this.mutationFactory = mutationFactory;
 
         this.schema = schema;
         this.tracing = tracing;
@@ -1749,7 +1752,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public ColumnFamily getTopLevelColumns(QueryFilter filter, int gcBefore)
     {
         tracing.trace("Executing single-partition query on {}", name);
-        CollationController controller = new CollationController(this, filter, gcBefore, dbConfig, keyspaceManager, tracing);
+        CollationController controller = new CollationController(this, filter, gcBefore, dbConfig, keyspaceManager, tracing, mutationFactory);
         ColumnFamily columns;
         try (OpOrder.Group op = readOrdering.start())
         {
