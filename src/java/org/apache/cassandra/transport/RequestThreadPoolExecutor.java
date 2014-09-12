@@ -37,7 +37,7 @@ public class RequestThreadPoolExecutor extends AbstractEventExecutor
 
     public RequestThreadPoolExecutor(int maxThreads, Tracing tracing)
     {
-        wrapped = SHARED.newExecutor(DatabaseDescriptor.instance.getNativeTransportMaxThreads(),
+        wrapped = SHARED.newExecutor(maxThreads,
                                      MAX_QUEUED_REQUESTS,
                                      THREAD_FACTORY_ID,
                                      "transport",
