@@ -347,7 +347,7 @@ public class BulkLoader
         @Override
         public StreamConnectionFactory getConnectionFactory()
         {
-            return new BulkLoadConnectionFactory(storagePort, sslStoragePort, serverEncOptions, false);
+            return new BulkLoadConnectionFactory(storagePort, sslStoragePort, serverEncOptions, false, dbConfig.getLocatorConfig());
         }
 
         @Override

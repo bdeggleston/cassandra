@@ -23,8 +23,8 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.SocketChannel;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.EncryptionOptions;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.security.SSLFactory;
 import org.apache.cassandra.streaming.StreamConnectionFactory;
 
@@ -34,13 +34,15 @@ public class BulkLoadConnectionFactory implements StreamConnectionFactory
     private final int storagePort;
     private final int secureStoragePort;
     private final EncryptionOptions.ServerEncryptionOptions encryptionOptions;
+    private final LocatorConfig locatorConfig;
 
-    public BulkLoadConnectionFactory(int storagePort, int secureStoragePort, EncryptionOptions.ServerEncryptionOptions encryptionOptions, boolean outboundBindAny)
+    public BulkLoadConnectionFactory(int storagePort, int secureStoragePort, EncryptionOptions.ServerEncryptionOptions encryptionOptions, boolean outboundBindAny, LocatorConfig locatorConfig)
     {
         this.storagePort = storagePort;
         this.secureStoragePort = secureStoragePort;
         this.encryptionOptions = encryptionOptions;
         this.outboundBindAny = outboundBindAny;
+        this.locatorConfig = locatorConfig;
     }
 
     public Socket createConnection(InetAddress peer) throws IOException
@@ -53,13 +55,13 @@ public class BulkLoadConnectionFactory implements StreamConnectionFactory
             if (outboundBindAny)
                 return SSLFactory.getSocket(encryptionOptions, peer, secureStoragePort);
             else
-                return SSLFactory.getSocket(encryptionOptions, peer, secureStoragePort, DatabaseDescriptor.instance.getLocalAddress(), 0);
+                return SSLFactory.getSocket(encryptionOptions, peer, secureStoragePort, locatorConfig.getLocalAddress(), 0);
         }
         else
         {
             Socket socket = SocketChannel.open(new InetSocketAddress(peer, storagePort)).socket();
             if (outboundBindAny && !socket.isBound())
-                socket.bind(new InetSocketAddress(DatabaseDescriptor.instance.getLocalAddress(), 0));
+                socket.bind(new InetSocketAddress(locatorConfig.getLocalAddress(), 0));
             return socket;
         }
     }

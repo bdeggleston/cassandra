@@ -249,8 +249,8 @@ public class SSTableLoader implements StreamEventHandler
         private final Map<InetAddress, Collection<Range<Token>>> endpointToRanges = new HashMap<>();
         private IPartitioner partitioner;
 
-        private final DatabaseDescriptor databaseDescriptor;
-        private final DBConfig dbConfig;
+        protected final DatabaseDescriptor databaseDescriptor;
+        protected final DBConfig dbConfig;
 
         public Client(DatabaseDescriptor databaseDescriptor, DBConfig dbConfig)
         {
