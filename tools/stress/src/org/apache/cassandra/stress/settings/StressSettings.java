@@ -168,6 +168,7 @@ public class StressSettings implements Serializable
                                                                                                           MessagingService.instance,
                                                                                                           DBConfig.instance,
                                                                                                           LocatorConfig.instance),
+                                                   DatabaseDescriptor.instance,
                                                    Tracing.instance,
                                                    Auth.instance,
                                                    QueryHandlerInstance.instance);

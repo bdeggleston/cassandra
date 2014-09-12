@@ -54,9 +54,9 @@ import static org.apache.cassandra.config.EncryptionOptions.ClientEncryptionOpti
 
 public class Client extends SimpleClient
 {
-    public Client(String host, int port, ClientEncryptionOptions encryptionOptions, Map<Message.Type, Message.Codec> codecs, Tracing tracing, Auth auth, QueryHandler queryHandler)
+    public Client(String host, int port, ClientEncryptionOptions encryptionOptions, Map<Message.Type, Message.Codec> codecs, DatabaseDescriptor databaseDescriptor, Tracing tracing, Auth auth, QueryHandler queryHandler)
     {
-        super(host, port, encryptionOptions, codecs, tracing, auth, queryHandler);
+        super(host, port, encryptionOptions, codecs, databaseDescriptor, tracing, auth, queryHandler);
     }
 
     public void run() throws IOException
@@ -268,7 +268,7 @@ public class Client extends SimpleClient
                                                                            MessagingService.instance,
                                                                            DBConfig.instance,
                                                                            LocatorConfig.instance);
-        new Client(host, port, encryptionOptions, codecs, Tracing.instance, Auth.instance, QueryHandlerInstance.instance).run();
+        new Client(host, port, encryptionOptions, codecs, DatabaseDescriptor.instance, Tracing.instance, Auth.instance, QueryHandlerInstance.instance).run();
         System.exit(0);
     }
 }

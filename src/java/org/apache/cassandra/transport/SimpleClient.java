@@ -91,15 +91,17 @@ public class SimpleClient
         }
     };
 
+    protected final DatabaseDescriptor databaseDescriptor;
     protected final Tracing tracing;
     protected final Auth auth;
     protected final QueryHandler queryHandler;
 
-    public SimpleClient(String host, int port, ClientEncryptionOptions encryptionOptions, Map<Message.Type, Message.Codec> codecs, Tracing tracing, Auth auth, QueryHandler queryHandler)
+    public SimpleClient(String host, int port, ClientEncryptionOptions encryptionOptions, Map<Message.Type, Message.Codec> codecs, DatabaseDescriptor databaseDescriptor, Tracing tracing, Auth auth, QueryHandler queryHandler)
     {
         this.host = host;
         this.port = port;
         this.encryptionOptions = encryptionOptions;
+        this.databaseDescriptor = databaseDescriptor;
         this.tracing = tracing;
         this.auth = auth;
         this.queryHandler = queryHandler;
@@ -107,9 +109,9 @@ public class SimpleClient
         messageEncoder = new Message.ProtocolEncoder(codecs);
     }
 
-    public SimpleClient(String host, int port, Map<Message.Type, Message.Codec> codecs, Tracing tracing, Auth auth, QueryHandler queryHandler)
+    public SimpleClient(String host, int port, Map<Message.Type, Message.Codec> codecs, DatabaseDescriptor databaseDescriptor, Tracing tracing, Auth auth, QueryHandler queryHandler)
     {
-        this(host, port, new ClientEncryptionOptions(), codecs, tracing, auth, queryHandler);
+        this(host, port, new ClientEncryptionOptions(), codecs, databaseDescriptor, tracing, auth, queryHandler);
     }
 
     public void connect(boolean useCompression) throws IOException
@@ -237,7 +239,7 @@ public class SimpleClient
         {
             ChannelPipeline pipeline = channel.pipeline();
             pipeline.addLast("frameDecoder", new Frame.Decoder(connectionFactory,
-                                                               DatabaseDescriptor.instance.getNativeTransportMaxFrameSize()));
+                                                               databaseDescriptor.getNativeTransportMaxFrameSize()));
             pipeline.addLast("frameEncoder", frameEncoder);
 
             pipeline.addLast("frameDecompressor", frameDecompressor);
