@@ -486,6 +486,7 @@ public class CassandraServer implements Cassandra.Iface
                                             column_parent.getColumn_family(),
                                             timestamp,
                                             filter.cloneShallow(),
+                                            databaseDescriptor,
                                             schema,
                                             locatorConfig.getPartitioner(),
                                             messagingService.readCommandSerializer));
@@ -544,6 +545,7 @@ public class CassandraServer implements Cassandra.Iface
                                                      column_path.column_family,
                                                      now,
                                                      filter,
+                                                     databaseDescriptor,
                                                      schema,
                                                      locatorConfig.getPartitioner(),
                                                      messagingService.readCommandSerializer);
@@ -2114,6 +2116,7 @@ public class CassandraServer implements Cassandra.Iface
                                             request.column_parent.getColumn_family(),
                                             System.currentTimeMillis(),
                                             filter,
+                                            databaseDescriptor,
                                             schema,
                                             locatorConfig.getPartitioner(),
                                             messagingService.readCommandSerializer));

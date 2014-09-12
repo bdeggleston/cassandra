@@ -155,6 +155,7 @@ public class QueryPagers
                                                                 cfs.name,
                                                                 System.currentTimeMillis(),
                                                                 new IdentityQueryFilter(databaseDescriptor, tracing, dbConfig),
+                                                                databaseDescriptor,
                                                                 schema,
                                                                 LocatorConfig.instance.getPartitioner(),
                                                                 MessagingService.instance.readCommandSerializer);
@@ -208,6 +209,7 @@ public class QueryPagers
                                                                 columnFamily,
                                                                 now,
                                                                 filter,
+                                                                DatabaseDescriptor.instance,
                                                                 schema,
                                                                 LocatorConfig.instance.getPartitioner(),
                                                                 MessagingService.instance.readCommandSerializer);

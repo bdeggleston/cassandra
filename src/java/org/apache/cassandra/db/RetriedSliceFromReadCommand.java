@@ -19,6 +19,7 @@ package org.apache.cassandra.db;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.dht.IPartitioner;
 import org.slf4j.Logger;
@@ -31,16 +32,16 @@ public class RetriedSliceFromReadCommand extends SliceFromReadCommand
     static final Logger logger = LoggerFactory.getLogger(RetriedSliceFromReadCommand.class);
     public final int originalCount;
 
-    public RetriedSliceFromReadCommand(String keyspaceName, ByteBuffer key, String cfName, long timestamp, SliceQueryFilter filter, int originalCount, Schema schema, IPartitioner partitioner, ReadCommand.Serializer serializer)
+    public RetriedSliceFromReadCommand(String keyspaceName, ByteBuffer key, String cfName, long timestamp, SliceQueryFilter filter, int originalCount, DatabaseDescriptor databaseDescriptor, Schema schema, IPartitioner partitioner, ReadCommand.Serializer serializer)
     {
-        super(keyspaceName, key, cfName, timestamp, filter, schema, partitioner, serializer);
+        super(keyspaceName, key, cfName, timestamp, filter, databaseDescriptor, schema, partitioner, serializer);
         this.originalCount = originalCount;
     }
 
     @Override
     public ReadCommand copy()
     {
-        ReadCommand readCommand = new RetriedSliceFromReadCommand(ksName, key, cfName, timestamp, filter, originalCount, schema, partitioner, serializer);
+        ReadCommand readCommand = new RetriedSliceFromReadCommand(ksName, key, cfName, timestamp, filter, originalCount, databaseDescriptor, schema, partitioner, serializer);
         readCommand.setDigestQuery(isDigestQuery());
         return readCommand;
     }

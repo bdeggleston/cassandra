@@ -410,7 +410,8 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                                             columnFamily(),
                                             now,
                                             filter.cloneShallow(),
-                                            Schema.instance,
+                                            databaseDescriptor,
+                                            schema,
                                             locatorConfig.getPartitioner(),
                                             messagingService.readCommandSerializer));
         }

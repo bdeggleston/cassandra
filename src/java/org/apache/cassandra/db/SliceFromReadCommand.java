@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import com.google.common.base.Objects;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.db.filter.QueryFilter;
@@ -38,15 +39,15 @@ public class SliceFromReadCommand extends ReadCommand
 {
     public final SliceQueryFilter filter;
 
-    public SliceFromReadCommand(String keyspaceName, ByteBuffer key, String cfName, long timestamp, SliceQueryFilter filter, Schema schema, IPartitioner partitioner, ReadCommand.Serializer serializer)
+    public SliceFromReadCommand(String keyspaceName, ByteBuffer key, String cfName, long timestamp, SliceQueryFilter filter, DatabaseDescriptor databaseDescriptor, Schema schema, IPartitioner partitioner, ReadCommand.Serializer serializer)
     {
-        super(keyspaceName, key, cfName, timestamp, Type.GET_SLICES, schema, partitioner, serializer);
+        super(keyspaceName, key, cfName, timestamp, Type.GET_SLICES, databaseDescriptor, schema, partitioner, serializer);
         this.filter = filter;
     }
 
     public ReadCommand copy()
     {
-        ReadCommand readCommand = new SliceFromReadCommand(ksName, key, cfName, timestamp, filter, schema, partitioner, serializer);
+        ReadCommand readCommand = new SliceFromReadCommand(ksName, key, cfName, timestamp, filter, databaseDescriptor, schema, partitioner, serializer);
         readCommand.setDigestQuery(isDigestQuery());
         return readCommand;
     }
@@ -78,7 +79,7 @@ public class SliceFromReadCommand extends ReadCommand
             // round we want to ask x column so that x * (l/t) == t, i.e. x = t^2/l.
             int retryCount = liveCountInRow == 0 ? count + 1 : ((count * count) / liveCountInRow) + 1;
             SliceQueryFilter newFilter = filter.withUpdatedCount(retryCount);
-            return new RetriedSliceFromReadCommand(ksName, key, cfName, timestamp, newFilter, getOriginalRequestedCount(), schema, partitioner, serializer);
+            return new RetriedSliceFromReadCommand(ksName, key, cfName, timestamp, newFilter, getOriginalRequestedCount(), databaseDescriptor, schema, partitioner, serializer);
         }
 
         return null;
@@ -100,7 +101,7 @@ public class SliceFromReadCommand extends ReadCommand
 
     public SliceFromReadCommand withUpdatedFilter(SliceQueryFilter newFilter)
     {
-        return new SliceFromReadCommand(ksName, key, cfName, timestamp, newFilter, schema, partitioner, serializer);
+        return new SliceFromReadCommand(ksName, key, cfName, timestamp, newFilter, databaseDescriptor, schema, partitioner, serializer);
     }
 
     /**
@@ -128,12 +129,14 @@ public class SliceFromReadCommand extends ReadCommand
     public static class Serializer implements IVersionedSerializer<ReadCommand>
     {
 
+        private final DatabaseDescriptor databaseDescriptor;
         private final Schema schema;
         private final IPartitioner partitioner;
         private final ReadCommand.Serializer readCommandSerializer;
 
-        public Serializer(Schema schema, IPartitioner partitioner, ReadCommand.Serializer readCommandSerializer)
+        public Serializer(DatabaseDescriptor databaseDescriptor, Schema schema, IPartitioner partitioner, ReadCommand.Serializer readCommandSerializer)
         {
+            this.databaseDescriptor = databaseDescriptor;
             this.schema = schema;
             this.partitioner = partitioner;
             this.readCommandSerializer = readCommandSerializer;
@@ -160,7 +163,7 @@ public class SliceFromReadCommand extends ReadCommand
             long timestamp = in.readLong();
             CFMetaData metadata = schema.getCFMetaData(keyspaceName, cfName);
             SliceQueryFilter filter = metadata.comparator.sliceQueryFilterSerializer().deserialize(in, version);
-            ReadCommand command = new SliceFromReadCommand(keyspaceName, key, cfName, timestamp, filter, schema, partitioner, readCommandSerializer);
+            ReadCommand command = new SliceFromReadCommand(keyspaceName, key, cfName, timestamp, filter, databaseDescriptor, schema, partitioner, readCommandSerializer);
             command.setDigestQuery(isDigest);
             return command;
         }

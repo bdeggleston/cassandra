@@ -66,28 +66,30 @@ public abstract class ReadCommand implements IReadCommand, Pageable
     public final long timestamp;
     private boolean isDigestQuery = false;
     protected final Type commandType;
+    protected final DatabaseDescriptor databaseDescriptor;
     protected final Schema schema;
     protected final IPartitioner partitioner;
     protected final Serializer serializer;
 
-    protected ReadCommand(String ksName, ByteBuffer key, String cfName, long timestamp, Type cmdType, Schema schema, IPartitioner partitioner, Serializer serializer)
+    protected ReadCommand(String ksName, ByteBuffer key, String cfName, long timestamp, Type cmdType, DatabaseDescriptor databaseDescriptor, Schema schema, IPartitioner partitioner, Serializer serializer)
     {
         this.ksName = ksName;
         this.key = key;
         this.cfName = cfName;
         this.timestamp = timestamp;
         this.commandType = cmdType;
+        this.databaseDescriptor = databaseDescriptor;
         this.schema = schema;
         this.partitioner = partitioner;
         this.serializer = serializer;
     }
 
-    public static ReadCommand create(String ksName, ByteBuffer key, String cfName, long timestamp, IDiskAtomFilter filter, Schema schema, IPartitioner partitioner, Serializer serializer)
+    public static ReadCommand create(String ksName, ByteBuffer key, String cfName, long timestamp, IDiskAtomFilter filter, DatabaseDescriptor databaseDescriptor, Schema schema, IPartitioner partitioner, Serializer serializer)
     {
         if (filter instanceof SliceQueryFilter)
-            return new SliceFromReadCommand(ksName, key, cfName, timestamp, (SliceQueryFilter)filter, schema, partitioner, serializer);
+            return new SliceFromReadCommand(ksName, key, cfName, timestamp, (SliceQueryFilter)filter, databaseDescriptor, schema, partitioner, serializer);
         else
-            return new SliceByNamesReadCommand(ksName, key, cfName, timestamp, (NamesQueryFilter)filter, schema, partitioner, serializer);
+            return new SliceByNamesReadCommand(ksName, key, cfName, timestamp, (NamesQueryFilter)filter, databaseDescriptor, schema, partitioner, serializer);
     }
 
     public boolean isDigestQuery()
@@ -130,7 +132,7 @@ public abstract class ReadCommand implements IReadCommand, Pageable
 
     public long getTimeout()
     {
-        return DatabaseDescriptor.instance.getReadRpcTimeout();
+        return databaseDescriptor.getReadRpcTimeout();
     }
 
     public static class Serializer implements IVersionedSerializer<ReadCommand>
@@ -138,10 +140,10 @@ public abstract class ReadCommand implements IReadCommand, Pageable
         private final SliceByNamesReadCommand.Serializer slicesByNamesSerializer;
         private final SliceFromReadCommand.Serializer slicesFromReadSerializer;
 
-        public Serializer(Schema schema, IPartitioner partitioner)
+        public Serializer(DatabaseDescriptor databaseDescriptor, Schema schema, IPartitioner partitioner)
         {
-            slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(schema, partitioner, this);
-            slicesFromReadSerializer = new SliceFromReadCommand.Serializer(schema, partitioner, this);
+            slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(databaseDescriptor, schema, partitioner, this);
+            slicesFromReadSerializer = new SliceFromReadCommand.Serializer(databaseDescriptor, schema, partitioner, this);
         }
 
         public void serialize(ReadCommand command, DataOutputPlus out, int version) throws IOException

@@ -382,7 +382,7 @@ public class CommitLogTest
                                                           dk.getKey(),
                                                           "Standard1",
                                                           System.currentTimeMillis(),
-                                                          new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), DBConfig.instance),
+                                                          new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), DBConfig.instance), DatabaseDescriptor.instance,
                                                           Schema.instance,
                                                           LocatorConfig.instance.getPartitioner(),
                                                           MessagingService.instance.readCommandSerializer);

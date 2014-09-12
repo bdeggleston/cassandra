@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import com.google.common.base.Objects;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.dht.IPartitioner;
@@ -34,15 +35,15 @@ public class SliceByNamesReadCommand extends ReadCommand
 {
     public final NamesQueryFilter filter;
 
-    public SliceByNamesReadCommand(String keyspaceName, ByteBuffer key, String cfName, long timestamp, NamesQueryFilter filter, Schema schema, IPartitioner partitioner, ReadCommand.Serializer serializer)
+    public SliceByNamesReadCommand(String keyspaceName, ByteBuffer key, String cfName, long timestamp, NamesQueryFilter filter, DatabaseDescriptor databaseDescriptor, Schema schema, IPartitioner partitioner, ReadCommand.Serializer serializer)
     {
-        super(keyspaceName, key, cfName, timestamp, Type.GET_BY_NAMES, schema, partitioner, serializer);
+        super(keyspaceName, key, cfName, timestamp, Type.GET_BY_NAMES, databaseDescriptor, schema, partitioner, serializer);
         this.filter = filter;
     }
 
     public ReadCommand copy()
     {
-        ReadCommand readCommand= new SliceByNamesReadCommand(ksName, key, cfName, timestamp, filter, schema, partitioner, serializer);
+        ReadCommand readCommand= new SliceByNamesReadCommand(ksName, key, cfName, timestamp, filter, databaseDescriptor, schema, partitioner, serializer);
         readCommand.setDigestQuery(isDigestQuery());
         return readCommand;
     }
@@ -73,12 +74,14 @@ public class SliceByNamesReadCommand extends ReadCommand
     public static class Serializer implements IVersionedSerializer<ReadCommand>
     {
 
+        private final DatabaseDescriptor databaseDescriptor;
         private final Schema schema;
         private final IPartitioner partitioner;
         private final ReadCommand.Serializer readCommandSerializer;
 
-        public Serializer(Schema schema, IPartitioner partitioner, ReadCommand.Serializer readCommandSerializer)
+        public Serializer(DatabaseDescriptor databaseDescriptor, Schema schema, IPartitioner partitioner, ReadCommand.Serializer readCommandSerializer)
         {
+            this.databaseDescriptor = databaseDescriptor;
             this.schema = schema;
             this.partitioner = partitioner;
             this.readCommandSerializer = readCommandSerializer;
@@ -106,7 +109,7 @@ public class SliceByNamesReadCommand extends ReadCommand
             long timestamp = in.readLong();
             CFMetaData metadata = schema.getCFMetaData(keyspaceName, cfName);
             NamesQueryFilter filter = metadata.comparator.namesQueryFilterSerializer().deserialize(in, version);
-            ReadCommand command = new SliceByNamesReadCommand(keyspaceName, key, cfName, timestamp, filter, schema, partitioner, readCommandSerializer);
+            ReadCommand command = new SliceByNamesReadCommand(keyspaceName, key, cfName, timestamp, filter, databaseDescriptor, schema, partitioner, readCommandSerializer);
             command.setDigestQuery(isDigest);
             return command;
         }

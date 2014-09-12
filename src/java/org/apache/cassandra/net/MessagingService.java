@@ -144,7 +144,7 @@ public final class MessagingService implements MessagingServiceMBean
     public final RangeSliceCommand.Serializer rangeSliceCommandSerializer = new RangeSliceCommand.Serializer(DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, DBConfig.instance.boundsSerializer);
     public final PagedRangeCommand.Serializer pagedRangeCommandSerializer = new PagedRangeCommand.Serializer(DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, DBConfig.instance.boundsSerializer);
     public final RepairMessage.Serializer repairMessageSerializer = new RepairMessage.Serializer(DBConfig.instance);
-    public final ReadCommand.Serializer readCommandSerializer = new ReadCommand.Serializer(Schema.instance, LocatorConfig.instance.getPartitioner());
+    public final ReadCommand.Serializer readCommandSerializer = new ReadCommand.Serializer(DatabaseDescriptor.instance, Schema.instance, LocatorConfig.instance.getPartitioner());
 
     public final EnumMap<MessagingService.Verb, Stage> verbStages = new EnumMap<MessagingService.Verb, Stage>(MessagingService.Verb.class)
     {{

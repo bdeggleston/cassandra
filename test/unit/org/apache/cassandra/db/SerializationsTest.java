@@ -71,8 +71,8 @@ public class SerializationsTest extends AbstractSerializationsTester
     public SliceQueryFilter emptyRangePred = new SliceQueryFilter(emptyCol, emptyCol, false, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
     public SliceQueryFilter nonEmptyRangePred = new SliceQueryFilter(CellNames.simpleDense(startCol), CellNames.simpleDense(stopCol), true, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
     public SliceQueryFilter nonEmptyRangeSCPred = new SliceQueryFilter(CellNames.compositeDense(statics.SC, startCol), CellNames.compositeDense(statics.SC, stopCol), true, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
-    public SliceByNamesReadCommand.Serializer slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
-    public SliceFromReadCommand.Serializer slicefromReadSerializer = new SliceFromReadCommand.Serializer(Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
+    public SliceByNamesReadCommand.Serializer slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(DatabaseDescriptor.instance, Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
+    public SliceFromReadCommand.Serializer slicefromReadSerializer = new SliceFromReadCommand.Serializer(DatabaseDescriptor.instance, Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
 
     public static void defineSchema() throws ConfigurationException
     {
@@ -146,7 +146,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                           statics.Key,
                                                                           statics.StandardCF,
                                                                           statics.readTs,
-                                                                          namesPred,
+                                                                          namesPred, DatabaseDescriptor.instance,
                                                                           Schema.instance,
                                                                           LocatorConfig.instance.getPartitioner(),
                                                                           MessagingService.instance.readCommandSerializer);
@@ -154,7 +154,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                        statics.Key,
                                                                        statics.SuperCF,
                                                                        statics.readTs,
-                                                                       namesSCPred,
+                                                                       namesSCPred, DatabaseDescriptor.instance,
                                                                        Schema.instance,
                                                                        LocatorConfig.instance.getPartitioner(),
                                                                        MessagingService.instance.readCommandSerializer);
@@ -195,7 +195,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                     statics.Key,
                                                                     statics.StandardCF,
                                                                     statics.readTs,
-                                                                    nonEmptyRangePred,
+                                                                    nonEmptyRangePred, DatabaseDescriptor.instance,
                                                                     Schema.instance,
                                                                     LocatorConfig.instance.getPartitioner(),
                                                                     MessagingService.instance.readCommandSerializer);
@@ -203,7 +203,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                  statics.Key,
                                                                  statics.SuperCF,
                                                                  statics.readTs,
-                                                                 nonEmptyRangeSCPred,
+                                                                 nonEmptyRangeSCPred, DatabaseDescriptor.instance,
                                                                  Schema.instance,
                                                                  LocatorConfig.instance.getPartitioner(),
                                                                  MessagingService.instance.readCommandSerializer);
