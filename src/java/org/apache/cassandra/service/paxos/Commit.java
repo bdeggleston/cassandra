@@ -41,8 +41,9 @@ public class Commit
     public final ByteBuffer key;
     public final UUID ballot;
     public final ColumnFamily update;
+    private final MutationFactory mutationFactory;
 
-    public Commit(ByteBuffer key, UUID ballot, ColumnFamily update)
+    public Commit(ByteBuffer key, UUID ballot, ColumnFamily update, MutationFactory mutationFactory)
     {
         assert key != null;
         assert ballot != null;
@@ -51,21 +52,22 @@ public class Commit
         this.key = key;
         this.ballot = ballot;
         this.update = update;
+        this.mutationFactory = mutationFactory;
     }
 
-    public static Commit newPrepare(ByteBuffer key, CFMetaData metadata, UUID ballot)
+    public static Commit newPrepare(ByteBuffer key, CFMetaData metadata, UUID ballot, MutationFactory mutationFactory, DBConfig dbConfig)
     {
-        return new Commit(key, ballot, ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance));
+        return new Commit(key, ballot, ArrayBackedSortedColumns.factory.create(metadata, dbConfig), mutationFactory);
     }
 
-    public static Commit newProposal(ByteBuffer key, UUID ballot, ColumnFamily update)
+    public static Commit newProposal(ByteBuffer key, UUID ballot, ColumnFamily update, MutationFactory mutationFactory)
     {
-        return new Commit(key, ballot, updatesWithPaxosTime(update, ballot));
+        return new Commit(key, ballot, updatesWithPaxosTime(update, ballot), mutationFactory);
     }
 
-    public static Commit emptyCommit(ByteBuffer key, CFMetaData metadata)
+    public static Commit emptyCommit(ByteBuffer key, CFMetaData metadata, MutationFactory mutationFactory, DBConfig dbConfig)
     {
-        return new Commit(key, UUIDGen.minTimeUUID(0), ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance));
+        return new Commit(key, UUIDGen.minTimeUUID(0), ArrayBackedSortedColumns.factory.create(metadata, dbConfig), mutationFactory);
     }
 
     public boolean isAfter(Commit other)
@@ -81,7 +83,7 @@ public class Commit
     public Mutation makeMutation()
     {
         assert update != null;
-        return MutationFactory.instance.create(key, update);
+        return mutationFactory.create(key, update);
     }
 
     @Override
@@ -128,10 +130,12 @@ public class Commit
     {
 
         private final ColumnFamilySerializer columnFamilySerializer;
+        private final MutationFactory mutationFactory;
 
-        public Serializer(ColumnFamilySerializer columnFamilySerializer)
+        public Serializer(ColumnFamilySerializer columnFamilySerializer, MutationFactory mutationFactory)
         {
             this.columnFamilySerializer = columnFamilySerializer;
+            this.mutationFactory = mutationFactory;
         }
 
         public void serialize(Commit commit, DataOutputPlus out, int version) throws IOException
@@ -148,7 +152,8 @@ public class Commit
                               columnFamilySerializer.deserialize(in,
                                                                   ArrayBackedSortedColumns.factory,
                                                                   ColumnSerializer.Flag.LOCAL,
-                                                                  version));
+                                                                  version),
+                              mutationFactory);
         }
 
         public long serializedSize(Commit commit, int version)

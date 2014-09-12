@@ -252,7 +252,7 @@ public class StorageProxy implements StorageProxyMBean
             // InvalidRequestException) any which aren't.
             updates = TriggerExecutor.instance.execute(key, updates);
 
-            Commit proposal = Commit.newProposal(key, ballot, updates);
+            Commit proposal = Commit.newProposal(key, ballot, updates, MutationFactory.instance);
             Tracing.instance.trace("CAS precondition is met; proposing client-requested updates for {}", ballot);
             if (proposePaxos(proposal, liveEndpoints, requiredParticipants, true, consistencyForPaxos))
             {
@@ -322,7 +322,7 @@ public class StorageProxy implements StorageProxyMBean
 
             // prepare
             Tracing.instance.trace("Preparing {}", ballot);
-            Commit toPrepare = Commit.newPrepare(key, metadata, ballot);
+            Commit toPrepare = Commit.newPrepare(key, metadata, ballot, MutationFactory.instance, DBConfig.instance);
             summary = preparePaxos(toPrepare, liveEndpoints, requiredParticipants, consistencyForPaxos);
             if (!summary.promised)
             {
@@ -340,7 +340,7 @@ public class StorageProxy implements StorageProxyMBean
             if (!inProgress.update.isEmpty() && inProgress.isAfter(mostRecent))
             {
                 Tracing.instance.trace("Finishing incomplete paxos round {}", inProgress);
-                Commit refreshedInProgress = Commit.newProposal(inProgress.key, ballot, inProgress.update);
+                Commit refreshedInProgress = Commit.newProposal(inProgress.key, ballot, inProgress.update, MutationFactory.instance);
                 if (proposePaxos(refreshedInProgress, liveEndpoints, requiredParticipants, false, consistencyForPaxos))
                 {
                     commitPaxos(refreshedInProgress, consistencyForCommit);
@@ -389,7 +389,7 @@ public class StorageProxy implements StorageProxyMBean
     private PrepareCallback preparePaxos(Commit toPrepare, List<InetAddress> endpoints, int requiredParticipants, ConsistencyLevel consistencyForPaxos)
     throws WriteTimeoutException
     {
-        PrepareCallback callback = new PrepareCallback(toPrepare.key, toPrepare.update.metadata(), requiredParticipants, consistencyForPaxos, DatabaseDescriptor.instance.getWriteRpcTimeout());
+        PrepareCallback callback = new PrepareCallback(toPrepare.key, toPrepare.update.metadata(), requiredParticipants, consistencyForPaxos, DatabaseDescriptor.instance.getWriteRpcTimeout(), MutationFactory.instance, DBConfig.instance);
         MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.instance, MessagingService.Verb.PAXOS_PREPARE, toPrepare, MessagingService.instance.commitSerializer);
         for (InetAddress target : endpoints)
             MessagingService.instance.sendRR(message, target, callback);

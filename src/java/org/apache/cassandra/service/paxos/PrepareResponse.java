@@ -25,10 +25,7 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.apache.cassandra.db.ArrayBackedSortedColumns;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ColumnFamilySerializer;
-import org.apache.cassandra.db.ColumnSerializer;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -66,10 +63,12 @@ public class PrepareResponse
     {
 
         private final ColumnFamilySerializer columnFamilySerializer;
+        private final MutationFactory mutationFactory;
 
-        public Serializer(ColumnFamilySerializer columnFamilySerializer)
+        public Serializer(ColumnFamilySerializer columnFamilySerializer, MutationFactory mutationFactory)
         {
             this.columnFamilySerializer = columnFamilySerializer;
+            this.mutationFactory = mutationFactory;
         }
 
         public void serialize(PrepareResponse response, DataOutputPlus out, int version) throws IOException
@@ -91,12 +90,14 @@ public class PrepareResponse
                                                   UUIDSerializer.serializer.deserialize(in, version),
                                                   columnFamilySerializer.deserialize(in,
                                                                                       ArrayBackedSortedColumns.factory,
-                                                                                      ColumnSerializer.Flag.LOCAL, version)),
+                                                                                      ColumnSerializer.Flag.LOCAL, version),
+                                                  mutationFactory),
                                        new Commit(key,
                                                   UUIDSerializer.serializer.deserialize(in, version),
                                                   columnFamilySerializer.deserialize(in,
                                                                                       ArrayBackedSortedColumns.factory,
-                                                                                      ColumnSerializer.Flag.LOCAL, version)));
+                                                                                      ColumnSerializer.Flag.LOCAL, version),
+                                                  mutationFactory));
         }
 
         public long serializedSize(PrepareResponse response, int version)

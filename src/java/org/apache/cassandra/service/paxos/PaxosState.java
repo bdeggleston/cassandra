@@ -23,6 +23,8 @@ package org.apache.cassandra.service.paxos;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.db.MutationFactory;
 
 public class PaxosState
 {
@@ -30,9 +32,9 @@ public class PaxosState
     final Commit accepted;
     final Commit mostRecentCommit;
 
-    public PaxosState(ByteBuffer key, CFMetaData metadata)
+    public PaxosState(ByteBuffer key, CFMetaData metadata, MutationFactory mutationFactory, DBConfig dbConfig)
     {
-        this(Commit.emptyCommit(key, metadata), Commit.emptyCommit(key, metadata), Commit.emptyCommit(key, metadata));
+        this(Commit.emptyCommit(key, metadata, mutationFactory, dbConfig), Commit.emptyCommit(key, metadata, mutationFactory, dbConfig), Commit.emptyCommit(key, metadata, mutationFactory, dbConfig));
     }
 
     public PaxosState(Commit promised, Commit accepted, Commit mostRecentCommit)

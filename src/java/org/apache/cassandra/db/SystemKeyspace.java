@@ -861,19 +861,19 @@ public class SystemKeyspace
         String req = "SELECT * FROM system.%s WHERE row_key = ? AND cf_id = ?";
         UntypedResultSet results = QueryProcessor.instance.executeInternal(String.format(req, PAXOS_CF), key, metadata.cfId);
         if (results.isEmpty())
-            return new PaxosState(key, metadata);
+            return new PaxosState(key, metadata, MutationFactory.instance, DBConfig.instance);
         UntypedResultSet.Row row = results.one();
         Commit promised = row.has("in_progress_ballot")
-                        ? new Commit(key, row.getUUID("in_progress_ballot"), ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance))
-                        : Commit.emptyCommit(key, metadata);
+                        ? new Commit(key, row.getUUID("in_progress_ballot"), ArrayBackedSortedColumns.factory.create(metadata, DBConfig.instance), MutationFactory.instance)
+                        : Commit.emptyCommit(key, metadata, MutationFactory.instance, DBConfig.instance);
         // either we have both a recently accepted ballot and update or we have neither
         Commit accepted = row.has("proposal")
-                        ? new Commit(key, row.getUUID("proposal_ballot"), ColumnFamily.fromBytes(row.getBytes("proposal"), DBConfig.instance.columnFamilySerializer))
-                        : Commit.emptyCommit(key, metadata);
+                        ? new Commit(key, row.getUUID("proposal_ballot"), ColumnFamily.fromBytes(row.getBytes("proposal"), DBConfig.instance.columnFamilySerializer), MutationFactory.instance)
+                        : Commit.emptyCommit(key, metadata, MutationFactory.instance, DBConfig.instance);
         // either most_recent_commit and most_recent_commit_at will both be set, or neither
         Commit mostRecent = row.has("most_recent_commit")
-                          ? new Commit(key, row.getUUID("most_recent_commit_at"), ColumnFamily.fromBytes(row.getBytes("most_recent_commit"), DBConfig.instance.columnFamilySerializer))
-                          : Commit.emptyCommit(key, metadata);
+                          ? new Commit(key, row.getUUID("most_recent_commit_at"), ColumnFamily.fromBytes(row.getBytes("most_recent_commit"), DBConfig.instance.columnFamilySerializer), MutationFactory.instance)
+                          : Commit.emptyCommit(key, metadata, MutationFactory.instance, DBConfig.instance);
         return new PaxosState(promised, accepted, mostRecent);
     }
 

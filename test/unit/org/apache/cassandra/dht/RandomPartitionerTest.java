@@ -20,10 +20,12 @@ package org.apache.cassandra.dht;
  *
  */
 
+import org.apache.cassandra.locator.LocatorConfig;
+
 public class RandomPartitionerTest extends PartitionerTestCase<BigIntegerToken>
 {
     public void initPartitioner()
     {
-        partitioner = new RandomPartitioner();
+        partitioner = new RandomPartitioner(LocatorConfig.instance);
     }
 }
