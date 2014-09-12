@@ -95,7 +95,7 @@ public class SerializationsTest extends AbstractSerializationsTester
 
     private void testValidationCompleteWrite() throws IOException
     {
-        IPartitioner p = new RandomPartitioner();
+        IPartitioner p = new RandomPartitioner(LocatorConfig.instance);
         // empty validation
         MerkleTree mt = new MerkleTree(p, FULL_RANGE, MerkleTree.RECOMMENDED_DEPTH, (int) Math.pow(2, 15));
         Validator v0 = new Validator(DESC, DatabaseDescriptor.instance.getBroadcastAddress(),  -1, DatabaseDescriptor.instance, StageManager.instance, MessagingService.instance);

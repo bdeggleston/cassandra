@@ -158,7 +158,7 @@ public class MoveTest
         StorageService ss = StorageService.instance;
         final int RING_SIZE = 10;
         TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
-        IPartitioner partitioner = new RandomPartitioner();
+        IPartitioner partitioner = new RandomPartitioner(LocatorConfig.instance);
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
 
         ArrayList<Token> endpointTokens = new ArrayList<Token>();
@@ -500,7 +500,7 @@ public class MoveTest
     {
         StorageService ss = StorageService.instance;
         TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
-        IPartitioner partitioner = new RandomPartitioner();
+        IPartitioner partitioner = new RandomPartitioner(LocatorConfig.instance);
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
 
         ArrayList<Token> endpointTokens = new ArrayList<Token>();

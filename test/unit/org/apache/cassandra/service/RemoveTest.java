@@ -49,7 +49,7 @@ import static org.junit.Assert.assertTrue;
 
 public class RemoveTest
 {
-    static final IPartitioner partitioner = new RandomPartitioner();
+    static final IPartitioner partitioner = new RandomPartitioner(LocatorConfig.instance);
     StorageService ss;
     TokenMetadata tmd;
     static IPartitioner oldPartitioner;

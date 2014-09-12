@@ -99,7 +99,7 @@ public class IndexSummaryTest
     @Test
     public void testAddEmptyKey() throws Exception
     {
-        IPartitioner p = new RandomPartitioner();
+        IPartitioner p = new RandomPartitioner(LocatorConfig.instance);
         IndexSummaryBuilder builder = new IndexSummaryBuilder(1, 1, BASE_SAMPLING_LEVEL, DBConfig.instance.offHeapAllocator);
         builder.maybeAddEntry(p.decorateKey(ByteBufferUtil.EMPTY_BYTE_BUFFER), 0);
         IndexSummary summary = builder.build(p);
