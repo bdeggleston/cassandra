@@ -45,6 +45,13 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
 
     private static final int EMPTY_SIZE = (int) ObjectSizes.measureDeep(new BigIntegerToken(FBUtilities.hashToBigInteger(ByteBuffer.allocate(1)), null));
 
+    private final LocatorConfig locatorConfig;
+
+    public RandomPartitioner(LocatorConfig locatorConfig)
+    {
+        this.locatorConfig = locatorConfig;
+    }
+
     public DecoratedKey decorateKey(ByteBuffer key)
     {
         return new BufferDecoratedKey(getToken(key), key);
@@ -57,7 +64,7 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
         BigInteger right = rtoken.equals(MINIMUM) ? ZERO : ((BigIntegerToken)rtoken).token;
         Pair<BigInteger,Boolean> midpair = FBUtilities.midpoint(left, right, 127);
         // discard the remainder
-        return new BigIntegerToken(midpair.left, LocatorConfig.instance.getPartitioner());
+        return new BigIntegerToken(midpair.left, locatorConfig.getPartitioner());
     }
 
     public BigIntegerToken getMinimumToken()
@@ -70,7 +77,7 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
         BigInteger token = FBUtilities.hashToBigInteger(GuidGenerator.guidAsBytes());
         if ( token.signum() == -1 )
             token = token.multiply(BigInteger.valueOf(-1L));
-        return new BigIntegerToken(token, LocatorConfig.instance.getPartitioner());
+        return new BigIntegerToken(token, locatorConfig.getPartitioner());
     }
 
     private final Token.TokenFactory<BigInteger> tokenFactory = new Token.TokenFactory<BigInteger>() {
@@ -81,7 +88,7 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
 
         public Token<BigInteger> fromByteArray(ByteBuffer bytes)
         {
-            return new BigIntegerToken(new BigInteger(ByteBufferUtil.getArray(bytes)), LocatorConfig.instance.getPartitioner());
+            return new BigIntegerToken(new BigInteger(ByteBufferUtil.getArray(bytes)), locatorConfig.getPartitioner());
         }
 
         public String toString(Token<BigInteger> bigIntegerToken)
@@ -107,7 +114,7 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
 
         public Token<BigInteger> fromString(String string)
         {
-            return new BigIntegerToken(new BigInteger(string), LocatorConfig.instance.getPartitioner());
+            return new BigIntegerToken(new BigInteger(string), locatorConfig.getPartitioner());
         }
     };
 
@@ -125,7 +132,7 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
     {
         if (key.remaining() == 0)
             return MINIMUM;
-        return new BigIntegerToken(FBUtilities.hashToBigInteger(key), LocatorConfig.instance.getPartitioner());
+        return new BigIntegerToken(FBUtilities.hashToBigInteger(key), locatorConfig.getPartitioner());
     }
 
     public long getHeapSizeOf(BigIntegerToken token)
