@@ -481,8 +481,8 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                                   columnFamily(),
                                                   now,
                                                   new SliceQueryFilter(slices, false, Integer.MAX_VALUE, databaseDescriptor, tracing, dbConfig),
-                                                  DatabaseDescriptor.instance,
-                                                  Schema.instance,
+                                                  databaseDescriptor,
+                                                  schema,
                                                   locatorConfig.getPartitioner(),
                                                   messagingService.readCommandSerializer));
 
