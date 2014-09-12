@@ -343,10 +343,12 @@ public class CounterMutation implements IMutation
     public static class Serializer implements IVersionedSerializer<CounterMutation>
     {
         private final MutationFactory mutationFactory;
+        private final CounterMutationFactory counterMutationFactory;
 
-        public Serializer(MutationFactory mutationFactory)
+        public Serializer(MutationFactory mutationFactory, CounterMutationFactory counterMutationFactory)
         {
             this.mutationFactory = mutationFactory;
+            this.counterMutationFactory = counterMutationFactory;
         }
 
         public void serialize(CounterMutation cm, DataOutputPlus out, int version) throws IOException
@@ -359,7 +361,7 @@ public class CounterMutation implements IMutation
         {
             Mutation m = mutationFactory.serializer.deserialize(in, version);
             ConsistencyLevel consistency = Enum.valueOf(ConsistencyLevel.class, in.readUTF());
-            return CounterMutationFactory.instance.create(m, consistency);
+            return counterMutationFactory.create(m, consistency);
         }
 
         public long serializedSize(CounterMutation cm, int version)

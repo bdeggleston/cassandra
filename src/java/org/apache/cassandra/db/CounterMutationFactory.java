@@ -19,7 +19,7 @@ public class CounterMutationFactory
 
     public CounterMutationFactory()
     {
-        serializer = new CounterMutation.Serializer(MutationFactory.instance);
+        serializer = new CounterMutation.Serializer(MutationFactory.instance, this);
         locks = Striped.lazyWeakLock(DatabaseDescriptor.instance.getConcurrentCounterWriters() * 1024);
     }
 
