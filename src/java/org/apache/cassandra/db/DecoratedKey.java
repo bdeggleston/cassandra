@@ -103,7 +103,6 @@ public abstract class DecoratedKey implements RowPosition
     public boolean isMinimum()
     {
         // A DecoratedKey can never be the minimum position on the ring
-        //return isMinimum(LocatorConfig.instance.getPartitioner());
         return false;
     }
 

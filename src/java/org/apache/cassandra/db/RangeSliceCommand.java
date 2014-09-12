@@ -170,12 +170,14 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
     {
 
         private final DatabaseDescriptor databaseDescriptor;
+        private final Schema schema;
         private final KeyspaceManager keyspaceManager;
         private final AbstractBounds.Serializer abstractBoundsSerializer;
 
-        public Serializer(DatabaseDescriptor databaseDescriptor, KeyspaceManager keyspaceManager, AbstractBounds.Serializer abstractBoundsSerializer)
+        public Serializer(DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, AbstractBounds.Serializer abstractBoundsSerializer)
         {
             this.databaseDescriptor = databaseDescriptor;
+            this.schema = schema;
             this.keyspaceManager = keyspaceManager;
             this.abstractBoundsSerializer = abstractBoundsSerializer;
         }
@@ -186,7 +188,7 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
             out.writeUTF(sliceCommand.columnFamily);
             out.writeLong(sliceCommand.timestamp);
 
-            CFMetaData metadata = Schema.instance.getCFMetaData(sliceCommand.keyspace, sliceCommand.columnFamily);
+            CFMetaData metadata = schema.getCFMetaData(sliceCommand.keyspace, sliceCommand.columnFamily);
 
             metadata.comparator.diskAtomFilterSerializer().serialize(sliceCommand.predicate, out, version);
 
@@ -216,7 +218,7 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
             String columnFamily = in.readUTF();
             long timestamp = in.readLong();
 
-            CFMetaData metadata = Schema.instance.getCFMetaData(keyspace, columnFamily);
+            CFMetaData metadata = schema.getCFMetaData(keyspace, columnFamily);
 
             IDiskAtomFilter predicate = metadata.comparator.diskAtomFilterSerializer().deserialize(in, version);
 
@@ -245,7 +247,7 @@ public class RangeSliceCommand extends AbstractRangeCommand implements Pageable
             size += TypeSizes.NATIVE.sizeof(rsc.columnFamily);
             size += TypeSizes.NATIVE.sizeof(rsc.timestamp);
 
-            CFMetaData metadata = Schema.instance.getCFMetaData(rsc.keyspace, rsc.columnFamily);
+            CFMetaData metadata = schema.getCFMetaData(rsc.keyspace, rsc.columnFamily);
 
             IDiskAtomFilter filter = rsc.predicate;
 
