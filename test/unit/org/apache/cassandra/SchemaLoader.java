@@ -336,7 +336,8 @@ public class SchemaLoader
                                     null,
                                     null,
                                     null,
-                                    ColumnDefinition.Kind.REGULAR);
+                                    ColumnDefinition.Kind.REGULAR,
+                                    CFMetaDataFactory.instance);
     }
 
     private static ColumnDefinition utf8Column(String ksName, String cfName)
@@ -349,7 +350,8 @@ public class SchemaLoader
                                     null,
                                     null,
                                     null,
-                                    ColumnDefinition.Kind.REGULAR);
+                                    ColumnDefinition.Kind.REGULAR,
+                                    CFMetaDataFactory.instance);
     }
 
     public static CFMetaData perRowIndexedCFMD(String ksName, String cfName)
@@ -361,7 +363,7 @@ public class SchemaLoader
         CFMetaData cfm =  CFMetaDataFactory.instance.sparseCFMetaData(ksName, cfName, BytesType.instance).keyValidator(AsciiType.instance);
 
         ByteBuffer cName = ByteBufferUtil.bytes("indexed");
-        return cfm.addOrReplaceColumnDefinition(ColumnDefinition.regularDef(cfm, cName, AsciiType.instance, null)
+        return cfm.addOrReplaceColumnDefinition(ColumnDefinition.regularDef(cfm, cName, AsciiType.instance, null, CFMetaDataFactory.instance)
                                                                 .setIndex("indexe1", IndexType.CUSTOM, indexOptions));
     }
 
@@ -394,7 +396,7 @@ public class SchemaLoader
 
         ByteBuffer cName = ByteBufferUtil.bytes("birthdate");
         IndexType keys = withIdxType ? IndexType.KEYS : null;
-        return cfm.addColumnDefinition(ColumnDefinition.regularDef(cfm, cName, LongType.instance, null)
+        return cfm.addColumnDefinition(ColumnDefinition.regularDef(cfm, cName, LongType.instance, null, CFMetaDataFactory.instance)
                                                        .setIndex(withIdxType ? ByteBufferUtil.bytesToHex(cName) : null, keys, null));
     }
     public static CFMetaData compositeIndexCFMD(String ksName, String cfName, final Boolean withIdxType) throws ConfigurationException
@@ -404,7 +406,7 @@ public class SchemaLoader
 
         ByteBuffer cName = ByteBufferUtil.bytes("col1");
         IndexType idxType = withIdxType ? IndexType.COMPOSITES : null;
-        return cfm.addColumnDefinition(ColumnDefinition.regularDef(cfm, cName, UTF8Type.instance, 1)
+        return cfm.addColumnDefinition(ColumnDefinition.regularDef(cfm, cName, UTF8Type.instance, 1, CFMetaDataFactory.instance)
                                                        .setIndex(withIdxType ? "col1_idx" : null, idxType, Collections.<String, String>emptyMap()));
     }
     

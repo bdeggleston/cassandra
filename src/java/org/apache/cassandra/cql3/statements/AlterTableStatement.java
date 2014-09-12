@@ -23,6 +23,7 @@ import java.util.Map;
 
 import org.apache.cassandra.auth.Permission;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.*;
@@ -49,6 +50,7 @@ public class AlterTableStatement extends SchemaAlteringStatement
     private final boolean isStatic; // Only for ALTER ADD
 
     private final Schema schema;
+    private final CFMetaDataFactory cfMetaDataFactory;
     private final MigrationManager migrationManager;
 
     public AlterTableStatement(CFName name,
@@ -59,6 +61,7 @@ public class AlterTableStatement extends SchemaAlteringStatement
                                Map<ColumnIdentifier, ColumnIdentifier> renames,
                                boolean isStatic,
                                Schema schema,
+                               CFMetaDataFactory cfMetaDataFactory,
                                MigrationManager migrationManager)
     {
         super(name);
@@ -69,6 +72,7 @@ public class AlterTableStatement extends SchemaAlteringStatement
         this.renames = renames;
         this.isStatic = isStatic;
         this.schema = schema;
+        this.cfMetaDataFactory = cfMetaDataFactory;
         this.migrationManager = migrationManager;
     }
 
@@ -145,8 +149,8 @@ public class AlterTableStatement extends SchemaAlteringStatement
 
                 Integer componentIndex = cfm.comparator.isCompound() ? cfm.comparator.clusteringPrefixSize() : null;
                 cfm.addColumnDefinition(isStatic
-                                        ? ColumnDefinition.staticDef(cfm, columnName.bytes, type, componentIndex)
-                                        : ColumnDefinition.regularDef(cfm, columnName.bytes, type, componentIndex));
+                                        ? ColumnDefinition.staticDef(cfm, columnName.bytes, type, componentIndex, cfMetaDataFactory)
+                                        : ColumnDefinition.regularDef(cfm, columnName.bytes, type, componentIndex, cfMetaDataFactory));
                 break;
 
             case ALTER:

@@ -381,13 +381,13 @@ public class CFMetaDataFactory
             AbstractType<?> keyValidator = cf_def.isSetKey_validation_class() ? TypeParser.parse(cf_def.key_validation_class) : null;
 
             // Convert the REGULAR definitions from the input CfDef
-            List<ColumnDefinition> defs = ColumnDefinition.fromThrift(cf_def.keyspace, cf_def.name, rawComparator, subComparator, cf_def.column_metadata);
+            List<ColumnDefinition> defs = ColumnDefinition.fromThrift(cf_def.keyspace, cf_def.name, rawComparator, subComparator, cf_def.column_metadata, this);
 
             // Add the keyAlias if there is one, since that's on CQL metadata that thrift can actually change (for
             // historical reasons)
             boolean hasKeyAlias = cf_def.isSetKey_alias() && keyValidator != null && !(keyValidator instanceof CompositeType);
             if (hasKeyAlias)
-                defs.add(ColumnDefinition.partitionKeyDef(cf_def.keyspace, cf_def.name, cf_def.key_alias, keyValidator, null));
+                defs.add(ColumnDefinition.partitionKeyDef(cf_def.keyspace, cf_def.name, cf_def.key_alias, keyValidator, null, this));
 
             // Now add any CQL metadata that we want to copy, skipping the keyAlias if there was one
             for (ColumnDefinition def : previousCQLMetadata)
@@ -494,7 +494,7 @@ public class CFMetaDataFactory
         String cfName = result.getString("columnfamily_name");
 
         Row serializedColumns = SystemKeyspace.instance.readSchemaRow(SystemKeyspace.SCHEMA_COLUMNS_CF, ksName, cfName);
-        CFMetaData cfm = fromSchemaNoTriggers(result, ColumnDefinition.resultify(serializedColumns));
+        CFMetaData cfm = fromSchemaNoTriggers(result, ColumnDefinition.resultify(serializedColumns, QueryProcessor.instance));
 
         Row serializedTriggers = SystemKeyspace.instance.readSchemaRow(SystemKeyspace.SCHEMA_TRIGGERS_CF, ksName, cfName);
         addTriggerDefinitionsFromSchema(cfm, serializedTriggers, QueryProcessor.instance);
@@ -527,7 +527,8 @@ public class CFMetaDataFactory
                                                                             ksName,
                                                                             cfName,
                                                                             fullRawComparator,
-                                                                            cfType == ColumnFamilyType.Super);
+                                                                            cfType == ColumnFamilyType.Super,
+                                                                            this);
 
             boolean isDense = result.has("is_dense")
                     ? result.getBoolean("is_dense")

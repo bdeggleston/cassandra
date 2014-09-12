@@ -42,10 +42,10 @@ public class ColumnDefinitionTest
     {
         CFMetaData cfm = CFMetaDataFactory.instance.denseCFMetaData("ks", "cf", UTF8Type.instance);
 
-        ColumnDefinition cd0 = ColumnDefinition.regularDef(cfm, ByteBufferUtil.bytes("TestColumnDefinitionName0"), BytesType.instance, null)
+        ColumnDefinition cd0 = ColumnDefinition.regularDef(cfm, ByteBufferUtil.bytes("TestColumnDefinitionName0"), BytesType.instance, null, CFMetaDataFactory.instance)
                                                .setIndex("random index name 0", IndexType.KEYS, null);
 
-        ColumnDefinition cd1 = ColumnDefinition.regularDef(cfm, ByteBufferUtil.bytes("TestColumnDefinition1"), LongType.instance, null);
+        ColumnDefinition cd1 = ColumnDefinition.regularDef(cfm, ByteBufferUtil.bytes("TestColumnDefinition1"), LongType.instance, null, CFMetaDataFactory.instance);
 
         testSerializeDeserialize(cfm, cd0);
         testSerializeDeserialize(cfm, cd1);
@@ -53,7 +53,7 @@ public class ColumnDefinitionTest
 
     protected void testSerializeDeserialize(CFMetaData cfm, ColumnDefinition cd) throws Exception
     {
-        ColumnDefinition newCd = ColumnDefinition.fromThrift(cfm.ksName, cfm.cfName, cfm.comparator.asAbstractType(), null, cd.toThrift());
+        ColumnDefinition newCd = ColumnDefinition.fromThrift(cfm.ksName, cfm.cfName, cfm.comparator.asAbstractType(), null, cd.toThrift(), CFMetaDataFactory.instance);
         Assert.assertNotSame(cd, newCd);
         Assert.assertEquals(cd.hashCode(), newCd.hashCode());
         Assert.assertEquals(cd, newCd);

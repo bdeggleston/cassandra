@@ -105,7 +105,7 @@ public class NativeCellTest
     {
         try
         {
-            metadata.addColumnDefinition(new ColumnDefinition(null, null, new ColumnIdentifier("a", true), UTF8Type.instance, null, null, null, null, null));
+            metadata.addColumnDefinition(new ColumnDefinition(null, null, new ColumnIdentifier("a", true), UTF8Type.instance, null, null, null, null, null, CFMetaDataFactory.instance));
         }
         catch (ConfigurationException e)
         {

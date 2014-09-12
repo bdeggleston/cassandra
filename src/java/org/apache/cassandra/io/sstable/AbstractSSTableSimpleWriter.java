@@ -48,6 +48,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
 
     public AbstractSSTableSimpleWriter(File directory, CFMetaData metadata, IPartitioner partitioner, DBConfig dbConfig)
     {
+        this.directory = directory;
         this.metadata = metadata;
         this.dbConfig = dbConfig;
         this.locatorConfig = dbConfig.getLocatorConfig();
