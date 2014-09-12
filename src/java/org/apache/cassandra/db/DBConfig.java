@@ -64,7 +64,7 @@ public class DBConfig
         rowSerializer = new Row.RowSerializer(LocatorConfig.instance.getPartitioner(), columnFamilySerializer);
         tokenSerializer = new Token.Serializer(LocatorConfig.instance.getPartitioner());
         rowPositionSerializer = new RowPosition.Serializer(LocatorConfig.instance.getPartitioner(), tokenSerializer);
-        boundsSerializer = new AbstractBounds.Serializer(tokenSerializer, rowPositionSerializer);
+        boundsSerializer = new AbstractBounds.Serializer(LocatorConfig.instance.getPartitioner(), tokenSerializer, rowPositionSerializer);
         hashableSerializer = new MerkleTree.Hashable.HashableSerializer(tokenSerializer);
         innerSerializer = new MerkleTree.Inner.InnerSerializer(tokenSerializer, hashableSerializer);
         merkleTreeSerializer = new MerkleTree.Serializer(tokenSerializer, hashableSerializer);

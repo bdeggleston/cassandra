@@ -129,9 +129,11 @@ public abstract class AbstractBounds<T extends RingPosition> implements Serializ
     {
         private final Token.Serializer tokenSerializer;
         private final RowPosition.Serializer rowPositionSerializer;
+        private final IPartitioner partitioner;
 
-        public Serializer(Token.Serializer tokenSerializer, RowPosition.Serializer rowPositionSerializer)
+        public Serializer(IPartitioner partitioner, Token.Serializer tokenSerializer, RowPosition.Serializer rowPositionSerializer)
         {
+            this.partitioner = partitioner;
             this.tokenSerializer = tokenSerializer;
             this.rowPositionSerializer = rowPositionSerializer;
         }
@@ -183,8 +185,8 @@ public abstract class AbstractBounds<T extends RingPosition> implements Serializ
             }
 
             if (kind == Type.RANGE.ordinal())
-                return new Range(left, right, LocatorConfig.instance.getPartitioner());
-            return new Bounds(left, right, LocatorConfig.instance.getPartitioner());
+                return new Range(left, right, partitioner);
+            return new Bounds(left, right, partitioner);
         }
 
         public long serializedSize(AbstractBounds<?> ab, int version)
