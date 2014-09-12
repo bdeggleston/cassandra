@@ -626,9 +626,12 @@ public class CassandraServer implements Cassandra.Iface
                                           ThriftConversion.fromThrift(consistency_level),
                                           pageSize,
                                           timestamp,
+                                          databaseDescriptor,
                                           schema,
                                           keyspaceManager,
-                                          storageProxy);
+                                          messagingService,
+                                          storageProxy,
+                                          locatorConfig);
         }
         catch (IllegalArgumentException e)
         {

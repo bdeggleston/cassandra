@@ -27,6 +27,8 @@ import org.apache.cassandra.db.compaction.CompactionInfo;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.compaction.CompactionInterruptedException;
 import org.apache.cassandra.io.sstable.ReducingKeyIterator;
+import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
@@ -56,14 +58,14 @@ public class SecondaryIndexBuilder extends CompactionInfo.Holder
                                   iter.getTotalBytes());
     }
 
-    public void build(DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, DBConfig dbConfig)
+    public void build(DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, KeyspaceManager keyspaceManager, StorageProxy storageProxy, MessagingService messagingService, LocatorConfig locatorConfig, DBConfig dbConfig)
     {
         while (iter.hasNext())
         {
             if (isStopRequested())
                 throw new CompactionInterruptedException(getCompactionInfo());
             DecoratedKey key = iter.next();
-            Keyspace.indexRow(key, cfs, idxNames, databaseDescriptor, tracing, schema, keyspaceManager, storageProxy, dbConfig);
+            Keyspace.indexRow(key, cfs, idxNames, databaseDescriptor, tracing, schema, keyspaceManager, storageProxy, messagingService, locatorConfig, dbConfig);
         }
 
         try

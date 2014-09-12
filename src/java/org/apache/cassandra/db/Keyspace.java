@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageProxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -349,6 +350,8 @@ public class Keyspace
                                 Schema schema,
                                 KeyspaceManager keyspaceManager,
                                 StorageProxy storageProxy,
+                                MessagingService messagingService,
+                                LocatorConfig locatorConfig,
                                 DBConfig dbConfig)
     {
         if (logger.isDebugEnabled())
@@ -366,6 +369,8 @@ public class Keyspace
                                                                       schema,
                                                                       keyspaceManager,
                                                                       storageProxy,
+                                                                      messagingService,
+                                                                      locatorConfig,
                                                                       dbConfig);
             while (pager.hasNext())
             {

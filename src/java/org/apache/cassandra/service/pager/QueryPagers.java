@@ -148,6 +148,8 @@ public class QueryPagers
                                                         Schema schema,
                                                         KeyspaceManager keyspaceManager,
                                                         StorageProxy storageProxy,
+                                                        MessagingService messagingService,
+                                                        LocatorConfig locatorConfig,
                                                         final DBConfig dbConfig)
     {
         SliceFromReadCommand command = new SliceFromReadCommand(cfs.metadata.ksName,
@@ -157,8 +159,8 @@ public class QueryPagers
                                                                 new IdentityQueryFilter(databaseDescriptor, tracing, dbConfig),
                                                                 databaseDescriptor,
                                                                 schema,
-                                                                LocatorConfig.instance.getPartitioner(),
-                                                                MessagingService.instance.readCommandSerializer);
+                                                                locatorConfig.getPartitioner(),
+                                                                messagingService.readCommandSerializer);
         final SliceQueryPager pager = new SliceQueryPager(command, schema, null, true, keyspaceManager, storageProxy);
 
         return new Iterator<ColumnFamily>()
@@ -200,19 +202,22 @@ public class QueryPagers
                                  ConsistencyLevel consistencyLevel,
                                  final int pageSize,
                                  long now,
+                                 DatabaseDescriptor databaseDescriptor,
                                  Schema schema,
                                  KeyspaceManager keyspaceManager,
-                                 StorageProxy storageProxy) throws RequestValidationException, RequestExecutionException
+                                 MessagingService messagingService,
+                                 StorageProxy storageProxy,
+                                 LocatorConfig locatorConfig) throws RequestValidationException, RequestExecutionException
     {
         SliceFromReadCommand command = new SliceFromReadCommand(keyspace,
                                                                 key,
                                                                 columnFamily,
                                                                 now,
                                                                 filter,
-                                                                DatabaseDescriptor.instance,
+                                                                databaseDescriptor,
                                                                 schema,
-                                                                LocatorConfig.instance.getPartitioner(),
-                                                                MessagingService.instance.readCommandSerializer);
+                                                                locatorConfig.getPartitioner(),
+                                                                messagingService.readCommandSerializer);
         final SliceQueryPager pager = new SliceQueryPager(command, schema, consistencyLevel, false, keyspaceManager, storageProxy);
 
         ColumnCounter counter = filter.columnCounter(schema.getCFMetaData(keyspace, columnFamily).comparator, now);
