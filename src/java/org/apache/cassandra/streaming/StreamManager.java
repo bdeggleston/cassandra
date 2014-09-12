@@ -54,16 +54,23 @@ public class StreamManager implements StreamManagerMBean
 {
     public static final StreamManager instance = new StreamManager();
 
-    private final ThreadPoolExecutor receiveTaskExecutor = DebuggableThreadPoolExecutor.createWithMaximumPoolSize("StreamReceiveTask",
-                                                                                                                  FBUtilities.getAvailableProcessors(),
-                                                                                                                  60, TimeUnit.SECONDS,
-                                                                                                                  Tracing.instance);
+    private final ThreadPoolExecutor receiveTaskExecutor;
 
     // Executor strictly for establishing the initial connections. Once we're connected to the other end the rest of the
     // streaming is handled directly by the ConnectionHandler's incoming and outgoing threads.
-    private final DebuggableThreadPoolExecutor streamExecutor = DebuggableThreadPoolExecutor.createWithFixedPoolSize("StreamConnectionEstablisher",
-                                                                                                                     FBUtilities.getAvailableProcessors(),
-                                                                                                                     Tracing.instance);
+    private final DebuggableThreadPoolExecutor streamExecutor;
+
+    public StreamManager()
+    {
+        receiveTaskExecutor = DebuggableThreadPoolExecutor.createWithMaximumPoolSize("StreamReceiveTask",
+                                                                                     FBUtilities.getAvailableProcessors(),
+                                                                                     60, TimeUnit.SECONDS,
+                                                                                     Tracing.instance);
+        streamExecutor = DebuggableThreadPoolExecutor.createWithFixedPoolSize("StreamConnectionEstablisher",
+                                                                              FBUtilities.getAvailableProcessors(),
+                                                                              Tracing.instance);
+    }
+
     /**
      * Gets streaming rate limiter.
      * When stream_throughput_outbound_megabits_per_sec is 0, this returns rate limiter

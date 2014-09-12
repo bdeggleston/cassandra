@@ -109,7 +109,7 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
     public void onSuccess(StreamState state)
     {
         logger.info(String.format("[repair #%s] streaming task succeed, returning response to %s", desc.sessionId, request.initiator));
-        messagingService.sendOneWay(new SyncComplete(desc, request.src, request.dst, true, MessagingService.instance.repairMessageSerializer).createMessage(messagingService), request.initiator);
+        messagingService.sendOneWay(new SyncComplete(desc, request.src, request.dst, true, messagingService.repairMessageSerializer).createMessage(messagingService), request.initiator);
     }
 
     /**
@@ -117,6 +117,6 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
      */
     public void onFailure(Throwable t)
     {
-        messagingService.sendOneWay(new SyncComplete(desc, request.src, request.dst, false, MessagingService.instance.repairMessageSerializer).createMessage(messagingService), request.initiator);
+        messagingService.sendOneWay(new SyncComplete(desc, request.src, request.dst, false, messagingService.repairMessageSerializer).createMessage(messagingService), request.initiator);
     }
 }

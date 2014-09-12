@@ -98,6 +98,7 @@ public abstract class SecondaryIndex
     protected final CompactionManager compactionManager;
     protected final StorageService storageService;
     protected final DBConfig dbConfig;
+    protected final LocatorConfig locatorConfig;
 
     protected SecondaryIndex(SystemKeyspace systemKeyspace, CompactionManager compactionManager, StorageService storageService, DBConfig dbConfig)
     {
@@ -105,6 +106,8 @@ public abstract class SecondaryIndex
         this.compactionManager = compactionManager;
         this.storageService = storageService;
         this.dbConfig = dbConfig;
+
+        locatorConfig = dbConfig.getLocatorConfig();
     }
 
     /**
@@ -202,7 +205,7 @@ public abstract class SecondaryIndex
         {
             SecondaryIndexBuilder builder = new SecondaryIndexBuilder(baseCfs,
                                                                       Collections.singleton(getIndexName()),
-                                                                      new ReducingKeyIterator(sstables, LocatorConfig.instance.getPartitioner()),
+                                                                      new ReducingKeyIterator(sstables, locatorConfig.getPartitioner()),
                                                                       storageService);
             Future<?> future = compactionManager.submitIndexBuild(builder);
             FBUtilities.waitOnFuture(future);
@@ -294,7 +297,7 @@ public abstract class SecondaryIndex
     {
         // FIXME: this imply one column definition per index
         ByteBuffer name = columnDefs.iterator().next().name.bytes;
-        return new BufferDecoratedKey(new LocalToken(baseCfs.metadata.getColumnDefinition(name).type, value, LocatorConfig.instance.getPartitioner()), value);
+        return new BufferDecoratedKey(new LocalToken(baseCfs.metadata.getColumnDefinition(name).type, value, locatorConfig.getPartitioner()), value);
     }
 
     /**

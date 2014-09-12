@@ -86,7 +86,7 @@ public class StreamRequest
             {
                 Token left = tokenSerializer.deserialize(in);
                 Token right = tokenSerializer.deserialize(in);
-                ranges.add(new Range<>(left, right, LocatorConfig.instance.getPartitioner()));
+                ranges.add(new Range<>(left, right, partitioner));
             }
             int cfCount = in.readInt();
             List<String> columnFamilies = new ArrayList<>(cfCount);

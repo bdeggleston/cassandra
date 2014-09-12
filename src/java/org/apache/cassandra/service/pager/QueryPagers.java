@@ -155,7 +155,7 @@ public class QueryPagers
                                                                 cfs.name,
                                                                 System.currentTimeMillis(),
                                                                 new IdentityQueryFilter(databaseDescriptor, tracing, dbConfig),
-                                                                Schema.instance,
+                                                                schema,
                                                                 LocatorConfig.instance.getPartitioner(),
                                                                 MessagingService.instance.readCommandSerializer);
         final SliceQueryPager pager = new SliceQueryPager(command, schema, null, true, keyspaceManager, storageProxy);
@@ -208,7 +208,7 @@ public class QueryPagers
                                                                 columnFamily,
                                                                 now,
                                                                 filter,
-                                                                Schema.instance,
+                                                                schema,
                                                                 LocatorConfig.instance.getPartitioner(),
                                                                 MessagingService.instance.readCommandSerializer);
         final SliceQueryPager pager = new SliceQueryPager(command, schema, consistencyLevel, false, keyspaceManager, storageProxy);

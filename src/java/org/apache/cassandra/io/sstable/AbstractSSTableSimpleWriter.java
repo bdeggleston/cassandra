@@ -26,7 +26,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.context.CounterContext;
 import org.apache.cassandra.dht.IPartitioner;
@@ -50,10 +49,9 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
     public AbstractSSTableSimpleWriter(File directory, CFMetaData metadata, IPartitioner partitioner, DBConfig dbConfig)
     {
         this.metadata = metadata;
-        this.directory = directory;
-        LocatorConfig.instance.setPartitioner(partitioner);
         this.dbConfig = dbConfig;
         this.locatorConfig = dbConfig.getLocatorConfig();
+        this.locatorConfig.setPartitioner(partitioner);
     }
 
     protected SSTableWriter getWriter()

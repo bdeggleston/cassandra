@@ -150,7 +150,7 @@ public class Mutation implements IMutation
         ColumnFamily cf = modifications.get(cfm.cfId);
         if (cf == null)
         {
-            cf = ArrayBackedSortedColumns.factory.create(cfm, DBConfig.instance);
+            cf = ArrayBackedSortedColumns.factory.create(cfm, dbConfig);
             modifications.put(cfm.cfId, cf);
         }
         return cf;
