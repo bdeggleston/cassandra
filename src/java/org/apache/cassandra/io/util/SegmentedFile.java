@@ -68,9 +68,9 @@ public abstract class SegmentedFile
     /**
      * @return A SegmentedFile.Builder.
      */
-    public static Builder getBuilder(Config.DiskAccessMode mode, FileCacheService fileCacheService)
+    public static Builder getBuilder(Config.DiskAccessMode indexAccessMode, FileCacheService fileCacheService, Config.DiskAccessMode diskAccessMode)
     {
-        return mode == Config.DiskAccessMode.mmap
+        return indexAccessMode == Config.DiskAccessMode.mmap
                ? new MmappedSegmentedFile.Builder(DatabaseDescriptor.instance.getDiskAccessMode())
                : new BufferedPoolingSegmentedFile.Builder(fileCacheService, DatabaseDescriptor.instance.getDiskAccessMode());
     }

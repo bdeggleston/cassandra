@@ -311,10 +311,10 @@ public class SSTableReaderTest
         SSTableReader sstable = indexCfs.getSSTables().iterator().next();
         assert sstable.first.getToken() instanceof LocalToken;
 
-        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), FileCacheService.instance);
+        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode());
         SegmentedFile.Builder dbuilder = sstable.compression
                                           ? SegmentedFile.getCompressedBuilder(FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode(), DBConfig.instance.offHeapAllocator)
-                                          : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), FileCacheService.instance);
+                                          : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode());
         sstable.saveSummary(ibuilder, dbuilder);
 
         SSTableReader reopened = SSTableReaderFactory.instance.open(sstable.descriptor);

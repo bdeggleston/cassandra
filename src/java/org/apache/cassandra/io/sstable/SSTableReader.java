@@ -558,10 +558,10 @@ public class SSTableReader extends SSTable
      */
     private void load(boolean recreateBloomFilter, boolean saveSummaryIfCreated) throws IOException
     {
-        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(databaseDescriptor.getIndexAccessMode(), fileCacheService);
+        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(databaseDescriptor.getIndexAccessMode(), fileCacheService, databaseDescriptor.getDiskAccessMode());
         SegmentedFile.Builder dbuilder = compression
                                          ? SegmentedFile.getCompressedBuilder(fileCacheService, databaseDescriptor.getDiskAccessMode(), dbConfig.offHeapAllocator)
-                                         : SegmentedFile.getBuilder(databaseDescriptor.getDiskAccessMode(), fileCacheService);
+                                         : SegmentedFile.getBuilder(databaseDescriptor.getDiskAccessMode(), fileCacheService, databaseDescriptor.getDiskAccessMode());
 
         boolean summaryLoaded = loadSummary(ibuilder, dbuilder);
         if (recreateBloomFilter || !summaryLoaded)
@@ -831,10 +831,10 @@ public class SSTableReader extends SSTable
                 // we can use the existing index summary to make a smaller one
                 newSummary = IndexSummaryBuilder.downsample(indexSummary, samplingLevel, minIndexInterval, partitioner, databaseDescriptor.getoffHeapMemoryAllocator());
 
-                SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(databaseDescriptor.getIndexAccessMode(), fileCacheService);
+                SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(databaseDescriptor.getIndexAccessMode(), fileCacheService, databaseDescriptor.getDiskAccessMode());
                 SegmentedFile.Builder dbuilder = compression
                                                  ? SegmentedFile.getCompressedBuilder(fileCacheService, databaseDescriptor.getDiskAccessMode(), dbConfig.offHeapAllocator)
-                                                 : SegmentedFile.getBuilder(databaseDescriptor.getDiskAccessMode(), fileCacheService);
+                                                 : SegmentedFile.getBuilder(databaseDescriptor.getDiskAccessMode(), fileCacheService, databaseDescriptor.getDiskAccessMode());
                 saveSummary(ibuilder, dbuilder, newSummary);
             }
             else

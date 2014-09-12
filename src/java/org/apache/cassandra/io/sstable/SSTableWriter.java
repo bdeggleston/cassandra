@@ -152,7 +152,7 @@ public class SSTableWriter extends SSTable
         else
         {
             dataFile = SequentialWriter.open(new File(getFilename()), new File(descriptor.filenameFor(Component.CRC)), dbConfig.getDatabaseDescriptor());
-            dbuilder = SegmentedFile.getBuilder(dbConfig.getDatabaseDescriptor().getDiskAccessMode(), fileCacheService);
+            dbuilder = SegmentedFile.getBuilder(dbConfig.getDatabaseDescriptor().getDiskAccessMode(), fileCacheService, dbConfig.getDatabaseDescriptor().getDiskAccessMode());
         }
 
         this.sstableMetadataCollector = sstableMetadataCollector;
@@ -556,7 +556,7 @@ public class SSTableWriter extends SSTable
         IndexWriter(long keyCount)
         {
             indexFile = SequentialWriter.open(new File(descriptor.filenameFor(Component.PRIMARY_INDEX)), dbConfig.getDatabaseDescriptor());
-            builder = SegmentedFile.getBuilder(dbConfig.getDatabaseDescriptor().getIndexAccessMode(), fileCacheService);
+            builder = SegmentedFile.getBuilder(dbConfig.getDatabaseDescriptor().getIndexAccessMode(), fileCacheService, dbConfig.getDatabaseDescriptor().getDiskAccessMode());
             summary = new IndexSummaryBuilder(keyCount, metadata.getMinIndexInterval(), Downsampling.BASE_SAMPLING_LEVEL, dbConfig.getDatabaseDescriptor().getoffHeapMemoryAllocator());
             bf = FilterFactory.getFilter(keyCount, metadata.getBloomFilterFpChance(), true, dbConfig.offHeapAllocator, dbConfig.murmur3BloomFilterSerializer);
         }
