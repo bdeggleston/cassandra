@@ -213,7 +213,7 @@ public final class KSMetaData
         for (CFMetaData cfm : cfMetaData.values())
             cfm.toSchema(mutation, timestamp);
 
-        userTypes.toSchema(mutation, timestamp, systemKeyspace);
+        userTypes.toSchema(mutation, timestamp, cfMetaDataFactory);
         return mutation;
     }
 

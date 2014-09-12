@@ -85,16 +85,16 @@ public final class UTMetaData
         return types;
     }
 
-    public static Mutation toSchema(UserType newType, long timestamp, SystemKeyspace systemKeyspace)
+    public static Mutation toSchema(UserType newType, long timestamp, SystemKeyspace systemKeyspace, MutationFactory mutationFactory, CFMetaDataFactory cfMetaDataFactory)
     {
-        return toSchema(MutationFactory.instance.create(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(newType.keyspace)), newType, timestamp, systemKeyspace);
+        return toSchema(mutationFactory.create(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(newType.keyspace)), newType, timestamp, cfMetaDataFactory);
     }
 
-    public static Mutation toSchema(Mutation mutation, UserType newType, long timestamp, SystemKeyspace systemKeyspace)
+    public static Mutation toSchema(Mutation mutation, UserType newType, long timestamp, CFMetaDataFactory cfMetaDataFactory)
     {
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_USER_TYPES_CF);
 
-        Composite prefix = CFMetaDataFactory.instance.SchemaUserTypesCf.comparator.make(newType.name);
+        Composite prefix = cfMetaDataFactory.SchemaUserTypesCf.comparator.make(newType.name);
         CFRowAdder adder = new CFRowAdder(cf, prefix, timestamp);
 
         adder.resetCollection("field_names");
@@ -108,20 +108,20 @@ public final class UTMetaData
         return mutation;
     }
 
-    public Mutation toSchema(Mutation mutation, long timestamp, SystemKeyspace systemKeyspace)
+    public Mutation toSchema(Mutation mutation, long timestamp, CFMetaDataFactory cfMetaDataFactory)
     {
         for (UserType ut : userTypes.values())
-            toSchema(mutation, ut, timestamp, systemKeyspace);
+            toSchema(mutation, ut, timestamp, cfMetaDataFactory);
         return mutation;
     }
 
-    public static Mutation dropFromSchema(UserType droppedType, long timestamp, SystemKeyspace systemKeyspace)
+    public static Mutation dropFromSchema(UserType droppedType, long timestamp, SystemKeyspace systemKeyspace, CFMetaDataFactory cfMetaDataFactory, MutationFactory mutationFactory)
     {
-        Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(droppedType.keyspace));
+        Mutation mutation = mutationFactory.create(Keyspace.SYSTEM_KS, systemKeyspace.getSchemaKSKey(droppedType.keyspace));
         ColumnFamily cf = mutation.addOrGet(SystemKeyspace.SCHEMA_USER_TYPES_CF);
         int ldt = (int) (System.currentTimeMillis() / 1000);
 
-        Composite prefix = CFMetaDataFactory.instance.SchemaUserTypesCf.comparator.make(droppedType.name);
+        Composite prefix = cfMetaDataFactory.SchemaUserTypesCf.comparator.make(droppedType.name);
         cf.addAtom(new RangeTombstone(prefix, prefix.end(), timestamp, ldt));
 
         return mutation;
