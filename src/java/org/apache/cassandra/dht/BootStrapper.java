@@ -26,6 +26,8 @@ import java.util.concurrent.ExecutionException;
 import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.gms.IFailureDetector;
+import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.streaming.StreamManager;
 import org.slf4j.Logger;
@@ -35,8 +37,6 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.exceptions.ConfigurationException;
-import org.apache.cassandra.gms.FailureDetector;
-import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.TokenMetadata;
@@ -58,10 +58,11 @@ public class BootStrapper
     private final KeyspaceManager keyspaceManager;
     private final StreamManager streamManager;
     private final StorageService storageService;
+    private final IFailureDetector failureDetector;
     private final DBConfig dbConfig;
 
     public BootStrapper(InetAddress address, Collection<Token> tokens, TokenMetadata tmd, DatabaseDescriptor databaseDescriptor, Schema schema,
-                        Gossiper gossiper, KeyspaceManager keyspaceManager, StreamManager streamManager, StorageService storageService, DBConfig dbConfig)
+                        Gossiper gossiper, KeyspaceManager keyspaceManager, StreamManager streamManager, StorageService storageService, IFailureDetector failureDetector, DBConfig dbConfig)
     {
         assert address != null;
         assert tokens != null && !tokens.isEmpty();
@@ -76,6 +77,7 @@ public class BootStrapper
         this.keyspaceManager = keyspaceManager;
         this.streamManager = streamManager;
         this.storageService = storageService;
+        this.failureDetector = failureDetector;
         this.dbConfig = dbConfig;
     }
 
@@ -85,7 +87,7 @@ public class BootStrapper
             logger.debug("Beginning bootstrap process");
 
         RangeStreamer streamer = new RangeStreamer(tokenMetadata, tokens, address, "Bootstrap", databaseDescriptor, schema, gossiper, streamManager, keyspaceManager, dbConfig);
-        streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
+        streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(failureDetector));
 
         for (String keyspaceName : schema.getNonSystemKeyspaces())
         {
@@ -138,15 +140,15 @@ public class BootStrapper
         if (numTokens == 1)
             logger.warn("Picking random token for a single vnode.  You should probably add more vnodes; failing that, you should probably specify the token manually");
 
-        return getRandomTokens(metadata, numTokens);
+        return getRandomTokens(metadata, numTokens, locatorConfig.getPartitioner());
     }
 
-    public static Collection<Token> getRandomTokens(TokenMetadata metadata, int numTokens)
+    public static Collection<Token> getRandomTokens(TokenMetadata metadata, int numTokens, IPartitioner partitioner)
     {
         Set<Token> tokens = new HashSet<Token>(numTokens);
         while (tokens.size() < numTokens)
         {
-            Token token = LocatorConfig.instance.getPartitioner().getRandomToken();
+            Token token = partitioner.getRandomToken();
             if (metadata.getEndpoint(token) == null)
                 tokens.add(token);
         }

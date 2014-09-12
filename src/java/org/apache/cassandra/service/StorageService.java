@@ -771,7 +771,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 Collection<String> initialTokens = LocatorConfig.instance.getInitialTokens();
                 if (initialTokens.size() < 1)
                 {
-                    bootstrapTokens = BootStrapper.getRandomTokens(LocatorConfig.instance.getTokenMetadata(), DatabaseDescriptor.instance.getNumTokens());
+                    bootstrapTokens = BootStrapper.getRandomTokens(LocatorConfig.instance.getTokenMetadata(), DatabaseDescriptor.instance.getNumTokens(), LocatorConfig.instance.getPartitioner());
                     if (DatabaseDescriptor.instance.getNumTokens() == 1)
                         logger.warn("Generated random token {}. Random tokens will result in an unbalanced ring; see http://wiki.apache.org/cassandra/Operations", bootstrapTokens);
                     else
@@ -959,7 +959,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             throw new IllegalStateException("Unable to contact any seeds!");
         setMode(Mode.JOINING, "Starting to bootstrap...", true);
         new BootStrapper(DatabaseDescriptor.instance.getBroadcastAddress(), tokens, LocatorConfig.instance.getTokenMetadata(), DatabaseDescriptor.instance,
-                         Schema.instance, Gossiper.instance, KeyspaceManager.instance, StreamManager.instance, this, DBConfig.instance).bootstrap(); // handles token update
+                         Schema.instance, Gossiper.instance, KeyspaceManager.instance, StreamManager.instance, this, FailureDetector.instance, DBConfig.instance).bootstrap(); // handles token update
         logger.info("Bootstrap completed! for the tokens {}", tokens);
     }
 
