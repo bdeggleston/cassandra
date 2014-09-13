@@ -28,13 +28,11 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.*;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
-import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.RandomPartitioner;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
@@ -49,10 +47,8 @@ import static org.junit.Assert.assertTrue;
 
 public class RemoveTest
 {
-    static final IPartitioner partitioner = new RandomPartitioner(LocatorConfig.instance);
     StorageService ss;
     TokenMetadata tmd;
-    static IPartitioner oldPartitioner;
     ArrayList<Token> endpointTokens = new ArrayList<Token>();
     ArrayList<Token> keyTokens = new ArrayList<Token>();
     List<InetAddress> hosts = new ArrayList<InetAddress>();
@@ -64,15 +60,10 @@ public class RemoveTest
     public static void setupClass() throws ConfigurationException
     {
         System.setProperty("cassandra.ring_delay_ms", "2000");
+        System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
         DatabaseDescriptor.init();
-        oldPartitioner = StorageService.instance.setPartitionerUnsafe(partitioner);
         SchemaLoader.loadSchema();
-    }
-
-    @AfterClass
-    public static void tearDownClass()
-    {
-        StorageService.instance.setPartitionerUnsafe(oldPartitioner);
+        assert LocatorConfig.instance.getPartitioner() instanceof RandomPartitioner;
     }
 
     @Before
@@ -83,7 +74,7 @@ public class RemoveTest
         tmd.clearUnsafe();
 
         // create a ring of 5 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6);
+        Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), endpointTokens, keyTokens, hosts, hostIds, 6);
 
         MessagingService.instance.listen(DatabaseDescriptor.instance.getBroadcastAddress());
         Gossiper.instance.start(1);

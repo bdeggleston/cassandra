@@ -28,7 +28,6 @@ import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
@@ -47,8 +46,6 @@ import org.apache.cassandra.locator.TokenMetadata;
 
 public class LeaveAndBootstrapTest
 {
-    private static final IPartitioner partitioner = new RandomPartitioner(LocatorConfig.instance);
-    private static IPartitioner oldPartitioner;
     private static final String KEYSPACE1 = "LeaveAndBootstrapTestKeyspace1";
     private static final String KEYSPACE2 = "LeaveAndBootstrapTestKeyspace2";
     private static final String KEYSPACE3 = "LeaveAndBootstrapTestKeyspace3";
@@ -57,16 +54,11 @@ public class LeaveAndBootstrapTest
     @BeforeClass
     public static void defineSchema() throws Exception
     {
+        System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
         DatabaseDescriptor.init();
-        oldPartitioner = StorageService.instance.setPartitionerUnsafe(partitioner);
         SchemaLoader.loadSchema();
         SchemaLoader.schemaDefinition("LeaveAndBootstrapTest");
-    }
-
-    @AfterClass
-    public static void tearDown()
-    {
-        StorageService.instance.setPartitionerUnsafe(oldPartitioner);
+        assert LocatorConfig.instance.getPartitioner() instanceof  RandomPartitioner;
     }
 
     /**
@@ -664,12 +656,12 @@ public class LeaveAndBootstrapTest
     public void testStateChangeOnRemovedNode() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
+        VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(LocatorConfig.instance.getPartitioner());
 
         // create a ring of 2 nodes
         ArrayList<Token> endpointTokens = new ArrayList<>();
         List<InetAddress> hosts = new ArrayList<>();
-        Util.createInitialRing(ss, partitioner, endpointTokens, new ArrayList<Token>(), hosts, new ArrayList<UUID>(), 2);
+        Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), endpointTokens, new ArrayList<Token>(), hosts, new ArrayList<UUID>(), 2);
 
         InetAddress toRemove = hosts.get(1);
         SystemKeyspace.instance.updatePeerInfo(toRemove, "data_center", "dc42");
@@ -692,8 +684,8 @@ public class LeaveAndBootstrapTest
     {
         // create a ring of 1 node
         StorageService ss = StorageService.instance;
-        VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
-        Util.createInitialRing(ss, partitioner, new ArrayList<Token>(), new ArrayList<Token>(),  new ArrayList<InetAddress>(), new ArrayList<UUID>(), 1);
+        VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(LocatorConfig.instance.getPartitioner());
+        Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), new ArrayList<Token>(), new ArrayList<Token>(),  new ArrayList<InetAddress>(), new ArrayList<UUID>(), 1);
 
         // make a REMOVING state change on a non-member endpoint; without the CASSANDRA-6564 fix, this
         // would result in an ArrayIndexOutOfBoundsException
