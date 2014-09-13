@@ -273,19 +273,19 @@ public class SchemaLoader
                                                               + "k int PRIMARY KEY,"
                                                               + "v1 text,"
                                                               + "v2 int"
-                                                              + ")", ks_cql, QueryProcessor.instance),
+                                                              + ")", ks_cql),
 
                                            CFMetaDataFactory.instance.compile("CREATE TABLE table2 ("
                                                               + "k text,"
                                                               + "c text,"
                                                               + "v text,"
-                                                              + "PRIMARY KEY (k, c))", ks_cql, QueryProcessor.instance),
+                                                              + "PRIMARY KEY (k, c))", ks_cql),
                                            CFMetaDataFactory.instance.compile("CREATE TABLE foo ("
                                                    + "bar text, "
                                                    + "baz text, "
                                                    + "qux text, "
                                                    + "PRIMARY KEY(bar, baz) ) "
-                                                   + "WITH COMPACT STORAGE", ks_cql, QueryProcessor.instance),
+                                                   + "WITH COMPACT STORAGE", ks_cql),
                                            CFMetaDataFactory.instance.compile("CREATE TABLE foofoo ("
                                                    + "bar text, "
                                                    + "baz text, "
@@ -293,7 +293,7 @@ public class SchemaLoader
                                                    + "quz text, "
                                                    + "foo text, "
                                                    + "PRIMARY KEY((bar, baz), qux, quz) ) "
-                                                   + "WITH COMPACT STORAGE", ks_cql, QueryProcessor.instance)
+                                                   + "WITH COMPACT STORAGE", ks_cql)
                                            ));
 
 

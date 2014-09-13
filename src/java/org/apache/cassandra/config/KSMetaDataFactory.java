@@ -23,7 +23,7 @@ public class KSMetaDataFactory
 
     public static final KSMetaDataFactory instance = new KSMetaDataFactory();
 
-    public KSMetaDataFactory()
+    public void init()
     {
         // Hardcoded system keyspaces
         List<KSMetaData> systemKeyspaces = Arrays.asList(systemKeyspace());

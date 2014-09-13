@@ -87,7 +87,7 @@ public class CompactionsPurgeTest
                                                                       + "k int PRIMARY KEY,"
                                                                       + "v1 text,"
                                                                       + "v2 int"
-                                                                      + ")", KEYSPACE_CQL, QueryProcessor.instance));
+                                                                      + ")", KEYSPACE_CQL));
     }
 
     @Test

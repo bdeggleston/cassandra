@@ -119,6 +119,8 @@ public class DatabaseDescriptor
         }
 
         instance = databaseDescriptor;
+        assert CFMetaDataFactory.instance != null;
+        assert KSMetaDataFactory.instance != null;
         assert Gossiper.instance != null;
         assert Tracing.instance != null;
         assert LocatorConfig.instance != null;
@@ -135,6 +137,9 @@ public class DatabaseDescriptor
         assert FailureDetector.instance != null;
         assert DefsTables.instance != null;
         assert StorageService.instance != null;
+
+        CFMetaDataFactory.instance.init();
+        KSMetaDataFactory.instance.init();
 
     }
 

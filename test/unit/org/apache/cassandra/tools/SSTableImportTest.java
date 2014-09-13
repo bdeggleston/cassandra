@@ -83,7 +83,7 @@ public class SSTableImportTest
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD),
                                     CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_COUNTER, BytesType.instance).defaultValidator(CounterColumnType.instance),
                                     SchemaLoader.standardCFMD(KEYSPACE1, "AsciiKeys").keyValidator(AsciiType.instance),
-                                    CFMetaDataFactory.instance.compile("CREATE TABLE table1 (k int PRIMARY KEY, v1 text, v2 int)", KEYSPACE1, QueryProcessor.instance));
+                                    CFMetaDataFactory.instance.compile("CREATE TABLE table1 (k int PRIMARY KEY, v1 text, v2 int)", KEYSPACE1));
     }
 
     @Test

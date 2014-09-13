@@ -74,7 +74,7 @@ public class QueryPagerTest
                                                                       + "k text,"
                                                                       + "c text,"
                                                                       + "v text,"
-                                                                      + "PRIMARY KEY (k, c))", KEYSPACE_CQL, QueryProcessor.instance));
+                                                                      + "PRIMARY KEY (k, c))", KEYSPACE_CQL));
         addData();
     }
 

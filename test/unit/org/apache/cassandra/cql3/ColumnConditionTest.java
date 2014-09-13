@@ -163,7 +163,7 @@ public class ColumnConditionTest
 
     private static boolean listAppliesTo(ColumnCondition.CollectionBound bound, List<ByteBuffer> conditionValues, List<ByteBuffer> columnValues)
     {
-        CFMetaData cfm = CFMetaDataFactory.instance.compile("create table foo(a int PRIMARY KEY, b int, c list<int>)", "ks", QueryProcessor.instance);
+        CFMetaData cfm = CFMetaDataFactory.instance.compile("create table foo(a int PRIMARY KEY, b int, c list<int>)", "ks");
         Map<ByteBuffer, CollectionType> typeMap = new HashMap<>();
         typeMap.put(ByteBufferUtil.bytes("c"), ListType.getInstance(Int32Type.instance));
         CompoundSparseCellNameType.WithCollection nameType = new CompoundSparseCellNameType.WithCollection(Collections.EMPTY_LIST, ColumnToCollectionType.getInstance(typeMap), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
@@ -295,7 +295,7 @@ public class ColumnConditionTest
 
     private static boolean setAppliesTo(ColumnCondition.CollectionBound bound, Set<ByteBuffer> conditionValues, List<ByteBuffer> columnValues)
     {
-        CFMetaData cfm = CFMetaDataFactory.instance.compile("create table foo(a int PRIMARY KEY, b int, c set<int>)", "ks", QueryProcessor.instance);
+        CFMetaData cfm = CFMetaDataFactory.instance.compile("create table foo(a int PRIMARY KEY, b int, c set<int>)", "ks");
         Map<ByteBuffer, CollectionType> typeMap = new HashMap<>();
         typeMap.put(ByteBufferUtil.bytes("c"), SetType.getInstance(Int32Type.instance));
         CompoundSparseCellNameType.WithCollection nameType = new CompoundSparseCellNameType.WithCollection(Collections.EMPTY_LIST, ColumnToCollectionType.getInstance(typeMap), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
@@ -428,7 +428,7 @@ public class ColumnConditionTest
 
     private static boolean mapAppliesTo(ColumnCondition.CollectionBound bound, Map<ByteBuffer, ByteBuffer> conditionValues, Map<ByteBuffer, ByteBuffer> columnValues)
     {
-        CFMetaData cfm = CFMetaDataFactory.instance.compile("create table foo(a int PRIMARY KEY, b map<int, int>)", "ks", QueryProcessor.instance);
+        CFMetaData cfm = CFMetaDataFactory.instance.compile("create table foo(a int PRIMARY KEY, b map<int, int>)", "ks");
         Map<ByteBuffer, CollectionType> typeMap = new HashMap<>();
         typeMap.put(ByteBufferUtil.bytes("b"), MapType.getInstance(Int32Type.instance, Int32Type.instance));
         CompoundSparseCellNameType.WithCollection nameType = new CompoundSparseCellNameType.WithCollection(Collections.EMPTY_LIST, ColumnToCollectionType.getInstance(typeMap), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
