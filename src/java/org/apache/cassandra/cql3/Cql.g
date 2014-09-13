@@ -179,6 +179,58 @@ options {
         }
         operations.add(Pair.create(key, update));
     }
+
+    private DatabaseDescriptor databaseDescriptor;
+    private Tracing tracing;
+    private Schema schema;
+    private MigrationManager migrationManager;
+    private Auth auth;
+    private CFMetaDataFactory cfMetaDataFactory;
+    private KSMetaDataFactory ksMetaDataFactory;
+    private KeyspaceManager keyspaceManager;
+    private TriggerExecutor triggerExecutor;
+    private MessagingService messagingService;
+    private StorageProxy storageProxy;
+    private MutationFactory mutationFactory;
+    private CounterMutationFactory counterMutationFactory;
+    private QueryProcessor queryProcessor;
+    private LocatorConfig locatorConfig;
+    private DBConfig dbConfig;
+
+    public void setup(DatabaseDescriptor databaseDescriptor,
+                      Tracing tracing,
+                      Schema schema,
+                      MigrationManager migrationManager,
+                      Auth auth,
+                      CFMetaDataFactory cfMetaDataFactory,
+                      KSMetaDataFactory ksMetaDataFactory,
+                      KeyspaceManager keyspaceManager,
+                      TriggerExecutor triggerExecutor,
+                      MessagingService messagingService,
+                      StorageProxy storageProxy,
+                      MutationFactory mutationFactory,
+                      CounterMutationFactory counterMutationFactory,
+                      QueryProcessor queryProcessor,
+                      LocatorConfig locatorConfig,
+                      DBConfig dbConfig)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
+        this.schema = schema;
+        this.migrationManager = migrationManager;
+        this.auth = auth;
+        this.cfMetaDataFactory = cfMetaDataFactory;
+        this.ksMetaDataFactory = ksMetaDataFactory;
+        this.keyspaceManager = keyspaceManager;
+        this.triggerExecutor = triggerExecutor;
+        this.messagingService = messagingService;
+        this.storageProxy = storageProxy;
+        this.mutationFactory = mutationFactory;
+        this.counterMutationFactory = counterMutationFactory;
+        this.queryProcessor = queryProcessor;
+        this.locatorConfig = locatorConfig;
+        this.dbConfig = dbConfig;
+    }
 }
 
 @lexer::header {
@@ -302,15 +354,15 @@ selectStatement returns [SelectStatement.RawStatement expr]
                                                    sclause,
                                                    wclause,
                                                    limit,
-                                                   DatabaseDescriptor.instance,
-                                                   Tracing.instance,
-                                                   Schema.instance,
-                                                   QueryProcessor.instance,
-                                                   KeyspaceManager.instance,
-                                                   StorageProxy.instance,
-                                                   MessagingService.instance,
-                                                   LocatorConfig.instance,
-                                                   DBConfig.instance);
+                                                   databaseDescriptor,
+                                                   tracing,
+                                                   schema,
+                                                   queryProcessor,
+                                                   keyspaceManager,
+                                                   storageProxy,
+                                                   messagingService,
+                                                   locatorConfig,
+                                                   dbConfig);
       }
     ;
 
@@ -383,17 +435,17 @@ insertStatement returns [UpdateStatement.ParsedInsert expr]
                                                    columnNames,
                                                    values,
                                                    ifNotExists,
-                                                   DatabaseDescriptor.instance,
-                                                   Tracing.instance,
-                                                   Schema.instance,
-                                                   QueryProcessor.instance,
-                                                   StorageProxy.instance,
-                                                   KeyspaceManager.instance,
-                                                   DBConfig.instance,
-                                                   MutationFactory.instance,
-                                                   CounterMutationFactory.instance,
-                                                   MessagingService.instance,
-                                                   LocatorConfig.instance);
+                                                   databaseDescriptor,
+                                                   tracing,
+                                                   schema,
+                                                   queryProcessor,
+                                                   storageProxy,
+                                                   keyspaceManager,
+                                                   dbConfig,
+                                                   mutationFactory,
+                                                   counterMutationFactory,
+                                                   messagingService,
+                                                   locatorConfig);
       }
     ;
 
@@ -428,17 +480,17 @@ updateStatement returns [UpdateStatement.ParsedUpdate expr]
                                                   operations,
                                                   wclause,
                                                   conditions == null ? Collections.<Pair<ColumnIdentifier, ColumnCondition.Raw>>emptyList() : conditions,
-                                                  DatabaseDescriptor.instance,
-                                                  Tracing.instance,
-                                                  Schema.instance,
-                                                  QueryProcessor.instance,
-                                                  StorageProxy.instance,
-                                                  KeyspaceManager.instance,
-                                                  DBConfig.instance,
-                                                  MutationFactory.instance,
-                                                  CounterMutationFactory.instance,
-                                                  MessagingService.instance,
-                                                  LocatorConfig.instance);
+                                                  databaseDescriptor,
+                                                  tracing,
+                                                  schema,
+                                                  queryProcessor,
+                                                  storageProxy,
+                                                  keyspaceManager,
+                                                  dbConfig,
+                                                  mutationFactory,
+                                                  counterMutationFactory,
+                                                  messagingService,
+                                                  locatorConfig);
      }
     ;
 
@@ -473,17 +525,17 @@ deleteStatement returns [DeleteStatement.Parsed expr]
                                             wclause,
                                             conditions == null ? Collections.<Pair<ColumnIdentifier, ColumnCondition.Raw>>emptyList() : conditions,
                                             ifExists,
-                                            DatabaseDescriptor.instance,
-                                            Tracing.instance,
-                                            Schema.instance,
-                                            QueryProcessor.instance,
-                                            StorageProxy.instance,
-                                            KeyspaceManager.instance,
-                                            DBConfig.instance,
-                                            MutationFactory.instance,
-                                            CounterMutationFactory.instance,
-                                            MessagingService.instance,
-                                            LocatorConfig.instance);
+                                            databaseDescriptor,
+                                            tracing,
+                                            schema,
+                                            queryProcessor,
+                                            storageProxy,
+                                            keyspaceManager,
+                                            dbConfig,
+                                            mutationFactory,
+                                            counterMutationFactory,
+                                            messagingService,
+                                            locatorConfig);
       }
     ;
 
@@ -541,17 +593,17 @@ batchStatement returns [BatchStatement.Parsed expr]
           return new BatchStatement.Parsed(type,
                                            attrs,
                                            statements,
-                                           DatabaseDescriptor.instance,
-                                           Tracing.instance,
-                                           Schema.instance,
-                                           QueryProcessor.instance,
-                                           KeyspaceManager.instance,
-                                           StorageProxy.instance,
-                                           MutationFactory.instance,
-                                           CounterMutationFactory.instance,
-                                           MessagingService.instance,
-                                           DBConfig.instance,
-                                           LocatorConfig.instance);
+                                           databaseDescriptor,
+                                           tracing,
+                                           schema,
+                                           queryProcessor,
+                                           keyspaceManager,
+                                           storageProxy,
+                                           mutationFactory,
+                                           counterMutationFactory,
+                                           messagingService,
+                                           dbConfig,
+                                           locatorConfig);
       }
     ;
 
@@ -596,7 +648,7 @@ createFunctionStatement returns [CreateFunctionStatement expr]
             )
           )
       )
-      { $expr = new CreateFunctionStatement(fn, language.toLowerCase(), bodyOrClassName, deterministic, argsNames, argsTypes, rt, orReplace, ifNotExists, MigrationManager.instance, MutationFactory.instance, CFMetaDataFactory.instance); }
+      { $expr = new CreateFunctionStatement(fn, language.toLowerCase(), bodyOrClassName, deterministic, argsNames, argsTypes, rt, orReplace, ifNotExists, migrationManager, mutationFactory, cfMetaDataFactory); }
     ;
 
 dropFunctionStatement returns [DropFunctionStatement expr]
@@ -617,7 +669,7 @@ dropFunctionStatement returns [DropFunctionStatement expr]
         ')'
         { argsPresent = true; }
       )?
-      { $expr = new DropFunctionStatement(fn, argsTypes, argsPresent, ifExists, MigrationManager.instance); }
+      { $expr = new DropFunctionStatement(fn, argsTypes, argsPresent, ifExists, migrationManager); }
     ;
 
 /**
@@ -625,12 +677,12 @@ dropFunctionStatement returns [DropFunctionStatement expr]
  */
 createKeyspaceStatement returns [CreateKeyspaceStatement expr]
     @init {
-        KSPropDefs attrs = new KSPropDefs(KSMetaDataFactory.instance);
+        KSPropDefs attrs = new KSPropDefs(ksMetaDataFactory);
         boolean ifNotExists = false;
     }
     : K_CREATE K_KEYSPACE (K_IF K_NOT K_EXISTS { ifNotExists = true; } )? ks=keyspaceName
       K_WITH properties[attrs] { $expr = new CreateKeyspaceStatement(ks, attrs, ifNotExists,
-      MigrationManager.instance, LocatorConfig.instance); }
+      migrationManager, locatorConfig); }
     ;
 
 /**
@@ -643,7 +695,7 @@ createKeyspaceStatement returns [CreateKeyspaceStatement expr]
 createTableStatement returns [CreateTableStatement.RawStatement expr]
     @init { boolean ifNotExists = false; }
     : K_CREATE K_COLUMNFAMILY (K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
-      cf=columnFamilyName { $expr = new CreateTableStatement.RawStatement(cf, ifNotExists, MigrationManager.instance, CFMetaDataFactory.instance); }
+      cf=columnFamilyName { $expr = new CreateTableStatement.RawStatement(cf, ifNotExists, migrationManager, cfMetaDataFactory); }
       cfamDefinition[expr]
     ;
 
@@ -685,7 +737,7 @@ cfamOrdering[CreateTableStatement.RawStatement expr]
 createTypeStatement returns [CreateTypeStatement expr]
     @init { boolean ifNotExists = false; }
     : K_CREATE K_TYPE (K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
-         tn=userTypeName { $expr = new CreateTypeStatement(tn, ifNotExists, Schema.instance, MigrationManager.instance); }
+         tn=userTypeName { $expr = new CreateTypeStatement(tn, ifNotExists, schema, migrationManager); }
          '(' typeColumns[expr] ( ',' typeColumns[expr]? )* ')'
     ;
 
@@ -707,7 +759,7 @@ createIndexStatement returns [CreateIndexStatement expr]
         (idxName=IDENT)? K_ON cf=columnFamilyName '(' id=indexIdent ')'
         (K_USING cls=STRING_LITERAL { props.customClass = $cls.text; })?
         (K_WITH properties[props])?
-      { $expr = new CreateIndexStatement(cf, $idxName.text, id, props, ifNotExists, MigrationManager.instance, Schema.instance); }
+      { $expr = new CreateIndexStatement(cf, $idxName.text, id, props, ifNotExists, migrationManager, schema); }
     ;
 
 indexIdent returns [IndexTarget id]
@@ -725,7 +777,7 @@ createTriggerStatement returns [CreateTriggerStatement expr]
     }
     : K_CREATE K_TRIGGER (K_IF K_NOT K_EXISTS { ifNotExists = true; } )? (name=cident)
         K_ON cf=columnFamilyName K_USING cls=STRING_LITERAL
-      { $expr = new CreateTriggerStatement(cf, name.toString(), $cls.text, ifNotExists, Schema.instance, MigrationManager.instance, CFMetaDataFactory.instance, TriggerExecutor.instance); }
+      { $expr = new CreateTriggerStatement(cf, name.toString(), $cls.text, ifNotExists, schema, migrationManager, cfMetaDataFactory, triggerExecutor); }
     ;
 
 /**
@@ -734,16 +786,16 @@ createTriggerStatement returns [CreateTriggerStatement expr]
 dropTriggerStatement returns [DropTriggerStatement expr]
      @init { boolean ifExists = false; }
     : K_DROP K_TRIGGER (K_IF K_EXISTS { ifExists = true; } )? (name=cident) K_ON cf=columnFamilyName
-      { $expr = new DropTriggerStatement(cf, name.toString(), ifExists, Schema.instance, MigrationManager.instance); }
+      { $expr = new DropTriggerStatement(cf, name.toString(), ifExists, schema, migrationManager); }
     ;
 
 /**
  * ALTER KEYSPACE <KS> WITH <property> = <value>;
  */
 alterKeyspaceStatement returns [AlterKeyspaceStatement expr]
-    @init { KSPropDefs attrs = new KSPropDefs(KSMetaDataFactory.instance); }
+    @init { KSPropDefs attrs = new KSPropDefs(ksMetaDataFactory); }
     : K_ALTER K_KEYSPACE ks=keyspaceName
-        K_WITH properties[attrs] { $expr = new AlterKeyspaceStatement(ks, attrs, Schema.instance, MigrationManager.instance, LocatorConfig.instance); }
+        K_WITH properties[attrs] { $expr = new AlterKeyspaceStatement(ks, attrs, schema, migrationManager, locatorConfig); }
     ;
 
 
@@ -771,7 +823,7 @@ alterTableStatement returns [AlterTableStatement expr]
                ( K_AND idn=cident K_TO toIdn=cident { renames.put(idn, toIdn); } )*
           )
     {
-        $expr = new AlterTableStatement(cf, type, id, v, props, renames, isStatic, Schema.instance, CFMetaDataFactory.instance, MigrationManager.instance);
+        $expr = new AlterTableStatement(cf, type, id, v, props, renames, isStatic, schema, cfMetaDataFactory, migrationManager);
     }
     ;
 
@@ -782,13 +834,13 @@ alterTableStatement returns [AlterTableStatement expr]
  */
 alterTypeStatement returns [AlterTypeStatement expr]
     : K_ALTER K_TYPE name=userTypeName
-          ( K_ALTER f=cident K_TYPE v=comparatorType { $expr = AlterTypeStatement.alter(name, f, v, DatabaseDescriptor.instance, Tracing.instance, Schema.instance, MigrationManager.instance, DBConfig.instance); }
-          | K_ADD   f=cident v=comparatorType        { $expr = AlterTypeStatement.addition(name, f, v, DatabaseDescriptor.instance, Tracing.instance, Schema.instance, MigrationManager.instance, DBConfig.instance); }
+          ( K_ALTER f=cident K_TYPE v=comparatorType { $expr = AlterTypeStatement.alter(name, f, v, databaseDescriptor, tracing, schema, migrationManager, dbConfig); }
+          | K_ADD   f=cident v=comparatorType        { $expr = AlterTypeStatement.addition(name, f, v, databaseDescriptor, tracing, schema, migrationManager, dbConfig); }
           | K_RENAME
                { Map<ColumnIdentifier, ColumnIdentifier> renames = new HashMap<ColumnIdentifier, ColumnIdentifier>(); }
                  id1=cident K_TO toId1=cident { renames.put(id1, toId1); }
                  ( K_AND idn=cident K_TO toIdn=cident { renames.put(idn, toIdn); } )*
-               { $expr = AlterTypeStatement.renames(name, renames, DatabaseDescriptor.instance, Tracing.instance, Schema.instance, MigrationManager.instance, DBConfig.instance); }
+               { $expr = AlterTypeStatement.renames(name, renames, databaseDescriptor, tracing, schema, migrationManager, dbConfig); }
           )
     ;
 
@@ -798,7 +850,7 @@ alterTypeStatement returns [AlterTypeStatement expr]
  */
 dropKeyspaceStatement returns [DropKeyspaceStatement ksp]
     @init { boolean ifExists = false; }
-    : K_DROP K_KEYSPACE (K_IF K_EXISTS { ifExists = true; } )? ks=keyspaceName { $ksp = new DropKeyspaceStatement(ks, ifExists, MigrationManager.instance); }
+    : K_DROP K_KEYSPACE (K_IF K_EXISTS { ifExists = true; } )? ks=keyspaceName { $ksp = new DropKeyspaceStatement(ks, ifExists, migrationManager); }
     ;
 
 /**
@@ -806,7 +858,7 @@ dropKeyspaceStatement returns [DropKeyspaceStatement ksp]
  */
 dropTableStatement returns [DropTableStatement stmt]
     @init { boolean ifExists = false; }
-    : K_DROP K_COLUMNFAMILY (K_IF K_EXISTS { ifExists = true; } )? cf=columnFamilyName { $stmt = new DropTableStatement(cf, ifExists, MigrationManager.instance); }
+    : K_DROP K_COLUMNFAMILY (K_IF K_EXISTS { ifExists = true; } )? cf=columnFamilyName { $stmt = new DropTableStatement(cf, ifExists, migrationManager); }
     ;
 
 /**
@@ -814,7 +866,7 @@ dropTableStatement returns [DropTableStatement stmt]
  */
 dropTypeStatement returns [DropTypeStatement stmt]
     @init { boolean ifExists = false; }
-    : K_DROP K_TYPE (K_IF K_EXISTS { ifExists = true; } )? name=userTypeName { $stmt = new DropTypeStatement(name, ifExists, Schema.instance, MigrationManager.instance); }
+    : K_DROP K_TYPE (K_IF K_EXISTS { ifExists = true; } )? name=userTypeName { $stmt = new DropTypeStatement(name, ifExists, schema, migrationManager); }
     ;
 
 /**
@@ -823,14 +875,14 @@ dropTypeStatement returns [DropTypeStatement stmt]
 dropIndexStatement returns [DropIndexStatement expr]
     @init { boolean ifExists = false; }
     : K_DROP K_INDEX (K_IF K_EXISTS { ifExists = true; } )? index=indexName
-      { $expr = new DropIndexStatement(index, ifExists, Schema.instance, MigrationManager.instance); }
+      { $expr = new DropIndexStatement(index, ifExists, schema, migrationManager); }
     ;
 
 /**
   * TRUNCATE <CF>;
   */
 truncateStatement returns [TruncateStatement stmt]
-    : K_TRUNCATE cf=columnFamilyName { $stmt = new TruncateStatement(cf, Schema.instance, StorageProxy.instance); }
+    : K_TRUNCATE cf=columnFamilyName { $stmt = new TruncateStatement(cf, schema, storageProxy); }
     ;
 
 /**
@@ -843,7 +895,7 @@ grantStatement returns [GrantStatement stmt]
           resource
       K_TO
           username
-      { $stmt = new GrantStatement($permissionOrAll.perms, $resource.res, $username.text, Auth.instance); }
+      { $stmt = new GrantStatement($permissionOrAll.perms, $resource.res, $username.text, auth); }
     ;
 
 /**
@@ -856,7 +908,7 @@ revokeStatement returns [RevokeStatement stmt]
           resource
       K_FROM
           username
-      { $stmt = new RevokeStatement($permissionOrAll.perms, $resource.res, $username.text, Auth.instance); }
+      { $stmt = new RevokeStatement($permissionOrAll.perms, $resource.res, $username.text, auth); }
     ;
 
 listPermissionsStatement returns [ListPermissionsStatement stmt]
@@ -870,7 +922,7 @@ listPermissionsStatement returns [ListPermissionsStatement stmt]
       ( K_ON resource { resource = $resource.res; } )?
       ( K_OF username { username = $username.text; } )?
       ( K_NORECURSIVE { recursive = false; } )?
-      { $stmt = new ListPermissionsStatement($permissionOrAll.perms, resource, username, recursive, Auth.instance); }
+      { $stmt = new ListPermissionsStatement($permissionOrAll.perms, resource, username, recursive, auth); }
     ;
 
 permission returns [Permission perm]
@@ -889,9 +941,9 @@ resource returns [IResource res]
 
 dataResource returns [DataResource res]
     : K_ALL K_KEYSPACES { $res = DataResource.root(); }
-    | K_KEYSPACE ks = keyspaceName { $res = DataResource.keyspace($ks.id, Schema.instance); }
+    | K_KEYSPACE ks = keyspaceName { $res = DataResource.keyspace($ks.id, schema); }
     | ( K_COLUMNFAMILY )? cf = columnFamilyName
-      { $res = DataResource.columnFamily($cf.name.getKeyspace(), $cf.name.getColumnFamily(), Schema.instance); }
+      { $res = DataResource.columnFamily($cf.name.getKeyspace(), $cf.name.getColumnFamily(), schema); }
     ;
 
 /**
@@ -899,14 +951,14 @@ dataResource returns [DataResource res]
  */
 createUserStatement returns [CreateUserStatement stmt]
     @init {
-        UserOptions opts = new UserOptions(Auth.instance);
+        UserOptions opts = new UserOptions(auth);
         boolean superuser = false;
         boolean ifNotExists = false;
     }
     : K_CREATE K_USER (K_IF K_NOT K_EXISTS { ifNotExists = true; })? username
       ( K_WITH userOptions[opts] )?
       ( K_SUPERUSER { superuser = true; } | K_NOSUPERUSER { superuser = false; } )?
-      { $stmt = new CreateUserStatement($username.text, opts, superuser, ifNotExists, Auth.instance); }
+      { $stmt = new CreateUserStatement($username.text, opts, superuser, ifNotExists, auth); }
     ;
 
 /**
@@ -914,13 +966,13 @@ createUserStatement returns [CreateUserStatement stmt]
  */
 alterUserStatement returns [AlterUserStatement stmt]
     @init {
-        UserOptions opts = new UserOptions(Auth.instance);
+        UserOptions opts = new UserOptions(auth);
         Boolean superuser = null;
     }
     : K_ALTER K_USER username
       ( K_WITH userOptions[opts] )?
       ( K_SUPERUSER { superuser = true; } | K_NOSUPERUSER { superuser = false; } )?
-      { $stmt = new AlterUserStatement($username.text, opts, superuser, Auth.instance); }
+      { $stmt = new AlterUserStatement($username.text, opts, superuser, auth); }
     ;
 
 /**
@@ -928,14 +980,14 @@ alterUserStatement returns [AlterUserStatement stmt]
  */
 dropUserStatement returns [DropUserStatement stmt]
     @init { boolean ifExists = false; }
-    : K_DROP K_USER (K_IF K_EXISTS { ifExists = true; })? username { $stmt = new DropUserStatement($username.text, ifExists, Auth.instance); }
+    : K_DROP K_USER (K_IF K_EXISTS { ifExists = true; })? username { $stmt = new DropUserStatement($username.text, ifExists, auth); }
     ;
 
 /**
  * LIST USERS
  */
 listUsersStatement returns [ListUsersStatement stmt]
-    : K_LIST K_USERS { $stmt = new ListUsersStatement(Tracing.instance, QueryProcessor.instance, Auth.instance); }
+    : K_LIST K_USERS { $stmt = new ListUsersStatement(tracing, queryProcessor, auth); }
     ;
 
 userOptions[UserOptions opts]
@@ -1072,7 +1124,7 @@ functionArgs returns [List<Term.Raw> a]
 
 term returns [Term.Raw term]
     : v=value                          { $term = v; }
-    | f=functionName args=functionArgs { $term = new FunctionCall.Raw(f, args, Schema.instance, LocatorConfig.instance.getPartitioner()); }
+    | f=functionName args=functionArgs { $term = new FunctionCall.Raw(f, args, schema, locatorConfig.getPartitioner()); }
     | '(' c=comparatorType ')' t=term  { $term = new TypeCast(c, t); }
     ;
 
@@ -1238,7 +1290,7 @@ comparatorType returns [CQL3Type.Raw t]
     : n=native_type     { $t = CQL3Type.Raw.from(n); }
     | c=collection_type { $t = c; }
     | tt=tuple_type     { $t = tt; }
-    | id=userTypeName   { $t = CQL3Type.Raw.userType(id, Schema.instance); }
+    | id=userTypeName   { $t = CQL3Type.Raw.userType(id, schema); }
     | K_FROZEN '<' f=comparatorType '>'
       {
         try {

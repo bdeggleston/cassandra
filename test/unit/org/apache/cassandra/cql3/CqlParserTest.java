@@ -40,7 +40,7 @@ public class CqlParserTest
         CqlLexer lexer = new CqlLexer(stream);
 
         TokenStream tokenStream = new CommonTokenStream(lexer);
-        CqlParser parser = new CqlParser(tokenStream);
+        CqlParser parser = QueryProcessor.instance.createParser(tokenStream);
         parser.addErrorListener(firstCounter);
         parser.addErrorListener(secondCounter);
 
@@ -60,7 +60,7 @@ public class CqlParserTest
         CqlLexer lexer = new CqlLexer(stream);
 
         TokenStream tokenStream = new CommonTokenStream(lexer);
-        CqlParser parser = new CqlParser(tokenStream);
+        CqlParser parser = QueryProcessor.instance.createParser(tokenStream);
         parser.addErrorListener(firstCounter);
         parser.addErrorListener(secondCounter);
         parser.removeErrorListener(secondCounter);

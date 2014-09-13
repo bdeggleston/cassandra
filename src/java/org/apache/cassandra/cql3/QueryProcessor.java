@@ -23,17 +23,22 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Ints;
 
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 import com.googlecode.concurrentlinkedhashmap.EntryWeigher;
 import org.antlr.runtime.*;
 import org.apache.cassandra.auth.Auth;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.KSMetaDataFactory;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.service.MigrationManager;
 import org.apache.cassandra.service.StorageProxy;
+import org.apache.cassandra.triggers.TriggerExecutor;
 import org.github.jamm.MemoryMeter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -453,7 +458,7 @@ public class QueryProcessor implements QueryHandler
             lexer.addErrorListener(errorCollector);
 
             TokenStream tokenStream = new CommonTokenStream(lexer);
-            CqlParser parser = new CqlParser(tokenStream);
+            CqlParser parser = createParser(tokenStream);
             parser.addErrorListener(errorCollector);
 
             // Parse the query string to a statement instance
@@ -476,6 +481,29 @@ public class QueryProcessor implements QueryHandler
         {
             throw new SyntaxException("Invalid or malformed CQL query string: " + e.getMessage());
         }
+    }
+
+    @VisibleForTesting
+    public CqlParser createParser(TokenStream tokenStream)
+    {
+        CqlParser parser = new CqlParser(tokenStream);
+        parser.setup(DatabaseDescriptor.instance,
+                     Tracing.instance,
+                     Schema.instance,
+                     MigrationManager.instance,
+                     Auth.instance,
+                     CFMetaDataFactory.instance,
+                     KSMetaDataFactory.instance,
+                     KeyspaceManager.instance,
+                     TriggerExecutor.instance,
+                     MessagingService.instance,
+                     StorageProxy.instance,
+                     MutationFactory.instance,
+                     CounterMutationFactory.instance,
+                     this,
+                     LocatorConfig.instance,
+                     DBConfig.instance);
+        return parser;
     }
 
     private long measure(Object key)
