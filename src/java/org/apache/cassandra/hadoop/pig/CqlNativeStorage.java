@@ -29,6 +29,7 @@ import org.apache.cassandra.db.composites.CellNames;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.hadoop.ConfigHelper;
 import org.apache.cassandra.hadoop.cql3.CqlConfigHelper;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.thrift.CfDef;
 import org.apache.cassandra.thrift.ColumnDef;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -64,15 +65,15 @@ public class CqlNativeStorage extends CqlStorage
     private String nativeSSLCipherSuites;
     private String inputCql;
 
-    public CqlNativeStorage(CFMetaDataFactory cfMetaDataFactory)
+    public CqlNativeStorage(CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig)
     {
-        this(1000, cfMetaDataFactory);
+        this(1000, cfMetaDataFactory, locatorConfig);
     }
 
     /** @param pageSize limit number of CQL rows to fetch in a thrift request */
-    public CqlNativeStorage(int pageSize, CFMetaDataFactory cfMetaDataFactory)
+    public CqlNativeStorage(int pageSize, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig)
     {
-        super(pageSize, cfMetaDataFactory);
+        super(pageSize, cfMetaDataFactory, locatorConfig);
         DEFAULT_INPUT_FORMAT = "org.apache.cassandra.hadoop.cql3.CqlInputFormat";
     }
 
@@ -201,7 +202,7 @@ public class CqlNativeStorage extends CqlStorage
 
         if (ConfigHelper.getInputInitialAddress(conf) == null)
             throw new IOException("PIG_INPUT_INITIAL_ADDRESS or PIG_INITIAL_ADDRESS environment variable not set");
-        if (ConfigHelper.getInputPartitioner(conf) == null)
+        if (ConfigHelper.getInputPartitioner(conf, locatorConfig) == null)
             throw new IOException("PIG_INPUT_PARTITIONER or PIG_PARTITIONER environment variable not set");
         if (loadSignature == null)
             loadSignature = location;

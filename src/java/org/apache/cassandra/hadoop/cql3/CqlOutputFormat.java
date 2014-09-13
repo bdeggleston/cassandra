@@ -25,6 +25,7 @@ import java.util.Map;
 
 import org.apache.cassandra.hadoop.AbstractColumnFamilyOutputFormat;
 import org.apache.cassandra.hadoop.ConfigHelper;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.hadoop.mapreduce.*;
 
 /**
@@ -53,12 +54,17 @@ import org.apache.hadoop.mapreduce.*;
  * </p>
  */
 public class CqlOutputFormat extends AbstractColumnFamilyOutputFormat<Map<String, ByteBuffer>, List<ByteBuffer>>
-{   
+{
+    public CqlOutputFormat(LocatorConfig locatorConfig)
+    {
+        super(locatorConfig);
+    }
+
     /** Fills the deprecated OutputFormat interface for streaming. */
     @Deprecated
     public CqlRecordWriter getRecordWriter(org.apache.hadoop.fs.FileSystem filesystem, org.apache.hadoop.mapred.JobConf job, String name, org.apache.hadoop.util.Progressable progress) throws IOException
     {
-        return new CqlRecordWriter(job, progress);
+        return new CqlRecordWriter(job, progress, locatorConfig);
     }
 
     /**
@@ -71,6 +77,6 @@ public class CqlOutputFormat extends AbstractColumnFamilyOutputFormat<Map<String
      */
     public CqlRecordWriter getRecordWriter(final TaskAttemptContext context) throws IOException, InterruptedException
     {
-        return new CqlRecordWriter(context);
+        return new CqlRecordWriter(context, locatorConfig);
     }
 }

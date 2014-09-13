@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +62,12 @@ public abstract class AbstractColumnFamilyOutputFormat<K, Y> extends OutputForma
     public static final String QUEUE_SIZE = "mapreduce.output.columnfamilyoutputformat.queue.size";
     private static final Logger logger = LoggerFactory.getLogger(AbstractColumnFamilyOutputFormat.class);
 
+    protected final LocatorConfig locatorConfig;
+
+    protected AbstractColumnFamilyOutputFormat(LocatorConfig locatorConfig)
+    {
+        this.locatorConfig = locatorConfig;
+    }
 
     /**
      * Check for validity of the output-specification for the job.
@@ -79,7 +86,7 @@ public abstract class AbstractColumnFamilyOutputFormat<K, Y> extends OutputForma
     {
         if (ConfigHelper.getOutputKeyspace(conf) == null)
             throw new UnsupportedOperationException("You must set the keyspace with setOutputKeyspace()");
-        if (ConfigHelper.getOutputPartitioner(conf) == null)
+        if (ConfigHelper.getOutputPartitioner(conf, locatorConfig) == null)
             throw new UnsupportedOperationException("You must set the output partitioner to the one used by your Cassandra cluster");
         if (ConfigHelper.getOutputInitialAddress(conf) == null)
             throw new UnsupportedOperationException("You must set the initial output address to a Cassandra node");

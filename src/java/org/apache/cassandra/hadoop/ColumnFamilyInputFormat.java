@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.apache.cassandra.db.Cell;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.Reporter;
@@ -46,10 +47,14 @@ import org.apache.hadoop.mapreduce.*;
  */
 public class ColumnFamilyInputFormat extends AbstractColumnFamilyInputFormat<ByteBuffer, SortedMap<ByteBuffer, Cell>>
 {
-    
+    public ColumnFamilyInputFormat(LocatorConfig locatorConfig)
+    {
+        super(locatorConfig);
+    }
+
     public RecordReader<ByteBuffer, SortedMap<ByteBuffer, Cell>> createRecordReader(InputSplit inputSplit, TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException
     {
-        return new ColumnFamilyRecordReader();
+        return new ColumnFamilyRecordReader(locatorConfig);
     }
 
     public org.apache.hadoop.mapred.RecordReader<ByteBuffer, SortedMap<ByteBuffer, Cell>> getRecordReader(org.apache.hadoop.mapred.InputSplit split, JobConf jobConf, final Reporter reporter) throws IOException
@@ -63,7 +68,7 @@ public class ColumnFamilyInputFormat extends AbstractColumnFamilyInputFormat<Byt
                 new ReporterWrapper(reporter),
                 null);
 
-        ColumnFamilyRecordReader recordReader = new ColumnFamilyRecordReader(jobConf.getInt(CASSANDRA_HADOOP_MAX_KEY_SIZE, CASSANDRA_HADOOP_MAX_KEY_SIZE_DEFAULT));
+        ColumnFamilyRecordReader recordReader = new ColumnFamilyRecordReader(jobConf.getInt(CASSANDRA_HADOOP_MAX_KEY_SIZE, CASSANDRA_HADOOP_MAX_KEY_SIZE_DEFAULT), locatorConfig);
         recordReader.initialize((org.apache.hadoop.mapreduce.InputSplit)split, tac);
         return recordReader;
     }

@@ -21,6 +21,8 @@ package org.apache.cassandra.hadoop;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.thrift.*;
 import org.apache.hadoop.mapreduce.*;
 
@@ -47,11 +49,17 @@ import org.apache.hadoop.mapreduce.*;
  */
 public class ColumnFamilyOutputFormat extends AbstractColumnFamilyOutputFormat<ByteBuffer,List<Mutation>>
 {
+
+    public ColumnFamilyOutputFormat(LocatorConfig locatorConfig)
+    {
+        super(locatorConfig);
+    }
+
     /** Fills the deprecated OutputFormat interface for streaming. */
     @Deprecated
     public ColumnFamilyRecordWriter getRecordWriter(org.apache.hadoop.fs.FileSystem filesystem, org.apache.hadoop.mapred.JobConf job, String name, org.apache.hadoop.util.Progressable progress)
     {
-        return new ColumnFamilyRecordWriter(job, progress);
+        return new ColumnFamilyRecordWriter(job, progress, locatorConfig);
     }
 
     /**
@@ -64,6 +72,6 @@ public class ColumnFamilyOutputFormat extends AbstractColumnFamilyOutputFormat<B
      */
     public ColumnFamilyRecordWriter getRecordWriter(final TaskAttemptContext context) throws InterruptedException
     {
-        return new ColumnFamilyRecordWriter(context);
+        return new ColumnFamilyRecordWriter(context, locatorConfig);
     }
 }

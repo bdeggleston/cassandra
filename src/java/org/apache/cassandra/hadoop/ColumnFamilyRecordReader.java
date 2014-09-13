@@ -26,6 +26,7 @@ import java.util.*;
 import com.google.common.collect.*;
 import org.apache.cassandra.db.BufferCell;
 import org.apache.cassandra.db.Cell;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,16 +68,18 @@ public class ColumnFamilyRecordReader extends RecordReader<ByteBuffer, SortedMap
     private int keyBufferSize = 8192;
     private List<IndexExpression> filter;
 
+    private final LocatorConfig locatorConfig;
 
-    public ColumnFamilyRecordReader()
+    public ColumnFamilyRecordReader(LocatorConfig locatorConfig)
     {
-        this(ColumnFamilyRecordReader.CASSANDRA_HADOOP_MAX_KEY_SIZE_DEFAULT);
+        this(ColumnFamilyRecordReader.CASSANDRA_HADOOP_MAX_KEY_SIZE_DEFAULT, locatorConfig);
     }
 
-    public ColumnFamilyRecordReader(int keyBufferSize)
+    public ColumnFamilyRecordReader(int keyBufferSize, LocatorConfig locatorConfig)
     {
         super();
         this.keyBufferSize = keyBufferSize;
+        this.locatorConfig = locatorConfig;
     }
 
     public void close()
@@ -168,7 +171,7 @@ public class ColumnFamilyRecordReader extends RecordReader<ByteBuffer, SortedMap
             throw new RuntimeException(e);
         }
 
-        iter = widerows ? new WideRowIterator() : new StaticRowIterator();
+        iter = widerows ? new WideRowIterator(locatorConfig) : new StaticRowIterator(locatorConfig);
         logger.debug("created {}", iter);
     }
 
@@ -220,13 +223,15 @@ public class ColumnFamilyRecordReader extends RecordReader<ByteBuffer, SortedMap
         protected final AbstractType<?> comparator;
         protected final AbstractType<?> subComparator;
         protected final IPartitioner partitioner;
+        protected final LocatorConfig locatorConfig;
 
-        private RowIterator()
+        private RowIterator(LocatorConfig locatorConfig)
         {
             CfDef cfDef = new CfDef();
+            this.locatorConfig = locatorConfig;
             try
             {
-                partitioner = FBUtilities.newPartitioner(client.describe_partitioner());           
+                partitioner = locatorConfig.createPartitioner(client.describe_partitioner());
                 // get CF meta data
                 String query = "SELECT comparator," +
                                "       subcomparator," +
@@ -332,6 +337,11 @@ public class ColumnFamilyRecordReader extends RecordReader<ByteBuffer, SortedMap
     {
         protected int i = 0;
 
+        private StaticRowIterator(LocatorConfig locatorConfig)
+        {
+            super(locatorConfig);
+        }
+
         private void maybeInit()
         {
             // check if we need another batch
@@ -428,6 +438,11 @@ public class ColumnFamilyRecordReader extends RecordReader<ByteBuffer, SortedMap
         private PeekingIterator<Pair<ByteBuffer, SortedMap<ByteBuffer, Cell>>> wideColumns;
         private ByteBuffer lastColumn = ByteBufferUtil.EMPTY_BYTE_BUFFER;
         private ByteBuffer lastCountedKey = ByteBufferUtil.EMPTY_BYTE_BUFFER;
+
+        private WideRowIterator(LocatorConfig locatorConfig)
+        {
+            super(locatorConfig);
+        }
 
         private void maybeInit()
         {

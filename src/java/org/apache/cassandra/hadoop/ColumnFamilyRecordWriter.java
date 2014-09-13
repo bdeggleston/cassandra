@@ -25,6 +25,7 @@ import java.util.*;
 
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.thrift.*;
 import org.apache.cassandra.utils.Pair;
 import org.apache.hadoop.conf.Configuration;
@@ -59,21 +60,21 @@ final class ColumnFamilyRecordWriter extends AbstractColumnFamilyRecordWriter<By
      * @param context the task attempt context
      * @throws IOException
      */
-    ColumnFamilyRecordWriter(TaskAttemptContext context)
+    ColumnFamilyRecordWriter(TaskAttemptContext context, LocatorConfig locatorConfig)
     {
-        this(HadoopCompat.getConfiguration(context));
+        this(HadoopCompat.getConfiguration(context), locatorConfig);
         this.context = context;
 
     }
-    ColumnFamilyRecordWriter(Configuration conf, Progressable progressable)
+    ColumnFamilyRecordWriter(Configuration conf, Progressable progressable, LocatorConfig locatorConfig)
     {
-        this(conf);
+        this(conf, locatorConfig);
         this.progressable = progressable;
     }
 
-    ColumnFamilyRecordWriter(Configuration conf)
+    ColumnFamilyRecordWriter(Configuration conf, LocatorConfig locatorConfig)
     {
-        super(conf);
+        super(conf, locatorConfig);
         this.clients = new HashMap<Range, RangeClient>();
     }
     

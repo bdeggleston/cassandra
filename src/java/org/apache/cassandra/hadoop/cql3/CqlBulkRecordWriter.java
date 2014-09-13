@@ -166,7 +166,7 @@ public class CqlBulkRecordWriter extends AbstractBulkRecordWriter<Object, List<B
                 writer = CQLSSTableWriter.builder(schema, queryProcessor, auth, ksMetaDataFactory, dbConfig)
                     .forTable(schemaDesc)
                     .using(insertStatement)
-                    .withPartitioner(ConfigHelper.getOutputPartitioner(conf))
+                    .withPartitioner(ConfigHelper.getOutputPartitioner(conf, locatorConfig))
                     .inDirectory(outputDir)
                     .withBufferSizeInMB(Integer.parseInt(conf.get(BUFFER_SIZE_IN_MB, "64")))
                     .build();

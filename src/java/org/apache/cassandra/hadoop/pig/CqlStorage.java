@@ -32,6 +32,7 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.hadoop.*;
 import org.apache.cassandra.hadoop.cql3.CqlConfigHelper;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.thrift.*;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
@@ -65,17 +66,19 @@ public class CqlStorage extends AbstractCassandraStorage
     protected String outputQuery;
     protected String whereClause;
     private boolean hasCompactValueAlias = false;
+    protected final LocatorConfig locatorConfig;
         
-    public CqlStorage(CFMetaDataFactory cfMetaDataFactory)
+    public CqlStorage(CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig)
     {
-        this(1000, cfMetaDataFactory);
+        this(1000, cfMetaDataFactory, locatorConfig);
     }
 
     /** @param pageSize limit number of CQL rows to fetch in a thrift request */
-    public CqlStorage(int pageSize, CFMetaDataFactory cfMetaDataFactory)
+    public CqlStorage(int pageSize, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig)
     {
         super(cfMetaDataFactory);
         this.pageSize = pageSize;
+        this.locatorConfig = locatorConfig;
         DEFAULT_INPUT_FORMAT = "org.apache.cassandra.hadoop.cql3.CqlPagingInputFormat";
         DEFAULT_OUTPUT_FORMAT = "org.apache.cassandra.hadoop.cql3.CqlOutputFormat";
     }   
@@ -246,7 +249,7 @@ public class CqlStorage extends AbstractCassandraStorage
             throw new IOException("PIG_INPUT_RPC_PORT or PIG_RPC_PORT environment variable not set");
         if (ConfigHelper.getInputInitialAddress(conf) == null)
             throw new IOException("PIG_INPUT_INITIAL_ADDRESS or PIG_INITIAL_ADDRESS environment variable not set");
-        if (ConfigHelper.getInputPartitioner(conf) == null)
+        if (ConfigHelper.getInputPartitioner(conf, locatorConfig) == null)
             throw new IOException("PIG_INPUT_PARTITIONER or PIG_PARTITIONER environment variable not set");
         if (loadSignature == null)
             loadSignature = location;
@@ -286,7 +289,7 @@ public class CqlStorage extends AbstractCassandraStorage
             throw new IOException("PIG_OUTPUT_RPC_PORT or PIG_RPC_PORT environment variable not set");
         if (ConfigHelper.getOutputInitialAddress(conf) == null)
             throw new IOException("PIG_OUTPUT_INITIAL_ADDRESS or PIG_INITIAL_ADDRESS environment variable not set");
-        if (ConfigHelper.getOutputPartitioner(conf) == null)
+        if (ConfigHelper.getOutputPartitioner(conf, locatorConfig) == null)
             throw new IOException("PIG_OUTPUT_PARTITIONER or PIG_PARTITIONER environment variable not set");
 
         initSchema(storeSignature);

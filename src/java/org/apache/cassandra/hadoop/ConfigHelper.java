@@ -23,6 +23,7 @@ package org.apache.cassandra.hadoop;
 import java.io.IOException;
 import java.util.*;
 
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +31,6 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.compress.CompressionParameters;
 import org.apache.cassandra.thrift.*;
-import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Hex;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.thrift.TBase;
@@ -415,11 +415,11 @@ public class ConfigHelper
         conf.set(INPUT_PARTITIONER_CONFIG, classname);
     }
 
-    public static IPartitioner getInputPartitioner(Configuration conf)
+    public static IPartitioner getInputPartitioner(Configuration conf, LocatorConfig locatorConfig)
     {
         try
         {
-            return FBUtilities.newPartitioner(conf.get(INPUT_PARTITIONER_CONFIG));
+            return locatorConfig.createPartitioner(conf.get(INPUT_PARTITIONER_CONFIG));
         }
         catch (ConfigurationException e)
         {
@@ -452,11 +452,11 @@ public class ConfigHelper
         conf.set(OUTPUT_PARTITIONER_CONFIG, classname);
     }
 
-    public static IPartitioner getOutputPartitioner(Configuration conf)
+    public static IPartitioner getOutputPartitioner(Configuration conf, LocatorConfig locatorConfig)
     {
         try
         {
-            return FBUtilities.newPartitioner(conf.get(OUTPUT_PARTITIONER_CONFIG));
+            return locatorConfig.createPartitioner(conf.get(OUTPUT_PARTITIONER_CONFIG));
         }
         catch (ConfigurationException e)
         {

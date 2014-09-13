@@ -26,6 +26,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.client.RingCache;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.thrift.*;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.hadoop.conf.Configuration;
@@ -70,10 +71,10 @@ public abstract class AbstractColumnFamilyRecordWriter<K, Y> extends RecordWrite
     protected Progressable progressable;
     protected TaskAttemptContext context;
 
-    protected AbstractColumnFamilyRecordWriter(Configuration conf)
+    protected AbstractColumnFamilyRecordWriter(Configuration conf, LocatorConfig locatorConfig)
     {
         this.conf = conf;
-        this.ringCache = new RingCache(conf);
+        this.ringCache = new RingCache(conf, locatorConfig);
         this.queueSize = conf.getInt(AbstractColumnFamilyOutputFormat.QUEUE_SIZE, 32 * FBUtilities.getAvailableProcessors());
         batchThreshold = conf.getLong(AbstractColumnFamilyOutputFormat.BATCH_THRESHOLD, 32);
         consistencyLevel = ConsistencyLevel.valueOf(ConfigHelper.getWriteConsistencyLevel(conf));

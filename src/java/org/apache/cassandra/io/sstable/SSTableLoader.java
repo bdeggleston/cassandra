@@ -36,6 +36,7 @@ import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.streaming.*;
 import org.apache.cassandra.utils.FBUtilities;
@@ -298,7 +299,7 @@ public class SSTableLoader implements StreamEventHandler
 
         protected void setPartitioner(String partclass) throws ConfigurationException
         {
-            setPartitioner(FBUtilities.newPartitioner(partclass));
+            setPartitioner(LocatorConfig.instance.createPartitioner(partclass));
         }
 
         protected void setPartitioner(IPartitioner partitioner)

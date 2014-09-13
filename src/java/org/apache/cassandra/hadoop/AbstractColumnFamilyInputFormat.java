@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,6 +75,13 @@ public abstract class AbstractColumnFamilyInputFormat<K, Y> extends InputFormat<
     private String cfName;
     private IPartitioner partitioner;
 
+    protected final LocatorConfig locatorConfig;
+
+    protected AbstractColumnFamilyInputFormat(LocatorConfig locatorConfig)
+    {
+        this.locatorConfig = locatorConfig;
+    }
+
     protected void validateConfiguration(Configuration conf)
     {
         if (ConfigHelper.getInputKeyspace(conf) == null || ConfigHelper.getInputColumnFamily(conf) == null)
@@ -82,7 +90,7 @@ public abstract class AbstractColumnFamilyInputFormat<K, Y> extends InputFormat<
         }
         if (ConfigHelper.getInputInitialAddress(conf) == null)
             throw new UnsupportedOperationException("You must set the initial output address to a Cassandra node with setInputInitialAddress");
-        if (ConfigHelper.getInputPartitioner(conf) == null)
+        if (ConfigHelper.getInputPartitioner(conf, locatorConfig) == null)
             throw new UnsupportedOperationException("You must set the Cassandra partitioner class with setInputPartitioner");
     }
 
@@ -126,7 +134,7 @@ public abstract class AbstractColumnFamilyInputFormat<K, Y> extends InputFormat<
 
         keyspace = ConfigHelper.getInputKeyspace(conf);
         cfName = ConfigHelper.getInputColumnFamily(conf);
-        partitioner = ConfigHelper.getInputPartitioner(conf);
+        partitioner = ConfigHelper.getInputPartitioner(conf, locatorConfig);
         logger.debug("partitioner is {}", partitioner);
 
 

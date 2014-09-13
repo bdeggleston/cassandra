@@ -66,7 +66,7 @@ public class LocatorConfig
     {
         conf = DatabaseDescriptor.instance.getConfig();
 
-        partitioner = createPartitioner();
+        partitioner = createPartitioner(System.getProperty("cassandra.partitioner", conf.partitioner));
         partitionerName = partitioner.getClass().getCanonicalName();
         if (conf.initial_token != null)
             for (String token : tokensFromString(conf.initial_token))
@@ -92,9 +92,9 @@ public class LocatorConfig
         };
     }
 
-    private IPartitioner<?> createPartitioner() throws ConfigurationException
+    public IPartitioner<?> createPartitioner(String name) throws ConfigurationException
     {
-        String className = System.getProperty("cassandra.partitioner", conf.partitioner);
+        String className = name;
 
         if (className == null)
             throw new ConfigurationException("Missing directive: partitioner");

@@ -46,10 +46,10 @@ public class TestRingCache
     private Cassandra.Client thriftClient;
     private Configuration conf;
 
-    public TestRingCache(String keyspace)
+    public TestRingCache(String keyspace, LocatorConfig locatorConfig)
     {
         ConfigHelper.setOutputColumnFamily(conf, keyspace, "Standard1");
-    	ringCache = new RingCache(conf);
+    	ringCache = new RingCache(conf, locatorConfig);
     }
 
     private void setup(String server, int port) throws Exception
@@ -96,7 +96,7 @@ public class TestRingCache
             rowPrefix = "row";
         }
 
-        TestRingCache tester = new TestRingCache(keyspace);
+        TestRingCache tester = new TestRingCache(keyspace, LocatorConfig.instance);
 
         for (int nRows = minRow; nRows < maxRow; nRows++)
         {

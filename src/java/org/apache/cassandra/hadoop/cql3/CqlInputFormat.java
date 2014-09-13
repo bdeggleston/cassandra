@@ -20,6 +20,7 @@ package org.apache.cassandra.hadoop.cql3;
 import java.io.IOException;
 
 import org.apache.cassandra.hadoop.AbstractColumnFamilyInputFormat;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
@@ -50,6 +51,11 @@ import com.datastax.driver.core.Row;
  */
 public class CqlInputFormat extends AbstractColumnFamilyInputFormat<Long, Row>
 {
+    public CqlInputFormat(LocatorConfig locatorConfig)
+    {
+        super(locatorConfig);
+    }
+
     public RecordReader<Long, Row> getRecordReader(InputSplit split, JobConf jobConf, final Reporter reporter)
             throws IOException
     {
@@ -62,7 +68,7 @@ public class CqlInputFormat extends AbstractColumnFamilyInputFormat<Long, Row>
             }
         };
 
-        CqlRecordReader recordReader = new CqlRecordReader();
+        CqlRecordReader recordReader = new CqlRecordReader(locatorConfig);
         recordReader.initialize((org.apache.hadoop.mapreduce.InputSplit)split, tac);
         return recordReader;
     }
@@ -72,7 +78,7 @@ public class CqlInputFormat extends AbstractColumnFamilyInputFormat<Long, Row>
             org.apache.hadoop.mapreduce.InputSplit arg0, TaskAttemptContext arg1) throws IOException,
             InterruptedException
     {
-        return new CqlRecordReader();
+        return new CqlRecordReader(locatorConfig);
     }
 
 }

@@ -27,6 +27,7 @@ import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.hadoop.ConfigHelper;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.thrift.Cassandra;
 import org.apache.cassandra.thrift.InvalidRequestException;
 import org.apache.cassandra.thrift.TokenRange;
@@ -52,10 +53,10 @@ public class RingCache
 
     private Multimap<Range<Token>, InetAddress> rangeMap;
 
-    public RingCache(Configuration conf)
+    public RingCache(Configuration conf, LocatorConfig locatorConfig)
     {
         this.conf = conf;
-        this.partitioner = ConfigHelper.getOutputPartitioner(conf);
+        this.partitioner = ConfigHelper.getOutputPartitioner(conf, locatorConfig);
         refreshEndpointMap();
     }
 

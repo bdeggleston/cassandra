@@ -124,7 +124,7 @@ public final class BulkRecordWriter extends AbstractBulkRecordWriter<ByteBuffer,
 
             writer = new SSTableSimpleUnsortedWriter(
                     outputDir,
-                    ConfigHelper.getOutputPartitioner(conf),
+                    ConfigHelper.getOutputPartitioner(conf, locatorConfig),
                     ConfigHelper.getOutputKeyspace(conf),
                     ConfigHelper.getOutputColumnFamily(conf),
                     BytesType.instance,

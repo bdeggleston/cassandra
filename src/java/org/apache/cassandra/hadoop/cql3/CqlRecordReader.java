@@ -32,6 +32,7 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.cassandra.hadoop.HadoopCompat;
@@ -92,9 +93,12 @@ public class CqlRecordReader extends RecordReader<Long, Row>
     // partition keys -- key aliases
     private LinkedHashMap<String, Boolean> partitionBoundColumns = Maps.newLinkedHashMap();
 
-    public CqlRecordReader()
+    private final LocatorConfig locatorConfig;
+
+    public CqlRecordReader(LocatorConfig locatorConfig)
     {
         super();
+        this.locatorConfig = locatorConfig;
     }
 
     public void initialize(InputSplit split, TaskAttemptContext context) throws IOException
@@ -106,7 +110,7 @@ public class CqlRecordReader extends RecordReader<Long, Row>
                       : ConfigHelper.getInputSplitSize(conf);
         cfName = ConfigHelper.getInputColumnFamily(conf);
         keyspace = ConfigHelper.getInputKeyspace(conf);
-        partitioner = ConfigHelper.getInputPartitioner(conf);
+        partitioner = ConfigHelper.getInputPartitioner(conf, locatorConfig);
         inputColumns = CqlConfigHelper.getInputcolumns(conf);
         userDefinedWhereClauses = CqlConfigHelper.getInputWhereClauses(conf);
         Optional<Integer> pageRowSizeOptional = CqlConfigHelper.getInputPageRowSize(conf);

@@ -33,6 +33,7 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.locator.LocatorConfig;
 
 /**
  * A MerkleTree implemented as a binary tree.
@@ -79,11 +80,13 @@ public class MerkleTree implements Serializable
     {
         private final Token.Serializer tokenSerializer;
         private final Hashable.HashableSerializer hashableSerializer;
+        private final LocatorConfig locatorConfig;
 
-        public Serializer(Token.Serializer tokenSerializer, Hashable.HashableSerializer hashableSerializer)
+        public Serializer(Token.Serializer tokenSerializer, Hashable.HashableSerializer hashableSerializer, LocatorConfig locatorConfig)
         {
             this.tokenSerializer = tokenSerializer;
             this.hashableSerializer = hashableSerializer;
+            this.locatorConfig = locatorConfig;
         }
 
         public void serialize(MerkleTree mt, DataOutputPlus out, int version) throws IOException
@@ -106,7 +109,7 @@ public class MerkleTree implements Serializable
             IPartitioner partitioner;
             try
             {
-                partitioner = FBUtilities.newPartitioner(in.readUTF());
+                partitioner = locatorConfig.createPartitioner(in.readUTF());
             }
             catch (ConfigurationException e)
             {

@@ -24,6 +24,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.cassandra.hadoop.HadoopCompat;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.hadoop.util.Progressable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,21 +84,21 @@ class CqlRecordWriter extends AbstractColumnFamilyRecordWriter<Map<String, ByteB
      * @param context the task attempt context
      * @throws IOException
      */
-    CqlRecordWriter(TaskAttemptContext context) throws IOException
+    CqlRecordWriter(TaskAttemptContext context, LocatorConfig locatorConfig) throws IOException
     {
-        this(HadoopCompat.getConfiguration(context));
+        this(HadoopCompat.getConfiguration(context), locatorConfig);
         this.context = context;
     }
 
-    CqlRecordWriter(Configuration conf, Progressable progressable)
+    CqlRecordWriter(Configuration conf, Progressable progressable, LocatorConfig locatorConfig)
     {
-        this(conf);
+        this(conf, locatorConfig);
         this.progressable = progressable;
     }
 
-    CqlRecordWriter(Configuration conf)
+    CqlRecordWriter(Configuration conf, LocatorConfig locatorConfig)
     {
-        super(conf);
+        super(conf, locatorConfig);
         this.clients = new HashMap<>();
 
         try

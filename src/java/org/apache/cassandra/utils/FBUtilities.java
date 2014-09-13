@@ -391,13 +391,6 @@ public class FBUtilities
             result.get(ms, TimeUnit.MILLISECONDS);
     }
 
-    public static IPartitioner newPartitioner(String partitionerClassName) throws ConfigurationException
-    {
-        if (!partitionerClassName.contains("."))
-            partitionerClassName = "org.apache.cassandra.dht." + partitionerClassName;
-        return FBUtilities.construct(partitionerClassName, "partitioner");
-    }
-
     public static IAllocator newOffHeapAllocator(String offheap_allocator) throws ConfigurationException
     {
         if (!offheap_allocator.contains("."))

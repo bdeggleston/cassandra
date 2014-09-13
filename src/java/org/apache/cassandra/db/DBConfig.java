@@ -67,7 +67,7 @@ public class DBConfig
         boundsSerializer = new AbstractBounds.Serializer(LocatorConfig.instance.getPartitioner(), tokenSerializer, rowPositionSerializer);
         hashableSerializer = new MerkleTree.Hashable.HashableSerializer(tokenSerializer);
         innerSerializer = new MerkleTree.Inner.InnerSerializer(tokenSerializer, hashableSerializer);
-        merkleTreeSerializer = new MerkleTree.Serializer(tokenSerializer, hashableSerializer);
+        merkleTreeSerializer = new MerkleTree.Serializer(tokenSerializer, hashableSerializer, LocatorConfig.instance);
         murmur3BloomFilterSerializer = new Murmur3BloomFilter.Serializer(offHeapAllocator);
 
         preemptiveOpenInterval = calculatePreemptiveOpenInterval();

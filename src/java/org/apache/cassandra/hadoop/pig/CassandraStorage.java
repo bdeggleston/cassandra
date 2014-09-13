@@ -25,6 +25,7 @@ import java.util.*;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.hadoop.HadoopCompat;
 import org.apache.cassandra.db.Cell;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,16 +79,19 @@ public class CassandraStorage extends AbstractCassandraStorage
     private Map<ByteBuffer, Cell> lastRow;
     private boolean hasNext = true;
 
-    public CassandraStorage(CFMetaDataFactory cfMetaDataFactory)
+    protected final LocatorConfig locatorConfig;
+
+    public CassandraStorage(CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig)
     {
-        this(1024, cfMetaDataFactory);
+        this(1024, cfMetaDataFactory, locatorConfig);
     }
 
     /**@param limit number of columns to fetch in a slice */
-    public CassandraStorage(int limit, CFMetaDataFactory cfMetaDataFactory)
+    public CassandraStorage(int limit, CFMetaDataFactory cfMetaDataFactory, LocatorConfig locatorConfig)
     {
         super(cfMetaDataFactory);
         this.limit = limit;
+        this.locatorConfig = locatorConfig;
         DEFAULT_INPUT_FORMAT = "org.apache.cassandra.hadoop.ColumnFamilyInputFormat";
         DEFAULT_OUTPUT_FORMAT = "org.apache.cassandra.hadoop.ColumnFamilyOutputFormat";
     }
@@ -331,7 +335,7 @@ public class CassandraStorage extends AbstractCassandraStorage
             throw new IOException("PIG_INPUT_RPC_PORT or PIG_RPC_PORT environment variable not set");
         if (ConfigHelper.getInputInitialAddress(conf) == null)
             throw new IOException("PIG_INPUT_INITIAL_ADDRESS or PIG_INITIAL_ADDRESS environment variable not set");
-        if (ConfigHelper.getInputPartitioner(conf) == null)
+        if (ConfigHelper.getInputPartitioner(conf, locatorConfig) == null)
             throw new IOException("PIG_INPUT_PARTITIONER or PIG_PARTITIONER environment variable not set");
         if (loadSignature == null)
             loadSignature = location;
@@ -371,7 +375,7 @@ public class CassandraStorage extends AbstractCassandraStorage
             throw new IOException("PIG_OUTPUT_RPC_PORT or PIG_RPC_PORT environment variable not set");
         if (ConfigHelper.getOutputInitialAddress(conf) == null)
             throw new IOException("PIG_OUTPUT_INITIAL_ADDRESS or PIG_INITIAL_ADDRESS environment variable not set");
-        if (ConfigHelper.getOutputPartitioner(conf) == null)
+        if (ConfigHelper.getOutputPartitioner(conf, locatorConfig) == null)
             throw new IOException("PIG_OUTPUT_PARTITIONER or PIG_PARTITIONER environment variable not set");
 
         // we have to do this again here for the check in writeColumnsFromTuple
