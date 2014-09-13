@@ -43,14 +43,22 @@ public class RowDataResolver extends AbstractRowResolver
     public List<AsyncOneResponse> repairResults = Collections.emptyList();
     private final IDiskAtomFilter filter;
     private final long timestamp;
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Tracing tracing;
     private final MessagingService messagingService;
+    private final MutationFactory mutationFactory;
+    private final DBConfig dbConfig;
 
-    public RowDataResolver(String keyspaceName, ByteBuffer key, IDiskAtomFilter qFilter, IPartitioner partitioner, MessagingService messagingService, long timestamp)
+    public RowDataResolver(String keyspaceName, ByteBuffer key, IDiskAtomFilter qFilter, IPartitioner partitioner, DatabaseDescriptor databaseDescriptor, Tracing tracing, MessagingService messagingService, MutationFactory mutationFactory, DBConfig dbConfig, long timestamp)
     {
         super(key, keyspaceName, partitioner);
         this.filter = qFilter;
         this.timestamp = timestamp;
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
         this.messagingService = messagingService;
+        this.mutationFactory = mutationFactory;
+        this.dbConfig = dbConfig;
     }
 
     /*
@@ -86,14 +94,14 @@ public class RowDataResolver extends AbstractRowResolver
                     maxLiveCount = liveCount;
             }
 
-            resolved = resolveSuperset(versions, timestamp);
+            resolved = resolveSuperset(versions, timestamp, databaseDescriptor, tracing, dbConfig);
             if (logger.isDebugEnabled())
                 logger.debug("versions merged");
 
             // send updates to any replica that was missing part of the full row
             // (resolved can be null even if versions doesn't have all nulls because of the call to removeDeleted in resolveSuperSet)
             if (resolved != null)
-                repairResults = scheduleRepairs(resolved, keyspaceName, key, versions, endpoints, messagingService);
+                repairResults = scheduleRepairs(resolved, keyspaceName, key, versions, endpoints, messagingService, mutationFactory);
         }
         else
         {
@@ -110,7 +118,7 @@ public class RowDataResolver extends AbstractRowResolver
      * For each row version, compare with resolved (the superset of all row versions);
      * if it is missing anything, send a mutation to the endpoint it come from.
      */
-    public static List<AsyncOneResponse> scheduleRepairs(ColumnFamily resolved, String keyspaceName, DecoratedKey key, List<ColumnFamily> versions, List<InetAddress> endpoints, MessagingService messagingService)
+    public static List<AsyncOneResponse> scheduleRepairs(ColumnFamily resolved, String keyspaceName, DecoratedKey key, List<ColumnFamily> versions, List<InetAddress> endpoints, MessagingService messagingService, MutationFactory mutationFactory)
     {
         List<AsyncOneResponse> results = new ArrayList<AsyncOneResponse>(versions.size());
 
@@ -121,7 +129,7 @@ public class RowDataResolver extends AbstractRowResolver
                 continue;
 
             // create and send the mutation message based on the diff
-            Mutation mutation = MutationFactory.instance.create(keyspaceName, key.getKey(), diffCf);
+            Mutation mutation = mutationFactory.create(keyspaceName, key.getKey(), diffCf);
             // use a separate verb here because we don't want these to be get the white glove hint-
             // on-timeout behavior that a "real" mutation gets
             results.add(messagingService.sendRR(mutation.createMessage(messagingService, MessagingService.Verb.READ_REPAIR),
@@ -131,7 +139,7 @@ public class RowDataResolver extends AbstractRowResolver
         return results;
     }
 
-    static ColumnFamily resolveSuperset(Iterable<ColumnFamily> versions, long now)
+    static ColumnFamily resolveSuperset(Iterable<ColumnFamily> versions, long now, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
         assert Iterables.size(versions) > 0;
 
@@ -152,7 +160,7 @@ public class RowDataResolver extends AbstractRowResolver
         // mimic the collectCollatedColumn + removeDeleted path that getColumnFamily takes.
         // this will handle removing columns and subcolumns that are suppressed by a row or
         // supercolumn tombstone.
-        QueryFilter filter = new QueryFilter(null, resolved.metadata().cfName, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), now);
+        QueryFilter filter = new QueryFilter(null, resolved.metadata().cfName, new IdentityQueryFilter(databaseDescriptor, tracing, dbConfig), now);
         List<CloseableIterator<Cell>> iters = new ArrayList<>(Iterables.size(versions));
         for (ColumnFamily version : versions)
             if (version != null)

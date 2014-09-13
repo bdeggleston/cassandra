@@ -23,8 +23,10 @@ package org.apache.cassandra.service;
 
 import java.util.Arrays;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -64,7 +66,7 @@ public class RowResolverTest
         ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf2.addColumn(column("c1", "v2", 1));
 
-        ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, cf2), System.currentTimeMillis());
+        ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, cf2), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         assertColumns(resolved, "c1");
         assertColumns(ColumnFamily.diff(cf1, resolved), "c1");
         assertNull(ColumnFamily.diff(cf2, resolved));
@@ -79,7 +81,7 @@ public class RowResolverTest
         ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf2.addColumn(column("c2", "v2", 1));
 
-        ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, cf2), System.currentTimeMillis());
+        ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, cf2), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         assertColumns(resolved, "c1", "c2");
         assertColumns(ColumnFamily.diff(cf1, resolved), "c2");
         assertColumns(ColumnFamily.diff(cf2, resolved), "c1");
@@ -91,7 +93,7 @@ public class RowResolverTest
         ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf2.addColumn(column("c2", "v2", 1));
 
-        ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(null, cf2), System.currentTimeMillis());
+        ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(null, cf2), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         assertColumns(resolved, "c2");
         assertColumns(ColumnFamily.diff(null, resolved), "c2");
         assertNull(ColumnFamily.diff(cf2, resolved));
@@ -103,7 +105,7 @@ public class RowResolverTest
         ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf1.addColumn(column("c1", "v1", 0));
 
-        ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, null), System.currentTimeMillis());
+        ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, null), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         assertColumns(resolved, "c1");
         assertNull(ColumnFamily.diff(cf1, resolved));
         assertColumns(ColumnFamily.diff(null, resolved), "c1");
@@ -112,7 +114,7 @@ public class RowResolverTest
     @Test
     public void testResolveSupersetNullBoth()
     {
-        assertNull(RowDataResolver.resolveSuperset(Arrays.<ColumnFamily>asList(null, null), System.currentTimeMillis()));
+        assertNull(RowDataResolver.resolveSuperset(Arrays.<ColumnFamily>asList(null, null), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
     }
 
     @Test
@@ -125,7 +127,7 @@ public class RowResolverTest
         ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf2.delete(new DeletionInfo(1L, (int) (System.currentTimeMillis() / 1000)));
 
-        ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, cf2), System.currentTimeMillis());
+        ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, cf2), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         // no columns in the cf
         assertColumns(resolved);
         assertTrue(resolved.isMarkedForDelete());
@@ -152,7 +154,7 @@ public class RowResolverTest
         ColumnFamily cf4 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
         cf4.delete(new DeletionInfo(2L, (int) (System.currentTimeMillis() / 1000)));
 
-        ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, cf2, cf3, cf4), System.currentTimeMillis());
+        ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, cf2, cf3, cf4), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         // will have deleted marker and one column
         assertColumns(resolved, "two");
         assertColumn(resolved, "two", "B", 3);

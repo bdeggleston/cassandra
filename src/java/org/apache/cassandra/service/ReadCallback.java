@@ -24,18 +24,17 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
-import org.apache.cassandra.db.ReadCommand;
-import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
@@ -43,7 +42,6 @@ import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.utils.concurrent.SimpleCondition;
 
 public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessage>
@@ -68,12 +66,16 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
     private final DatabaseDescriptor databaseDescriptor;
     private final MessagingService messagingService;
     private final StageManager stageManager;
+    private final Tracing tracing;
+    private final MutationFactory mutationFactory;
+    private final DBConfig dbConfig;
 
     /**
      * Constructor when response count has to be calculated and blocked for.
      */
     public ReadCallback(IResponseResolver<TMessage, TResolved> resolver, ConsistencyLevel consistencyLevel, IReadCommand command, List<InetAddress> filteredEndpoints,
-                        LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager, KeyspaceManager keyspaceManager)
+                        LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager, KeyspaceManager keyspaceManager,
+                        Tracing tracing, MutationFactory mutationFactory, DBConfig dbConfig)
     {
         this(resolver,
              consistencyLevel,
@@ -84,13 +86,17 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
              locatorConfig,
              databaseDescriptor,
              messagingService,
-             stageManager);
+             stageManager,
+             tracing,
+             mutationFactory,
+             dbConfig);
         if (logger.isTraceEnabled())
             logger.trace(String.format("Blockfor is %s; setting up requests to %s", blockfor, StringUtils.join(this.endpoints, ",")));
     }
 
     public ReadCallback(IResponseResolver<TMessage, TResolved> resolver, ConsistencyLevel consistencyLevel, int blockfor, IReadCommand command, Keyspace keyspace, List<InetAddress> endpoints,
-                        LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager)
+                        LocatorConfig locatorConfig, DatabaseDescriptor databaseDescriptor, MessagingService messagingService, StageManager stageManager,
+                        Tracing tracing, MutationFactory mutationFactory, DBConfig dbConfig)
     {
         this.command = command;
         this.keyspace = keyspace;
@@ -106,6 +112,9 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
         this.databaseDescriptor = databaseDescriptor;
         this.messagingService = messagingService;
         this.stageManager = stageManager;
+        this.tracing = tracing;
+        this.mutationFactory = mutationFactory;
+        this.dbConfig = dbConfig;
         // we don't support read repair (or rapid read protection) for range scans yet (CASSANDRA-6897)
         assert !(resolver instanceof RangeSliceResponseResolver) || blockfor >= endpoints.size();
     }
@@ -214,7 +223,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
                 ReadRepairMetrics.repairedBackground.mark();
                 
                 ReadCommand readCommand = (ReadCommand) command;
-                final RowDataResolver repairResolver = new RowDataResolver(readCommand.ksName, readCommand.key, readCommand.filter(), partitioner, messagingService, readCommand.timestamp);
+                final RowDataResolver repairResolver = new RowDataResolver(readCommand.ksName, readCommand.key, readCommand.filter(), partitioner, databaseDescriptor, tracing, messagingService, mutationFactory, dbConfig, readCommand.timestamp);
                 AsyncRepairCallback repairHandler = new AsyncRepairCallback(repairResolver, endpoints.size(), stageManager);
 
                 MessageOut<ReadCommand> message = ((ReadCommand) command).createMessage(messagingService);

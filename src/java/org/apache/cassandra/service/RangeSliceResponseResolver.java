@@ -23,13 +23,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.google.common.collect.AbstractIterator;
 
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.RangeSliceReply;
-import org.apache.cassandra.db.Row;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.net.AsyncOneResponse;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.MergeIterator;
 import org.apache.cassandra.utils.Pair;
@@ -53,11 +52,21 @@ public class RangeSliceResponseResolver implements IResponseResolver<RangeSliceR
     private List<InetAddress> sources;
     protected final Collection<MessageIn<RangeSliceReply>> responses = new ConcurrentLinkedQueue<MessageIn<RangeSliceReply>>();
     public final List<AsyncOneResponse> repairResults = new ArrayList<AsyncOneResponse>();
+    private final DatabaseDescriptor databaseDescriptor;
+    private final Tracing tracing;
+    private final MessagingService messagingService;
+    private final MutationFactory mutationFactory;
+    private final DBConfig dbConfig;
 
-    public RangeSliceResponseResolver(String keyspaceName, long timestamp)
+    public RangeSliceResponseResolver(String keyspaceName, long timestamp, DatabaseDescriptor databaseDescriptor, Tracing tracing, MessagingService messagingService, MutationFactory mutationFactory, DBConfig dbConfig)
     {
         this.keyspaceName = keyspaceName;
         this.timestamp = timestamp;
+        this.databaseDescriptor = databaseDescriptor;
+        this.tracing = tracing;
+        this.messagingService = messagingService;
+        this.mutationFactory = mutationFactory;
+        this.dbConfig = dbConfig;
     }
 
     public void setSources(List<InetAddress> endpoints)
@@ -144,7 +153,7 @@ public class RangeSliceResponseResolver implements IResponseResolver<RangeSliceR
         protected Row getReduced()
         {
             ColumnFamily resolved = versions.size() > 1
-                                  ? RowDataResolver.resolveSuperset(versions, timestamp)
+                                  ? RowDataResolver.resolveSuperset(versions, timestamp, databaseDescriptor, tracing, dbConfig)
                                   : versions.get(0);
             if (versions.size() < sources.size())
             {
@@ -160,7 +169,7 @@ public class RangeSliceResponseResolver implements IResponseResolver<RangeSliceR
             }
             // resolved can be null even if versions doesn't have all nulls because of the call to removeDeleted in resolveSuperSet
             if (resolved != null)
-                repairResults.addAll(RowDataResolver.scheduleRepairs(resolved, keyspaceName, key, versions, versionSources, MessagingService.instance));
+                repairResults.addAll(RowDataResolver.scheduleRepairs(resolved, keyspaceName, key, versions, versionSources, messagingService, mutationFactory));
             versions.clear();
             versionSources.clear();
             return new Row(key, resolved);

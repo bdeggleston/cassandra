@@ -1222,12 +1222,14 @@ public class StorageProxy implements StorageProxyMBean
                 AbstractReadExecutor exec = AbstractReadExecutor.getReadExecutor(command,
                                                                                  consistencyLevel,
                                                                                  DatabaseDescriptor.instance,
+                                                                                 Tracing.instance,
                                                                                  MessagingService.instance,
                                                                                  Schema.instance,
                                                                                  StageManager.instance,
                                                                                  KeyspaceManager.instance,
                                                                                  this,
                                                                                  StorageService.instance,
+                                                                                 MutationFactory.instance,
                                                                                  DBConfig.instance);
                 exec.executeAsync();
                 readExecutors[i] = exec;
@@ -1283,7 +1285,11 @@ public class StorageProxy implements StorageProxyMBean
                                                                    exec.command.key,
                                                                    exec.command.filter(),
                                                                    LocatorConfig.instance.getPartitioner(),
+                                                                   DatabaseDescriptor.instance,
+                                                                   Tracing.instance,
                                                                    MessagingService.instance,
+                                                                   MutationFactory.instance,
+                                                                   DBConfig.instance,
                                                                    exec.command.timestamp);
                     ReadCallback<ReadResponse, Row> repairHandler = new ReadCallback<>(resolver,
                                                                                        ConsistencyLevel.ALL,
@@ -1294,7 +1300,10 @@ public class StorageProxy implements StorageProxyMBean
                                                                                        LocatorConfig.instance,
                                                                                        DatabaseDescriptor.instance,
                                                                                        MessagingService.instance,
-                                                                                       StageManager.instance);
+                                                                                       StageManager.instance,
+                                                                                       Tracing.instance,
+                                                                                       MutationFactory.instance,
+                                                                                       DBConfig.instance);
 
                     if (repairCommands == null)
                     {
@@ -1590,9 +1599,20 @@ public class StorageProxy implements StorageProxyMBean
                     AbstractRangeCommand nodeCmd = command.forSubRange(range);
 
                     // collect replies and resolve according to consistency level
-                    RangeSliceResponseResolver resolver = new RangeSliceResponseResolver(nodeCmd.keyspace, command.timestamp);
+                    RangeSliceResponseResolver resolver = new RangeSliceResponseResolver(nodeCmd.keyspace, command.timestamp, DatabaseDescriptor.instance, Tracing.instance, MessagingService.instance, MutationFactory.instance, DBConfig.instance);
                     List<InetAddress> minimalEndpoints = filteredEndpoints.subList(0, Math.min(filteredEndpoints.size(), consistency_level.blockFor(keyspace, DatabaseDescriptor.instance.getLocalDataCenter())));
-                    ReadCallback<RangeSliceReply, Iterable<Row>> handler = new ReadCallback<>(resolver, consistency_level, nodeCmd, minimalEndpoints, LocatorConfig.instance, DatabaseDescriptor.instance, MessagingService.instance, StageManager.instance, KeyspaceManager.instance);
+                    ReadCallback<RangeSliceReply, Iterable<Row>> handler = new ReadCallback<>(resolver,
+                                                                                              consistency_level,
+                                                                                              nodeCmd,
+                                                                                              minimalEndpoints,
+                                                                                              LocatorConfig.instance,
+                                                                                              DatabaseDescriptor.instance,
+                                                                                              MessagingService.instance,
+                                                                                              StageManager.instance,
+                                                                                              KeyspaceManager.instance,
+                                                                                              Tracing.instance,
+                                                                                              MutationFactory.instance,
+                                                                                              DBConfig.instance);
                     handler.assureSufficientLiveNodes();
                     resolver.setSources(filteredEndpoints);
                     if (filteredEndpoints.size() == 1
