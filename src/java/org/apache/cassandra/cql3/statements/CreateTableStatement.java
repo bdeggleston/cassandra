@@ -103,8 +103,8 @@ public class CreateTableStatement extends SchemaAlteringStatement
         {
             ColumnIdentifier id = col.getKey();
             columnDefs.add(staticColumns.contains(id)
-                           ? ColumnDefinition.staticDef(cfm, col.getKey().bytes, col.getValue(), componentIndex, CFMetaDataFactory.instance)
-                           : ColumnDefinition.regularDef(cfm, col.getKey().bytes, col.getValue(), componentIndex, CFMetaDataFactory.instance));
+                           ? ColumnDefinition.staticDef(cfm, col.getKey().bytes, col.getValue(), componentIndex, cfMetaDataFactory)
+                           : ColumnDefinition.regularDef(cfm, col.getKey().bytes, col.getValue(), componentIndex, cfMetaDataFactory));
         }
 
         return columnDefs;
@@ -174,15 +174,21 @@ public class CreateTableStatement extends SchemaAlteringStatement
 
         private final boolean ifNotExists;
 
+        private final DatabaseDescriptor databaseDescriptor;
+        private final Tracing tracing;
         private final MigrationManager migrationManager;
         private final CFMetaDataFactory cfMetaDataFactory;
+        private final DBConfig dbConfig;
 
-        public RawStatement(CFName name, boolean ifNotExists, MigrationManager migrationManager, CFMetaDataFactory cfMetaDataFactory)
+        public RawStatement(CFName name, boolean ifNotExists, DatabaseDescriptor databaseDescriptor, Tracing tracing, MigrationManager migrationManager, CFMetaDataFactory cfMetaDataFactory, DBConfig dbConfig)
         {
             super(name);
             this.ifNotExists = ifNotExists;
+            this.databaseDescriptor = databaseDescriptor;
+            this.tracing = tracing;
             this.migrationManager = migrationManager;
             this.cfMetaDataFactory = cfMetaDataFactory;
+            this.dbConfig = dbConfig;
         }
 
         /**
@@ -254,13 +260,13 @@ public class CreateTableStatement extends SchemaAlteringStatement
                     if (definedCollections != null)
                         throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
 
-                    stmt.comparator = new SimpleSparseCellNameType(UTF8Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+                    stmt.comparator = new SimpleSparseCellNameType(UTF8Type.instance, databaseDescriptor, tracing, dbConfig);
                 }
                 else
                 {
                     stmt.comparator = definedCollections == null
-                                    ? new CompoundSparseCellNameType(Collections.<AbstractType<?>>emptyList(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)
-                                    : new CompoundSparseCellNameType.WithCollection(Collections.<AbstractType<?>>emptyList(), ColumnToCollectionType.getInstance(definedCollections), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+                                    ? new CompoundSparseCellNameType(Collections.<AbstractType<?>>emptyList(), databaseDescriptor, tracing, dbConfig)
+                                    : new CompoundSparseCellNameType.WithCollection(Collections.<AbstractType<?>>emptyList(), ColumnToCollectionType.getInstance(definedCollections), databaseDescriptor, tracing, dbConfig);
                 }
             }
             else
@@ -280,7 +286,7 @@ public class CreateTableStatement extends SchemaAlteringStatement
                     AbstractType<?> at = getTypeAndRemove(stmt.columns, alias);
                     if (at instanceof CounterColumnType)
                         throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s", stmt.columnAliases.get(0)));
-                    stmt.comparator = new SimpleDenseCellNameType(at, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+                    stmt.comparator = new SimpleDenseCellNameType(at, databaseDescriptor, tracing, dbConfig);
                 }
                 else
                 {
@@ -302,13 +308,13 @@ public class CreateTableStatement extends SchemaAlteringStatement
                         if (definedCollections != null)
                             throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
 
-                        stmt.comparator = new CompoundDenseCellNameType(types, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+                        stmt.comparator = new CompoundDenseCellNameType(types, databaseDescriptor, tracing, dbConfig);
                     }
                     else
                     {
                         stmt.comparator = definedCollections == null
-                                        ? new CompoundSparseCellNameType(types, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)
-                                        : new CompoundSparseCellNameType.WithCollection(types, ColumnToCollectionType.getInstance(definedCollections), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+                                        ? new CompoundSparseCellNameType(types, databaseDescriptor, tracing, dbConfig)
+                                        : new CompoundSparseCellNameType.WithCollection(types, ColumnToCollectionType.getInstance(definedCollections), databaseDescriptor, tracing, dbConfig);
                     }
                 }
             }
