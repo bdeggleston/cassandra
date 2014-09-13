@@ -1203,18 +1203,18 @@ public final class CFMetaData
             if (fromThrift && cd.kind != ColumnDefinition.Kind.REGULAR)
                 continue;
 
-            cd.deleteFromSchema(mutation, modificationTimestamp);
+            cd.deleteFromSchema(mutation, modificationTimestamp, cfMetaDataFactory);
         }
 
         // newly added columns
         for (ColumnDefinition cd : columnDiff.entriesOnlyOnRight().values())
-            cd.toSchema(mutation, modificationTimestamp);
+            cd.toSchema(mutation, modificationTimestamp, cfMetaDataFactory);
 
         // old columns with updated attributes
         for (ByteBuffer name : columnDiff.entriesDiffering().keySet())
         {
             ColumnDefinition cd = newState.columnMetadata.get(name);
-            cd.toSchema(mutation, modificationTimestamp);
+            cd.toSchema(mutation, modificationTimestamp, cfMetaDataFactory);
         }
 
         MapDifference<String, TriggerDefinition> triggerDiff = Maps.difference(triggers, newState.triggers);
@@ -1247,7 +1247,7 @@ public final class CFMetaData
         cf.addAtom(new RangeTombstone(prefix, prefix.end(), timestamp, ldt));
 
         for (ColumnDefinition cd : allColumns())
-            cd.deleteFromSchema(mutation, timestamp);
+            cd.deleteFromSchema(mutation, timestamp, cfMetaDataFactory);
 
         for (TriggerDefinition td : triggers.values())
             td.deleteFromSchema(mutation, cfName, timestamp);
@@ -1279,7 +1279,7 @@ public final class CFMetaData
             td.toSchema(mutation, cfName, timestamp);
 
         for (ColumnDefinition cd : allColumns())
-            cd.toSchema(mutation, timestamp);
+            cd.toSchema(mutation, timestamp, cfMetaDataFactory);
     }
 
     private void toSchemaNoColumnsNoTriggers(Mutation mutation, long timestamp)
@@ -1347,7 +1347,7 @@ public final class CFMetaData
             {
                 if (aliases.get(i) != null)
                 {
-                    addOrReplaceColumnDefinition(new ColumnDefinition(this, aliases.get(i), ct.types.get(i), i, kind, cfMetaDataFactory));
+                    addOrReplaceColumnDefinition(new ColumnDefinition(this, aliases.get(i), ct.types.get(i), i, kind));
                 }
             }
         }
@@ -1355,7 +1355,7 @@ public final class CFMetaData
         {
             assert aliases.size() <= 1;
             if (!aliases.isEmpty() && aliases.get(0) != null)
-                addOrReplaceColumnDefinition(new ColumnDefinition(this, aliases.get(0), comparator, null, kind, cfMetaDataFactory));
+                addOrReplaceColumnDefinition(new ColumnDefinition(this, aliases.get(0), comparator, null, kind));
         }
     }
 
@@ -1553,7 +1553,7 @@ public final class CFMetaData
                 // For compatibility sake, we call the first alias 'key' rather than 'key1'. This
                 // is inconsistent with column alias, but it's probably not worth risking breaking compatibility now.
                 ByteBuffer name = ByteBufferUtil.bytes(i == 0 ? DEFAULT_KEY_ALIAS : DEFAULT_KEY_ALIAS + (i + 1));
-                ColumnDefinition newDef = ColumnDefinition.partitionKeyDef(this, name, type, idx, cfMetaDataFactory);
+                ColumnDefinition newDef = ColumnDefinition.partitionKeyDef(this, name, type, idx);
                 addOrReplaceColumnDefinition(newDef);
                 pkCols.set(i, newDef);
             }
@@ -1580,7 +1580,7 @@ public final class CFMetaData
                     type = comparator.asAbstractType();
                 }
                 ByteBuffer name = ByteBufferUtil.bytes(DEFAULT_COLUMN_ALIAS + (i + 1));
-                ColumnDefinition newDef = ColumnDefinition.clusteringKeyDef(this, name, type, idx, cfMetaDataFactory);
+                ColumnDefinition newDef = ColumnDefinition.clusteringKeyDef(this, name, type, idx);
                 addOrReplaceColumnDefinition(newDef);
                 ckCols.set(i, newDef);
             }
@@ -1595,7 +1595,7 @@ public final class CFMetaData
             if (compactValueDef != null)
                 return compactValueDef;
 
-            ColumnDefinition newDef = ColumnDefinition.compactValueDef(this, ByteBufferUtil.bytes(DEFAULT_VALUE_ALIAS), defaultValidator, cfMetaDataFactory);
+            ColumnDefinition newDef = ColumnDefinition.compactValueDef(this, ByteBufferUtil.bytes(DEFAULT_VALUE_ALIAS), defaultValidator);
             addOrReplaceColumnDefinition(newDef);
             return newDef;
         }

@@ -55,7 +55,7 @@ public class ColumnConditionTest
         if (columnValue != null)
         {
             CompoundSparseCellNameType nameType = new CompoundSparseCellNameType(Collections.EMPTY_LIST, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
-            ColumnDefinition definition = new ColumnDefinition("ks", "cf", new ColumnIdentifier("c", true), Int32Type.instance, null, null, null, null, null, CFMetaDataFactory.instance);
+            ColumnDefinition definition = new ColumnDefinition("ks", "cf", new ColumnIdentifier("c", true), Int32Type.instance, null, null, null, null, null);
             cell = new BufferCell(nameType.create(Composites.EMPTY, definition), columnValue);
         }
         return bound.isSatisfiedByValue(conditionValue, cell, Int32Type.instance, bound.operator, 1234);
@@ -79,7 +79,7 @@ public class ColumnConditionTest
     @Test
     public void testSimpleBoundIsSatisfiedByValue() throws InvalidRequestException
     {
-        ColumnDefinition definition = new ColumnDefinition("ks", "cf", new ColumnIdentifier("c", true), Int32Type.instance, null, null, null, null, null, CFMetaDataFactory.instance);
+        ColumnDefinition definition = new ColumnDefinition("ks", "cf", new ColumnIdentifier("c", true), Int32Type.instance, null, null, null, null, null);
 
         // EQ
         ColumnCondition condition = ColumnCondition.condition(definition, new Constants.Value(ONE), Relation.Type.EQ);
@@ -167,7 +167,7 @@ public class ColumnConditionTest
         Map<ByteBuffer, CollectionType> typeMap = new HashMap<>();
         typeMap.put(ByteBufferUtil.bytes("c"), ListType.getInstance(Int32Type.instance));
         CompoundSparseCellNameType.WithCollection nameType = new CompoundSparseCellNameType.WithCollection(Collections.EMPTY_LIST, ColumnToCollectionType.getInstance(typeMap), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
-        ColumnDefinition definition = new ColumnDefinition(cfm, ByteBufferUtil.bytes("c"), ListType.getInstance(Int32Type.instance), 0, ColumnDefinition.Kind.REGULAR, CFMetaDataFactory.instance);
+        ColumnDefinition definition = new ColumnDefinition(cfm, ByteBufferUtil.bytes("c"), ListType.getInstance(Int32Type.instance), 0, ColumnDefinition.Kind.REGULAR);
 
         List<Cell> cells = new ArrayList<>(columnValues.size());
         if (columnValues != null)
@@ -187,7 +187,7 @@ public class ColumnConditionTest
     // sets use the same check as lists
     public void testListCollectionBoundAppliesTo() throws InvalidRequestException
     {
-        ColumnDefinition definition = new ColumnDefinition("ks", "cf", new ColumnIdentifier("c", true), ListType.getInstance(Int32Type.instance), null, null, null, null, null, CFMetaDataFactory.instance);
+        ColumnDefinition definition = new ColumnDefinition("ks", "cf", new ColumnIdentifier("c", true), ListType.getInstance(Int32Type.instance), null, null, null, null, null);
 
         // EQ
         ColumnCondition condition = ColumnCondition.condition(definition, null, new Lists.Value(Arrays.asList(ONE)), Relation.Type.EQ);
@@ -299,7 +299,7 @@ public class ColumnConditionTest
         Map<ByteBuffer, CollectionType> typeMap = new HashMap<>();
         typeMap.put(ByteBufferUtil.bytes("c"), SetType.getInstance(Int32Type.instance));
         CompoundSparseCellNameType.WithCollection nameType = new CompoundSparseCellNameType.WithCollection(Collections.EMPTY_LIST, ColumnToCollectionType.getInstance(typeMap), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
-        ColumnDefinition definition = new ColumnDefinition(cfm, ByteBufferUtil.bytes("c"), SetType.getInstance(Int32Type.instance), 0, ColumnDefinition.Kind.REGULAR, CFMetaDataFactory.instance);
+        ColumnDefinition definition = new ColumnDefinition(cfm, ByteBufferUtil.bytes("c"), SetType.getInstance(Int32Type.instance), 0, ColumnDefinition.Kind.REGULAR);
 
         List<Cell> cells = new ArrayList<>(columnValues.size());
         if (columnValues != null)
@@ -317,7 +317,7 @@ public class ColumnConditionTest
     @Test
     public void testSetCollectionBoundAppliesTo() throws InvalidRequestException
     {
-        ColumnDefinition definition = new ColumnDefinition("ks", "cf", new ColumnIdentifier("c", true), SetType.getInstance(Int32Type.instance), null, null, null, null, null, CFMetaDataFactory.instance);
+        ColumnDefinition definition = new ColumnDefinition("ks", "cf", new ColumnIdentifier("c", true), SetType.getInstance(Int32Type.instance), null, null, null, null, null);
 
         // EQ
         ColumnCondition condition = ColumnCondition.condition(definition, null, new Sets.Value(set(ONE)), Relation.Type.EQ);
@@ -432,7 +432,7 @@ public class ColumnConditionTest
         Map<ByteBuffer, CollectionType> typeMap = new HashMap<>();
         typeMap.put(ByteBufferUtil.bytes("b"), MapType.getInstance(Int32Type.instance, Int32Type.instance));
         CompoundSparseCellNameType.WithCollection nameType = new CompoundSparseCellNameType.WithCollection(Collections.EMPTY_LIST, ColumnToCollectionType.getInstance(typeMap), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
-        ColumnDefinition definition = new ColumnDefinition(cfm, ByteBufferUtil.bytes("b"), MapType.getInstance(Int32Type.instance, Int32Type.instance), 0, ColumnDefinition.Kind.REGULAR, CFMetaDataFactory.instance);
+        ColumnDefinition definition = new ColumnDefinition(cfm, ByteBufferUtil.bytes("b"), MapType.getInstance(Int32Type.instance, Int32Type.instance), 0, ColumnDefinition.Kind.REGULAR);
 
         List<Cell> cells = new ArrayList<>(columnValues.size());
         if (columnValues != null)
@@ -447,7 +447,7 @@ public class ColumnConditionTest
     @Test
     public void testMapCollectionBoundIsSatisfiedByValue() throws InvalidRequestException
     {
-        ColumnDefinition definition = new ColumnDefinition("ks", "cf", new ColumnIdentifier("b", true), MapType.getInstance(Int32Type.instance, Int32Type.instance), null, null, null, null, null, CFMetaDataFactory.instance);
+        ColumnDefinition definition = new ColumnDefinition("ks", "cf", new ColumnIdentifier("b", true), MapType.getInstance(Int32Type.instance, Int32Type.instance), null, null, null, null, null);
 
         Map<ByteBuffer, ByteBuffer> placeholderMap = new TreeMap<>();
         placeholderMap.put(ONE, ONE);

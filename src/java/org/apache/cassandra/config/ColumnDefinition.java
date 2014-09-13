@@ -92,39 +92,38 @@ public class ColumnDefinition extends ColumnSpecification
      * the full column name.
      */
     private final Integer componentIndex;
-    private final CFMetaDataFactory cfMetaDataFactory;
 
-    public static ColumnDefinition partitionKeyDef(CFMetaData cfm, ByteBuffer name, AbstractType<?> validator, Integer componentIndex, CFMetaDataFactory cfMetaDataFactory)
+    public static ColumnDefinition partitionKeyDef(CFMetaData cfm, ByteBuffer name, AbstractType<?> validator, Integer componentIndex)
     {
-        return new ColumnDefinition(cfm, name, validator, componentIndex, Kind.PARTITION_KEY, cfMetaDataFactory);
+        return new ColumnDefinition(cfm, name, validator, componentIndex, Kind.PARTITION_KEY);
     }
 
-    public static ColumnDefinition partitionKeyDef(String ksName, String cfName, ByteBuffer name, AbstractType<?> validator, Integer componentIndex, CFMetaDataFactory cfMetaDataFactory)
+    public static ColumnDefinition partitionKeyDef(String ksName, String cfName, ByteBuffer name, AbstractType<?> validator, Integer componentIndex)
     {
-        return new ColumnDefinition(ksName, cfName, new ColumnIdentifier(name, UTF8Type.instance), validator, null, null, null, componentIndex, Kind.PARTITION_KEY, cfMetaDataFactory);
+        return new ColumnDefinition(ksName, cfName, new ColumnIdentifier(name, UTF8Type.instance), validator, null, null, null, componentIndex, Kind.PARTITION_KEY);
     }
 
-    public static ColumnDefinition clusteringKeyDef(CFMetaData cfm, ByteBuffer name, AbstractType<?> validator, Integer componentIndex, CFMetaDataFactory cfMetaDataFactory)
+    public static ColumnDefinition clusteringKeyDef(CFMetaData cfm, ByteBuffer name, AbstractType<?> validator, Integer componentIndex)
     {
-        return new ColumnDefinition(cfm, name, validator, componentIndex, Kind.CLUSTERING_COLUMN, cfMetaDataFactory);
+        return new ColumnDefinition(cfm, name, validator, componentIndex, Kind.CLUSTERING_COLUMN);
     }
 
-    public static ColumnDefinition regularDef(CFMetaData cfm, ByteBuffer name, AbstractType<?> validator, Integer componentIndex, CFMetaDataFactory cfMetaDataFactory)
+    public static ColumnDefinition regularDef(CFMetaData cfm, ByteBuffer name, AbstractType<?> validator, Integer componentIndex)
     {
-        return new ColumnDefinition(cfm, name, validator, componentIndex, Kind.REGULAR, cfMetaDataFactory);
+        return new ColumnDefinition(cfm, name, validator, componentIndex, Kind.REGULAR);
     }
 
-    public static ColumnDefinition staticDef(CFMetaData cfm, ByteBuffer name, AbstractType<?> validator, Integer componentIndex, CFMetaDataFactory cfMetaDataFactory)
+    public static ColumnDefinition staticDef(CFMetaData cfm, ByteBuffer name, AbstractType<?> validator, Integer componentIndex)
     {
-        return new ColumnDefinition(cfm, name, validator, componentIndex, Kind.STATIC, cfMetaDataFactory);
+        return new ColumnDefinition(cfm, name, validator, componentIndex, Kind.STATIC);
     }
 
-    public static ColumnDefinition compactValueDef(CFMetaData cfm, ByteBuffer name, AbstractType<?> validator, CFMetaDataFactory cfMetaDataFactory)
+    public static ColumnDefinition compactValueDef(CFMetaData cfm, ByteBuffer name, AbstractType<?> validator)
     {
-        return new ColumnDefinition(cfm, name, validator, null, Kind.COMPACT_VALUE, cfMetaDataFactory);
+        return new ColumnDefinition(cfm, name, validator, null, Kind.COMPACT_VALUE);
     }
 
-    public ColumnDefinition(CFMetaData cfm, ByteBuffer name, AbstractType<?> validator, Integer componentIndex, Kind kind, CFMetaDataFactory cfMetaDataFactory)
+    public ColumnDefinition(CFMetaData cfm, ByteBuffer name, AbstractType<?> validator, Integer componentIndex, Kind kind)
     {
         this(cfm.ksName,
              cfm.cfName,
@@ -134,8 +133,7 @@ public class ColumnDefinition extends ColumnSpecification
              null,
              null,
              componentIndex,
-             kind,
-             cfMetaDataFactory);
+             kind);
     }
 
     @VisibleForTesting
@@ -147,31 +145,29 @@ public class ColumnDefinition extends ColumnSpecification
                             Map<String, String> indexOptions,
                             String indexName,
                             Integer componentIndex,
-                            Kind kind,
-                            CFMetaDataFactory cfMetaDataFactory)
+                            Kind kind)
     {
         super(ksName, cfName, name, validator);
         assert name != null && validator != null;
         this.kind = kind;
         this.indexName = indexName;
         this.componentIndex = componentIndex;
-        this.cfMetaDataFactory = cfMetaDataFactory;
         this.setIndexType(indexType, indexOptions);
     }
 
     public ColumnDefinition copy()
     {
-        return new ColumnDefinition(ksName, cfName, name, type, indexType, indexOptions, indexName, componentIndex, kind, cfMetaDataFactory);
+        return new ColumnDefinition(ksName, cfName, name, type, indexType, indexOptions, indexName, componentIndex, kind);
     }
 
     public ColumnDefinition withNewName(ColumnIdentifier newName)
     {
-        return new ColumnDefinition(ksName, cfName, newName, type, indexType, indexOptions, indexName, componentIndex, kind, cfMetaDataFactory);
+        return new ColumnDefinition(ksName, cfName, newName, type, indexType, indexOptions, indexName, componentIndex, kind);
     }
 
     public ColumnDefinition withNewType(AbstractType<?> newType)
     {
-        return new ColumnDefinition(ksName, cfName, name, newType, indexType, indexOptions, indexName, componentIndex, kind, cfMetaDataFactory);
+        return new ColumnDefinition(ksName, cfName, name, newType, indexType, indexOptions, indexName, componentIndex, kind);
     }
 
     public boolean isOnAllComponents()
@@ -296,8 +292,7 @@ public class ColumnDefinition extends ColumnSpecification
                                     thriftColumnDef.index_options,
                                     thriftColumnDef.index_name,
                                     componentIndex,
-                                    Kind.REGULAR,
-                                    cfMetaDataFactory);
+                                    Kind.REGULAR);
     }
 
     public static List<ColumnDefinition> fromThrift(String ksName, String cfName, AbstractType<?> thriftComparator, AbstractType<?> thriftSubcomparator, List<ColumnDef> thriftDefs, CFMetaDataFactory cfMetaDataFactory) throws SyntaxException, ConfigurationException
@@ -318,7 +313,7 @@ public class ColumnDefinition extends ColumnSpecification
      * @param mutation  The schema mutation
      * @param timestamp The timestamp to use for column modification
      */
-    public void deleteFromSchema(Mutation mutation, long timestamp)
+    public void deleteFromSchema(Mutation mutation, long timestamp, CFMetaDataFactory cfMetaDataFactory)
     {
         ColumnFamily cf = mutation.addOrGet(cfMetaDataFactory.SchemaColumnsCf);
         int ldt = (int) (System.currentTimeMillis() / 1000);
@@ -328,7 +323,7 @@ public class ColumnDefinition extends ColumnSpecification
         cf.addAtom(new RangeTombstone(prefix, prefix.end(), timestamp, ldt));
     }
 
-    public void toSchema(Mutation mutation, long timestamp)
+    public void toSchema(Mutation mutation, long timestamp, CFMetaDataFactory cfMetaDataFactory)
     {
         ColumnFamily cf = mutation.addOrGet(cfMetaDataFactory.SchemaColumnsCf);
         Composite prefix = cfMetaDataFactory.SchemaColumnsCf.comparator.make(cfName, name.toString());
@@ -366,8 +361,7 @@ public class ColumnDefinition extends ColumnSpecification
                                     def.getIndexOptions(),
                                     def.getIndexName(),
                                     componentIndex,
-                                    kind,
-                                    def.cfMetaDataFactory);
+                                    kind);
     }
 
     public static UntypedResultSet resultify(Row serializedColumns, QueryProcessor queryProcessor)
@@ -424,7 +418,7 @@ public class ColumnDefinition extends ColumnSpecification
             if (row.has(INDEX_NAME))
                 indexName = row.getString(INDEX_NAME);
 
-            cds.add(new ColumnDefinition(ksName, cfName, name, validator, indexType, indexOptions, indexName, componentIndex, kind, cfMetaDataFactory));
+            cds.add(new ColumnDefinition(ksName, cfName, name, validator, indexType, indexOptions, indexName, componentIndex, kind));
         }
 
         return cds;

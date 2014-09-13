@@ -491,7 +491,7 @@ public class RangeTombstoneTest
         cfs.setCompactionStrategyClass(SizeTieredCompactionStrategy.class.getCanonicalName());
         if (cfs.indexManager.getIndexForColumn(indexedColumnName) == null)
         {
-            ColumnDefinition cd = new ColumnDefinition(cfs.metadata, indexedColumnName, Int32Type.instance, null, ColumnDefinition.Kind.REGULAR, CFMetaDataFactory.instance);
+            ColumnDefinition cd = new ColumnDefinition(cfs.metadata, indexedColumnName, Int32Type.instance, null, ColumnDefinition.Kind.REGULAR);
             cd.setIndex("test_index", IndexType.CUSTOM, ImmutableMap.of(SecondaryIndex.CUSTOM_INDEX_OPTION_NAME, TestIndex.class.getName()));
             cfs.indexManager.addIndexedColumn(cd);
         }
@@ -534,7 +534,7 @@ public class RangeTombstoneTest
         cfs.setCompactionStrategyClass(SizeTieredCompactionStrategy.class.getCanonicalName());
         if (cfs.indexManager.getIndexForColumn(indexedColumnName) == null)
         {
-            ColumnDefinition cd = ColumnDefinition.regularDef(cfs.metadata, indexedColumnName, cfs.getComparator().asAbstractType(), 0, CFMetaDataFactory.instance)
+            ColumnDefinition cd = ColumnDefinition.regularDef(cfs.metadata, indexedColumnName, cfs.getComparator().asAbstractType(), 0)
                                                   .setIndex("test_index", IndexType.CUSTOM, ImmutableMap.of(SecondaryIndex.CUSTOM_INDEX_OPTION_NAME, TestIndex.class.getName()));
             cfs.indexManager.addIndexedColumn(cd);
         }

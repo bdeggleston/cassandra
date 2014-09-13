@@ -149,8 +149,8 @@ public class AlterTableStatement extends SchemaAlteringStatement
 
                 Integer componentIndex = cfm.comparator.isCompound() ? cfm.comparator.clusteringPrefixSize() : null;
                 cfm.addColumnDefinition(isStatic
-                                        ? ColumnDefinition.staticDef(cfm, columnName.bytes, type, componentIndex, cfMetaDataFactory)
-                                        : ColumnDefinition.regularDef(cfm, columnName.bytes, type, componentIndex, cfMetaDataFactory));
+                                        ? ColumnDefinition.staticDef(cfm, columnName.bytes, type, componentIndex)
+                                        : ColumnDefinition.regularDef(cfm, columnName.bytes, type, componentIndex));
                 break;
 
             case ALTER:

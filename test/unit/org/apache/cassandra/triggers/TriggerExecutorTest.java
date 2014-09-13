@@ -223,18 +223,15 @@ public class TriggerExecutorTest
         metadata.addOrReplaceColumnDefinition(ColumnDefinition.partitionKeyDef(metadata,
                                                                                UTF8Type.instance.fromString("pkey"),
                                                                                UTF8Type.instance,
-                                                                               null,
-                                                                               CFMetaDataFactory.instance));
+                                                                               null));
         metadata.addOrReplaceColumnDefinition(ColumnDefinition.regularDef(metadata,
                                                                           UTF8Type.instance.fromString("c1"),
                                                                           UTF8Type.instance,
-                                                                          0,
-                                                                          CFMetaDataFactory.instance));
+                                                                          0));
         metadata.addOrReplaceColumnDefinition(ColumnDefinition.regularDef(metadata,
                                                                           UTF8Type.instance.fromString("c2"),
                                                                           UTF8Type.instance,
-                                                                          0,
-                                                                          CFMetaDataFactory.instance));
+                                                                          0));
         try
         {
             if (trigger != null)

@@ -85,7 +85,7 @@ public class ThriftValidationTest
         // should not throw IRE here
         try
         {
-            newMetadata.addColumnDefinition(ColumnDefinition.partitionKeyDef(metaData, AsciiType.instance.decompose("id"), LongType.instance, null, CFMetaDataFactory.instance));
+            newMetadata.addColumnDefinition(ColumnDefinition.partitionKeyDef(metaData, AsciiType.instance.decompose("id"), LongType.instance, null));
             newMetadata.validate();
         }
         catch (ConfigurationException e)
@@ -101,7 +101,7 @@ public class ThriftValidationTest
         // add a column with name = "id"
         try
         {
-            newMetadata.addColumnDefinition(ColumnDefinition.regularDef(metaData, ByteBufferUtil.bytes("id"), LongType.instance, null, CFMetaDataFactory.instance));
+            newMetadata.addColumnDefinition(ColumnDefinition.regularDef(metaData, ByteBufferUtil.bytes("id"), LongType.instance, null));
             newMetadata.validate();
         }
         catch (ConfigurationException e)
