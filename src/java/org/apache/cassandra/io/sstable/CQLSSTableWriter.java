@@ -266,7 +266,7 @@ public class CQLSSTableWriter implements Closeable
     public static class Builder
     {
         private File directory;
-        private IPartitioner partitioner = new Murmur3Partitioner(LocatorConfig.instance);
+        private IPartitioner partitioner;
 
         private CFMetaData cfMetaData;
         private UpdateStatement insert;
@@ -288,6 +288,7 @@ public class CQLSSTableWriter implements Closeable
             this.auth = auth;
             this.ksMetaDataFactory = ksMetaDataFactory;
             this.dbConfig = dbConfig;
+            partitioner = new Murmur3Partitioner(dbConfig.getLocatorConfig());
         }
 
         /**
