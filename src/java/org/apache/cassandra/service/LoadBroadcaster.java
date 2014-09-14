@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,15 +33,21 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber
 {
     static final int BROADCAST_INTERVAL = 60 * 1000;
 
-    public static final LoadBroadcaster instance = new LoadBroadcaster();
+    public static final LoadBroadcaster instance = new LoadBroadcaster(DatabaseDescriptor.instance, Gossiper.instance);
 
     private static final Logger logger = LoggerFactory.getLogger(LoadBroadcaster.class);
 
     private ConcurrentMap<InetAddress, Double> loadInfo = new ConcurrentHashMap<InetAddress, java.lang.Double>();
 
-    private LoadBroadcaster()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    private LoadBroadcaster(DatabaseDescriptor databaseDescriptor, Gossiper gossiper)
     {
-        Gossiper.instance.register(this);
+        assert gossiper != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+
+        gossiper.register(this);
     }
 
     public void onChange(InetAddress endpoint, ApplicationState state, VersionedValue value)
@@ -87,11 +94,11 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber
             {
                 if (logger.isDebugEnabled())
                     logger.debug("Disseminating load info ...");
-                Gossiper.instance.addLocalApplicationState(ApplicationState.LOAD,
-                                                           StorageService.instance.valueFactory.load(StorageService.instance.getLoad()));
+                databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.LOAD,
+                                                           databaseDescriptor.getStorageService().valueFactory.load(databaseDescriptor.getStorageService().getLoad()));
             }
         };
-        StorageServiceExecutors.instance.scheduledTasks.scheduleWithFixedDelay(runnable, 2 * Gossiper.intervalInMillis, BROADCAST_INTERVAL, TimeUnit.MILLISECONDS);
+        databaseDescriptor.getStorageServiceExecutors().scheduledTasks.scheduleWithFixedDelay(runnable, 2 * Gossiper.intervalInMillis, BROADCAST_INTERVAL, TimeUnit.MILLISECONDS);
     }
 }
 
