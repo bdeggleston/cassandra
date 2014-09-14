@@ -28,11 +28,6 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.DBConfig;
-import org.apache.cassandra.db.KeyspaceManager;
-import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.streaming.StreamManager;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,19 +35,15 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.concurrent.JMXConfigurableThreadPoolExecutor;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
 import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.dht.Bounds;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
-import org.apache.cassandra.gms.FailureDetector;
-import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.net.IAsyncCallbackWithFailure;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
-import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.repair.*;
 import org.apache.cassandra.repair.messages.AnticompactionRequest;
 import org.apache.cassandra.repair.messages.PrepareMessage;
@@ -80,7 +71,7 @@ public class ActiveRepairService
 {
     private static final Logger logger = LoggerFactory.getLogger(ActiveRepairService.class);
     // singleton enforcement
-    public static final ActiveRepairService instance = new ActiveRepairService();
+    public static final ActiveRepairService instance = new ActiveRepairService(DatabaseDescriptor.instance, Tracing.instance);
 
     public static final long UNREPAIRED_SSTABLE = 0;
 
@@ -98,11 +89,16 @@ public class ActiveRepairService
 
     private final ConcurrentMap<UUID, ParentRepairSession> parentRepairSessions;
 
+    private final DatabaseDescriptor databaseDescriptor;
     /**
      * Protected constructor. Use ActiveRepairService.instance.
      */
-    protected ActiveRepairService()
+    protected ActiveRepairService(DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
+        assert tracing != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+
         sessions = new ConcurrentHashMap<>();
         parentRepairSessions = new ConcurrentHashMap<>();
 
@@ -112,7 +108,7 @@ public class ActiveRepairService
                                                          new LinkedBlockingQueue<Runnable>(),
                                                          new NamedThreadFactory("AntiEntropySessions"),
                                                          "internal",
-                                                         Tracing.instance);
+                                                         tracing);
     }
 
     /**
@@ -127,14 +123,14 @@ public class ActiveRepairService
                                                   keyspace,
                                                   isSequential,
                                                   endpoints,
-                                                  DatabaseDescriptor.instance,
-                                                  Schema.instance,
-                                                  KeyspaceManager.instance,
-                                                  MessagingService.instance,
+                                                  databaseDescriptor,
+                                                  databaseDescriptor.getSchema(),
+                                                  databaseDescriptor.getKeyspaceManager(),
+                                                  databaseDescriptor.getMessagingService(),
                                                   this,
-                                                  StreamManager.instance,
-                                                  FailureDetector.instance,
-                                                  DBConfig.instance,
+                                                  databaseDescriptor.getStreamManager(),
+                                                  databaseDescriptor.getFailureDetector(),
+                                                  databaseDescriptor.getDBConfig(),
                                                   cfnames);
         if (session.endpoints.isEmpty())
             return null;
@@ -146,13 +142,13 @@ public class ActiveRepairService
     public void addToActiveSessions(RepairSession session)
     {
         sessions.put(session.getId(), session);
-        Gossiper.instance.register(session);
-        FailureDetector.instance.registerFailureDetectionEventListener(session);
+        databaseDescriptor.getGossiper().register(session);
+        databaseDescriptor.getFailureDetector().registerFailureDetectionEventListener(session);
     }
 
     public void removeFromActiveSessions(RepairSession session)
     {
-        Gossiper.instance.unregister(session);
+        databaseDescriptor.getGossiper().unregister(session);
         sessions.remove(session.getId());
     }
 
@@ -177,14 +173,14 @@ public class ActiveRepairService
                                                   desc.keyspace,
                                                   false,
                                                   neighbours,
-                                                  DatabaseDescriptor.instance,
-                                                  Schema.instance,
-                                                  KeyspaceManager.instance,
-                                                  MessagingService.instance,
+                                                  databaseDescriptor,
+                                                  databaseDescriptor.getSchema(),
+                                                  databaseDescriptor.getKeyspaceManager(),
+                                                  databaseDescriptor.getMessagingService(),
                                                   this,
-                                                  StreamManager.instance,
-                                                  FailureDetector.instance,
-                                                  DBConfig.instance,
+                                                  databaseDescriptor.getStreamManager(),
+                                                  databaseDescriptor.getFailureDetector(),
+                                                  databaseDescriptor.getDBConfig(),
                                                   new String[]{desc.columnFamily});
         sessions.put(session.getId(), session);
         RepairFuture futureTask = new RepairFuture(session);
@@ -203,9 +199,9 @@ public class ActiveRepairService
      */
     public Set<InetAddress> getNeighbors(String keyspaceName, Range<Token> toRepair, Collection<String> dataCenters, Collection<String> hosts)
     {
-        Map<Range<Token>, List<InetAddress>> replicaSets = StorageService.instance.getRangeToAddressMap(keyspaceName);
+        Map<Range<Token>, List<InetAddress>> replicaSets = databaseDescriptor.getStorageService().getRangeToAddressMap(keyspaceName);
         Range<Token> rangeSuperSet = null;
-        for (Range<Token> range : LocatorConfig.instance.getLocalRanges(keyspaceName))
+        for (Range<Token> range : databaseDescriptor.getLocatorConfig().getLocalRanges(keyspaceName))
         {
             if (range.contains(toRepair))
             {
@@ -221,11 +217,11 @@ public class ActiveRepairService
             return Collections.emptySet();
 
         Set<InetAddress> neighbors = new HashSet<>(replicaSets.get(rangeSuperSet));
-        neighbors.remove(DatabaseDescriptor.instance.getBroadcastAddress());
+        neighbors.remove(databaseDescriptor.getLocatorConfig().getBroadcastAddress());
 
         if (dataCenters != null)
         {
-            TokenMetadata.Topology topology = LocatorConfig.instance.getTokenMetadata().cloneOnlyTokenMap().getTopology();
+            TokenMetadata.Topology topology = databaseDescriptor.getLocatorConfig().getTokenMetadata().cloneOnlyTokenMap().getTopology();
             Set<InetAddress> dcEndpoints = Sets.newHashSet();
             Multimap<String,InetAddress> dcEndpointsMap = topology.getDatacenterEndpoints();
             for (String dc : dataCenters)
@@ -244,7 +240,7 @@ public class ActiveRepairService
                 try
                 {
                     final InetAddress endpoint = InetAddress.getByName(host.trim());
-                    if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()) || neighbors.contains(endpoint))
+                    if (endpoint.equals(databaseDescriptor.getLocatorConfig().getBroadcastAddress()) || neighbors.contains(endpoint))
                         specifiedHost.add(endpoint);
                 }
                 catch (UnknownHostException e)
@@ -253,7 +249,7 @@ public class ActiveRepairService
                 }
             }
 
-            if (!specifiedHost.contains(DatabaseDescriptor.instance.getBroadcastAddress()))
+            if (!specifiedHost.contains(databaseDescriptor.getLocatorConfig().getBroadcastAddress()))
                 throw new IllegalArgumentException("The current host must be part of the repair");
 
             if (specifiedHost.size() <= 1)
@@ -263,7 +259,7 @@ public class ActiveRepairService
                 throw new IllegalArgumentException(String.format(msg, specifiedHost, neighbors, hosts));
             }
 
-            specifiedHost.remove(DatabaseDescriptor.instance.getBroadcastAddress());
+            specifiedHost.remove(databaseDescriptor.getLocatorConfig().getBroadcastAddress());
             return specifiedHost;
 
         }
@@ -302,9 +298,9 @@ public class ActiveRepairService
 
         for(InetAddress neighbour : endpoints)
         {
-            PrepareMessage message = new PrepareMessage(parentRepairSession, cfIds, ranges, MessagingService.instance.repairMessageSerializer);
-            MessageOut<RepairMessage> msg = message.createMessage(MessagingService.instance);
-            MessagingService.instance.sendRRWithFailure(msg, neighbour, callback);
+            PrepareMessage message = new PrepareMessage(parentRepairSession, cfIds, ranges, databaseDescriptor.getMessagingService().repairMessageSerializer);
+            MessageOut<RepairMessage> msg = message.createMessage(databaseDescriptor.getMessagingService());
+            databaseDescriptor.getMessagingService().sendRRWithFailure(msg, neighbour, callback);
         }
         try
         {
@@ -333,7 +329,7 @@ public class ActiveRepairService
             Set<SSTableReader> sstables = new HashSet<>();
             for (SSTableReader sstable : cfs.getSSTables())
             {
-                if (new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), LocatorConfig.instance.getPartitioner()).intersects(ranges))
+                if (new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), databaseDescriptor.getLocatorConfig().getPartitioner()).intersects(ranges))
                 {
                     if (!sstable.isRepaired())
                     {
@@ -354,9 +350,9 @@ public class ActiveRepairService
             {
                 for (InetAddress neighbor : neighbors)
                 {
-                    AnticompactionRequest acr = new AnticompactionRequest(parentSession, MessagingService.instance.repairMessageSerializer);
-                    MessageOut<RepairMessage> req = acr.createMessage(MessagingService.instance);
-                    MessagingService.instance.sendOneWay(req, neighbor);
+                    AnticompactionRequest acr = new AnticompactionRequest(parentSession, databaseDescriptor.getMessagingService().repairMessageSerializer);
+                    MessageOut<RepairMessage> req = acr.createMessage(databaseDescriptor.getMessagingService());
+                    databaseDescriptor.getMessagingService().sendOneWay(req, neighbor);
                 }
                 List<Future<?>> futures = doAntiCompaction(parentSession);
                 FBUtilities.waitOnFutures(futures);
@@ -395,7 +391,7 @@ public class ActiveRepairService
                 success = sstables.isEmpty() || cfs.getDataTracker().markCompacting(sstables);
             }
 
-            futures.add(CompactionManager.instance.submitAntiCompaction(cfs, prs.ranges, sstables, prs.repairedAt));
+            futures.add(databaseDescriptor.getCompactionManager().submitAntiCompaction(cfs, prs.ranges, sstables, prs.repairedAt));
         }
 
         return futures;
