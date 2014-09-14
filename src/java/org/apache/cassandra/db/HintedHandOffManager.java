@@ -35,8 +35,6 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.common.util.concurrent.Uninterruptibles;
 
-import org.apache.cassandra.config.CFMetaDataFactory;
-import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
@@ -45,11 +43,9 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.composites.Composites;
-import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.UUIDType;
@@ -58,7 +54,6 @@ import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.gms.ApplicationState;
-import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTable;
@@ -96,7 +91,7 @@ import org.cliffc.high_scale_lib.NonBlockingHashSet;
 public class HintedHandOffManager implements HintedHandOffManagerMBean
 {
     public static final String MBEAN_NAME = "org.apache.cassandra.db:type=HintedHandoffManager";
-    public static final HintedHandOffManager instance = new HintedHandOffManager();
+    public static final HintedHandOffManager instance = new HintedHandOffManager(DatabaseDescriptor.instance, Tracing.instance, SystemKeyspace.instance, KeyspaceManager.instance);
 
     private static final Logger logger = LoggerFactory.getLogger(HintedHandOffManager.class);
     private static final int PAGE_SIZE = 128;
@@ -114,18 +109,26 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     private final ColumnFamilyStore hintStore;
 
-    public HintedHandOffManager()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public HintedHandOffManager(DatabaseDescriptor databaseDescriptor, Tracing tracing, SystemKeyspace systemKeyspace, KeyspaceManager keyspaceManager)
     {
-        metrics = new HintedHandoffMetrics(SystemKeyspace.instance);
+        assert tracing != null;
+        assert systemKeyspace != null;
+        assert keyspaceManager != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+
+        metrics = new HintedHandoffMetrics(systemKeyspace);
         queuedDeliveries = new NonBlockingHashSet<InetAddress>();
-        executor = new JMXEnabledThreadPoolExecutor(DatabaseDescriptor.instance.getMaxHintsThread(),
+        executor = new JMXEnabledThreadPoolExecutor(databaseDescriptor.getMaxHintsThread(),
                                                                                      Integer.MAX_VALUE,
                                                                                      TimeUnit.SECONDS,
                                                                                      new LinkedBlockingQueue<Runnable>(),
                                                                                      new NamedThreadFactory("HintedHandoff", Thread.MIN_PRIORITY),
                                                                                      "internal",
-                                                                                     Tracing.instance);
-        hintStore = KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF);
+                                                                                     tracing);
+        hintStore = keyspaceManager.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF);
     }
 
     /**
@@ -136,7 +139,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
     {
         assert ttl > 0;
 
-        InetAddress endpoint = LocatorConfig.instance.getTokenMetadata().getEndpointForHostId(targetId);
+        InetAddress endpoint = databaseDescriptor.getLocatorConfig().getTokenMetadata().getEndpointForHostId(targetId);
         // during tests we may not have a matching endpoint, but this would be unexpected in real clusters
         if (endpoint != null)
             metrics.incrCreatedHints(endpoint);
@@ -145,11 +148,11 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
         UUID hintId = UUIDGen.getTimeUUID();
         // serialize the hint with id and version as a composite column name
-        CellName name = CFMetaDataFactory.instance.HintsCf.comparator.makeCellName(hintId, MessagingService.current_version);
-        ByteBuffer value = ByteBuffer.wrap(FBUtilities.serialize(mutation, MutationFactory.instance.serializer, MessagingService.current_version));
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(Schema.instance.getCFMetaData(Keyspace.SYSTEM_KS, SystemKeyspace.HINTS_CF), DBConfig.instance);
+        CellName name = databaseDescriptor.getCFMetaDataFactory().HintsCf.comparator.makeCellName(hintId, MessagingService.current_version);
+        ByteBuffer value = ByteBuffer.wrap(FBUtilities.serialize(mutation, databaseDescriptor.getMutationFactory().serializer, MessagingService.current_version));
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(databaseDescriptor.getSchema().getCFMetaData(Keyspace.SYSTEM_KS, SystemKeyspace.HINTS_CF), databaseDescriptor.getDBConfig());
         cf.addColumn(name, value, now, ttl);
-        return MutationFactory.instance.create(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(targetId), cf);
+        return databaseDescriptor.getMutationFactory().create(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(targetId), cf);
     }
 
     /*
@@ -187,12 +190,12 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                 metrics.log();
             }
         };
-        StorageServiceExecutors.instance.optionalTasks.scheduleWithFixedDelay(runnable, 10, 10, TimeUnit.MINUTES);
+        databaseDescriptor.getStorageServiceExecutors().optionalTasks.scheduleWithFixedDelay(runnable, 10, 10, TimeUnit.MINUTES);
     }
 
-    private static void deleteHint(ByteBuffer tokenBytes, CellName columnName, long timestamp)
+    private static void deleteHint(ByteBuffer tokenBytes, CellName columnName, long timestamp, DatabaseDescriptor databaseDescriptor)
     {
-        Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, tokenBytes);
+        Mutation mutation = databaseDescriptor.getMutationFactory().create(Keyspace.SYSTEM_KS, tokenBytes);
         mutation.delete(SystemKeyspace.HINTS_CF, columnName, timestamp);
         mutation.applyUnsafe(); // don't bother with commitlog since we're going to flush as soon as we're done with delivery
     }
@@ -213,11 +216,11 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     public void deleteHintsForEndpoint(final InetAddress endpoint)
     {
-        if (!LocatorConfig.instance.getTokenMetadata().isMember(endpoint))
+        if (!databaseDescriptor.getLocatorConfig().getTokenMetadata().isMember(endpoint))
             return;
-        UUID hostId = LocatorConfig.instance.getTokenMetadata().getHostId(endpoint);
+        UUID hostId = databaseDescriptor.getLocatorConfig().getTokenMetadata().getHostId(endpoint);
         ByteBuffer hostIdBytes = ByteBuffer.wrap(UUIDGen.decompose(hostId));
-        final Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, hostIdBytes);
+        final Mutation mutation = databaseDescriptor.getMutationFactory().create(Keyspace.SYSTEM_KS, hostIdBytes);
         mutation.delete(SystemKeyspace.HINTS_CF, System.currentTimeMillis());
 
         // execute asynchronously to avoid blocking caller (which may be processing gossip)
@@ -237,7 +240,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                 }
             }
         };
-        StorageServiceExecutors.instance.optionalTasks.submit(runnable);
+        databaseDescriptor.getStorageServiceExecutors().optionalTasks.submit(runnable);
     }
 
     //foobar
@@ -250,7 +253,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                 try
                 {
                     logger.info("Truncating all stored hints.");
-                    KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF).truncateBlocking();
+                    databaseDescriptor.getKeyspaceManager().open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF).truncateBlocking();
                 }
                 catch (Exception e)
                 {
@@ -258,7 +261,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                 }
             }
         };
-        StorageServiceExecutors.instance.optionalTasks.submit(runnable).get();
+        databaseDescriptor.getStorageServiceExecutors().optionalTasks.submit(runnable).get();
 
     }
 
@@ -269,7 +272,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         ArrayList<Descriptor> descriptors = new ArrayList<Descriptor>();
         for (SSTable sstable : hintStore.getDataTracker().getUncompactingSSTables())
             descriptors.add(sstable.descriptor);
-        return CompactionManager.instance.submitUserDefined(hintStore, descriptors, (int) (System.currentTimeMillis() / 1000));
+        return databaseDescriptor.getCompactionManager().submitUserDefined(hintStore, descriptors, (int) (System.currentTimeMillis() / 1000));
     }
 
     private static boolean pagingFinished(ColumnFamily hintColumnFamily, Composite startColumn)
@@ -281,15 +284,15 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     private int waitForSchemaAgreement(InetAddress endpoint) throws TimeoutException
     {
-        Gossiper gossiper = Gossiper.instance;
+        Gossiper gossiper = databaseDescriptor.getGossiper();
         int waited = 0;
         // first, wait for schema to be gossiped.
         while (gossiper.getEndpointStateForEndpoint(endpoint) != null && gossiper.getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.SCHEMA) == null)
         {
             Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
             waited += 1000;
-            if (waited > 2 * DatabaseDescriptor.instance.getRingDelay())
-                throw new TimeoutException("Didin't receive gossiped schema from " + endpoint + " in " + 2 * DatabaseDescriptor.instance.getRingDelay() + "ms");
+            if (waited > 2 * databaseDescriptor.getRingDelay())
+                throw new TimeoutException("Didin't receive gossiped schema from " + endpoint + " in " + 2 * databaseDescriptor.getRingDelay() + "ms");
         }
         if (gossiper.getEndpointStateForEndpoint(endpoint) == null)
             throw new TimeoutException("Node " + endpoint + " vanished while waiting for agreement");
@@ -299,12 +302,12 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         // here we check the one in gossip instead; this serves as a canary to warn us if we introduce a bug that
         // causes the two to diverge (see CASSANDRA-2946)
         while (gossiper.getEndpointStateForEndpoint(endpoint) != null && !gossiper.getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.SCHEMA).value.equals(
-                gossiper.getEndpointStateForEndpoint(DatabaseDescriptor.instance.getBroadcastAddress()).getApplicationState(ApplicationState.SCHEMA).value))
+                gossiper.getEndpointStateForEndpoint(databaseDescriptor.getLocatorConfig().getBroadcastAddress()).getApplicationState(ApplicationState.SCHEMA).value))
         {
             Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
             waited += 1000;
-            if (waited > 2 * DatabaseDescriptor.instance.getRingDelay())
-                throw new TimeoutException("Could not reach schema agreement with " + endpoint + " in " + 2 * DatabaseDescriptor.instance.getRingDelay() + "ms");
+            if (waited > 2 * databaseDescriptor.getRingDelay())
+                throw new TimeoutException("Could not reach schema agreement with " + endpoint + " in " + 2 * databaseDescriptor.getRingDelay() + "ms");
         }
         if (gossiper.getEndpointStateForEndpoint(endpoint) == null)
             throw new TimeoutException("Node " + endpoint + " vanished while waiting for agreement");
@@ -334,7 +337,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
             return;
         }
 
-        if (!FailureDetector.instance.isAlive(endpoint))
+        if (!databaseDescriptor.getFailureDetector().isAlive(endpoint))
         {
             logger.debug("Endpoint {} died before hint delivery, aborting", endpoint);
             return;
@@ -353,10 +356,10 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
     private void doDeliverHintsToEndpoint(InetAddress endpoint)
     {
         // find the hints for the node using its token.
-        UUID hostId = Gossiper.instance.getHostId(endpoint);
+        UUID hostId = databaseDescriptor.getGossiper().getHostId(endpoint);
         logger.info("Started hinted handoff for host: {} with IP: {}", hostId, endpoint);
         final ByteBuffer hostIdBytes = ByteBuffer.wrap(UUIDGen.decompose(hostId));
-        DecoratedKey epkey =  LocatorConfig.instance.getPartitioner().decorateKey(hostIdBytes);
+        DecoratedKey epkey =  databaseDescriptor.getLocatorConfig().getPartitioner().decorateKey(hostIdBytes);
 
         final AtomicInteger rowsReplayed = new AtomicInteger(0);
         Composite startColumn = Composites.EMPTY;
@@ -366,8 +369,8 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
         // rate limit is in bytes per second. Uses Double.MAX_VALUE if disabled (set to 0 in cassandra.yaml).
         // max rate is scaled by the number of nodes in the cluster (CASSANDRA-5272).
-        int throttleInKB = DatabaseDescriptor.instance.getHintedHandoffThrottleInKB()
-                           / (LocatorConfig.instance.getTokenMetadata().getAllEndpoints().size() - 1);
+        int throttleInKB = databaseDescriptor.getHintedHandoffThrottleInKB()
+                           / (databaseDescriptor.getLocatorConfig().getTokenMetadata().getAllEndpoints().size() - 1);
         RateLimiter rateLimiter = RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
 
         boolean finished = false;
@@ -382,9 +385,9 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                             false,
                                                             pageSize,
                                                             now,
-                                                            DatabaseDescriptor.instance,
-                                                            Tracing.instance,
-                                                            DBConfig.instance);
+                                                            databaseDescriptor,
+                                                            databaseDescriptor.getTracing(),
+                                                            databaseDescriptor.getDBConfig());
 
             ColumnFamily hintsPage = ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter), (int) (now / 1000));
 
@@ -396,7 +399,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
             }
 
             // check if node is still alive and we should continue delivery process
-            if (!FailureDetector.instance.isAlive(endpoint))
+            if (!databaseDescriptor.getFailureDetector().isAlive(endpoint))
             {
                 logger.info("Endpoint {} died during hint delivery; aborting ({} delivered)", endpoint, rowsReplayed);
                 break;
@@ -427,12 +430,12 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                 Mutation mutation;
                 try
                 {
-                    mutation = MutationFactory.instance.serializer.deserialize(in, version);
+                    mutation = databaseDescriptor.getMutationFactory().serializer.deserialize(in, version);
                 }
                 catch (UnknownColumnFamilyException e)
                 {
                     logger.debug("Skipping delivery of hint for deleted table", e);
-                    deleteHint(hostIdBytes, hint.name(), hint.timestamp());
+                    deleteHint(hostIdBytes, hint.name(), hint.timestamp(), databaseDescriptor);
                     continue;
                 }
                 catch (IOException e)
@@ -442,7 +445,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
                 for (UUID cfId : mutation.getColumnFamilyIds())
                 {
-                    if (hint.timestamp() <= SystemKeyspace.instance.getTruncatedAt(cfId))
+                    if (hint.timestamp() <= databaseDescriptor.getSystemKeyspace().getTruncatedAt(cfId))
                     {
                         logger.debug("Skipping delivery of hint for truncated table {}", cfId);
                         mutation = mutation.without(cfId);
@@ -451,22 +454,22 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
                 if (mutation.isEmpty())
                 {
-                    deleteHint(hostIdBytes, hint.name(), hint.timestamp());
+                    deleteHint(hostIdBytes, hint.name(), hint.timestamp(), databaseDescriptor);
                     continue;
                 }
 
-                MessageOut<Mutation> message = mutation.createMessage(MessagingService.instance);
+                MessageOut<Mutation> message = mutation.createMessage(databaseDescriptor.getMessagingService());
                 rateLimiter.acquire(message.serializedSize(MessagingService.current_version));
                 Runnable callback = new Runnable()
                 {
                     public void run()
                     {
                         rowsReplayed.incrementAndGet();
-                        deleteHint(hostIdBytes, hint.name(), hint.timestamp());
+                        deleteHint(hostIdBytes, hint.name(), hint.timestamp(), databaseDescriptor);
                     }
                 };
-                WriteResponseHandler responseHandler = new WriteResponseHandler(endpoint, WriteType.SIMPLE, callback, DatabaseDescriptor.instance, new IAsyncCallback.EndpointIsAlivePredicate(FailureDetector.instance));
-                MessagingService.instance.sendRR(message, endpoint, responseHandler, false);
+                WriteResponseHandler responseHandler = new WriteResponseHandler(endpoint, WriteType.SIMPLE, callback, databaseDescriptor, new IAsyncCallback.EndpointIsAlivePredicate(databaseDescriptor.getFailureDetector()));
+                databaseDescriptor.getMessagingService().sendRR(message, endpoint, responseHandler, false);
                 responseHandlers.add(responseHandler);
             }
 
@@ -484,7 +487,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
             }
         }
 
-        if (finished || rowsReplayed.get() >= DatabaseDescriptor.instance.getTombstoneWarnThreshold())
+        if (finished || rowsReplayed.get() >= databaseDescriptor.getTombstoneWarnThreshold())
         {
             try
             {
@@ -521,15 +524,15 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         if (logger.isDebugEnabled())
           logger.debug("Started scheduleAllDeliveries");
 
-        IPartitioner p = LocatorConfig.instance.getPartitioner();
+        IPartitioner p = databaseDescriptor.getLocatorConfig().getPartitioner();
         RowPosition minPos = p.getMinimumToken().minKeyBound();
         Range<RowPosition> range = new Range<RowPosition>(minPos, minPos, p);
-        IDiskAtomFilter filter = new NamesQueryFilter(ImmutableSortedSet.<CellName>of(), DBConfig.instance);
+        IDiskAtomFilter filter = new NamesQueryFilter(ImmutableSortedSet.<CellName>of(), databaseDescriptor.getDBConfig());
         List<Row> rows = hintStore.getRangeSlice(range, null, filter, Integer.MAX_VALUE, System.currentTimeMillis());
         for (Row row : rows)
         {
             UUID hostId = UUIDGen.getUUID(row.key.getKey());
-            InetAddress target = LocatorConfig.instance.getTokenMetadata().getEndpointForHostId(hostId);
+            InetAddress target = databaseDescriptor.getLocatorConfig().getTokenMetadata().getEndpointForHostId(hostId);
             // token may have since been removed (in which case we have just read back a tombstone)
             if (target != null)
                 scheduleHintDelivery(target);
@@ -580,7 +583,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     public List<String> listEndpointsPendingHints()
     {
-        Token.TokenFactory tokenFactory = LocatorConfig.instance.getPartitioner().getTokenFactory();
+        Token.TokenFactory tokenFactory = databaseDescriptor.getLocatorConfig().getPartitioner().getTokenFactory();
 
         // Extract the keys as strings to be reported.
         LinkedList<String> result = new LinkedList<String>();
@@ -598,14 +601,14 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         SliceQueryFilter predicate = new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY,
                                                           false,
                                                           columnCount,
-                                                          DatabaseDescriptor.instance,
-                                                          Tracing.instance,
-                                                          DBConfig.instance);
+                                                          databaseDescriptor,
+                                                          databaseDescriptor.getTracing(),
+                                                          databaseDescriptor.getDBConfig());
 
         // From keys "" to ""...
-        IPartitioner<?> partitioner = LocatorConfig.instance.getPartitioner();
+        IPartitioner<?> partitioner = databaseDescriptor.getLocatorConfig().getPartitioner();
         RowPosition minPos = partitioner.getMinimumToken().minKeyBound();
-        Range<RowPosition> range = new Range<RowPosition>(minPos, minPos, LocatorConfig.instance.getPartitioner());
+        Range<RowPosition> range = new Range<RowPosition>(minPos, minPos, databaseDescriptor.getLocatorConfig().getPartitioner());
 
         try
         {
@@ -616,10 +619,10 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                           range,
                                                           null,
                                                           LARGE_NUMBER,
-                                                          DatabaseDescriptor.instance,
-                                                          KeyspaceManager.instance,
-                                                          MessagingService.instance.rangeSliceCommandSerializer);
-            return StorageProxy.instance.getRangeSlice(cmd, ConsistencyLevel.ONE);
+                                                          databaseDescriptor,
+                                                          databaseDescriptor.getKeyspaceManager(),
+                                                          databaseDescriptor.getMessagingService().rangeSliceCommandSerializer);
+            return databaseDescriptor.getStorageProxy().getRangeSlice(cmd, ConsistencyLevel.ONE);
         }
         catch (Exception e)
         {

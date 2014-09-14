@@ -1701,6 +1701,11 @@ public class DatabaseDescriptor
         return SSTableWriterFactory.instance;
     }
 
+    public Gossiper getGossiper()
+    {
+        return Gossiper.instance;
+    }
+
     public DBConfig getDBConfig()
     {
         return DBConfig.instance;
