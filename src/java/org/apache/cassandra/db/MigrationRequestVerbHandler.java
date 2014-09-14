@@ -26,7 +26,6 @@ import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.service.MigrationManager;
 
 /**
  * Sends it's current schema state in form of mutations in reply to the remote node's request.
@@ -51,7 +50,7 @@ public class MigrationRequestVerbHandler implements IVerbHandler
         MessageOut<Collection<Mutation>> response = new MessageOut<>(messagingService,
                                                                      MessagingService.Verb.INTERNAL_RESPONSE,
                                                                      systemKeyspace.serializeSchema(),
-                                                                     MigrationManager.MigrationsSerializer.instance);
+                                                                     messagingService.migrationsSerializer);
         messagingService.sendReply(response, id, message.from);
     }
 }

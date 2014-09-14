@@ -142,6 +142,7 @@ public final class MessagingService implements MessagingServiceMBean
     public final PagedRangeCommand.Serializer pagedRangeCommandSerializer;
     public final RepairMessage.Serializer repairMessageSerializer;
     public final ReadCommand.Serializer readCommandSerializer;
+    public final MigrationManager.MigrationsSerializer migrationsSerializer;
 
     public final EnumMap<MessagingService.Verb, Stage> verbStages = new EnumMap<MessagingService.Verb, Stage>(MessagingService.Verb.class)
     {{
@@ -383,6 +384,7 @@ public final class MessagingService implements MessagingServiceMBean
         pagedRangeCommandSerializer = new PagedRangeCommand.Serializer(databaseDescriptor, schema, keyspaceManager, dbConfig.boundsSerializer);
         repairMessageSerializer = new RepairMessage.Serializer(dbConfig);
         readCommandSerializer = new ReadCommand.Serializer(databaseDescriptor, schema, locatorConfig.getPartitioner());
+        migrationsSerializer = new MigrationManager.MigrationsSerializer(mutationFactory);
 
         verbSerializers = getVerbSerializers();
         callbackDeserializers = getCallbackDeserializers();
@@ -404,7 +406,7 @@ public final class MessagingService implements MessagingServiceMBean
         serializers.put(Verb.GOSSIP_DIGEST_ACK, GossipDigestAck.serializer);
         serializers.put(Verb.GOSSIP_DIGEST_ACK2, GossipDigestAck2.serializer);
         serializers.put(Verb.GOSSIP_DIGEST_SYN, GossipDigestSyn.serializer);
-        serializers.put(Verb.DEFINITIONS_UPDATE, MigrationManager.MigrationsSerializer.instance);
+        serializers.put(Verb.DEFINITIONS_UPDATE, migrationsSerializer);
         serializers.put(Verb.TRUNCATE, Truncation.serializer);
         serializers.put(Verb.REPLICATION_FINISHED, null);
         serializers.put(Verb.COUNTER_MUTATION, databaseDescriptor.getCounterMutationFactory().serializer);
@@ -428,7 +430,7 @@ public final class MessagingService implements MessagingServiceMBean
         deserializeres.put(Verb.TRUNCATE, TruncateResponse.serializer);
         deserializeres.put(Verb.SNAPSHOT, null);
 
-        deserializeres.put(Verb.MIGRATION_REQUEST, MigrationManager.MigrationsSerializer.instance);
+        deserializeres.put(Verb.MIGRATION_REQUEST, migrationsSerializer);
         deserializeres.put(Verb.SCHEMA_CHECK, UUIDSerializer.serializer);
         deserializeres.put(Verb.BOOTSTRAP_TOKEN, BootStrapper.StringSerializer.instance);
         deserializeres.put(Verb.REPLICATION_FINISHED, null);

@@ -31,11 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.concurrent.Stage;
-import org.apache.cassandra.concurrent.StageManager;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.KSMetaData;
-import org.apache.cassandra.config.UTMetaData;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.functions.UDFunction;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.UserType;
@@ -53,15 +48,20 @@ public class MigrationManager
 {
     private static final Logger logger = LoggerFactory.getLogger(MigrationManager.class);
 
-    public static final MigrationManager instance = new MigrationManager();
+    public static final MigrationManager instance = new MigrationManager(DatabaseDescriptor.instance);
 
     private static final RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
 
     public static final int MIGRATION_DELAY_IN_MS = 60000;
 
     private final List<IMigrationListener> listeners = new CopyOnWriteArrayList<IMigrationListener>();
-    
-    private MigrationManager() {}
+
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public MigrationManager(DatabaseDescriptor databaseDescriptor)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+    }
 
     public void register(IMigrationListener listener)
     {
@@ -77,7 +77,7 @@ public class MigrationManager
     {
         VersionedValue value = state.getApplicationState(ApplicationState.SCHEMA);
 
-        if (!endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()) && value != null)
+        if (!endpoint.equals(databaseDescriptor.getLocatorConfig().getBroadcastAddress()) && value != null)
             maybeScheduleSchemaPull(UUID.fromString(value.value), endpoint);
     }
 
@@ -87,13 +87,13 @@ public class MigrationManager
      */
     private void maybeScheduleSchemaPull(final UUID theirVersion, final InetAddress endpoint)
     {
-        if ((Schema.instance.getVersion() != null && Schema.instance.getVersion().equals(theirVersion)) || !shouldPullSchemaFrom(endpoint))
+        if ((databaseDescriptor.getSchema().getVersion() != null && databaseDescriptor.getSchema().getVersion().equals(theirVersion)) || !shouldPullSchemaFrom(endpoint))
         {
             logger.debug("Not pulling schema because versions match or shouldPullSchemaFrom returned false");
             return;
         }
 
-        if (Schema.emptyVersion.equals(Schema.instance.getVersion()) || runtimeMXBean.getUptime() < MIGRATION_DELAY_IN_MS)
+        if (Schema.emptyVersion.equals(databaseDescriptor.getSchema().getVersion()) || runtimeMXBean.getUptime() < MIGRATION_DELAY_IN_MS)
         {
             // If we think we may be bootstrapping or have recently started, submit MigrationTask immediately
             logger.debug("Submitting migration task for {}", endpoint);
@@ -108,7 +108,7 @@ public class MigrationManager
                 public void run()
                 {
                     // grab the latest version of the schema since it may have changed again since the initial scheduling
-                    EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+                    EndpointState epState = databaseDescriptor.getGossiper().getEndpointStateForEndpoint(endpoint);
                     if (epState == null)
                     {
                         logger.debug("epState vanished for {}, not submitting migration task", endpoint);
@@ -116,7 +116,7 @@ public class MigrationManager
                     }
                     VersionedValue value = epState.getApplicationState(ApplicationState.SCHEMA);
                     UUID currentVersion = UUID.fromString(value.value);
-                    if (Schema.instance.getVersion().equals(currentVersion))
+                    if (databaseDescriptor.getSchema().getVersion().equals(currentVersion))
                     {
                         logger.debug("not submitting migration task for {} because our versions match", endpoint);
                         return;
@@ -125,7 +125,7 @@ public class MigrationManager
                     submitMigrationTask(endpoint);
                 }
             };
-            StorageServiceExecutors.instance.optionalTasks.schedule(runnable, MIGRATION_DELAY_IN_MS, TimeUnit.MILLISECONDS);
+            databaseDescriptor.getStorageServiceExecutors().optionalTasks.schedule(runnable, MIGRATION_DELAY_IN_MS, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -135,7 +135,7 @@ public class MigrationManager
          * Do not de-ref the future because that causes distributed deadlock (CASSANDRA-3832) because we are
          * running in the gossip stage.
          */
-        return StageManager.instance.getStage(Stage.MIGRATION).submit(new MigrationTask(endpoint, DefsTables.instance, FailureDetector.instance, MessagingService.instance));
+        return databaseDescriptor.getStageManager().getStage(Stage.MIGRATION).submit(new MigrationTask(endpoint, databaseDescriptor.getDefsTables(), databaseDescriptor.getFailureDetector(), databaseDescriptor.getMessagingService()));
     }
 
     private boolean shouldPullSchemaFrom(InetAddress endpoint)
@@ -144,14 +144,14 @@ public class MigrationManager
          * Don't request schema from nodes with a differnt or unknonw major version (may have incompatible schema)
          * Don't request schema from fat clients
          */
-        return MessagingService.instance.knowsVersion(endpoint)
-                && MessagingService.instance.getRawVersion(endpoint) == MessagingService.current_version
-                && !Gossiper.instance.isFatClient(endpoint);
+        return databaseDescriptor.getMessagingService().knowsVersion(endpoint)
+                && databaseDescriptor.getMessagingService().getRawVersion(endpoint) == MessagingService.current_version
+                && !databaseDescriptor.getGossiper().isFatClient(endpoint);
     }
 
     public boolean isReadyForBootstrap()
     {
-        return ((ThreadPoolExecutor) StageManager.instance.getStage(Stage.MIGRATION)).getActiveCount() == 0;
+        return ((ThreadPoolExecutor) databaseDescriptor.getStageManager().getStage(Stage.MIGRATION)).getActiveCount() == 0;
     }
 
     public void notifyCreateKeyspace(KSMetaData ksm)
@@ -240,7 +240,7 @@ public class MigrationManager
     {
         ksm.validate();
 
-        if (Schema.instance.getKSMetaData(ksm.name) != null)
+        if (databaseDescriptor.getSchema().getKSMetaData(ksm.name) != null)
             throw new AlreadyExistsException(ksm.name);
 
         logger.info(String.format("Create new Keyspace: %s", ksm));
@@ -256,7 +256,7 @@ public class MigrationManager
     {
         cfm.validate();
 
-        KSMetaData ksm = Schema.instance.getKSMetaData(cfm.ksName);
+        KSMetaData ksm = databaseDescriptor.getSchema().getKSMetaData(cfm.ksName);
         if (ksm == null)
             throw new ConfigurationException(String.format("Cannot add table '%s' to non existing keyspace '%s'.", cfm.cfName, cfm.ksName));
         else if (ksm.cfMetaData().containsKey(cfm.cfName))
@@ -273,7 +273,7 @@ public class MigrationManager
 
     public void announceNewType(UserType newType, boolean announceLocally)
     {
-        announce(addSerializedKeyspace(UTMetaData.toSchema(newType, FBUtilities.timestampMicros(), SystemKeyspace.instance, MutationFactory.instance, CFMetaDataFactory.instance), newType.keyspace), announceLocally);
+        announce(addSerializedKeyspace(UTMetaData.toSchema(newType, FBUtilities.timestampMicros(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getMutationFactory(), databaseDescriptor.getCFMetaDataFactory()), newType.keyspace), announceLocally);
     }
 
     public void announceKeyspaceUpdate(KSMetaData ksm) throws ConfigurationException
@@ -285,7 +285,7 @@ public class MigrationManager
     {
         ksm.validate();
 
-        KSMetaData oldKsm = Schema.instance.getKSMetaData(ksm.name);
+        KSMetaData oldKsm = databaseDescriptor.getSchema().getKSMetaData(ksm.name);
         if (oldKsm == null)
             throw new ConfigurationException(String.format("Cannot update non existing keyspace '%s'.", ksm.name));
 
@@ -302,7 +302,7 @@ public class MigrationManager
     {
         cfm.validate();
 
-        CFMetaData oldCfm = Schema.instance.getCFMetaData(cfm.ksName, cfm.cfName);
+        CFMetaData oldCfm = databaseDescriptor.getSchema().getCFMetaData(cfm.ksName, cfm.cfName);
         if (oldCfm == null)
             throw new ConfigurationException(String.format("Cannot update non existing table '%s' in keyspace '%s'.", cfm.cfName, cfm.ksName));
 
@@ -329,7 +329,7 @@ public class MigrationManager
 
     public void announceKeyspaceDrop(String ksName, boolean announceLocally) throws ConfigurationException
     {
-        KSMetaData oldKsm = Schema.instance.getKSMetaData(ksName);
+        KSMetaData oldKsm = databaseDescriptor.getSchema().getKSMetaData(ksName);
         if (oldKsm == null)
             throw new ConfigurationException(String.format("Cannot drop non existing keyspace '%s'.", ksName));
 
@@ -344,7 +344,7 @@ public class MigrationManager
 
     public void announceColumnFamilyDrop(String ksName, String cfName, boolean announceLocally) throws ConfigurationException
     {
-        CFMetaData oldCfm = Schema.instance.getCFMetaData(ksName, cfName);
+        CFMetaData oldCfm = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName);
         if (oldCfm == null)
             throw new ConfigurationException(String.format("Cannot drop non existing table '%s' in keyspace '%s'.", cfName, ksName));
 
@@ -355,7 +355,7 @@ public class MigrationManager
     // Include the serialized keyspace for when a target node missed the CREATE KEYSPACE migration (see #5631).
     private Mutation addSerializedKeyspace(Mutation migration, String ksName)
     {
-        migration.add(SystemKeyspace.instance.readSchemaRow(SystemKeyspace.SCHEMA_KEYSPACES_CF, ksName).cf);
+        migration.add(databaseDescriptor.getSystemKeyspace().readSchemaRow(SystemKeyspace.SCHEMA_KEYSPACES_CF, ksName).cf);
         return migration;
     }
 
@@ -366,7 +366,7 @@ public class MigrationManager
 
     public void announceTypeDrop(UserType droppedType, boolean announceLocally)
     {
-        announce(addSerializedKeyspace(UTMetaData.dropFromSchema(droppedType, FBUtilities.timestampMicros(), SystemKeyspace.instance, CFMetaDataFactory.instance, MutationFactory.instance), droppedType.keyspace), announceLocally);
+        announce(addSerializedKeyspace(UTMetaData.dropFromSchema(droppedType, FBUtilities.timestampMicros(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getCFMetaDataFactory(), databaseDescriptor.getMutationFactory()), droppedType.keyspace), announceLocally);
     }
 
     public void announceFunctionDrop(UDFunction udf, boolean announceLocally)
@@ -393,7 +393,7 @@ public class MigrationManager
         {
             try
             {
-                DefsTables.instance.mergeSchemaInternal(Collections.singletonList(schema), false);
+                databaseDescriptor.getDefsTables().mergeSchemaInternal(Collections.singletonList(schema), false);
             }
             catch (IOException e)
             {
@@ -408,30 +408,30 @@ public class MigrationManager
 
     private void pushSchemaMutation(InetAddress endpoint, Collection<Mutation> schema)
     {
-        MessageOut<Collection<Mutation>> msg = new MessageOut<>(MessagingService.instance,
+        MessageOut<Collection<Mutation>> msg = new MessageOut<>(databaseDescriptor.getMessagingService(),
                                                                 MessagingService.Verb.DEFINITIONS_UPDATE,
                                                                 schema,
-                                                                MigrationsSerializer.instance);
-        MessagingService.instance.sendOneWay(msg, endpoint);
+                                                                databaseDescriptor.getMessagingService().migrationsSerializer);
+        databaseDescriptor.getMessagingService().sendOneWay(msg, endpoint);
     }
 
     // Returns a future on the local application of the schema
     private Future<?> announce(final Collection<Mutation> schema)
     {
-        Future<?> f = StageManager.instance.getStage(Stage.MIGRATION).submit(new WrappedRunnable()
+        Future<?> f = databaseDescriptor.getStageManager().getStage(Stage.MIGRATION).submit(new WrappedRunnable()
         {
             protected void runMayThrow() throws IOException, ConfigurationException
             {
-                DefsTables.instance.mergeSchema(schema);
+                databaseDescriptor.getDefsTables().mergeSchema(schema);
             }
         });
 
-        for (InetAddress endpoint : Gossiper.instance.getLiveMembers())
+        for (InetAddress endpoint : databaseDescriptor.getGossiper().getLiveMembers())
         {
             // only push schema to nodes with known and equal versions
-            if (!endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()) &&
-                    MessagingService.instance.knowsVersion(endpoint) &&
-                    MessagingService.instance.getRawVersion(endpoint) == MessagingService.current_version)
+            if (!endpoint.equals(databaseDescriptor.getLocatorConfig().getBroadcastAddress()) &&
+                    databaseDescriptor.getMessagingService().knowsVersion(endpoint) &&
+                    databaseDescriptor.getMessagingService().getRawVersion(endpoint) == MessagingService.current_version)
                 pushSchemaMutation(endpoint, schema);
         }
 
@@ -446,7 +446,7 @@ public class MigrationManager
      */
     public void passiveAnnounce(UUID version)
     {
-        Gossiper.instance.addLocalApplicationState(ApplicationState.SCHEMA, StorageService.instance.valueFactory.schema(version));
+        databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.SCHEMA, databaseDescriptor.getStorageService().valueFactory.schema(version));
         logger.debug("Gossiping my schema version {}", version);
     }
 
@@ -464,14 +464,14 @@ public class MigrationManager
 
         // truncate schema tables
         for (String cf : SystemKeyspace.allSchemaCfs)
-            SystemKeyspace.instance.schemaCFS(cf).truncateBlocking();
+            databaseDescriptor.getSystemKeyspace().schemaCFS(cf).truncateBlocking();
 
         logger.debug("Clearing local schema keyspace definitions...");
 
-        Schema.instance.clear();
+        databaseDescriptor.getSchema().clear();
 
-        Set<InetAddress> liveEndpoints = Gossiper.instance.getLiveMembers();
-        liveEndpoints.remove(DatabaseDescriptor.instance.getBroadcastAddress());
+        Set<InetAddress> liveEndpoints = databaseDescriptor.getGossiper().getLiveMembers();
+        liveEndpoints.remove(databaseDescriptor.getLocatorConfig().getBroadcastAddress());
 
         // force migration if there are nodes around
         for (InetAddress node : liveEndpoints)
@@ -489,13 +489,18 @@ public class MigrationManager
 
     public static class MigrationsSerializer implements IVersionedSerializer<Collection<Mutation>>
     {
-        public static MigrationsSerializer instance = new MigrationsSerializer();
+        private final MutationFactory mutationFactory;
+
+        public MigrationsSerializer(MutationFactory mutationFactory)
+        {
+            this.mutationFactory = mutationFactory;
+        }
 
         public void serialize(Collection<Mutation> schema, DataOutputPlus out, int version) throws IOException
         {
             out.writeInt(schema.size());
             for (Mutation mutation : schema)
-                MutationFactory.instance.serializer.serialize(mutation, out, version);
+                mutationFactory.serializer.serialize(mutation, out, version);
         }
 
         public Collection<Mutation> deserialize(DataInput in, int version) throws IOException
@@ -504,7 +509,7 @@ public class MigrationManager
             Collection<Mutation> schema = new ArrayList<Mutation>(count);
 
             for (int i = 0; i < count; i++)
-                schema.add(MutationFactory.instance.serializer.deserialize(in, version));
+                schema.add(mutationFactory.serializer.deserialize(in, version));
 
             return schema;
         }
@@ -513,7 +518,7 @@ public class MigrationManager
         {
             int size = TypeSizes.NATIVE.sizeof(schema.size());
             for (Mutation mutation : schema)
-                size += MutationFactory.instance.serializer.serializedSize(mutation, version);
+                size += mutationFactory.serializer.serializedSize(mutation, version);
             return size;
         }
     }

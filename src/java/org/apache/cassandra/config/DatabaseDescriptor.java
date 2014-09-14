@@ -1734,6 +1734,11 @@ public class DatabaseDescriptor
         return StreamManager.instance;
     }
 
+    public DefsTables getDefsTables()
+    {
+        return DefsTables.instance;
+    }
+
     public DBConfig getDBConfig()
     {
         return DBConfig.instance;

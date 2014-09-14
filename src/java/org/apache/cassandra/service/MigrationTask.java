@@ -54,7 +54,7 @@ class MigrationTask extends WrappedRunnable
 
     public void runMayThrow() throws Exception
     {
-        MessageOut message = new MessageOut<>(messagingService, MessagingService.Verb.MIGRATION_REQUEST, null, MigrationManager.MigrationsSerializer.instance);
+        MessageOut message = new MessageOut<>(messagingService, MessagingService.Verb.MIGRATION_REQUEST, null, messagingService.migrationsSerializer);
 
         if (!failureDetector.isAlive(endpoint))
         {
