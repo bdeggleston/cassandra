@@ -31,9 +31,9 @@ public class SSTableSplitter {
     private CompactionInfo.Holder info;
 
 
-    public SSTableSplitter(ColumnFamilyStore cfs, SSTableReader sstable, int sstableSizeInMB, DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace, DBConfig dbConfig)
+    public SSTableSplitter(ColumnFamilyStore cfs, SSTableReader sstable, int sstableSizeInMB, DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace, StorageService storageService, DBConfig dbConfig)
     {
-        this.task = new SplittingCompactionTask(cfs, sstable, sstableSizeInMB, databaseDescriptor, systemKeyspace, dbConfig);
+        this.task = new SplittingCompactionTask(cfs, sstable, sstableSizeInMB, databaseDescriptor, systemKeyspace, storageService, dbConfig);
     }
 
     public void split()
@@ -58,9 +58,9 @@ public class SSTableSplitter {
     {
         private final int sstableSizeInMB;
 
-        public SplittingCompactionTask(ColumnFamilyStore cfs, SSTableReader sstable, int sstableSizeInMB, DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace, DBConfig dbConfig)
+        public SplittingCompactionTask(ColumnFamilyStore cfs, SSTableReader sstable, int sstableSizeInMB, DatabaseDescriptor databaseDescriptor, SystemKeyspace systemKeyspace, StorageService storageService, DBConfig dbConfig)
         {
-            super(cfs, Collections.singletonList(sstable), CompactionManager.NO_GC, true, databaseDescriptor, systemKeyspace, dbConfig, StorageService.instance);
+            super(cfs, Collections.singletonList(sstable), CompactionManager.NO_GC, true, databaseDescriptor, systemKeyspace, dbConfig, storageService);
             this.sstableSizeInMB = sstableSizeInMB;
 
             if (sstableSizeInMB <= 0)

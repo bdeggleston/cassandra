@@ -22,6 +22,7 @@ import java.io.File;
 import java.util.*;
 
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.commons.cli.*;
 
@@ -137,7 +138,7 @@ public class StandaloneSplitter
             {
                 try
                 {
-                    new SSTableSplitter(cfs, sstable, options.sizeInMB, DatabaseDescriptor.instance, SystemKeyspace.instance, DBConfig.instance).split();
+                    new SSTableSplitter(cfs, sstable, options.sizeInMB, DatabaseDescriptor.instance, SystemKeyspace.instance, StorageService.instance, DBConfig.instance).split();
                 }
                 catch (Exception e)
                 {
