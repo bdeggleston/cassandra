@@ -57,7 +57,7 @@ public class TServerCustomFactory implements TServerFactory
         }
         else if(ThriftServer.HSHA.equalsIgnoreCase(serverType))
         {
-            server = new THsHaDisruptorServer.Factory(DatabaseDescriptor.instance, ThriftSessionManager.instance).buildTServer(args);
+            server = new THsHaDisruptorServer.Factory(databaseDescriptor, thriftSessionManager).buildTServer(args);
             logger.info(String.format("Using custom half-sync/half-async thrift server on %s : %s", args.addr.getHostName(), args.addr.getPort()));
         }
         else

@@ -642,7 +642,7 @@ public class ThriftValidation
         IDiskAtomFilter filter;
 
         CellNameType comparator = metadata.isSuper()
-                                ? new SimpleDenseCellNameType(metadata.comparator.subtype(superColumn == null ? 0 : 1), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)
+                                ? new SimpleDenseCellNameType(metadata.comparator.subtype(superColumn == null ? 0 : 1), databaseDescriptor, tracing, dbConfig)
                                 : metadata.comparator;
         if (sr == null)
         {
@@ -650,7 +650,7 @@ public class ThriftValidation
             SortedSet<CellName> ss = new TreeSet<CellName>(comparator);
             for (ByteBuffer bb : sp.column_names)
                 ss.add(comparator.cellFromByteBuffer(bb));
-            filter = new NamesQueryFilter(ss, DBConfig.instance);
+            filter = new NamesQueryFilter(ss, dbConfig);
         }
         else
         {
