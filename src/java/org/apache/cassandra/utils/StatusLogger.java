@@ -28,7 +28,6 @@ import com.google.common.collect.Iterables;
 
 import org.apache.cassandra.cache.*;
 
-import org.apache.cassandra.db.ColumnFamilyStoreManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,17 +35,17 @@ import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutorMBean;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.RowIndexEntry;
-import org.apache.cassandra.db.compaction.CompactionManager;
-import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.service.CacheService;
 
 public class StatusLogger
 {
     private static final Logger logger = LoggerFactory.getLogger(StatusLogger.class);
-    public static final StatusLogger instance = new StatusLogger();
+    public static final StatusLogger instance = new StatusLogger(DatabaseDescriptor.instance);
 
-    public StatusLogger()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public StatusLogger(DatabaseDescriptor databaseDescriptor)
     {
+        this.databaseDescriptor = databaseDescriptor;
     }
 
     public void log()
@@ -79,14 +78,14 @@ public class StatusLogger
         }
         // one offs
         logger.info(String.format("%-25s%10s%10s",
-                                  "CompactionManager", CompactionManager.instance.getActiveCompactions(), CompactionManager.instance.getPendingTasks()));
+                                  "CompactionManager", databaseDescriptor.getCompactionManager().getActiveCompactions(), databaseDescriptor.getCompactionManager().getPendingTasks()));
         int pendingCommands = 0;
-        for (int n : MessagingService.instance.getCommandPendingTasks().values())
+        for (int n : databaseDescriptor.getMessagingService().getCommandPendingTasks().values())
         {
             pendingCommands += n;
         }
         int pendingResponses = 0;
-        for (int n : MessagingService.instance.getResponsePendingTasks().values())
+        for (int n : databaseDescriptor.getMessagingService().getResponsePendingTasks().values())
         {
             pendingResponses += n;
         }
@@ -94,11 +93,11 @@ public class StatusLogger
                                   "MessagingService", "n/a", pendingCommands + "/" + pendingResponses));
 
         // Global key/row cache information
-        AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = CacheService.instance.keyCache;
-        AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache = CacheService.instance.rowCache;
+        AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = databaseDescriptor.getCacheService().keyCache;
+        AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache = databaseDescriptor.getCacheService().rowCache;
 
-        int keyCacheKeysToSave = DatabaseDescriptor.instance.getKeyCacheKeysToSave();
-        int rowCacheKeysToSave = DatabaseDescriptor.instance.getRowCacheKeysToSave();
+        int keyCacheKeysToSave = databaseDescriptor.getKeyCacheKeysToSave();
+        int rowCacheKeysToSave = databaseDescriptor.getRowCacheKeysToSave();
 
         logger.info(String.format("%-25s%10s%25s%25s",
                                   "Cache Type", "Size", "Capacity", "KeysToSave"));
@@ -116,7 +115,7 @@ public class StatusLogger
 
         // per-CF stats
         logger.info(String.format("%-25s%20s", "Table", "Memtable ops,data"));
-        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
+        for (ColumnFamilyStore cfs : databaseDescriptor.getColumnFamilyStoreManager().all())
         {
             logger.info(String.format("%-25s%20s",
                                       cfs.keyspace.getName() + "." + cfs.name,
