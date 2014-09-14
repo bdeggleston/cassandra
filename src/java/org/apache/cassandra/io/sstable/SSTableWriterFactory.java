@@ -1,6 +1,7 @@
 package org.apache.cassandra.io.sstable;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.dht.IPartitioner;
@@ -9,17 +10,24 @@ import org.apache.cassandra.service.FileCacheService;
 
 public class SSTableWriterFactory
 {
-    public static final SSTableWriterFactory instance = new SSTableWriterFactory();
+    public static final SSTableWriterFactory instance = new SSTableWriterFactory(DatabaseDescriptor.instance);
+
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public SSTableWriterFactory(DatabaseDescriptor databaseDescriptor)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+    }
 
     public SSTableWriter create(String filename, long keyCount, long repairedAt)
     {
         return new SSTableWriter(filename,
                                  keyCount,
                                  repairedAt,
-                                 Schema.instance,
-                                 FileCacheService.instance,
-                                 SSTableReaderFactory.instance,
-                                 DBConfig.instance);
+                                 databaseDescriptor.getSchema(),
+                                 databaseDescriptor.getFileCacheService(),
+                                 databaseDescriptor.getSSTableReaderFactory(),
+                                 databaseDescriptor.getDBConfig());
     }
 
     public SSTableWriter create(String filename,
@@ -35,8 +43,8 @@ public class SSTableWriterFactory
                                  metadata,
                                  partitioner,
                                  sstableMetadataCollector,
-                                 FileCacheService.instance,
-                                 SSTableReaderFactory.instance,
-                                 DBConfig.instance);
+                                 databaseDescriptor.getFileCacheService(),
+                                 databaseDescriptor.getSSTableReaderFactory(),
+                                 databaseDescriptor.getDBConfig());
     }
 }
