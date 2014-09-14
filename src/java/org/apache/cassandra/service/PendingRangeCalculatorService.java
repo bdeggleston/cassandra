@@ -20,6 +20,7 @@ package org.apache.cassandra.service;
 
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
@@ -34,22 +35,27 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PendingRangeCalculatorService
 {
-    public static final PendingRangeCalculatorService instance = new PendingRangeCalculatorService();
+    public static final PendingRangeCalculatorService instance = new PendingRangeCalculatorService(DatabaseDescriptor.instance, Tracing.instance);
 
     private static Logger logger = LoggerFactory.getLogger(PendingRangeCalculatorService.class);
     private final JMXEnabledThreadPoolExecutor executor;
 
     private AtomicInteger updateJobs = new AtomicInteger(0);
 
-    public PendingRangeCalculatorService()
+    private final DatabaseDescriptor databaseDescriptor;
+    public PendingRangeCalculatorService(DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
+        assert tracing != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+
         executor = new JMXEnabledThreadPoolExecutor(1, Integer.MAX_VALUE, TimeUnit.SECONDS,
-                new LinkedBlockingQueue<Runnable>(1), new NamedThreadFactory("PendingRangeCalculator"), "internal", Tracing.instance);
+                new LinkedBlockingQueue<Runnable>(1), new NamedThreadFactory("PendingRangeCalculator"), "internal", tracing);
         executor.setRejectedExecutionHandler(new RejectedExecutionHandler()
         {
             public void rejectedExecution(Runnable r, ThreadPoolExecutor e)
             {
-                PendingRangeCalculatorService.instance.finishUpdate();
+                finishUpdate();
             }
         }
         );
@@ -57,15 +63,30 @@ public class PendingRangeCalculatorService
 
     private static class PendingRangeTask implements Runnable
     {
+
+        private final Schema schema;
+        private final KeyspaceManager keyspaceManager;
+        private final PendingRangeCalculatorService pendingRangeCalculatorService;
+        private final LocatorConfig locatorConfig;
+
+
+        private PendingRangeTask(Schema schema, KeyspaceManager keyspaceManager, PendingRangeCalculatorService pendingRangeCalculatorService, LocatorConfig locatorConfig)
+        {
+            this.schema = schema;
+            this.keyspaceManager = keyspaceManager;
+            this.pendingRangeCalculatorService = pendingRangeCalculatorService;
+            this.locatorConfig = locatorConfig;
+        }
+
         public void run()
         {
             long start = System.currentTimeMillis();
-            for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+            for (String keyspaceName : schema.getNonSystemKeyspaces())
             {
-                calculatePendingRanges(KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy(), keyspaceName, LocatorConfig.instance.getTokenMetadata());
+                calculatePendingRanges(keyspaceManager.open(keyspaceName).getReplicationStrategy(), keyspaceName, locatorConfig.getTokenMetadata());
             }
-            PendingRangeCalculatorService.instance.finishUpdate();
-            logger.debug("finished calculation for {} keyspaces in {}ms", Schema.instance.getNonSystemKeyspaces().size(), System.currentTimeMillis() - start);
+            pendingRangeCalculatorService.finishUpdate();
+            logger.debug("finished calculation for {} keyspaces in {}ms", schema.getNonSystemKeyspaces().size(), System.currentTimeMillis() - start);
         }
     }
 
@@ -77,7 +98,10 @@ public class PendingRangeCalculatorService
     public void update()
     {
         updateJobs.incrementAndGet();
-        executor.submit(new PendingRangeTask());
+        executor.submit(new PendingRangeTask(databaseDescriptor.getSchema(),
+                                             databaseDescriptor.getKeyspaceManager(),
+                                             this,
+                                             databaseDescriptor.getLocatorConfig()));
     }
 
     public void blockUntilFinished()
