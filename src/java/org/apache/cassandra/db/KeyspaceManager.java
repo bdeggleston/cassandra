@@ -5,10 +5,6 @@ import com.google.common.collect.Iterables;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaDataFactory;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.commitlog.CommitLog;
-import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.tracing.Tracing;
 
 import java.io.File;
 
@@ -17,14 +13,17 @@ public class KeyspaceManager
     public static final KeyspaceManager instance;
     static
     {
-        instance = new KeyspaceManager();
+        instance = new KeyspaceManager(DatabaseDescriptor.instance);
         assert KSMetaDataFactory.instance != null;
     }
 
     public final Function<String,Keyspace> keyspaceTransformer;
 
-    public KeyspaceManager()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public KeyspaceManager(DatabaseDescriptor databaseDescriptor)
     {
+        this.databaseDescriptor = databaseDescriptor;
         keyspaceTransformer = new Function<String, Keyspace>()
         {
             public Keyspace apply(String keyspaceName)
@@ -56,7 +55,7 @@ public class KeyspaceManager
 
     private Keyspace open(String keyspaceName, boolean loadSSTables)
     {
-        Keyspace keyspaceInstance = Schema.instance.getKeyspaceInstance(keyspaceName);
+        Keyspace keyspaceInstance = databaseDescriptor.getSchema().getKeyspaceInstance(keyspaceName);
 
         if (keyspaceInstance == null)
         {
@@ -64,18 +63,18 @@ public class KeyspaceManager
             // per keyspace, so we synchronize and re-check before doing it.
             synchronized (Keyspace.class)
             {
-                keyspaceInstance = Schema.instance.getKeyspaceInstance(keyspaceName);
+                keyspaceInstance = databaseDescriptor.getSchema().getKeyspaceInstance(keyspaceName);
                 if (keyspaceInstance == null)
                 {
                     // open and store the keyspace
                     keyspaceInstance = new Keyspace(keyspaceName,
                                                     loadSSTables,
-                                                    Tracing.instance,
-                                                    Schema.instance,
-                                                    ColumnFamilyStoreManager.instance,
-                                                    LocatorConfig.instance,
-                                                    CommitLog.instance);
-                    Schema.instance.storeKeyspaceInstance(keyspaceInstance);
+                                                    databaseDescriptor.getTracing(),
+                                                    databaseDescriptor.getSchema(),
+                                                    databaseDescriptor.getColumnFamilyStoreManager(),
+                                                    databaseDescriptor.getLocatorConfig(),
+                                                    databaseDescriptor.getCommitLog());
+                    databaseDescriptor.getSchema().storeKeyspaceInstance(keyspaceInstance);
 
                     // keyspace has to be constructed and in the cache before cacheRow can be called
                     for (ColumnFamilyStore cfs : keyspaceInstance.getColumnFamilyStores())
@@ -88,12 +87,12 @@ public class KeyspaceManager
 
     public Iterable<Keyspace> all()
     {
-        return Iterables.transform(Schema.instance.getKeyspaces(), keyspaceTransformer);
+        return Iterables.transform(databaseDescriptor.getSchema().getKeyspaces(), keyspaceTransformer);
     }
 
     public Iterable<Keyspace> nonSystem()
     {
-        return Iterables.transform(Schema.instance.getNonSystemKeyspaces(), keyspaceTransformer);
+        return Iterables.transform(databaseDescriptor.getSchema().getNonSystemKeyspaces(), keyspaceTransformer);
     }
 
     public Iterable<Keyspace> system()
