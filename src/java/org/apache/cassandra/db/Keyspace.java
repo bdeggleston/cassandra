@@ -65,15 +65,6 @@ public class Keyspace
 
     public final KeyspaceMetrics metric;
 
-    // It is possible to call KeyspaceManager.instance.open without a running daemon, so it makes sense to ensure
-    // proper directories here as well as in CassandraDaemon.
-    static
-    {
-        // TODO: move to KeyspaceManager
-        if (!StorageService.instance.isClientMode())
-            DatabaseDescriptor.instance.createAllDirectories();
-    }
-
     public final KSMetaData metadata;
     public final OpOrder writeOrder = new OpOrder();
 

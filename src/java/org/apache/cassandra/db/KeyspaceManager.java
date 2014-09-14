@@ -2,10 +2,12 @@ package org.apache.cassandra.db;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaDataFactory;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.locator.LocatorConfig;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 
 import java.io.File;
@@ -27,6 +29,14 @@ public class KeyspaceManager
         }
 
     };
+
+    public KeyspaceManager()
+    {
+        // It is possible to call KeyspaceManager.instance.open without a running daemon, so it makes sense to ensure
+        // proper directories here as well as in CassandraDaemon.
+        if (!StorageService.instance.isClientMode())
+            DatabaseDescriptor.instance.createAllDirectories();
+    }
 
     private volatile boolean initialized = false;
     public void setInitialized()
