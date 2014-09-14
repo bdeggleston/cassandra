@@ -65,14 +65,14 @@ public class DataRange
             && filter.count == Integer.MAX_VALUE;
     }
 
-    public static DataRange allData(IPartitioner partitioner)
+    public static DataRange allData(IPartitioner partitioner, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        return forKeyRange(new Range<Token>(partitioner.getMinimumToken(), partitioner.getMinimumToken(), partitioner));
+        return forKeyRange(new Range<Token>(partitioner.getMinimumToken(), partitioner.getMinimumToken(), partitioner), databaseDescriptor, tracing, dbConfig);
     }
 
-    public static DataRange forKeyRange(Range<Token> keyRange)
+    public static DataRange forKeyRange(Range<Token> keyRange, DatabaseDescriptor databaseDescriptor, Tracing tracing, DBConfig dbConfig)
     {
-        return new DataRange(keyRange.toRowBounds(), new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+        return new DataRange(keyRange.toRowBounds(), new IdentityQueryFilter(databaseDescriptor, tracing, dbConfig));
     }
 
     public AbstractBounds<RowPosition> keyRange()

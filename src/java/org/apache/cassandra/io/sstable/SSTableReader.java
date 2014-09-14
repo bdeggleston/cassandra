@@ -1507,7 +1507,7 @@ public class SSTableReader extends SSTable
 
     public SSTableScanner getScanner(RateLimiter limiter)
     {
-        return new SSTableScanner(this, DataRange.allData(partitioner), limiter, dbConfig);
+        return new SSTableScanner(this, DataRange.allData(partitioner, databaseDescriptor, tracing, dbConfig), limiter, dbConfig);
     }
 
     /**

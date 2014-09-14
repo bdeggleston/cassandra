@@ -20,6 +20,8 @@ package org.apache.cassandra.db.compaction;
  * 
  */
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -148,7 +150,7 @@ public class TTLExpiryTest
         cfs.enableAutoCompaction(true);
         assertEquals(1, cfs.getSSTables().size());
         SSTableReader sstable = cfs.getSSTables().iterator().next();
-        SSTableScanner scanner = sstable.getScanner(DataRange.allData(sstable.partitioner));
+        SSTableScanner scanner = sstable.getScanner(DataRange.allData(sstable.partitioner, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
         assertTrue(scanner.hasNext());
         while(scanner.hasNext())
         {

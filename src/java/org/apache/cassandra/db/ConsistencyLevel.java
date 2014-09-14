@@ -267,7 +267,7 @@ public enum ConsistencyLevel
                             if (isLocal(endpoint, localDc, snitch))
                                 builder.append(endpoint).append(",");
                         }
-                        builder.append("] are insufficient to satisfy LOCAL_QUORUM requirement of ").append(blockFor).append(" live nodes in '").append(DatabaseDescriptor.instance.getLocalDataCenter()).append("'");
+                        builder.append("] are insufficient to satisfy LOCAL_QUORUM requirement of ").append(blockFor).append(" live nodes in '").append(localDc).append("'");
                         logger.debug(builder.toString());
                     }
                     throw new UnavailableException(this, blockFor, localLive);
