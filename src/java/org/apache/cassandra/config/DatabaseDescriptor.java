@@ -1568,6 +1568,11 @@ public class DatabaseDescriptor
         return KSMetaDataFactory.instance;
     }
 
+    public CFMetaDataFactory geCFMetaDataFactory()
+    {
+        return CFMetaDataFactory.instance;
+    }
+
     public MigrationManager getMigrationManager()
     {
         return MigrationManager.instance;
@@ -1626,6 +1631,11 @@ public class DatabaseDescriptor
     public SystemKeyspace getSystemKeyspace()
     {
         return SystemKeyspace.instance;
+    }
+
+    public LocatorConfig getLocatorConfig()
+    {
+        return LocatorConfig.instance;
     }
 
     public DBConfig getDBConfig()
