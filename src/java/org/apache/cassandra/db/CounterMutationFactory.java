@@ -12,31 +12,36 @@ import java.util.concurrent.locks.Lock;
 
 public class CounterMutationFactory
 {
-    public static final CounterMutationFactory instance = new CounterMutationFactory();
+    public static final CounterMutationFactory instance = new CounterMutationFactory(DatabaseDescriptor.instance, MutationFactory.instance);
 
     public final CounterMutation.Serializer serializer;
     private final Striped<Lock> locks;
 
-    public CounterMutationFactory()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public CounterMutationFactory(DatabaseDescriptor databaseDescriptor, MutationFactory mutationFactory)
     {
-        serializer = new CounterMutation.Serializer(MutationFactory.instance, this);
-        locks = Striped.lazyWeakLock(DatabaseDescriptor.instance.getConcurrentCounterWriters() * 1024);
+        assert mutationFactory != null;
+        serializer = new CounterMutation.Serializer(mutationFactory, this);
+        locks = Striped.lazyWeakLock(databaseDescriptor.getConcurrentCounterWriters() * 1024);
+
+        this.databaseDescriptor = databaseDescriptor;
     }
 
     public CounterMutation create(Mutation mutation, ConsistencyLevel consistency)
     {
         return new CounterMutation(mutation,
                                    consistency,
-                                   DatabaseDescriptor.instance,
-                                   Schema.instance,
-                                   CacheService.instance,
-                                   KeyspaceManager.instance,
-                                   MutationFactory.instance,
-                                   SystemKeyspace.instance,
-                                   MessagingService.instance,
-                                   Tracing.instance,
-                                   DBConfig.instance,
-                                   LocatorConfig.instance.getPartitioner(),
+                                   databaseDescriptor,
+                                   databaseDescriptor.getSchema(),
+                                   databaseDescriptor.getCacheService(),
+                                   databaseDescriptor.getKeyspaceManager(),
+                                   databaseDescriptor.getMutationFactory(),
+                                   databaseDescriptor.getSystemKeyspace(),
+                                   databaseDescriptor.getMessagingService(),
+                                   databaseDescriptor.getTracing(),
+                                   databaseDescriptor.getDBConfig(),
+                                   databaseDescriptor.getLocatorConfig().getPartitioner(),
                                    serializer,
                                    locks);
     }
