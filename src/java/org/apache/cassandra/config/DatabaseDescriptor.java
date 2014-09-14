@@ -131,6 +131,7 @@ public class DatabaseDescriptor
         instance = databaseDescriptor;
         assert CFMetaDataFactory.instance != null;
         assert KSMetaDataFactory.instance != null;
+        assert FailureDetector.instance != null;
         assert Gossiper.instance != null;
         assert Tracing.instance != null;
         assert LocatorConfig.instance != null;

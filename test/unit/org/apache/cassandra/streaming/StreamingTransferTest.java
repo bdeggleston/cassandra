@@ -70,6 +70,11 @@ public class StreamingTransferTest
 {
     private static final Logger logger = LoggerFactory.getLogger(StreamingTransferTest.class);
 
+    static
+    {
+        DatabaseDescriptor.init();
+    }
+
     public static final InetAddress LOCAL = DatabaseDescriptor.instance.getBroadcastAddress();
     public static final String KEYSPACE1 = "StreamingTransferTest1";
     public static final String CF_STANDARD = "Standard1";

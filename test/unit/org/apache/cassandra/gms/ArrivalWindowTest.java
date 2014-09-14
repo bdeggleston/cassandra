@@ -23,10 +23,18 @@ package org.apache.cassandra.gms;
 
 import static org.junit.Assert.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class ArrivalWindowTest
 {
+    @BeforeClass
+    public static void setUpTest()
+    {
+        DatabaseDescriptor.init();
+    }
+
     @Test
     public void testWithNanoTime()
     {

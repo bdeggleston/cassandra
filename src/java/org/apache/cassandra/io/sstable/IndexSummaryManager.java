@@ -83,7 +83,7 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
 
         try
         {
-            mbs.registerMBean(instance, new ObjectName(MBEAN_NAME));
+            mbs.registerMBean(indexSummaryManager, new ObjectName(MBEAN_NAME));
         }
         catch (Exception e)
         {

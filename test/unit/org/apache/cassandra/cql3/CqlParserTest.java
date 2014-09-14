@@ -17,6 +17,8 @@
  */
 package org.apache.cassandra.cql3;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.antlr.runtime.ANTLRStringStream;
@@ -30,6 +32,13 @@ import static org.junit.Assert.*;
 
 public class CqlParserTest
 {
+
+    @BeforeClass
+    public static void setUpClass()
+    {
+        DatabaseDescriptor.init();
+    }
+
     @Test
     public void testAddErrorListener() throws Exception
     {
