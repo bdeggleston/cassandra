@@ -82,7 +82,7 @@ public class AlterKeyspaceStatement extends SchemaAlteringStatement
                                                                     locatorConfig.getTokenMetadata(),
                                                                     locatorConfig.getEndpointSnitch(),
                                                                     attrs.getReplicationOptions(),
-                                                                    LocatorConfig.instance);
+                                                                    locatorConfig);
         }
     }
 

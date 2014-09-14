@@ -101,7 +101,7 @@ public class CreateKeyspaceStatement extends SchemaAlteringStatement
                                                                 locatorConfig.getTokenMetadata(),
                                                                 locatorConfig.getEndpointSnitch(),
                                                                 attrs.getReplicationOptions(),
-                                                                LocatorConfig.instance);
+                                                                locatorConfig);
     }
 
     public boolean announceMigration(boolean isLocalOnly) throws RequestValidationException

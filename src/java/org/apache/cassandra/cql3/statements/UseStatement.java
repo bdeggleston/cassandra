@@ -29,10 +29,12 @@ import org.apache.cassandra.service.QueryState;
 public class UseStatement extends ParsedStatement implements CQLStatement
 {
     private final String keyspace;
+    private final Schema schema;
 
-    public UseStatement(String keyspace)
+    public UseStatement(String keyspace, Schema schema)
     {
         this.keyspace = keyspace;
+        this.schema = schema;
     }
 
     public int getBoundTerms()

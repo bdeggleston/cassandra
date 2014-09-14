@@ -318,7 +318,7 @@ cqlStatement returns [ParsedStatement stmt]
  * USE <KEYSPACE>;
  */
 useStatement returns [UseStatement stmt]
-    : K_USE ks=keyspaceName { $stmt = new UseStatement(ks); }
+    : K_USE ks=keyspaceName { $stmt = new UseStatement(ks, schema); }
     ;
 
 /**
