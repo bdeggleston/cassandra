@@ -11,21 +11,23 @@ import java.util.UUID;
 
 public class MutationFactory
 {
-    public static final MutationFactory instance = new MutationFactory();
-
-
+    public static final MutationFactory instance = new MutationFactory(DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, DBConfig.instance);
 
     public final Mutation.Serializer serializer;
 
-    public MutationFactory()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public MutationFactory(DatabaseDescriptor databaseDescriptor, Schema schema, KeyspaceManager keyspaceManager, DBConfig dbConfig)
     {
-        assert Schema.instance != null;
-        assert KeyspaceManager.instance != null;
-        assert DBConfig.instance != null;
-        serializer = new Mutation.Serializer(DatabaseDescriptor.instance.getWriteRpcTimeout(),
-                                             Schema.instance,
-                                             KeyspaceManager.instance,
-                                             DBConfig.instance);
+        assert schema != null;
+        assert keyspaceManager != null;
+        assert dbConfig != null;
+        serializer = new Mutation.Serializer(databaseDescriptor.getWriteRpcTimeout(),
+                                             schema,
+                                             keyspaceManager,
+                                             dbConfig);
+
+        this.databaseDescriptor = databaseDescriptor;
     }
 
     public Mutation create(String keyspaceName, ByteBuffer key)
@@ -33,11 +35,11 @@ public class MutationFactory
         return new Mutation(keyspaceName,
                             key,
                             new HashMap<UUID, ColumnFamily>(),
-                            DatabaseDescriptor.instance.getWriteRpcTimeout(),
-                            Schema.instance,
-                            KeyspaceManager.instance,
+                            databaseDescriptor.getWriteRpcTimeout(),
+                            databaseDescriptor.getSchema(),
+                            databaseDescriptor.getKeyspaceManager(),
                             serializer,
-                            DBConfig.instance);
+                            databaseDescriptor.getDBConfig());
     }
 
     public Mutation create(String keyspaceName, ByteBuffer key, ColumnFamily cf)
@@ -45,11 +47,11 @@ public class MutationFactory
         return new Mutation(keyspaceName,
                             key,
                             Collections.singletonMap(cf.id(), cf),
-                            DatabaseDescriptor.instance.getWriteRpcTimeout(),
-                            Schema.instance,
-                            KeyspaceManager.instance,
+                            databaseDescriptor.getWriteRpcTimeout(),
+                            databaseDescriptor.getSchema(),
+                            databaseDescriptor.getKeyspaceManager(),
                             serializer,
-                            DBConfig.instance);
+                            databaseDescriptor.getDBConfig());
     }
 
     public Mutation create(String keyspaceName, Row row)
@@ -57,11 +59,11 @@ public class MutationFactory
         return new Mutation(keyspaceName,
                             row.key.getKey(),
                             row.cf,
-                            DatabaseDescriptor.instance.getWriteRpcTimeout(),
-                            Schema.instance,
-                            KeyspaceManager.instance,
+                            databaseDescriptor.getWriteRpcTimeout(),
+                            databaseDescriptor.getSchema(),
+                            databaseDescriptor.getKeyspaceManager(),
                             serializer,
-                            DBConfig.instance);
+                            databaseDescriptor.getDBConfig());
     }
 
     protected Mutation create(String keyspaceName, ByteBuffer key, Map<UUID, ColumnFamily> modifications)
@@ -69,11 +71,11 @@ public class MutationFactory
         return new Mutation(keyspaceName,
                             key,
                             modifications,
-                            DatabaseDescriptor.instance.getWriteRpcTimeout(),
-                            Schema.instance,
-                            KeyspaceManager.instance,
+                            databaseDescriptor.getWriteRpcTimeout(),
+                            databaseDescriptor.getSchema(),
+                            databaseDescriptor.getKeyspaceManager(),
                             serializer,
-                            DBConfig.instance);
+                            databaseDescriptor.getDBConfig());
     }
 
     public Mutation create(ByteBuffer key, ColumnFamily cf)
@@ -81,10 +83,10 @@ public class MutationFactory
         return new Mutation(cf.metadata().ksName,
                             key,
                             cf,
-                            DatabaseDescriptor.instance.getWriteRpcTimeout(),
-                            Schema.instance,
-                            KeyspaceManager.instance,
+                            databaseDescriptor.getWriteRpcTimeout(),
+                            databaseDescriptor.getSchema(),
+                            databaseDescriptor.getKeyspaceManager(),
                             serializer,
-                            DBConfig.instance);
+                            databaseDescriptor.getDBConfig());
     }
 }
