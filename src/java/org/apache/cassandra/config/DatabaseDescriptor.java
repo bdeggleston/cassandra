@@ -36,13 +36,13 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Longs;
 import org.apache.cassandra.concurrent.StageManager;
+import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.locator.*;
-import org.apache.cassandra.service.ActiveRepairService;
-import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.*;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +56,6 @@ import org.apache.cassandra.io.util.IAllocator;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.scheduler.IRequestScheduler;
 import org.apache.cassandra.scheduler.NoScheduler;
-import org.apache.cassandra.service.CacheService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.memory.HeapPool;
@@ -1560,5 +1559,72 @@ public class DatabaseDescriptor
         }
         String arch = System.getProperty("os.arch");
         return arch.contains("64") || arch.contains("sparcv9");
+    }
+
+    // singleton getters
+
+    public KSMetaDataFactory getKSMetaDataFactory()
+    {
+        return KSMetaDataFactory.instance;
+    }
+
+    public MigrationManager getMigrationManager()
+    {
+        return MigrationManager.instance;
+    }
+
+    public QueryProcessor getQueryProcessor()
+    {
+        return QueryProcessor.instance;
+    }
+
+    public Schema getSchema()
+    {
+        return Schema.instance;
+    }
+
+    public StorageService getStorageService()
+    {
+        return StorageService.instance;
+    }
+
+    public StorageServiceExecutors getStorageServiceExecutors()
+    {
+        return StorageServiceExecutors.instance;
+    }
+
+    public Tracing getTracing()
+    {
+        return Tracing.instance;
+    }
+
+    public MessagingService getMessagingService()
+    {
+        return MessagingService.instance;
+    }
+
+    public KeyspaceManager getKeyspaceManager()
+    {
+        return KeyspaceManager.instance;
+    }
+
+    public ColumnFamilyStoreManager getColumnFamilyStoreManager()
+    {
+        return ColumnFamilyStoreManager.instance;
+    }
+
+    public MutationFactory getMutationFactory()
+    {
+        return MutationFactory.instance;
+    }
+
+    public CounterMutationFactory getCounterMutationFactory()
+    {
+        return CounterMutationFactory.instance;
+    }
+
+    public SystemKeyspace getSystemKeyspace()
+    {
+        return SystemKeyspace.instance;
     }
 }

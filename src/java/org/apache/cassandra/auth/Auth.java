@@ -64,7 +64,7 @@ public class Auth
 
         try
         {
-            auth = new Auth();
+            auth = new Auth(DatabaseDescriptor.instance.getConfig(), DatabaseDescriptor.instance);
         }
         catch (ConfigurationException e)
         {
@@ -110,15 +110,18 @@ public class Auth
     // User-level permissions cache.
     private final LoadingCache<Pair<AuthenticatedUser, IResource>, Set<Permission>> permissionsCache;
 
-    public Auth() throws ConfigurationException
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public Auth(Config conf, DatabaseDescriptor databaseDescriptor) throws ConfigurationException
     {
-        conf = DatabaseDescriptor.instance.getConfig();
+        this.conf = conf;
+        this.databaseDescriptor = databaseDescriptor;
         authorizer = createAuthorizer();
         authenticator = createAuthenticator();
         internodeAuthenticator = createInternodeAuthenticator();
 
         if (authenticator instanceof AllowAllAuthenticator && !(authorizer instanceof AllowAllAuthorizer))
-            throw new ConfigurationException("AllowAllAuthenticator can't be used with " +  conf.authorizer);
+            throw new ConfigurationException("AllowAllAuthenticator can't be used with " +  this.conf.authorizer);
 
         authenticator.validateConfiguration();
         authorizer.validateConfiguration();
@@ -255,7 +258,7 @@ public class Auth
      */
     public void insertUser(String username, boolean isSuper) throws RequestExecutionException
     {
-        QueryProcessor.instance.process(String.format("INSERT INTO %s.%s (name, super) VALUES ('%s', %s)",
+        databaseDescriptor.getQueryProcessor().process(String.format("INSERT INTO %s.%s (name, super) VALUES ('%s', %s)",
                                              AUTH_KS,
                                              USERS_CF,
                                              escape(username),
@@ -271,7 +274,7 @@ public class Auth
      */
     public void deleteUser(String username) throws RequestExecutionException
     {
-        QueryProcessor.instance.process(String.format("DELETE FROM %s.%s WHERE name = '%s'",
+        databaseDescriptor.getQueryProcessor().process(String.format("DELETE FROM %s.%s WHERE name = '%s'",
                                              AUTH_KS,
                                              USERS_CF,
                                              escape(username)),
@@ -293,12 +296,12 @@ public class Auth
         authorizer.setup();
 
         // register a custom MigrationListener for permissions cleanup after dropped keyspaces/cfs.
-        MigrationManager.instance.register(new MigrationListener());
+        databaseDescriptor.getMigrationManager().register(new MigrationListener());
 
         // the delay is here to give the node some time to see its peers - to reduce
         // "Skipped default superuser setup: some nodes were not ready" log spam.
         // It's the only reason for the delay.
-        StorageServiceExecutors.instance.tasks.schedule(new Runnable()
+        databaseDescriptor.getStorageServiceExecutors().tasks.schedule(new Runnable()
                                       {
                                           public void run()
                                           {
@@ -309,7 +312,7 @@ public class Auth
         try
         {
             String query = String.format("SELECT * FROM %s.%s WHERE name = ?", AUTH_KS, USERS_CF);
-            selectUserStatement = (SelectStatement) QueryProcessor.instance.parseStatement(query).prepare().statement;
+            selectUserStatement = (SelectStatement) databaseDescriptor.getQueryProcessor().parseStatement(query).prepare().statement;
         }
         catch (RequestValidationException e)
         {
@@ -328,12 +331,12 @@ public class Auth
 
     private void setupAuthKeyspace()
     {
-        if (Schema.instance.getKSMetaData(AUTH_KS) == null)
+        if (databaseDescriptor.getSchema().getKSMetaData(AUTH_KS) == null)
         {
             try
             {
-                KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(AUTH_KS, SimpleStrategy.class.getName(), ImmutableMap.of("replication_factor", "1"), true);
-                MigrationManager.instance.announceNewKeyspace(ksm, 0, false);
+                KSMetaData ksm = databaseDescriptor.getKSMetaDataFactory().newKeyspace(AUTH_KS, SimpleStrategy.class.getName(), ImmutableMap.of("replication_factor", "1"), true);
+                databaseDescriptor.getMigrationManager().announceNewKeyspace(ksm, 0, false);
             }
             catch (Exception e)
             {
@@ -350,16 +353,16 @@ public class Auth
      */
     public void setupTable(String name, String cql)
     {
-        if (Schema.instance.getCFMetaData(AUTH_KS, name) == null)
+        if (databaseDescriptor.getSchema().getCFMetaData(AUTH_KS, name) == null)
         {
             try
             {
-                CFStatement parsed = (CFStatement)QueryProcessor.instance.parseStatement(cql);
+                CFStatement parsed = (CFStatement)databaseDescriptor.getQueryProcessor().parseStatement(cql);
                 parsed.prepareKeyspace(AUTH_KS);
                 CreateTableStatement statement = (CreateTableStatement) parsed.prepare().statement;
                 CFMetaData cfm = statement.getCFMetaData().copy(CFMetaData.generateLegacyCfId(AUTH_KS, name));
                 assert cfm.cfName.equals(name);
-                MigrationManager.instance.announceNewColumnFamily(cfm);
+                databaseDescriptor.getMigrationManager().announceNewColumnFamily(cfm);
             }
             catch (Exception e)
             {
@@ -375,7 +378,7 @@ public class Auth
             // insert a default superuser if AUTH_KS.USERS_CF is empty.
             if (!hasExistingUsers())
             {
-                QueryProcessor.instance.process(String.format("INSERT INTO %s.%s (name, super) VALUES ('%s', %s) USING TIMESTAMP 0",
+                databaseDescriptor.getQueryProcessor().process(String.format("INSERT INTO %s.%s (name, super) VALUES ('%s', %s) USING TIMESTAMP 0",
                                                      AUTH_KS,
                                                      USERS_CF,
                                                      DEFAULT_SUPERUSER_NAME,
@@ -395,9 +398,9 @@ public class Auth
         // Try looking up the 'cassandra' default super user first, to avoid the range query if possible.
         String defaultSUQuery = String.format("SELECT * FROM %s.%s WHERE name = '%s'", AUTH_KS, USERS_CF, DEFAULT_SUPERUSER_NAME);
         String allUsersQuery = String.format("SELECT * FROM %s.%s LIMIT 1", AUTH_KS, USERS_CF);
-        return !QueryProcessor.instance.process(defaultSUQuery, ConsistencyLevel.ONE).isEmpty()
-            || !QueryProcessor.instance.process(defaultSUQuery, ConsistencyLevel.QUORUM).isEmpty()
-            || !QueryProcessor.instance.process(allUsersQuery, ConsistencyLevel.QUORUM).isEmpty();
+        return !databaseDescriptor.getQueryProcessor().process(defaultSUQuery, ConsistencyLevel.ONE).isEmpty()
+            || !databaseDescriptor.getQueryProcessor().process(defaultSUQuery, ConsistencyLevel.QUORUM).isEmpty()
+            || !databaseDescriptor.getQueryProcessor().process(allUsersQuery, ConsistencyLevel.QUORUM).isEmpty();
     }
 
     // we only worry about one character ('). Make sure it's properly escaped.
@@ -410,7 +413,7 @@ public class Auth
     {
         try
         {
-            ResultMessage.Rows rows = selectUserStatement.execute(QueryState.forInternalCalls(Tracing.instance, this),
+            ResultMessage.Rows rows = selectUserStatement.execute(QueryState.forInternalCalls(databaseDescriptor.getTracing(), this),
                                                                   QueryOptions.forInternalCalls(consistencyForUser(username),
                                                                                                 Lists.newArrayList(ByteBufferUtil.bytes(username))));
             return UntypedResultSet.create(rows.result);
@@ -445,7 +448,7 @@ public class Auth
         if (authorizer instanceof AllowAllAuthorizer)
             return null;
 
-        int validityPeriod = DatabaseDescriptor.instance.getPermissionsValidity();
+        int validityPeriod = databaseDescriptor.getPermissionsValidity();
         if (validityPeriod <= 0)
             return null;
 
@@ -477,22 +480,22 @@ public class Auth
 
     public QueryProcessor getQueryProcessor()
     {
-        return QueryProcessor.instance;
+        return databaseDescriptor.getQueryProcessor();
     }
 
     public Tracing getTracing()
     {
-        return Tracing.instance;
+        return databaseDescriptor.getTracing();
     }
 
     public Schema getSchema()
     {
-        return Schema.instance;
+        return databaseDescriptor.getSchema();
     }
 
     public StorageServiceExecutors getStorageServiceExecutors()
     {
-        return StorageServiceExecutors.instance;
+        return databaseDescriptor.getStorageServiceExecutors();
     }
 
     /**
