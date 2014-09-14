@@ -1744,6 +1744,21 @@ public class DatabaseDescriptor
         return HintedHandOffManager.instance;
     }
 
+    public LoadBroadcaster getLoadBroadcaster()
+    {
+        return LoadBroadcaster.instance;
+    }
+
+    public BatchlogManager getBatchlogManager()
+    {
+        return BatchlogManager.instance;
+    }
+
+    public PendingRangeCalculatorService getPendingRangeCalculatorService()
+    {
+        return PendingRangeCalculatorService.instance;
+    }
+
     public DBConfig getDBConfig()
     {
         return DBConfig.instance;

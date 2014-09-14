@@ -30,11 +30,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import javax.management.JMX;
-import javax.management.MBeanServer;
-import javax.management.Notification;
-import javax.management.NotificationBroadcasterSupport;
-import javax.management.ObjectName;
+import javax.management.*;
 import javax.management.openmbean.TabularData;
 import javax.management.openmbean.TabularDataSupport;
 
@@ -50,18 +46,15 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.Uninterruptibles;
 
 import org.apache.cassandra.config.*;
-import org.apache.cassandra.io.sstable.SSTableReaderFactory;
 import org.apache.cassandra.service.paxos.PaxosManager;
 import org.apache.commons.lang3.StringUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.dht.*;
@@ -108,7 +101,25 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public volatile VersionedValue.VersionedValueFactory valueFactory;
 
-    public static final StorageService instance = new StorageService();
+    public static final StorageService instance = create(DatabaseDescriptor.instance,
+                                                         Tracing.instance,
+                                                         Schema.instance,
+                                                         StageManager.instance,
+                                                         SystemKeyspace.instance,
+                                                         DefsTables.instance,
+                                                         MessagingService.instance,
+                                                         CompactionManager.instance,
+                                                         MutationFactory.instance,
+                                                         ColumnFamilyStoreManager.instance,
+                                                         KeyspaceManager.instance,
+                                                         Gossiper.instance,
+                                                         ActiveRepairService.instance,
+                                                         StreamManager.instance,
+                                                         StorageProxy.instance,
+                                                         FailureDetector.instance,
+                                                         PaxosManager.instance,
+                                                         LocatorConfig.instance,
+                                                         DBConfig.instance);
 
     private final Set<InetAddress> replicatingNodes = Collections.synchronizedSet(new HashSet<InetAddress>());
     private CassandraDaemon daemon;
@@ -152,69 +163,166 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         if (logger.isDebugEnabled())
             logger.debug("Setting tokens to {}", tokens);
-        SystemKeyspace.instance.updateTokens(tokens);
-        LocatorConfig.instance.getTokenMetadata().updateNormalTokens(tokens, DatabaseDescriptor.instance.getBroadcastAddress());
+        databaseDescriptor.getSystemKeyspace().updateTokens(tokens);
+        databaseDescriptor.getLocatorConfig().getTokenMetadata().updateNormalTokens(tokens, databaseDescriptor.getLocatorConfig().getBroadcastAddress());
         // order is important here, the gossiper can fire in between adding these two states.  It's ok to send TOKENS without STATUS, but *not* vice versa.
         Collection<Token> localTokens = getLocalTokens();
-        Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS, valueFactory.tokens(localTokens));
-        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.normal(localTokens));
+        databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.TOKENS, valueFactory.tokens(localTokens));
+        databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.STATUS, valueFactory.normal(localTokens));
         setMode(Mode.NORMAL, false);
     }
 
-    public StorageService()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public static StorageService create(DatabaseDescriptor databaseDescriptor,
+                                        Tracing tracing,
+                                        Schema schema,
+                                        StageManager stageManager,
+                                        SystemKeyspace systemKeyspace,
+                                        DefsTables defsTables,
+                                        MessagingService messagingService,
+                                        CompactionManager compactionManager,
+                                        MutationFactory mutationFactory,
+                                        ColumnFamilyStoreManager columnFamilyStoreManager,
+                                        KeyspaceManager keyspaceManager,
+                                        Gossiper gossiper,
+                                        ActiveRepairService activeRepairService,
+                                        StreamManager streamManager,
+                                        StorageProxy storageProxy,
+                                        IFailureDetector failureDetector,
+                                        PaxosManager paxosManager,
+                                        LocatorConfig locatorConfig,
+                                        DBConfig dbConfig)
     {
-        bgMonitor = new BackgroundActivityMonitor(Gossiper.instance, this);
-        valueFactory = new VersionedValue.VersionedValueFactory(LocatorConfig.instance.getPartitioner());
+        ObjectName jmxObjectName = null;
+        try
+        {
+            jmxObjectName = new ObjectName("org.apache.cassandra.db:type=StorageService");
+        }
+        catch (MalformedObjectNameException e)
+        {
+            throw new RuntimeException(e);
+        }
 
-        /* register the verb handlers */
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.MUTATION, new MutationVerbHandler(Tracing.instance, MessagingService.instance, MutationFactory.instance.serializer));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.READ_REPAIR, new ReadRepairVerbHandler(MessagingService.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.READ, new ReadVerbHandler(KeyspaceManager.instance, MessagingService.instance, this, Tracing.instance, MessagingService.instance.readResponseSerializer));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.RANGE_SLICE, new RangeSliceVerbHandler(Tracing.instance, MessagingService.instance, this, MessagingService.instance.rangeSliceReplySerializer));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAGED_RANGE, new RangeSliceVerbHandler(Tracing.instance, MessagingService.instance, this, MessagingService.instance.rangeSliceReplySerializer));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.COUNTER_MUTATION, new CounterMutationVerbHandler(LocatorConfig.instance, MessagingService.instance, StorageProxy.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.TRUNCATE, new TruncateVerbHandler(Tracing.instance, KeyspaceManager.instance, MessagingService.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PREPARE, new PrepareVerbHandler(Tracing.instance, SystemKeyspace.instance, MessagingService.instance, PaxosManager.instance, MessagingService.instance.prepareResponseSerializer));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_PROPOSE, new ProposeVerbHandler(Tracing.instance, SystemKeyspace.instance, MessagingService.instance, PaxosManager.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.PAXOS_COMMIT, new CommitVerbHandler(Tracing.instance, SystemKeyspace.instance, KeyspaceManager.instance, MessagingService.instance, PaxosManager.instance));
-
-        // see BootStrapper for a summary of how the bootstrap verbs interact
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.REPLICATION_FINISHED, new ReplicationFinishedVerbHandler(MessagingService.instance, this));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.REQUEST_RESPONSE, new ResponseVerbHandler(Tracing.instance, MessagingService.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.INTERNAL_RESPONSE, new ResponseVerbHandler(Tracing.instance, MessagingService.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.REPAIR_MESSAGE, new RepairMessageVerbHandler(DatabaseDescriptor.instance,
-                                                                                                                          StageManager.instance,
-                                                                                                                          KeyspaceManager.instance,
-                                                                                                                          Schema.instance,
-                                                                                                                          ActiveRepairService.instance,
-                                                                                                                          CompactionManager.instance,
-                                                                                                                          MessagingService.instance,
-                                                                                                                          StreamManager.instance,
-                                                                                                                          DBConfig.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.GOSSIP_SHUTDOWN, new GossipShutdownVerbHandler(Gossiper.instance, FailureDetector.instance));
-
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_SYN, new GossipDigestSynVerbHandler(DatabaseDescriptor.instance, Gossiper.instance, MessagingService.instance, LocatorConfig.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_ACK, new GossipDigestAckVerbHandler(Gossiper.instance, MessagingService.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_ACK2, new GossipDigestAck2VerbHandler(Gossiper.instance));
-
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.DEFINITIONS_UPDATE, new DefinitionsUpdateVerbHandler(StageManager.instance, DefsTables.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.SCHEMA_CHECK, new SchemaCheckVerbHandler(Schema.instance, MessagingService.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.MIGRATION_REQUEST, new MigrationRequestVerbHandler(SystemKeyspace.instance, MessagingService.instance));
-
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.SNAPSHOT, new SnapshotVerbHandler(ColumnFamilyStoreManager.instance, KeyspaceManager.instance, MessagingService.instance));
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.ECHO, new EchoVerbHandler(MessagingService.instance));
+        StorageService storageService = new StorageService(databaseDescriptor,
+                                                           tracing,
+                                                           schema,
+                                                           stageManager,
+                                                           systemKeyspace,
+                                                           defsTables,
+                                                           messagingService,
+                                                           compactionManager,
+                                                           mutationFactory,
+                                                           columnFamilyStoreManager,
+                                                           keyspaceManager,
+                                                           gossiper,
+                                                           activeRepairService,
+                                                           streamManager,
+                                                           storageProxy,
+                                                           failureDetector,
+                                                           paxosManager,
+                                                           locatorConfig,
+                                                           dbConfig,
+                                                           jmxObjectName);
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
         {
-            jmxObjectName = new ObjectName("org.apache.cassandra.db:type=StorageService");
-            mbs.registerMBean(this, jmxObjectName);
-            mbs.registerMBean(StreamManager.instance, new ObjectName(StreamManager.OBJECT_NAME));
+            mbs.registerMBean(storageService, jmxObjectName);
+            mbs.registerMBean(streamManager, new ObjectName(StreamManager.OBJECT_NAME));
         }
         catch (Exception e)
         {
             throw new RuntimeException(e);
         }
+
+        return storageService;
+    }
+
+    public StorageService(DatabaseDescriptor databaseDescriptor,
+                          Tracing tracing,
+                          Schema schema,
+                          StageManager stageManager,
+                          SystemKeyspace systemKeyspace,
+                          DefsTables defsTables,
+                          MessagingService messagingService,
+                          CompactionManager compactionManager,
+                          MutationFactory mutationFactory,
+                          ColumnFamilyStoreManager columnFamilyStoreManager,
+                          KeyspaceManager keyspaceManager,
+                          Gossiper gossiper,
+                          ActiveRepairService activeRepairService,
+                          StreamManager streamManager,
+                          StorageProxy storageProxy,
+                          IFailureDetector failureDetector,
+                          PaxosManager paxosManager,
+                          LocatorConfig locatorConfig,
+                          DBConfig dbConfig,
+                          ObjectName jmxObjectName)
+    {
+        assert tracing != null;
+        assert stageManager != null;
+        assert schema != null;
+        assert systemKeyspace != null;
+        assert defsTables != null;
+        assert messagingService != null;
+        assert compactionManager != null;
+        assert mutationFactory != null;
+        assert columnFamilyStoreManager != null;
+        assert keyspaceManager != null;
+        assert gossiper != null;
+        assert activeRepairService != null;
+        assert streamManager != null;
+        assert storageProxy != null;
+        assert failureDetector != null;
+        assert paxosManager != null;
+        assert locatorConfig != null;
+        assert dbConfig != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+        this.jmxObjectName = jmxObjectName;
+
+        bgMonitor = new BackgroundActivityMonitor(gossiper, this);
+        valueFactory = new VersionedValue.VersionedValueFactory(locatorConfig.getPartitioner());
+
+        /* register the verb handlers */
+        messagingService.registerVerbHandlers(MessagingService.Verb.MUTATION, new MutationVerbHandler(tracing, messagingService, mutationFactory.serializer));
+        messagingService.registerVerbHandlers(MessagingService.Verb.READ_REPAIR, new ReadRepairVerbHandler(messagingService));
+        messagingService.registerVerbHandlers(MessagingService.Verb.READ, new ReadVerbHandler(keyspaceManager, messagingService, this, tracing, messagingService.readResponseSerializer));
+        messagingService.registerVerbHandlers(MessagingService.Verb.RANGE_SLICE, new RangeSliceVerbHandler(tracing, messagingService, this, messagingService.rangeSliceReplySerializer));
+        messagingService.registerVerbHandlers(MessagingService.Verb.PAGED_RANGE, new RangeSliceVerbHandler(tracing, messagingService, this, messagingService.rangeSliceReplySerializer));
+        messagingService.registerVerbHandlers(MessagingService.Verb.COUNTER_MUTATION, new CounterMutationVerbHandler(locatorConfig, messagingService, storageProxy));
+        messagingService.registerVerbHandlers(MessagingService.Verb.TRUNCATE, new TruncateVerbHandler(tracing, keyspaceManager, messagingService));
+        messagingService.registerVerbHandlers(MessagingService.Verb.PAXOS_PREPARE, new PrepareVerbHandler(tracing, systemKeyspace, messagingService, paxosManager, messagingService.prepareResponseSerializer));
+        messagingService.registerVerbHandlers(MessagingService.Verb.PAXOS_PROPOSE, new ProposeVerbHandler(tracing, systemKeyspace, messagingService, paxosManager));
+        messagingService.registerVerbHandlers(MessagingService.Verb.PAXOS_COMMIT, new CommitVerbHandler(tracing, systemKeyspace, keyspaceManager, messagingService, paxosManager));
+
+        // see BootStrapper for a summary of how the bootstrap verbs interact
+        messagingService.registerVerbHandlers(MessagingService.Verb.REPLICATION_FINISHED, new ReplicationFinishedVerbHandler(messagingService, this));
+        messagingService.registerVerbHandlers(MessagingService.Verb.REQUEST_RESPONSE, new ResponseVerbHandler(tracing, messagingService));
+        messagingService.registerVerbHandlers(MessagingService.Verb.INTERNAL_RESPONSE, new ResponseVerbHandler(tracing, messagingService));
+        messagingService.registerVerbHandlers(MessagingService.Verb.REPAIR_MESSAGE, new RepairMessageVerbHandler(databaseDescriptor,
+                                                                                                                          stageManager,
+                                                                                                                          keyspaceManager,
+                                                                                                                          schema,
+                                                                                                                          activeRepairService,
+                                                                                                                          compactionManager,
+                                                                                                                          messagingService,
+                                                                                                                          streamManager,
+                                                                                                                          dbConfig));
+        messagingService.registerVerbHandlers(MessagingService.Verb.GOSSIP_SHUTDOWN, new GossipShutdownVerbHandler(gossiper, failureDetector));
+
+        messagingService.registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_SYN, new GossipDigestSynVerbHandler(databaseDescriptor, gossiper, messagingService, locatorConfig));
+        messagingService.registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_ACK, new GossipDigestAckVerbHandler(gossiper, messagingService));
+        messagingService.registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_ACK2, new GossipDigestAck2VerbHandler(gossiper));
+
+        messagingService.registerVerbHandlers(MessagingService.Verb.DEFINITIONS_UPDATE, new DefinitionsUpdateVerbHandler(stageManager, defsTables));
+        messagingService.registerVerbHandlers(MessagingService.Verb.SCHEMA_CHECK, new SchemaCheckVerbHandler(schema, messagingService));
+        messagingService.registerVerbHandlers(MessagingService.Verb.MIGRATION_REQUEST, new MigrationRequestVerbHandler(systemKeyspace, messagingService));
+
+        messagingService.registerVerbHandlers(MessagingService.Verb.SNAPSHOT, new SnapshotVerbHandler(columnFamilyStoreManager, keyspaceManager, messagingService));
+        messagingService.registerVerbHandlers(MessagingService.Verb.ECHO, new EchoVerbHandler(messagingService));
+
     }
 
     public void registerDaemon(CassandraDaemon daemon)
@@ -238,7 +346,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (initialized)
         {
             logger.warn("Stopping gossip by operator request");
-            Gossiper.instance.stop();
+            databaseDescriptor.getGossiper().stop();
             initialized = false;
         }
     }
@@ -249,7 +357,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (!initialized)
         {
             logger.warn("Starting gossip by operator request");
-            Gossiper.instance.start((int) (System.currentTimeMillis() / 1000));
+            databaseDescriptor.getGossiper().start((int) (System.currentTimeMillis() / 1000));
             initialized = true;
         }
     }
@@ -346,12 +454,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void stopClient()
     {
-        Gossiper.instance.unregister(this);
-        Gossiper.instance.stop();
-        MessagingService.instance.shutdown();
+        databaseDescriptor.getGossiper().unregister(this);
+        databaseDescriptor.getGossiper().stop();
+        databaseDescriptor.getMessagingService().shutdown();
         // give it a second so that task accepted before the MessagingService shutdown gets submitted to the stage (to avoid RejectedExecutionException)
         Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
-        StageManager.instance.shutdownNow();
+        databaseDescriptor.getStageManager().shutdownNow();
     }
 
     public boolean isInitialized()
@@ -370,26 +478,26 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public synchronized Collection<Token> prepareReplacementInfo() throws ConfigurationException
     {
-        logger.info("Gathering node replacement information for {}", DatabaseDescriptor.instance.getReplaceAddress());
-        if (!MessagingService.instance.isListening())
-            MessagingService.instance.listen(DatabaseDescriptor.instance.getLocalAddress());
+        logger.info("Gathering node replacement information for {}", databaseDescriptor.getReplaceAddress());
+        if (!databaseDescriptor.getMessagingService().isListening())
+            databaseDescriptor.getMessagingService().listen(databaseDescriptor.getLocatorConfig().getLocalAddress());
 
         // make magic happen
-        Gossiper.instance.doShadowRound();
+        databaseDescriptor.getGossiper().doShadowRound();
 
         UUID hostId = null;
         // now that we've gossiped at least once, we should be able to find the node we're replacing
-        if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.instance.getReplaceAddress())== null)
-            throw new RuntimeException("Cannot replace_address " + DatabaseDescriptor.instance.getReplaceAddress() + " because it doesn't exist in gossip");
-        hostId = Gossiper.instance.getHostId(DatabaseDescriptor.instance.getReplaceAddress());
+        if (databaseDescriptor.getGossiper().getEndpointStateForEndpoint(databaseDescriptor.getReplaceAddress())== null)
+            throw new RuntimeException("Cannot replace_address " + databaseDescriptor.getReplaceAddress() + " because it doesn't exist in gossip");
+        hostId = databaseDescriptor.getGossiper().getHostId(databaseDescriptor.getReplaceAddress());
         try
         {
-            if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.instance.getReplaceAddress()).getApplicationState(ApplicationState.TOKENS) == null)
-                throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.instance.getReplaceAddress() + " to replace");
-            Collection<Token> tokens = TokenSerializer.deserialize(LocatorConfig.instance.getPartitioner(), new DataInputStream(new ByteArrayInputStream(getApplicationStateValue(DatabaseDescriptor.instance.getReplaceAddress(), ApplicationState.TOKENS))));
+            if (databaseDescriptor.getGossiper().getEndpointStateForEndpoint(databaseDescriptor.getReplaceAddress()).getApplicationState(ApplicationState.TOKENS) == null)
+                throw new RuntimeException("Could not find tokens for " + databaseDescriptor.getReplaceAddress() + " to replace");
+            Collection<Token> tokens = TokenSerializer.deserialize(databaseDescriptor.getLocatorConfig().getPartitioner(), new DataInputStream(new ByteArrayInputStream(getApplicationStateValue(databaseDescriptor.getReplaceAddress(), ApplicationState.TOKENS))));
             
-            SystemKeyspace.instance.setLocalHostId(hostId); // use the replacee's host Id as our own so we receive hints, etc
-            Gossiper.instance.resetEndpointStateMap(); // clean up since we have what we need
+            databaseDescriptor.getSystemKeyspace().setLocalHostId(hostId); // use the replacee's host Id as our own so we receive hints, etc
+            databaseDescriptor.getGossiper().resetEndpointStateMap(); // clean up since we have what we need
             return tokens;        
         }
         catch (IOException e)
@@ -401,17 +509,17 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public synchronized void checkForEndpointCollision() throws ConfigurationException
     {
         logger.debug("Starting shadow gossip round to check for endpoint collision");
-        if (!MessagingService.instance.isListening())
-            MessagingService.instance.listen(DatabaseDescriptor.instance.getLocalAddress());
-        Gossiper.instance.doShadowRound();
-        EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.instance.getBroadcastAddress());
-        if (epState != null && !Gossiper.instance.isDeadState(epState))
+        if (!databaseDescriptor.getMessagingService().isListening())
+            databaseDescriptor.getMessagingService().listen(databaseDescriptor.getLocatorConfig().getLocalAddress());
+        databaseDescriptor.getGossiper().doShadowRound();
+        EndpointState epState = databaseDescriptor.getGossiper().getEndpointStateForEndpoint(databaseDescriptor.getLocatorConfig().getBroadcastAddress());
+        if (epState != null && !databaseDescriptor.getGossiper().isDeadState(epState))
         {
             throw new RuntimeException(String.format("A node with address %s already exists, cancelling join. " +
                                                      "Use cassandra.replace_address if you want to replace this node.",
-                                                     DatabaseDescriptor.instance.getBroadcastAddress()));
+                                                     databaseDescriptor.getLocatorConfig().getBroadcastAddress()));
         }
-        Gossiper.instance.resetEndpointStateMap();
+        databaseDescriptor.getGossiper().resetEndpointStateMap();
     }
 
     public synchronized void initClient() throws ConfigurationException
@@ -424,15 +532,15 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         while (true)
         {
             Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
-            for (InetAddress address : Gossiper.instance.getLiveMembers())
+            for (InetAddress address : databaseDescriptor.getGossiper().getLiveMembers())
             {
-                if (!Gossiper.instance.isFatClient(address))
+                if (!databaseDescriptor.getGossiper().isFatClient(address))
                     break outer;
             }
         }
 
         // sleep until any schema migrations have finished
-        while (!MigrationManager.instance.isReadyForBootstrap())
+        while (!databaseDescriptor.getMigrationManager().isReadyForBootstrap())
         {
             Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
         }
@@ -450,18 +558,18 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         isClientMode = true;
         logger.info("Starting up client gossip");
         setMode(Mode.CLIENT, false);
-        Gossiper.instance.register(this);
-        Gossiper.instance.start((int) (System.currentTimeMillis() / 1000)); // needed for node-ring gathering.
-        Gossiper.instance.addLocalApplicationState(ApplicationState.NET_VERSION, valueFactory.networkVersion());
+        databaseDescriptor.getGossiper().register(this);
+        databaseDescriptor.getGossiper().start((int) (System.currentTimeMillis() / 1000)); // needed for node-ring gathering.
+        databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.NET_VERSION, valueFactory.networkVersion());
 
-        if (!MessagingService.instance.isListening())
-            MessagingService.instance.listen(DatabaseDescriptor.instance.getLocalAddress());
+        if (!databaseDescriptor.getMessagingService().isListening())
+            databaseDescriptor.getMessagingService().listen(databaseDescriptor.getLocatorConfig().getLocalAddress());
         Uninterruptibles.sleepUninterruptibly(ringDelay, TimeUnit.MILLISECONDS);
     }
 
     public synchronized void initServer() throws ConfigurationException
     {
-        initServer(DatabaseDescriptor.instance.getRingDelay());
+        initServer(databaseDescriptor.getRingDelay());
     }
 
     public synchronized void initServer(int delay) throws ConfigurationException
@@ -494,21 +602,21 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (Boolean.parseBoolean(System.getProperty("cassandra.load_ring_state", "true")))
         {
             logger.info("Loading persisted ring state");
-            Multimap<InetAddress, Token> loadedTokens = SystemKeyspace.instance.loadTokens();
-            Map<InetAddress, UUID> loadedHostIds = SystemKeyspace.instance.loadHostIds();
+            Multimap<InetAddress, Token> loadedTokens = databaseDescriptor.getSystemKeyspace().loadTokens();
+            Map<InetAddress, UUID> loadedHostIds = databaseDescriptor.getSystemKeyspace().loadHostIds();
             for (InetAddress ep : loadedTokens.keySet())
             {
-                if (ep.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+                if (ep.equals(databaseDescriptor.getLocatorConfig().getBroadcastAddress()))
                 {
                     // entry has been mistakenly added, delete it
-                    SystemKeyspace.instance.removeEndpoint(ep);
+                    databaseDescriptor.getSystemKeyspace().removeEndpoint(ep);
                 }
                 else
                 {
-                    LocatorConfig.instance.getTokenMetadata().updateNormalTokens(loadedTokens.get(ep), ep);
+                    databaseDescriptor.getLocatorConfig().getTokenMetadata().updateNormalTokens(loadedTokens.get(ep), ep);
                     if (loadedHostIds.containsKey(ep))
-                        LocatorConfig.instance.getTokenMetadata().updateHostId(loadedHostIds.get(ep), ep);
-                    Gossiper.instance.addSavedEndpoint(ep);
+                        databaseDescriptor.getLocatorConfig().getTokenMetadata().updateHostId(loadedHostIds.get(ep), ep);
+                    databaseDescriptor.getGossiper().addSavedEndpoint(ep);
                 }
             }
         }
@@ -519,28 +627,28 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             @Override
             public void runMayThrow() throws InterruptedException
             {
-                ExecutorService counterMutationStage = StageManager.instance.getStage(Stage.COUNTER_MUTATION);
-                ExecutorService mutationStage = StageManager.instance.getStage(Stage.MUTATION);
+                ExecutorService counterMutationStage = databaseDescriptor.getStageManager().getStage(Stage.COUNTER_MUTATION);
+                ExecutorService mutationStage = databaseDescriptor.getStageManager().getStage(Stage.MUTATION);
                 if (mutationStage.isShutdown() && counterMutationStage.isShutdown())
                     return; // drained already
 
                 shutdownClientServers();
-                StorageServiceExecutors.instance.optionalTasks.shutdown();
-                Gossiper.instance.stop();
+                databaseDescriptor.getStorageServiceExecutors().optionalTasks.shutdown();
+                databaseDescriptor.getGossiper().stop();
 
                 // In-progress writes originating here could generate hints to be written, so shut down MessagingService
                 // before mutation stage, so we can get all the hints saved before shutting down
-                MessagingService.instance.shutdown();
+                databaseDescriptor.getMessagingService().shutdown();
                 counterMutationStage.shutdown();
                 mutationStage.shutdown();
                 counterMutationStage.awaitTermination(3600, TimeUnit.SECONDS);
                 mutationStage.awaitTermination(3600, TimeUnit.SECONDS);
-                StorageProxy.instance.verifyNoHintsInProgress();
+                databaseDescriptor.getStorageProxy().verifyNoHintsInProgress();
 
                 List<Future<?>> flushes = new ArrayList<>();
-                for (Keyspace keyspace : KeyspaceManager.instance.all())
+                for (Keyspace keyspace : databaseDescriptor.getKeyspaceManager().all())
                 {
-                    KSMetaData ksm = Schema.instance.getKSMetaData(keyspace.getName());
+                    KSMetaData ksm = databaseDescriptor.getSchema().getKSMetaData(keyspace.getName());
                     if (!ksm.durableWrites)
                     {
                         for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
@@ -557,11 +665,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     logger.warn("Caught exception while waiting for memtable flushes during shutdown hook", e);
                 }
 
-                CommitLog.instance.shutdownBlocking();
+                databaseDescriptor.getCommitLog().shutdownBlocking();
 
                 // wait for miscellaneous tasks like sstable and commitlog segment deletion
-                StorageServiceExecutors.instance.tasks.shutdown();
-                if (!StorageServiceExecutors.instance.tasks.awaitTermination(1, TimeUnit.MINUTES))
+                databaseDescriptor.getStorageServiceExecutors().tasks.shutdown();
+                if (!databaseDescriptor.getStorageServiceExecutors().tasks.awaitTermination(1, TimeUnit.MINUTES))
                     logger.warn("Miscellaneous task executor still busy after one minute; proceeding with shutdown");
             }
         }, "StorageServiceShutdownHook");
@@ -570,7 +678,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         prepareToJoin();
 
         // Has to be called after the host id has potentially changed in prepareToJoin().
-        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
+        for (ColumnFamilyStore cfs : databaseDescriptor.getColumnFamilyStoreManager().all())
             if (cfs.metadata.isCounter())
                 cfs.initCounterCache();
 
@@ -580,13 +688,13 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
         else
         {
-            Collection<Token> tokens = SystemKeyspace.instance.getSavedTokens();
+            Collection<Token> tokens = databaseDescriptor.getSystemKeyspace().getSavedTokens();
             if (!tokens.isEmpty())
             {
-                LocatorConfig.instance.getTokenMetadata().updateNormalTokens(tokens, DatabaseDescriptor.instance.getBroadcastAddress());
+                databaseDescriptor.getLocatorConfig().getTokenMetadata().updateNormalTokens(tokens, databaseDescriptor.getLocatorConfig().getBroadcastAddress());
                 // order is important here, the gossiper can fire in between adding these two states.  It's ok to send TOKENS without STATUS, but *not* vice versa.
-                Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS, valueFactory.tokens(tokens));
-                Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.hibernate(true));
+                databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.TOKENS, valueFactory.tokens(tokens));
+                databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.STATUS, valueFactory.hibernate(true));
             }
             logger.info("Not joining ring as requested. Use JMX (StorageService->joinRing()) to initiate ring joining");
         }
@@ -594,7 +702,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private boolean shouldBootstrap()
     {
-        return DatabaseDescriptor.instance.isAutoBootstrap() && !SystemKeyspace.instance.bootstrapComplete() && !DatabaseDescriptor.instance.getSeeds().contains(DatabaseDescriptor.instance.getBroadcastAddress());
+        return databaseDescriptor.isAutoBootstrap() && !databaseDescriptor.getSystemKeyspace().bootstrapComplete() && !databaseDescriptor.getSeeds().contains(databaseDescriptor.getLocatorConfig().getBroadcastAddress());
     }
 
     private void prepareToJoin() throws ConfigurationException
@@ -603,15 +711,15 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             Map<ApplicationState, VersionedValue> appStates = new HashMap<>();
 
-            if (DatabaseDescriptor.instance.isReplacing() && !(Boolean.parseBoolean(System.getProperty("cassandra.join_ring", "true"))))
+            if (databaseDescriptor.isReplacing() && !(Boolean.parseBoolean(System.getProperty("cassandra.join_ring", "true"))))
                 throw new ConfigurationException("Cannot set both join_ring=false and attempt to replace a node");
-            if (LocatorConfig.instance.getReplaceTokens().size() > 0 || DatabaseDescriptor.instance.getReplaceNode() != null)
+            if (databaseDescriptor.getLocatorConfig().getReplaceTokens().size() > 0 || databaseDescriptor.getReplaceNode() != null)
                 throw new RuntimeException("Replace method removed; use cassandra.replace_address instead");
-            if (DatabaseDescriptor.instance.isReplacing())
+            if (databaseDescriptor.isReplacing())
             {
-                if (SystemKeyspace.instance.bootstrapComplete())
+                if (databaseDescriptor.getSystemKeyspace().bootstrapComplete())
                     throw new RuntimeException("Cannot replace address with a node that is already bootstrapped");
-                if (!DatabaseDescriptor.instance.isAutoBootstrap())
+                if (!databaseDescriptor.isAutoBootstrap())
                     throw new RuntimeException("Trying to replace_address with auto_bootstrap disabled will not work, check your configuration");
                 bootstrapTokens = prepareReplacementInfo();
                 appStates.put(ApplicationState.STATUS, valueFactory.hibernate(true));
@@ -626,26 +734,26 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             // for bootstrap to get the load info it needs.
             // (we won't be part of the storage ring though until we add a counterId to our state, below.)
             // Seed the host ID-to-endpoint map with our own ID.
-            UUID localHostId = SystemKeyspace.instance.getLocalHostId();
-            LocatorConfig.instance.getTokenMetadata().updateHostId(localHostId, DatabaseDescriptor.instance.getBroadcastAddress());
+            UUID localHostId = databaseDescriptor.getSystemKeyspace().getLocalHostId();
+            databaseDescriptor.getLocatorConfig().getTokenMetadata().updateHostId(localHostId, databaseDescriptor.getLocatorConfig().getBroadcastAddress());
             appStates.put(ApplicationState.NET_VERSION, valueFactory.networkVersion());
             appStates.put(ApplicationState.HOST_ID, valueFactory.hostId(localHostId));
-            appStates.put(ApplicationState.RPC_ADDRESS, valueFactory.rpcaddress(DatabaseDescriptor.instance.getBroadcastRpcAddress()));
+            appStates.put(ApplicationState.RPC_ADDRESS, valueFactory.rpcaddress(databaseDescriptor.getBroadcastRpcAddress()));
             appStates.put(ApplicationState.RELEASE_VERSION, valueFactory.releaseVersion());
             logger.info("Starting up server gossip");
-            Gossiper.instance.register(this);
-            Gossiper.instance.start(SystemKeyspace.instance.incrementAndGetGeneration(), appStates); // needed for node-ring gathering.
+            databaseDescriptor.getGossiper().register(this);
+            databaseDescriptor.getGossiper().start(databaseDescriptor.getSystemKeyspace().incrementAndGetGeneration(), appStates); // needed for node-ring gathering.
             // gossip snitch infos (local DC and rack)
             gossipSnitchInfo();
             // gossip Schema.emptyVersion forcing immediate check for schema updates (see MigrationManager#maybeScheduleSchemaPull)
-            Schema.instance.updateVersionAndAnnounce(); // Ensure we know our own actual Schema UUID in preparation for updates
+            databaseDescriptor.getSchema().updateVersionAndAnnounce(); // Ensure we know our own actual Schema UUID in preparation for updates
 
-            if (!MessagingService.instance.isListening())
-                MessagingService.instance.listen(DatabaseDescriptor.instance.getLocalAddress());
-            LoadBroadcaster.instance.startBroadcasting();
+            if (!databaseDescriptor.getMessagingService().isListening())
+                databaseDescriptor.getMessagingService().listen(databaseDescriptor.getLocatorConfig().getLocalAddress());
+            databaseDescriptor.getLoadBroadcaster().startBroadcasting();
 
-            HintedHandOffManager.instance.start();
-            BatchlogManager.instance.start();
+            databaseDescriptor.getHintedHandOffManager().start();
+            databaseDescriptor.getBatchlogManager().start();
         }
     }
 
@@ -664,59 +772,59 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // to get schema info from gossip which defeats the purpose.  See CASSANDRA-4427 for the gory details.
         Set<InetAddress> current = new HashSet<>();
         logger.debug("Bootstrap variables: {} {} {} {}",
-                     DatabaseDescriptor.instance.isAutoBootstrap(),
-                     SystemKeyspace.instance.bootstrapInProgress(),
-                     SystemKeyspace.instance.bootstrapComplete(),
-                     DatabaseDescriptor.instance.getSeeds().contains(DatabaseDescriptor.instance.getBroadcastAddress()));
-        if (DatabaseDescriptor.instance.isAutoBootstrap() && !SystemKeyspace.instance.bootstrapComplete() && DatabaseDescriptor.instance.getSeeds().contains(DatabaseDescriptor.instance.getBroadcastAddress()))
+                     databaseDescriptor.isAutoBootstrap(),
+                     databaseDescriptor.getSystemKeyspace().bootstrapInProgress(),
+                     databaseDescriptor.getSystemKeyspace().bootstrapComplete(),
+                     databaseDescriptor.getSeeds().contains(databaseDescriptor.getLocatorConfig().getBroadcastAddress()));
+        if (databaseDescriptor.isAutoBootstrap() && !databaseDescriptor.getSystemKeyspace().bootstrapComplete() && databaseDescriptor.getSeeds().contains(databaseDescriptor.getLocatorConfig().getBroadcastAddress()))
             logger.info("This node will not auto bootstrap because it is configured to be a seed node.");
         if (shouldBootstrap())
         {
-            if (SystemKeyspace.instance.bootstrapInProgress())
+            if (databaseDescriptor.getSystemKeyspace().bootstrapInProgress())
                 logger.warn("Detected previous bootstrap failure; retrying");
             else
-                SystemKeyspace.instance.setBootstrapState(SystemKeyspace.BootstrapState.IN_PROGRESS);
+                databaseDescriptor.getSystemKeyspace().setBootstrapState(SystemKeyspace.BootstrapState.IN_PROGRESS);
             setMode(Mode.JOINING, "waiting for ring information", true);
             // first sleep the delay to make sure we see all our peers
             for (int i = 0; i < delay; i += 1000)
             {
                 // if we see schema, we can proceed to the next check directly
-                if (!Schema.instance.getVersion().equals(Schema.emptyVersion))
+                if (!databaseDescriptor.getSchema().getVersion().equals(Schema.emptyVersion))
                 {
-                    logger.debug("got schema: {}", Schema.instance.getVersion());
+                    logger.debug("got schema: {}", databaseDescriptor.getSchema().getVersion());
                     break;
                 }
                 Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
             }
             // if our schema hasn't matched yet, keep sleeping until it does
             // (post CASSANDRA-1391 we don't expect this to be necessary very often, but it doesn't hurt to be careful)
-            while (!MigrationManager.instance.isReadyForBootstrap())
+            while (!databaseDescriptor.getMigrationManager().isReadyForBootstrap())
             {
                 setMode(Mode.JOINING, "waiting for schema information to complete", true);
                 Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
             }
             setMode(Mode.JOINING, "schema complete, ready to bootstrap", true);
             setMode(Mode.JOINING, "waiting for pending range calculation", true);
-            PendingRangeCalculatorService.instance.blockUntilFinished();
+            databaseDescriptor.getPendingRangeCalculatorService().blockUntilFinished();
             setMode(Mode.JOINING, "calculation complete, ready to bootstrap", true);
 
 
             if (logger.isDebugEnabled())
                 logger.debug("... got ring + schema info");
 
-            if (!DatabaseDescriptor.instance.isReplacing())
+            if (!databaseDescriptor.isReplacing())
             {
-                if (LocatorConfig.instance.getTokenMetadata().isMember(DatabaseDescriptor.instance.getBroadcastAddress()))
+                if (databaseDescriptor.getLocatorConfig().getTokenMetadata().isMember(databaseDescriptor.getLocatorConfig().getBroadcastAddress()))
                 {
                     String s = "This node is already a member of the token ring; bootstrap aborted. (If replacing a dead node, remove the old one from the ring first.)";
                     throw new UnsupportedOperationException(s);
                 }
                 setMode(Mode.JOINING, "getting bootstrap token", true);
-                bootstrapTokens = BootStrapper.getBootstrapTokens(LocatorConfig.instance.getTokenMetadata(), DatabaseDescriptor.instance, LocatorConfig.instance);
+                bootstrapTokens = BootStrapper.getBootstrapTokens(databaseDescriptor.getLocatorConfig().getTokenMetadata(), databaseDescriptor, databaseDescriptor.getLocatorConfig());
             }
             else
             {
-                if (!DatabaseDescriptor.instance.getReplaceAddress().equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+                if (!databaseDescriptor.getReplaceAddress().equals(databaseDescriptor.getLocatorConfig().getBroadcastAddress()))
                 {
                     try
                     {
@@ -732,11 +840,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     // check for operator errors...
                     for (Token token : bootstrapTokens)
                     {
-                        InetAddress existing = LocatorConfig.instance.getTokenMetadata().getEndpoint(token);
+                        InetAddress existing = databaseDescriptor.getLocatorConfig().getTokenMetadata().getEndpoint(token);
                         if (existing != null)
                         {
                             long nanoDelay = delay * 1000000L;
-                            if (Gossiper.instance.getEndpointStateForEndpoint(existing).getUpdateTimestamp() > (System.nanoTime() - nanoDelay))
+                            if (databaseDescriptor.getGossiper().getEndpointStateForEndpoint(existing).getUpdateTimestamp() > (System.nanoTime() - nanoDelay))
                                 throw new UnsupportedOperationException("Cannot replace a live node... ");
                             current.add(existing);
                         }
@@ -750,7 +858,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 {
                     try
                     {
-                        Thread.sleep(DatabaseDescriptor.instance.getRingDelay());
+                        Thread.sleep(databaseDescriptor.getRingDelay());
                     }
                     catch (InterruptedException e)
                     {
@@ -766,14 +874,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
         else
         {
-            bootstrapTokens = SystemKeyspace.instance.getSavedTokens();
+            bootstrapTokens = databaseDescriptor.getSystemKeyspace().getSavedTokens();
             if (bootstrapTokens.isEmpty())
             {
-                Collection<String> initialTokens = LocatorConfig.instance.getInitialTokens();
+                Collection<String> initialTokens = databaseDescriptor.getLocatorConfig().getInitialTokens();
                 if (initialTokens.size() < 1)
                 {
-                    bootstrapTokens = BootStrapper.getRandomTokens(LocatorConfig.instance.getTokenMetadata(), DatabaseDescriptor.instance.getNumTokens(), LocatorConfig.instance.getPartitioner());
-                    if (DatabaseDescriptor.instance.getNumTokens() == 1)
+                    bootstrapTokens = BootStrapper.getRandomTokens(databaseDescriptor.getLocatorConfig().getTokenMetadata(), databaseDescriptor.getNumTokens(), databaseDescriptor.getLocatorConfig().getPartitioner());
+                    if (databaseDescriptor.getNumTokens() == 1)
                         logger.warn("Generated random token {}. Random tokens will result in an unbalanced ring; see http://wiki.apache.org/cassandra/Operations", bootstrapTokens);
                     else
                         logger.info("Generated random tokens. tokens are {}", bootstrapTokens);
@@ -782,38 +890,38 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 {
                     bootstrapTokens = new ArrayList<Token>(initialTokens.size());
                     for (String token : initialTokens)
-                        bootstrapTokens.add(LocatorConfig.instance.getPartitioner().getTokenFactory().fromString(token));
+                        bootstrapTokens.add(databaseDescriptor.getLocatorConfig().getPartitioner().getTokenFactory().fromString(token));
                     logger.info("Saved tokens not found. Using configuration value: {}", bootstrapTokens);
                 }
             }
             else
             {
-                if (bootstrapTokens.size() != DatabaseDescriptor.instance.getNumTokens())
-                    throw new ConfigurationException("Cannot change the number of tokens from " + bootstrapTokens.size() + " to " + DatabaseDescriptor.instance.getNumTokens());
+                if (bootstrapTokens.size() != databaseDescriptor.getNumTokens())
+                    throw new ConfigurationException("Cannot change the number of tokens from " + bootstrapTokens.size() + " to " + databaseDescriptor.getNumTokens());
                 else
                     logger.info("Using saved tokens {}", bootstrapTokens);
             }
         }
 
         // if we don't have system_traces keyspace at this point, then create it manually
-        if (Schema.instance.getKSMetaData(Tracing.TRACE_KS) == null)
+        if (databaseDescriptor.getSchema().getKSMetaData(Tracing.TRACE_KS) == null)
         {
-            KSMetaData tracingKeyspace = KSMetaDataFactory.instance.traceKeyspace();
-            MigrationManager.instance.announceNewKeyspace(tracingKeyspace, 0, false);
+            KSMetaData tracingKeyspace = databaseDescriptor.getKSMetaDataFactory().traceKeyspace();
+            databaseDescriptor.getMigrationManager().announceNewKeyspace(tracingKeyspace, 0, false);
         }
 
         if (!isSurveyMode)
         {
             // start participating in the ring.
-            SystemKeyspace.instance.setBootstrapState(SystemKeyspace.BootstrapState.COMPLETED);
+            databaseDescriptor.getSystemKeyspace().setBootstrapState(SystemKeyspace.BootstrapState.COMPLETED);
             setTokens(bootstrapTokens);
             // remove the existing info about the replaced node.
             if (!current.isEmpty())
                 for (InetAddress existing : current)
-                    Gossiper.instance.replacedEndpoint(existing);
-            assert LocatorConfig.instance.getTokenMetadata().sortedTokens().size() > 0;
+                    databaseDescriptor.getGossiper().replacedEndpoint(existing);
+            assert databaseDescriptor.getLocatorConfig().getTokenMetadata().sortedTokens().size() > 0;
 
-            Auth.instance.setup();
+            databaseDescriptor.getAuth().setup();
         }
         else
         {
@@ -823,11 +931,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void gossipSnitchInfo()
     {
-        IEndpointSnitch snitch = LocatorConfig.instance.getEndpointSnitch();
-        String dc = snitch.getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
-        String rack = snitch.getRack(DatabaseDescriptor.instance.getBroadcastAddress());
-        Gossiper.instance.addLocalApplicationState(ApplicationState.DC, valueFactory.datacenter(dc));
-        Gossiper.instance.addLocalApplicationState(ApplicationState.RACK, valueFactory.rack(rack));
+        IEndpointSnitch snitch = databaseDescriptor.getLocatorConfig().getEndpointSnitch();
+        String dc = snitch.getDatacenter(databaseDescriptor.getLocatorConfig().getBroadcastAddress());
+        String rack = snitch.getRack(databaseDescriptor.getLocatorConfig().getBroadcastAddress());
+        databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.DC, valueFactory.datacenter(dc));
+        databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.RACK, valueFactory.rack(rack));
     }
 
     public synchronized void joinRing() throws IOException
@@ -846,13 +954,13 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
         else if (isSurveyMode)
         {
-            setTokens(SystemKeyspace.instance.getSavedTokens());
-            SystemKeyspace.instance.setBootstrapState(SystemKeyspace.BootstrapState.COMPLETED);
+            setTokens(databaseDescriptor.getSystemKeyspace().getSavedTokens());
+            databaseDescriptor.getSystemKeyspace().setBootstrapState(SystemKeyspace.BootstrapState.COMPLETED);
             isSurveyMode = false;
             logger.info("Leaving write survey mode and joining ring at operator request");
-            assert LocatorConfig.instance.getTokenMetadata().sortedTokens().size() > 0;
+            assert databaseDescriptor.getLocatorConfig().getTokenMetadata().sortedTokens().size() > 0;
 
-            Auth.instance.setup();
+            databaseDescriptor.getAuth().setup();
         }
     }
 
@@ -865,14 +973,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         logger.info("rebuild from dc: {}", sourceDc == null ? "(any dc)" : sourceDc);
 
-        RangeStreamer streamer = new RangeStreamer(LocatorConfig.instance.getTokenMetadata(), DatabaseDescriptor.instance.getBroadcastAddress(), "Rebuild",
-                                                   DatabaseDescriptor.instance, Schema.instance, Gossiper.instance, StreamManager.instance, KeyspaceManager.instance, DBConfig.instance);
-        streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
+        RangeStreamer streamer = new RangeStreamer(databaseDescriptor.getLocatorConfig().getTokenMetadata(), databaseDescriptor.getLocatorConfig().getBroadcastAddress(), "Rebuild",
+                                                   databaseDescriptor, databaseDescriptor.getSchema(), databaseDescriptor.getGossiper(), databaseDescriptor.getStreamManager(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getDBConfig());
+        streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(databaseDescriptor.getFailureDetector()));
         if (sourceDc != null)
-            streamer.addSourceFilter(new RangeStreamer.SingleDatacenterFilter(LocatorConfig.instance.getEndpointSnitch(), sourceDc));
+            streamer.addSourceFilter(new RangeStreamer.SingleDatacenterFilter(databaseDescriptor.getLocatorConfig().getEndpointSnitch(), sourceDc));
 
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
-            streamer.addRanges(keyspaceName, LocatorConfig.instance.getLocalRanges(keyspaceName));
+        for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
+            streamer.addRanges(keyspaceName, databaseDescriptor.getLocatorConfig().getLocalRanges(keyspaceName));
 
         try
         {
@@ -892,33 +1000,33 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void setStreamThroughputMbPerSec(int value)
     {
-        DatabaseDescriptor.instance.setStreamThroughputOutboundMegabitsPerSec(value);
+        databaseDescriptor.setStreamThroughputOutboundMegabitsPerSec(value);
         logger.info("setstreamthroughput: throttle set to {}", value);
     }
 
     public int getStreamThroughputMbPerSec()
     {
-        return DatabaseDescriptor.instance.getStreamThroughputOutboundMegabitsPerSec();
+        return databaseDescriptor.getStreamThroughputOutboundMegabitsPerSec();
     }
 
     public int getCompactionThroughputMbPerSec()
     {
-        return DatabaseDescriptor.instance.getCompactionThroughputMbPerSec();
+        return databaseDescriptor.getCompactionThroughputMbPerSec();
     }
 
     public void setCompactionThroughputMbPerSec(int value)
     {
-        DatabaseDescriptor.instance.setCompactionThroughputMbPerSec(value);
+        databaseDescriptor.setCompactionThroughputMbPerSec(value);
     }
 
     public boolean isIncrementalBackupsEnabled()
     {
-        return DatabaseDescriptor.instance.isIncrementalBackupsEnabled();
+        return databaseDescriptor.isIncrementalBackupsEnabled();
     }
 
     public void setIncrementalBackupsEnabled(boolean value)
     {
-        DatabaseDescriptor.instance.setIncrementalBackupsEnabled(value);
+        databaseDescriptor.setIncrementalBackupsEnabled(value);
     }
 
     private void setMode(Mode m, boolean log)
@@ -939,28 +1047,28 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private void bootstrap(Collection<Token> tokens)
     {
         isBootstrapMode = true;
-        SystemKeyspace.instance.updateTokens(tokens); // DON'T use setToken, that makes us part of the ring locally which is incorrect until we are done bootstrapping
-        if (!DatabaseDescriptor.instance.isReplacing())
+        databaseDescriptor.getSystemKeyspace().updateTokens(tokens); // DON'T use setToken, that makes us part of the ring locally which is incorrect until we are done bootstrapping
+        if (!databaseDescriptor.isReplacing())
         {
             // if not an existing token then bootstrap
             // order is important here, the gossiper can fire in between adding these two states.  It's ok to send TOKENS without STATUS, but *not* vice versa.
-            Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS, valueFactory.tokens(tokens));
-            Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,
-                                                       valueFactory.bootstrapping(tokens));
-            setMode(Mode.JOINING, "sleeping " + DatabaseDescriptor.instance.getRingDelay() + " ms for pending range setup", true);
-            Uninterruptibles.sleepUninterruptibly(DatabaseDescriptor.instance.getRingDelay(), TimeUnit.MILLISECONDS);
+            databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.TOKENS, valueFactory.tokens(tokens));
+            databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.STATUS,
+                                                                      valueFactory.bootstrapping(tokens));
+            setMode(Mode.JOINING, "sleeping " + databaseDescriptor.getRingDelay() + " ms for pending range setup", true);
+            Uninterruptibles.sleepUninterruptibly(databaseDescriptor.getRingDelay(), TimeUnit.MILLISECONDS);
         }
         else
         {
             // Dont set any state for the node which is bootstrapping the existing token...
-            LocatorConfig.instance.getTokenMetadata().updateNormalTokens(tokens, DatabaseDescriptor.instance.getBroadcastAddress());
-            SystemKeyspace.instance.removeEndpoint(DatabaseDescriptor.instance.getReplaceAddress());
+            databaseDescriptor.getLocatorConfig().getTokenMetadata().updateNormalTokens(tokens, databaseDescriptor.getLocatorConfig().getBroadcastAddress());
+            databaseDescriptor.getSystemKeyspace().removeEndpoint(databaseDescriptor.getReplaceAddress());
         }
-        if (!Gossiper.instance.seenAnySeed())
+        if (!databaseDescriptor.getGossiper().seenAnySeed())
             throw new IllegalStateException("Unable to contact any seeds!");
         setMode(Mode.JOINING, "Starting to bootstrap...", true);
-        new BootStrapper(DatabaseDescriptor.instance.getBroadcastAddress(), tokens, LocatorConfig.instance.getTokenMetadata(), DatabaseDescriptor.instance,
-                         Schema.instance, Gossiper.instance, KeyspaceManager.instance, StreamManager.instance, this, FailureDetector.instance, DBConfig.instance).bootstrap(); // handles token update
+        new BootStrapper(databaseDescriptor.getLocatorConfig().getBroadcastAddress(), tokens, databaseDescriptor.getLocatorConfig().getTokenMetadata(), databaseDescriptor,
+                         databaseDescriptor.getSchema(), databaseDescriptor.getGossiper(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), this, databaseDescriptor.getFailureDetector(), databaseDescriptor.getDBConfig()).bootstrap(); // handles token update
         logger.info("Bootstrap completed! for the tokens {}", tokens);
     }
 
@@ -1010,12 +1118,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     public String getRpcaddress(InetAddress endpoint)
     {
-        if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
-            return DatabaseDescriptor.instance.getBroadcastRpcAddress().getHostAddress();
-        else if (Gossiper.instance.getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.RPC_ADDRESS) == null)
+        if (endpoint.equals(databaseDescriptor.getLocatorConfig().getBroadcastAddress()))
+            return databaseDescriptor.getBroadcastRpcAddress().getHostAddress();
+        else if (databaseDescriptor.getGossiper().getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.RPC_ADDRESS) == null)
             return endpoint.getHostAddress();
         else
-            return Gossiper.instance.getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.RPC_ADDRESS).value;
+            return databaseDescriptor.getGossiper().getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.RPC_ADDRESS).value;
     }
 
     /**
@@ -1044,10 +1152,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // some people just want to get a visual representation of things. Allow null and set it to the first
         // non-system keyspace.
         if (keyspace == null)
-            keyspace = Schema.instance.getNonSystemKeyspaces().get(0);
+            keyspace = databaseDescriptor.getSchema().getNonSystemKeyspaces().get(0);
 
         Map<List<String>, List<String>> map = new HashMap<>();
-        for (Map.Entry<Range<Token>, Collection<InetAddress>> entry : LocatorConfig.instance.getTokenMetadata().getPendingRanges(keyspace).entrySet())
+        for (Map.Entry<Range<Token>, Collection<InetAddress>> entry : databaseDescriptor.getLocatorConfig().getTokenMetadata().getPendingRanges(keyspace).entrySet())
         {
             List<InetAddress> l = new ArrayList<>(entry.getValue());
             map.put(entry.getKey().asList(), stringify(l));
@@ -1057,7 +1165,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public Map<Range<Token>, List<InetAddress>> getRangeToAddressMap(String keyspace)
     {
-        return getRangeToAddressMap(keyspace, LocatorConfig.instance.getTokenMetadata().sortedTokens());
+        return getRangeToAddressMap(keyspace, databaseDescriptor.getLocatorConfig().getTokenMetadata().sortedTokens());
     }
 
     public Map<Range<Token>, List<InetAddress>> getRangeToAddressMapInLocalDC(String keyspace)
@@ -1084,9 +1192,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private List<Token> getTokensInLocalDC()
     {
         List<Token> filteredTokens = Lists.newArrayList();
-        for (Token token : LocatorConfig.instance.getTokenMetadata().sortedTokens())
+        for (Token token : databaseDescriptor.getLocatorConfig().getTokenMetadata().sortedTokens())
         {
-            InetAddress endpoint = LocatorConfig.instance.getTokenMetadata().getEndpoint(token);
+            InetAddress endpoint = databaseDescriptor.getLocatorConfig().getTokenMetadata().getEndpoint(token);
             if (isLocalDC(endpoint))
                 filteredTokens.add(token);
         }
@@ -1095,8 +1203,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private boolean isLocalDC(InetAddress targetHost)
     {
-        String remoteDC = LocatorConfig.instance.getEndpointSnitch().getDatacenter(targetHost);
-        String localDC = LocatorConfig.instance.getEndpointSnitch().getDatacenter(DatabaseDescriptor.instance.getBroadcastAddress());
+        String remoteDC = databaseDescriptor.getLocatorConfig().getEndpointSnitch().getDatacenter(targetHost);
+        String localDC = databaseDescriptor.getLocatorConfig().getEndpointSnitch().getDatacenter(databaseDescriptor.getLocatorConfig().getBroadcastAddress());
         return remoteDC.equals(localDC);
     }
 
@@ -1105,7 +1213,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // some people just want to get a visual representation of things. Allow null and set it to the first
         // non-system keyspace.
         if (keyspace == null)
-            keyspace = Schema.instance.getNonSystemKeyspaces().get(0);
+            keyspace = databaseDescriptor.getSchema().getNonSystemKeyspaces().get(0);
 
         List<Range<Token>> ranges = getAllRanges(sortedTokens);
         return constructRangeToEndpointMap(keyspace, ranges);
@@ -1162,14 +1270,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private List<TokenRange> describeRing(String keyspace, boolean includeOnlyLocalDC) throws InvalidRequestException
     {
-        if (!Schema.instance.getKeyspaces().contains(keyspace))
+        if (!databaseDescriptor.getSchema().getKeyspaces().contains(keyspace))
             throw new InvalidRequestException("No such keyspace: " + keyspace);
 
-        if (keyspace == null || KeyspaceManager.instance.open(keyspace).getReplicationStrategy() instanceof LocalStrategy)
+        if (keyspace == null || databaseDescriptor.getKeyspaceManager().open(keyspace).getReplicationStrategy() instanceof LocalStrategy)
             throw new InvalidRequestException("There is no ring for the keyspace: " + keyspace);
 
         List<TokenRange> ranges = new ArrayList<>();
-        Token.TokenFactory tf = LocatorConfig.instance.getPartitioner().getTokenFactory();
+        Token.TokenFactory tf = databaseDescriptor.getLocatorConfig().getPartitioner().getTokenFactory();
 
         Map<Range<Token>, List<InetAddress>> rangeToAddressMap =
                 includeOnlyLocalDC
@@ -1188,8 +1296,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             {
                 EndpointDetails details = new EndpointDetails();
                 details.host = endpoint.getHostAddress();
-                details.datacenter = LocatorConfig.instance.getEndpointSnitch().getDatacenter(endpoint);
-                details.rack = LocatorConfig.instance.getEndpointSnitch().getRack(endpoint);
+                details.datacenter = databaseDescriptor.getLocatorConfig().getEndpointSnitch().getDatacenter(endpoint);
+                details.rack = databaseDescriptor.getLocatorConfig().getEndpointSnitch().getRack(endpoint);
 
                 endpoints.add(details.host);
                 rpc_endpoints.add(getRpcaddress(endpoint));
@@ -1209,7 +1317,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public Map<String, String> getTokenToEndpointMap()
     {
-        Map<Token, InetAddress> mapInetAddress = LocatorConfig.instance.getTokenMetadata().getNormalAndBootstrappingTokenToEndpointMap();
+        Map<Token, InetAddress> mapInetAddress = databaseDescriptor.getLocatorConfig().getTokenMetadata().getNormalAndBootstrappingTokenToEndpointMap();
         // in order to preserve tokens in ascending order, we use LinkedHashMap here
         Map<String, String> mapString = new LinkedHashMap<>(mapInetAddress.size());
         List<Token> tokens = new ArrayList<>(mapInetAddress.keySet());
@@ -1223,13 +1331,13 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public String getLocalHostId()
     {
-        return LocatorConfig.instance.getTokenMetadata().getHostId(DatabaseDescriptor.instance.getBroadcastAddress()).toString();
+        return databaseDescriptor.getLocatorConfig().getTokenMetadata().getHostId(databaseDescriptor.getLocatorConfig().getBroadcastAddress()).toString();
     }
 
     public Map<String, String> getHostIdMap()
     {
         Map<String, String> mapOut = new HashMap<>();
-        for (Map.Entry<InetAddress, UUID> entry : LocatorConfig.instance.getTokenMetadata().getEndpointToHostIdMapForReading().entrySet())
+        for (Map.Entry<InetAddress, UUID> entry : databaseDescriptor.getLocatorConfig().getTokenMetadata().getEndpointToHostIdMapForReading().entrySet())
             mapOut.put(entry.getKey().getHostAddress(), entry.getValue().toString());
         return mapOut;
     }
@@ -1245,7 +1353,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         Map<Range<Token>, List<InetAddress>> rangeToEndpointMap = new HashMap<>();
         for (Range<Token> range : ranges)
         {
-            rangeToEndpointMap.put(range, KeyspaceManager.instance.open(keyspace).getReplicationStrategy().getNaturalEndpoints(range.right));
+            rangeToEndpointMap.put(range, databaseDescriptor.getKeyspaceManager().open(keyspace).getReplicationStrategy().getNaturalEndpoints(range.right));
         }
         return rangeToEndpointMap;
     }
@@ -1322,8 +1430,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
         else
         {
-            EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
-            if (epState == null || Gossiper.instance.isDeadState(epState))
+            EndpointState epState = databaseDescriptor.getGossiper().getEndpointStateForEndpoint(endpoint);
+            if (epState == null || databaseDescriptor.getGossiper().isDeadState(epState))
             {
                 logger.debug("Ignoring state change for dead or unknown endpoint: {}", endpoint);
                 return;
@@ -1332,18 +1440,18 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             switch (state)
             {
                 case RELEASE_VERSION:
-                    SystemKeyspace.instance.updatePeerInfo(endpoint, "release_version", value.value);
+                    databaseDescriptor.getSystemKeyspace().updatePeerInfo(endpoint, "release_version", value.value);
                     break;
                 case DC:
-                    SystemKeyspace.instance.updatePeerInfo(endpoint, "data_center", value.value);
+                    databaseDescriptor.getSystemKeyspace().updatePeerInfo(endpoint, "data_center", value.value);
                     break;
                 case RACK:
-                    SystemKeyspace.instance.updatePeerInfo(endpoint, "rack", value.value);
+                    databaseDescriptor.getSystemKeyspace().updatePeerInfo(endpoint, "rack", value.value);
                     break;
                 case RPC_ADDRESS:
                     try
                     {
-                        SystemKeyspace.instance.updatePeerInfo(endpoint, "rpc_address", InetAddress.getByName(value.value));
+                        databaseDescriptor.getSystemKeyspace().updatePeerInfo(endpoint, "rpc_address", InetAddress.getByName(value.value));
                     }
                     catch (UnknownHostException e)
                     {
@@ -1351,11 +1459,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     }
                     break;
                 case SCHEMA:
-                    SystemKeyspace.instance.updatePeerInfo(endpoint, "schema_version", UUID.fromString(value.value));
-                    MigrationManager.instance.scheduleSchemaPull(endpoint, epState);
+                    databaseDescriptor.getSystemKeyspace().updatePeerInfo(endpoint, "schema_version", UUID.fromString(value.value));
+                    databaseDescriptor.getMigrationManager().scheduleSchemaPull(endpoint, epState);
                     break;
                 case HOST_ID:
-                    SystemKeyspace.instance.updatePeerInfo(endpoint, "host_id", UUID.fromString(value.value));
+                    databaseDescriptor.getSystemKeyspace().updatePeerInfo(endpoint, "host_id", UUID.fromString(value.value));
                     break;
             }
         }
@@ -1363,24 +1471,24 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private void updatePeerInfo(InetAddress endpoint)
     {
-        EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+        EndpointState epState = databaseDescriptor.getGossiper().getEndpointStateForEndpoint(endpoint);
         for (Map.Entry<ApplicationState, VersionedValue> entry : epState.getApplicationStateMap().entrySet())
         {
             switch (entry.getKey())
             {
                 case RELEASE_VERSION:
-                    SystemKeyspace.instance.updatePeerInfo(endpoint, "release_version", entry.getValue().value);
+                    databaseDescriptor.getSystemKeyspace().updatePeerInfo(endpoint, "release_version", entry.getValue().value);
                     break;
                 case DC:
-                    SystemKeyspace.instance.updatePeerInfo(endpoint, "data_center", entry.getValue().value);
+                    databaseDescriptor.getSystemKeyspace().updatePeerInfo(endpoint, "data_center", entry.getValue().value);
                     break;
                 case RACK:
-                    SystemKeyspace.instance.updatePeerInfo(endpoint, "rack", entry.getValue().value);
+                    databaseDescriptor.getSystemKeyspace().updatePeerInfo(endpoint, "rack", entry.getValue().value);
                     break;
                 case RPC_ADDRESS:
                     try
                     {
-                        SystemKeyspace.instance.updatePeerInfo(endpoint, "rpc_address", InetAddress.getByName(entry.getValue().value));
+                        databaseDescriptor.getSystemKeyspace().updatePeerInfo(endpoint, "rpc_address", InetAddress.getByName(entry.getValue().value));
                     }
                     catch (UnknownHostException e)
                     {
@@ -1388,10 +1496,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     }
                     break;
                 case SCHEMA:
-                    SystemKeyspace.instance.updatePeerInfo(endpoint, "schema_version", UUID.fromString(entry.getValue().value));
+                    databaseDescriptor.getSystemKeyspace().updatePeerInfo(endpoint, "schema_version", UUID.fromString(entry.getValue().value));
                     break;
                 case HOST_ID:
-                    SystemKeyspace.instance.updatePeerInfo(endpoint, "host_id", UUID.fromString(entry.getValue().value));
+                    databaseDescriptor.getSystemKeyspace().updatePeerInfo(endpoint, "host_id", UUID.fromString(entry.getValue().value));
                     break;
             }
         }
@@ -1399,7 +1507,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private byte[] getApplicationStateValue(InetAddress endpoint, ApplicationState appstate)
     {
-        String vvalue = Gossiper.instance.getEndpointStateForEndpoint(endpoint).getApplicationState(appstate).value;
+        String vvalue = databaseDescriptor.getGossiper().getEndpointStateForEndpoint(endpoint).getApplicationState(appstate).value;
         return vvalue.getBytes(ISO_8859_1);
     }
 
@@ -1407,7 +1515,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         try
         {
-            return TokenSerializer.deserialize(LocatorConfig.instance.getPartitioner(), new DataInputStream(new ByteArrayInputStream(getApplicationStateValue(endpoint, ApplicationState.TOKENS))));
+            return TokenSerializer.deserialize(databaseDescriptor.getLocatorConfig().getPartitioner(), new DataInputStream(new ByteArrayInputStream(getApplicationStateValue(endpoint, ApplicationState.TOKENS))));
         }
         catch (IOException e)
         {
@@ -1432,23 +1540,23 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // if this node is present in token metadata, either we have missed intermediate states
         // or the node had crashed. Print warning if needed, clear obsolete stuff and
         // continue.
-        if (LocatorConfig.instance.getTokenMetadata().isMember(endpoint))
+        if (databaseDescriptor.getLocatorConfig().getTokenMetadata().isMember(endpoint))
         {
             // If isLeaving is false, we have missed both LEAVING and LEFT. However, if
             // isLeaving is true, we have only missed LEFT. Waiting time between completing
             // leave operation and rebootstrapping is relatively short, so the latter is quite
             // common (not enough time for gossip to spread). Therefore we report only the
             // former in the log.
-            if (!LocatorConfig.instance.getTokenMetadata().isLeaving(endpoint))
+            if (!databaseDescriptor.getLocatorConfig().getTokenMetadata().isLeaving(endpoint))
                 logger.info("Node {} state jump to bootstrap", endpoint);
-            LocatorConfig.instance.getTokenMetadata().removeEndpoint(endpoint);
+            databaseDescriptor.getLocatorConfig().getTokenMetadata().removeEndpoint(endpoint);
         }
 
-        LocatorConfig.instance.getTokenMetadata().addBootstrapTokens(tokens, endpoint);
-        PendingRangeCalculatorService.instance.update();
+        databaseDescriptor.getLocatorConfig().getTokenMetadata().addBootstrapTokens(tokens, endpoint);
+        databaseDescriptor.getPendingRangeCalculatorService().update();
 
-        if (Gossiper.instance.usesHostId(endpoint))
-            LocatorConfig.instance.getTokenMetadata().updateHostId(Gossiper.instance.getHostId(endpoint), endpoint);
+        if (databaseDescriptor.getGossiper().usesHostId(endpoint))
+            databaseDescriptor.getLocatorConfig().getTokenMetadata().updateHostId(databaseDescriptor.getGossiper().getHostId(endpoint), endpoint);
     }
 
     /**
@@ -1472,50 +1580,50 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (logger.isDebugEnabled())
             logger.debug("Node {} state normal, token {}", endpoint, tokens);
 
-        if (LocatorConfig.instance.getTokenMetadata().isMember(endpoint))
+        if (databaseDescriptor.getLocatorConfig().getTokenMetadata().isMember(endpoint))
             logger.info("Node {} state jump to normal", endpoint);
 
         updatePeerInfo(endpoint);
         // Order Matters, TM.updateHostID() should be called before TM.updateNormalToken(), (see CASSANDRA-4300).
-        if (Gossiper.instance.usesHostId(endpoint))
+        if (databaseDescriptor.getGossiper().usesHostId(endpoint))
         {
-            UUID hostId = Gossiper.instance.getHostId(endpoint);
-            InetAddress existing = LocatorConfig.instance.getTokenMetadata().getEndpointForHostId(hostId);
-            if (DatabaseDescriptor.instance.isReplacing() && Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.instance.getReplaceAddress()) != null && (hostId.equals(Gossiper.instance.getHostId(DatabaseDescriptor.instance.getReplaceAddress()))))
+            UUID hostId = databaseDescriptor.getGossiper().getHostId(endpoint);
+            InetAddress existing = databaseDescriptor.getLocatorConfig().getTokenMetadata().getEndpointForHostId(hostId);
+            if (databaseDescriptor.isReplacing() && databaseDescriptor.getGossiper().getEndpointStateForEndpoint(databaseDescriptor.getReplaceAddress()) != null && (hostId.equals(databaseDescriptor.getGossiper().getHostId(databaseDescriptor.getReplaceAddress()))))
                 logger.warn("Not updating token metadata for {} because I am replacing it", endpoint);
             else
             {
                 if (existing != null && !existing.equals(endpoint))
                 {
-                    if (existing.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+                    if (existing.equals(databaseDescriptor.getLocatorConfig().getBroadcastAddress()))
                     {
                         logger.warn("Not updating host ID {} for {} because it's mine", hostId, endpoint);
-                        LocatorConfig.instance.getTokenMetadata().removeEndpoint(endpoint);
+                        databaseDescriptor.getLocatorConfig().getTokenMetadata().removeEndpoint(endpoint);
                         endpointsToRemove.add(endpoint);
                     }
-                    else if (Gossiper.instance.compareEndpointStartup(endpoint, existing) > 0)
+                    else if (databaseDescriptor.getGossiper().compareEndpointStartup(endpoint, existing) > 0)
                     {
                         logger.warn("Host ID collision for {} between {} and {}; {} is the new owner", hostId, existing, endpoint, endpoint);
-                        LocatorConfig.instance.getTokenMetadata().removeEndpoint(existing);
+                        databaseDescriptor.getLocatorConfig().getTokenMetadata().removeEndpoint(existing);
                         endpointsToRemove.add(existing);
-                        LocatorConfig.instance.getTokenMetadata().updateHostId(hostId, endpoint);
+                        databaseDescriptor.getLocatorConfig().getTokenMetadata().updateHostId(hostId, endpoint);
                     }
                     else
                     {
                         logger.warn("Host ID collision for {} between {} and {}; ignored {}", hostId, existing, endpoint, endpoint);
-                        LocatorConfig.instance.getTokenMetadata().removeEndpoint(endpoint);
+                        databaseDescriptor.getLocatorConfig().getTokenMetadata().removeEndpoint(endpoint);
                         endpointsToRemove.add(endpoint);
                     }
                 }
                 else
-                    LocatorConfig.instance.getTokenMetadata().updateHostId(hostId, endpoint);
+                    databaseDescriptor.getLocatorConfig().getTokenMetadata().updateHostId(hostId, endpoint);
             }
         }
 
         for (final Token token : tokens)
         {
             // we don't want to update if this node is responsible for the token and it has a later startup time than endpoint.
-            InetAddress currentOwner = LocatorConfig.instance.getTokenMetadata().getEndpoint(token);
+            InetAddress currentOwner = databaseDescriptor.getLocatorConfig().getTokenMetadata().getEndpoint(token);
             if (currentOwner == null)
             {
                 logger.debug("New node {} at token {}", endpoint, token);
@@ -1530,7 +1638,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 if (!isClientMode)
                     tokensToUpdateInSystemKeyspace.add(token);
             }
-            else if (Gossiper.instance.compareEndpointStartup(endpoint, currentOwner) > 0)
+            else if (databaseDescriptor.getGossiper().compareEndpointStartup(endpoint, currentOwner) > 0)
             {
                 tokensToUpdateInMetadata.add(token);
                 if (!isClientMode)
@@ -1538,7 +1646,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
                 // currentOwner is no longer current, endpoint is.  Keep track of these moves, because when
                 // a host no longer has any tokens, we'll want to remove it.
-                Multimap<InetAddress, Token> epToTokenCopy = LocatorConfig.instance.getTokenMetadata().getEndpointToTokenMapForReading();
+                Multimap<InetAddress, Token> epToTokenCopy = databaseDescriptor.getLocatorConfig().getTokenMetadata().getEndpointToTokenMapForReading();
                 epToTokenCopy.get(currentOwner).remove(token);
                 if (epToTokenCopy.get(currentOwner).size() < 1)
                     endpointsToRemove.add(currentOwner);
@@ -1559,17 +1667,17 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
         }
 
-        LocatorConfig.instance.getTokenMetadata().updateNormalTokens(tokensToUpdateInMetadata, endpoint);
+        databaseDescriptor.getLocatorConfig().getTokenMetadata().updateNormalTokens(tokensToUpdateInMetadata, endpoint);
         for (InetAddress ep : endpointsToRemove)
             removeEndpoint(ep);
         if (!tokensToUpdateInSystemKeyspace.isEmpty())
-            SystemKeyspace.instance.updateTokens(endpoint, tokensToUpdateInSystemKeyspace);
+            databaseDescriptor.getSystemKeyspace().updateTokens(endpoint, tokensToUpdateInSystemKeyspace);
         if (!localTokensToRemove.isEmpty())
-            SystemKeyspace.instance.updateLocalTokens(Collections.<Token>emptyList(), localTokensToRemove);
+            databaseDescriptor.getSystemKeyspace().updateLocalTokens(Collections.<Token>emptyList(), localTokensToRemove);
 
-        if (LocatorConfig.instance.getTokenMetadata().isMoving(endpoint)) // if endpoint was moving to a new token
+        if (databaseDescriptor.getLocatorConfig().getTokenMetadata().isMoving(endpoint)) // if endpoint was moving to a new token
         {
-            LocatorConfig.instance.getTokenMetadata().removeFromMoving(endpoint);
+            databaseDescriptor.getLocatorConfig().getTokenMetadata().removeFromMoving(endpoint);
 
             if (!isClientMode)
             {
@@ -1578,7 +1686,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
         }
 
-        PendingRangeCalculatorService.instance.update();
+        databaseDescriptor.getPendingRangeCalculatorService().update();
     }
 
     /**
@@ -1597,21 +1705,21 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // If the node is previously unknown or tokens do not match, update tokenmetadata to
         // have this node as 'normal' (it must have been using this token before the
         // leave). This way we'll get pending ranges right.
-        if (!LocatorConfig.instance.getTokenMetadata().isMember(endpoint))
+        if (!databaseDescriptor.getLocatorConfig().getTokenMetadata().isMember(endpoint))
         {
             logger.info("Node {} state jump to leaving", endpoint);
-            LocatorConfig.instance.getTokenMetadata().updateNormalTokens(tokens, endpoint);
+            databaseDescriptor.getLocatorConfig().getTokenMetadata().updateNormalTokens(tokens, endpoint);
         }
-        else if (!LocatorConfig.instance.getTokenMetadata().getTokens(endpoint).containsAll(tokens))
+        else if (!databaseDescriptor.getLocatorConfig().getTokenMetadata().getTokens(endpoint).containsAll(tokens))
         {
             logger.warn("Node {} 'leaving' token mismatch. Long network partition?", endpoint);
-            LocatorConfig.instance.getTokenMetadata().updateNormalTokens(tokens, endpoint);
+            databaseDescriptor.getLocatorConfig().getTokenMetadata().updateNormalTokens(tokens, endpoint);
         }
 
         // at this point the endpoint is certainly a member with this token, so let's proceed
         // normally
-        LocatorConfig.instance.getTokenMetadata().addLeavingEndpoint(endpoint);
-        PendingRangeCalculatorService.instance.update();
+        databaseDescriptor.getLocatorConfig().getTokenMetadata().addLeavingEndpoint(endpoint);
+        databaseDescriptor.getPendingRangeCalculatorService().update();
     }
 
     /**
@@ -1641,14 +1749,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private void handleStateMoving(InetAddress endpoint, String[] pieces)
     {
         assert pieces.length >= 2;
-        Token token = LocatorConfig.instance.getPartitioner().getTokenFactory().fromString(pieces[1]);
+        Token token = databaseDescriptor.getLocatorConfig().getPartitioner().getTokenFactory().fromString(pieces[1]);
 
         if (logger.isDebugEnabled())
             logger.debug("Node {} state moving, new token {}", endpoint, token);
 
-        LocatorConfig.instance.getTokenMetadata().addMovingEndpoint(token, endpoint);
+        databaseDescriptor.getLocatorConfig().getTokenMetadata().addMovingEndpoint(token, endpoint);
 
-        PendingRangeCalculatorService.instance.update();
+        databaseDescriptor.getPendingRangeCalculatorService().update();
     }
 
     /**
@@ -1661,7 +1769,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         assert (pieces.length > 0);
 
-        if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+        if (endpoint.equals(databaseDescriptor.getLocatorConfig().getBroadcastAddress()))
         {
             logger.info("Received removenode gossip about myself. Is this node rejoining after an explicit removenode?");
             try
@@ -1674,10 +1782,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
             return;
         }
-        if (LocatorConfig.instance.getTokenMetadata().isMember(endpoint))
+        if (databaseDescriptor.getLocatorConfig().getTokenMetadata().isMember(endpoint))
         {
             String state = pieces[0];
-            Collection<Token> removeTokens = LocatorConfig.instance.getTokenMetadata().getTokens(endpoint);
+            Collection<Token> removeTokens = databaseDescriptor.getLocatorConfig().getTokenMetadata().getTokens(endpoint);
 
             if (VersionedValue.REMOVED_TOKEN.equals(state))
             {
@@ -1689,14 +1797,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     logger.debug("Tokens {} removed manually (endpoint was {})", removeTokens, endpoint);
 
                 // Note that the endpoint is being removed
-                LocatorConfig.instance.getTokenMetadata().addLeavingEndpoint(endpoint);
-                PendingRangeCalculatorService.instance.update();
+                databaseDescriptor.getLocatorConfig().getTokenMetadata().addLeavingEndpoint(endpoint);
+                databaseDescriptor.getPendingRangeCalculatorService().update();
 
                 // find the endpoint coordinating this removal that we need to notify when we're done
-                String[] coordinator = Gossiper.instance.getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.REMOVAL_COORDINATOR).value.split(VersionedValue.DELIMITER_STR, -1);
+                String[] coordinator = databaseDescriptor.getGossiper().getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.REMOVAL_COORDINATOR).value.split(VersionedValue.DELIMITER_STR, -1);
                 UUID hostId = UUID.fromString(coordinator[1]);
                 // grab any data we are now responsible for and notify responsible node
-                restoreReplicaCount(endpoint, LocatorConfig.instance.getTokenMetadata().getEndpointForHostId(hostId));
+                restoreReplicaCount(endpoint, databaseDescriptor.getLocatorConfig().getTokenMetadata().getEndpointForHostId(hostId));
             }
         }
         else // now that the gossiper has told us about this nonexistent member, notify the gossiper to remove it
@@ -1710,17 +1818,17 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private void excise(Collection<Token> tokens, InetAddress endpoint)
     {
         logger.info("Removing tokens {} for {}", tokens, endpoint);
-        HintedHandOffManager.instance.deleteHintsForEndpoint(endpoint);
+        databaseDescriptor.getHintedHandOffManager().deleteHintsForEndpoint(endpoint);
         removeEndpoint(endpoint);
-        LocatorConfig.instance.getTokenMetadata().removeEndpoint(endpoint);
-        LocatorConfig.instance.getTokenMetadata().removeBootstrapTokens(tokens);
+        databaseDescriptor.getLocatorConfig().getTokenMetadata().removeEndpoint(endpoint);
+        databaseDescriptor.getLocatorConfig().getTokenMetadata().removeBootstrapTokens(tokens);
 
         if (!isClientMode)
         {
             for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
                 subscriber.onLeaveCluster(endpoint);
         }
-        PendingRangeCalculatorService.instance.update();
+        databaseDescriptor.getPendingRangeCalculatorService().update();
     }
 
     private void excise(Collection<Token> tokens, InetAddress endpoint, long expireTime)
@@ -1732,16 +1840,16 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     /** unlike excise we just need this endpoint gone without going through any notifications **/
     private void removeEndpoint(InetAddress endpoint)
     {
-        Gossiper.instance.removeEndpoint(endpoint);
+        databaseDescriptor.getGossiper().removeEndpoint(endpoint);
         if (!isClientMode)
-            SystemKeyspace.instance.removeEndpoint(endpoint);
+            databaseDescriptor.getSystemKeyspace().removeEndpoint(endpoint);
     }
 
     protected void addExpireTimeIfFound(InetAddress endpoint, long expireTime)
     {
         if (expireTime != 0L)
         {
-            Gossiper.instance.addExpireTimeForEndpoint(endpoint, expireTime);
+            databaseDescriptor.getGossiper().addExpireTimeForEndpoint(endpoint, expireTime);
         }
     }
 
@@ -1759,16 +1867,16 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     private Multimap<InetAddress, Range<Token>> getNewSourceRanges(String keyspaceName, Set<Range<Token>> ranges)
     {
-        InetAddress myAddress = DatabaseDescriptor.instance.getBroadcastAddress();
-        Multimap<Range<Token>, InetAddress> rangeAddresses = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getRangeAddresses(LocatorConfig.instance.getTokenMetadata().cloneOnlyTokenMap());
+        InetAddress myAddress = databaseDescriptor.getLocatorConfig().getBroadcastAddress();
+        Multimap<Range<Token>, InetAddress> rangeAddresses = databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getRangeAddresses(databaseDescriptor.getLocatorConfig().getTokenMetadata().cloneOnlyTokenMap());
         Multimap<InetAddress, Range<Token>> sourceRanges = HashMultimap.create();
-        IFailureDetector failureDetector = FailureDetector.instance;
+        IFailureDetector failureDetector = databaseDescriptor.getFailureDetector();
 
         // find alive sources for our new ranges
         for (Range<Token> range : ranges)
         {
             Collection<InetAddress> possibleRanges = rangeAddresses.get(range);
-            IEndpointSnitch snitch = LocatorConfig.instance.getEndpointSnitch();
+            IEndpointSnitch snitch = databaseDescriptor.getLocatorConfig().getEndpointSnitch();
             List<InetAddress> sources = snitch.getSortedListByProximity(myAddress, possibleRanges);
 
             assert (!sources.contains(myAddress));
@@ -1793,16 +1901,16 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private void sendReplicationNotification(InetAddress remote)
     {
         // notify the remote token
-        MessageOut msg = new MessageOut(MessagingService.instance, MessagingService.Verb.REPLICATION_FINISHED);
-        IFailureDetector failureDetector = FailureDetector.instance;
+        MessageOut msg = new MessageOut(databaseDescriptor.getMessagingService(), MessagingService.Verb.REPLICATION_FINISHED);
+        IFailureDetector failureDetector = databaseDescriptor.getFailureDetector();
         if (logger.isDebugEnabled())
             logger.debug("Notifying {} of replication completion\n", remote);
         while (failureDetector.isAlive(remote))
         {
-            AsyncOneResponse iar = MessagingService.instance.sendRR(msg, remote);
+            AsyncOneResponse iar = databaseDescriptor.getMessagingService().sendRR(msg, remote);
             try
             {
-                iar.get(DatabaseDescriptor.instance.getRpcTimeout(), TimeUnit.MILLISECONDS);
+                iar.get(databaseDescriptor.getRpcTimeout(), TimeUnit.MILLISECONDS);
                 return; // done
             }
             catch(TimeoutException e)
@@ -1826,9 +1934,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         Multimap<String, Map.Entry<InetAddress, Collection<Range<Token>>>> rangesToFetch = HashMultimap.create();
 
-        InetAddress myAddress = DatabaseDescriptor.instance.getBroadcastAddress();
+        InetAddress myAddress = databaseDescriptor.getLocatorConfig().getBroadcastAddress();
 
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
             Multimap<Range<Token>, InetAddress> changedRanges = getChangedRangesForLeaving(keyspaceName, endpoint);
             Set<Range<Token>> myNewRanges = new HashSet<>();
@@ -1844,8 +1952,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
         }
 
-        StreamPlan stream = new StreamPlan("Restore replica count", DatabaseDescriptor.instance, Schema.instance,
-                                           KeyspaceManager.instance, StreamManager.instance, DBConfig.instance);
+        StreamPlan stream = new StreamPlan("Restore replica count", databaseDescriptor, databaseDescriptor.getSchema(),
+                                           databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig());
         for (String keyspaceName : rangesToFetch.keySet())
         {
             for (Map.Entry<InetAddress, Collection<Range<Token>>> entry : rangesToFetch.get(keyspaceName))
@@ -1878,7 +1986,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private Multimap<Range<Token>, InetAddress> getChangedRangesForLeaving(String keyspaceName, InetAddress endpoint)
     {
         // First get all ranges the leaving endpoint is responsible for
-        Collection<Range<Token>> ranges = LocatorConfig.instance.getRangesForEndpoint(keyspaceName, endpoint);
+        Collection<Range<Token>> ranges = databaseDescriptor.getLocatorConfig().getRangesForEndpoint(keyspaceName, endpoint);
 
         if (logger.isDebugEnabled())
             logger.debug("Node {} ranges [{}]", endpoint, StringUtils.join(ranges, ", "));
@@ -1886,11 +1994,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         Map<Range<Token>, List<InetAddress>> currentReplicaEndpoints = new HashMap<>();
 
         // Find (for each range) all nodes that store replicas for these ranges as well
-        TokenMetadata metadata = LocatorConfig.instance.getTokenMetadata().cloneOnlyTokenMap(); // don't do this in the loop! #7758
+        TokenMetadata metadata = databaseDescriptor.getLocatorConfig().getTokenMetadata().cloneOnlyTokenMap(); // don't do this in the loop! #7758
         for (Range<Token> range : ranges)
-            currentReplicaEndpoints.put(range, KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().calculateNaturalEndpoints(range.right, metadata));
+            currentReplicaEndpoints.put(range, databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().calculateNaturalEndpoints(range.right, metadata));
 
-        TokenMetadata temp = LocatorConfig.instance.getTokenMetadata().cloneAfterAllLeft();
+        TokenMetadata temp = databaseDescriptor.getLocatorConfig().getTokenMetadata().cloneAfterAllLeft();
 
         // endpoint might or might not be 'leaving'. If it was not leaving (that is, removenode
         // command was used), it is still present in temp and must be removed.
@@ -1906,7 +2014,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // range.
         for (Range<Token> range : ranges)
         {
-            Collection<InetAddress> newReplicaEndpoints = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().calculateNaturalEndpoints(range.right, temp);
+            Collection<InetAddress> newReplicaEndpoints = databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().calculateNaturalEndpoints(range.right, temp);
             newReplicaEndpoints.removeAll(currentReplicaEndpoints.get(range));
             if (logger.isDebugEnabled())
                 if (newReplicaEndpoints.isEmpty())
@@ -1925,7 +2033,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             onChange(endpoint, entry.getKey(), entry.getValue());
         }
-        MigrationManager.instance.scheduleSchemaPull(endpoint, epState);
+        databaseDescriptor.getMigrationManager().scheduleSchemaPull(endpoint, epState);
     }
 
     public void onAlive(InetAddress endpoint, EndpointState state)
@@ -1933,9 +2041,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (isClientMode)
             return;
 
-        if (LocatorConfig.instance.getTokenMetadata().isMember(endpoint))
+        if (databaseDescriptor.getLocatorConfig().getTokenMetadata().isMember(endpoint))
         {
-            HintedHandOffManager.instance.scheduleHintDelivery(endpoint);
+            databaseDescriptor.getHintedHandOffManager().scheduleHintDelivery(endpoint);
             for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
                 subscriber.onUp(endpoint);
         }
@@ -1944,18 +2052,18 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
                 subscriber.onJoinCluster(endpoint);
         }
-        MigrationManager.instance.scheduleSchemaPull(endpoint, state);
+        databaseDescriptor.getMigrationManager().scheduleSchemaPull(endpoint, state);
     }
 
     public void onRemove(InetAddress endpoint)
     {
-        LocatorConfig.instance.getTokenMetadata().removeEndpoint(endpoint);
-        PendingRangeCalculatorService.instance.update();
+        databaseDescriptor.getLocatorConfig().getTokenMetadata().removeEndpoint(endpoint);
+        databaseDescriptor.getPendingRangeCalculatorService().update();
     }
 
     public void onDead(InetAddress endpoint, EndpointState state)
     {
-        MessagingService.instance.convict(endpoint);
+        databaseDescriptor.getMessagingService().convict(endpoint);
         if (!isClientMode)
         {
             for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
@@ -1974,9 +2082,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public double getLoad()
     {
         double bytes = 0;
-        for (String keyspaceName : Schema.instance.getKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getKeyspaces())
         {
-            Keyspace keyspace = Schema.instance.getKeyspaceInstance(keyspaceName);
+            Keyspace keyspace = databaseDescriptor.getSchema().getKeyspaceInstance(keyspaceName);
             if (keyspace == null)
                 continue;
             for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
@@ -1993,23 +2101,23 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public Map<String, String> getLoadMap()
     {
         Map<String, String> map = new HashMap<>();
-        for (Map.Entry<InetAddress,Double> entry : LoadBroadcaster.instance.getLoadInfo().entrySet())
+        for (Map.Entry<InetAddress,Double> entry : databaseDescriptor.getLoadBroadcaster().getLoadInfo().entrySet())
         {
             map.put(entry.getKey().getHostAddress(), FileUtils.stringifyFileSize(entry.getValue()));
         }
         // gossiper doesn't see its own updates, so we need to special-case the local node
-        map.put(DatabaseDescriptor.instance.getBroadcastAddress().getHostAddress(), getLoadString());
+        map.put(databaseDescriptor.getLocatorConfig().getBroadcastAddress().getHostAddress(), getLoadString());
         return map;
     }
 
     public final void deliverHints(String host) throws UnknownHostException
     {
-        HintedHandOffManager.instance.scheduleHintDelivery(host);
+        databaseDescriptor.getHintedHandOffManager().scheduleHintDelivery(host);
     }
 
     public Collection<Token> getLocalTokens()
     {
-        Collection<Token> tokens = SystemKeyspace.instance.getSavedTokens();
+        Collection<Token> tokens = databaseDescriptor.getSystemKeyspace().getSavedTokens();
         assert tokens != null && !tokens.isEmpty(); // should not be called before initServer sets this
         return tokens;
     }
@@ -2018,7 +2126,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public List<String> getTokens()
     {
-        return getTokens(DatabaseDescriptor.instance.getBroadcastAddress());
+        return getTokens(databaseDescriptor.getLocatorConfig().getBroadcastAddress());
     }
 
     public List<String> getTokens(String endpoint) throws UnknownHostException
@@ -2029,7 +2137,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private List<String> getTokens(InetAddress endpoint)
     {
         List<String> strTokens = new ArrayList<>();
-        for (Token tok : LocatorConfig.instance.getTokenMetadata().getTokens(endpoint))
+        for (Token tok : databaseDescriptor.getLocatorConfig().getTokenMetadata().getTokens(endpoint))
             strTokens.add(tok.toString());
         return strTokens;
     }
@@ -2041,19 +2149,19 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public String getSchemaVersion()
     {
-        return Schema.instance.getVersion().toString();
+        return databaseDescriptor.getSchema().getVersion().toString();
     }
 
     public List<String> getLeavingNodes()
     {
-        return stringify(LocatorConfig.instance.getTokenMetadata().getLeavingEndpoints());
+        return stringify(databaseDescriptor.getLocatorConfig().getTokenMetadata().getLeavingEndpoints());
     }
 
     public List<String> getMovingNodes()
     {
         List<String> endpoints = new ArrayList<>();
 
-        for (Pair<Token, InetAddress> node : LocatorConfig.instance.getTokenMetadata().getMovingEndpoints())
+        for (Pair<Token, InetAddress> node : databaseDescriptor.getLocatorConfig().getTokenMetadata().getMovingEndpoints())
         {
             endpoints.add(node.right.getHostAddress());
         }
@@ -2063,22 +2171,22 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public List<String> getJoiningNodes()
     {
-        return stringify(LocatorConfig.instance.getTokenMetadata().getBootstrapTokens().valueSet());
+        return stringify(databaseDescriptor.getLocatorConfig().getTokenMetadata().getBootstrapTokens().valueSet());
     }
 
     public List<String> getLiveNodes()
     {
-        return stringify(Gossiper.instance.getLiveMembers());
+        return stringify(databaseDescriptor.getGossiper().getLiveMembers());
     }
 
     public List<String> getUnreachableNodes()
     {
-        return stringify(Gossiper.instance.getUnreachableMembers());
+        return stringify(databaseDescriptor.getGossiper().getUnreachableMembers());
     }
 
     public String[] getAllDataFileLocations()
     {
-        String[] locations = DatabaseDescriptor.instance.getAllDataFileLocations();
+        String[] locations = databaseDescriptor.getAllDataFileLocations();
         for (int i = 0; i < locations.length; i++)
             locations[i] = FileUtils.getCanonicalPath(locations[i]);
         return locations;
@@ -2086,12 +2194,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public String getCommitLogLocation()
     {
-        return FileUtils.getCanonicalPath(DatabaseDescriptor.instance.getCommitLogLocation());
+        return FileUtils.getCanonicalPath(databaseDescriptor.getCommitLogLocation());
     }
 
     public String getSavedCachesLocation()
     {
-        return FileUtils.getCanonicalPath(DatabaseDescriptor.instance.getSavedCachesLocation());
+        return FileUtils.getCanonicalPath(databaseDescriptor.getSavedCachesLocation());
     }
 
     private List<String> stringify(Iterable<InetAddress> endpoints)
@@ -2106,7 +2214,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public int getCurrentGenerationNumber()
     {
-        return Gossiper.instance.getCurrentGenerationNumber(DatabaseDescriptor.instance.getBroadcastAddress());
+        return databaseDescriptor.getGossiper().getCurrentGenerationNumber(databaseDescriptor.getLocatorConfig().getBroadcastAddress());
     }
 
     public CompactionManager.AllSSTableOpStatus forceKeyspaceCleanup(String keyspaceName, String... columnFamilies) throws IOException, ExecutionException, InterruptedException
@@ -2172,7 +2280,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         Iterable<Keyspace> keyspaces;
         if (keyspaceNames.length == 0)
         {
-            keyspaces = KeyspaceManager.instance.all();
+            keyspaces = databaseDescriptor.getKeyspaceManager().all();
         }
         else
         {
@@ -2223,11 +2331,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private Keyspace getValidKeyspace(String keyspaceName) throws IOException
     {
-        if (!Schema.instance.getKeyspaces().contains(keyspaceName))
+        if (!databaseDescriptor.getSchema().getKeyspaces().contains(keyspaceName))
         {
             throw new IOException("Keyspace " + keyspaceName + " does not exist");
         }
-        return KeyspaceManager.instance.open(keyspaceName);
+        return databaseDescriptor.getKeyspaceManager().open(keyspaceName);
     }
 
     /**
@@ -2240,7 +2348,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             tag = "";
 
         Set<String> keyspaces = new HashSet<>();
-        for (String dataDir : DatabaseDescriptor.instance.getAllDataFileLocations())
+        for (String dataDir : databaseDescriptor.getAllDataFileLocations())
         {
             for(String keyspaceDir : new File(dataDir).list())
             {
@@ -2252,7 +2360,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
 
         for (String keyspace : keyspaces)
-            Keyspace.clearSnapshot(tag, keyspace, ColumnFamilyStoreManager.instance.dataDirectories);
+            Keyspace.clearSnapshot(tag, keyspace, databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
 
         if (logger.isDebugEnabled())
             logger.debug("Cleared out snapshot directories");
@@ -2261,7 +2369,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public Map<String, TabularData> getSnapshotDetails()
     {
         Map<String, TabularData> snapshotMap = new HashMap<>();
-        for (Keyspace keyspace : KeyspaceManager.instance.all())
+        for (Keyspace keyspace : databaseDescriptor.getKeyspaceManager().all())
         {
             if (Keyspace.SYSTEM_KS.equals(keyspace.getName()))
                 continue;
@@ -2287,7 +2395,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public long trueSnapshotsSize()
     {
         long total = 0;
-        for (Keyspace keyspace : KeyspaceManager.instance.all())
+        for (Keyspace keyspace : databaseDescriptor.getKeyspaceManager().all())
         {
             if (Keyspace.SYSTEM_KS.equals(keyspace.getName()))
                 continue;
@@ -2415,7 +2523,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             throw new IllegalArgumentException("You need to run primary range repair on all nodes in the cluster.");
         }
-        Collection<Range<Token>> ranges = primaryRange ? LocatorConfig.instance.getLocalPrimaryRanges(keyspace) : LocatorConfig.instance.getLocalRanges(keyspace);
+        Collection<Range<Token>> ranges = primaryRange ? databaseDescriptor.getLocatorConfig().getLocalPrimaryRanges(keyspace) : databaseDescriptor.getLocatorConfig().getLocalRanges(keyspace);
 
         return forceRepairAsync(keyspace, isSequential, dataCenters, hosts, ranges, fullRepair, columnFamilies);
     }
@@ -2445,7 +2553,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             throw new IllegalArgumentException("You need to run primary range repair on all nodes in the cluster.");
         }
-        Collection<Range<Token>> ranges = primaryRange ? LocatorConfig.instance.getLocalPrimaryRanges(keyspace) : LocatorConfig.instance.getLocalRanges(keyspace);
+        Collection<Range<Token>> ranges = primaryRange ? databaseDescriptor.getLocatorConfig().getLocalPrimaryRanges(keyspace) : databaseDescriptor.getLocatorConfig().getLocalRanges(keyspace);
         return forceRepairAsync(keyspace, isSequential, isLocal, ranges, fullRepair, columnFamilies);
     }
 
@@ -2487,20 +2595,20 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     @SuppressWarnings("unchecked")
     private Collection<Range<Token>> createRepairRangeFrom(String beginToken, String endToken)
     {
-        Token parsedBeginToken = LocatorConfig.instance.getPartitioner().getTokenFactory().fromString(beginToken);
-        Token parsedEndToken = LocatorConfig.instance.getPartitioner().getTokenFactory().fromString(endToken);
+        Token parsedBeginToken = databaseDescriptor.getLocatorConfig().getPartitioner().getTokenFactory().fromString(beginToken);
+        Token parsedEndToken = databaseDescriptor.getLocatorConfig().getPartitioner().getTokenFactory().fromString(endToken);
 
         Deque<Range<Token>> repairingRange = new ArrayDeque<>();
         // Break up given range to match ring layout in TokenMetadata
-        Token previous = LocatorConfig.instance.getTokenMetadata().getPredecessor(TokenMetadata.firstToken(LocatorConfig.instance.getTokenMetadata().sortedTokens(), parsedEndToken));
+        Token previous = databaseDescriptor.getLocatorConfig().getTokenMetadata().getPredecessor(TokenMetadata.firstToken(databaseDescriptor.getLocatorConfig().getTokenMetadata().sortedTokens(), parsedEndToken));
         while (parsedBeginToken.compareTo(previous) < 0)
         {
-            repairingRange.addFirst(new Range<>(previous, parsedEndToken, LocatorConfig.instance.getPartitioner()));
+            repairingRange.addFirst(new Range<>(previous, parsedEndToken, databaseDescriptor.getLocatorConfig().getPartitioner()));
 
             parsedEndToken = previous;
-            previous = LocatorConfig.instance.getTokenMetadata().getPredecessor(previous);
+            previous = databaseDescriptor.getLocatorConfig().getTokenMetadata().getPredecessor(previous);
         }
-        repairingRange.addFirst(new Range<>(parsedBeginToken, parsedEndToken, LocatorConfig.instance.getPartitioner()));
+        repairingRange.addFirst(new Range<>(parsedBeginToken, parsedEndToken, databaseDescriptor.getLocatorConfig().getPartitioner()));
 
         return repairingRange;
     }
@@ -2516,7 +2624,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         Set<String> dataCenters = null;
         if (isLocal)
         {
-            dataCenters = Sets.newHashSet(DatabaseDescriptor.instance.getLocalDataCenter());
+            dataCenters = Sets.newHashSet(databaseDescriptor.getLocatorConfig().getLocalDC());
         }
         return createRepairTask(cmd, keyspace, ranges, isSequential, dataCenters, null, fullRepair, columnFamilies);
     }
@@ -2530,7 +2638,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                                 final boolean fullRepair,
                                                 final String... columnFamilies)
     {
-        if (dataCenters != null && !dataCenters.contains(DatabaseDescriptor.instance.getLocalDataCenter()))
+        if (dataCenters != null && !dataCenters.contains(databaseDescriptor.getLocatorConfig().getLocalDC()))
         {
             throw new IllegalArgumentException("the local data center must be part of the repair");
         }
@@ -2557,7 +2665,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 {
                     try
                     {
-                        Set<InetAddress> neighbors = ActiveRepairService.instance.getNeighbors(keyspace, range, dataCenters, hosts);
+                        Set<InetAddress> neighbors = databaseDescriptor.getActiveRepairService().getNeighbors(keyspace, range, dataCenters, hosts);
                         rangeToNeighbors.put(range, neighbors);
                         allNeighbors.addAll(neighbors);
                     }
@@ -2586,7 +2694,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 {
                     try
                     {
-                        parentSession = ActiveRepairService.instance.prepareForRepair(allNeighbors, ranges, columnFamilyStores);
+                        parentSession = databaseDescriptor.getActiveRepairService().prepareForRepair(allNeighbors, ranges, columnFamilyStores);
                     }
                     catch (Throwable t)
                     {
@@ -2603,7 +2711,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 }
                 for (Range<Token> range : ranges)
                 {
-                    RepairFuture future = ActiveRepairService.instance.submitRepairSession(parentSession, range, keyspace, isSequential, rangeToNeighbors.get(range), cfnames);
+                    RepairFuture future = databaseDescriptor.getActiveRepairService().submitRepairSession(parentSession, range, keyspace, isSequential, rangeToNeighbors.get(range), cfnames);
                     if (future == null)
                         continue;
                     futures.add(future);
@@ -2646,14 +2754,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     }
                 }
                 if (!fullRepair)
-                    ActiveRepairService.instance.finishParentSession(parentSession, allNeighbors, successful);
+                    databaseDescriptor.getActiveRepairService().finishParentSession(parentSession, allNeighbors, successful);
                 sendNotification("repair", String.format("Repair command #%d finished", cmd), new int[]{cmd, ActiveRepairService.Status.FINISHED.ordinal()});
             }
         }, null);
     }
 
     public void forceTerminateAllRepairSessions() {
-        ActiveRepairService.instance.terminateSessions();
+        databaseDescriptor.getActiveRepairService().terminateSessions();
     }
 
     /* End of MBean interface methods */
@@ -2675,10 +2783,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         List<Range<Token>> ranges = new ArrayList<>(size + 1);
         for (int i = 1; i < size; ++i)
         {
-            Range<Token> range = new Range<>(sortedTokens.get(i - 1), sortedTokens.get(i), LocatorConfig.instance.getPartitioner());
+            Range<Token> range = new Range<>(sortedTokens.get(i - 1), sortedTokens.get(i), databaseDescriptor.getLocatorConfig().getPartitioner());
             ranges.add(range);
         }
-        Range<Token> range = new Range<>(sortedTokens.get(size - 1), sortedTokens.get(0), LocatorConfig.instance.getPartitioner());
+        Range<Token> range = new Range<>(sortedTokens.get(size - 1), sortedTokens.get(0), databaseDescriptor.getLocatorConfig().getPartitioner());
         ranges.add(range);
 
         return ranges;
@@ -2687,13 +2795,13 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     @Override
     public List<InetAddress> getNaturalEndpoints(String keyspaceName, String cf, String key)
     {
-        return LocatorConfig.instance.getNaturalEndpoints(keyspaceName, cf, key);
+        return databaseDescriptor.getLocatorConfig().getNaturalEndpoints(keyspaceName, cf, key);
     }
 
     @Override
     public List<InetAddress> getNaturalEndpoints(String keyspaceName, ByteBuffer key)
     {
-        return LocatorConfig.instance.getNaturalEndpoints(keyspaceName, key);
+        return databaseDescriptor.getLocatorConfig().getNaturalEndpoints(keyspaceName, key);
     }
 
     public void setLoggingLevel(String classQualifier, String rawLevel) throws Exception
@@ -2748,7 +2856,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     public List<Pair<Range<Token>, Long>> getSplits(String keyspaceName, String cfName, Range<Token> range, int keysPerSplit)
     {
-        Keyspace t = KeyspaceManager.instance.open(keyspaceName);
+        Keyspace t = databaseDescriptor.getKeyspaceManager().open(keyspaceName);
         ColumnFamilyStore cfs = t.getColumnFamilyStore(cfName);
         List<DecoratedKey> keys = keySamples(Collections.singleton(cfs), range);
 
@@ -2772,7 +2880,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             int index = (int) Math.round(i * step);
             Token token = tokens.get(index);
-            Range<Token> range = new Range<>(prevToken, token, LocatorConfig.instance.getPartitioner());
+            Range<Token> range = new Range<>(prevToken, token, databaseDescriptor.getLocatorConfig().getPartitioner());
             // always return an estimate > 0 (see CASSANDRA-7322)
             splits.add(Pair.create(range, Math.max(cfs.metadata.getMinIndexInterval(), cfs.estimatedKeysForRange(range))));
             prevToken = token;
@@ -2804,39 +2912,39 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     private void startLeaving()
     {
-        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.leaving(getLocalTokens()));
-        LocatorConfig.instance.getTokenMetadata().addLeavingEndpoint(DatabaseDescriptor.instance.getBroadcastAddress());
-        PendingRangeCalculatorService.instance.update();
+        databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.STATUS, valueFactory.leaving(getLocalTokens()));
+        databaseDescriptor.getLocatorConfig().getTokenMetadata().addLeavingEndpoint(databaseDescriptor.getLocatorConfig().getBroadcastAddress());
+        databaseDescriptor.getPendingRangeCalculatorService().update();
     }
 
     public void decommission() throws InterruptedException
     {
-        if (!LocatorConfig.instance.getTokenMetadata().isMember(DatabaseDescriptor.instance.getBroadcastAddress()))
+        if (!databaseDescriptor.getLocatorConfig().getTokenMetadata().isMember(databaseDescriptor.getLocatorConfig().getBroadcastAddress()))
             throw new UnsupportedOperationException("local node is not a member of the token ring yet");
-        if (LocatorConfig.instance.getTokenMetadata().cloneAfterAllLeft().sortedTokens().size() < 2)
+        if (databaseDescriptor.getLocatorConfig().getTokenMetadata().cloneAfterAllLeft().sortedTokens().size() < 2)
             throw new UnsupportedOperationException("no other normal nodes in the ring; decommission would be pointless");
 
-        PendingRangeCalculatorService.instance.blockUntilFinished();
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        databaseDescriptor.getPendingRangeCalculatorService().blockUntilFinished();
+        for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
-            if (LocatorConfig.instance.getTokenMetadata().getPendingRanges(keyspaceName, DatabaseDescriptor.instance.getBroadcastAddress()).size() > 0)
+            if (databaseDescriptor.getLocatorConfig().getTokenMetadata().getPendingRanges(keyspaceName, databaseDescriptor.getLocatorConfig().getBroadcastAddress()).size() > 0)
                 throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
         }
 
         if (logger.isDebugEnabled())
             logger.debug("DECOMMISSIONING");
         startLeaving();
-        setMode(Mode.LEAVING, "sleeping " + DatabaseDescriptor.instance.getRingDelay() + " ms for pending range setup", true);
-        Thread.sleep(DatabaseDescriptor.instance.getRingDelay());
+        setMode(Mode.LEAVING, "sleeping " + databaseDescriptor.getRingDelay() + " ms for pending range setup", true);
+        Thread.sleep(databaseDescriptor.getRingDelay());
 
         Runnable finishLeaving = new Runnable()
         {
             public void run()
             {
                 shutdownClientServers();
-                Gossiper.instance.stop();
-                MessagingService.instance.shutdown();
-                StageManager.instance.shutdownNow();
+                databaseDescriptor.getGossiper().stop();
+                databaseDescriptor.getMessagingService().shutdown();
+                databaseDescriptor.getStageManager().shutdownNow();
                 setMode(Mode.DECOMMISSIONED, true);
                 // let op be responsible for killing the process
             }
@@ -2846,12 +2954,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private void leaveRing()
     {
-        SystemKeyspace.instance.setBootstrapState(SystemKeyspace.BootstrapState.NEEDS_BOOTSTRAP);
-        LocatorConfig.instance.getTokenMetadata().removeEndpoint(DatabaseDescriptor.instance.getBroadcastAddress());
-        PendingRangeCalculatorService.instance.update();
+        databaseDescriptor.getSystemKeyspace().setBootstrapState(SystemKeyspace.BootstrapState.NEEDS_BOOTSTRAP);
+        databaseDescriptor.getLocatorConfig().getTokenMetadata().removeEndpoint(databaseDescriptor.getLocatorConfig().getBroadcastAddress());
+        databaseDescriptor.getPendingRangeCalculatorService().update();
 
-        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.left(getLocalTokens(),Gossiper.computeExpireTime()));
-        int delay = Math.max(DatabaseDescriptor.instance.getRingDelay(), Gossiper.intervalInMillis * 2);
+        databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.STATUS, valueFactory.left(getLocalTokens(), Gossiper.computeExpireTime()));
+        int delay = Math.max(databaseDescriptor.getRingDelay(), Gossiper.intervalInMillis * 2);
         logger.info("Announcing that I have left the ring for {}ms", delay);
         Uninterruptibles.sleepUninterruptibly(delay, TimeUnit.MILLISECONDS);
     }
@@ -2860,9 +2968,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         Map<String, Multimap<Range<Token>, InetAddress>> rangesToStream = new HashMap<>();
 
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
-            Multimap<Range<Token>, InetAddress> rangesMM = getChangedRangesForLeaving(keyspaceName, DatabaseDescriptor.instance.getBroadcastAddress());
+            Multimap<Range<Token>, InetAddress> rangesMM = getChangedRangesForLeaving(keyspaceName, databaseDescriptor.getLocatorConfig().getBroadcastAddress());
 
             if (logger.isDebugEnabled())
                 logger.debug("Ranges needing transfer are [{}]", StringUtils.join(rangesMM.keySet(), ","));
@@ -2894,16 +3002,16 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private Future<StreamState> streamHints()
     {
         // StreamPlan will not fail if there are zero files to transfer, so flush anyway (need to get any in-memory hints, as well)
-        ColumnFamilyStore hintsCF = KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF);
+        ColumnFamilyStore hintsCF = databaseDescriptor.getKeyspaceManager().open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF);
         FBUtilities.waitOnFuture(hintsCF.forceFlush());
 
         // gather all live nodes in the cluster that aren't also leaving
-        List<InetAddress> candidates = new ArrayList<>(LocatorConfig.instance.getTokenMetadata().cloneAfterAllLeft().getAllEndpoints());
-        candidates.remove(DatabaseDescriptor.instance.getBroadcastAddress());
+        List<InetAddress> candidates = new ArrayList<>(databaseDescriptor.getLocatorConfig().getTokenMetadata().cloneAfterAllLeft().getAllEndpoints());
+        candidates.remove(databaseDescriptor.getLocatorConfig().getBroadcastAddress());
         for (Iterator<InetAddress> iter = candidates.iterator(); iter.hasNext(); )
         {
             InetAddress address = iter.next();
-            if (!FailureDetector.instance.isAlive(address))
+            if (!databaseDescriptor.getFailureDetector().isAlive(address))
                 iter.remove();
         }
 
@@ -2915,15 +3023,15 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         else
         {
             // stream to the closest peer as chosen by the snitch
-            LocatorConfig.instance.getEndpointSnitch().sortByProximity(DatabaseDescriptor.instance.getBroadcastAddress(), candidates);
+            databaseDescriptor.getLocatorConfig().getEndpointSnitch().sortByProximity(databaseDescriptor.getLocatorConfig().getBroadcastAddress(), candidates);
             InetAddress hintsDestinationHost = candidates.get(0);
 
             // stream all hints -- range list will be a singleton of "the entire ring"
-            Token token = LocatorConfig.instance.getPartitioner().getMinimumToken();
-            List<Range<Token>> ranges = Collections.singletonList(new Range<>(token, token, LocatorConfig.instance.getPartitioner()));
+            Token token = databaseDescriptor.getLocatorConfig().getPartitioner().getMinimumToken();
+            List<Range<Token>> ranges = Collections.singletonList(new Range<>(token, token, databaseDescriptor.getLocatorConfig().getPartitioner()));
 
-            return new StreamPlan("Hints", DatabaseDescriptor.instance, Schema.instance,
-                                  KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).transferRanges(hintsDestinationHost,
+            return new StreamPlan("Hints", databaseDescriptor, databaseDescriptor.getSchema(),
+                                  databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig()).transferRanges(hintsDestinationHost,
                                                                       Keyspace.SYSTEM_KS,
                                                                       ranges,
                                                                       SystemKeyspace.HINTS_CF)
@@ -2935,13 +3043,13 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         try
         {
-            LocatorConfig.instance.getPartitioner().getTokenFactory().validate(newToken);
+            databaseDescriptor.getLocatorConfig().getPartitioner().getTokenFactory().validate(newToken);
         }
         catch (ConfigurationException e)
         {
             throw new IOException(e.getMessage());
         }
-        move(LocatorConfig.instance.getPartitioner().getTokenFactory().fromString(newToken));
+        move(databaseDescriptor.getLocatorConfig().getPartitioner().getTokenFactory().fromString(newToken));
     }
 
     /**
@@ -2956,34 +3064,34 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (newToken == null)
             throw new IOException("Can't move to the undefined (null) token.");
 
-        if (LocatorConfig.instance.getTokenMetadata().sortedTokens().contains(newToken))
+        if (databaseDescriptor.getLocatorConfig().getTokenMetadata().sortedTokens().contains(newToken))
             throw new IOException("target token " + newToken + " is already owned by another node.");
 
         // address of the current node
-        InetAddress localAddress = DatabaseDescriptor.instance.getBroadcastAddress();
+        InetAddress localAddress = databaseDescriptor.getLocatorConfig().getBroadcastAddress();
 
         // This doesn't make any sense in a vnodes environment.
-        if (LocatorConfig.instance.getTokenMetadata().getTokens(localAddress).size() > 1)
+        if (databaseDescriptor.getLocatorConfig().getTokenMetadata().getTokens(localAddress).size() > 1)
         {
             logger.error("Invalid request to move(Token); This node has more than one token and cannot be moved thusly.");
             throw new UnsupportedOperationException("This node has more than one token and cannot be moved thusly.");
         }
 
-        List<String> keyspacesToProcess = Schema.instance.getNonSystemKeyspaces();
+        List<String> keyspacesToProcess = databaseDescriptor.getSchema().getNonSystemKeyspaces();
 
-        PendingRangeCalculatorService.instance.blockUntilFinished();
+        databaseDescriptor.getPendingRangeCalculatorService().blockUntilFinished();
         // checking if data is moving to this node
         for (String keyspaceName : keyspacesToProcess)
         {
-            if (LocatorConfig.instance.getTokenMetadata().getPendingRanges(keyspaceName, localAddress).size() > 0)
+            if (databaseDescriptor.getLocatorConfig().getTokenMetadata().getPendingRanges(keyspaceName, localAddress).size() > 0)
                 throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
         }
 
-        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.moving(newToken));
+        databaseDescriptor.getGossiper().addLocalApplicationState(ApplicationState.STATUS, valueFactory.moving(newToken));
         setMode(Mode.MOVING, String.format("Moving %s from %s to %s.", localAddress, getLocalTokens().iterator().next(), newToken), true);
 
-        setMode(Mode.MOVING, String.format("Sleeping %s ms before start streaming/fetching ranges", DatabaseDescriptor.instance.getRingDelay()), true);
-        Uninterruptibles.sleepUninterruptibly(DatabaseDescriptor.instance.getRingDelay(), TimeUnit.MILLISECONDS);
+        setMode(Mode.MOVING, String.format("Sleeping %s ms before start streaming/fetching ranges", databaseDescriptor.getRingDelay()), true);
+        Uninterruptibles.sleepUninterruptibly(databaseDescriptor.getRingDelay(), TimeUnit.MILLISECONDS);
 
         RangeRelocator relocator = new RangeRelocator(Collections.singleton(newToken), keyspacesToProcess);
 
@@ -3012,8 +3120,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private class RangeRelocator
     {
-        private final StreamPlan streamPlan = new StreamPlan("Relocation", DatabaseDescriptor.instance, Schema.instance,
-                                                             KeyspaceManager.instance, StreamManager.instance, DBConfig.instance);
+        private final StreamPlan streamPlan = new StreamPlan("Relocation", databaseDescriptor, databaseDescriptor.getSchema(),
+                                                             databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig());
 
         private RangeRelocator(Collection<Token> tokens, List<String> keyspaceNames)
         {
@@ -3022,11 +3130,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         private void calculateToFromStreams(Collection<Token> newTokens, List<String> keyspaceNames)
         {
-            InetAddress localAddress = DatabaseDescriptor.instance.getBroadcastAddress();
-            IEndpointSnitch snitch = LocatorConfig.instance.getEndpointSnitch();
-            TokenMetadata tokenMetaCloneAllSettled = LocatorConfig.instance.getTokenMetadata().cloneAfterAllSettled();
+            InetAddress localAddress = databaseDescriptor.getLocatorConfig().getBroadcastAddress();
+            IEndpointSnitch snitch = databaseDescriptor.getLocatorConfig().getEndpointSnitch();
+            TokenMetadata tokenMetaCloneAllSettled = databaseDescriptor.getLocatorConfig().getTokenMetadata().cloneAfterAllSettled();
             // clone to avoid concurrent modification in calculateNaturalEndpoints
-            TokenMetadata tokenMetaClone = LocatorConfig.instance.getTokenMetadata().cloneOnlyTokenMap();
+            TokenMetadata tokenMetaClone = databaseDescriptor.getLocatorConfig().getTokenMetadata().cloneOnlyTokenMap();
 
             for (String keyspace : keyspaceNames)
             {
@@ -3034,10 +3142,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 for (Token newToken : newTokens)
                 {
                     // replication strategy of the current keyspace (aka table)
-                    AbstractReplicationStrategy strategy = KeyspaceManager.instance.open(keyspace).getReplicationStrategy();
+                    AbstractReplicationStrategy strategy = databaseDescriptor.getKeyspaceManager().open(keyspace).getReplicationStrategy();
 
                     // getting collection of the currently used ranges by this keyspace
-                    Collection<Range<Token>> currentRanges = LocatorConfig.instance.getRangesForEndpoint(keyspace, localAddress);
+                    Collection<Range<Token>> currentRanges = databaseDescriptor.getLocatorConfig().getRangesForEndpoint(keyspace, localAddress);
                     // collection of ranges which this node will serve after move to the new token
                     Collection<Range<Token>> updatedRanges = strategy.getPendingAddressRanges(tokenMetaClone, newToken, localAddress);
 
@@ -3101,7 +3209,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                 throw new IllegalStateException("Multiple strict sources found for " + toFetch);
 
                             InetAddress sourceIp = addressList.iterator().next();
-                            if (Gossiper.instance.isEnabled() && !Gossiper.instance.getEndpointStateForEndpoint(sourceIp).isAlive())
+                            if (databaseDescriptor.getGossiper().isEnabled() && !databaseDescriptor.getGossiper().getEndpointStateForEndpoint(sourceIp).isAlive())
                                 throw new RuntimeException("A node required to move the data consistently is down ("+sourceIp+").  If you wish to move the data from a potentially inconsistent replica, restart the node with -Dcassandra.consistent.rangemovement=false");
                         }
                     }
@@ -3129,7 +3237,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     }
 
                     // stream requests
-                    Multimap<InetAddress, Range<Token>> workMap = RangeStreamer.getWorkMap(rangesToFetchWithPreferredEndpoints, DatabaseDescriptor.instance, FailureDetector.instance);
+                    Multimap<InetAddress, Range<Token>> workMap = RangeStreamer.getWorkMap(rangesToFetchWithPreferredEndpoints, databaseDescriptor, databaseDescriptor.getFailureDetector());
                     for (InetAddress address : workMap.keySet())
                     {
                         logger.debug("Will request range {} of keyspace {} from endpoint {}", workMap.get(address), keyspace, address);
@@ -3162,7 +3270,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             return "No token removals in process.";
         }
         return String.format("Removing token (%s). Waiting for replication confirmation from [%s].",
-                             LocatorConfig.instance.getTokenMetadata().getToken(removingNode),
+                             databaseDescriptor.getLocatorConfig().getTokenMetadata().getToken(removingNode),
                              StringUtils.join(replicatingNodes, ","));
     }
 
@@ -3173,14 +3281,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     public void forceRemoveCompletion()
     {
-        if (!replicatingNodes.isEmpty()  || !LocatorConfig.instance.getTokenMetadata().getLeavingEndpoints().isEmpty())
+        if (!replicatingNodes.isEmpty()  || !databaseDescriptor.getLocatorConfig().getTokenMetadata().getLeavingEndpoints().isEmpty())
         {
             logger.warn("Removal not confirmed for for {}", StringUtils.join(this.replicatingNodes, ","));
-            for (InetAddress endpoint : LocatorConfig.instance.getTokenMetadata().getLeavingEndpoints())
+            for (InetAddress endpoint : databaseDescriptor.getLocatorConfig().getTokenMetadata().getLeavingEndpoints())
             {
-                UUID hostId = LocatorConfig.instance.getTokenMetadata().getHostId(endpoint);
-                Gossiper.instance.advertiseTokenRemoved(endpoint, hostId);
-                excise(LocatorConfig.instance.getTokenMetadata().getTokens(endpoint), endpoint);
+                UUID hostId = databaseDescriptor.getLocatorConfig().getTokenMetadata().getHostId(endpoint);
+                databaseDescriptor.getGossiper().advertiseTokenRemoved(endpoint, hostId);
+                excise(databaseDescriptor.getLocatorConfig().getTokenMetadata().getTokens(endpoint), endpoint);
             }
             replicatingNodes.clear();
             removingNode = null;
@@ -3202,40 +3310,40 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     public void removeNode(String hostIdString)
     {
-        InetAddress myAddress = DatabaseDescriptor.instance.getBroadcastAddress();
-        UUID localHostId = LocatorConfig.instance.getTokenMetadata().getHostId(myAddress);
+        InetAddress myAddress = databaseDescriptor.getLocatorConfig().getBroadcastAddress();
+        UUID localHostId = databaseDescriptor.getLocatorConfig().getTokenMetadata().getHostId(myAddress);
         UUID hostId = UUID.fromString(hostIdString);
-        InetAddress endpoint = LocatorConfig.instance.getTokenMetadata().getEndpointForHostId(hostId);
+        InetAddress endpoint = databaseDescriptor.getLocatorConfig().getTokenMetadata().getEndpointForHostId(hostId);
 
         if (endpoint == null)
             throw new UnsupportedOperationException("Host ID not found.");
 
-        Collection<Token> tokens = LocatorConfig.instance.getTokenMetadata().getTokens(endpoint);
+        Collection<Token> tokens = databaseDescriptor.getLocatorConfig().getTokenMetadata().getTokens(endpoint);
 
         if (endpoint.equals(myAddress))
              throw new UnsupportedOperationException("Cannot remove self");
 
-        if (Gossiper.instance.getLiveMembers().contains(endpoint))
+        if (databaseDescriptor.getGossiper().getLiveMembers().contains(endpoint))
             throw new UnsupportedOperationException("Node " + endpoint + " is alive and owns this ID. Use decommission command to remove it from the ring");
 
         // A leaving endpoint that is dead is already being removed.
-        if (LocatorConfig.instance.getTokenMetadata().isLeaving(endpoint))
+        if (databaseDescriptor.getLocatorConfig().getTokenMetadata().isLeaving(endpoint))
             logger.warn("Node {} is already being removed, continuing removal anyway", endpoint);
 
         if (!replicatingNodes.isEmpty())
             throw new UnsupportedOperationException("This node is already processing a removal. Wait for it to complete, or use 'removenode force' if this has failed.");
 
         // Find the endpoints that are going to become responsible for data
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
             // if the replication factor is 1 the data is lost so we shouldn't wait for confirmation
-            if (KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor() == 1)
+            if (databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor() == 1)
                 continue;
 
             // get all ranges that change ownership (that is, a node needs
             // to take responsibility for new range)
             Multimap<Range<Token>, InetAddress> changedRanges = getChangedRangesForLeaving(keyspaceName, endpoint);
-            IFailureDetector failureDetector = FailureDetector.instance;
+            IFailureDetector failureDetector = databaseDescriptor.getFailureDetector();
             for (InetAddress ep : changedRanges.values())
             {
                 if (failureDetector.isAlive(ep))
@@ -3246,12 +3354,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
         removingNode = endpoint;
 
-        LocatorConfig.instance.getTokenMetadata().addLeavingEndpoint(endpoint);
-        PendingRangeCalculatorService.instance.update();
+        databaseDescriptor.getLocatorConfig().getTokenMetadata().addLeavingEndpoint(endpoint);
+        databaseDescriptor.getPendingRangeCalculatorService().update();
 
         // the gossiper will handle spoofing this node's state to REMOVING_TOKEN for us
         // we add our own token so other nodes to let us know when they're done
-        Gossiper.instance.advertiseRemoving(endpoint, hostId, localHostId);
+        databaseDescriptor.getGossiper().advertiseRemoving(endpoint, hostId, localHostId);
 
         // kick off streaming commands
         restoreReplicaCount(endpoint, myAddress);
@@ -3265,7 +3373,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         excise(tokens, endpoint);
 
         // gossiper will indicate the token has left
-        Gossiper.instance.advertiseTokenRemoved(endpoint, hostId);
+        databaseDescriptor.getGossiper().advertiseTokenRemoved(endpoint, hostId);
 
         replicatingNodes.clear();
         removingNode = null;
@@ -3303,7 +3411,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private boolean hasUnreclaimedSpace()
     {
-        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
+        for (ColumnFamilyStore cfs : databaseDescriptor.getColumnFamilyStoreManager().all())
         {
             if (cfs.hasUnreclaimedSpace())
                 return true;
@@ -3329,8 +3437,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     public synchronized void drain() throws IOException, InterruptedException, ExecutionException
     {
-        ExecutorService counterMutationStage = StageManager.instance.getStage(Stage.COUNTER_MUTATION);
-        ExecutorService mutationStage = StageManager.instance.getStage(Stage.MUTATION);
+        ExecutorService counterMutationStage = databaseDescriptor.getStageManager().getStage(Stage.COUNTER_MUTATION);
+        ExecutorService mutationStage = databaseDescriptor.getStageManager().getStage(Stage.MUTATION);
         if (mutationStage.isTerminated() && counterMutationStage.isTerminated())
         {
             logger.warn("Cannot drain node (did it already happen?)");
@@ -3338,11 +3446,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
         setMode(Mode.DRAINING, "starting drain process", true);
         shutdownClientServers();
-        StorageServiceExecutors.instance.optionalTasks.shutdown();
-        Gossiper.instance.stop();
+        databaseDescriptor.getStorageServiceExecutors().optionalTasks.shutdown();
+        databaseDescriptor.getGossiper().stop();
 
         setMode(Mode.DRAINING, "shutting down MessageService", false);
-        MessagingService.instance.shutdown();
+        databaseDescriptor.getMessagingService().shutdown();
 
         setMode(Mode.DRAINING, "clearing mutation stage", false);
         counterMutationStage.shutdown();
@@ -3350,17 +3458,17 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         counterMutationStage.awaitTermination(3600, TimeUnit.SECONDS);
         mutationStage.awaitTermination(3600, TimeUnit.SECONDS);
 
-        StorageProxy.instance.instance.verifyNoHintsInProgress();
+        databaseDescriptor.getStorageProxy().verifyNoHintsInProgress();
 
         setMode(Mode.DRAINING, "flushing column families", false);
         // count CFs first, since forceFlush could block for the flushWriter to get a queue slot empty
         totalCFs = 0;
-        for (Keyspace keyspace : KeyspaceManager.instance.nonSystem())
+        for (Keyspace keyspace : databaseDescriptor.getKeyspaceManager().nonSystem())
             totalCFs += keyspace.getColumnFamilyStores().size();
         remainingCFs = totalCFs;
         // flush
         List<Future<?>> flushes = new ArrayList<>();
-        for (Keyspace keyspace : KeyspaceManager.instance.nonSystem())
+        for (Keyspace keyspace : databaseDescriptor.getKeyspaceManager().nonSystem())
         {
             for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
                 flushes.add(cfs.forceFlush());
@@ -3376,26 +3484,26 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // flush the system ones after all the rest are done, just in case flushing modifies any system state
         // like CASSANDRA-5151. don't bother with progress tracking since system data is tiny.
         flushes.clear();
-        for (Keyspace keyspace : KeyspaceManager.instance.system())
+        for (Keyspace keyspace : databaseDescriptor.getKeyspaceManager().system())
         {
             for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
                 flushes.add(cfs.forceFlush());
         }
         FBUtilities.waitOnFutures(flushes);
 
-        BatchlogManager.instance.shutdown();
+        databaseDescriptor.getBatchlogManager().shutdown();
 
         // whilst we've flushed all the CFs, which will have recycled all completed segments, we want to ensure
         // there are no segments to replay, so we force the recycling of any remaining (should be at most one)
-        CommitLog.instance.forceRecycleAllSegments();
+        databaseDescriptor.getCommitLog().forceRecycleAllSegments();
 
-        ColumnFamilyStoreManager.instance.shutdownPostFlushExecutor();
+        databaseDescriptor.getColumnFamilyStoreManager().shutdownPostFlushExecutor();
 
-        CommitLog.instance.shutdownBlocking();
+        databaseDescriptor.getCommitLog().shutdownBlocking();
 
         // wait for miscellaneous tasks like sstable and commitlog segment deletion
-        StorageServiceExecutors.instance.tasks.shutdown();
-        if (!StorageServiceExecutors.instance.tasks.awaitTermination(1, TimeUnit.MINUTES))
+        databaseDescriptor.getStorageServiceExecutors().tasks.shutdown();
+        if (!databaseDescriptor.getStorageServiceExecutors().tasks.awaitTermination(1, TimeUnit.MINUTES))
             logger.warn("Miscellaneous task executor still busy after one minute; proceeding with shutdown");
 
         setMode(Mode.DRAINED, true);
@@ -3404,16 +3512,16 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     // Never ever do this at home. Used by tests.
     IPartitioner setPartitionerUnsafe(IPartitioner newPartitioner)
     {
-        IPartitioner oldPartitioner = LocatorConfig.instance.getPartitioner();
-        LocatorConfig.instance.setPartitioner(newPartitioner);
-        valueFactory = new VersionedValue.VersionedValueFactory(LocatorConfig.instance.getPartitioner());
+        IPartitioner oldPartitioner = databaseDescriptor.getLocatorConfig().getPartitioner();
+        databaseDescriptor.getLocatorConfig().setPartitioner(newPartitioner);
+        valueFactory = new VersionedValue.VersionedValueFactory(databaseDescriptor.getLocatorConfig().getPartitioner());
         return oldPartitioner;
     }
 
     TokenMetadata setTokenMetadataUnsafe(TokenMetadata tmd)
     {
-        TokenMetadata old = LocatorConfig.instance.getTokenMetadata();
-        LocatorConfig.instance.setTokenMetadataUnsafe(tmd);
+        TokenMetadata old = databaseDescriptor.getLocatorConfig().getTokenMetadata();
+        databaseDescriptor.getLocatorConfig().setTokenMetadataUnsafe(tmd);
         return old;
     }
 
@@ -3421,7 +3529,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     {
         try
         {
-            StorageProxy.instance.truncateBlocking(keyspace, columnFamily);
+            databaseDescriptor.getStorageProxy().truncateBlocking(keyspace, columnFamily);
         }
         catch (UnavailableException e)
         {
@@ -3431,13 +3539,13 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public Map<InetAddress, Float> getOwnership()
     {
-        List<Token> sortedTokens = LocatorConfig.instance.getTokenMetadata().sortedTokens();
+        List<Token> sortedTokens = databaseDescriptor.getLocatorConfig().getTokenMetadata().sortedTokens();
         // describeOwnership returns tokens in an unspecified order, let's re-order them
-        Map<Token, Float> tokenMap = new TreeMap<Token, Float>(LocatorConfig.instance.getPartitioner().describeOwnership(sortedTokens));
+        Map<Token, Float> tokenMap = new TreeMap<Token, Float>(databaseDescriptor.getLocatorConfig().getPartitioner().describeOwnership(sortedTokens));
         Map<InetAddress, Float> nodeMap = new LinkedHashMap<>();
         for (Map.Entry<Token, Float> entry : tokenMap.entrySet())
         {
-            InetAddress endpoint = LocatorConfig.instance.getTokenMetadata().getEndpoint(entry.getKey());
+            InetAddress endpoint = databaseDescriptor.getLocatorConfig().getTokenMetadata().getEndpoint(entry.getKey());
             Float tokenOwnership = entry.getValue();
             if (nodeMap.containsKey(endpoint))
                 nodeMap.put(endpoint, nodeMap.get(endpoint) + tokenOwnership);
@@ -3458,15 +3566,15 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     public LinkedHashMap<InetAddress, Float> effectiveOwnership(String keyspace) throws IllegalStateException
     {
-        if (Schema.instance.getNonSystemKeyspaces().size() <= 0)
+        if (databaseDescriptor.getSchema().getNonSystemKeyspaces().size() <= 0)
             throw new IllegalStateException("Couldn't find any Non System Keyspaces to infer replication topology");
-        if (keyspace == null && !hasSameReplication(Schema.instance.getNonSystemKeyspaces()))
+        if (keyspace == null && !hasSameReplication(databaseDescriptor.getSchema().getNonSystemKeyspaces()))
             throw new IllegalStateException("Non System keyspaces doesnt have the same topology");
 
-        TokenMetadata metadata = LocatorConfig.instance.getTokenMetadata().cloneOnlyTokenMap();
+        TokenMetadata metadata = databaseDescriptor.getLocatorConfig().getTokenMetadata().cloneOnlyTokenMap();
 
         if (keyspace == null)
-            keyspace = Schema.instance.getNonSystemKeyspaces().get(0);
+            keyspace = databaseDescriptor.getSchema().getNonSystemKeyspaces().get(0);
 
         Collection<Collection<InetAddress>> endpointsGroupedByDc = new ArrayList<>();
         // mapping of dc's to nodes, use sorted map so that we get dcs sorted
@@ -3475,7 +3583,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         for (Collection<InetAddress> endpoints : sortedDcsToEndpoints.values())
             endpointsGroupedByDc.add(endpoints);
 
-        Map<Token, Float> tokenOwnership = LocatorConfig.instance.getPartitioner().describeOwnership(LocatorConfig.instance.getTokenMetadata().sortedTokens());
+        Map<Token, Float> tokenOwnership = databaseDescriptor.getLocatorConfig().getPartitioner().describeOwnership(databaseDescriptor.getLocatorConfig().getTokenMetadata().sortedTokens());
         LinkedHashMap<InetAddress, Float> finalOwnership = Maps.newLinkedHashMap();
 
         // calculate ownership per dc
@@ -3485,7 +3593,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             for (InetAddress endpoint : endpoints)
             {
                 float ownership = 0.0f;
-                for (Range<Token> range : LocatorConfig.instance.getRangesForEndpoint(keyspace, endpoint))
+                for (Range<Token> range : databaseDescriptor.getLocatorConfig().getRangesForEndpoint(keyspace, endpoint))
                 {
                     if (tokenOwnership.containsKey(range.right))
                         ownership += tokenOwnership.get(range.right);
@@ -3504,8 +3612,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         for (int i = 0; i < list.size() -1; i++)
         {
-            KSMetaData ksm1 = Schema.instance.getKSMetaData(list.get(i));
-            KSMetaData ksm2 = Schema.instance.getKSMetaData(list.get(i + 1));
+            KSMetaData ksm1 = databaseDescriptor.getSchema().getKSMetaData(list.get(i));
+            KSMetaData ksm2 = databaseDescriptor.getSchema().getKSMetaData(list.get(i + 1));
             if (!ksm1.strategyClass.equals(ksm2.strategyClass) ||
                     !Iterators.elementsEqual(ksm1.strategyOptions.entrySet().iterator(),
                                              ksm2.strategyOptions.entrySet().iterator()))
@@ -3516,13 +3624,13 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public List<String> getKeyspaces()
     {
-        List<String> keyspaceNamesList = new ArrayList<>(Schema.instance.getKeyspaces());
+        List<String> keyspaceNamesList = new ArrayList<>(databaseDescriptor.getSchema().getKeyspaces());
         return Collections.unmodifiableList(keyspaceNamesList);
     }
 
     public void updateSnitch(String epSnitchClassName, Boolean dynamic, Integer dynamicUpdateInterval, Integer dynamicResetInterval, Double dynamicBadnessThreshold) throws ClassNotFoundException
     {
-        IEndpointSnitch oldSnitch = LocatorConfig.instance.getEndpointSnitch();
+        IEndpointSnitch oldSnitch = databaseDescriptor.getLocatorConfig().getEndpointSnitch();
 
         // new snitch registers mbean during construction
         IEndpointSnitch newSnitch;
@@ -3536,17 +3644,17 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
         if (dynamic)
         {
-            DatabaseDescriptor.instance.setDynamicUpdateInterval(dynamicUpdateInterval);
-            DatabaseDescriptor.instance.setDynamicResetInterval(dynamicResetInterval);
-            DatabaseDescriptor.instance.setDynamicBadnessThreshold(dynamicBadnessThreshold);
-            newSnitch = new DynamicEndpointSnitch(newSnitch, LocatorConfig.instance);
+            databaseDescriptor.setDynamicUpdateInterval(dynamicUpdateInterval);
+            databaseDescriptor.setDynamicResetInterval(dynamicResetInterval);
+            databaseDescriptor.setDynamicBadnessThreshold(dynamicBadnessThreshold);
+            newSnitch = new DynamicEndpointSnitch(newSnitch, databaseDescriptor.getLocatorConfig());
         }
 
         // point snitch references to the new instance
-        LocatorConfig.instance.setEndpointSnitch(newSnitch);
-        for (String ks : Schema.instance.getKeyspaces())
+        databaseDescriptor.getLocatorConfig().setEndpointSnitch(newSnitch);
+        for (String ks : databaseDescriptor.getSchema().getKeyspaces())
         {
-            KeyspaceManager.instance.open(ks).getReplicationStrategy().snitch = newSnitch;
+            databaseDescriptor.getKeyspaceManager().open(ks).getReplicationStrategy().snitch = newSnitch;
         }
 
         if (oldSnitch instanceof DynamicEndpointSnitch)
@@ -3589,8 +3697,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             sessionsToStreamByKeyspace.put(keyspace, rangesPerEndpoint);
         }
 
-        StreamPlan streamPlan = new StreamPlan("Unbootstrap", DatabaseDescriptor.instance, Schema.instance,
-                                               KeyspaceManager.instance, StreamManager.instance, DBConfig.instance);
+        StreamPlan streamPlan = new StreamPlan("Unbootstrap", databaseDescriptor, databaseDescriptor.getSchema(),
+                                               databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig());
         for (Map.Entry<String, Map<InetAddress, List<Range<Token>>>> entry : sessionsToStreamByKeyspace.entrySet())
         {
             String keyspaceName = entry.getKey();
@@ -3685,13 +3793,13 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (!dir.exists() || !dir.isDirectory())
             throw new IllegalArgumentException("Invalid directory " + directory);
 
-        SSTableLoader.Client client = new SSTableLoader.Client(DatabaseDescriptor.instance, DBConfig.instance)
+        SSTableLoader.Client client = new SSTableLoader.Client(databaseDescriptor, databaseDescriptor.getDBConfig())
         {
             public void init(String keyspace)
             {
                 try
                 {
-                    setPartitioner(LocatorConfig.instance.getPartitioner());
+                    setPartitioner(databaseDescriptor.getLocatorConfig().getPartitioner());
                     for (Map.Entry<Range<Token>, List<InetAddress>> entry : getRangeToAddressMap(keyspace).entrySet())
                     {
                         Range<Token> range = entry.getKey();
@@ -3707,11 +3815,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
             public CFMetaData getCFMetaData(String keyspace, String cfName)
             {
-                return Schema.instance.getCFMetaData(keyspace, cfName);
+                return databaseDescriptor.getSchema().getCFMetaData(keyspace, cfName);
             }
         };
 
-        SSTableLoader loader = new SSTableLoader(dir, client, new OutputHandler.LogOutput(), DatabaseDescriptor.instance, SSTableReaderFactory.instance);
+        SSTableLoader loader = new SSTableLoader(dir, client, new OutputHandler.LogOutput(), databaseDescriptor, databaseDescriptor.getSSTableReaderFactory());
         return loader.stream();
     }
 
@@ -3730,7 +3838,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     public void loadNewSSTables(String ksName, String cfName)
     {
-        ColumnFamilyStoreManager.instance.loadNewSSTables(ksName, cfName);
+        databaseDescriptor.getColumnFamilyStoreManager().loadNewSSTables(ksName, cfName);
     }
 
     /**
@@ -3739,9 +3847,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public List<String> sampleKeyRange() // do not rename to getter - see CASSANDRA-4452 for details
     {
         List<DecoratedKey> keys = new ArrayList<>();
-        for (Keyspace keyspace : KeyspaceManager.instance.nonSystem())
+        for (Keyspace keyspace : databaseDescriptor.getKeyspaceManager().nonSystem())
         {
-            for (Range<Token> range : LocatorConfig.instance.getPrimaryRangesForEndpoint(keyspace.getName(), DatabaseDescriptor.instance.getBroadcastAddress()))
+            for (Range<Token> range : databaseDescriptor.getLocatorConfig().getPrimaryRangesForEndpoint(keyspace.getName(), databaseDescriptor.getLocatorConfig().getBroadcastAddress()))
                 keys.addAll(keySamples(keyspace.getColumnFamilyStores(), range));
         }
 
@@ -3753,22 +3861,22 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void rebuildSecondaryIndex(String ksName, String cfName, String... idxNames)
     {
-        ColumnFamilyStoreManager.instance.rebuildSecondaryIndex(ksName, cfName, idxNames);
+        databaseDescriptor.getColumnFamilyStoreManager().rebuildSecondaryIndex(ksName, cfName, idxNames);
     }
 
     public void resetLocalSchema() throws IOException
     {
-        MigrationManager.instance.resetLocalSchema();
+        databaseDescriptor.getMigrationManager().resetLocalSchema();
     }
 
     public void setTraceProbability(double probability)
     {
-        Tracing.instance.setTracingProbability(probability);
+        databaseDescriptor.getTracing().setTracingProbability(probability);
     }
 
     public double getTracingProbability()
     {
-        return Tracing.instance.getTracingProbability();
+        return databaseDescriptor.getTracing().getTracingProbability();
     }
 
     public void disableAutoCompaction(String ks, String... columnFamilies) throws IOException
@@ -3790,38 +3898,38 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     /** Returns the name of the cluster */
     public String getClusterName()
     {
-        return DatabaseDescriptor.instance.getClusterName();
+        return databaseDescriptor.getClusterName();
     }
 
     /** Returns the cluster partitioner */
     public String getPartitionerName()
     {
-        return LocatorConfig.instance.getPartitionerName();
+        return databaseDescriptor.getLocatorConfig().getPartitionerName();
     }
 
     public int getTombstoneWarnThreshold()
     {
-        return DatabaseDescriptor.instance.getTombstoneWarnThreshold();
+        return databaseDescriptor.getTombstoneWarnThreshold();
     }
 
     public void setTombstoneWarnThreshold(int threshold)
     {
-        DatabaseDescriptor.instance.setTombstoneWarnThreshold(threshold);
+        databaseDescriptor.setTombstoneWarnThreshold(threshold);
     }
 
     public int getTombstoneFailureThreshold()
     {
-        return DatabaseDescriptor.instance.getTombstoneFailureThreshold();
+        return databaseDescriptor.getTombstoneFailureThreshold();
     }
 
     public void setTombstoneFailureThreshold(int threshold)
     {
-        DatabaseDescriptor.instance.setTombstoneFailureThreshold(threshold);
+        databaseDescriptor.setTombstoneFailureThreshold(threshold);
     }
 
     public void setHintedHandoffThrottleInKB(int throttleInKB)
     {
-        DatabaseDescriptor.instance.setHintedHandoffThrottleInKB(throttleInKB);
+        databaseDescriptor.setHintedHandoffThrottleInKB(throttleInKB);
         logger.info(String.format("Updated hinted_handoff_throttle_in_kb to %d", throttleInKB));
     }
 }
