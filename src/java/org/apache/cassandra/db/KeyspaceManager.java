@@ -25,10 +25,6 @@ public class KeyspaceManager
 
     public KeyspaceManager()
     {
-        // It is possible to call KeyspaceManager.instance.open without a running daemon, so it makes sense to ensure
-        // proper directories here as well as in CassandraDaemon.
-        if (!StorageService.instance.isClientMode())
-            DatabaseDescriptor.instance.createAllDirectories();
         keyspaceTransformer = new Function<String, Keyspace>()
         {
             public Keyspace apply(String keyspaceName)
