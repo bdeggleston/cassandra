@@ -48,7 +48,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean
     private static final int SAMPLE_SIZE = 1000;
     protected static final long INITIAL_VALUE_NANOS = TimeUnit.NANOSECONDS.convert(getInitialValue(), TimeUnit.MILLISECONDS);
 
-    public static final IFailureDetector instance = new FailureDetector();
+    public static final IFailureDetector instance = create(DatabaseDescriptor.instance);
 
     // this is useless except to provide backwards compatibility in phi_convict_threshold,
     // because everyone seems pretty accustomed to the default of 8, and users who have
@@ -59,18 +59,28 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean
     private final Map<InetAddress, ArrivalWindow> arrivalSamples = new Hashtable<InetAddress, ArrivalWindow>();
     private final List<IFailureDetectionEventListener> fdEvntListeners = new CopyOnWriteArrayList<IFailureDetectionEventListener>();
 
-    public FailureDetector()
+    public static FailureDetector create(DatabaseDescriptor databaseDescriptor)
     {
+        FailureDetector fd = new FailureDetector(databaseDescriptor);
+
         // Register this instance with JMX
         try
         {
             MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            mbs.registerMBean(this, new ObjectName(MBEAN_NAME));
+            mbs.registerMBean(fd, new ObjectName(MBEAN_NAME));
         }
         catch (Exception e)
         {
             throw new RuntimeException(e);
         }
+        return fd;
+    }
+
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public FailureDetector(DatabaseDescriptor databaseDescriptor)
+    {
+        this.databaseDescriptor = databaseDescriptor;
     }
 
     private static long getInitialValue()
@@ -90,7 +100,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean
     public String getAllEndpointStates()
     {
         StringBuilder sb = new StringBuilder();
-        for (Map.Entry<InetAddress, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet())
+        for (Map.Entry<InetAddress, EndpointState> entry : databaseDescriptor.getGossiper().endpointStateMap.entrySet())
         {
             sb.append(entry.getKey()).append("\n");
             appendEndpointState(sb, entry.getValue());
@@ -100,8 +110,8 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean
 
     public Map<String, String> getSimpleStates()
     {
-        Map<String, String> nodesStatus = new HashMap<String, String>(Gossiper.instance.endpointStateMap.size());
-        for (Map.Entry<InetAddress, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet())
+        Map<String, String> nodesStatus = new HashMap<String, String>(databaseDescriptor.getGossiper().endpointStateMap.size());
+        for (Map.Entry<InetAddress, EndpointState> entry : databaseDescriptor.getGossiper().endpointStateMap.entrySet())
         {
             if (entry.getValue().isAlive())
                 nodesStatus.put(entry.getKey().toString(), "UP");
@@ -114,7 +124,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean
     public int getDownEndpointCount()
     {
         int count = 0;
-        for (Map.Entry<InetAddress, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet())
+        for (Map.Entry<InetAddress, EndpointState> entry : databaseDescriptor.getGossiper().endpointStateMap.entrySet())
         {
             if (!entry.getValue().isAlive())
                 count++;
@@ -125,7 +135,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean
     public int getUpEndpointCount()
     {
         int count = 0;
-        for (Map.Entry<InetAddress, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet())
+        for (Map.Entry<InetAddress, EndpointState> entry : databaseDescriptor.getGossiper().endpointStateMap.entrySet())
         {
             if (entry.getValue().isAlive())
                 count++;
@@ -136,7 +146,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean
     public String getEndpointState(String address) throws UnknownHostException
     {
         StringBuilder sb = new StringBuilder();
-        EndpointState endpointState = Gossiper.instance.getEndpointStateForEndpoint(InetAddress.getByName(address));
+        EndpointState endpointState = databaseDescriptor.getGossiper().getEndpointStateForEndpoint(InetAddress.getByName(address));
         appendEndpointState(sb, endpointState);
         return sb.toString();
     }
@@ -178,20 +188,20 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean
 
     public void setPhiConvictThreshold(double phi)
     {
-        DatabaseDescriptor.instance.setPhiConvictThreshold(phi);
+        databaseDescriptor.setPhiConvictThreshold(phi);
     }
 
     public double getPhiConvictThreshold()
     {
-        return DatabaseDescriptor.instance.getPhiConvictThreshold();
+        return databaseDescriptor.getPhiConvictThreshold();
     }
 
     public boolean isAlive(InetAddress ep)
     {
-        if (ep.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+        if (ep.equals(databaseDescriptor.getBroadcastAddress()))
             return true;
 
-        EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(ep);
+        EndpointState epState = databaseDescriptor.getGossiper().getEndpointStateForEndpoint(ep);
         // we could assert not-null, but having isAlive fail screws a node over so badly that
         // it's worth being defensive here so minor bugs don't cause disproportionate
         // badness.  (See CASSANDRA-1463 for an example).
