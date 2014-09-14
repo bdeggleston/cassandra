@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
-import org.apache.cassandra.db.KeyspaceManager;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.service.StorageServiceExecutors;
 import org.junit.AfterClass;
 import org.junit.After;
@@ -39,9 +39,6 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.ConsistencyLevel;
-import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.io.util.FileUtils;
@@ -160,7 +157,7 @@ public abstract class CQLTester
     private static void removeAllSSTables(String ks, String table)
     {
         // clean up data directory which are stored as data directory/keyspace/data files
-        for (File d : Directories.getKSChildDirectories(ks))
+        for (File d : Directories.getKSChildDirectories(ks, ColumnFamilyStoreManager.instance.dataDirectories))
         {
             if (d.exists() && d.getName().contains(table))
                 FileUtils.deleteRecursive(d);

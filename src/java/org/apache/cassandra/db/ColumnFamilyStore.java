@@ -448,9 +448,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
      * Removes unnecessary files from the cf directory at startup: these include temp files, orphans, zero-length files
      * and compacted sstables. Files that cannot be recognized will be ignored.
      */
-    public static void scrubDataDirectories(CFMetaData metadata, DatabaseDescriptor databaseDescriptor, Tracing tracing, CFMetaDataFactory cfMetaDataFactory, KeyspaceManager keyspaceManager, DBConfig dbConfig)
+    public static void scrubDataDirectories(CFMetaData metadata, DatabaseDescriptor databaseDescriptor, Tracing tracing, CFMetaDataFactory cfMetaDataFactory, KeyspaceManager keyspaceManager, DBConfig dbConfig, Directories.DataDirectory[] dataDirectories)
     {
-        Directories directories = new Directories(metadata, databaseDescriptor, dbConfig.getStorageService(), keyspaceManager);
+        Directories directories = new Directories(metadata, databaseDescriptor, dbConfig.getStorageService(), keyspaceManager, dataDirectories);
 
         // remove any left-behind SSTables from failed/stalled streaming
         FileFilter filter = new FileFilter()
@@ -524,7 +524,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 if (indexComparator != null)
                 {
                     CFMetaData indexMetadata = cfMetaDataFactory.newIndexMetadata(metadata, def, indexComparator);
-                    scrubDataDirectories(indexMetadata, databaseDescriptor, tracing, cfMetaDataFactory, keyspaceManager, dbConfig);
+                    scrubDataDirectories(indexMetadata, databaseDescriptor, tracing, cfMetaDataFactory, keyspaceManager, dbConfig, dataDirectories);
                 }
             }
         }

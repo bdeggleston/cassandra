@@ -87,16 +87,6 @@ public class Directories
     public static final String SNAPSHOT_SUBDIR = "snapshots";
     public static final String SECONDARY_INDEX_NAME_SEPARATOR = ".";
 
-    public static final DataDirectory[] dataDirectories;
-    static
-    {
-        String[] locations = DatabaseDescriptor.instance.getAllDataFileLocations();
-        dataDirectories = new DataDirectory[locations.length];
-        for (int i = 0; i < locations.length; ++i)
-            dataDirectories[i] = new DataDirectory(new File(locations[i]));
-    }
-
-
     /**
      * Checks whether Cassandra has RWX permissions to the specified directory.  Logs an error with
      * the details if it does not.
@@ -174,6 +164,7 @@ public class Directories
     private final File[] dataPaths;
     private final DatabaseDescriptor databaseDescriptor;
     private final StorageService storageService;
+    private final DataDirectory[] dataDirectories;
 
     /**
      * Create Directories of given ColumnFamily.
@@ -181,11 +172,12 @@ public class Directories
      *
      * @param metadata metadata of ColumnFamily
      */
-    public Directories(CFMetaData metadata, DatabaseDescriptor databaseDescriptor, StorageService storageService, KeyspaceManager keyspaceManager)
+    public Directories(CFMetaData metadata, DatabaseDescriptor databaseDescriptor, StorageService storageService, KeyspaceManager keyspaceManager, DataDirectory[] dataDirectories)
     {
         this.metadata = metadata;
         this.databaseDescriptor = databaseDescriptor;
         this.storageService = storageService;
+        this.dataDirectories = dataDirectories;
         if (this.storageService.isClientMode())
         {
             dataPaths = null;
@@ -205,12 +197,12 @@ public class Directories
              directoryName = metadata.cfName + "-" + cfId;
         }
 
-        this.dataPaths = new File[dataDirectories.length];
+        this.dataPaths = new File[this.dataDirectories.length];
         // If upgraded from version less than 2.1, use existing directories
-        for (int i = 0; i < dataDirectories.length; ++i)
+        for (int i = 0; i < this.dataDirectories.length; ++i)
         {
             // check if old SSTable directory exists
-            dataPaths[i] = new File(dataDirectories[i].location, join(metadata.ksName, this.metadata.cfName));
+            dataPaths[i] = new File(this.dataDirectories[i].location, join(metadata.ksName, this.metadata.cfName));
         }
         boolean olderDirectoryExists = Iterables.any(Arrays.asList(dataPaths), new Predicate<File>()
         {
@@ -222,8 +214,8 @@ public class Directories
         if (!olderDirectoryExists)
         {
             // use 2.1-style path names
-            for (int i = 0; i < dataDirectories.length; ++i)
-                dataPaths[i] = new File(dataDirectories[i].location, join(metadata.ksName, directoryName));
+            for (int i = 0; i < this.dataDirectories.length; ++i)
+                dataPaths[i] = new File(this.dataDirectories[i].location, join(metadata.ksName, directoryName));
         }
 
         for (File dir : dataPaths)
@@ -625,7 +617,7 @@ public class Directories
     }
 
     // Recursively finds all the sub directories in the KS directory.
-    public static List<File> getKSChildDirectories(String ksName)
+    public static List<File> getKSChildDirectories(String ksName, DataDirectory[] dataDirectories)
     {
         List<File> result = new ArrayList<>();
         for (DataDirectory dataDirectory : dataDirectories)
@@ -675,14 +667,14 @@ public class Directories
     }
 
     @VisibleForTesting
-    static void overrideDataDirectoriesForTest(String loc)
+    static void overrideDataDirectoriesForTest(String loc, DataDirectory[] dataDirectories)
     {
         for (int i = 0; i < dataDirectories.length; ++i)
             dataDirectories[i] = new DataDirectory(new File(loc));
     }
 
     @VisibleForTesting
-    static void resetDataDirectoriesAfterTest(DatabaseDescriptor databaseDescriptor)
+    static void resetDataDirectoriesAfterTest(DatabaseDescriptor databaseDescriptor, DataDirectory[] dataDirectories)
     {
         String[] locations = databaseDescriptor.getAllDataFileLocations();
         for (int i = 0; i < locations.length; ++i)

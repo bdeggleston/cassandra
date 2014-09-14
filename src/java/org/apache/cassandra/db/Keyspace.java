@@ -170,9 +170,9 @@ public class Keyspace
      * @param snapshotName the user supplied snapshot name. It empty or null,
      *                     all the snapshots will be cleaned
      */
-    public static void clearSnapshot(String snapshotName, String keyspace)
+    public static void clearSnapshot(String snapshotName, String keyspace, Directories.DataDirectory[] dataDirectories)
     {
-        List<File> snapshotDirs = Directories.getKSChildDirectories(keyspace);
+        List<File> snapshotDirs = Directories.getKSChildDirectories(keyspace, dataDirectories);
         Directories.clearSnapshot(snapshotName, snapshotDirs);
     }
 

@@ -25,6 +25,7 @@ import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -38,6 +39,15 @@ public class ColumnFamilyStoreManager
     public static final ColumnFamilyStoreManager instance = new ColumnFamilyStoreManager();
 
     public final TaskExecutors taskExecutors = new TaskExecutors();
+    public final Directories.DataDirectory[] dataDirectories;
+
+    public ColumnFamilyStoreManager()
+    {
+        String[] locations = DatabaseDescriptor.instance.getAllDataFileLocations();
+        dataDirectories = new Directories.DataDirectory[locations.length];
+        for (int i = 0; i < locations.length; ++i)
+            dataDirectories[i] = new Directories.DataDirectory(new File(locations[i]));
+    }
 
     public ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace, String columnFamily, boolean loadSSTables)
     {
@@ -56,7 +66,7 @@ public class ColumnFamilyStoreManager
                                                                    boolean loadSSTables)
     {
         // get the max generation number, to prevent generation conflicts
-        Directories directories = new Directories(metadata, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance);
+        Directories directories = new Directories(metadata, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, dataDirectories);
         Directories.SSTableLister lister = directories.sstableLister().includeBackups(true);
         List<Integer> generations = new ArrayList<Integer>();
         for (Map.Entry<Descriptor, Set<Component>> entry : lister.list().entrySet())
@@ -104,7 +114,7 @@ public class ColumnFamilyStoreManager
      */
     public void removeUnfinishedCompactionLeftovers(CFMetaData metadata, Map<Integer, UUID> unfinishedCompactions)
     {
-        Directories directories = new Directories(metadata, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance);
+        Directories directories = new Directories(metadata, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, dataDirectories);
 
         Set<Integer> allGenerations = new HashSet<>();
         for (Descriptor desc : directories.sstableLister().list().keySet())

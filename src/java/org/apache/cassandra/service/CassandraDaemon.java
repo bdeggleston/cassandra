@@ -229,7 +229,7 @@ public class CassandraDaemon
         // until system keyspace is opened.
         SystemKeyspace systemKeyspace = SystemKeyspace.instance;  // FIXME: forcing initialization before system keyspace access
         for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(Keyspace.SYSTEM_KS).values())
-            ColumnFamilyStore.scrubDataDirectories(cfm, DatabaseDescriptor.instance, Tracing.instance, CFMetaDataFactory.instance, KeyspaceManager.instance, DBConfig.instance);
+            ColumnFamilyStore.scrubDataDirectories(cfm, DatabaseDescriptor.instance, Tracing.instance, CFMetaDataFactory.instance, KeyspaceManager.instance, DBConfig.instance, ColumnFamilyStoreManager.instance.dataDirectories);
         try
         {
             SystemKeyspace.instance.checkHealth();
@@ -263,7 +263,7 @@ public class CassandraDaemon
                 continue;
 
             for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(keyspaceName).values())
-                ColumnFamilyStore.scrubDataDirectories(cfm, DatabaseDescriptor.instance, Tracing.instance, CFMetaDataFactory.instance, KeyspaceManager.instance, DBConfig.instance);
+                ColumnFamilyStore.scrubDataDirectories(cfm, DatabaseDescriptor.instance, Tracing.instance, CFMetaDataFactory.instance, KeyspaceManager.instance, DBConfig.instance, ColumnFamilyStoreManager.instance.dataDirectories);
         }
 
         KeyspaceManager.instance.setInitialized();

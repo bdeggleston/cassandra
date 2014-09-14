@@ -84,7 +84,7 @@ public class DirectoriesTest
         tempDataDir.delete(); // hack to create a temp dir
         tempDataDir.mkdir();
 
-        Directories.overrideDataDirectoriesForTest(tempDataDir.getPath());
+        Directories.overrideDataDirectoriesForTest(tempDataDir.getPath(), ColumnFamilyStoreManager.instance.dataDirectories);
         // Create two fake data dir for tests, one using CF directories, one that do not.
         createTestFiles();
     }
@@ -92,7 +92,7 @@ public class DirectoriesTest
     @AfterClass
     public static void afterClass()
     {
-        Directories.resetDataDirectoriesAfterTest(DatabaseDescriptor.instance);
+        Directories.resetDataDirectoriesAfterTest(DatabaseDescriptor.instance, ColumnFamilyStoreManager.instance.dataDirectories);
         FileUtils.deleteRecursive(tempDataDir);
     }
 
@@ -140,7 +140,7 @@ public class DirectoriesTest
     {
         for (CFMetaData cfm : CFM)
         {
-            Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance);
+            Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, ColumnFamilyStoreManager.instance.dataDirectories);
             assertEquals(cfDir(cfm), directories.getDirectoryForNewSSTables());
 
             Descriptor desc = new Descriptor(cfDir(cfm), KS, cfm.cfName, 1, Descriptor.Type.FINAL);
@@ -157,7 +157,7 @@ public class DirectoriesTest
     {
         for (CFMetaData cfm : CFM)
         {
-            Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance);
+            Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, ColumnFamilyStoreManager.instance.dataDirectories);
             Directories.SSTableLister lister;
             Set<File> listed;
 
@@ -208,7 +208,7 @@ public class DirectoriesTest
         {
             DatabaseDescriptor.instance.setDiskFailurePolicy(DiskFailurePolicy.best_effort);
             
-            for (DataDirectory dd : Directories.dataDirectories)
+            for (DataDirectory dd : ColumnFamilyStoreManager.instance.dataDirectories)
             {
                 dd.location.setExecutable(false);
                 dd.location.setWritable(false);
@@ -228,7 +228,7 @@ public class DirectoriesTest
                                             CFMetaDataFactory.instance,
                                             MutationFactory.instance,
                                             DBConfig.instance);
-            Directories dir = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance);
+            Directories dir = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, ColumnFamilyStoreManager.instance.dataDirectories);
 
             for (File file : dir.getCFDirectories())
             {
@@ -237,7 +237,7 @@ public class DirectoriesTest
         } 
         finally 
         {
-            for (DataDirectory dd : Directories.dataDirectories)
+            for (DataDirectory dd : ColumnFamilyStoreManager.instance.dataDirectories)
             {
                 dd.location.setExecutable(true);
                 dd.location.setWritable(true);
@@ -252,7 +252,7 @@ public class DirectoriesTest
     {
         for (final CFMetaData cfm : CFM)
         {
-            final Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance);
+            final Directories directories = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, ColumnFamilyStoreManager.instance.dataDirectories);
             assertEquals(cfDir(cfm), directories.getDirectoryForNewSSTables());
             final String n = Long.toString(System.nanoTime());
             Callable<File> directoryGetter = new Callable<File>() {

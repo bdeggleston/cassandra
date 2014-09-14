@@ -212,7 +212,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.SCHEMA_CHECK, new SchemaCheckVerbHandler(Schema.instance, MessagingService.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.MIGRATION_REQUEST, new MigrationRequestVerbHandler(SystemKeyspace.instance, MessagingService.instance));
 
-        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.SNAPSHOT, new SnapshotVerbHandler(KeyspaceManager.instance, MessagingService.instance));
+        MessagingService.instance.registerVerbHandlers(MessagingService.Verb.SNAPSHOT, new SnapshotVerbHandler(ColumnFamilyStoreManager.instance, KeyspaceManager.instance, MessagingService.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.ECHO, new EchoVerbHandler(MessagingService.instance));
     }
 
@@ -2251,7 +2251,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
 
         for (String keyspace : keyspaces)
-            Keyspace.clearSnapshot(tag, keyspace);
+            Keyspace.clearSnapshot(tag, keyspace, ColumnFamilyStoreManager.instance.dataDirectories);
 
         if (logger.isDebugEnabled())
             logger.debug("Cleared out snapshot directories");
