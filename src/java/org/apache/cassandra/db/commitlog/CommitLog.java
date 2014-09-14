@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.lang3.StringUtils;
@@ -39,7 +38,6 @@ import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.util.DataOutputByteBuffer;
 import org.apache.cassandra.metrics.CommitLogMetrics;
 import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.PureJavaCrc32;
 
 import static org.apache.cassandra.db.commitlog.CommitLogSegment.*;
@@ -52,7 +50,7 @@ public class CommitLog implements CommitLogMBean
 {
     private static final Logger logger = LoggerFactory.getLogger(CommitLog.class);
 
-    public static final CommitLog instance = new CommitLog();
+    public static final CommitLog instance = new CommitLog(DatabaseDescriptor.instance, Tracing.instance, Schema.instance, KeyspaceManager.instance);
 
     // we only permit records HALF the size of a commit log, to ensure we don't spin allocating many mostly
     // empty segments when writing large records
@@ -66,22 +64,31 @@ public class CommitLog implements CommitLogMBean
     private final long idBase;
     private final AtomicInteger nextId = new AtomicInteger(1);
 
-    private CommitLog()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    private CommitLog(DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, KeyspaceManager keyspaceManager)
     {
-        DatabaseDescriptor.instance.createAllDirectories();
+
+        assert tracing != null;
+        assert schema != null;
+        assert keyspaceManager != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+
+        databaseDescriptor.createAllDirectories();
         long maxId = Long.MIN_VALUE;
-        for (File file : new File(DatabaseDescriptor.instance.getCommitLogLocation()).listFiles())
+        for (File file : new File(databaseDescriptor.getCommitLogLocation()).listFiles())
         {
             if (CommitLogDescriptor.isValid(file.getName()))
                 maxId = Math.max(CommitLogDescriptor.fromFileName(file.getName()).id, maxId);
         }
         idBase = Math.max(System.currentTimeMillis(), maxId + 1);
 
-        allocator = new CommitLogSegmentManager(DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, this);
+        allocator = new CommitLogSegmentManager(databaseDescriptor, schema, keyspaceManager, this);
 
-        executor = DatabaseDescriptor.instance.getCommitLogSync() == Config.CommitLogSync.batch
-                 ? new BatchCommitLogService(this, DatabaseDescriptor.instance)
-                 : new PeriodicCommitLogService(this, DatabaseDescriptor.instance);
+        executor = databaseDescriptor.getCommitLogSync() == Config.CommitLogSync.batch
+                 ? new BatchCommitLogService(this, databaseDescriptor)
+                 : new PeriodicCommitLogService(this, databaseDescriptor);
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
@@ -93,13 +100,13 @@ public class CommitLog implements CommitLogMBean
             throw new RuntimeException(e);
         }
 
-        archiver = new CommitLogArchiver(DatabaseDescriptor.instance.getCommitLogLocation(), Tracing.instance);
+        archiver = new CommitLogArchiver(databaseDescriptor.getCommitLogLocation(), tracing);
 
         // register metrics
         metrics = new CommitLogMetrics(executor, allocator);
         allocator.start();
         executor.start();
-        MAX_MUTATION_SIZE = DatabaseDescriptor.instance.getCommitLogSegmentSize() >> 1;
+        MAX_MUTATION_SIZE = databaseDescriptor.getCommitLogSegmentSize() >> 1;
     }
 
     long getNextId()
@@ -116,7 +123,7 @@ public class CommitLog implements CommitLogMBean
     {
         archiver.maybeRestoreArchive();
 
-        File[] files = new File(DatabaseDescriptor.instance.getCommitLogLocation()).listFiles(new FilenameFilter()
+        File[] files = new File(databaseDescriptor.getCommitLogLocation()).listFiles(new FilenameFilter()
         {
             public boolean accept(File dir, String name)
             {
@@ -155,12 +162,12 @@ public class CommitLog implements CommitLogMBean
      */
     public int recover(File... clogs) throws IOException
     {
-        CommitLogReplayer recovery = new CommitLogReplayer(Schema.instance,
-                                                           SystemKeyspace.instance,
-                                                           ColumnFamilyStoreManager.instance,
-                                                           KeyspaceManager.instance,
-                                                           StageManager.instance,
-                                                           MutationFactory.instance,
+        CommitLogReplayer recovery = new CommitLogReplayer(databaseDescriptor.getSchema(),
+                                                           databaseDescriptor.getSystemKeyspace(),
+                                                           databaseDescriptor.getColumnFamilyStoreManager(),
+                                                           databaseDescriptor.getKeyspaceManager(),
+                                                           databaseDescriptor.getStageManager(),
+                                                           databaseDescriptor.getMutationFactory(),
                                                            this);
         recovery.recover(clogs);
         return recovery.blockForWrites();
@@ -230,7 +237,7 @@ public class CommitLog implements CommitLogMBean
     {
         assert mutation != null;
 
-        long size = MutationFactory.instance.serializer.serializedSize(mutation, MessagingService.current_version);
+        long size = databaseDescriptor.getMutationFactory().serializer.serializedSize(mutation, MessagingService.current_version);
 
         long totalSize = size + ENTRY_OVERHEAD_SIZE;
         if (totalSize > MAX_MUTATION_SIZE)
@@ -253,7 +260,7 @@ public class CommitLog implements CommitLogMBean
 
             int start = buffer.position();
             // checksummed mutation
-            MutationFactory.instance.serializer.serialize(mutation, dos, MessagingService.current_version);
+            databaseDescriptor.getMutationFactory().serializer.serialize(mutation, dos, MessagingService.current_version);
             checksum.update(buffer, start, (int) size);
             buffer.putInt(checksum.getCrc());
         }
@@ -372,18 +379,18 @@ public class CommitLog implements CommitLogMBean
 
     boolean handleCommitError(String message, Throwable t)
     {
-        switch (DatabaseDescriptor.instance.getCommitFailurePolicy())
+        switch (databaseDescriptor.getCommitFailurePolicy())
         {
             case stop:
-                StorageService.instance.stopTransports();
+                databaseDescriptor.getStorageService().stopTransports();
             case stop_commit:
-                logger.error(String.format("%s. Commit disk failure policy is %s; terminating thread", message, DatabaseDescriptor.instance.getCommitFailurePolicy()), t);
+                logger.error(String.format("%s. Commit disk failure policy is %s; terminating thread", message, databaseDescriptor.getCommitFailurePolicy()), t);
                 return false;
             case ignore:
                 logger.error(message, t);
                 return true;
             default:
-                throw new AssertionError(DatabaseDescriptor.instance.getCommitFailurePolicy());
+                throw new AssertionError(databaseDescriptor.getCommitFailurePolicy());
         }
     }
 
