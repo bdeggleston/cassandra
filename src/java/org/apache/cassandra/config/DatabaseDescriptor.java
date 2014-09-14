@@ -50,8 +50,11 @@ import org.apache.cassandra.io.sstable.SSTableReaderFactory;
 import org.apache.cassandra.io.sstable.SSTableWriterFactory;
 import org.apache.cassandra.locator.*;
 import org.apache.cassandra.service.*;
+import org.apache.cassandra.sink.SinkManager;
+import org.apache.cassandra.streaming.StreamManager;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.triggers.TriggerExecutor;
+import org.apache.cassandra.utils.StatusLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.cassandra.config.Config.RequestSchedulerId;
@@ -1714,6 +1717,21 @@ public class DatabaseDescriptor
     public FileCacheService getFileCacheService()
     {
         return FileCacheService.instance;
+    }
+
+    public SinkManager getSinkManager()
+    {
+        return SinkManager.instance;
+    }
+
+    public StatusLogger getStatusLogger()
+    {
+        return StatusLogger.instance;
+    }
+
+    public StreamManager getStreamManager()
+    {
+        return StreamManager.instance;
     }
 
     public DBConfig getDBConfig()
