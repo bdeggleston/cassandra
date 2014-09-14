@@ -1679,6 +1679,11 @@ public class DatabaseDescriptor
         return CacheService.instance;
     }
 
+    public StageManager getStageManager()
+    {
+        return StageManager.instance;
+    }
+
     public LocatorConfig getLocatorConfig()
     {
         return LocatorConfig.instance;

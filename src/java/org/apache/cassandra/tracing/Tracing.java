@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,11 +74,14 @@ public class Tracing
     /* the probability for tracing any particular request, 0 disables tracing and 1 enables for all */
     private volatile double tracingProbability = 0.0;
 
-    public static final Tracing instance = new Tracing();
+    public static final Tracing instance = new Tracing(DatabaseDescriptor.instance, LocatorConfig.instance);
 
-    public Tracing()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public Tracing(DatabaseDescriptor databaseDescriptor, LocatorConfig locatorConfig)
     {
-        localAddress = DatabaseDescriptor.instance.getLocalAddress();
+        this.databaseDescriptor = databaseDescriptor;
+        localAddress = locatorConfig.getLocalAddress();
     }
 
     public double getTracingProbability()
@@ -119,7 +123,7 @@ public class Tracing
     {
         for (Map.Entry<String, String> entry : rawPayload.entrySet())
         {
-            cf.addColumn(new BufferExpiringCell(buildName(CFMetaDataFactory.instance.TraceSessionsCf, "parameters", entry.getKey()),
+            cf.addColumn(new BufferExpiringCell(buildName(databaseDescriptor.geCFMetaDataFactory().TraceSessionsCf, "parameters", entry.getKey()),
                                                 bytes(entry.getValue()), System.currentTimeMillis(), TTL));
         }
     }
@@ -154,12 +158,12 @@ public class Tracing
 
         TraceState ts = new TraceState(localAddress,
                                        sessionId,
-                                       DatabaseDescriptor.instance.getBroadcastAddress(),
-                                       StageManager.instance,
-                                       CFMetaDataFactory.instance,
+                                       databaseDescriptor.getLocatorConfig().getBroadcastAddress(),
+                                       databaseDescriptor.getStageManager(),
+                                       databaseDescriptor.geCFMetaDataFactory(),
                                        this,
-                                       MutationFactory.instance,
-                                       DBConfig.instance);
+                                       databaseDescriptor.getMutationFactory(),
+                                       databaseDescriptor.getDBConfig());
         state.set(ts);
         sessions.put(sessionId, ts);
 
@@ -187,14 +191,14 @@ public class Tracing
             final int elapsed = state.elapsed();
             final ByteBuffer sessionIdBytes = state.sessionIdBytes;
 
-            StageManager.instance.getStage(Stage.TRACING).execute(new Runnable()
+            databaseDescriptor.getStageManager().getStage(Stage.TRACING).execute(new Runnable()
             {
                 public void run()
                 {
-                    CFMetaData cfMeta = CFMetaDataFactory.instance.TraceSessionsCf;
-                    ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta, DBConfig.instance);
+                    CFMetaData cfMeta = databaseDescriptor.geCFMetaDataFactory().TraceSessionsCf;
+                    ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta, databaseDescriptor.getDBConfig());
                     addColumn(cf, buildName(cfMeta, "duration"), elapsed);
-                    mutateWithCatch(MutationFactory.instance.create(TRACE_KS, sessionIdBytes, cf));
+                    mutateWithCatch(databaseDescriptor.getMutationFactory().create(TRACE_KS, sessionIdBytes, cf));
                 }
             });
 
@@ -225,18 +229,18 @@ public class Tracing
         final long started_at = System.currentTimeMillis();
         final ByteBuffer sessionIdBytes = state.get().sessionIdBytes;
 
-        StageManager.instance.getStage(Stage.TRACING).execute(new Runnable()
+        databaseDescriptor.getStageManager().getStage(Stage.TRACING).execute(new Runnable()
         {
             public void run()
             {
-                CFMetaData cfMeta = CFMetaDataFactory.instance.TraceSessionsCf;
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta, DBConfig.instance);
-                addColumn(cf, buildName(cfMeta, "coordinator"), DatabaseDescriptor.instance.getBroadcastAddress());
+                CFMetaData cfMeta = databaseDescriptor.geCFMetaDataFactory().TraceSessionsCf;
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta, databaseDescriptor.getDBConfig());
+                addColumn(cf, buildName(cfMeta, "coordinator"), databaseDescriptor.getLocatorConfig().getBroadcastAddress());
                 addParameterColumns(cf, parameters);
                 addColumn(cf, buildName(cfMeta, bytes("request")), request);
                 addColumn(cf, buildName(cfMeta, bytes("started_at")), started_at);
                 addParameterColumns(cf, parameters);
-                mutateWithCatch(MutationFactory.instance.create(TRACE_KS, sessionIdBytes, cf));
+                mutateWithCatch(databaseDescriptor.getMutationFactory().create(TRACE_KS, sessionIdBytes, cf));
             }
         });
     }
@@ -262,11 +266,23 @@ public class Tracing
         if (message.verb == MessagingService.Verb.REQUEST_RESPONSE)
         {
             // received a message for a session we've already closed out.  see CASSANDRA-5668
-            return new ExpiredTraceState(sessionId, DatabaseDescriptor.instance.getBroadcastAddress(), StageManager.instance, CFMetaDataFactory.instance, this, MutationFactory.instance, DBConfig.instance);
+            return new ExpiredTraceState(sessionId,
+                                         databaseDescriptor.getLocatorConfig().getBroadcastAddress(),
+                                         databaseDescriptor.getStageManager(),
+                                         databaseDescriptor.geCFMetaDataFactory(),
+                                         this,
+                                         databaseDescriptor.getMutationFactory(),
+                                         databaseDescriptor.getDBConfig());
         }
         else
         {
-            ts = new TraceState(message.from, sessionId, DatabaseDescriptor.instance.getBroadcastAddress(), StageManager.instance, CFMetaDataFactory.instance, this, MutationFactory.instance, DBConfig.instance);
+            ts = new TraceState(message.from, sessionId,
+                                databaseDescriptor.getLocatorConfig().getBroadcastAddress(),
+                                databaseDescriptor.getStageManager(),
+                                databaseDescriptor.geCFMetaDataFactory(),
+                                this,
+                                databaseDescriptor.getMutationFactory(),
+                                databaseDescriptor.getDBConfig());
             sessions.put(sessionId, ts);
             return ts;
         }
@@ -313,19 +329,19 @@ public class Tracing
         TraceState.trace(ByteBufferUtil.bytes(sessionId),
                          message,
                          elapsed,
-                         DatabaseDescriptor.instance.getBroadcastAddress(),
-                         StageManager.instance,
-                         CFMetaDataFactory.instance,
+                         databaseDescriptor.getLocatorConfig().getBroadcastAddress(),
+                         databaseDescriptor.getStageManager(),
+                         databaseDescriptor.geCFMetaDataFactory(),
                          this,
-                         MutationFactory.instance,
-                         DBConfig.instance);
+                         databaseDescriptor.getMutationFactory(),
+                         databaseDescriptor.getDBConfig());
     }
 
     void mutateWithCatch(Mutation mutation)
     {
         try
         {
-            StorageProxy.instance.mutate(Arrays.asList(mutation), ConsistencyLevel.ANY);
+            databaseDescriptor.getStorageProxy().mutate(Arrays.asList(mutation), ConsistencyLevel.ANY);
         }
         catch (UnavailableException | WriteTimeoutException e)
         {
