@@ -26,13 +26,16 @@ import java.util.Collection;
 
 import com.ning.compress.lzf.LZFOutputStream;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.DataIntegrityMetadata;
 import org.apache.cassandra.io.util.DataIntegrityMetadata.ChecksumValidator;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.io.util.RandomAccessReader;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.streaming.StreamManager.StreamRateLimiter;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.Pair;
 
 /**
@@ -52,12 +55,12 @@ public class StreamWriter
     // allocate buffer to use for transfers only once
     private byte[] transferBuffer;
 
-    public StreamWriter(SSTableReader sstable, Collection<Pair<Long, Long>> sections, StreamSession session)
+    public StreamWriter(SSTableReader sstable, Collection<Pair<Long, Long>> sections, StreamSession session, DatabaseDescriptor databaseDescriptor, LocatorConfig locatorConfig)
     {
         this.session = session;
         this.sstable = sstable;
         this.sections = sections;
-        this.limiter =  StreamManager.getRateLimiter(session.peer);
+        this.limiter =  StreamManager.getRateLimiter(session.peer, databaseDescriptor, locatorConfig);
     }
 
     /**

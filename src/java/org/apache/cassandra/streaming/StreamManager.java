@@ -52,7 +52,7 @@ import org.apache.cassandra.streaming.management.StreamStateCompositeData;
  */
 public class StreamManager implements StreamManagerMBean
 {
-    public static final StreamManager instance = new StreamManager();
+    public static final StreamManager instance = new StreamManager(Tracing.instance);
 
     private final ThreadPoolExecutor receiveTaskExecutor;
 
@@ -60,15 +60,16 @@ public class StreamManager implements StreamManagerMBean
     // streaming is handled directly by the ConnectionHandler's incoming and outgoing threads.
     private final DebuggableThreadPoolExecutor streamExecutor;
 
-    public StreamManager()
+    public StreamManager(Tracing tracing)
     {
+        assert tracing != null;
         receiveTaskExecutor = DebuggableThreadPoolExecutor.createWithMaximumPoolSize("StreamReceiveTask",
                                                                                      FBUtilities.getAvailableProcessors(),
                                                                                      60, TimeUnit.SECONDS,
-                                                                                     Tracing.instance);
+                                                                                     tracing);
         streamExecutor = DebuggableThreadPoolExecutor.createWithFixedPoolSize("StreamConnectionEstablisher",
                                                                               FBUtilities.getAvailableProcessors(),
-                                                                              Tracing.instance);
+                                                                              tracing);
     }
 
     /**
@@ -79,9 +80,9 @@ public class StreamManager implements StreamManagerMBean
      *
      * @return StreamRateLimiter with rate limit set based on peer location.
      */
-    public static StreamRateLimiter getRateLimiter(InetAddress peer)
+    public static StreamRateLimiter getRateLimiter(InetAddress peer, DatabaseDescriptor databaseDescriptor, LocatorConfig locatorConfig)
     {
-        return new StreamRateLimiter(peer);
+        return new StreamRateLimiter(peer, databaseDescriptor, locatorConfig);
     }
 
     public static class StreamRateLimiter
@@ -91,17 +92,17 @@ public class StreamManager implements StreamManagerMBean
         private static final RateLimiter interDCLimiter = RateLimiter.create(Double.MAX_VALUE);
         private final boolean isLocalDC;
 
-        public StreamRateLimiter(InetAddress peer)
+        public StreamRateLimiter(InetAddress peer, DatabaseDescriptor databaseDescriptor, LocatorConfig locatorConfig)
         {
-            double throughput = ((double) DatabaseDescriptor.instance.getStreamThroughputOutboundMegabitsPerSec()) * ONE_MEGA_BIT;
+            double throughput = ((double) databaseDescriptor.getStreamThroughputOutboundMegabitsPerSec()) * ONE_MEGA_BIT;
             mayUpdateThroughput(throughput, limiter);
 
-            double interDCThroughput = ((double) DatabaseDescriptor.instance.getInterDCStreamThroughputOutboundMegabitsPerSec()) * ONE_MEGA_BIT;
+            double interDCThroughput = ((double) databaseDescriptor.getInterDCStreamThroughputOutboundMegabitsPerSec()) * ONE_MEGA_BIT;
             mayUpdateThroughput(interDCThroughput, interDCLimiter);
 
-            if (DatabaseDescriptor.instance.getLocalDataCenter() != null && LocatorConfig.instance.getEndpointSnitch() != null)
-                isLocalDC = DatabaseDescriptor.instance.getLocalDataCenter().equals(
-                            LocatorConfig.instance.getEndpointSnitch().getDatacenter(peer));
+            if (locatorConfig.getLocalDC() != null && locatorConfig.getEndpointSnitch() != null)
+                isLocalDC = locatorConfig.getLocalDC().equals(
+                            locatorConfig.getEndpointSnitch().getDatacenter(peer));
             else
                 isLocalDC = true;
         }

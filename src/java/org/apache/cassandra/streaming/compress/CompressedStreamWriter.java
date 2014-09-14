@@ -24,10 +24,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.compress.CompressionMetadata;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.io.util.RandomAccessReader;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.streaming.ProgressInfo;
 import org.apache.cassandra.streaming.StreamSession;
 import org.apache.cassandra.streaming.StreamWriter;
@@ -42,9 +44,9 @@ public class CompressedStreamWriter extends StreamWriter
 
     private final CompressionInfo compressionInfo;
 
-    public CompressedStreamWriter(SSTableReader sstable, Collection<Pair<Long, Long>> sections, CompressionInfo compressionInfo, StreamSession session)
+    public CompressedStreamWriter(SSTableReader sstable, Collection<Pair<Long, Long>> sections, CompressionInfo compressionInfo, StreamSession session, DatabaseDescriptor databaseDescriptor, LocatorConfig locatorConfig)
     {
-        super(sstable, sections, session);
+        super(sstable, sections, session, databaseDescriptor, locatorConfig);
         this.compressionInfo = compressionInfo;
     }
 

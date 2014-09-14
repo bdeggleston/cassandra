@@ -21,9 +21,11 @@ import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.compress.CompressionMetadata;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.DataOutputStreamAndChannel;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.streaming.StreamSession;
 import org.apache.cassandra.streaming.StreamWriter;
 import org.apache.cassandra.streaming.compress.CompressedStreamWriter;
@@ -35,8 +37,18 @@ import org.apache.cassandra.utils.Pair;
  */
 public class OutgoingFileMessage extends StreamMessage
 {
-    public static Serializer<OutgoingFileMessage> serializer = new Serializer<OutgoingFileMessage>()
+    public static class Serializer implements StreamMessage.Serializer<OutgoingFileMessage>
     {
+
+        private final DatabaseDescriptor databaseDescriptor;
+        private final LocatorConfig locatorConfig;
+
+        public Serializer(DatabaseDescriptor databaseDescriptor, LocatorConfig locatorConfig)
+        {
+            this.databaseDescriptor = databaseDescriptor;
+            this.locatorConfig = locatorConfig;
+        }
+
         public OutgoingFileMessage deserialize(ReadableByteChannel in, int version, StreamSession session) throws IOException
         {
             throw new UnsupportedOperationException("Not allowed to call deserialize on an outgoing file");
@@ -48,10 +60,12 @@ public class OutgoingFileMessage extends StreamMessage
 
             final SSTableReader reader = message.sstable;
             StreamWriter writer = message.header.compressionInfo == null ?
-                    new StreamWriter(reader, message.header.sections, session) :
+                    new StreamWriter(reader, message.header.sections, session, databaseDescriptor, locatorConfig) :
                     new CompressedStreamWriter(reader,
                             message.header.sections,
-                            message.header.compressionInfo, session);
+                            message.header.compressionInfo, session,
+                            databaseDescriptor,
+                            locatorConfig);
             writer.write(out.getChannel());
             session.fileSent(message.header);
         }
