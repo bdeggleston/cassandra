@@ -26,8 +26,8 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.TriggerDefinition;
-import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.exceptions.InvalidRequestException;
@@ -36,14 +36,17 @@ import org.apache.cassandra.utils.Pair;
 
 public class TriggerExecutor
 {
-    public static final TriggerExecutor instance = new TriggerExecutor();
+    public static final TriggerExecutor instance = new TriggerExecutor(DatabaseDescriptor.instance);
 
     private final Map<String, ITrigger> cachedTriggers = Maps.newConcurrentMap();
     private final ClassLoader parent = Thread.currentThread().getContextClassLoader();
     private volatile ClassLoader customClassLoader;
 
-    private TriggerExecutor()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    private TriggerExecutor(DatabaseDescriptor databaseDescriptor)
     {
+        this.databaseDescriptor = databaseDescriptor;
         reloadClasses();
     }
 
@@ -160,7 +163,7 @@ public class TriggerExecutor
     {
         for (Mutation mutation : tmutations)
         {
-            QueryProcessor.instance.validateKey(mutation.key());
+            databaseDescriptor.getQueryProcessor().validateKey(mutation.key());
             for (ColumnFamily tcf : mutation.getColumnFamilies())
                 for (Cell cell : tcf)
                     cell.validateFields(tcf.metadata());
