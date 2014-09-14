@@ -1706,6 +1706,11 @@ public class DatabaseDescriptor
         return Gossiper.instance;
     }
 
+    public ActiveRepairService getActiveRepairService()
+    {
+        return ActiveRepairService.instance;
+    }
+
     public DBConfig getDBConfig()
     {
         return DBConfig.instance;

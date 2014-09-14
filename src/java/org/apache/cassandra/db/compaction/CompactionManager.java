@@ -55,9 +55,6 @@ import com.google.common.util.concurrent.RateLimiter;
 
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.io.sstable.*;
-import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,14 +94,14 @@ public class CompactionManager implements CompactionManagerMBean
 {
     public static final String MBEAN_OBJECT_NAME = "org.apache.cassandra.db:type=CompactionManager";
     private static final Logger logger = LoggerFactory.getLogger(CompactionManager.class);
-    public static final CompactionManager instance = create();
+    public static final CompactionManager instance = create(DatabaseDescriptor.instance, Tracing.instance, Schema.instance, KeyspaceManager.instance);
 
     public static final int NO_GC = Integer.MIN_VALUE;
     public static final int GC_ALL = Integer.MAX_VALUE;
 
-    public static CompactionManager create()
+    public static CompactionManager create(DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, KeyspaceManager keyspaceManager)
     {
-        CompactionManager cm = new CompactionManager();
+        CompactionManager cm = new CompactionManager(databaseDescriptor, tracing, schema, keyspaceManager);
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
         {
@@ -138,12 +135,19 @@ public class CompactionManager implements CompactionManagerMBean
 
     private final RateLimiter compactionRateLimiter;
 
-    public CompactionManager()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public CompactionManager(DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, KeyspaceManager keyspaceManager)
     {
-        executor = new CompactionExecutor();
-        validationExecutor = new ValidationExecutor();
-        cacheCleanupExecutor = new CacheCleanupExecutor();
-        metrics = new CompactionMetrics(Schema.instance, KeyspaceManager.instance, executor, validationExecutor);
+        assert schema != null;
+        assert keyspaceManager != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+
+        executor = new CompactionExecutor(databaseDescriptor, tracing);
+        validationExecutor = new ValidationExecutor(tracing);
+        cacheCleanupExecutor = new CacheCleanupExecutor(tracing);
+        metrics = new CompactionMetrics(schema, keyspaceManager, executor, validationExecutor);
         compactingCF = ConcurrentHashMultiset.create();
         compactionRateLimiter = RateLimiter.create(Double.MAX_VALUE);
     }
@@ -157,9 +161,9 @@ public class CompactionManager implements CompactionManagerMBean
      */
     public RateLimiter getRateLimiter()
     {
-        double currentThroughput = DatabaseDescriptor.instance.getCompactionThroughputMbPerSec() * 1024.0 * 1024.0;
+        double currentThroughput = databaseDescriptor.getCompactionThroughputMbPerSec() * 1024.0 * 1024.0;
         // if throughput is set to 0, throttling is disabled
-        if (currentThroughput == 0 || StorageService.instance.isBootstrapMode())
+        if (currentThroughput == 0 || databaseDescriptor.getStorageService().isBootstrapMode())
             currentThroughput = Double.MAX_VALUE;
         if (compactionRateLimiter.getRate() != currentThroughput)
             compactionRateLimiter.setRate(currentThroughput);
@@ -350,7 +354,7 @@ public class CompactionManager implements CompactionManagerMBean
     {
         assert !cfStore.isIndex();
         Keyspace keyspace = cfStore.keyspace;
-        final Collection<Range<Token>> ranges = LocatorConfig.instance.getLocalRanges(keyspace.getName());
+        final Collection<Range<Token>> ranges = databaseDescriptor.getLocatorConfig().getLocalRanges(keyspace.getName());
         if (ranges.isEmpty())
         {
             logger.info("Cleanup cannot run before a node has joined the ring");
@@ -480,13 +484,13 @@ public class CompactionManager implements CompactionManagerMBean
         {
             // extract keyspace and columnfamily name from filename
             Descriptor desc = Descriptor.fromFilename(filename.trim());
-            if (Schema.instance.getCFMetaData(desc) == null)
+            if (databaseDescriptor.getSchema().getCFMetaData(desc) == null)
             {
                 logger.warn("Schema does not exist for file {}. Skipping.", filename);
                 continue;
             }
             // group by keyspace/columnfamily
-            ColumnFamilyStore cfs = KeyspaceManager.instance.open(desc.ksname).getColumnFamilyStore(desc.cfname);
+            ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(desc.ksname).getColumnFamilyStore(desc.cfname);
             descriptors.put(cfs, cfs.directories.find(new File(filename.trim()).getName()));
         }
 
@@ -574,16 +578,16 @@ public class CompactionManager implements CompactionManagerMBean
     /* Used in tests. */
     public void disableAutoCompaction()
     {
-        for (String ksname : Schema.instance.getNonSystemKeyspaces())
+        for (String ksname : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
-            for (ColumnFamilyStore cfs : KeyspaceManager.instance.open(ksname).getColumnFamilyStores())
+            for (ColumnFamilyStore cfs : databaseDescriptor.getKeyspaceManager().open(ksname).getColumnFamilyStores())
                 cfs.disableAutoCompaction();
         }
     }
 
     private void scrubOne(ColumnFamilyStore cfs, SSTableReader sstable, boolean skipCorrupted) throws IOException
     {
-        Scrubber scrubber = new Scrubber(cfs, sstable, this, skipCorrupted, false, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
+        Scrubber scrubber = new Scrubber(cfs, sstable, this, skipCorrupted, false, databaseDescriptor, databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
 
         CompactionInfo.Holder scrubInfo = scrubber.getScrubInfo();
         metrics.beginCompaction(scrubInfo);
@@ -661,7 +665,7 @@ public class CompactionManager implements CompactionManagerMBean
     {
         assert !cfs.isIndex();
 
-        if (!hasIndexes && !new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), LocatorConfig.instance.getPartitioner()).intersects(ranges))
+        if (!hasIndexes && !new Bounds<>(sstable.first.getToken(), sstable.last.getToken(), databaseDescriptor.getLocatorConfig().getPartitioner()).intersects(ranges))
         {
             cfs.getDataTracker().markCompactedSSTablesReplaced(Arrays.asList(sstable), Collections.<SSTableReader>emptyList(), OperationType.CLEANUP);
             return;
@@ -688,14 +692,14 @@ public class CompactionManager implements CompactionManagerMBean
             throw new IOException("disk full");
 
         ICompactionScanner scanner = cleanupStrategy.getScanner(sstable, getRateLimiter());
-        CleanupInfo ci = new CleanupInfo(sstable, scanner, StorageService.instance);
+        CleanupInfo ci = new CleanupInfo(sstable, scanner, databaseDescriptor.getStorageService());
 
         metrics.beginCompaction(ci);
-        SSTableRewriter writer = new SSTableRewriter(cfs, new HashSet<>(ImmutableSet.of(sstable)), sstable.maxDataAge, OperationType.CLEANUP, false, DBConfig.instance);
+        SSTableRewriter writer = new SSTableRewriter(cfs, new HashSet<>(ImmutableSet.of(sstable)), sstable.maxDataAge, OperationType.CLEANUP, false, databaseDescriptor.getDBConfig());
 
         try (CompactionController controller = new CompactionController(cfs, Collections.singleton(sstable), getDefaultGcBefore(cfs)))
         {
-            writer.switchWriter(createWriter(cfs, compactionFileLocation, expectedBloomFilterSize, sstable.getSSTableMetadata().repairedAt, sstable));
+            writer.switchWriter(createWriter(cfs, compactionFileLocation, expectedBloomFilterSize, sstable.getSSTableMetadata().repairedAt, sstable, databaseDescriptor.getSSTableWriterFactory()));
 
             while (scanner.hasNext())
             {
@@ -706,7 +710,7 @@ public class CompactionManager implements CompactionManagerMBean
                 row = cleanupStrategy.cleanup(row);
                 if (row == null)
                     continue;
-                AbstractCompactedRow compactedRow = new LazilyCompactedRow(controller, Collections.singletonList(row), DatabaseDescriptor.instance, DBConfig.instance);
+                AbstractCompactedRow compactedRow = new LazilyCompactedRow(controller, Collections.singletonList(row), databaseDescriptor, databaseDescriptor.getDBConfig());
                 if (writer.append(compactedRow) != null)
                     totalkeysWritten++;
             }
@@ -854,10 +858,11 @@ public class CompactionManager implements CompactionManagerMBean
                                              File compactionFileLocation,
                                              int expectedBloomFilterSize,
                                              long repairedAt,
-                                             SSTableReader sstable)
+                                             SSTableReader sstable,
+                                             SSTableWriterFactory ssTableWriterFactory)
     {
         FileUtils.createDirectory(compactionFileLocation);
-        return SSTableWriterFactory.instance.create(cfs.getTempSSTablePath(compactionFileLocation),
+        return ssTableWriterFactory.create(cfs.getTempSSTablePath(compactionFileLocation),
                                  expectedBloomFilterSize,
                                  repairedAt,
                                  cfs.metadata,
@@ -869,7 +874,8 @@ public class CompactionManager implements CompactionManagerMBean
                                              File compactionFileLocation,
                                              int expectedBloomFilterSize,
                                              long repairedAt,
-                                             Collection<SSTableReader> sstables)
+                                             Collection<SSTableReader> sstables,
+                                             SSTableWriterFactory ssTableWriterFactory)
     {
         FileUtils.createDirectory(compactionFileLocation);
         int minLevel = Integer.MAX_VALUE;
@@ -887,7 +893,7 @@ public class CompactionManager implements CompactionManagerMBean
                 break;
             }
         }
-        return SSTableWriterFactory.instance.create(cfs.getTempSSTablePath(compactionFileLocation),
+        return ssTableWriterFactory.create(cfs.getTempSSTablePath(compactionFileLocation),
                                  expectedBloomFilterSize,
                                  repairedAt,
                                  cfs.metadata,
@@ -928,13 +934,13 @@ public class CompactionManager implements CompactionManagerMBean
         else
         {
             // flush first so everyone is validating data that is as similar as possible
-            StorageService.instance.forceKeyspaceFlush(cfs.keyspace.getName(), cfs.name);
+            databaseDescriptor.getStorageService().forceKeyspaceFlush(cfs.keyspace.getName(), cfs.name);
             // we don't mark validating sstables as compacting in DataTracker, so we have to mark them referenced
             // instead so they won't be cleaned up if they do get compacted during the validation
-            if (validator.desc.parentSessionId == null || ActiveRepairService.instance.getParentRepairSession(validator.desc.parentSessionId) == null)
+            if (validator.desc.parentSessionId == null || databaseDescriptor.getActiveRepairService().getParentRepairSession(validator.desc.parentSessionId) == null)
                 sstables = cfs.markCurrentSSTablesReferenced();
             else
-                sstables = ActiveRepairService.instance.getParentRepairSession(validator.desc.parentSessionId).getAndReferenceSSTables(cfs.metadata.cfId);
+                sstables = databaseDescriptor.getActiveRepairService().getParentRepairSession(validator.desc.parentSessionId).getAndReferenceSSTables(cfs.metadata.cfId);
 
             if (validator.gcBefore > 0)
                 gcBefore = validator.gcBefore;
@@ -953,7 +959,7 @@ public class CompactionManager implements CompactionManagerMBean
         int depth = numPartitions > 0 ? (int) Math.min(Math.floor(Math.log(numPartitions)), 20) : 0;
         MerkleTree tree = new MerkleTree(cfs.partitioner, validator.desc.range, MerkleTree.RECOMMENDED_DEPTH, (int) Math.pow(2, depth));
 
-        CompactionIterable ci = new ValidationCompactionIterable(cfs, sstables, validator.desc.range, gcBefore);
+        CompactionIterable ci = new ValidationCompactionIterable(cfs, sstables, validator.desc.range, gcBefore, databaseDescriptor, databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
         CloseableIterator<AbstractCompactedRow> iter = ci.iterator();
 
         long start = System.nanoTime();
@@ -991,7 +997,7 @@ public class CompactionManager implements CompactionManagerMBean
                          duration,
                          depth,
                          numPartitions,
-                         DBConfig.instance.merkleTreeSerializer.serializedSize(tree, 0),
+                         databaseDescriptor.getDBConfig().merkleTreeSerializer.serializedSize(tree, 0),
                          validator.desc);
         }
     }
@@ -1057,8 +1063,8 @@ public class CompactionManager implements CompactionManagerMBean
         Set<SSTableReader> sstableAsSet = new HashSet<>(anticompactionGroup);
 
         File destination = cfs.directories.getDirectoryForNewSSTables();
-        SSTableRewriter repairedSSTableWriter = new SSTableRewriter(cfs, sstableAsSet, groupMaxDataAge, OperationType.ANTICOMPACTION, false, DBConfig.instance);
-        SSTableRewriter unRepairedSSTableWriter = new SSTableRewriter(cfs, sstableAsSet, groupMaxDataAge, OperationType.ANTICOMPACTION, false, DBConfig.instance);
+        SSTableRewriter repairedSSTableWriter = new SSTableRewriter(cfs, sstableAsSet, groupMaxDataAge, OperationType.ANTICOMPACTION, false, databaseDescriptor.getDBConfig());
+        SSTableRewriter unRepairedSSTableWriter = new SSTableRewriter(cfs, sstableAsSet, groupMaxDataAge, OperationType.ANTICOMPACTION, false, databaseDescriptor.getDBConfig());
 
         AbstractCompactionStrategy strategy = cfs.getCompactionStrategy();
         List<ICompactionScanner> scanners = strategy.getScanners(anticompactionGroup);
@@ -1069,10 +1075,10 @@ public class CompactionManager implements CompactionManagerMBean
         long unrepairedKeyCount = 0;
         try (CompactionController controller = new CompactionController(cfs, sstableAsSet, CFMetaData.DEFAULT_GC_GRACE_SECONDS))
         {
-            repairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination, expectedBloomFilterSize, repairedAt, sstableAsSet));
-            unRepairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination, expectedBloomFilterSize, ActiveRepairService.UNREPAIRED_SSTABLE, sstableAsSet));
+            repairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination, expectedBloomFilterSize, repairedAt, sstableAsSet, databaseDescriptor.getSSTableWriterFactory()));
+            unRepairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination, expectedBloomFilterSize, ActiveRepairService.UNREPAIRED_SSTABLE, sstableAsSet, databaseDescriptor.getSSTableWriterFactory()));
 
-            CompactionIterable ci = new CompactionIterable(OperationType.ANTICOMPACTION, scanners, controller, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
+            CompactionIterable ci = new CompactionIterable(OperationType.ANTICOMPACTION, scanners, controller, databaseDescriptor, databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
 
             try (CloseableIterator<AbstractCompactedRow> iter = ci.iterator())
             {
@@ -1126,7 +1132,14 @@ public class CompactionManager implements CompactionManagerMBean
                 metrics.beginCompaction(builder);
                 try
                 {
-                    builder.build(DatabaseDescriptor.instance, Tracing.instance, Schema.instance, KeyspaceManager.instance, StorageProxy.instance, MessagingService.instance, LocatorConfig.instance, DBConfig.instance);
+                    builder.build(databaseDescriptor,
+                                  databaseDescriptor.getTracing(),
+                                  databaseDescriptor.getSchema(),
+                                  databaseDescriptor.getKeyspaceManager(),
+                                  databaseDescriptor.getStorageProxy(),
+                                  databaseDescriptor.getMessagingService(),
+                                  databaseDescriptor.getLocatorConfig(),
+                                  databaseDescriptor.getDBConfig());
                 }
                 finally
                 {
@@ -1179,14 +1192,14 @@ public class CompactionManager implements CompactionManagerMBean
 
     private static class ValidationCompactionIterable extends CompactionIterable
     {
-        public ValidationCompactionIterable(ColumnFamilyStore cfs, Collection<SSTableReader> sstables, Range<Token> range, int gcBefore)
+        public ValidationCompactionIterable(ColumnFamilyStore cfs, Collection<SSTableReader> sstables, Range<Token> range, int gcBefore, DatabaseDescriptor databaseDescriptor, DBConfig dbConfig, StorageService storageService)
         {
             super(OperationType.VALIDATION,
                   cfs.getCompactionStrategy().getScanners(sstables, range),
                   new ValidationCompactionController(cfs, gcBefore),
-                  DatabaseDescriptor.instance,
-                  DBConfig.instance,
-                  StorageService.instance);
+                  databaseDescriptor,
+                  dbConfig,
+                  storageService);
         }
     }
 
@@ -1228,19 +1241,19 @@ public class CompactionManager implements CompactionManagerMBean
 
     private static class CompactionExecutor extends JMXEnabledThreadPoolExecutor
     {
-        protected CompactionExecutor(int minThreads, int maxThreads, String name, BlockingQueue<Runnable> queue)
+        protected CompactionExecutor(int minThreads, int maxThreads, String name, BlockingQueue<Runnable> queue, Tracing tracing)
         {
-            super(minThreads, maxThreads, 60, TimeUnit.SECONDS, queue, new NamedThreadFactory(name, Thread.MIN_PRIORITY), "internal", Tracing.instance);
+            super(minThreads, maxThreads, 60, TimeUnit.SECONDS, queue, new NamedThreadFactory(name, Thread.MIN_PRIORITY), "internal", tracing);
         }
 
-        private CompactionExecutor(int threadCount, String name)
+        private CompactionExecutor(int threadCount, String name, Tracing tracing)
         {
-            this(threadCount, threadCount, name, new LinkedBlockingQueue<Runnable>());
+            this(threadCount, threadCount, name, new LinkedBlockingQueue<Runnable>(), tracing);
         }
 
-        public CompactionExecutor()
+        public CompactionExecutor(DatabaseDescriptor databaseDescriptor, Tracing tracing)
         {
-            this(Math.max(1, DatabaseDescriptor.instance.getConcurrentCompactors()), "CompactionExecutor");
+            this(Math.max(1, databaseDescriptor.getConcurrentCompactors()), "CompactionExecutor", tracing);
         }
 
         protected void beforeExecute(Thread t, Runnable r)
@@ -1276,17 +1289,17 @@ public class CompactionManager implements CompactionManagerMBean
 
     private static class ValidationExecutor extends CompactionExecutor
     {
-        public ValidationExecutor()
+        public ValidationExecutor(Tracing tracing)
         {
-            super(1, Integer.MAX_VALUE, "ValidationExecutor", new SynchronousQueue<Runnable>());
+            super(1, Integer.MAX_VALUE, "ValidationExecutor", new SynchronousQueue<Runnable>(), tracing);
         }
     }
 
     private static class CacheCleanupExecutor extends CompactionExecutor
     {
-        public CacheCleanupExecutor()
+        public CacheCleanupExecutor(Tracing tracing)
         {
-            super(1, "CacheCleanupExecutor");
+            super(1, "CacheCleanupExecutor", tracing);
         }
     }
 
@@ -1319,7 +1332,7 @@ public class CompactionManager implements CompactionManagerMBean
     {
         try
         {
-            return SystemKeyspace.instance.getCompactionHistory();
+            return databaseDescriptor.getSystemKeyspace().getCompactionHistory();
         }
         catch (OpenDataException e)
         {
