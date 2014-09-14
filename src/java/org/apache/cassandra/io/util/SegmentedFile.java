@@ -71,8 +71,8 @@ public abstract class SegmentedFile
     public static Builder getBuilder(Config.DiskAccessMode indexAccessMode, FileCacheService fileCacheService, Config.DiskAccessMode diskAccessMode)
     {
         return indexAccessMode == Config.DiskAccessMode.mmap
-               ? new MmappedSegmentedFile.Builder(DatabaseDescriptor.instance.getDiskAccessMode())
-               : new BufferedPoolingSegmentedFile.Builder(fileCacheService, DatabaseDescriptor.instance.getDiskAccessMode());
+               ? new MmappedSegmentedFile.Builder(diskAccessMode)
+               : new BufferedPoolingSegmentedFile.Builder(fileCacheService, diskAccessMode);
     }
 
     public static Builder getCompressedBuilder(FileCacheService fileCacheService, Config.DiskAccessMode diskAccessMode, IAllocator allocator)
@@ -134,12 +134,12 @@ public abstract class SegmentedFile
 
         public void serializeBounds(DataOutput out) throws IOException
         {
-            out.writeUTF(DatabaseDescriptor.instance.getDiskAccessMode().name());
+            out.writeUTF(diskAccessMode.name());
         }
 
         public void deserializeBounds(DataInput in) throws IOException
         {
-            if (!in.readUTF().equals(DatabaseDescriptor.instance.getDiskAccessMode().name()))
+            if (!in.readUTF().equals(diskAccessMode.name()))
                 throw new IOException("Cannot deserialize SSTable Summary component because the DiskAccessMode was changed!");
         }
     }
