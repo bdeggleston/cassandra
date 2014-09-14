@@ -1711,6 +1711,11 @@ public class DatabaseDescriptor
         return ActiveRepairService.instance;
     }
 
+    public FileCacheService getFileCacheService()
+    {
+        return FileCacheService.instance;
+    }
+
     public DBConfig getDBConfig()
     {
         return DBConfig.instance;

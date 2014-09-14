@@ -2,8 +2,6 @@ package org.apache.cassandra.io.sstable;
 
 import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
 import org.apache.cassandra.config.*;
-import org.apache.cassandra.db.DBConfig;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.LocalPartitioner;
@@ -14,11 +12,6 @@ import org.apache.cassandra.io.sstable.metadata.ValidationMetadata;
 import org.apache.cassandra.io.util.BufferedSegmentedFile;
 import org.apache.cassandra.io.util.CompressedSegmentedFile;
 import org.apache.cassandra.io.util.SegmentedFile;
-import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.service.CacheService;
-import org.apache.cassandra.service.FileCacheService;
-import org.apache.cassandra.service.StorageServiceExecutors;
-import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.FilterFactory;
 import org.apache.cassandra.utils.IFilter;
@@ -41,7 +34,14 @@ public class SSTableReaderFactory
 {
     private static final Logger logger = LoggerFactory.getLogger(SSTableReaderFactory.class);
 
-    public static final SSTableReaderFactory instance = new SSTableReaderFactory();
+    public static final SSTableReaderFactory instance = new SSTableReaderFactory(DatabaseDescriptor.instance);
+
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public SSTableReaderFactory(DatabaseDescriptor databaseDescriptor)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+    }
 
     public SSTableReader open(Descriptor descriptor) throws IOException
     {
@@ -50,13 +50,13 @@ public class SSTableReaderFactory
         {
             int i = descriptor.cfname.indexOf(SECONDARY_INDEX_NAME_SEPARATOR);
             String parentName = descriptor.cfname.substring(0, i);
-            CFMetaData parent = Schema.instance.getCFMetaData(descriptor.ksname, parentName);
+            CFMetaData parent = databaseDescriptor.getSchema().getCFMetaData(descriptor.ksname, parentName);
             ColumnDefinition def = parent.getColumnDefinitionForIndex(descriptor.cfname.substring(i + 1));
-            metadata = CFMetaDataFactory.instance.newIndexMetadata(parent, def, SecondaryIndex.getIndexComparator(parent, def, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+            metadata = databaseDescriptor.getCFMetaDataFactory().newIndexMetadata(parent, def, SecondaryIndex.getIndexComparator(parent, def, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         }
         else
         {
-            metadata = Schema.instance.getCFMetaData(descriptor.ksname, descriptor.cfname);
+            metadata = databaseDescriptor.getSchema().getCFMetaData(descriptor.ksname, descriptor.cfname);
         }
         return open(descriptor, metadata);
     }
@@ -65,7 +65,7 @@ public class SSTableReaderFactory
     {
         IPartitioner p = desc.cfname.contains(SECONDARY_INDEX_NAME_SEPARATOR)
                 ? new LocalPartitioner(metadata.getKeyValidator())
-                : LocatorConfig.instance.getPartitioner();
+                : databaseDescriptor.getLocatorConfig().getPartitioner();
         return open(desc, SSTable.componentsFor(desc), metadata, p);
     }
 
@@ -76,7 +76,7 @@ public class SSTableReaderFactory
 
     public SSTableReader openNoValidation(Descriptor descriptor, Set<Component> components, CFMetaData metadata) throws IOException
     {
-        return open(descriptor, components, metadata, LocatorConfig.instance.getPartitioner(), false);
+        return open(descriptor, components, metadata, databaseDescriptor.getLocatorConfig().getPartitioner(), false);
     }
 
     /**
@@ -119,20 +119,20 @@ public class SSTableReaderFactory
                                                   System.currentTimeMillis(),
                                                   statsMetadata,
                                                   false,
-                                                  DatabaseDescriptor.instance,
-                                                  Tracing.instance,
-                                                  Schema.instance,
-                                                  SystemKeyspace.instance,
-                                                  StorageServiceExecutors.instance,
-                                                  CacheService.instance,
-                                                  FileCacheService.instance,
-                                                  DBConfig.instance);
+                                                  databaseDescriptor,
+                                                  databaseDescriptor.getTracing(),
+                                                  databaseDescriptor.getSchema(),
+                                                  databaseDescriptor.getSystemKeyspace(),
+                                                  databaseDescriptor.getStorageServiceExecutors(),
+                                                  databaseDescriptor.getCacheService(),
+                                                  databaseDescriptor.getFileCacheService(),
+                                                  databaseDescriptor.getDBConfig());
 
         // special implementation of load to use non-pooled SegmentedFile builders
-        SegmentedFile.Builder ibuilder = new BufferedSegmentedFile.Builder(DatabaseDescriptor.instance.getDiskAccessMode());
+        SegmentedFile.Builder ibuilder = new BufferedSegmentedFile.Builder(databaseDescriptor.getDiskAccessMode());
         SegmentedFile.Builder dbuilder = sstable.compression
-                ? new CompressedSegmentedFile.Builder(null, DatabaseDescriptor.instance.getDiskAccessMode(), DBConfig.instance.offHeapAllocator)
-                : new BufferedSegmentedFile.Builder(DatabaseDescriptor.instance.getDiskAccessMode());
+                ? new CompressedSegmentedFile.Builder(null, databaseDescriptor.getDiskAccessMode(), databaseDescriptor.getDBConfig().offHeapAllocator)
+                : new BufferedSegmentedFile.Builder(databaseDescriptor.getDiskAccessMode());
         if (!sstable.loadSummary(ibuilder, dbuilder))
             sstable.buildSummary(false, ibuilder, dbuilder, false, Downsampling.BASE_SAMPLING_LEVEL);
 
@@ -177,14 +177,14 @@ public class SSTableReaderFactory
                                                   System.currentTimeMillis(),
                                                   statsMetadata,
                                                   false,
-                                                  DatabaseDescriptor.instance,
-                                                  Tracing.instance,
-                                                  Schema.instance,
-                                                  SystemKeyspace.instance,
-                                                  StorageServiceExecutors.instance,
-                                                  CacheService.instance,
-                                                  FileCacheService.instance,
-                                                  DBConfig.instance);
+                                                  databaseDescriptor,
+                                                  databaseDescriptor.getTracing(),
+                                                  databaseDescriptor.getSchema(),
+                                                  databaseDescriptor.getSystemKeyspace(),
+                                                  databaseDescriptor.getStorageServiceExecutors(),
+                                                  databaseDescriptor.getCacheService(),
+                                                  databaseDescriptor.getFileCacheService(),
+                                                  databaseDescriptor.getDBConfig());
 
         // load index and filter
         long start = System.nanoTime();
@@ -205,7 +205,7 @@ public class SSTableReaderFactory
     {
         final Collection<SSTableReader> sstables = new LinkedBlockingQueue<>();
 
-        ExecutorService executor = DebuggableThreadPoolExecutor.createWithFixedPoolSize("SSTableBatchOpen", FBUtilities.getAvailableProcessors(), Tracing.instance);
+        ExecutorService executor = DebuggableThreadPoolExecutor.createWithFixedPoolSize("SSTableBatchOpen", FBUtilities.getAvailableProcessors(), databaseDescriptor.getTracing());
         for (final Map.Entry<Descriptor, Set<Component>> entry : entries)
         {
             Runnable runnable = new Runnable()
@@ -268,14 +268,14 @@ public class SSTableReaderFactory
                                  maxDataAge,
                                  sstableMetadata,
                                  isOpenEarly,
-                                 DatabaseDescriptor.instance,
-                                 Tracing.instance,
-                                 Schema.instance,
-                                 SystemKeyspace.instance,
-                                 StorageServiceExecutors.instance,
-                                 CacheService.instance,
-                                 FileCacheService.instance,
-                                 DBConfig.instance);
+                                 databaseDescriptor,
+                                 databaseDescriptor.getTracing(),
+                                 databaseDescriptor.getSchema(),
+                                 databaseDescriptor.getSystemKeyspace(),
+                                 databaseDescriptor.getStorageServiceExecutors(),
+                                 databaseDescriptor.getCacheService(),
+                                 databaseDescriptor.getFileCacheService(),
+                                 databaseDescriptor.getDBConfig());
     }
 
 }
