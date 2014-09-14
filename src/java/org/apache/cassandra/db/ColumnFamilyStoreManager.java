@@ -5,10 +5,7 @@ import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.sstable.Component;
@@ -17,10 +14,6 @@ import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.CompactionMetadata;
 import org.apache.cassandra.io.sstable.metadata.MetadataType;
-import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.service.CacheService;
-import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,23 +29,27 @@ public class ColumnFamilyStoreManager
 {
     private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStore.class);
 
-    public static final ColumnFamilyStoreManager instance = new ColumnFamilyStoreManager();
+    public static final ColumnFamilyStoreManager instance = new ColumnFamilyStoreManager(DatabaseDescriptor.instance, Tracing.instance);
+
+    private final DatabaseDescriptor databaseDescriptor;
 
     public final TaskExecutors taskExecutors;
     public final Directories.DataDirectory[] dataDirectories;
 
-    public ColumnFamilyStoreManager()
+    public ColumnFamilyStoreManager(DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
-        String[] locations = DatabaseDescriptor.instance.getAllDataFileLocations();
+        assert tracing != null;
+        this.databaseDescriptor = databaseDescriptor;
+        String[] locations = databaseDescriptor.getAllDataFileLocations();
         dataDirectories = new Directories.DataDirectory[locations.length];
         for (int i = 0; i < locations.length; ++i)
             dataDirectories[i] = new Directories.DataDirectory(new File(locations[i]));
-        taskExecutors = new TaskExecutors();
+        taskExecutors = new TaskExecutors(databaseDescriptor, tracing);
     }
 
     public ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace, String columnFamily, boolean loadSSTables)
     {
-        return createColumnFamilyStore(keyspace, columnFamily, LocatorConfig.instance.getPartitioner(), Schema.instance.getCFMetaData(keyspace.getName(), columnFamily), loadSSTables);
+        return createColumnFamilyStore(keyspace, columnFamily, databaseDescriptor.getLocatorConfig().getPartitioner(), databaseDescriptor.getSchema().getCFMetaData(keyspace.getName(), columnFamily), loadSSTables);
     }
 
     public ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace, String columnFamily, IPartitioner partitioner, CFMetaData metadata)
@@ -67,7 +64,7 @@ public class ColumnFamilyStoreManager
                                                                    boolean loadSSTables)
     {
         // get the max generation number, to prevent generation conflicts
-        Directories directories = new Directories(metadata, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, dataDirectories);
+        Directories directories = new Directories(metadata, databaseDescriptor, databaseDescriptor.getStorageService(), databaseDescriptor.getKeyspaceManager(), dataDirectories);
         Directories.SSTableLister lister = directories.sstableLister().includeBackups(true);
         List<Integer> generations = new ArrayList<Integer>();
         for (Map.Entry<Descriptor, Set<Component>> entry : lister.list().entrySet())
@@ -89,16 +86,16 @@ public class ColumnFamilyStoreManager
                                      directories,
                                      loadSSTables,
                                      taskExecutors,
-                                     Schema.instance,
-                                     Tracing.instance,
-                                     CFMetaDataFactory.instance,
+                                     databaseDescriptor.getSchema(),
+                                     databaseDescriptor.getTracing(),
+                                     databaseDescriptor.geCFMetaDataFactory(),
                                      this,
-                                     KeyspaceManager.instance,
-                                     DBConfig.instance,
-                                     CommitLog.instance,
-                                     CacheService.instance,
-                                     StorageServiceExecutors.instance,
-                                     MutationFactory.instance);
+                                     databaseDescriptor.getKeyspaceManager(),
+                                     databaseDescriptor.getDBConfig(),
+                                     databaseDescriptor.getCommitLog(),
+                                     databaseDescriptor.getCacheService(),
+                                     databaseDescriptor.getStorageServiceExecutors(),
+                                     databaseDescriptor.getMutationFactory());
     }
 
     /**
@@ -115,7 +112,7 @@ public class ColumnFamilyStoreManager
      */
     public void removeUnfinishedCompactionLeftovers(CFMetaData metadata, Map<Integer, UUID> unfinishedCompactions)
     {
-        Directories directories = new Directories(metadata, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, dataDirectories);
+        Directories directories = new Directories(metadata, databaseDescriptor, databaseDescriptor.getStorageService(), databaseDescriptor.getKeyspaceManager(), dataDirectories);
 
         Set<Integer> allGenerations = new HashSet<>();
         for (Descriptor desc : directories.sstableLister().list().keySet())
@@ -158,7 +155,7 @@ public class ColumnFamilyStoreManager
                 assert compactionTaskID != null;
                 logger.debug("Going to delete unfinished compaction product {}", desc);
                 SSTable.delete(desc, sstableFiles.getValue());
-                SystemKeyspace.instance.finishCompaction(compactionTaskID);
+                databaseDescriptor.getSystemKeyspace().finishCompaction(compactionTaskID);
             }
             else
             {
@@ -177,7 +174,7 @@ public class ColumnFamilyStoreManager
                 SSTable.delete(desc, sstableFiles.getValue());
                 UUID compactionTaskID = unfinishedCompactions.get(desc.generation);
                 if (compactionTaskID != null)
-                    SystemKeyspace.instance.finishCompaction(unfinishedCompactions.get(desc.generation));
+                    databaseDescriptor.getSystemKeyspace().finishCompaction(unfinishedCompactions.get(desc.generation));
             }
         }
     }
@@ -191,13 +188,13 @@ public class ColumnFamilyStoreManager
     public synchronized void loadNewSSTables(String ksName, String cfName)
     {
         /** ks/cf existence checks will be done by open and getCFS methods for us */
-        Keyspace keyspace = KeyspaceManager.instance.open(ksName);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(ksName);
         keyspace.getColumnFamilyStore(cfName).loadNewSSTables();
     }
 
     public void rebuildSecondaryIndex(String ksName, String cfName, String... idxNames)
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(ksName).getColumnFamilyStore(cfName);
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(ksName).getColumnFamilyStore(cfName);
 
         Set<String> indexes = new HashSet<String>(Arrays.asList(idxNames));
 
@@ -218,8 +215,8 @@ public class ColumnFamilyStoreManager
 
     public Iterable<ColumnFamilyStore> all()
     {
-        List<Iterable<ColumnFamilyStore>> stores = new ArrayList<Iterable<ColumnFamilyStore>>(Schema.instance.getKeyspaces().size());
-        for (Keyspace keyspace : KeyspaceManager.instance.all())
+        List<Iterable<ColumnFamilyStore>> stores = new ArrayList<Iterable<ColumnFamilyStore>>(databaseDescriptor.getSchema().getKeyspaces().size());
+        for (Keyspace keyspace : databaseDescriptor.getKeyspaceManager().all())
         {
             stores.add(keyspace.getColumnFamilyStores());
         }
@@ -234,30 +231,36 @@ public class ColumnFamilyStoreManager
 
     public class TaskExecutors
     {
-        private TaskExecutors() {}
-
-        public final ExecutorService flushExecutor = new JMXEnabledThreadPoolExecutor(DatabaseDescriptor.instance.getFlushWriters(),
-                                                                                       StageManager.KEEPALIVE,
-                                                                                       TimeUnit.SECONDS,
-                                                                                       new LinkedBlockingQueue<Runnable>(),
-                                                                                       new NamedThreadFactory("MemtableFlushWriter"),
-                                                                                       "internal",
-                                                                                       Tracing.instance);
+        public final ExecutorService flushExecutor;
         // post-flush executor is single threaded to provide guarantee that any flush Future on a CF will never return until prior flushes have completed
-        public final ExecutorService postFlushExecutor = new JMXEnabledThreadPoolExecutor(1,
-                                                                                          StageManager.KEEPALIVE,
-                                                                                          TimeUnit.SECONDS,
-                                                                                          new LinkedBlockingQueue<Runnable>(),
-                                                                                          new NamedThreadFactory("MemtablePostFlush"),
-                                                                                          "internal",
-                                                                                          Tracing.instance);
-        public final ExecutorService reclaimExecutor = new JMXEnabledThreadPoolExecutor(1, StageManager.KEEPALIVE,
-                                                                                        TimeUnit.SECONDS,
-                                                                                        new LinkedBlockingQueue<Runnable>(),
-                                                                                        new NamedThreadFactory("MemtableReclaimMemory"),
-                                                                                        "internal",
-                                                                                        Tracing.instance);
+        public final ExecutorService postFlushExecutor;
+        public final ExecutorService reclaimExecutor;
 
+
+        public TaskExecutors(DatabaseDescriptor databaseDescriptor, Tracing tracing)
+        {
+
+            flushExecutor = new JMXEnabledThreadPoolExecutor(databaseDescriptor.getFlushWriters(),
+                                                             StageManager.KEEPALIVE,
+                                                             TimeUnit.SECONDS,
+                                                             new LinkedBlockingQueue<Runnable>(),
+                                                             new NamedThreadFactory("MemtableFlushWriter"),
+                                                             "internal",
+                                                             tracing);
+            postFlushExecutor = new JMXEnabledThreadPoolExecutor(1,
+                                                                 StageManager.KEEPALIVE,
+                                                                 TimeUnit.SECONDS,
+                                                                 new LinkedBlockingQueue<Runnable>(),
+                                                                 new NamedThreadFactory("MemtablePostFlush"),
+                                                                 "internal",
+                                                                 tracing);
+            reclaimExecutor = new JMXEnabledThreadPoolExecutor(1, StageManager.KEEPALIVE,
+                                                               TimeUnit.SECONDS,
+                                                               new LinkedBlockingQueue<Runnable>(),
+                                                               new NamedThreadFactory("MemtableReclaimMemory"),
+                                                               "internal",
+                                                               tracing);
+        }
     }
 
 }

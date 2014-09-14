@@ -41,6 +41,7 @@ import org.apache.cassandra.cql3.QueryHandler;
 import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
@@ -1663,14 +1664,24 @@ public class DatabaseDescriptor
         return CompactionManager.instance;
     }
 
-    public LocatorConfig getLocatorConfig()
-    {
-        return LocatorConfig.instance;
-    }
-
     public IFailureDetector getFailureDetector()
     {
         return FailureDetector.instance;
+    }
+
+    public CommitLog getCommitLog()
+    {
+        return CommitLog.instance;
+    }
+
+    public CacheService getCacheService()
+    {
+        return CacheService.instance;
+    }
+
+    public LocatorConfig getLocatorConfig()
+    {
+        return LocatorConfig.instance;
     }
 
     public DBConfig getDBConfig()
