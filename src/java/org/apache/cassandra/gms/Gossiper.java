@@ -73,47 +73,41 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
     private ScheduledFuture<?> scheduledGossipTask;
     public final static int intervalInMillis = 1000;
-    public final static int QUARANTINE_DELAY = DatabaseDescriptor.instance.getRingDelay() * 2;
+    public final int QUARANTINE_DELAY;
     private static final Logger logger = LoggerFactory.getLogger(Gossiper.class);
     public static final Gossiper instance = new Gossiper();
 
     public static final long aVeryLongTime = 259200 * 1000; // 3 days
     private long FatClientTimeout;
     private final Random random = new Random();
-    private final Comparator<InetAddress> inetcomparator = new Comparator<InetAddress>()
-    {
-        public int compare(InetAddress addr1, InetAddress addr2)
-        {
-            return addr1.getHostAddress().compareTo(addr2.getHostAddress());
-        }
-    };
+    private final Comparator<InetAddress> inetcomparator;
 
     /* subscribers for interest in EndpointState change */
-    private final List<IEndpointStateChangeSubscriber> subscribers = new CopyOnWriteArrayList<IEndpointStateChangeSubscriber>();
+    private final List<IEndpointStateChangeSubscriber> subscribers;
 
     /* live member set */
-    private final Set<InetAddress> liveEndpoints = new ConcurrentSkipListSet<InetAddress>(inetcomparator);
+    private final Set<InetAddress> liveEndpoints;
 
     /* unreachable member set */
-    private final Map<InetAddress, Long> unreachableEndpoints = new ConcurrentHashMap<InetAddress, Long>();
+    private final Map<InetAddress, Long> unreachableEndpoints;
 
     /* initial seeds for joining the cluster */
-    private final Set<InetAddress> seeds = new ConcurrentSkipListSet<InetAddress>(inetcomparator);
+    private final Set<InetAddress> seeds;
 
     /* map where key is the endpoint and value is the state associated with the endpoint */
-    final ConcurrentMap<InetAddress, EndpointState> endpointStateMap = new ConcurrentHashMap<InetAddress, EndpointState>();
+    final ConcurrentMap<InetAddress, EndpointState> endpointStateMap;
 
     /* map where key is endpoint and value is timestamp when this endpoint was removed from
      * gossip. We will ignore any gossip regarding these endpoints for QUARANTINE_DELAY time
      * after removal to prevent nodes from falsely reincarnating during the time when removal
      * gossip gets propagated to all nodes */
-    private final Map<InetAddress, Long> justRemovedEndpoints = new ConcurrentHashMap<InetAddress, Long>();
+    private final Map<InetAddress, Long> justRemovedEndpoints;
 
-    private final Map<InetAddress, Long> expireTimeEndpointMap = new ConcurrentHashMap<InetAddress, Long>();
+    private final Map<InetAddress, Long> expireTimeEndpointMap;
 
-    private boolean inShadowRound = false;
+    private boolean inShadowRound;
 
-    private volatile long lastProcessedMessageAt = System.currentTimeMillis();
+    private volatile long lastProcessedMessageAt;
 
     private class GossipTask implements Runnable
     {
@@ -178,9 +172,28 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     private Gossiper()
     {
         // half of QUARATINE_DELAY, to ensure justRemovedEndpoints has enough leeway to prevent re-gossip
+        QUARANTINE_DELAY = DatabaseDescriptor.instance.getRingDelay() * 2;
         FatClientTimeout = (long) (QUARANTINE_DELAY / 2);
+
         /* register with the Failure Detector for receiving Failure detector events */
         FailureDetector.instance.registerFailureDetectionEventListener(this);
+
+        inetcomparator = new Comparator<InetAddress>()
+        {
+            public int compare(InetAddress addr1, InetAddress addr2)
+            {
+                return addr1.getHostAddress().compareTo(addr2.getHostAddress());
+            }
+        };
+        subscribers = new CopyOnWriteArrayList<IEndpointStateChangeSubscriber>();
+        liveEndpoints = new ConcurrentSkipListSet<InetAddress>(inetcomparator);
+        unreachableEndpoints = new ConcurrentHashMap<InetAddress, Long>();
+        seeds = new ConcurrentSkipListSet<InetAddress>(inetcomparator);
+        endpointStateMap = new ConcurrentHashMap<InetAddress, EndpointState>();
+        justRemovedEndpoints = new ConcurrentHashMap<InetAddress, Long>();
+        expireTimeEndpointMap = new ConcurrentHashMap<InetAddress, Long>();
+        inShadowRound = false;
+        lastProcessedMessageAt = System.currentTimeMillis();
 
         // Register this instance with JMX
         try

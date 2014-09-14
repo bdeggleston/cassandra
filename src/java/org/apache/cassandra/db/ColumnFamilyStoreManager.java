@@ -38,7 +38,7 @@ public class ColumnFamilyStoreManager
 
     public static final ColumnFamilyStoreManager instance = new ColumnFamilyStoreManager();
 
-    public final TaskExecutors taskExecutors = new TaskExecutors();
+    public final TaskExecutors taskExecutors;
     public final Directories.DataDirectory[] dataDirectories;
 
     public ColumnFamilyStoreManager()
@@ -47,6 +47,7 @@ public class ColumnFamilyStoreManager
         dataDirectories = new Directories.DataDirectory[locations.length];
         for (int i = 0; i < locations.length; ++i)
             dataDirectories[i] = new Directories.DataDirectory(new File(locations[i]));
+        taskExecutors = new TaskExecutors();
     }
 
     public ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace, String columnFamily, boolean loadSSTables)

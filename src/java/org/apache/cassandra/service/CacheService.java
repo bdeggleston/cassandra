@@ -89,6 +89,10 @@ public class CacheService implements CacheServiceMBean
 
     private CacheService()
     {
+        keyCache = initKeyCache();
+        rowCache = initRowCache();
+        counterCache = initCounterCache();
+
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 
         try
@@ -99,10 +103,6 @@ public class CacheService implements CacheServiceMBean
         {
             throw new RuntimeException(e);
         }
-
-        keyCache = initKeyCache();
-        rowCache = initRowCache();
-        counterCache = initCounterCache();
     }
 
     /**

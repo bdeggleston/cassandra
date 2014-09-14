@@ -137,14 +137,14 @@ public final class MessagingService implements MessagingServiceMBean
         ;
     }
 
-    public final ReadResponse.Serializer readResponseSerializer = new ReadResponse.Serializer(DBConfig.instance.rowSerializer);
-    public final RangeSliceReply.Serializer rangeSliceReplySerializer = new RangeSliceReply.Serializer(DBConfig.instance.rowSerializer);
-    public final PrepareResponse.Serializer prepareResponseSerializer = new PrepareResponse.Serializer(DBConfig.instance.columnFamilySerializer, MutationFactory.instance);
-    public final Commit.Serializer commitSerializer = new Commit.Serializer(DBConfig.instance.columnFamilySerializer, MutationFactory.instance);
-    public final RangeSliceCommand.Serializer rangeSliceCommandSerializer = new RangeSliceCommand.Serializer(DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, DBConfig.instance.boundsSerializer);
-    public final PagedRangeCommand.Serializer pagedRangeCommandSerializer = new PagedRangeCommand.Serializer(DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, DBConfig.instance.boundsSerializer);
-    public final RepairMessage.Serializer repairMessageSerializer = new RepairMessage.Serializer(DBConfig.instance);
-    public final ReadCommand.Serializer readCommandSerializer = new ReadCommand.Serializer(DatabaseDescriptor.instance, Schema.instance, LocatorConfig.instance.getPartitioner());
+    public final ReadResponse.Serializer readResponseSerializer;
+    public final RangeSliceReply.Serializer rangeSliceReplySerializer;
+    public final PrepareResponse.Serializer prepareResponseSerializer;
+    public final Commit.Serializer commitSerializer;
+    public final RangeSliceCommand.Serializer rangeSliceCommandSerializer;
+    public final PagedRangeCommand.Serializer pagedRangeCommandSerializer;
+    public final RepairMessage.Serializer repairMessageSerializer;
+    public final ReadCommand.Serializer readCommandSerializer;
 
     public final EnumMap<MessagingService.Verb, Stage> verbStages = new EnumMap<MessagingService.Verb, Stage>(MessagingService.Verb.class)
     {{
@@ -202,54 +202,12 @@ public final class MessagingService implements MessagingServiceMBean
      * intermediary byte[] (See CASSANDRA-3716), we need to wire that up to the CallbackInfo object
      * (see below).
      */
-    public final EnumMap<Verb, IVersionedSerializer<?>> verbSerializers = new EnumMap<Verb, IVersionedSerializer<?>>(Verb.class)
-    {{
-        put(Verb.REQUEST_RESPONSE, CallbackDeterminedSerializer.instance);
-        put(Verb.INTERNAL_RESPONSE, CallbackDeterminedSerializer.instance);
-
-        put(Verb.MUTATION, MutationFactory.instance.serializer);
-        put(Verb.READ_REPAIR, MutationFactory.instance.serializer);
-        put(Verb.READ, readCommandSerializer);
-        put(Verb.RANGE_SLICE, rangeSliceCommandSerializer);
-        put(Verb.PAGED_RANGE, pagedRangeCommandSerializer);
-        put(Verb.BOOTSTRAP_TOKEN, BootStrapper.StringSerializer.instance);
-        put(Verb.REPAIR_MESSAGE, repairMessageSerializer);
-        put(Verb.GOSSIP_DIGEST_ACK, GossipDigestAck.serializer);
-        put(Verb.GOSSIP_DIGEST_ACK2, GossipDigestAck2.serializer);
-        put(Verb.GOSSIP_DIGEST_SYN, GossipDigestSyn.serializer);
-        put(Verb.DEFINITIONS_UPDATE, MigrationManager.MigrationsSerializer.instance);
-        put(Verb.TRUNCATE, Truncation.serializer);
-        put(Verb.REPLICATION_FINISHED, null);
-        put(Verb.COUNTER_MUTATION, CounterMutationFactory.instance.serializer);
-        put(Verb.SNAPSHOT, SnapshotCommand.serializer);
-        put(Verb.ECHO, EchoMessage.serializer);
-        put(Verb.PAXOS_PREPARE, commitSerializer);
-        put(Verb.PAXOS_PROPOSE, commitSerializer);
-        put(Verb.PAXOS_COMMIT, commitSerializer);
-    }};
+    public final EnumMap<Verb, IVersionedSerializer<?>> verbSerializers;
 
     /**
      * A Map of what kind of serializer to wire up to a REQUEST_RESPONSE callback, based on outbound Verb.
      */
-    public final EnumMap<Verb, IVersionedSerializer<?>> callbackDeserializers = new EnumMap<Verb, IVersionedSerializer<?>>(Verb.class)
-    {{
-        put(Verb.MUTATION, WriteResponse.serializer);
-        put(Verb.READ_REPAIR, WriteResponse.serializer);
-        put(Verb.COUNTER_MUTATION, WriteResponse.serializer);
-        put(Verb.RANGE_SLICE, rangeSliceReplySerializer);
-        put(Verb.PAGED_RANGE, rangeSliceReplySerializer);
-        put(Verb.READ, readResponseSerializer);
-        put(Verb.TRUNCATE, TruncateResponse.serializer);
-        put(Verb.SNAPSHOT, null);
-
-        put(Verb.MIGRATION_REQUEST, MigrationManager.MigrationsSerializer.instance);
-        put(Verb.SCHEMA_CHECK, UUIDSerializer.serializer);
-        put(Verb.BOOTSTRAP_TOKEN, BootStrapper.StringSerializer.instance);
-        put(Verb.REPLICATION_FINISHED, null);
-
-        put(Verb.PAXOS_PREPARE, prepareResponseSerializer);
-        put(Verb.PAXOS_PROPOSE, BooleanSerializer.serializer);
-    }};
+    public final EnumMap<Verb, IVersionedSerializer<?>> callbackDeserializers;
 
     /* This records all the results mapped by message Id */
     private final ExpiringMap<Integer, CallbackInfo> callbacks;
@@ -365,6 +323,17 @@ public final class MessagingService implements MessagingServiceMBean
         };
 
         callbacks = new ExpiringMap<Integer, CallbackInfo>(DatabaseDescriptor.instance.getMinRpcTimeout(), timeoutReporter);
+        readResponseSerializer = new ReadResponse.Serializer(DBConfig.instance.rowSerializer);
+        rangeSliceReplySerializer = new RangeSliceReply.Serializer(DBConfig.instance.rowSerializer);
+        prepareResponseSerializer = new PrepareResponse.Serializer(DBConfig.instance.columnFamilySerializer, MutationFactory.instance);
+        commitSerializer = new Commit.Serializer(DBConfig.instance.columnFamilySerializer, MutationFactory.instance);
+        rangeSliceCommandSerializer = new RangeSliceCommand.Serializer(DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, DBConfig.instance.boundsSerializer);
+        pagedRangeCommandSerializer = new PagedRangeCommand.Serializer(DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, DBConfig.instance.boundsSerializer);
+        repairMessageSerializer = new RepairMessage.Serializer(DBConfig.instance);
+        readCommandSerializer = new ReadCommand.Serializer(DatabaseDescriptor.instance, Schema.instance, LocatorConfig.instance.getPartitioner());
+
+        verbSerializers = getVerbSerializers();
+        callbackDeserializers = getCallbackDeserializers();
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
@@ -375,6 +344,57 @@ public final class MessagingService implements MessagingServiceMBean
         {
             throw new RuntimeException(e);
         }
+    }
+
+    private EnumMap<Verb, IVersionedSerializer<?>> getVerbSerializers()
+    {
+        EnumMap<Verb, IVersionedSerializer<?>> serializers = new EnumMap<>(Verb.class);
+        serializers.put(Verb.REQUEST_RESPONSE, CallbackDeterminedSerializer.instance);
+        serializers.put(Verb.INTERNAL_RESPONSE, CallbackDeterminedSerializer.instance);
+
+        serializers.put(Verb.MUTATION, MutationFactory.instance.serializer);
+        serializers.put(Verb.READ_REPAIR, MutationFactory.instance.serializer);
+        serializers.put(Verb.READ, readCommandSerializer);
+        serializers.put(Verb.RANGE_SLICE, rangeSliceCommandSerializer);
+        serializers.put(Verb.PAGED_RANGE, pagedRangeCommandSerializer);
+        serializers.put(Verb.BOOTSTRAP_TOKEN, BootStrapper.StringSerializer.instance);
+        serializers.put(Verb.REPAIR_MESSAGE, repairMessageSerializer);
+        serializers.put(Verb.GOSSIP_DIGEST_ACK, GossipDigestAck.serializer);
+        serializers.put(Verb.GOSSIP_DIGEST_ACK2, GossipDigestAck2.serializer);
+        serializers.put(Verb.GOSSIP_DIGEST_SYN, GossipDigestSyn.serializer);
+        serializers.put(Verb.DEFINITIONS_UPDATE, MigrationManager.MigrationsSerializer.instance);
+        serializers.put(Verb.TRUNCATE, Truncation.serializer);
+        serializers.put(Verb.REPLICATION_FINISHED, null);
+        serializers.put(Verb.COUNTER_MUTATION, CounterMutationFactory.instance.serializer);
+        serializers.put(Verb.SNAPSHOT, SnapshotCommand.serializer);
+        serializers.put(Verb.ECHO, EchoMessage.serializer);
+        serializers.put(Verb.PAXOS_PREPARE, commitSerializer);
+        serializers.put(Verb.PAXOS_PROPOSE, commitSerializer);
+        serializers.put(Verb.PAXOS_COMMIT, commitSerializer);
+        return serializers;
+    }
+
+    private EnumMap<Verb, IVersionedSerializer<?>> getCallbackDeserializers()
+    {
+        EnumMap<Verb, IVersionedSerializer<?>> deserializeres = new EnumMap<>(Verb.class);
+        deserializeres.put(Verb.MUTATION, WriteResponse.serializer);
+        deserializeres.put(Verb.READ_REPAIR, WriteResponse.serializer);
+        deserializeres.put(Verb.COUNTER_MUTATION, WriteResponse.serializer);
+        deserializeres.put(Verb.RANGE_SLICE, rangeSliceReplySerializer);
+        deserializeres.put(Verb.PAGED_RANGE, rangeSliceReplySerializer);
+        deserializeres.put(Verb.READ, readResponseSerializer);
+        deserializeres.put(Verb.TRUNCATE, TruncateResponse.serializer);
+        deserializeres.put(Verb.SNAPSHOT, null);
+
+        deserializeres.put(Verb.MIGRATION_REQUEST, MigrationManager.MigrationsSerializer.instance);
+        deserializeres.put(Verb.SCHEMA_CHECK, UUIDSerializer.serializer);
+        deserializeres.put(Verb.BOOTSTRAP_TOKEN, BootStrapper.StringSerializer.instance);
+        deserializeres.put(Verb.REPLICATION_FINISHED, null);
+
+        deserializeres.put(Verb.PAXOS_PREPARE, prepareResponseSerializer);
+        deserializeres.put(Verb.PAXOS_PROPOSE, BooleanSerializer.serializer);
+
+        return deserializeres;
     }
 
     public InetAddress getBroadcastAddress()

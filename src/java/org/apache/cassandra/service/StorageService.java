@@ -106,7 +106,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     /* JMX notification serial number counter */
     private final AtomicLong notificationSerialNumber = new AtomicLong();
 
-    public volatile VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(LocatorConfig.instance.getPartitioner());
+    public volatile VersionedValue.VersionedValueFactory valueFactory;
 
     public static final StorageService instance = new StorageService();
 
@@ -163,19 +163,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public StorageService()
     {
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        try
-        {
-            jmxObjectName = new ObjectName("org.apache.cassandra.db:type=StorageService");
-            mbs.registerMBean(this, jmxObjectName);
-            mbs.registerMBean(StreamManager.instance, new ObjectName(StreamManager.OBJECT_NAME));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
-        }
-
         bgMonitor = new BackgroundActivityMonitor(Gossiper.instance, this);
+        valueFactory = new VersionedValue.VersionedValueFactory(LocatorConfig.instance.getPartitioner());
 
         /* register the verb handlers */
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.MUTATION, new MutationVerbHandler(Tracing.instance, MessagingService.instance, MutationFactory.instance.serializer));
@@ -214,6 +203,18 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.SNAPSHOT, new SnapshotVerbHandler(ColumnFamilyStoreManager.instance, KeyspaceManager.instance, MessagingService.instance));
         MessagingService.instance.registerVerbHandlers(MessagingService.Verb.ECHO, new EchoVerbHandler(MessagingService.instance));
+
+        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+        try
+        {
+            jmxObjectName = new ObjectName("org.apache.cassandra.db:type=StorageService");
+            mbs.registerMBean(this, jmxObjectName);
+            mbs.registerMBean(StreamManager.instance, new ObjectName(StreamManager.OBJECT_NAME));
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     public void registerDaemon(CassandraDaemon daemon)

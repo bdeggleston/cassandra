@@ -21,14 +21,7 @@ public class KeyspaceManager
         assert KSMetaDataFactory.instance != null;
     }
 
-    public final Function<String,Keyspace> keyspaceTransformer = new Function<String, Keyspace>()
-    {
-        public Keyspace apply(String keyspaceName)
-        {
-            return open(keyspaceName);
-        }
-
-    };
+    public final Function<String,Keyspace> keyspaceTransformer;
 
     public KeyspaceManager()
     {
@@ -36,9 +29,18 @@ public class KeyspaceManager
         // proper directories here as well as in CassandraDaemon.
         if (!StorageService.instance.isClientMode())
             DatabaseDescriptor.instance.createAllDirectories();
+        keyspaceTransformer = new Function<String, Keyspace>()
+        {
+            public Keyspace apply(String keyspaceName)
+            {
+                return open(keyspaceName);
+            }
+
+        };
     }
 
     private volatile boolean initialized = false;
+
     public void setInitialized()
     {
         initialized = true;

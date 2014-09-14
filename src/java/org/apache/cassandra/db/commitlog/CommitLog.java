@@ -56,10 +56,10 @@ public class CommitLog implements CommitLogMBean
 
     // we only permit records HALF the size of a commit log, to ensure we don't spin allocating many mostly
     // empty segments when writing large records
-    private static final long MAX_MUTATION_SIZE = DatabaseDescriptor.instance.getCommitLogSegmentSize() >> 1;
+    private final long MAX_MUTATION_SIZE;
 
     public final CommitLogSegmentManager allocator;
-    public final CommitLogArchiver archiver = new CommitLogArchiver(DatabaseDescriptor.instance.getCommitLogLocation(), Tracing.instance);
+    public final CommitLogArchiver archiver;
     final CommitLogMetrics metrics;
     final AbstractCommitLogService executor;
 
@@ -93,10 +93,13 @@ public class CommitLog implements CommitLogMBean
             throw new RuntimeException(e);
         }
 
+        archiver = new CommitLogArchiver(DatabaseDescriptor.instance.getCommitLogLocation(), Tracing.instance);
+
         // register metrics
         metrics = new CommitLogMetrics(executor, allocator);
         allocator.start();
         executor.start();
+        MAX_MUTATION_SIZE = DatabaseDescriptor.instance.getCommitLogSegmentSize() >> 1;
     }
 
     long getNextId()

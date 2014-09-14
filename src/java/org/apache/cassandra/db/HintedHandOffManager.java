@@ -102,23 +102,31 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
     private static final int PAGE_SIZE = 128;
     private static final int LARGE_NUMBER = 65536; // 64k nodes ought to be enough for anybody.
 
-    public final HintedHandoffMetrics metrics = new HintedHandoffMetrics(SystemKeyspace.instance);
+    public final HintedHandoffMetrics metrics;
 
     private volatile boolean hintedHandOffPaused = false;
 
     static final int maxHintTTL = Integer.parseInt(System.getProperty("cassandra.maxHintTTL", String.valueOf(Integer.MAX_VALUE)));
 
-    private final NonBlockingHashSet<InetAddress> queuedDeliveries = new NonBlockingHashSet<InetAddress>();
+    private final NonBlockingHashSet<InetAddress> queuedDeliveries;
 
-    private final ThreadPoolExecutor executor = new JMXEnabledThreadPoolExecutor(DatabaseDescriptor.instance.getMaxHintsThread(),
-                                                                                 Integer.MAX_VALUE,
-                                                                                 TimeUnit.SECONDS,
-                                                                                 new LinkedBlockingQueue<Runnable>(),
-                                                                                 new NamedThreadFactory("HintedHandoff", Thread.MIN_PRIORITY),
-                                                                                 "internal",
-                                                                                 Tracing.instance);
+    private final ThreadPoolExecutor executor;
 
-    private final ColumnFamilyStore hintStore = KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF);
+    private final ColumnFamilyStore hintStore;
+
+    public HintedHandOffManager()
+    {
+        metrics = new HintedHandoffMetrics(SystemKeyspace.instance);
+        queuedDeliveries = new NonBlockingHashSet<InetAddress>();
+        executor = new JMXEnabledThreadPoolExecutor(DatabaseDescriptor.instance.getMaxHintsThread(),
+                                                                                     Integer.MAX_VALUE,
+                                                                                     TimeUnit.SECONDS,
+                                                                                     new LinkedBlockingQueue<Runnable>(),
+                                                                                     new NamedThreadFactory("HintedHandoff", Thread.MIN_PRIORITY),
+                                                                                     "internal",
+                                                                                     Tracing.instance);
+        hintStore = KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF);
+    }
 
     /**
      * Returns a mutation representing a Hint to be sent to <code>targetId</code>

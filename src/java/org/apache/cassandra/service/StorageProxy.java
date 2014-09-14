@@ -93,7 +93,7 @@ public class StorageProxy implements StorageProxyMBean
     private final ClientRequestMetrics writeMetrics = new ClientRequestMetrics("Write");
 
     private static final double CONCURRENT_SUBREQUESTS_MARGIN = 0.10;
-    public final IAsyncCallback.EndpointIsAlivePredicate endpointIsAlivePredicate = new IAsyncCallback.EndpointIsAlivePredicate(FailureDetector.instance);
+    public final IAsyncCallback.EndpointIsAlivePredicate endpointIsAlivePredicate;
 
     public static StorageProxy create(boolean registerMBean)
     {
@@ -158,6 +158,7 @@ public class StorageProxy implements StorageProxyMBean
                         .execute(counterWriteTask(mutation, targets, responseHandler, localDataCenter));
             }
         };
+        endpointIsAlivePredicate = new IAsyncCallback.EndpointIsAlivePredicate(FailureDetector.instance);
     }
 
     /**

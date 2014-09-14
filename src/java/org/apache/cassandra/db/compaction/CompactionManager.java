@@ -129,14 +129,24 @@ public class CompactionManager implements CompactionManagerMBean
         }
     };
 
-    private final CompactionExecutor executor = new CompactionExecutor();
-    private final CompactionExecutor validationExecutor = new ValidationExecutor();
-    private final CompactionExecutor cacheCleanupExecutor = new CacheCleanupExecutor();
+    private final CompactionExecutor executor;
+    private final CompactionExecutor validationExecutor;
+    private final CompactionExecutor cacheCleanupExecutor;
 
-    private final CompactionMetrics metrics = new CompactionMetrics(Schema.instance, KeyspaceManager.instance, executor, validationExecutor);
-    private final Multiset<ColumnFamilyStore> compactingCF = ConcurrentHashMultiset.create();
+    private final CompactionMetrics metrics;
+    private final Multiset<ColumnFamilyStore> compactingCF;
 
-    private final RateLimiter compactionRateLimiter = RateLimiter.create(Double.MAX_VALUE);
+    private final RateLimiter compactionRateLimiter;
+
+    public CompactionManager()
+    {
+        executor = new CompactionExecutor();
+        validationExecutor = new ValidationExecutor();
+        cacheCleanupExecutor = new CacheCleanupExecutor();
+        metrics = new CompactionMetrics(Schema.instance, KeyspaceManager.instance, executor, validationExecutor);
+        compactingCF = ConcurrentHashMultiset.create();
+        compactionRateLimiter = RateLimiter.create(Double.MAX_VALUE);
+    }
 
     /**
      * Gets compaction rate limiter. When compaction_throughput_mb_per_sec is 0 or node is bootstrapping,
