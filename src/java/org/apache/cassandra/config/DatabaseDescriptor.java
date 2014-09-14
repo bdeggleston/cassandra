@@ -1627,4 +1627,9 @@ public class DatabaseDescriptor
     {
         return SystemKeyspace.instance;
     }
+
+    public DBConfig getDBConfig()
+    {
+        return DBConfig.instance;
+    }
 }
