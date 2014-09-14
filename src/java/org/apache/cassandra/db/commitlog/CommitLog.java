@@ -21,6 +21,7 @@ import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -62,9 +63,19 @@ public class CommitLog implements CommitLogMBean
     final CommitLogMetrics metrics;
     final AbstractCommitLogService executor;
 
+    private final long idBase;
+    private final AtomicInteger nextId = new AtomicInteger(1);
+
     private CommitLog()
     {
         DatabaseDescriptor.instance.createAllDirectories();
+        long maxId = Long.MIN_VALUE;
+        for (File file : new File(DatabaseDescriptor.instance.getCommitLogLocation()).listFiles())
+        {
+            if (CommitLogDescriptor.isValid(file.getName()))
+                maxId = Math.max(CommitLogDescriptor.fromFileName(file.getName()).id, maxId);
+        }
+        idBase = Math.max(System.currentTimeMillis(), maxId + 1);
 
         allocator = new CommitLogSegmentManager(DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, this);
 
@@ -88,6 +99,11 @@ public class CommitLog implements CommitLogMBean
         executor.start();
     }
 
+    long getNextId()
+    {
+        return idBase + nextId.getAndIncrement();
+    }
+
     /**
      * Perform recovery on commit logs located in the directory specified by the config file.
      *
@@ -104,7 +120,7 @@ public class CommitLog implements CommitLogMBean
                 // we used to try to avoid instantiating commitlog (thus creating an empty segment ready for writes)
                 // until after recover was finished.  this turns out to be fragile; it is less error-prone to go
                 // ahead and allow writes before recover(), and just skip active segments when we do.
-                return CommitLogDescriptor.isValid(name) && !instance.allocator.manages(name);
+                return CommitLogDescriptor.isValid(name) && ! allocator.manages(name);
             }
         });
 
@@ -121,7 +137,7 @@ public class CommitLog implements CommitLogMBean
             logger.info("Log replay complete, {} replayed mutations", replayed);
 
             for (File f : files)
-                CommitLog.instance.allocator.recycleSegment(f);
+                allocator.recycleSegment(f);
         }
 
         allocator.enableReserveSegmentCreation();

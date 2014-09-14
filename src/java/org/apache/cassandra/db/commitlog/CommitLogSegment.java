@@ -59,20 +59,6 @@ public class CommitLogSegment
 {
     private static final Logger logger = LoggerFactory.getLogger(CommitLogSegment.class);
 
-    private final static long idBase;
-    private final static AtomicInteger nextId = new AtomicInteger(1);
-    static
-    {
-        // TODO: move to CommitLog
-        long maxId = Long.MIN_VALUE;
-        for (File file : new File(DatabaseDescriptor.instance.getCommitLogLocation()).listFiles())
-        {
-            if (CommitLogDescriptor.isValid(file.getName()))
-                maxId = Math.max(CommitLogDescriptor.fromFileName(file.getName()).id, maxId);
-        }
-        idBase = Math.max(System.currentTimeMillis(), maxId + 1);
-    }
-
     // The commit log entry overhead in bytes (int: length + int: head checksum + int: tail checksum)
     public static final int ENTRY_OVERHEAD_SIZE = 4 + 4 + 4;
 
@@ -120,11 +106,6 @@ public class CommitLogSegment
         return new CommitLogSegment(null, databaseDescriptor, schema, commitLog);
     }
 
-    static long getNextId()
-    {
-        return idBase + nextId.getAndIncrement();
-    }
-
     private final DatabaseDescriptor databaseDescriptor;
     private final Schema schema;
     private final CommitLog commitLog;
@@ -140,7 +121,7 @@ public class CommitLogSegment
         this.schema = schema;
         this.commitLog = commitLog;
 
-        id = getNextId();
+        id = commitLog.getNextId();
         descriptor = new CommitLogDescriptor(id);
         logFile = new File(databaseDescriptor.getCommitLogLocation(), descriptor.fileName());
         boolean isCreating = true;
