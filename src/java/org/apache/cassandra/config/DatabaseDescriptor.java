@@ -185,6 +185,9 @@ public class DatabaseDescriptor
             this.conf = new Config();
             // at least we have to set memoryAllocator to open SSTable in client mode
             memoryAllocator = FBUtilities.newOffHeapAllocator(conf.memory_allocator);
+            // It is possible to call KeyspaceManager.instance.open without a running daemon, so it makes sense to ensure
+            // proper directories here as well as in CassandraDaemon.
+            createAllDirectories();
         } else
         {
             this.conf = conf;
