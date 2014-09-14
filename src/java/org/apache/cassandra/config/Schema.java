@@ -32,7 +32,6 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.io.sstable.Descriptor;
-import org.apache.cassandra.service.MigrationManager;
 import org.apache.cassandra.utils.ConcurrentBiMap;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
@@ -42,7 +41,7 @@ public class Schema
 {
     private static final Logger logger = LoggerFactory.getLogger(Schema.class);
 
-    public static final Schema instance = new Schema();
+    public static final Schema instance = new Schema(DatabaseDescriptor.instance);
 
     /**
      * longest permissible KS or CF name.  Our main concern is that filename not be more than 255 characters;
@@ -79,11 +78,15 @@ public class Schema
         }
     }
 
+    private final DatabaseDescriptor databaseDescriptor;
+
     /**
      * Initialize empty schema object
      */
-    public Schema()
-    {}
+    public Schema(DatabaseDescriptor databaseDescriptor)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+    }
 
     /**
      * Load up non-system keyspaces
@@ -362,7 +365,7 @@ public class Schema
         {
             MessageDigest versionDigest = MessageDigest.getInstance("MD5");
 
-            for (Row row : SystemKeyspace.instance.serializedSchema())
+            for (Row row : databaseDescriptor.getSystemKeyspace().serializedSchema())
             {
                 if (invalidSchemaRow(row) || ignoredSchemaRow(row))
                     continue;
@@ -374,7 +377,7 @@ public class Schema
             }
 
             version = UUID.nameUUIDFromBytes(versionDigest.digest());
-            SystemKeyspace.instance.updateSchemaVersion(version);
+            databaseDescriptor.getSystemKeyspace().updateSchemaVersion(version);
         }
         catch (Exception e)
         {
@@ -388,7 +391,7 @@ public class Schema
     public void updateVersionAndAnnounce()
     {
         updateVersion();
-        MigrationManager.instance.passiveAnnounce(version);
+        databaseDescriptor.getMigrationManager().passiveAnnounce(version);
     }
 
     /**
