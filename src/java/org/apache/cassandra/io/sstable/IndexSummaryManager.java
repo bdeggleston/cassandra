@@ -59,7 +59,7 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
 {
     private static final Logger logger = LoggerFactory.getLogger(IndexSummaryManager.class);
     public static final String MBEAN_NAME = "org.apache.cassandra.db:type=IndexSummaries";
-    public static final IndexSummaryManager instance;
+    public static final IndexSummaryManager instance = create(DatabaseDescriptor.instance);
 
     private int resizeIntervalInMinutes = 0;
     private long memoryPoolBytes;
@@ -76,9 +76,9 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
     // our next scheduled resizing run
     private ScheduledFuture future;
 
-    static
+    public static IndexSummaryManager create(DatabaseDescriptor databaseDescriptor)
     {
-        instance = new IndexSummaryManager();
+        IndexSummaryManager indexSummaryManager = new IndexSummaryManager(databaseDescriptor);
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 
         try
@@ -89,19 +89,24 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
         {
             throw new RuntimeException(e);
         }
+        return indexSummaryManager;
     }
 
-    private IndexSummaryManager()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    private IndexSummaryManager(DatabaseDescriptor databaseDescriptor)
     {
+        this.databaseDescriptor = databaseDescriptor;
+
         executor = new DebuggableScheduledThreadPoolExecutor(1, "IndexSummaryManager", Thread.MIN_PRIORITY);
 
-        long indexSummarySizeInMB = DatabaseDescriptor.instance.getIndexSummaryCapacityInMB();
-        int interval = DatabaseDescriptor.instance.getIndexSummaryResizeIntervalInMinutes();
+        long indexSummarySizeInMB = databaseDescriptor.getIndexSummaryCapacityInMB();
+        int interval = databaseDescriptor.getIndexSummaryResizeIntervalInMinutes();
         logger.info("Initializing index summary manager with a memory pool size of {} MB and a resize interval of {} minutes",
                     indexSummarySizeInMB, interval);
 
-        setMemoryPoolCapacityInMB(DatabaseDescriptor.instance.getIndexSummaryCapacityInMB());
-        setResizeIntervalInMinutes(DatabaseDescriptor.instance.getIndexSummaryResizeIntervalInMinutes());
+        setMemoryPoolCapacityInMB(databaseDescriptor.getIndexSummaryCapacityInMB());
+        setResizeIntervalInMinutes(databaseDescriptor.getIndexSummaryResizeIntervalInMinutes());
     }
 
     public int getResizeIntervalInMinutes()
@@ -196,7 +201,7 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
     private List<SSTableReader> getAllSSTables()
     {
         List<SSTableReader> result = new ArrayList<>();
-        for (Keyspace ks : KeyspaceManager.instance.all())
+        for (Keyspace ks : databaseDescriptor.getKeyspaceManager().all())
         {
             for (ColumnFamilyStore cfStore: ks.getColumnFamilyStores())
                 result.addAll(cfStore.getSSTables());
@@ -213,7 +218,7 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
     {
         List<SSTableReader> allCompacting = new ArrayList<>();
         Multimap<DataTracker, SSTableReader> allNonCompacting = HashMultimap.create();
-        for (Keyspace ks : KeyspaceManager.instance.all())
+        for (Keyspace ks : databaseDescriptor.getKeyspaceManager().all())
         {
             for (ColumnFamilyStore cfStore: ks.getColumnFamilyStores())
             {
@@ -236,7 +241,7 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
         Pair<List<SSTableReader>, Multimap<DataTracker, SSTableReader>> compactingAndNonCompacting = getCompactingAndNonCompactingSSTables();
         try
         {
-            redistributeSummaries(compactingAndNonCompacting.left, Lists.newArrayList(compactingAndNonCompacting.right.values()), this.memoryPoolBytes);
+            redistributeSummaries(compactingAndNonCompacting.left, Lists.newArrayList(compactingAndNonCompacting.right.values()), this.memoryPoolBytes, databaseDescriptor.getKeyspaceManager());
         }
         finally
         {
@@ -254,7 +259,10 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
      * @return a list of new SSTableReader instances
      */
     @VisibleForTesting
-    public static List<SSTableReader> redistributeSummaries(List<SSTableReader> compacting, List<SSTableReader> nonCompacting, long memoryPoolBytes) throws IOException
+    public static List<SSTableReader> redistributeSummaries(List<SSTableReader> compacting,
+                                                            List<SSTableReader> nonCompacting,
+                                                            long memoryPoolBytes,
+                                                            KeyspaceManager keyspaceManager) throws IOException
     {
         long total = 0;
         for (SSTableReader sstable : Iterables.concat(compacting, nonCompacting))
@@ -296,7 +304,7 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
 
         logger.trace("Index summaries for compacting SSTables are using {} MB of space",
                      (memoryPoolBytes - remainingBytes) / 1024.0 / 1024.0);
-        List<SSTableReader> newSSTables = adjustSamplingLevels(sstablesByHotness, totalReadsPerSec, remainingBytes);
+        List<SSTableReader> newSSTables = adjustSamplingLevels(sstablesByHotness, totalReadsPerSec, remainingBytes, keyspaceManager);
 
         total = 0;
         for (SSTableReader sstable : Iterables.concat(compacting, newSSTables))
@@ -308,7 +316,9 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
     }
 
     private static List<SSTableReader> adjustSamplingLevels(List<SSTableReader> sstables,
-                                                            double totalReadsPerSec, long memoryPoolCapacity) throws IOException
+                                                            double totalReadsPerSec,
+                                                            long memoryPoolCapacity,
+                                                            KeyspaceManager keyspaceManager) throws IOException
     {
 
         List<ResampleEntry> toDownsample = new ArrayList<>(sstables.size() / 4);
@@ -417,7 +427,7 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
             logger.debug("Re-sampling index summary for {} from {}/{} to {}/{} of the original number of entries",
                          sstable, sstable.getIndexSummarySamplingLevel(), Downsampling.BASE_SAMPLING_LEVEL,
                          entry.newSamplingLevel, Downsampling.BASE_SAMPLING_LEVEL);
-            ColumnFamilyStore cfs = KeyspaceManager.instance.open(sstable.getKeyspaceName()).getColumnFamilyStore(sstable.getColumnFamilyName());
+            ColumnFamilyStore cfs = keyspaceManager.open(sstable.getKeyspaceName()).getColumnFamilyStore(sstable.getColumnFamilyName());
             SSTableReader replacement = sstable.cloneWithNewSummarySamplingLevel(cfs, entry.newSamplingLevel);
             DataTracker tracker = cfs.getDataTracker();
 
