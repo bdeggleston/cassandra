@@ -27,14 +27,12 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.concurrent.Stage;
-import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
@@ -44,7 +42,6 @@ import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 
@@ -123,7 +120,7 @@ public class Tracing
     {
         for (Map.Entry<String, String> entry : rawPayload.entrySet())
         {
-            cf.addColumn(new BufferExpiringCell(buildName(databaseDescriptor.geCFMetaDataFactory().TraceSessionsCf, "parameters", entry.getKey()),
+            cf.addColumn(new BufferExpiringCell(buildName(databaseDescriptor.getCFMetaDataFactory().TraceSessionsCf, "parameters", entry.getKey()),
                                                 bytes(entry.getValue()), System.currentTimeMillis(), TTL));
         }
     }
@@ -160,7 +157,7 @@ public class Tracing
                                        sessionId,
                                        databaseDescriptor.getLocatorConfig().getBroadcastAddress(),
                                        databaseDescriptor.getStageManager(),
-                                       databaseDescriptor.geCFMetaDataFactory(),
+                                       databaseDescriptor.getCFMetaDataFactory(),
                                        this,
                                        databaseDescriptor.getMutationFactory(),
                                        databaseDescriptor.getDBConfig());
@@ -195,7 +192,7 @@ public class Tracing
             {
                 public void run()
                 {
-                    CFMetaData cfMeta = databaseDescriptor.geCFMetaDataFactory().TraceSessionsCf;
+                    CFMetaData cfMeta = databaseDescriptor.getCFMetaDataFactory().TraceSessionsCf;
                     ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta, databaseDescriptor.getDBConfig());
                     addColumn(cf, buildName(cfMeta, "duration"), elapsed);
                     mutateWithCatch(databaseDescriptor.getMutationFactory().create(TRACE_KS, sessionIdBytes, cf));
@@ -233,7 +230,7 @@ public class Tracing
         {
             public void run()
             {
-                CFMetaData cfMeta = databaseDescriptor.geCFMetaDataFactory().TraceSessionsCf;
+                CFMetaData cfMeta = databaseDescriptor.getCFMetaDataFactory().TraceSessionsCf;
                 ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMeta, databaseDescriptor.getDBConfig());
                 addColumn(cf, buildName(cfMeta, "coordinator"), databaseDescriptor.getLocatorConfig().getBroadcastAddress());
                 addParameterColumns(cf, parameters);
@@ -269,7 +266,7 @@ public class Tracing
             return new ExpiredTraceState(sessionId,
                                          databaseDescriptor.getLocatorConfig().getBroadcastAddress(),
                                          databaseDescriptor.getStageManager(),
-                                         databaseDescriptor.geCFMetaDataFactory(),
+                                         databaseDescriptor.getCFMetaDataFactory(),
                                          this,
                                          databaseDescriptor.getMutationFactory(),
                                          databaseDescriptor.getDBConfig());
@@ -279,7 +276,7 @@ public class Tracing
             ts = new TraceState(message.from, sessionId,
                                 databaseDescriptor.getLocatorConfig().getBroadcastAddress(),
                                 databaseDescriptor.getStageManager(),
-                                databaseDescriptor.geCFMetaDataFactory(),
+                                databaseDescriptor.getCFMetaDataFactory(),
                                 this,
                                 databaseDescriptor.getMutationFactory(),
                                 databaseDescriptor.getDBConfig());
@@ -331,7 +328,7 @@ public class Tracing
                          elapsed,
                          databaseDescriptor.getLocatorConfig().getBroadcastAddress(),
                          databaseDescriptor.getStageManager(),
-                         databaseDescriptor.geCFMetaDataFactory(),
+                         databaseDescriptor.getCFMetaDataFactory(),
                          this,
                          databaseDescriptor.getMutationFactory(),
                          databaseDescriptor.getDBConfig());

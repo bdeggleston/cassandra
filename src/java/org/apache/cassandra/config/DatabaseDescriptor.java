@@ -1581,7 +1581,7 @@ public class DatabaseDescriptor
         return KSMetaDataFactory.instance;
     }
 
-    public CFMetaDataFactory geCFMetaDataFactory()
+    public CFMetaDataFactory getCFMetaDataFactory()
     {
         return CFMetaDataFactory.instance;
     }

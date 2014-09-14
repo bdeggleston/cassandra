@@ -485,7 +485,7 @@ public class QueryProcessor implements QueryHandler
                      databaseDescriptor.getSchema(),
                      databaseDescriptor.getMigrationManager(),
                      databaseDescriptor.getAuth(),
-                     databaseDescriptor.geCFMetaDataFactory(),
+                     databaseDescriptor.getCFMetaDataFactory(),
                      databaseDescriptor.getKSMetaDataFactory(),
                      databaseDescriptor.getKeyspaceManager(),
                      databaseDescriptor.getTriggerExecutor(),

@@ -88,7 +88,7 @@ public class ColumnFamilyStoreManager
                                      taskExecutors,
                                      databaseDescriptor.getSchema(),
                                      databaseDescriptor.getTracing(),
-                                     databaseDescriptor.geCFMetaDataFactory(),
+                                     databaseDescriptor.getCFMetaDataFactory(),
                                      this,
                                      databaseDescriptor.getKeyspaceManager(),
                                      databaseDescriptor.getDBConfig(),

@@ -48,55 +48,55 @@ public class KSMetaDataFactory
     public KSMetaData newKeyspace(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> options, boolean durablesWrites, Iterable<CFMetaData> cfDefs)
     {
         return new KSMetaData(name, strategyClass, options, durablesWrites, cfDefs, new UTMetaData(), databaseDescriptor.getQueryProcessor(),
-                              databaseDescriptor.getLocatorConfig(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.geCFMetaDataFactory(), databaseDescriptor.getMutationFactory());
+                              databaseDescriptor.getLocatorConfig(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getCFMetaDataFactory(), databaseDescriptor.getMutationFactory());
     }
 
     public KSMetaData cloneWith(KSMetaData ksm, Iterable<CFMetaData> cfDefs)
     {
         return new KSMetaData(ksm.name, ksm.strategyClass, ksm.strategyOptions, ksm.durableWrites, cfDefs, ksm.userTypes,
-                              databaseDescriptor.getQueryProcessor(), databaseDescriptor.getLocatorConfig(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.geCFMetaDataFactory(), databaseDescriptor.getMutationFactory());
+                              databaseDescriptor.getQueryProcessor(), databaseDescriptor.getLocatorConfig(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getCFMetaDataFactory(), databaseDescriptor.getMutationFactory());
     }
 
     public KSMetaData systemKeyspace()
     {
-        List<CFMetaData> cfDefs = Arrays.asList(databaseDescriptor.geCFMetaDataFactory().BatchlogCf,
-                                                databaseDescriptor.geCFMetaDataFactory().RangeXfersCf,
-                                                databaseDescriptor.geCFMetaDataFactory().LocalCf,
-                                                databaseDescriptor.geCFMetaDataFactory().PeersCf,
-                                                databaseDescriptor.geCFMetaDataFactory().PeerEventsCf,
-                                                databaseDescriptor.geCFMetaDataFactory().HintsCf,
-                                                databaseDescriptor.geCFMetaDataFactory().IndexCf,
-                                                databaseDescriptor.geCFMetaDataFactory().SchemaKeyspacesCf,
-                                                databaseDescriptor.geCFMetaDataFactory().SchemaColumnFamiliesCf,
-                                                databaseDescriptor.geCFMetaDataFactory().SchemaColumnsCf,
-                                                databaseDescriptor.geCFMetaDataFactory().SchemaTriggersCf,
-                                                databaseDescriptor.geCFMetaDataFactory().SchemaUserTypesCf,
-                                                databaseDescriptor.geCFMetaDataFactory().SchemaFunctionsCf,
-                                                databaseDescriptor.geCFMetaDataFactory().CompactionLogCf,
-                                                databaseDescriptor.geCFMetaDataFactory().CompactionHistoryCf,
-                                                databaseDescriptor.geCFMetaDataFactory().PaxosCf,
-                                                databaseDescriptor.geCFMetaDataFactory().SSTableActivityCF);
+        List<CFMetaData> cfDefs = Arrays.asList(databaseDescriptor.getCFMetaDataFactory().BatchlogCf,
+                                                databaseDescriptor.getCFMetaDataFactory().RangeXfersCf,
+                                                databaseDescriptor.getCFMetaDataFactory().LocalCf,
+                                                databaseDescriptor.getCFMetaDataFactory().PeersCf,
+                                                databaseDescriptor.getCFMetaDataFactory().PeerEventsCf,
+                                                databaseDescriptor.getCFMetaDataFactory().HintsCf,
+                                                databaseDescriptor.getCFMetaDataFactory().IndexCf,
+                                                databaseDescriptor.getCFMetaDataFactory().SchemaKeyspacesCf,
+                                                databaseDescriptor.getCFMetaDataFactory().SchemaColumnFamiliesCf,
+                                                databaseDescriptor.getCFMetaDataFactory().SchemaColumnsCf,
+                                                databaseDescriptor.getCFMetaDataFactory().SchemaTriggersCf,
+                                                databaseDescriptor.getCFMetaDataFactory().SchemaUserTypesCf,
+                                                databaseDescriptor.getCFMetaDataFactory().SchemaFunctionsCf,
+                                                databaseDescriptor.getCFMetaDataFactory().CompactionLogCf,
+                                                databaseDescriptor.getCFMetaDataFactory().CompactionHistoryCf,
+                                                databaseDescriptor.getCFMetaDataFactory().PaxosCf,
+                                                databaseDescriptor.getCFMetaDataFactory().SSTableActivityCF);
         return new KSMetaData(Keyspace.SYSTEM_KS, LocalStrategy.class, Collections.<String, String>emptyMap(), true, cfDefs,
-                              databaseDescriptor.getQueryProcessor(), databaseDescriptor.getLocatorConfig(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.geCFMetaDataFactory(), databaseDescriptor.getMutationFactory());
+                              databaseDescriptor.getQueryProcessor(), databaseDescriptor.getLocatorConfig(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getCFMetaDataFactory(), databaseDescriptor.getMutationFactory());
     }
 
     public KSMetaData traceKeyspace()
     {
-        List<CFMetaData> cfDefs = Arrays.asList(databaseDescriptor.geCFMetaDataFactory().TraceSessionsCf, databaseDescriptor.geCFMetaDataFactory().TraceEventsCf);
+        List<CFMetaData> cfDefs = Arrays.asList(databaseDescriptor.getCFMetaDataFactory().TraceSessionsCf, databaseDescriptor.getCFMetaDataFactory().TraceEventsCf);
         return new KSMetaData(Tracing.TRACE_KS, SimpleStrategy.class, ImmutableMap.of("replication_factor", "2"), true, cfDefs,
-                              databaseDescriptor.getQueryProcessor(), databaseDescriptor.getLocatorConfig(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.geCFMetaDataFactory(), databaseDescriptor.getMutationFactory());
+                              databaseDescriptor.getQueryProcessor(), databaseDescriptor.getLocatorConfig(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getCFMetaDataFactory(), databaseDescriptor.getMutationFactory());
     }
 
     public KSMetaData testMetadata(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> strategyOptions, CFMetaData... cfDefs)
     {
         return new KSMetaData(name, strategyClass, strategyOptions, true, Arrays.asList(cfDefs), databaseDescriptor.getQueryProcessor(),
-                              databaseDescriptor.getLocatorConfig(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.geCFMetaDataFactory(), databaseDescriptor.getMutationFactory());
+                              databaseDescriptor.getLocatorConfig(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getCFMetaDataFactory(), databaseDescriptor.getMutationFactory());
     }
 
     public KSMetaData testMetadataNotDurable(String name, Class<? extends AbstractReplicationStrategy> strategyClass, Map<String, String> strategyOptions, CFMetaData... cfDefs)
     {
         return new KSMetaData(name, strategyClass, strategyOptions, false, Arrays.asList(cfDefs), databaseDescriptor.getQueryProcessor(),
-                              databaseDescriptor.getLocatorConfig(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.geCFMetaDataFactory(), databaseDescriptor.getMutationFactory());
+                              databaseDescriptor.getLocatorConfig(), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getCFMetaDataFactory(), databaseDescriptor.getMutationFactory());
     }
 
     /**
@@ -120,7 +120,7 @@ public class KSMetaDataFactory
                                   databaseDescriptor.getQueryProcessor(),
                                   databaseDescriptor.getLocatorConfig(),
                                   databaseDescriptor.getSystemKeyspace(),
-                                  databaseDescriptor.geCFMetaDataFactory(),
+                                  databaseDescriptor.getCFMetaDataFactory(),
                                   databaseDescriptor.getMutationFactory());
         }
         catch (ConfigurationException e)
@@ -158,7 +158,7 @@ public class KSMetaDataFactory
                               databaseDescriptor.getQueryProcessor(),
                               databaseDescriptor.getLocatorConfig(),
                               databaseDescriptor.getSystemKeyspace(),
-                              databaseDescriptor.geCFMetaDataFactory(),
+                              databaseDescriptor.getCFMetaDataFactory(),
                               databaseDescriptor.getMutationFactory());
     }
 
@@ -176,7 +176,7 @@ public class KSMetaDataFactory
         UntypedResultSet results = databaseDescriptor.getQueryProcessor().resultify("SELECT * FROM system.schema_columnfamilies", row);
         for (UntypedResultSet.Row result : results)
         {
-            CFMetaData cfm = databaseDescriptor.geCFMetaDataFactory().fromSchema(result);
+            CFMetaData cfm = databaseDescriptor.getCFMetaDataFactory().fromSchema(result);
             cfms.put(cfm.cfName, cfm);
         }
         return cfms;
