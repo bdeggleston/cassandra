@@ -35,7 +35,10 @@ import java.util.UUID;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Longs;
+import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.concurrent.StageManager;
+import org.apache.cassandra.cql3.QueryHandler;
+import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.CompactionManager;
@@ -44,6 +47,7 @@ import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.locator.*;
 import org.apache.cassandra.service.*;
 import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.triggers.TriggerExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.cassandra.config.Config.RequestSchedulerId;
@@ -1563,6 +1567,11 @@ public class DatabaseDescriptor
 
     // singleton getters
 
+    public Auth getAuth()
+    {
+        return Auth.instance;
+    }
+
     public KSMetaDataFactory getKSMetaDataFactory()
     {
         return KSMetaDataFactory.instance;
@@ -1623,6 +1632,11 @@ public class DatabaseDescriptor
         return MutationFactory.instance;
     }
 
+    public StorageProxy getStorageProxy()
+    {
+        return StorageProxy.instance;
+    }
+
     public CounterMutationFactory getCounterMutationFactory()
     {
         return CounterMutationFactory.instance;
@@ -1631,6 +1645,16 @@ public class DatabaseDescriptor
     public SystemKeyspace getSystemKeyspace()
     {
         return SystemKeyspace.instance;
+    }
+
+    public QueryHandler getQueryHandler()
+    {
+        return QueryHandlerInstance.instance;
+    }
+
+    public TriggerExecutor getTriggerExecutor()
+    {
+        return TriggerExecutor.instance;
     }
 
     public LocatorConfig getLocatorConfig()

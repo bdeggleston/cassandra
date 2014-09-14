@@ -29,16 +29,7 @@ import com.google.common.primitives.Ints;
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 import com.googlecode.concurrentlinkedhashmap.EntryWeigher;
 import org.antlr.runtime.*;
-import org.apache.cassandra.auth.Auth;
-import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.KSMetaDataFactory;
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.service.MigrationManager;
-import org.apache.cassandra.service.StorageProxy;
-import org.apache.cassandra.triggers.TriggerExecutor;
 import org.github.jamm.MemoryMeter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +44,6 @@ import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.service.pager.QueryPager;
 import org.apache.cassandra.service.pager.QueryPagers;
 import org.apache.cassandra.thrift.ThriftClientState;
-import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.transport.messages.ResultMessage;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MD5Digest;
@@ -65,7 +55,7 @@ public class QueryProcessor implements QueryHandler
     public static final SemanticVersion CQL_VERSION = new SemanticVersion("3.2.0");
     private static final long MAX_CACHE_PREPARED_MEMORY = Runtime.getRuntime().maxMemory() / 256;
 
-    public static final QueryProcessor instance = new QueryProcessor();
+    public static final QueryProcessor instance = new QueryProcessor(DatabaseDescriptor.instance);
 
     private final MemoryMeter meter = new MemoryMeter().withGuessing(MemoryMeter.Guess.FALLBACK_BEST);
 
@@ -101,16 +91,16 @@ public class QueryProcessor implements QueryHandler
         QueryState qs = queryState.get();
         if (qs == null)
         {
-            ClientState state = ClientState.forInternalCalls(Auth.instance);
+            ClientState state = ClientState.forInternalCalls(databaseDescriptor.getAuth());
             try
             {
-                state.setKeyspace(Keyspace.SYSTEM_KS, Schema.instance);
+                state.setKeyspace(Keyspace.SYSTEM_KS, databaseDescriptor.getSchema());
             }
             catch (InvalidRequestException e)
             {
                 throw new RuntimeException(e);
             }
-            qs = new QueryState(state, Tracing.instance);
+            qs = new QueryState(state, databaseDescriptor.getTracing());
 
             if (!queryState.compareAndSet(null, qs))
                 qs = queryState.get();
@@ -119,8 +109,11 @@ public class QueryProcessor implements QueryHandler
         return qs;
     }
 
-    private QueryProcessor()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    private QueryProcessor(DatabaseDescriptor databaseDescriptor)
     {
+        this.databaseDescriptor = databaseDescriptor;
         preparedStatements = new ConcurrentLinkedHashMap.Builder<MD5Digest, ParsedStatement.Prepared>()
                 .maximumWeightedCapacity(MAX_CACHE_PREPARED_MEMORY)
                 .weigher(cqlMemoryUsageWeigher)
@@ -219,7 +212,7 @@ public class QueryProcessor implements QueryHandler
     {
         try
         {
-            ResultMessage result = process(query, QueryState.forInternalCalls(Tracing.instance, Auth.instance), QueryOptions.forInternalCalls(cl, Collections.<ByteBuffer>emptyList()));
+            ResultMessage result = process(query, QueryState.forInternalCalls(databaseDescriptor.getTracing(), databaseDescriptor.getAuth()), QueryOptions.forInternalCalls(cl, Collections.<ByteBuffer>emptyList()));
             if (result instanceof ResultMessage.Rows)
                 return UntypedResultSet.create(((ResultMessage.Rows)result).result);
             else
@@ -290,12 +283,12 @@ public class QueryProcessor implements QueryHandler
 
             SelectStatement select = (SelectStatement)prepared.statement;
             QueryPager pager = QueryPagers.localPager(select.getPageableCommand(makeInternalOptions(prepared, values)),
-                                                      DatabaseDescriptor.instance,
-                                                      Schema.instance,
-                                                      KeyspaceManager.instance,
-                                                      StorageProxy.instance,
-                                                      MessagingService.instance,
-                                                      LocatorConfig.instance.getPartitioner());
+                                                      databaseDescriptor,
+                                                      databaseDescriptor.getSchema(),
+                                                      databaseDescriptor.getKeyspaceManager(),
+                                                      databaseDescriptor.getStorageProxy(),
+                                                      databaseDescriptor.getMessagingService(),
+                                                      databaseDescriptor.getLocatorConfig().getPartitioner());
             return UntypedResultSet.create(select, pager, pageSize);
         }
         catch (RequestValidationException e)
@@ -436,14 +429,14 @@ public class QueryProcessor implements QueryHandler
     public ParsedStatement.Prepared getStatement(String queryStr, ClientState clientState)
     throws RequestValidationException
     {
-        Tracing.instance.trace("Parsing {}", queryStr);
+        databaseDescriptor.getTracing().trace("Parsing {}", queryStr);
         ParsedStatement statement = parseStatement(queryStr);
 
         // Set keyspace for statement that require login
         if (statement instanceof CFStatement)
             ((CFStatement)statement).prepareKeyspace(clientState);
 
-        Tracing.instance.trace("Preparing statement");
+        databaseDescriptor.getTracing().trace("Preparing statement");
         return statement.prepare();
     }
 
@@ -487,22 +480,22 @@ public class QueryProcessor implements QueryHandler
     public CqlParser createParser(TokenStream tokenStream)
     {
         CqlParser parser = new CqlParser(tokenStream);
-        parser.setup(DatabaseDescriptor.instance,
-                     Tracing.instance,
-                     Schema.instance,
-                     MigrationManager.instance,
-                     Auth.instance,
-                     CFMetaDataFactory.instance,
-                     KSMetaDataFactory.instance,
-                     KeyspaceManager.instance,
-                     TriggerExecutor.instance,
-                     MessagingService.instance,
-                     StorageProxy.instance,
-                     MutationFactory.instance,
-                     CounterMutationFactory.instance,
+        parser.setup(databaseDescriptor,
+                     databaseDescriptor.getTracing(),
+                     databaseDescriptor.getSchema(),
+                     databaseDescriptor.getMigrationManager(),
+                     databaseDescriptor.getAuth(),
+                     databaseDescriptor.geCFMetaDataFactory(),
+                     databaseDescriptor.getKSMetaDataFactory(),
+                     databaseDescriptor.getKeyspaceManager(),
+                     databaseDescriptor.getTriggerExecutor(),
+                     databaseDescriptor.getMessagingService(),
+                     databaseDescriptor.getStorageProxy(),
+                     databaseDescriptor.getMutationFactory(),
+                     databaseDescriptor.getCounterMutationFactory(),
                      this,
-                     LocatorConfig.instance,
-                     DBConfig.instance);
+                     databaseDescriptor.getLocatorConfig(),
+                     databaseDescriptor.getDBConfig());
         return parser;
     }
 
