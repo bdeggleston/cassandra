@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 public class DBConfig
 {
-    public static final DBConfig instance = new DBConfig();
+    public static final DBConfig instance = new DBConfig(DatabaseDescriptor.instance, Tracing.instance, Schema.instance, LocatorConfig.instance);
 
     public final IAllocator offHeapAllocator;
     private final MemtablePool memtablePool;
@@ -51,26 +51,34 @@ public class DBConfig
 
     public final AbstractType<?> keyComparator;
 
-    public DBConfig()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public DBConfig(DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, LocatorConfig locatorConfig)
     {
-        offHeapAllocator = DatabaseDescriptor.instance.getoffHeapMemoryAllocator();
-        memtablePool = DatabaseDescriptor.instance.getMemtableAllocatorPool();
+        assert tracing != null;
+        assert schema != null;
+        assert locatorConfig != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+
+        offHeapAllocator = databaseDescriptor.getoffHeapMemoryAllocator();
+        memtablePool = databaseDescriptor.getMemtableAllocatorPool();
         memtableRowOverhead = estimateRowOverhead(
                 Integer.valueOf(System.getProperty("cassandra.memtable_row_overhead_computation_step", "100000")));
 
         indexSummarySerializer = new IndexSummary.Serializer(offHeapAllocator);
-        columnFamilySerializer = new ColumnFamilySerializer(DatabaseDescriptor.instance, Tracing.instance, Schema.instance, this);
+        columnFamilySerializer = new ColumnFamilySerializer(databaseDescriptor, tracing, schema, this);
         // don't change the partitioner after these are instantiated
-        rowSerializer = new Row.RowSerializer(LocatorConfig.instance.getPartitioner(), columnFamilySerializer);
-        tokenSerializer = new Token.Serializer(LocatorConfig.instance.getPartitioner());
-        rowPositionSerializer = new RowPosition.Serializer(LocatorConfig.instance.getPartitioner(), tokenSerializer);
-        boundsSerializer = new AbstractBounds.Serializer(LocatorConfig.instance.getPartitioner(), tokenSerializer, rowPositionSerializer);
+        rowSerializer = new Row.RowSerializer(locatorConfig.getPartitioner(), columnFamilySerializer);
+        tokenSerializer = new Token.Serializer(locatorConfig.getPartitioner());
+        rowPositionSerializer = new RowPosition.Serializer(locatorConfig.getPartitioner(), tokenSerializer);
+        boundsSerializer = new AbstractBounds.Serializer(locatorConfig.getPartitioner(), tokenSerializer, rowPositionSerializer);
         hashableSerializer = new MerkleTree.Hashable.HashableSerializer(tokenSerializer);
         innerSerializer = new MerkleTree.Inner.InnerSerializer(tokenSerializer, hashableSerializer);
-        merkleTreeSerializer = new MerkleTree.Serializer(tokenSerializer, hashableSerializer, LocatorConfig.instance);
+        merkleTreeSerializer = new MerkleTree.Serializer(tokenSerializer, hashableSerializer, locatorConfig);
         murmur3BloomFilterSerializer = new Murmur3BloomFilter.Serializer(offHeapAllocator);
 
-        preemptiveOpenInterval = calculatePreemptiveOpenInterval();
+        preemptiveOpenInterval = calculatePreemptiveOpenInterval(databaseDescriptor.getSSTablePreempiveOpenIntervalInMB());
         keyComparator = getPartitioner().preservesOrder() ? BytesType.instance : new LocalByPartionerType(getPartitioner());
     }
 
@@ -93,9 +101,9 @@ public class DBConfig
         return rowOverhead;
     }
 
-    private long calculatePreemptiveOpenInterval()
+    private long calculatePreemptiveOpenInterval(long ssTablePreemptiveOpenIntervalInMB)
     {
-        long interval = DatabaseDescriptor.instance.getSSTablePreempiveOpenIntervalInMB() * (1L << 20);
+        long interval = ssTablePreemptiveOpenIntervalInMB * (1L << 20);
         if (interval < 0)
             interval = Long.MAX_VALUE;
         return interval;
@@ -113,46 +121,46 @@ public class DBConfig
 
     public boolean isIncrementalBackupsEnabled()
     {
-        return DatabaseDescriptor.instance.isIncrementalBackupsEnabled();
+        return databaseDescriptor.isIncrementalBackupsEnabled();
     }
 
     public CompactionManager getCompactionManager()
     {
-        return CompactionManager.instance;
+        return databaseDescriptor.getCompactionManager();
     }
 
     public LocatorConfig getLocatorConfig()
     {
-        return LocatorConfig.instance;
+        return databaseDescriptor.getLocatorConfig();
     }
 
     public IPartitioner getPartitioner()
     {
-        return LocatorConfig.instance.getPartitioner();
+        return databaseDescriptor.getLocatorConfig().getPartitioner();
     }
 
     public DatabaseDescriptor getDatabaseDescriptor()
     {
-        return DatabaseDescriptor.instance;
+        return databaseDescriptor;
     }
 
     public SystemKeyspace getSystemKeyspace()
     {
-        return SystemKeyspace.instance;
+        return databaseDescriptor.getSystemKeyspace();
     }
 
     public StorageService getStorageService()
     {
-        return StorageService.instance;
+        return databaseDescriptor.getStorageService();
     }
 
     public SSTableReaderFactory getSSTableReaderFactory()
     {
-        return SSTableReaderFactory.instance;
+        return databaseDescriptor.getSSTableReaderFactory();
     }
 
     public SSTableWriterFactory getSSTableWriterFactory()
     {
-        return SSTableWriterFactory.instance;
+        return databaseDescriptor.getSSTableWriterFactory();
     }
 }

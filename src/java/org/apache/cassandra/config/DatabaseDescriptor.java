@@ -46,6 +46,8 @@ import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.gms.IFailureDetector;
+import org.apache.cassandra.io.sstable.SSTableReaderFactory;
+import org.apache.cassandra.io.sstable.SSTableWriterFactory;
 import org.apache.cassandra.locator.*;
 import org.apache.cassandra.service.*;
 import org.apache.cassandra.tracing.Tracing;
@@ -1687,6 +1689,16 @@ public class DatabaseDescriptor
     public LocatorConfig getLocatorConfig()
     {
         return LocatorConfig.instance;
+    }
+
+    public SSTableReaderFactory getSSTableReaderFactory()
+    {
+        return SSTableReaderFactory.instance;
+    }
+
+    public SSTableWriterFactory getSSTableWriterFactory()
+    {
+        return SSTableWriterFactory.instance;
     }
 
     public DBConfig getDBConfig()
