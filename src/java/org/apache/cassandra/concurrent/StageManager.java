@@ -42,23 +42,30 @@ public class StageManager
 
     public static final long KEEPALIVE = 60; // seconds to keep "extra" threads alive for when idle
 
-    public static final StageManager instance = new StageManager();
+    public static final StageManager instance = new StageManager(DatabaseDescriptor.instance, Tracing.instance);
 
     private final EnumMap<Stage, TracingAwareExecutorService> stages = new EnumMap<Stage, TracingAwareExecutorService>(Stage.class);
 
-    private StageManager()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    private StageManager(DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
-        stages.put(Stage.MUTATION, multiThreadedLowSignalStage(Stage.MUTATION, DatabaseDescriptor.instance.getConcurrentWriters()));
-        stages.put(Stage.COUNTER_MUTATION, multiThreadedLowSignalStage(Stage.COUNTER_MUTATION, DatabaseDescriptor.instance.getConcurrentCounterWriters()));
-        stages.put(Stage.READ, multiThreadedLowSignalStage(Stage.READ, DatabaseDescriptor.instance.getConcurrentReaders()));
+        assert databaseDescriptor != null;
+        assert tracing != null;
+
+        this.databaseDescriptor = databaseDescriptor;
+
+        stages.put(Stage.MUTATION, multiThreadedLowSignalStage(Stage.MUTATION, databaseDescriptor.getConcurrentWriters()));
+        stages.put(Stage.COUNTER_MUTATION, multiThreadedLowSignalStage(Stage.COUNTER_MUTATION, databaseDescriptor.getConcurrentCounterWriters()));
+        stages.put(Stage.READ, multiThreadedLowSignalStage(Stage.READ, databaseDescriptor.getConcurrentReaders()));
         stages.put(Stage.REQUEST_RESPONSE, multiThreadedLowSignalStage(Stage.REQUEST_RESPONSE, FBUtilities.getAvailableProcessors()));
-        stages.put(Stage.INTERNAL_RESPONSE, multiThreadedStage(Stage.INTERNAL_RESPONSE, FBUtilities.getAvailableProcessors()));
+        stages.put(Stage.INTERNAL_RESPONSE, multiThreadedStage(Stage.INTERNAL_RESPONSE, FBUtilities.getAvailableProcessors(), tracing));
         // the rest are all single-threaded
-        stages.put(Stage.GOSSIP, new JMXEnabledThreadPoolExecutor(Stage.GOSSIP, Tracing.instance));
-        stages.put(Stage.ANTI_ENTROPY, new JMXEnabledThreadPoolExecutor(Stage.ANTI_ENTROPY, Tracing.instance));
-        stages.put(Stage.MIGRATION, new JMXEnabledThreadPoolExecutor(Stage.MIGRATION, Tracing.instance));
-        stages.put(Stage.MISC, new JMXEnabledThreadPoolExecutor(Stage.MISC, Tracing.instance));
-        stages.put(Stage.READ_REPAIR, multiThreadedStage(Stage.READ_REPAIR, FBUtilities.getAvailableProcessors()));
+        stages.put(Stage.GOSSIP, new JMXEnabledThreadPoolExecutor(Stage.GOSSIP, tracing));
+        stages.put(Stage.ANTI_ENTROPY, new JMXEnabledThreadPoolExecutor(Stage.ANTI_ENTROPY, tracing));
+        stages.put(Stage.MIGRATION, new JMXEnabledThreadPoolExecutor(Stage.MIGRATION, tracing));
+        stages.put(Stage.MISC, new JMXEnabledThreadPoolExecutor(Stage.MISC, tracing));
+        stages.put(Stage.READ_REPAIR, multiThreadedStage(Stage.READ_REPAIR, FBUtilities.getAvailableProcessors(), tracing));
         stages.put(Stage.TRACING, tracingExecutor());
     }
 
@@ -68,7 +75,7 @@ public class StageManager
         {
             public void rejectedExecution(Runnable r, ThreadPoolExecutor executor)
             {
-                MessagingService.instance.incrementDroppedMessages(MessagingService.Verb._TRACE);
+                databaseDescriptor.getMessagingService().incrementDroppedMessages(MessagingService.Verb._TRACE);
             }
         };
         return new ExecuteOnlyExecutor(1,
@@ -80,7 +87,7 @@ public class StageManager
                                        reh);
     }
 
-    private JMXEnabledThreadPoolExecutor multiThreadedStage(Stage stage, int numThreads)
+    private JMXEnabledThreadPoolExecutor multiThreadedStage(Stage stage, int numThreads, Tracing tracing)
     {
         return new JMXEnabledThreadPoolExecutor(numThreads,
                                                 KEEPALIVE,
@@ -88,12 +95,12 @@ public class StageManager
                                                 new LinkedBlockingQueue<Runnable>(),
                                                 new NamedThreadFactory(stage.getJmxName()),
                                                 stage.getJmxType(),
-                                                Tracing.instance);
+                                                tracing);
     }
 
     private TracingAwareExecutorService multiThreadedLowSignalStage(Stage stage, int numThreads)
     {
-        return JMXEnabledSharedExecutorPool.SHARED.newExecutor(numThreads, Integer.MAX_VALUE, stage.getJmxName(), stage.getJmxType(), Tracing.instance);
+        return JMXEnabledSharedExecutorPool.SHARED.newExecutor(numThreads, Integer.MAX_VALUE, stage.getJmxName(), stage.getJmxType(), databaseDescriptor.getTracing());
     }
 
     /**
