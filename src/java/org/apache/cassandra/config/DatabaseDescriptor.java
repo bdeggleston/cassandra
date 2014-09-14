@@ -1739,6 +1739,11 @@ public class DatabaseDescriptor
         return DefsTables.instance;
     }
 
+    public HintedHandOffManager getHintedHandOffManager()
+    {
+        return HintedHandOffManager.instance;
+    }
+
     public DBConfig getDBConfig()
     {
         return DBConfig.instance;
