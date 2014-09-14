@@ -11,13 +11,13 @@ import java.util.concurrent.locks.Lock;
 
 public class PaxosManager
 {
-    public static final PaxosManager instance = new PaxosManager();
+    public static final PaxosManager instance = new PaxosManager(DatabaseDescriptor.instance);
 
     private final Striped<Lock> locks;
 
-    public PaxosManager()
+    public PaxosManager(DatabaseDescriptor databaseDescriptor)
     {
-        locks = Striped.lazyWeakLock(DatabaseDescriptor.instance.getConcurrentWriters() * 1024);
+        locks = Striped.lazyWeakLock(databaseDescriptor.getConcurrentWriters() * 1024);
     }
 
     public PrepareResponse prepare(Commit toPrepare, Tracing tracing, SystemKeyspace systemKeyspace)
