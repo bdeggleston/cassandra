@@ -10,7 +10,6 @@ import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.exceptions.ConfigurationException;
-import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageService;
@@ -35,7 +34,7 @@ public class LocatorConfig
         LocatorConfig locatorConfig = null;
         try
         {
-            locatorConfig = new LocatorConfig();
+            locatorConfig = new LocatorConfig(DatabaseDescriptor.instance.getConfig(), DatabaseDescriptor.instance);
         }
         catch (ConfigurationException e)
         {
@@ -62,18 +61,22 @@ public class LocatorConfig
     private String localDC;
     private Comparator<InetAddress> localComparator;
 
-    public LocatorConfig() throws ConfigurationException
-    {
-        conf = DatabaseDescriptor.instance.getConfig();
+    private final DatabaseDescriptor databaseDescriptor;
 
-        partitioner = createPartitioner(System.getProperty("cassandra.partitioner", conf.partitioner));
+    public LocatorConfig(Config conf, DatabaseDescriptor databaseDescriptor) throws ConfigurationException
+    {
+        this.databaseDescriptor = databaseDescriptor;
+
+        this.conf = conf;
+
+        partitioner = createPartitioner(System.getProperty("cassandra.partitioner", this.conf.partitioner));
         partitionerName = partitioner.getClass().getCanonicalName();
-        if (conf.initial_token != null)
-            for (String token : tokensFromString(conf.initial_token))
+        if (this.conf.initial_token != null)
+            for (String token : tokensFromString(this.conf.initial_token))
                 partitioner.getTokenFactory().validate(token);
 
         snitch = createEndpointSnitch();
-        tokenMetadata = new TokenMetadata(FailureDetector.instance, this);
+        tokenMetadata = new TokenMetadata(databaseDescriptor.getFailureDetector(), this);
         endpointSnitchInfo = EndpointSnitchInfo.create(snitch);
 
         localDC = snitch.getDatacenter(getBroadcastAddress());
@@ -198,7 +201,7 @@ public class LocatorConfig
      */
     public Collection<Range<Token>> getPrimaryRangesForEndpoint(String keyspace, InetAddress ep)
     {
-        AbstractReplicationStrategy strategy = KeyspaceManager.instance.open(keyspace).getReplicationStrategy();
+        AbstractReplicationStrategy strategy = databaseDescriptor.getKeyspaceManager().open(keyspace).getReplicationStrategy();
         Collection<Range<Token>> primaryRanges = new HashSet<>();
         TokenMetadata metadata = tokenMetadata.cloneOnlyTokenMap();
         for (Token token : metadata.sortedTokens())
@@ -212,12 +215,12 @@ public class LocatorConfig
 
     public Collection<Range<Token>> getLocalRanges(String keyspaceName)
     {
-        return getRangesForEndpoint(keyspaceName, DatabaseDescriptor.instance.getBroadcastAddress());
+        return getRangesForEndpoint(keyspaceName, getBroadcastAddress());
     }
 
     public Collection<Range<Token>> getLocalPrimaryRanges(String keyspace)
     {
-        return getPrimaryRangesForEndpoint(keyspace, DatabaseDescriptor.instance.getBroadcastAddress());
+        return getPrimaryRangesForEndpoint(keyspace, getBroadcastAddress());
     }
 
 
@@ -245,7 +248,7 @@ public class LocatorConfig
      */
     public Collection<Range<Token>> getRangesForEndpoint(String keyspaceName, InetAddress ep)
     {
-        return KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getAddressRanges().get(ep);
+        return databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getAddressRanges().get(ep);
     }
 
     /**
@@ -259,7 +262,7 @@ public class LocatorConfig
      */
     public List<InetAddress> getNaturalEndpoints(String keyspaceName, String cf, String key)
     {
-        CFMetaData cfMetaData = Schema.instance.getKSMetaData(keyspaceName).cfMetaData().get(cf);
+        CFMetaData cfMetaData = databaseDescriptor.getSchema().getKSMetaData(keyspaceName).cfMetaData().get(cf);
         return getNaturalEndpoints(keyspaceName, getPartitioner().getToken(cfMetaData.getKeyValidator().fromString(key)));
     }
 
@@ -278,7 +281,7 @@ public class LocatorConfig
      */
     public List<InetAddress> getNaturalEndpoints(String keyspaceName, RingPosition pos)
     {
-        return KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getNaturalEndpoints(pos);
+        return databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getNaturalEndpoints(pos);
     }
 
     /**
@@ -301,7 +304,7 @@ public class LocatorConfig
 
         for (InetAddress endpoint : endpoints)
         {
-            if (FailureDetector.instance.isAlive(endpoint))
+            if (databaseDescriptor.getFailureDetector().isAlive(endpoint))
                 liveEps.add(endpoint);
         }
 
@@ -330,58 +333,58 @@ public class LocatorConfig
 
     public InetAddress getListenAddress()
     {
-        return DatabaseDescriptor.instance.getListenAddress();
+        return databaseDescriptor.getListenAddress();
     }
 
     public InetAddress getLocalAddress()
     {
-        return DatabaseDescriptor.instance.getLocalAddress();
+        return databaseDescriptor.getLocalAddress();
     }
 
     public InetAddress getBroadcastAddress()
     {
-        return DatabaseDescriptor.instance.getBroadcastAddress();
+        return databaseDescriptor.getBroadcastAddress();
     }
 
     // endpoint snitch dependency getters
 
     public Gossiper getGossiper()
     {
-        return Gossiper.instance;
+        return databaseDescriptor.getGossiper();
     }
 
     public SystemKeyspace getSystemKeyspace()
     {
-        return SystemKeyspace.instance;
+        return databaseDescriptor.getSystemKeyspace();
     }
 
     public MessagingService getMessagingService()
     {
-        return MessagingService.instance;
+        return databaseDescriptor.getMessagingService();
     }
 
     public DatabaseDescriptor getDatabaseDescriptor()
     {
-        return DatabaseDescriptor.instance;
+        return databaseDescriptor;
     }
 
     public StorageService getStorageService()
     {
-        return StorageService.instance;
+        return databaseDescriptor.getStorageService();
     }
 
     public StorageServiceExecutors getStorageServiceExecutors()
     {
-        return StorageServiceExecutors.instance;
+        return databaseDescriptor.getStorageServiceExecutors();
     }
 
     public KeyspaceManager getKeyspaceManager()
     {
-        return KeyspaceManager.instance;
+        return databaseDescriptor.getKeyspaceManager();
     }
 
     public Schema getSchema()
     {
-        return Schema.instance;
+        return databaseDescriptor.getSchema();
     }
 }
