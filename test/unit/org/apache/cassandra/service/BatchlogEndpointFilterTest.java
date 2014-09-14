@@ -20,6 +20,10 @@ package org.apache.cassandra.service;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
+
+import org.apache.cassandra.gms.FailureDetector;
+import org.apache.cassandra.gms.IFailureDetector;
+import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.Test;
 import org.junit.matchers.JUnitMatchers;
 
@@ -46,7 +50,7 @@ public class BatchlogEndpointFilterTest
                 .put("2", InetAddress.getByName("2"))
                 .put("2", InetAddress.getByName("22"))
                 .build();
-        Collection<InetAddress> result = new TestEndpointFilter(LOCAL, endpoints).filter();
+        Collection<InetAddress> result = new TestEndpointFilter(LOCAL, endpoints, FailureDetector.instance, LocatorConfig.instance).filter();
         assertThat(result.size(), is(2));
         assertThat(result, JUnitMatchers.hasItem(InetAddress.getByName("11")));
         assertThat(result, JUnitMatchers.hasItem(InetAddress.getByName("22")));
@@ -60,7 +64,7 @@ public class BatchlogEndpointFilterTest
                 .put(LOCAL, InetAddress.getByName("00"))
                 .put("1", InetAddress.getByName("1"))
                 .build();
-        Collection<InetAddress> result = new TestEndpointFilter(LOCAL, endpoints).filter();
+        Collection<InetAddress> result = new TestEndpointFilter(LOCAL, endpoints, FailureDetector.instance, LocatorConfig.instance).filter();
         assertThat(result.size(), is(2));
         assertThat(result, JUnitMatchers.hasItem(InetAddress.getByName("1")));
         assertThat(result, JUnitMatchers.hasItem(InetAddress.getByName("0")));
@@ -72,7 +76,7 @@ public class BatchlogEndpointFilterTest
         Multimap<String, InetAddress> endpoints = ImmutableMultimap.<String, InetAddress> builder()
                 .put(LOCAL, InetAddress.getByName("0"))
                 .build();
-        Collection<InetAddress> result = new TestEndpointFilter(LOCAL, endpoints).filter();
+        Collection<InetAddress> result = new TestEndpointFilter(LOCAL, endpoints, FailureDetector.instance, LocatorConfig.instance).filter();
         assertThat(result.size(), is(1));
         assertThat(result, JUnitMatchers.hasItem(InetAddress.getByName("0")));
     }
@@ -87,7 +91,7 @@ public class BatchlogEndpointFilterTest
                 .put("1", InetAddress.getByName("11"))
                 .put("1", InetAddress.getByName("111"))
                 .build();
-        Collection<InetAddress> result = new TestEndpointFilter(LOCAL, endpoints).filter();
+        Collection<InetAddress> result = new TestEndpointFilter(LOCAL, endpoints, FailureDetector.instance, LocatorConfig.instance).filter();
         assertThat(result.size(), is(2));
         assertThat(result, JUnitMatchers.hasItem(InetAddress.getByName("1")));
         assertThat(result, JUnitMatchers.hasItem(InetAddress.getByName("11")));
@@ -95,9 +99,9 @@ public class BatchlogEndpointFilterTest
 
     private static class TestEndpointFilter extends BatchlogManager.EndpointFilter
     {
-        public TestEndpointFilter(String localRack, Multimap<String, InetAddress> endpoints)
+        public TestEndpointFilter(String localRack, Multimap<String, InetAddress> endpoints, IFailureDetector failureDetector, LocatorConfig locatorConfig)
         {
-            super(localRack, endpoints);
+            super(localRack, endpoints, failureDetector, locatorConfig);
         }
 
         @Override

@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import com.google.common.collect.Lists;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.BeforeClass;
 import org.junit.Before;
@@ -97,7 +98,10 @@ public class BatchlogManagerTest
             BatchlogManager.getBatchlogMutationFor(Collections.singleton(mutation),
                                                    UUIDGen.getTimeUUID(),
                                                    MessagingService.current_version,
-                                                   timestamp)
+                                                   timestamp,
+                                                   CFMetaDataFactory.instance,
+                                                   MutationFactory.instance,
+                                                   DBConfig.instance)
                            .applyUnsafe();
         }
 
@@ -167,7 +171,10 @@ public class BatchlogManagerTest
             BatchlogManager.getBatchlogMutationFor(mutations,
                                                    UUIDGen.getTimeUUID(),
                                                    MessagingService.current_version,
-                                                   timestamp * 1000)
+                                                   timestamp * 1000,
+                                                   CFMetaDataFactory.instance,
+                                                   MutationFactory.instance,
+                                                   DBConfig.instance)
                            .applyUnsafe();
         }
 

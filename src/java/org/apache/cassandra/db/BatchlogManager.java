@@ -33,7 +33,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.cassandra.config.CFMetaDataFactory;
-import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.slf4j.Logger;
@@ -42,11 +42,9 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.UntypedResultSet;
-import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
-import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.DataOutputBuffer;
@@ -68,12 +66,19 @@ public class BatchlogManager implements BatchlogManagerMBean
 
     private static final int PAGE_SIZE = 128; // same as HHOM, for now, w/out using any heuristics. TODO: set based on avg batch size.
 
-    public static final BatchlogManager instance = new BatchlogManager();
+    public static final BatchlogManager instance = new BatchlogManager(DatabaseDescriptor.instance);
 
     private final AtomicLong totalBatchesReplayed = new AtomicLong();
     private final AtomicBoolean isReplaying = new AtomicBoolean();
 
     private final ScheduledExecutorService batchlogTasks = new DebuggableScheduledThreadPoolExecutor("BatchlogTasks");
+
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public BatchlogManager(DatabaseDescriptor databaseDescriptor)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+    }
 
     public void start()
     {
@@ -95,7 +100,7 @@ public class BatchlogManager implements BatchlogManagerMBean
             }
         };
 
-        batchlogTasks.scheduleWithFixedDelay(runnable, DatabaseDescriptor.instance.getRingDelay(), REPLAY_INTERVAL, TimeUnit.MILLISECONDS);
+        batchlogTasks.scheduleWithFixedDelay(runnable, databaseDescriptor.getRingDelay(), REPLAY_INTERVAL, TimeUnit.MILLISECONDS);
     }
 
     public void shutdown() throws InterruptedException
@@ -107,7 +112,7 @@ public class BatchlogManager implements BatchlogManagerMBean
     public int countAllBatches()
     {
         String query = String.format("SELECT count(*) FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.BATCHLOG_CF);
-        return (int) QueryProcessor.instance.executeInternal(query).one().getLong("count");
+        return (int) databaseDescriptor.getQueryProcessor().executeInternal(query).one().getLong("count");
     }
 
     public long getTotalBatchesReplayed()
@@ -127,23 +132,23 @@ public class BatchlogManager implements BatchlogManagerMBean
         batchlogTasks.execute(runnable);
     }
 
-    public static Mutation getBatchlogMutationFor(Collection<Mutation> mutations, UUID uuid, int version)
+    public static Mutation getBatchlogMutationFor(Collection<Mutation> mutations, UUID uuid, int version, CFMetaDataFactory cfMetaDataFactory, MutationFactory mutationFactory, DBConfig dbConfig)
     {
-        return getBatchlogMutationFor(mutations, uuid, version, FBUtilities.timestampMicros());
+        return getBatchlogMutationFor(mutations, uuid, version, FBUtilities.timestampMicros(), cfMetaDataFactory, mutationFactory, dbConfig);
     }
 
     @VisibleForTesting
-    static Mutation getBatchlogMutationFor(Collection<Mutation> mutations, UUID uuid, int version, long now)
+    static Mutation getBatchlogMutationFor(Collection<Mutation> mutations, UUID uuid, int version, long now, CFMetaDataFactory cfMetaDataFactory, MutationFactory mutationFactory, DBConfig dbConfig)
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(CFMetaDataFactory.instance.BatchlogCf, DBConfig.instance);
-        CFRowAdder adder = new CFRowAdder(cf, CFMetaDataFactory.instance.BatchlogCf.comparator.builder().build(), now);
-        adder.add("data", serializeMutations(mutations, version))
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfMetaDataFactory.BatchlogCf, dbConfig);
+        CFRowAdder adder = new CFRowAdder(cf, cfMetaDataFactory.BatchlogCf.comparator.builder().build(), now);
+        adder.add("data", serializeMutations(mutations, version, mutationFactory))
              .add("written_at", new Date(now / 1000))
              .add("version", version);
-        return MutationFactory.instance.create(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(uuid), cf);
+        return mutationFactory.create(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(uuid), cf);
     }
 
-    private static ByteBuffer serializeMutations(Collection<Mutation> mutations, int version)
+    private static ByteBuffer serializeMutations(Collection<Mutation> mutations, int version, MutationFactory mutationFactory)
     {
         DataOutputBuffer buf = new DataOutputBuffer();
 
@@ -151,7 +156,7 @@ public class BatchlogManager implements BatchlogManagerMBean
         {
             buf.writeInt(mutations.size());
             for (Mutation mutation : mutations)
-                MutationFactory.instance.serializer.serialize(mutation, buf, version);
+                mutationFactory.serializer.serialize(mutation, buf, version);
         }
         catch (IOException e)
         {
@@ -171,15 +176,15 @@ public class BatchlogManager implements BatchlogManagerMBean
 
         // rate limit is in bytes per second. Uses Double.MAX_VALUE if disabled (set to 0 in cassandra.yaml).
         // max rate is scaled by the number of nodes in the cluster (same as for HHOM - see CASSANDRA-5272).
-        int throttleInKB = DatabaseDescriptor.instance.getBatchlogReplayThrottleInKB() / LocatorConfig.instance.getTokenMetadata().getAllEndpoints().size();
+        int throttleInKB = databaseDescriptor.getBatchlogReplayThrottleInKB() / databaseDescriptor.getLocatorConfig().getTokenMetadata().getAllEndpoints().size();
         RateLimiter rateLimiter = RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
 
         try
         {
-            UntypedResultSet page = QueryProcessor.instance.executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s LIMIT %d",
-                                                                  Keyspace.SYSTEM_KS,
-                                                                  SystemKeyspace.BATCHLOG_CF,
-                                                                  PAGE_SIZE));
+            UntypedResultSet page = databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s LIMIT %d",
+                                                                                                         Keyspace.SYSTEM_KS,
+                                                                                                         SystemKeyspace.BATCHLOG_CF,
+                                                                                                         PAGE_SIZE));
 
             while (!page.isEmpty())
             {
@@ -188,11 +193,10 @@ public class BatchlogManager implements BatchlogManagerMBean
                 if (page.size() < PAGE_SIZE)
                     break; // we've exhausted the batchlog, next query would be empty.
 
-                page = QueryProcessor.instance.executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s WHERE token(id) > token(?) LIMIT %d",
-                                                     Keyspace.SYSTEM_KS,
-                                                     SystemKeyspace.BATCHLOG_CF,
-                                                     PAGE_SIZE), 
-                                       id);
+                page = databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s WHERE token(id) > token(?) LIMIT %d",
+                                                                                            Keyspace.SYSTEM_KS,
+                                                                                            SystemKeyspace.BATCHLOG_CF,
+                                                                                            PAGE_SIZE), id);
             }
 
             cleanup();
@@ -207,7 +211,7 @@ public class BatchlogManager implements BatchlogManagerMBean
 
     private void deleteBatch(UUID id)
     {
-        Mutation mutation = MutationFactory.instance.create(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(id));
+        Mutation mutation = databaseDescriptor.getMutationFactory().create(Keyspace.SYSTEM_KS, UUIDType.instance.decompose(id));
         mutation.delete(SystemKeyspace.BATCHLOG_CF, FBUtilities.timestampMicros());
         mutation.apply();
     }
@@ -223,12 +227,19 @@ public class BatchlogManager implements BatchlogManagerMBean
             id = row.getUUID("id");
             long writtenAt = row.getLong("written_at");
             // enough time for the actual write + batchlog entry mutation delivery (two separate requests).
-            long timeout = DatabaseDescriptor.instance.getWriteRpcTimeout() * 2; // enough time for the actual write + BM removal mutation
+            long timeout = databaseDescriptor.getWriteRpcTimeout() * 2; // enough time for the actual write + BM removal mutation
             if (System.currentTimeMillis() < writtenAt + timeout)
                 continue; // not ready to replay yet, might still get a deletion.
 
             int version = row.has("version") ? row.getInt("version") : MessagingService.VERSION_12;
-            Batch batch = new Batch(id, writtenAt, row.getBytes("data"), version);
+            Batch batch = new Batch(id, writtenAt, row.getBytes("data"), version,
+                                    databaseDescriptor,
+                                    databaseDescriptor.getSystemKeyspace(),
+                                    databaseDescriptor.getMutationFactory(),
+                                    databaseDescriptor.getFailureDetector(),
+                                    databaseDescriptor.getStorageProxy(),
+                                    databaseDescriptor.getMessagingService(),
+                                    databaseDescriptor.getLocatorConfig());
             try
             {
                 if (batch.replay(rateLimiter) > 0)
@@ -268,14 +279,36 @@ public class BatchlogManager implements BatchlogManagerMBean
         private final ByteBuffer data;
         private final int version;
 
+        private final DatabaseDescriptor databaseDescriptor;
+        private final SystemKeyspace systemKeyspace;
+        private final MutationFactory mutationFactory;
+        private final IFailureDetector failureDetector;
+        private final StorageProxy storageProxy;
+        private final MessagingService messagingService;
+        private final LocatorConfig locatorConfig;
+
         private List<ReplayWriteResponseHandler> replayHandlers;
 
-        public Batch(UUID id, long writtenAt, ByteBuffer data, int version)
+        private Batch(UUID id, long writtenAt, ByteBuffer data, int version,
+                      DatabaseDescriptor databaseDescriptor,
+                      SystemKeyspace systemKeyspace,
+                      MutationFactory mutationFactory,
+                      IFailureDetector failureDetector,
+                      StorageProxy storageProxy,
+                      MessagingService messagingService,
+                      LocatorConfig locatorConfig)
         {
             this.id = id;
             this.writtenAt = writtenAt;
             this.data = data;
             this.version = version;
+            this.databaseDescriptor = databaseDescriptor;
+            this.systemKeyspace = systemKeyspace;
+            this.mutationFactory = mutationFactory;
+            this.failureDetector = failureDetector;
+            this.storageProxy = storageProxy;
+            this.messagingService = messagingService;
+            this.locatorConfig = locatorConfig;
         }
 
         public int replay(RateLimiter rateLimiter) throws IOException
@@ -324,13 +357,13 @@ public class BatchlogManager implements BatchlogManagerMBean
             List<Mutation> mutations = new ArrayList<>(size);
             for (int i = 0; i < size; i++)
             {
-                Mutation mutation = MutationFactory.instance.serializer.deserialize(in, version);
+                Mutation mutation = mutationFactory.serializer.deserialize(in, version);
 
                 // Remove CFs that have been truncated since. writtenAt and SystemTable#getTruncatedAt() both return millis.
                 // We don't abort the replay entirely b/c this can be considered a success (truncated is same as delivered then
                 // truncated.
                 for (UUID cfId : mutation.getColumnFamilyIds())
-                    if (writtenAt <= SystemKeyspace.instance.getTruncatedAt(cfId))
+                    if (writtenAt <= systemKeyspace.getTruncatedAt(cfId))
                         mutation = mutation.without(cfId);
 
                 if (!mutation.isEmpty())
@@ -356,7 +389,7 @@ public class BatchlogManager implements BatchlogManagerMBean
 
                     if (ttl > 0 && handler != null)
                         for (InetAddress endpoint : handler.undelivered)
-                            StorageProxy.instance.writeHintForMutation(undeliveredMutation, writtenAt, ttl, endpoint);
+                            storageProxy.writeHintForMutation(undeliveredMutation, writtenAt, ttl, endpoint);
                 }
             }
             catch (IOException e)
@@ -387,26 +420,26 @@ public class BatchlogManager implements BatchlogManagerMBean
         {
             Set<InetAddress> liveEndpoints = new HashSet<>();
             String ks = mutation.getKeyspaceName();
-            Token<?> tk = LocatorConfig.instance.getPartitioner().getToken(mutation.key());
+            Token<?> tk = locatorConfig.getPartitioner().getToken(mutation.key());
 
-            for (InetAddress endpoint : Iterables.concat(LocatorConfig.instance.getNaturalEndpoints(ks, tk),
-                                                         LocatorConfig.instance.getTokenMetadata().pendingEndpointsFor(tk, ks)))
+            for (InetAddress endpoint : Iterables.concat(locatorConfig.getNaturalEndpoints(ks, tk),
+                                                         locatorConfig.getTokenMetadata().pendingEndpointsFor(tk, ks)))
             {
-                if (endpoint.equals(DatabaseDescriptor.instance.getBroadcastAddress()))
+                if (endpoint.equals(locatorConfig.getBroadcastAddress()))
                     mutation.apply();
-                else if (FailureDetector.instance.isAlive(endpoint))
+                else if (failureDetector.isAlive(endpoint))
                     liveEndpoints.add(endpoint); // will try delivering directly instead of writing a hint.
                 else
-                    StorageProxy.instance.writeHintForMutation(mutation, writtenAt, ttl, endpoint);
+                    storageProxy.writeHintForMutation(mutation, writtenAt, ttl, endpoint);
             }
 
             if (liveEndpoints.isEmpty())
                 return null;
 
-            ReplayWriteResponseHandler handler = new ReplayWriteResponseHandler(liveEndpoints, DatabaseDescriptor.instance, new IAsyncCallback.EndpointIsAlivePredicate(FailureDetector.instance));
-            MessageOut<Mutation> message = mutation.createMessage(MessagingService.instance);
+            ReplayWriteResponseHandler handler = new ReplayWriteResponseHandler(liveEndpoints, databaseDescriptor, new IAsyncCallback.EndpointIsAlivePredicate(failureDetector));
+            MessageOut<Mutation> message = mutation.createMessage(messagingService);
             for (InetAddress endpoint : liveEndpoints)
-                MessagingService.instance.sendRR(message, endpoint, handler, false);
+                messagingService.sendRR(message, endpoint, handler, false);
             return handler;
         }
 
@@ -451,13 +484,13 @@ public class BatchlogManager implements BatchlogManagerMBean
     // force flush + compaction to reclaim space from the replayed batches
     private void cleanup() throws ExecutionException, InterruptedException
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF);
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF);
         cfs.forceBlockingFlush();
         Collection<Descriptor> descriptors = new ArrayList<>();
         for (SSTableReader sstr : cfs.getSSTables())
             descriptors.add(sstr.descriptor);
         if (!descriptors.isEmpty()) // don't pollute the logs if there is nothing to compact.
-            CompactionManager.instance.submitUserDefined(cfs, descriptors, Integer.MAX_VALUE).get();
+            databaseDescriptor.getCompactionManager().submitUserDefined(cfs, descriptors, Integer.MAX_VALUE).get();
     }
 
     public static class EndpointFilter
@@ -465,10 +498,15 @@ public class BatchlogManager implements BatchlogManagerMBean
         private final String localRack;
         private final Multimap<String, InetAddress> endpoints;
 
-        public EndpointFilter(String localRack, Multimap<String, InetAddress> endpoints)
+        private final IFailureDetector failureDetector;
+        private final LocatorConfig locatorConfig;
+
+        public EndpointFilter(String localRack, Multimap<String, InetAddress> endpoints, IFailureDetector failureDetector, LocatorConfig locatorConfig)
         {
             this.localRack = localRack;
             this.endpoints = endpoints;
+            this.failureDetector = failureDetector;
+            this.locatorConfig = locatorConfig;
         }
 
         /**
@@ -528,7 +566,7 @@ public class BatchlogManager implements BatchlogManagerMBean
         @VisibleForTesting
         protected boolean isValid(InetAddress input)
         {
-            return !input.equals(DatabaseDescriptor.instance.getBroadcastAddress()) && FailureDetector.instance.isAlive(input);
+            return !input.equals(locatorConfig.getBroadcastAddress()) && failureDetector.isAlive(input);
         }
 
         @VisibleForTesting

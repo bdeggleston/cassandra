@@ -32,6 +32,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.collect.*;
 import com.google.common.util.concurrent.Uninterruptibles;
 import net.nicoulaj.compilecommand.annotations.Inline;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.locator.*;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -628,7 +629,7 @@ public class StorageProxy implements StorageProxyMBean
                                                                         DatabaseDescriptor.instance,
                                                                         endpointIsAlivePredicate);
 
-        MessageOut<Mutation> message = BatchlogManager.getBatchlogMutationFor(mutations, uuid, MessagingService.current_version)
+        MessageOut<Mutation> message = BatchlogManager.getBatchlogMutationFor(mutations, uuid, MessagingService.current_version, CFMetaDataFactory.instance, MutationFactory.instance, DBConfig.instance)
                                                       .createMessage(MessagingService.instance);
         for (InetAddress target : endpoints)
         {
@@ -643,7 +644,7 @@ public class StorageProxy implements StorageProxyMBean
             }
             else
             {
-                MessagingService.instance.sendRR(BatchlogManager.getBatchlogMutationFor(mutations, uuid, targetVersion)
+                MessagingService.instance.sendRR(BatchlogManager.getBatchlogMutationFor(mutations, uuid, targetVersion, CFMetaDataFactory.instance, MutationFactory.instance, DBConfig.instance)
                                                                   .createMessage(MessagingService.instance),
                                                    target,
                                                    handler,
@@ -766,7 +767,7 @@ public class StorageProxy implements StorageProxyMBean
         Multimap<String, InetAddress> localEndpoints = HashMultimap.create(topology.getDatacenterRacks().get(localDataCenter));
         String localRack = LocatorConfig.instance.getEndpointSnitch().getRack(DatabaseDescriptor.instance.getBroadcastAddress());
 
-        Collection<InetAddress> chosenEndpoints = new BatchlogManager.EndpointFilter(localRack, localEndpoints).filter();
+        Collection<InetAddress> chosenEndpoints = new BatchlogManager.EndpointFilter(localRack, localEndpoints, FailureDetector.instance, LocatorConfig.instance).filter();
         if (chosenEndpoints.isEmpty())
         {
             if (consistencyLevel == ConsistencyLevel.ANY)

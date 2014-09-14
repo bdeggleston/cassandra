@@ -44,6 +44,7 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.locator.*;
 import org.apache.cassandra.service.*;
 import org.apache.cassandra.tracing.Tracing;
@@ -1657,9 +1658,19 @@ public class DatabaseDescriptor
         return TriggerExecutor.instance;
     }
 
+    public CompactionManager getCompactionManager()
+    {
+        return CompactionManager.instance;
+    }
+
     public LocatorConfig getLocatorConfig()
     {
         return LocatorConfig.instance;
+    }
+
+    public IFailureDetector getFailureDetector()
+    {
+        return FailureDetector.instance;
     }
 
     public DBConfig getDBConfig()
