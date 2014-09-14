@@ -37,10 +37,10 @@ public class FileCacheService
 {
     private static final Logger logger = LoggerFactory.getLogger(FileCacheService.class);
 
-    private static final long MEMORY_USAGE_THRESHOLD = DatabaseDescriptor.instance.getFileCacheSizeInMB() * 1024L * 1024L;
+    private final long MEMORY_USAGE_THRESHOLD;
     private static final int AFTER_ACCESS_EXPIRATION = 512; // in millis
 
-    public static FileCacheService instance = new FileCacheService();
+    public static FileCacheService instance = new FileCacheService(DatabaseDescriptor.instance);
 
     private static final AtomicLong cacheKeyIdCounter = new AtomicLong();
     public static final class CacheKey
@@ -72,7 +72,7 @@ public class FileCacheService
     private static final AtomicInteger memoryUsage = new AtomicInteger();
 
     private final Cache<CacheKey, CacheBucket> cache;
-    private final FileCacheMetrics metrics = new FileCacheMetrics(FileCacheService.instance);
+    private final FileCacheMetrics metrics;
 
     private static final class CacheBucket
     {
@@ -80,7 +80,8 @@ public class FileCacheService
         volatile boolean discarded = false;
     }
 
-    protected FileCacheService()
+
+    protected FileCacheService(DatabaseDescriptor databaseDescriptor)
     {
         RemovalListener<CacheKey, CacheBucket> onRemove = new RemovalListener<CacheKey, CacheBucket>()
         {
@@ -110,10 +111,12 @@ public class FileCacheService
 
         cache = CacheBuilder.newBuilder()
                 .expireAfterAccess(AFTER_ACCESS_EXPIRATION, TimeUnit.MILLISECONDS)
-                .concurrencyLevel(DatabaseDescriptor.instance.getConcurrentReaders())
+                .concurrencyLevel(databaseDescriptor.getConcurrentReaders())
                 .removalListener(onRemove)
                 .initialCapacity(16 << 10)
                 .build();
+        MEMORY_USAGE_THRESHOLD = databaseDescriptor.getFileCacheSizeInMB() * 1024L * 1024L;
+        metrics = new FileCacheMetrics(this);
     }
 
     public RandomAccessReader get(CacheKey key)
