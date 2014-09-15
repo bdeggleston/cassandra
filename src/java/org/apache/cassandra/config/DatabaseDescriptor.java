@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final FileCacheService fileCacheService;
     protected final PaxosManager paxosManager;
     protected final MigrationManager migrationManager;
     protected final TriggerExecutor triggerExecutor;
@@ -211,6 +212,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        fileCacheService = createFileCacheService();
         paxosManager = createPaxosManager();
         migrationManager = createMigrationManager();
         triggerExecutor = createTriggerExecutor();
@@ -1736,9 +1738,14 @@ public class DatabaseDescriptor
         return ActiveRepairService.instance;
     }
 
+    public FileCacheService createFileCacheService()
+    {
+        return new FileCacheService(this);
+    }
+
     public FileCacheService getFileCacheService()
     {
-        return FileCacheService.instance;
+        return fileCacheService;
     }
 
     public SinkManager getSinkManager()

@@ -80,6 +80,8 @@ public class SSTableReaderTest
     public static final String CF_INDEXED = "Indexed1";
     public static final String CF_STANDARDLOWINDEXINTERVAL = "StandardLowIndexInterval";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     static Token t(int i)
     {
         return LocatorConfig.instance.getPartitioner().getToken(ByteBufferUtil.bytes(String.valueOf(i)));
@@ -311,10 +313,10 @@ public class SSTableReaderTest
         SSTableReader sstable = indexCfs.getSSTables().iterator().next();
         assert sstable.first.getToken() instanceof LocalToken;
 
-        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode());
+        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), databaseDescriptor.getFileCacheService(), DatabaseDescriptor.instance.getDiskAccessMode());
         SegmentedFile.Builder dbuilder = sstable.compression
-                                          ? SegmentedFile.getCompressedBuilder(FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode(), DBConfig.instance.offHeapAllocator)
-                                          : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), FileCacheService.instance, DatabaseDescriptor.instance.getDiskAccessMode());
+                                          ? SegmentedFile.getCompressedBuilder(databaseDescriptor.getFileCacheService(), DatabaseDescriptor.instance.getDiskAccessMode(), DBConfig.instance.offHeapAllocator)
+                                          : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), databaseDescriptor.getFileCacheService(), DatabaseDescriptor.instance.getDiskAccessMode());
         sstable.saveSummary(ibuilder, dbuilder);
 
         SSTableReader reopened = SSTableReaderFactory.instance.open(sstable.descriptor);

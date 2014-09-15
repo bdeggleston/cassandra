@@ -46,6 +46,8 @@ import org.junit.Test;
 
 public class BufferedRandomAccessFileTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @Test
     public void testReadAndWrite() throws Exception
     {
@@ -552,8 +554,8 @@ public class BufferedRandomAccessFileTest
             RandomAccessReader r2 = RandomAccessReader.open(w2);
 
 
-            FileCacheService.instance.put(cacheKey, r1);
-            FileCacheService.instance.put(cacheKey, r2);
+            databaseDescriptor.getFileCacheService().put(cacheKey, r1);
+            databaseDescriptor.getFileCacheService().put(cacheKey, r2);
 
             final CountDownLatch finished = new CountDownLatch(THREAD_COUNT);
             final AtomicBoolean hadError = new AtomicBoolean(false);
@@ -567,10 +569,10 @@ public class BufferedRandomAccessFileTest
                     {
                         try
                         {
-                            long size = FileCacheService.instance.sizeInBytes();
+                            long size = databaseDescriptor.getFileCacheService().sizeInBytes();
 
                             while (size > 0)
-                                size = FileCacheService.instance.sizeInBytes();
+                                size = databaseDescriptor.getFileCacheService().sizeInBytes();
                         }
                         catch (Throwable t)
                         {

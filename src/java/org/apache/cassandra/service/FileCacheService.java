@@ -40,8 +40,6 @@ public class FileCacheService
     private final long MEMORY_USAGE_THRESHOLD;
     private static final int AFTER_ACCESS_EXPIRATION = 512; // in millis
 
-    public static FileCacheService instance = new FileCacheService(DatabaseDescriptor.instance);
-
     private static final AtomicLong cacheKeyIdCounter = new AtomicLong();
     public static final class CacheKey
     {
@@ -81,7 +79,7 @@ public class FileCacheService
     }
 
 
-    protected FileCacheService(DatabaseDescriptor databaseDescriptor)
+    public FileCacheService(DatabaseDescriptor databaseDescriptor)
     {
         RemovalListener<CacheKey, CacheBucket> onRemove = new RemovalListener<CacheKey, CacheBucket>()
         {
