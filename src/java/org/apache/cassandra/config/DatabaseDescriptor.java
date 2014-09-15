@@ -135,7 +135,7 @@ public class DatabaseDescriptor
 //        assert CFMetaDataFactory.instance != null;
 //        assert KSMetaDataFactory.instance != null;
 //        assert FailureDetector.instance != null;
-        assert Gossiper.instance != null;
+//        assert Gossiper.instance != null;
 //        assert Tracing.instance != null;
         assert LocatorConfig.instance != null;
         assert DBConfig.instance != null;
@@ -188,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final Gossiper gossiper;
     protected final CFMetaDataFactory cfMetaDataFactory;
     protected final KSMetaDataFactory ksMetaDataFactory;
     protected final QueryHandler queryHandler;
@@ -236,6 +237,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        gossiper = createGossiper();
         cfMetaDataFactory = createCFMetaDataFactory();
         ksMetaDataFactory = createKSMetaDataFactory();
         queryHandler = createQueryHandler();
@@ -1885,9 +1887,14 @@ public class DatabaseDescriptor
         return ssTableWriterFactory;
     }
 
+    public Gossiper createGossiper()
+    {
+        return Gossiper.create(this, getFailureDetector());
+    }
+
     public Gossiper getGossiper()
     {
-        return Gossiper.instance;
+        return gossiper;
     }
 
     public ActiveRepairService getActiveRepairService()

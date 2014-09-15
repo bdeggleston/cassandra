@@ -83,8 +83,8 @@ public class SchemaLoader
 
     public static void startGossiper()
     {
-        if (!Gossiper.instance.isEnabled())
-            Gossiper.instance.start((int) (System.currentTimeMillis() / 1000));
+        if (!databaseDescriptor.getGossiper().isEnabled())
+            databaseDescriptor.getGossiper().start((int) (System.currentTimeMillis() / 1000));
     }
 
     public static void schemaDefinition(String testName) throws ConfigurationException

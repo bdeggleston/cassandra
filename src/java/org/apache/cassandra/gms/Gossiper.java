@@ -72,7 +72,6 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     public final static int intervalInMillis = 1000;
     public final int QUARANTINE_DELAY;
     private static final Logger logger = LoggerFactory.getLogger(Gossiper.class);
-    public static final Gossiper instance = create(DatabaseDescriptor.instance, DatabaseDescriptor.instance.getFailureDetector());
 
     public static final long aVeryLongTime = 259200 * 1000; // 3 days
     private long FatClientTimeout;

@@ -33,7 +33,7 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber
 {
     static final int BROADCAST_INTERVAL = 60 * 1000;
 
-    public static final LoadBroadcaster instance = new LoadBroadcaster(DatabaseDescriptor.instance, Gossiper.instance);
+    public static final LoadBroadcaster instance = new LoadBroadcaster(DatabaseDescriptor.instance, DatabaseDescriptor.instance.getGossiper());
 
     private static final Logger logger = LoggerFactory.getLogger(LoadBroadcaster.class);
 

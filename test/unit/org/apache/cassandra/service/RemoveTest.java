@@ -56,6 +56,8 @@ public class RemoveTest
     InetAddress removalhost;
     UUID removalId;
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void setupClass() throws ConfigurationException
     {
@@ -74,10 +76,10 @@ public class RemoveTest
         tmd.clearUnsafe();
 
         // create a ring of 5 nodes
-        Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), endpointTokens, keyTokens, hosts, hostIds, 6);
+        Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), endpointTokens, keyTokens, hosts, hostIds, 6, databaseDescriptor);
 
         MessagingService.instance.listen(DatabaseDescriptor.instance.getBroadcastAddress());
-        Gossiper.instance.start(1);
+        databaseDescriptor.getGossiper().start(1);
         removalhost = hosts.get(5);
         hosts.remove(removalhost);
         removalId = hostIds.get(5);

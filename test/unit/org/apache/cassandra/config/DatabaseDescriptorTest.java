@@ -83,7 +83,7 @@ public class DatabaseDescriptorTest
         DatabaseDescriptor.instance.loadSchemas();
         assertEquals(0, databaseDescriptor.getSchema().getNonSystemKeyspaces().size());
 
-        Gossiper.instance.start((int)(System.currentTimeMillis() / 1000));
+        databaseDescriptor.getGossiper().start((int)(System.currentTimeMillis() / 1000));
         databaseDescriptor.getKeyspaceManager().setInitialized();
 
         try
@@ -108,7 +108,7 @@ public class DatabaseDescriptorTest
         }
         finally
         {
-            Gossiper.instance.stop();
+            databaseDescriptor.getGossiper().stop();
         }
     }
 

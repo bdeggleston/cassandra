@@ -34,8 +34,6 @@ import com.google.common.collect.Multimap;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.KSMetaData;
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.gms.ApplicationState;
 import org.apache.cassandra.gms.Gossiper;
@@ -84,7 +82,7 @@ public class LeaveAndBootstrapTest
         List<InetAddress> hosts = new ArrayList<InetAddress>();
         List<UUID> hostIds = new ArrayList<UUID>();
 
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE);
+        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE, databaseDescriptor);
 
         Map<Token, List<InetAddress>> expectedEndpoints = new HashMap<Token, List<InetAddress>>();
         for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
@@ -156,7 +154,7 @@ public class LeaveAndBootstrapTest
         List<UUID> hostIds = new ArrayList<UUID>();
 
         // create a ring or 10 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE);
+        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE, databaseDescriptor);
 
         // nodes 6, 8 and 9 leave
         final int[] LEAVING = new int[] {6, 8, 9};
@@ -167,14 +165,14 @@ public class LeaveAndBootstrapTest
 
         // boot two new nodes with keyTokens.get(5) and keyTokens.get(7)
         InetAddress boot1 = InetAddress.getByName("127.0.1.1");
-        Gossiper.instance.initializeNodeUnsafe(boot1, UUID.randomUUID(), 1);
-        Gossiper.instance.injectApplicationState(boot1, ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(5))));
+        databaseDescriptor.getGossiper().initializeNodeUnsafe(boot1, UUID.randomUUID(), 1);
+        databaseDescriptor.getGossiper().injectApplicationState(boot1, ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(5))));
         ss.onChange(boot1,
                     ApplicationState.STATUS,
                     valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(5))));
         InetAddress boot2 = InetAddress.getByName("127.0.1.2");
-        Gossiper.instance.initializeNodeUnsafe(boot2, UUID.randomUUID(), 1);
-        Gossiper.instance.injectApplicationState(boot2, ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(7))));
+        databaseDescriptor.getGossiper().initializeNodeUnsafe(boot2, UUID.randomUUID(), 1);
+        databaseDescriptor.getGossiper().injectApplicationState(boot2, ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(7))));
         ss.onChange(boot2,
                     ApplicationState.STATUS,
                     valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(7))));
@@ -456,7 +454,7 @@ public class LeaveAndBootstrapTest
         List<UUID> hostIds = new ArrayList<UUID>();
 
         // create a ring or 5 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 7);
+        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 7, databaseDescriptor);
 
         // node 2 leaves
         ss.onChange(hosts.get(2),
@@ -470,7 +468,7 @@ public class LeaveAndBootstrapTest
         assertTrue(tmd.getBootstrapTokens().isEmpty());
 
         // Bootstrap the node immedidiately to keyTokens.get(4) without going through STATE_LEFT
-        Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(4))));
+        databaseDescriptor.getGossiper().injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(4))));
         ss.onChange(hosts.get(2),
                     ApplicationState.STATUS,
                     valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(4))));
@@ -480,7 +478,7 @@ public class LeaveAndBootstrapTest
         assertEquals(hosts.get(2), tmd.getBootstrapTokens().get(keyTokens.get(4)));
 
         // Bootstrap node hosts.get(3) to keyTokens.get(1)
-        Gossiper.instance.injectApplicationState(hosts.get(3), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(1))));
+        databaseDescriptor.getGossiper().injectApplicationState(hosts.get(3), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(1))));
         ss.onChange(hosts.get(3),
                     ApplicationState.STATUS,
                     valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(1))));
@@ -491,7 +489,7 @@ public class LeaveAndBootstrapTest
         assertEquals(hosts.get(3), tmd.getBootstrapTokens().get(keyTokens.get(1)));
 
         // Bootstrap node hosts.get(2) further to keyTokens.get(3)
-        Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(3))));
+        databaseDescriptor.getGossiper().injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(3))));
         ss.onChange(hosts.get(2),
                     ApplicationState.STATUS,
                     valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(3))));
@@ -503,8 +501,8 @@ public class LeaveAndBootstrapTest
         assertEquals(hosts.get(3), tmd.getBootstrapTokens().get(keyTokens.get(1)));
 
         // Go to normal again for both nodes
-        Gossiper.instance.injectApplicationState(hosts.get(3), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(2))));
-        Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(3))));
+        databaseDescriptor.getGossiper().injectApplicationState(hosts.get(3), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(2))));
+        databaseDescriptor.getGossiper().injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(3))));
         ss.onChange(hosts.get(2), ApplicationState.STATUS, valueFactory.normal(Collections.singleton(keyTokens.get(3))));
         ss.onChange(hosts.get(3), ApplicationState.STATUS, valueFactory.normal(Collections.singleton(keyTokens.get(2))));
 
@@ -533,7 +531,7 @@ public class LeaveAndBootstrapTest
         List<UUID> hostIds = new ArrayList<UUID>();
 
         // create a ring or 5 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6);
+        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6, databaseDescriptor);
 
         // node 2 leaves
         ss.onChange(hosts.get(2), ApplicationState.STATUS, valueFactory.leaving(Collections.singleton(endpointTokens.get(2))));
@@ -542,7 +540,7 @@ public class LeaveAndBootstrapTest
         assertEquals(endpointTokens.get(2), tmd.getToken(hosts.get(2)));
 
         // back to normal
-        Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(2))));
+        databaseDescriptor.getGossiper().injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(2))));
         ss.onChange(hosts.get(2), ApplicationState.STATUS, valueFactory.normal(Collections.singleton(keyTokens.get(2))));
 
         assertTrue(tmd.getLeavingEndpoints().isEmpty());
@@ -552,7 +550,7 @@ public class LeaveAndBootstrapTest
         ss.onChange(hosts.get(2), ApplicationState.STATUS, valueFactory.leaving(Collections.singleton(keyTokens.get(2))));
         ss.onChange(hosts.get(2), ApplicationState.STATUS,
                 valueFactory.left(Collections.singleton(keyTokens.get(2)), Gossiper.computeExpireTime()));
-        Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(4))));
+        databaseDescriptor.getGossiper().injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(4))));
         ss.onChange(hosts.get(2), ApplicationState.STATUS, valueFactory.normal(Collections.singleton(keyTokens.get(4))));
 
         assertTrue(tmd.getBootstrapTokens().isEmpty());
@@ -575,10 +573,10 @@ public class LeaveAndBootstrapTest
         List<UUID> hostIds = new ArrayList<UUID>();
 
         // create a ring or 5 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6);
+        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 6, databaseDescriptor);
 
         // node 2 leaves with _different_ token
-        Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(0))));
+        databaseDescriptor.getGossiper().injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(0))));
         ss.onChange(hosts.get(2), ApplicationState.STATUS, valueFactory.leaving(Collections.singleton(keyTokens.get(0))));
 
         assertEquals(keyTokens.get(0), tmd.getToken(hosts.get(2)));
@@ -586,7 +584,7 @@ public class LeaveAndBootstrapTest
         assertNull(tmd.getEndpoint(endpointTokens.get(2)));
 
         // go to boostrap
-        Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(1))));
+        databaseDescriptor.getGossiper().injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(1))));
         ss.onChange(hosts.get(2),
                     ApplicationState.STATUS,
                     valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(1))));
@@ -625,7 +623,7 @@ public class LeaveAndBootstrapTest
         List<UUID> hostIds = new ArrayList<UUID>();
 
         // create a ring of 6 nodes
-        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 7);
+        Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, 7, databaseDescriptor);
 
         // node hosts.get(2) goes jumps to left
         ss.onChange(hosts.get(2), ApplicationState.STATUS,
@@ -634,7 +632,7 @@ public class LeaveAndBootstrapTest
         assertFalse(tmd.isMember(hosts.get(2)));
 
         // node hosts.get(4) goes to bootstrap
-        Gossiper.instance.injectApplicationState(hosts.get(3), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(1))));
+        databaseDescriptor.getGossiper().injectApplicationState(hosts.get(3), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(1))));
         ss.onChange(hosts.get(3), ApplicationState.STATUS, valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(1))));
 
         assertFalse(tmd.isMember(hosts.get(3)));
@@ -642,7 +640,7 @@ public class LeaveAndBootstrapTest
         assertEquals(hosts.get(3), tmd.getBootstrapTokens().get(keyTokens.get(1)));
 
         // and then directly to 'left'
-        Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(1))));
+        databaseDescriptor.getGossiper().injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(1))));
         ss.onChange(hosts.get(2), ApplicationState.STATUS,
                 valueFactory.left(Collections.singleton(keyTokens.get(1)), Gossiper.computeExpireTime()));
 
@@ -663,7 +661,7 @@ public class LeaveAndBootstrapTest
         // create a ring of 2 nodes
         ArrayList<Token> endpointTokens = new ArrayList<>();
         List<InetAddress> hosts = new ArrayList<>();
-        Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), endpointTokens, new ArrayList<Token>(), hosts, new ArrayList<UUID>(), 2);
+        Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), endpointTokens, new ArrayList<Token>(), hosts, new ArrayList<UUID>(), 2, databaseDescriptor);
 
         InetAddress toRemove = hosts.get(1);
         databaseDescriptor.getSystemKeyspace().updatePeerInfo(toRemove, "data_center", "dc42");
@@ -671,9 +669,9 @@ public class LeaveAndBootstrapTest
         assertEquals("rack42", databaseDescriptor.getSystemKeyspace().loadDcRackInfo().get(toRemove).get("rack"));
 
         // mark the node as removed
-        Gossiper.instance.injectApplicationState(toRemove, ApplicationState.STATUS,
+        databaseDescriptor.getGossiper().injectApplicationState(toRemove, ApplicationState.STATUS,
                 valueFactory.left(Collections.singleton(endpointTokens.get(1)), Gossiper.computeExpireTime()));
-        assertTrue(Gossiper.instance.isDeadState(Gossiper.instance.getEndpointStateForEndpoint(hosts.get(1))));
+        assertTrue(databaseDescriptor.getGossiper().isDeadState(databaseDescriptor.getGossiper().getEndpointStateForEndpoint(hosts.get(1))));
 
         // state changes made after the endpoint has left should be ignored
         ss.onChange(hosts.get(1), ApplicationState.RACK,
@@ -687,7 +685,7 @@ public class LeaveAndBootstrapTest
         // create a ring of 1 node
         StorageService ss = StorageService.instance;
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(LocatorConfig.instance.getPartitioner());
-        Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), new ArrayList<Token>(), new ArrayList<Token>(),  new ArrayList<InetAddress>(), new ArrayList<UUID>(), 1);
+        Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), new ArrayList<Token>(), new ArrayList<Token>(),  new ArrayList<InetAddress>(), new ArrayList<UUID>(), 1, databaseDescriptor);
 
         // make a REMOVING state change on a non-member endpoint; without the CASSANDRA-6564 fix, this
         // would result in an ArrayIndexOutOfBoundsException

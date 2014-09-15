@@ -120,7 +120,7 @@ public abstract class AntiEntropyServiceTestAbstract
         assert tmd.isMember(REMOTE);
 
         MessagingService.instance.setVersion(REMOTE, MessagingService.current_version);
-        Gossiper.instance.initializeNodeUnsafe(REMOTE, UUID.randomUUID(), 1);
+        databaseDescriptor.getGossiper().initializeNodeUnsafe(REMOTE, UUID.randomUUID(), 1);
 
         local_range = LocatorConfig.instance.getPrimaryRangesForEndpoint(keyspaceName, LOCAL).iterator().next();
 
