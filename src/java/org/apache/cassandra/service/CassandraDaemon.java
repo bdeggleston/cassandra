@@ -34,10 +34,7 @@ import javax.management.StandardMBean;
 
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Uninterruptibles;
-import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.*;
-import org.apache.cassandra.cql3.QueryHandlerInstance;
-import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.metrics.ClientMetrics;
@@ -51,17 +48,14 @@ import org.slf4j.LoggerFactory;
 import com.addthis.metrics.reporter.config.ReporterConfig;
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
 import org.apache.cassandra.concurrent.Stage;
-import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.cql3.functions.Functions;
 import org.apache.cassandra.db.commitlog.CommitLog;
-import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.FSError;
 import org.apache.cassandra.io.sstable.CorruptSSTableException;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.metrics.StorageMetrics;
 import org.apache.cassandra.thrift.ThriftServer;
-import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.CLibrary;
 import org.apache.cassandra.utils.Pair;
 
@@ -399,7 +393,7 @@ public class CassandraDaemon
                                         DatabaseDescriptor.instance.getMutationFactory(), DatabaseDescriptor.instance.getCounterMutationFactory(),
                                         StorageService.instance, CFMetaDataFactory.instance,
                                         DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
-                                        QueryHandlerInstance.instance, LocatorConfig.instance,
+                                        DatabaseDescriptor.instance.getQueryHandler(), LocatorConfig.instance,
                                         DBConfig.instance,
                                         new ThriftSessionManager(DatabaseDescriptor.instance),
                                         ClientMetrics.instance);
@@ -411,7 +405,7 @@ public class CassandraDaemon
                                                                            DatabaseDescriptor.instance.getTracing(),
                                                                            DatabaseDescriptor.instance.getSchema(),
                                                                            DatabaseDescriptor.instance.getAuth().getAuthenticator(),
-                                                                           QueryHandlerInstance.instance,
+                                                                           DatabaseDescriptor.instance.getQueryHandler(),
                                                                            DatabaseDescriptor.instance.getQueryProcessor(),
                                                                            DatabaseDescriptor.instance.getKeyspaceManager(),
                                                                            StorageProxy.instance,

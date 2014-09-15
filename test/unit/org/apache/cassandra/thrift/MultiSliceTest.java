@@ -28,13 +28,8 @@ import java.util.List;
 import junit.framework.Assert;
 
 import org.apache.cassandra.SchemaLoader;
-import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.*;
-import org.apache.cassandra.cql3.QueryHandlerInstance;
-import org.apache.cassandra.db.CounterMutationFactory;
 import org.apache.cassandra.db.DBConfig;
-import org.apache.cassandra.db.KeyspaceManager;
-import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.locator.SimpleStrategy;
@@ -43,7 +38,6 @@ import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.EmbeddedCassandraService;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.thrift.TException;
 import org.junit.BeforeClass;
@@ -75,7 +69,7 @@ public class MultiSliceTest
                                      databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
                                      StorageService.instance, CFMetaDataFactory.instance,
                                      DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
-                                     QueryHandlerInstance.instance, LocatorConfig.instance,
+                                     databaseDescriptor.getQueryHandler(), LocatorConfig.instance,
                                      DBConfig.instance, thriftSessionManager,
                                      ClientMetrics.instance);
         server.set_keyspace(KEYSPACE1);

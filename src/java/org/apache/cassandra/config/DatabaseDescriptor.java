@@ -20,6 +20,8 @@ package org.apache.cassandra.config;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -38,7 +40,6 @@ import com.google.common.primitives.Longs;
 import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.cql3.QueryHandler;
-import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.commitlog.CommitLog;
@@ -187,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final QueryHandler queryHandler;
     protected final MutationFactory mutationFactory;
     protected final CounterMutationFactory counterMutationFactory;
     protected final Tracing tracing;
@@ -232,6 +234,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        queryHandler = createQueryHandler();
         mutationFactory = createMutationFactory();
         counterMutationFactory = createCounterMutationFactory();
         tracing = createTracing();
@@ -1758,9 +1761,31 @@ public class DatabaseDescriptor
         return systemKeyspace;
     }
 
+    public QueryHandler createQueryHandler() throws ConfigurationException
+    {
+        QueryHandler handler = DatabaseDescriptor.instance.getQueryProcessor();
+        String customHandlerClass = System.getProperty("cassandra.custom_query_handler_class");
+        if (customHandlerClass != null)
+        {
+            Class<QueryHandler> cls = FBUtilities.classForName(customHandlerClass, "query handler");
+            Constructor<QueryHandler> constructor = FBUtilities.getConstructor(cls, DatabaseDescriptor.class);
+            try
+            {
+                handler =  constructor != null ? constructor.newInstance(this) : cls.newInstance();
+                logger.info("Using {} as query handler for native protocol queries (as requested with -Dcassandra.custom_query_handler_class)", customHandlerClass);
+            }
+            catch (InvocationTargetException | InstantiationException | IllegalAccessException e)
+            {
+                logger.info("Cannot use class {} as query handler ({}), ignoring by defaulting on normal query handling", customHandlerClass, e.getMessage());
+            }
+        }
+
+        return handler;
+    }
+
     public QueryHandler getQueryHandler()
     {
-        return QueryHandlerInstance.instance;
+        return queryHandler;
     }
 
     public TriggerExecutor createTriggerExecutor()

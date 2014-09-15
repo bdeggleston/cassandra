@@ -25,16 +25,9 @@ import java.io.Serializable;
 import java.util.*;
 
 import com.datastax.driver.core.Metadata;
-import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.EncryptionOptions;
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.cql3.QueryHandlerInstance;
-import org.apache.cassandra.cql3.QueryProcessor;
-import org.apache.cassandra.db.CounterMutationFactory;
 import org.apache.cassandra.db.DBConfig;
-import org.apache.cassandra.db.KeyspaceManager;
-import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageProxy;
@@ -44,7 +37,6 @@ import org.apache.cassandra.stress.util.SmartThriftClient;
 import org.apache.cassandra.stress.util.ThriftClient;
 import org.apache.cassandra.thrift.Cassandra;
 import org.apache.cassandra.thrift.InvalidRequestException;
-import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.transport.Message;
 import org.apache.cassandra.transport.SimpleClient;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -159,7 +151,7 @@ public class StressSettings implements Serializable
                                                                                                           DatabaseDescriptor.instance.getTracing(),
                                                                                                           DatabaseDescriptor.instance.getSchema(),
                                                                                                           DatabaseDescriptor.instance.getAuth().getAuthenticator(),
-                                                                                                          QueryHandlerInstance.instance,
+                                                                                                          DatabaseDescriptor.instance.getQueryHandler(),
                                                                                                           DatabaseDescriptor.instance.getQueryProcessor(),
                                                                                                           DatabaseDescriptor.instance.getKeyspaceManager(),
                                                                                                           StorageProxy.instance,
@@ -171,7 +163,7 @@ public class StressSettings implements Serializable
                                                    DatabaseDescriptor.instance,
                                                    DatabaseDescriptor.instance.getTracing(),
                                                    DatabaseDescriptor.instance.getAuth(),
-                                                   QueryHandlerInstance.instance);
+                                                   DatabaseDescriptor.instance.getQueryHandler());
             client.connect(false);
             client.execute("USE \"" + schema.keyspace + "\";", org.apache.cassandra.db.ConsistencyLevel.ONE);
             return client;

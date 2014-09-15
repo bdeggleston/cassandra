@@ -25,7 +25,6 @@ import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.KSMetaDataFactory;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryHandler;
-import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.db.CounterMutationFactory;
 import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;

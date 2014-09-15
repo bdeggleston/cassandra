@@ -22,33 +22,26 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Collections;
 
-import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaDataFactory;
-import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.metrics.ClientMetrics;
 import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.service.MigrationManager;
 import org.apache.cassandra.service.StorageProxy;
-import org.apache.cassandra.tracing.Tracing;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.BufferCell;
 import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.MutationFactory;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.service.StorageService;
@@ -92,7 +85,7 @@ public class TriggersTest
                                             databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
                                             StorageService.instance, CFMetaDataFactory.instance,
                                             DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
-                                            QueryHandlerInstance.instance, LocatorConfig.instance,
+                                            DatabaseDescriptor.instance.getQueryHandler(), LocatorConfig.instance,
                                             DBConfig.instance, new ThriftSessionManager(DatabaseDescriptor.instance),
                                             ClientMetrics.instance);
             thriftServer.start();

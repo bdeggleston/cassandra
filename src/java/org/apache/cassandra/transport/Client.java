@@ -34,11 +34,8 @@ import com.google.common.base.Splitter;
 import org.apache.cassandra.auth.Auth;
 import org.apache.cassandra.auth.IAuthenticator;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryHandler;
-import org.apache.cassandra.cql3.QueryHandlerInstance;
 import org.apache.cassandra.cql3.QueryOptions;
-import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.UTF8Type;
@@ -259,7 +256,7 @@ public class Client extends SimpleClient
                                                                            DatabaseDescriptor.instance.getTracing(),
                                                                            DatabaseDescriptor.instance.getSchema(),
                                                                            DatabaseDescriptor.instance.getAuth().getAuthenticator(),
-                                                                           QueryHandlerInstance.instance,
+                                                                           DatabaseDescriptor.instance.getQueryHandler(),
                                                                            DatabaseDescriptor.instance.getQueryProcessor(),
                                                                            DatabaseDescriptor.instance.getKeyspaceManager(),
                                                                            StorageProxy.instance,
@@ -268,7 +265,7 @@ public class Client extends SimpleClient
                                                                            MessagingService.instance,
                                                                            DBConfig.instance,
                                                                            LocatorConfig.instance);
-        new Client(host, port, encryptionOptions, codecs, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(), DatabaseDescriptor.instance.getAuth(), QueryHandlerInstance.instance).run();
+        new Client(host, port, encryptionOptions, codecs, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(), DatabaseDescriptor.instance.getAuth(), DatabaseDescriptor.instance.getQueryHandler()).run();
         System.exit(0);
     }
 }
