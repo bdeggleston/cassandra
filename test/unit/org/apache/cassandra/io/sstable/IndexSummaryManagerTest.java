@@ -65,6 +65,8 @@ public class IndexSummaryManagerTest
     // index interval of 8, no key caching
     private static final String CF_STANDARDLOWiINTERVAL = "StandardLowIndexInterval";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -87,7 +89,7 @@ public class IndexSummaryManagerTest
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         originalMinIndexInterval = cfs.metadata.getMinIndexInterval();
         originalMaxIndexInterval = cfs.metadata.getMaxIndexInterval();
-        originalCapacity = IndexSummaryManager.instance.getMemoryPoolCapacityInMB();
+        originalCapacity = databaseDescriptor.getIndexSummaryManager().getMemoryPoolCapacityInMB();
     }
 
     @After
@@ -99,7 +101,7 @@ public class IndexSummaryManagerTest
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.metadata.minIndexInterval(originalMinIndexInterval);
         cfs.metadata.maxIndexInterval(originalMaxIndexInterval);
-        IndexSummaryManager.instance.setMemoryPoolCapacityInMB(originalCapacity);
+        databaseDescriptor.getIndexSummaryManager().setMemoryPoolCapacityInMB(originalCapacity);
     }
 
     private static long totalOffHeapSize(List<SSTableReader> sstables)
@@ -203,7 +205,7 @@ public class IndexSummaryManagerTest
 
         // double the min_index_interval
         cfs.metadata.minIndexInterval(originalMinIndexInterval * 2);
-        IndexSummaryManager.instance.redistributeSummaries();
+        databaseDescriptor.getIndexSummaryManager().redistributeSummaries();
         for (SSTableReader sstable : cfs.getSSTables())
         {
             assertEquals(cfs.metadata.getMinIndexInterval(), sstable.getEffectiveIndexInterval(), 0.001);
@@ -212,7 +214,7 @@ public class IndexSummaryManagerTest
 
         // return min_index_interval to its original value
         cfs.metadata.minIndexInterval(originalMinIndexInterval);
-        IndexSummaryManager.instance.redistributeSummaries();
+        databaseDescriptor.getIndexSummaryManager().redistributeSummaries();
         for (SSTableReader sstable : cfs.getSSTables())
         {
             assertEquals(cfs.metadata.getMinIndexInterval(), sstable.getEffectiveIndexInterval(), 0.001);
@@ -458,7 +460,7 @@ public class IndexSummaryManagerTest
     @Test
     public void testJMXFunctions() throws IOException
     {
-        IndexSummaryManager manager = IndexSummaryManager.instance;
+        IndexSummaryManager manager = databaseDescriptor.getIndexSummaryManager();
 
         // resize interval
         manager.setResizeIntervalInMinutes(-1);

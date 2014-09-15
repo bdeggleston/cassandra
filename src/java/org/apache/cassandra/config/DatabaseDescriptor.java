@@ -46,6 +46,7 @@ import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.gms.IFailureDetector;
+import org.apache.cassandra.io.sstable.IndexSummaryManager;
 import org.apache.cassandra.io.sstable.SSTableReaderFactory;
 import org.apache.cassandra.io.sstable.SSTableWriterFactory;
 import org.apache.cassandra.locator.*;
@@ -187,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final IndexSummaryManager indexSummaryManager;
     protected final SSTableWriterFactory ssTableWriterFactory;
     protected final SSTableReaderFactory ssTableReaderFactory;
     protected final CacheService cacheService;
@@ -215,6 +217,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        indexSummaryManager = createIndexSummaryManager();
         ssTableWriterFactory = createSSTableWriterFactory();
         ssTableReaderFactory = createSSTableReaderFactory();
         cacheService = createCacheService();
@@ -1822,6 +1825,16 @@ public class DatabaseDescriptor
     public PaxosManager getPaxosManager()
     {
         return paxosManager;
+    }
+
+    public IndexSummaryManager createIndexSummaryManager()
+    {
+        return IndexSummaryManager.create(this);
+    }
+
+    public IndexSummaryManager getIndexSummaryManager()
+    {
+        return indexSummaryManager;
     }
 
     public DBConfig getDBConfig()
