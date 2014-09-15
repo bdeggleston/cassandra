@@ -39,7 +39,6 @@ import org.apache.cassandra.db.RowIndexEntry;
 public class StatusLogger
 {
     private static final Logger logger = LoggerFactory.getLogger(StatusLogger.class);
-    public static final StatusLogger instance = new StatusLogger(DatabaseDescriptor.instance);
 
     private final DatabaseDescriptor databaseDescriptor;
 

@@ -290,7 +290,7 @@ public class CassandraDaemon
 
         try
         {
-            GCInspector.register(StatusLogger.instance);
+            GCInspector.register(DatabaseDescriptor.instance.getStatusLogger());
         }
         catch (Throwable t)
         {

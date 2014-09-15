@@ -186,6 +186,8 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final StatusLogger statusLogger;
+
     private DatabaseDescriptor(boolean clientMode, Config conf) throws ConfigurationException
     {
         // In client mode, we use a default configuration. Note that the fields of this class will be
@@ -204,6 +206,8 @@ public class DatabaseDescriptor
             this.conf = conf;
             applyConfig();
         }
+
+        statusLogger = createStatusLogger();
     }
 
     public Config getConfig()
@@ -1725,9 +1729,14 @@ public class DatabaseDescriptor
         return SinkManager.instance;
     }
 
+    public StatusLogger createStatusLogger()
+    {
+        return new StatusLogger(this);
+    }
+
     public StatusLogger getStatusLogger()
     {
-        return StatusLogger.instance;
+        return statusLogger;
     }
 
     public StreamManager getStreamManager()
