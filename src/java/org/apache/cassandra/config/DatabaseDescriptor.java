@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final CounterMutationFactory counterMutationFactory;
     protected final Tracing tracing;
     protected final KeyspaceManager keyspaceManager;
     protected final StreamManager streamManager;
@@ -230,6 +231,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        counterMutationFactory = createCounterMutationFactory();
         tracing = createTracing();
         keyspaceManager = createKeyspaceManager();
         streamManager = createStreamManager();
@@ -1729,9 +1731,14 @@ public class DatabaseDescriptor
         return StorageProxy.instance;
     }
 
+    public CounterMutationFactory createCounterMutationFactory()
+    {
+        return new CounterMutationFactory(this, getMutationFactory());
+    }
+
     public CounterMutationFactory getCounterMutationFactory()
     {
-        return CounterMutationFactory.instance;
+        return counterMutationFactory;
     }
 
     public SystemKeyspace createSystemKeyspace()

@@ -89,7 +89,7 @@ public class TriggersTest
                                             DatabaseDescriptor.instance, databaseDescriptor.getTracing(),
                                             databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), StorageProxy.instance,
                                             MessagingService.instance, databaseDescriptor.getKeyspaceManager(),
-                                            MutationFactory.instance, CounterMutationFactory.instance,
+                                            MutationFactory.instance, databaseDescriptor.getCounterMutationFactory(),
                                             StorageService.instance, CFMetaDataFactory.instance,
                                             DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
                                             QueryHandlerInstance.instance, LocatorConfig.instance,

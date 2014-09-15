@@ -396,7 +396,7 @@ public class CassandraDaemon
                                         DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(),
                                         DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getAuth(), StorageProxy.instance,
                                         MessagingService.instance, DatabaseDescriptor.instance.getKeyspaceManager(),
-                                        MutationFactory.instance, CounterMutationFactory.instance,
+                                        MutationFactory.instance, DatabaseDescriptor.instance.getCounterMutationFactory(),
                                         StorageService.instance, CFMetaDataFactory.instance,
                                         DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
                                         QueryHandlerInstance.instance, LocatorConfig.instance,
@@ -416,7 +416,7 @@ public class CassandraDaemon
                                                                            DatabaseDescriptor.instance.getKeyspaceManager(),
                                                                            StorageProxy.instance,
                                                                            MutationFactory.instance,
-                                                                           CounterMutationFactory.instance,
+                                                                           DatabaseDescriptor.instance.getCounterMutationFactory(),
                                                                            MessagingService.instance,
                                                                            DBConfig.instance,
                                                                            LocatorConfig.instance);

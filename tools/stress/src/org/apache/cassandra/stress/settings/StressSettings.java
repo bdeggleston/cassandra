@@ -164,7 +164,7 @@ public class StressSettings implements Serializable
                                                                                                           DatabaseDescriptor.instance.getKeyspaceManager(),
                                                                                                           StorageProxy.instance,
                                                                                                           MutationFactory.instance,
-                                                                                                          CounterMutationFactory.instance,
+                                                                                                          DatabaseDescriptor.instance.getCounterMutationFactory(),
                                                                                                           MessagingService.instance,
                                                                                                           DBConfig.instance,
                                                                                                           LocatorConfig.instance),

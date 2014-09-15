@@ -12,8 +12,6 @@ import java.util.concurrent.locks.Lock;
 
 public class CounterMutationFactory
 {
-    public static final CounterMutationFactory instance = new CounterMutationFactory(DatabaseDescriptor.instance, MutationFactory.instance);
-
     public final CounterMutation.Serializer serializer;
     private final Striped<Lock> locks;
 

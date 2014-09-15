@@ -299,7 +299,7 @@ public class ScrubTest
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, COUNTER_CF, databaseDescriptor.getSchema(), DBConfig.instance);
             Mutation rm = MutationFactory.instance.create(KEYSPACE, ByteBufferUtil.bytes(key), cf);
             rm.addCounter(COUNTER_CF, cellname("Column1"), 100);
-            CounterMutation cm = CounterMutationFactory.instance.create(rm, ConsistencyLevel.ONE);
+            CounterMutation cm = databaseDescriptor.getCounterMutationFactory().create(rm, ConsistencyLevel.ONE);
             cm.apply();
         }
 
