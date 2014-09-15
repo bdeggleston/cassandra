@@ -82,7 +82,7 @@ public class HintedHandOffTest
         Mutation rm = MutationFactory.instance.create(KEYSPACE4, ByteBufferUtil.bytes(1));
         rm.add(STANDARD1_CF, Util.cellname(COLUMN1), ByteBufferUtil.EMPTY_BYTE_BUFFER, System.currentTimeMillis());
 
-        HintedHandOffManager.instance.hintFor(rm,
+        databaseDescriptor.getHintedHandOffManager().hintFor(rm,
                                               System.currentTimeMillis(),
                                               HintedHandOffManager.calculateHintTTL(rm),
                                               UUID.randomUUID())
@@ -93,7 +93,7 @@ public class HintedHandOffTest
         assertEquals(1, hintStore.getSSTables().size());
 
         // submit compaction
-        FBUtilities.waitOnFuture(HintedHandOffManager.instance.compact());
+        FBUtilities.waitOnFuture(databaseDescriptor.getHintedHandOffManager().compact());
         while (databaseDescriptor.getCompactionManager().getPendingTasks() > 0 || databaseDescriptor.getCompactionManager().getActiveCompactions() > 0)
             TimeUnit.SECONDS.sleep(1);
 
@@ -106,8 +106,8 @@ public class HintedHandOffTest
     public void testHintsMetrics() throws Exception
     {
         for (int i = 0; i < 99; i++)
-            HintedHandOffManager.instance.metrics.incrPastWindow(InetAddress.getLocalHost());
-        HintedHandOffManager.instance.metrics.log();
+            databaseDescriptor.getHintedHandOffManager().metrics.incrPastWindow(InetAddress.getLocalHost());
+        databaseDescriptor.getHintedHandOffManager().metrics.log();
 
         UntypedResultSet rows = databaseDescriptor.getQueryProcessor().executeInternal("SELECT hints_dropped FROM system." + SystemKeyspace.PEER_EVENTS_CF);
         Map<UUID, Integer> returned = rows.one().getMap("hints_dropped", UUIDType.instance, Int32Type.instance);
@@ -125,7 +125,7 @@ public class HintedHandOffTest
         Mutation rm = MutationFactory.instance.create(KEYSPACE4, ByteBufferUtil.bytes(1));
         rm.add(STANDARD1_CF, Util.cellname(COLUMN1), ByteBufferUtil.EMPTY_BYTE_BUFFER, System.currentTimeMillis());
 
-        HintedHandOffManager.instance.hintFor(rm,
+        databaseDescriptor.getHintedHandOffManager().hintFor(rm,
                                               System.currentTimeMillis(),
                                               HintedHandOffManager.calculateHintTTL(rm),
                                               UUID.randomUUID())
@@ -133,7 +133,7 @@ public class HintedHandOffTest
 
         assert getNoOfHints() == 1;
 
-        HintedHandOffManager.instance.truncateAllHints();
+        databaseDescriptor.getHintedHandOffManager().truncateAllHints();
 
         while(getNoOfHints() > 0)
         {

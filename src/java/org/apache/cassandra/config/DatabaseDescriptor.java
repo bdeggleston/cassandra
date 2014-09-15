@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final HintedHandOffManager hintedHandOffManager;
     protected final CompactionManager compactionManager;
     protected final Auth auth;
     protected final Schema schema;
@@ -225,6 +226,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        hintedHandOffManager = createHintedHandOffManager();
         compactionManager = createCompactionManager();
         auth = createAuth();
         schema = createSchema();
@@ -1854,9 +1856,14 @@ public class DatabaseDescriptor
         return defsTables;
     }
 
+    public HintedHandOffManager createHintedHandOffManager()
+    {
+        return new HintedHandOffManager(this, getTracing(), getSystemKeyspace(), getKeyspaceManager());
+    }
+
     public HintedHandOffManager getHintedHandOffManager()
     {
-        return HintedHandOffManager.instance;
+        return hintedHandOffManager;
     }
 
     public LoadBroadcaster getLoadBroadcaster()
