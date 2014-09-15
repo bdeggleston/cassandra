@@ -117,7 +117,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                                          StreamManager.instance,
                                                          StorageProxy.instance,
                                                          FailureDetector.instance,
-                                                         PaxosManager.instance,
+                                                         DatabaseDescriptor.instance.getPaxosManager(),
                                                          LocatorConfig.instance,
                                                          DBConfig.instance);
 

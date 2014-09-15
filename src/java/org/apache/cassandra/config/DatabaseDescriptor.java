@@ -50,6 +50,7 @@ import org.apache.cassandra.io.sstable.SSTableReaderFactory;
 import org.apache.cassandra.io.sstable.SSTableWriterFactory;
 import org.apache.cassandra.locator.*;
 import org.apache.cassandra.service.*;
+import org.apache.cassandra.service.paxos.PaxosManager;
 import org.apache.cassandra.sink.SinkManager;
 import org.apache.cassandra.streaming.StreamManager;
 import org.apache.cassandra.tracing.Tracing;
@@ -186,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final PaxosManager paxosManager;
     protected final MigrationManager migrationManager;
     protected final TriggerExecutor triggerExecutor;
     protected final StatusLogger statusLogger;
@@ -209,6 +211,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        paxosManager = createPaxosManager();
         migrationManager = createMigrationManager();
         triggerExecutor = createTriggerExecutor();
         statusLogger = createStatusLogger();
@@ -1781,6 +1784,16 @@ public class DatabaseDescriptor
     public PendingRangeCalculatorService getPendingRangeCalculatorService()
     {
         return PendingRangeCalculatorService.instance;
+    }
+
+    public PaxosManager createPaxosManager()
+    {
+        return new PaxosManager(this);
+    }
+
+    public PaxosManager getPaxosManager()
+    {
+        return paxosManager;
     }
 
     public DBConfig getDBConfig()

@@ -11,8 +11,6 @@ import java.util.concurrent.locks.Lock;
 
 public class PaxosManager
 {
-    public static final PaxosManager instance = new PaxosManager(DatabaseDescriptor.instance);
-
     private final Striped<Lock> locks;
 
     public PaxosManager(DatabaseDescriptor databaseDescriptor)
