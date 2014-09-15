@@ -48,7 +48,7 @@ public class TriggerExecutorTest
     public void sameKeySameCfColumnFamilies() throws ConfigurationException, InvalidRequestException
     {
         CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeySameCfTrigger.class.getName(), CFMetaDataFactory.instance));
-        ColumnFamily mutated = TriggerExecutor.instance.execute(bytes("k1"), makeCf(metadata, "v1", null));
+        ColumnFamily mutated = DatabaseDescriptor.instance.getTriggerExecutor().execute(bytes("k1"), makeCf(metadata, "v1", null));
         assertEquals(bytes("v1"), mutated.getColumn(getColumnName(metadata, "c1")).value());
         assertEquals(bytes("trigger"), mutated.getColumn(getColumnName(metadata, "c2")).value());
     }
@@ -57,14 +57,14 @@ public class TriggerExecutorTest
     public void sameKeyDifferentCfColumnFamilies() throws ConfigurationException, InvalidRequestException
     {
         CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeyDifferentCfTrigger.class.getName(), CFMetaDataFactory.instance));
-        TriggerExecutor.instance.execute(bytes("k1"), makeCf(metadata, "v1", null));
+        DatabaseDescriptor.instance.getTriggerExecutor().execute(bytes("k1"), makeCf(metadata, "v1", null));
     }
 
     @Test(expected = InvalidRequestException.class)
     public void differentKeyColumnFamilies() throws ConfigurationException, InvalidRequestException
     {
         CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", DifferentKeyTrigger.class.getName(), CFMetaDataFactory.instance));
-        TriggerExecutor.instance.execute(bytes("k1"), makeCf(metadata, "v1", null));
+        DatabaseDescriptor.instance.getTriggerExecutor().execute(bytes("k1"), makeCf(metadata, "v1", null));
     }
 
     @Test
@@ -72,7 +72,7 @@ public class TriggerExecutorTest
     {
         CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", NoOpTrigger.class.getName(), CFMetaDataFactory.instance));
         Mutation rm = MutationFactory.instance.create(bytes("k1"), makeCf(metadata, "v1", null));
-        assertNull(TriggerExecutor.instance.execute(Collections.singletonList(rm)));
+        assertNull(DatabaseDescriptor.instance.getTriggerExecutor().execute(Collections.singletonList(rm)));
     }
 
     @Test
@@ -84,7 +84,7 @@ public class TriggerExecutorTest
         Mutation rm1 = MutationFactory.instance.create(bytes("k1"), cf1);
         Mutation rm2 = MutationFactory.instance.create(bytes("k2"), cf2);
 
-        List<? extends IMutation> tmutations = new ArrayList<>(TriggerExecutor.instance.execute(Arrays.asList(rm1, rm2)));
+        List<? extends IMutation> tmutations = new ArrayList<>(DatabaseDescriptor.instance.getTriggerExecutor().execute(Arrays.asList(rm1, rm2)));
         assertEquals(2, tmutations.size());
         Collections.sort(tmutations, new RmComparator());
 
@@ -108,7 +108,7 @@ public class TriggerExecutorTest
         Mutation rm1 = MutationFactory.instance.create(bytes("k1"), cf1);
         Mutation rm2 = MutationFactory.instance.create(bytes("k2"), cf2);
 
-        List<? extends IMutation> tmutations = new ArrayList<>(TriggerExecutor.instance.execute(Arrays.asList(rm1, rm2)));
+        List<? extends IMutation> tmutations = new ArrayList<>(DatabaseDescriptor.instance.getTriggerExecutor().execute(Arrays.asList(rm1, rm2)));
         assertEquals(2, tmutations.size());
         Collections.sort(tmutations, new RmComparator());
 
@@ -132,7 +132,7 @@ public class TriggerExecutorTest
         Mutation rm1 = MutationFactory.instance.create(bytes("k1"), cf1);
         Mutation rm2 = MutationFactory.instance.create(bytes("k2"), cf2);
 
-        List<? extends IMutation> tmutations = new ArrayList<>(TriggerExecutor.instance.execute(Arrays.asList(rm1, rm2)));
+        List<? extends IMutation> tmutations = new ArrayList<>(DatabaseDescriptor.instance.getTriggerExecutor().execute(Arrays.asList(rm1, rm2)));
         assertEquals(2, tmutations.size());
         Collections.sort(tmutations, new RmComparator());
 
@@ -164,7 +164,7 @@ public class TriggerExecutorTest
         Mutation rm1 = MutationFactory.instance.create(bytes("k1"), cf1);
         Mutation rm2 = MutationFactory.instance.create(bytes("k2"), cf2);
 
-        List<? extends IMutation> tmutations = new ArrayList<>(TriggerExecutor.instance.execute(Arrays.asList(rm1, rm2)));
+        List<? extends IMutation> tmutations = new ArrayList<>(DatabaseDescriptor.instance.getTriggerExecutor().execute(Arrays.asList(rm1, rm2)));
         assertEquals(4, tmutations.size());
         Collections.sort(tmutations, new RmComparator());
 
@@ -196,7 +196,7 @@ public class TriggerExecutorTest
         ColumnFamily cf = makeCf(metadata, "v1", null);
         Mutation rm = MutationFactory.instance.create(UTF8Type.instance.fromString("k1"), cf);
 
-        List<? extends IMutation> tmutations = new ArrayList<>(TriggerExecutor.instance.execute(Arrays.asList(rm)));
+        List<? extends IMutation> tmutations = new ArrayList<>(DatabaseDescriptor.instance.getTriggerExecutor().execute(Arrays.asList(rm)));
         assertEquals(2, tmutations.size());
         Collections.sort(tmutations, new RmComparator());
 

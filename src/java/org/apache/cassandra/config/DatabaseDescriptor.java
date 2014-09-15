@@ -186,6 +186,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final TriggerExecutor triggerExecutor;
     protected final StatusLogger statusLogger;
 
     private DatabaseDescriptor(boolean clientMode, Config conf) throws ConfigurationException
@@ -207,6 +208,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        triggerExecutor = createTriggerExecutor();
         statusLogger = createStatusLogger();
     }
 
@@ -1664,9 +1666,14 @@ public class DatabaseDescriptor
         return QueryHandlerInstance.instance;
     }
 
+    public TriggerExecutor createTriggerExecutor()
+    {
+        return new TriggerExecutor(this);
+    }
+
     public TriggerExecutor getTriggerExecutor()
     {
-        return TriggerExecutor.instance;
+        return triggerExecutor;
     }
 
     public CompactionManager getCompactionManager()

@@ -36,15 +36,13 @@ import org.apache.cassandra.utils.Pair;
 
 public class TriggerExecutor
 {
-    public static final TriggerExecutor instance = new TriggerExecutor(DatabaseDescriptor.instance);
-
     private final Map<String, ITrigger> cachedTriggers = Maps.newConcurrentMap();
     private final ClassLoader parent = Thread.currentThread().getContextClassLoader();
     private volatile ClassLoader customClassLoader;
 
     private final DatabaseDescriptor databaseDescriptor;
 
-    private TriggerExecutor(DatabaseDescriptor databaseDescriptor)
+    public TriggerExecutor(DatabaseDescriptor databaseDescriptor)
     {
         this.databaseDescriptor = databaseDescriptor;
         reloadClasses();
