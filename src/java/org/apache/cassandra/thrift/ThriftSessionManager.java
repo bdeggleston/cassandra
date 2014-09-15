@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 public class ThriftSessionManager
 {
     private static final Logger logger = LoggerFactory.getLogger(ThriftSessionManager.class);
-    public final static ThriftSessionManager instance = new ThriftSessionManager(DatabaseDescriptor.instance);
 
     private final ThreadLocal<SocketAddress> remoteSocket = new ThreadLocal<>();
     private final Map<SocketAddress, ThriftClientState> activeSocketSessions = new ConcurrentHashMap<>();

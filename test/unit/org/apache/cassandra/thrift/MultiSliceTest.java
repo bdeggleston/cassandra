@@ -56,12 +56,15 @@ public class MultiSliceTest
     public static final String KEYSPACE1 = "MultiSliceTest";
     public static final String CF_STANDARD = "Standard1";
 
+    public static ThriftSessionManager thriftSessionManager;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException, IOException, TException
     {
         SchemaLoader.prepareServer();
         new EmbeddedCassandraService().start();
-        ThriftSessionManager.instance.setCurrentSocket(new InetSocketAddress(9160));
+        thriftSessionManager = new ThriftSessionManager(DatabaseDescriptor.instance);
+        thriftSessionManager.setCurrentSocket(new InetSocketAddress(9160));
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
@@ -73,7 +76,7 @@ public class MultiSliceTest
                                      StorageService.instance, CFMetaDataFactory.instance,
                                      MigrationManager.instance, KSMetaDataFactory.instance,
                                      QueryHandlerInstance.instance, LocatorConfig.instance,
-                                     DBConfig.instance, ThriftSessionManager.instance,
+                                     DBConfig.instance, thriftSessionManager,
                                      ClientMetrics.instance);
         server.set_keyspace(KEYSPACE1);
     }

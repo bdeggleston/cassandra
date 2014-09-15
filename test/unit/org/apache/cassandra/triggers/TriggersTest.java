@@ -91,7 +91,7 @@ public class TriggersTest
                                             StorageService.instance, CFMetaDataFactory.instance,
                                             MigrationManager.instance, KSMetaDataFactory.instance,
                                             QueryHandlerInstance.instance, LocatorConfig.instance,
-                                            DBConfig.instance, ThriftSessionManager.instance,
+                                            DBConfig.instance, new ThriftSessionManager(DatabaseDescriptor.instance),
                                             ClientMetrics.instance);
             thriftServer.start();
         }
