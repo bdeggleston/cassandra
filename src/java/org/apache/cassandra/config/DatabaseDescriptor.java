@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final SSTableWriterFactory ssTableWriterFactory;
     protected final SSTableReaderFactory ssTableReaderFactory;
     protected final CacheService cacheService;
     protected final FileCacheService fileCacheService;
@@ -214,6 +215,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        ssTableWriterFactory = createSSTableWriterFactory();
         ssTableReaderFactory = createSSTableReaderFactory();
         cacheService = createCacheService();
         fileCacheService = createFileCacheService();
@@ -1737,9 +1739,14 @@ public class DatabaseDescriptor
         return ssTableReaderFactory;
     }
 
+    public SSTableWriterFactory createSSTableWriterFactory()
+    {
+        return new SSTableWriterFactory(this);
+    }
+
     public SSTableWriterFactory getSSTableWriterFactory()
     {
-        return SSTableWriterFactory.instance;
+        return ssTableWriterFactory;
     }
 
     public Gossiper getGossiper()

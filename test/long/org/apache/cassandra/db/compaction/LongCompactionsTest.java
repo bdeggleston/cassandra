@@ -25,7 +25,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.io.sstable.SSTableWriterFactory;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
@@ -48,6 +47,8 @@ public class LongCompactionsTest
 {
     public static final String KEYSPACE1 = "Keyspace1";
     public static final String CF_STANDARD = "Standard1";
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -111,7 +112,7 @@ public class LongCompactionsTest
                 }
                 rows.put(key, SSTableUtils.createCF(KEYSPACE1, CF_STANDARD, Long.MIN_VALUE, Integer.MIN_VALUE, cols));
             }
-            SSTableReader sstable = SSTableUtils.prepare(SSTableWriterFactory.instance).write(rows);
+            SSTableReader sstable = SSTableUtils.prepare(databaseDescriptor.getSSTableWriterFactory()).write(rows);
             sstables.add(sstable);
             store.addSSTable(sstable);
         }

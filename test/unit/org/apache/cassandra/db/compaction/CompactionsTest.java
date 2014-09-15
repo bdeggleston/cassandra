@@ -73,6 +73,8 @@ public class CompactionsTest
     private static final String CF_SUPER5 = "Super5";
     private static final String CF_SUPERGC = "SuperDirectGC";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -405,7 +407,7 @@ public class CompactionsTest
         cf.addColumn(Util.column("a", "a", 3));
         cf.deletionInfo().add(new RangeTombstone(Util.cellname("0"), Util.cellname("b"), 2, (int) (System.currentTimeMillis()/1000)),cfmeta.comparator);
 
-        SSTableWriter writer = SSTableWriterFactory.instance.create(cfs.getTempSSTablePath(dir.getDirectoryForNewSSTables()),
+        SSTableWriter writer = databaseDescriptor.getSSTableWriterFactory().create(cfs.getTempSSTablePath(dir.getDirectoryForNewSSTables()),
                                                                     0,
                                                                     0,
                                                                     cfs.metadata,
@@ -418,7 +420,7 @@ public class CompactionsTest
         writer.append(Util.dk("3"), cf);
 
         cfs.addSSTable(writer.closeAndOpenReader());
-        writer = SSTableWriterFactory.instance.create(cfs.getTempSSTablePath(dir.getDirectoryForNewSSTables()),
+        writer = databaseDescriptor.getSSTableWriterFactory().create(cfs.getTempSSTablePath(dir.getDirectoryForNewSSTables()),
                                                       0,
                                                       0,
                                                       cfs.metadata,

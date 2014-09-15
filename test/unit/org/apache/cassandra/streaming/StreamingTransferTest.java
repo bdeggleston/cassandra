@@ -69,13 +69,9 @@ import static org.apache.cassandra.Util.column;
 public class StreamingTransferTest
 {
     private static final Logger logger = LoggerFactory.getLogger(StreamingTransferTest.class);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
-    static
-    {
-        DatabaseDescriptor.init();
-    }
-
-    public static final InetAddress LOCAL = DatabaseDescriptor.instance.getBroadcastAddress();
+    public static final InetAddress LOCAL = databaseDescriptor.getLocatorConfig().getBroadcastAddress();
     public static final String KEYSPACE1 = "StreamingTransferTest1";
     public static final String CF_STANDARD = "Standard1";
     public static final String CF_COUNTER = "Counter1";
@@ -368,7 +364,7 @@ public class StreamingTransferTest
 
                 entries.put(key, cf);
                 cleanedEntries.put(key, cfCleaned);
-                cfs.addSSTable(SSTableUtils.prepare(SSTableWriterFactory.instance)
+                cfs.addSSTable(SSTableUtils.prepare(databaseDescriptor.getSSTableWriterFactory())
                     .ks(keyspace.getName())
                     .cf(cfs.name)
                     .generation(0)
@@ -378,7 +374,7 @@ public class StreamingTransferTest
 
         // filter pre-cleaned entries locally, and ensure that the end result is equal
         cleanedEntries.keySet().retainAll(keys);
-        SSTableReader cleaned = SSTableUtils.prepare(SSTableWriterFactory.instance)
+        SSTableReader cleaned = SSTableUtils.prepare(databaseDescriptor.getSSTableWriterFactory())
             .ks(keyspace.getName())
             .cf(cfs.name)
             .generation(0)
@@ -401,7 +397,7 @@ public class StreamingTransferTest
         content.add("test");
         content.add("test2");
         content.add("test3");
-        SSTableReader sstable = new SSTableUtils(KEYSPACE1, CF_STANDARD).prepare(SSTableWriterFactory.instance).write(content);
+        SSTableReader sstable = new SSTableUtils(KEYSPACE1, CF_STANDARD).prepare(databaseDescriptor.getSSTableWriterFactory()).write(content);
         String keyspaceName = sstable.getKeyspaceName();
         String cfname = sstable.getColumnFamilyName();
 
@@ -409,7 +405,7 @@ public class StreamingTransferTest
         content.add("transfer1");
         content.add("transfer2");
         content.add("transfer3");
-        SSTableReader sstable2 = SSTableUtils.prepare(SSTableWriterFactory.instance).write(content);
+        SSTableReader sstable2 = SSTableUtils.prepare(databaseDescriptor.getSSTableWriterFactory()).write(content);
 
         // transfer the first and last key
         IPartitioner p = LocatorConfig.instance.getPartitioner();
@@ -453,7 +449,7 @@ public class StreamingTransferTest
             content.add("data-" + cf + "-1");
             content.add("data-" + cf + "-2");
             content.add("data-" + cf + "-3");
-            SSTableUtils.Context context = SSTableUtils.prepare(SSTableWriterFactory.instance).ks(keyspace).cf(cf);
+            SSTableUtils.Context context = SSTableUtils.prepare(databaseDescriptor.getSSTableWriterFactory()).ks(keyspace).cf(cf);
             ssTableReaders.add(context.write(content));
 
             // collect dks for each string key

@@ -1805,7 +1805,7 @@ public class ColumnFamilyStoreTest
             {
                 MetadataCollector collector = new MetadataCollector(cfmeta.comparator);
                 collector.addAncestor(sstable1.descriptor.generation); // add ancestor from previously written sstable
-                return SSTableWriterFactory.instance.create(makeFilename(directory, metadata.ksName, metadata.cfName),
+                return databaseDescriptor.getSSTableWriterFactory().create(makeFilename(directory, metadata.ksName, metadata.cfName),
                                          0,
                                          ActiveRepairService.UNREPAIRED_SSTABLE,
                                          metadata,
@@ -1862,7 +1862,7 @@ public class ColumnFamilyStoreTest
                 for (int ancestor : ancestors)
                     collector.addAncestor(ancestor);
                 String file = new Descriptor(directory, ks, cf, 3, Descriptor.Type.TEMP).filenameFor(Component.DATA);
-                return SSTableWriterFactory.instance.create(file,
+                return databaseDescriptor.getSSTableWriterFactory().create(file,
                                          0,
                                          ActiveRepairService.UNREPAIRED_SSTABLE,
                                          metadata,
