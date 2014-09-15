@@ -128,10 +128,10 @@ public class LegacySSTableTest
     private void testStreaming(String version) throws Exception
     {
         SSTableReader sstable = databaseDescriptor.getSSTableReaderFactory().open(getDescriptor(version));
-        IPartitioner p = LocatorConfig.instance.getPartitioner();
+        IPartitioner p = databaseDescriptor.getLocatorConfig().getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("100")), LocatorConfig.instance.getPartitioner()));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("100")), p.getMinimumToken(), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("100")), databaseDescriptor.getLocatorConfig().getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("100")), p.getMinimumToken(), databaseDescriptor.getLocatorConfig().getPartitioner()));
         ArrayList<StreamSession.SSTableStreamingSections> details = new ArrayList<>();
         details.add(new StreamSession.SSTableStreamingSections(sstable,
                                                                sstable.getPositionsForRanges(ranges),
@@ -147,7 +147,7 @@ public class LegacySSTableTest
         for (String keystring : TEST_DATA)
         {
             ByteBuffer key = ByteBufferUtil.bytes(keystring);
-            SSTableNamesIterator iter = new SSTableNamesIterator(sstable, Util.dk(key), FBUtilities.singleton(Util.cellname(key), type), databaseDescriptor.getDBConfig());
+            SSTableNamesIterator iter = new SSTableNamesIterator(sstable, Util.dk(key, databaseDescriptor), FBUtilities.singleton(Util.cellname(key), type), databaseDescriptor.getDBConfig());
             ColumnFamily cf = iter.getColumnFamily();
 
             // check not deleted (CASSANDRA-6527)

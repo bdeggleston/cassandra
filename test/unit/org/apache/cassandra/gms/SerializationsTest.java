@@ -37,6 +37,7 @@ import java.util.Map;
 
 public class SerializationsTest extends AbstractSerializationsTester
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void setUpClass()
@@ -81,7 +82,7 @@ public class SerializationsTest extends AbstractSerializationsTester
         states.put(InetAddress.getByName("127.0.0.2"), Statics.EndpointSt);
         GossipDigestAck ack = new GossipDigestAck(Statics.Digests, states);
         GossipDigestAck2 ack2 = new GossipDigestAck2(states);
-        GossipDigestSyn syn = new GossipDigestSyn("Not a real cluster name", LocatorConfig.instance.getPartitioner().getClass().getCanonicalName(), Statics.Digests);
+        GossipDigestSyn syn = new GossipDigestSyn("Not a real cluster name", databaseDescriptor.getLocatorConfig().getPartitioner().getClass().getCanonicalName(), Statics.Digests);
 
         DataOutputStreamAndChannel out = getOutput("gms.Gossip.bin");
         for (GossipDigest gd : Statics.Digests)
@@ -119,9 +120,9 @@ public class SerializationsTest extends AbstractSerializationsTester
     {
         private static HeartBeatState HeartbeatSt = new HeartBeatState(101, 201);
         private static EndpointState EndpointSt = new EndpointState(HeartbeatSt);
-        private static VersionedValue.VersionedValueFactory vvFact = new VersionedValue.VersionedValueFactory(LocatorConfig.instance.getPartitioner());
+        private static VersionedValue.VersionedValueFactory vvFact = new VersionedValue.VersionedValueFactory(databaseDescriptor.getLocatorConfig().getPartitioner());
         private static VersionedValue vv0 = vvFact.load(23d);
-        private static VersionedValue vv1 = vvFact.bootstrapping(Collections.<Token>singleton(LocatorConfig.instance.getPartitioner().getRandomToken()));
+        private static VersionedValue vv1 = vvFact.bootstrapping(Collections.<Token>singleton(databaseDescriptor.getLocatorConfig().getPartitioner().getRandomToken()));
         private static List<GossipDigest> Digests = new ArrayList<GossipDigest>();
 
         {

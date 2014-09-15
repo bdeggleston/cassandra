@@ -48,7 +48,7 @@ public class MerkleTreeTest
     {
         System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
         DatabaseDescriptor.init();
-        assert LocatorConfig.instance.getPartitioner() instanceof RandomPartitioner;
+        assert databaseDescriptor.getLocatorConfig().getPartitioner() instanceof RandomPartitioner;
     }
 
     public static byte[] DUMMY = "blah".getBytes();
@@ -64,14 +64,14 @@ public class MerkleTreeTest
 
     private Range<Token> fullRange()
     {
-        return new Range<>(partitioner.getMinimumToken(), partitioner.getMinimumToken(), LocatorConfig.instance.getPartitioner());
+        return new Range<>(partitioner.getMinimumToken(), partitioner.getMinimumToken(), databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
     @Before
     public void clear()
     {
         TOKEN_SCALE = new BigInteger("8");
-        partitioner = LocatorConfig.instance.getPartitioner();
+        partitioner = databaseDescriptor.getLocatorConfig().getPartitioner();
         assert partitioner instanceof RandomPartitioner;
         mt = new MerkleTree(partitioner, fullRange(), RECOMMENDED_DEPTH, Integer.MAX_VALUE);
     }
@@ -96,9 +96,9 @@ public class MerkleTreeTest
     public static Token tok(int i)
     {
         if (i == -1)
-            return new BigIntegerToken(new BigInteger("-1"), LocatorConfig.instance.getPartitioner());
+            return new BigIntegerToken(new BigInteger("-1"), databaseDescriptor.getLocatorConfig().getPartitioner());
         BigInteger bint = RandomPartitioner.MAXIMUM.divide(TOKEN_SCALE).multiply(new BigInteger(""+i));
-        return new BigIntegerToken(bint, LocatorConfig.instance.getPartitioner());
+        return new BigIntegerToken(bint, databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
     @Test
@@ -111,11 +111,11 @@ public class MerkleTreeTest
         mt.split(tok(7));
 
         assertEquals(4, mt.size());
-        assertEquals(new Range<>(tok(7), tok(-1), LocatorConfig.instance.getPartitioner()), mt.get(tok(-1)));
-        assertEquals(new Range<>(tok(-1), tok(4), LocatorConfig.instance.getPartitioner()), mt.get(tok(3)));
-        assertEquals(new Range<>(tok(-1), tok(4), LocatorConfig.instance.getPartitioner()), mt.get(tok(4)));
-        assertEquals(new Range<>(tok(4), tok(6), LocatorConfig.instance.getPartitioner()), mt.get(tok(6)));
-        assertEquals(new Range<>(tok(6), tok(7), LocatorConfig.instance.getPartitioner()), mt.get(tok(7)));
+        assertEquals(new Range<>(tok(7), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner()), mt.get(tok(-1)));
+        assertEquals(new Range<>(tok(-1), tok(4), databaseDescriptor.getLocatorConfig().getPartitioner()), mt.get(tok(3)));
+        assertEquals(new Range<>(tok(-1), tok(4), databaseDescriptor.getLocatorConfig().getPartitioner()), mt.get(tok(4)));
+        assertEquals(new Range<>(tok(4), tok(6), databaseDescriptor.getLocatorConfig().getPartitioner()), mt.get(tok(6)));
+        assertEquals(new Range<>(tok(6), tok(7), databaseDescriptor.getLocatorConfig().getPartitioner()), mt.get(tok(7)));
 
         // check depths
         assertEquals((byte)1, mt.get(tok(4)).depth);
@@ -146,9 +146,9 @@ public class MerkleTreeTest
         // should fail to split below hashdepth
         assertFalse(mt.split(tok(1)));
         assertEquals(3, mt.size());
-        assertEquals(new Range<>(tok(4), tok(-1), LocatorConfig.instance.getPartitioner()), mt.get(tok(-1)));
-        assertEquals(new Range<>(tok(-1), tok(2), LocatorConfig.instance.getPartitioner()), mt.get(tok(2)));
-        assertEquals(new Range<>(tok(2), tok(4), LocatorConfig.instance.getPartitioner()), mt.get(tok(4)));
+        assertEquals(new Range<>(tok(4), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner()), mt.get(tok(-1)));
+        assertEquals(new Range<>(tok(-1), tok(2), databaseDescriptor.getLocatorConfig().getPartitioner()), mt.get(tok(2)));
+        assertEquals(new Range<>(tok(2), tok(4), databaseDescriptor.getLocatorConfig().getPartitioner()), mt.get(tok(4)));
     }
 
     @Test
@@ -162,8 +162,8 @@ public class MerkleTreeTest
         // should fail to split above maxsize
         assertFalse(mt.split(tok(2)));
         assertEquals(2, mt.size());
-        assertEquals(new Range<>(tok(4), tok(-1), LocatorConfig.instance.getPartitioner()), mt.get(tok(-1)));
-        assertEquals(new Range<>(tok(-1), tok(4), LocatorConfig.instance.getPartitioner()), mt.get(tok(4)));
+        assertEquals(new Range<>(tok(4), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner()), mt.get(tok(-1)));
+        assertEquals(new Range<>(tok(-1), tok(4), databaseDescriptor.getLocatorConfig().getPartitioner()), mt.get(tok(4)));
     }
 
     @Test
@@ -173,7 +173,7 @@ public class MerkleTreeTest
 
         // (zero, zero]
         ranges = mt.invalids();
-        assertEquals(new Range<>(tok(-1), tok(-1), LocatorConfig.instance.getPartitioner()), ranges.next());
+        assertEquals(new Range<>(tok(-1), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner()), ranges.next());
         assertFalse(ranges.hasNext());
 
         // all invalid
@@ -183,13 +183,13 @@ public class MerkleTreeTest
         mt.split(tok(3));
         mt.split(tok(5));
         ranges = mt.invalids();
-        assertEquals(new Range<>(tok(6), tok(-1), LocatorConfig.instance.getPartitioner()), ranges.next());
-        assertEquals(new Range<>(tok(-1), tok(2), LocatorConfig.instance.getPartitioner()), ranges.next());
-        assertEquals(new Range<>(tok(2), tok(3), LocatorConfig.instance.getPartitioner()), ranges.next());
-        assertEquals(new Range<>(tok(3), tok(4), LocatorConfig.instance.getPartitioner()), ranges.next());
-        assertEquals(new Range<>(tok(4), tok(5), LocatorConfig.instance.getPartitioner()), ranges.next());
-        assertEquals(new Range<>(tok(5), tok(6), LocatorConfig.instance.getPartitioner()), ranges.next());
-        assertEquals(new Range<>(tok(6), tok(-1), LocatorConfig.instance.getPartitioner()), ranges.next());
+        assertEquals(new Range<>(tok(6), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner()), ranges.next());
+        assertEquals(new Range<>(tok(-1), tok(2), databaseDescriptor.getLocatorConfig().getPartitioner()), ranges.next());
+        assertEquals(new Range<>(tok(2), tok(3), databaseDescriptor.getLocatorConfig().getPartitioner()), ranges.next());
+        assertEquals(new Range<>(tok(3), tok(4), databaseDescriptor.getLocatorConfig().getPartitioner()), ranges.next());
+        assertEquals(new Range<>(tok(4), tok(5), databaseDescriptor.getLocatorConfig().getPartitioner()), ranges.next());
+        assertEquals(new Range<>(tok(5), tok(6), databaseDescriptor.getLocatorConfig().getPartitioner()), ranges.next());
+        assertEquals(new Range<>(tok(6), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner()), ranges.next());
         assertFalse(ranges.hasNext());
     }
 
@@ -198,7 +198,7 @@ public class MerkleTreeTest
     public void testHashFull()
     {
         byte[] val = DUMMY;
-        Range<Token> range = new Range<>(tok(-1), tok(-1), LocatorConfig.instance.getPartitioner());
+        Range<Token> range = new Range<>(tok(-1), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner());
 
         // (zero, zero]
         assertNull(mt.hash(range));
@@ -215,11 +215,11 @@ public class MerkleTreeTest
         byte[] val = DUMMY;
         byte[] leftval = hashed(val, 1, 1);
         byte[] partialval = hashed(val, 1);
-        Range<Token> left = new Range<>(tok(-1), tok(4), LocatorConfig.instance.getPartitioner());
-        Range<Token> partial = new Range<>(tok(2), tok(4), LocatorConfig.instance.getPartitioner());
-        Range<Token> right = new Range<>(tok(4), tok(-1), LocatorConfig.instance.getPartitioner());
-        Range<Token> linvalid = new Range<>(tok(1), tok(4), LocatorConfig.instance.getPartitioner());
-        Range<Token> rinvalid = new Range<>(tok(4), tok(6), LocatorConfig.instance.getPartitioner());
+        Range<Token> left = new Range<>(tok(-1), tok(4), databaseDescriptor.getLocatorConfig().getPartitioner());
+        Range<Token> partial = new Range<>(tok(2), tok(4), databaseDescriptor.getLocatorConfig().getPartitioner());
+        Range<Token> right = new Range<>(tok(4), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner());
+        Range<Token> linvalid = new Range<>(tok(1), tok(4), databaseDescriptor.getLocatorConfig().getPartitioner());
+        Range<Token> rinvalid = new Range<>(tok(4), tok(6), databaseDescriptor.getLocatorConfig().getPartitioner());
 
         // (zero,two] (two,four] (four, zero]
         mt.split(tok(4));
@@ -249,10 +249,10 @@ public class MerkleTreeTest
         byte[] lchildval = hashed(val, 3, 3, 2);
         byte[] rchildval = hashed(val, 2, 2);
         byte[] fullval = hashed(val, 3, 3, 2, 2, 2);
-        Range<Token> full = new Range<>(tok(-1), tok(-1), LocatorConfig.instance.getPartitioner());
-        Range<Token> lchild = new Range<>(tok(-1), tok(4), LocatorConfig.instance.getPartitioner());
-        Range<Token> rchild = new Range<>(tok(4), tok(-1), LocatorConfig.instance.getPartitioner());
-        Range<Token> invalid = new Range<>(tok(1), tok(-1), LocatorConfig.instance.getPartitioner());
+        Range<Token> full = new Range<>(tok(-1), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner());
+        Range<Token> lchild = new Range<>(tok(-1), tok(4), databaseDescriptor.getLocatorConfig().getPartitioner());
+        Range<Token> rchild = new Range<>(tok(4), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner());
+        Range<Token> invalid = new Range<>(tok(1), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner());
 
         // (zero,one] (one, two] (two,four] (four, six] (six, zero]
         mt.split(tok(4));
@@ -285,9 +285,9 @@ public class MerkleTreeTest
         byte[] val = DUMMY;
         byte[] childfullval = hashed(val, 5, 5, 4);
         byte[] fullval = hashed(val, 5, 5, 4, 3, 2, 1);
-        Range<Token> childfull = new Range<>(tok(-1), tok(4), LocatorConfig.instance.getPartitioner());
-        Range<Token> full = new Range<>(tok(-1), tok(-1), LocatorConfig.instance.getPartitioner());
-        Range<Token> invalid = new Range<>(tok(4), tok(-1), LocatorConfig.instance.getPartitioner());
+        Range<Token> childfull = new Range<>(tok(-1), tok(4), databaseDescriptor.getLocatorConfig().getPartitioner());
+        Range<Token> full = new Range<>(tok(-1), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner());
+        Range<Token> invalid = new Range<>(tok(4), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner());
 
         mt = new MerkleTree(partitioner, fullRange(), RECOMMENDED_DEPTH, Integer.MAX_VALUE);
         mt.split(tok(16));
@@ -331,7 +331,7 @@ public class MerkleTreeTest
         for (TreeRange range : ranges)
             range.addHash(new RowHash(range.right, new byte[0], 0));
 
-        assert mt.hash(new Range<>(tok(-1), tok(-1), LocatorConfig.instance.getPartitioner())) != null :
+        assert mt.hash(new Range<>(tok(-1), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner())) != null :
             "Could not hash tree " + mt;
     }
 
@@ -346,7 +346,7 @@ public class MerkleTreeTest
     {
         TOKEN_SCALE = new BigInteger("16"); // this test needs slightly more resolution
 
-        Range<Token> full = new Range<>(tok(-1), tok(-1), LocatorConfig.instance.getPartitioner());
+        Range<Token> full = new Range<>(tok(-1), tok(-1), databaseDescriptor.getLocatorConfig().getPartitioner());
         Iterator<TreeRange> ranges;
         MerkleTree mt2 = new MerkleTree(partitioner, fullRange(), RECOMMENDED_DEPTH, Integer.MAX_VALUE);
 
@@ -444,7 +444,7 @@ public class MerkleTreeTest
         // trees should disagree for (leftmost.left, middle.right]
         List<TreeRange> diffs = MerkleTree.difference(mt, mt2);
         assertEquals(diffs + " contains wrong number of differences:", 1, diffs.size());
-        assertTrue(diffs.contains(new Range<>(leftmost.left, middle.right, LocatorConfig.instance.getPartitioner())));
+        assertTrue(diffs.contains(new Range<>(leftmost.left, middle.right, databaseDescriptor.getLocatorConfig().getPartitioner())));
     }
 
     /**

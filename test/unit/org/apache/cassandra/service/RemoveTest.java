@@ -65,18 +65,18 @@ public class RemoveTest
         System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
         DatabaseDescriptor.init();
         SchemaLoader.loadSchema();
-        assert LocatorConfig.instance.getPartitioner() instanceof RandomPartitioner;
+        assert databaseDescriptor.getLocatorConfig().getPartitioner() instanceof RandomPartitioner;
     }
 
     @Before
     public void setup() throws IOException, ConfigurationException
     {
         ss = StorageService.instance;
-        tmd = LocatorConfig.instance.getTokenMetadata();
+        tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
 
         // create a ring of 5 nodes
-        Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), endpointTokens, keyTokens, hosts, hostIds, 6, databaseDescriptor);
+        Util.createInitialRing(ss, databaseDescriptor.getLocatorConfig().getPartitioner(), endpointTokens, keyTokens, hosts, hostIds, 6, databaseDescriptor);
 
         MessagingService.instance.listen(DatabaseDescriptor.instance.getBroadcastAddress());
         databaseDescriptor.getGossiper().start(1);

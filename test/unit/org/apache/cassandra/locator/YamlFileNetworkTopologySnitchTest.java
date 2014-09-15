@@ -32,6 +32,7 @@ import com.google.common.net.InetAddresses;
  */
 public class YamlFileNetworkTopologySnitchTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void setUpClass()
@@ -68,7 +69,7 @@ public class YamlFileNetworkTopologySnitchTest
     @Test
     public void testBasic() throws Exception
     {
-        final TestYamlFileNetworkTopologySnitch snitch = new TestYamlFileNetworkTopologySnitch(LocatorConfig.instance,
+        final TestYamlFileNetworkTopologySnitch snitch = new TestYamlFileNetworkTopologySnitch(databaseDescriptor.getLocatorConfig(),
                 "cassandra-topology.yaml");
         checkEndpoint(snitch, DatabaseDescriptor.instance.getBroadcastAddress()
                 .getHostAddress(), "DC1", "RAC1");

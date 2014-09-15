@@ -55,7 +55,7 @@ public class SerializationsTest extends AbstractSerializationsTester
     }
 
     private static final UUID RANDOM_UUID = UUID.fromString("b5c3d033-75aa-4c2f-a819-947aac7a0c54");
-    private static final Range<Token> FULL_RANGE = new Range<>(LocatorConfig.instance.getPartitioner().getMinimumToken(), LocatorConfig.instance.getPartitioner().getMinimumToken(), LocatorConfig.instance.getPartitioner());
+    private static final Range<Token> FULL_RANGE = new Range<>(databaseDescriptor.getLocatorConfig().getPartitioner().getMinimumToken(), databaseDescriptor.getLocatorConfig().getPartitioner().getMinimumToken(), databaseDescriptor.getLocatorConfig().getPartitioner());
     private static final RepairJobDesc DESC = new RepairJobDesc(getVersion() < MessagingService.VERSION_21 ? null : RANDOM_UUID, RANDOM_UUID, "Keyspace1", "Standard1", FULL_RANGE);
 
     private void testRepairMessageWrite(String fileName, RepairMessage... messages) throws IOException
@@ -98,7 +98,7 @@ public class SerializationsTest extends AbstractSerializationsTester
 
     private void testValidationCompleteWrite() throws IOException
     {
-        IPartitioner p = new RandomPartitioner(LocatorConfig.instance);
+        IPartitioner p = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
         // empty validation
         MerkleTree mt = new MerkleTree(p, FULL_RANGE, MerkleTree.RECOMMENDED_DEPTH, (int) Math.pow(2, 15));
         Validator v0 = new Validator(DESC, DatabaseDescriptor.instance.getBroadcastAddress(),  -1, DatabaseDescriptor.instance, databaseDescriptor.getStageManager(), MessagingService.instance);

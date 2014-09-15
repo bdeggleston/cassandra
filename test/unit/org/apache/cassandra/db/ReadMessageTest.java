@@ -80,7 +80,7 @@ public class ReadMessageTest
         colList.add(Util.cellname("col2"));
 
         ReadCommand rm, rm2;
-        DecoratedKey dk = Util.dk("row1");
+        DecoratedKey dk = Util.dk("row1", databaseDescriptor);
         long ts = System.currentTimeMillis();
 
         rm = new SliceByNamesReadCommand(KEYSPACE1,
@@ -89,7 +89,7 @@ public class ReadMessageTest
                                          ts,
                                          new NamesQueryFilter(colList, databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                          databaseDescriptor.getSchema(),
-                                         LocatorConfig.instance.getPartitioner(),
+                                         databaseDescriptor.getLocatorConfig().getPartitioner(),
                                          MessagingService.instance.readCommandSerializer);
         rm2 = serializeAndDeserializeReadMessage(rm);
         assert rm2.toString().equals(rm.toString());
@@ -100,7 +100,7 @@ public class ReadMessageTest
                                       ts,
                                       new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, true, 2, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                       databaseDescriptor.getSchema(),
-                                      LocatorConfig.instance.getPartitioner(),
+                                      databaseDescriptor.getLocatorConfig().getPartitioner(),
                                       MessagingService.instance.readCommandSerializer);
         rm2 = serializeAndDeserializeReadMessage(rm);
         assert rm2.toString().equals(rm.toString());
@@ -111,7 +111,7 @@ public class ReadMessageTest
                                       ts,
                                       new SliceQueryFilter(Util.cellname("a"), Util.cellname("z"), true, 5, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                       databaseDescriptor.getSchema(),
-                                      LocatorConfig.instance.getPartitioner(),
+                                      databaseDescriptor.getLocatorConfig().getPartitioner(),
                                       MessagingService.instance.readCommandSerializer);
         rm2 = serializeAndDeserializeReadMessage(rm);
         assert rm2.toString().equals(rm.toString());
@@ -134,7 +134,7 @@ public class ReadMessageTest
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         CellNameType type = keyspace.getColumnFamilyStore("Standard1").getComparator();
         Mutation rm;
-        DecoratedKey dk = Util.dk("key1");
+        DecoratedKey dk = Util.dk("key1", databaseDescriptor);
 
         // add data
         rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey());
@@ -147,7 +147,7 @@ public class ReadMessageTest
                                                           System.currentTimeMillis(),
                                                           new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                                           databaseDescriptor.getSchema(),
-                                                          LocatorConfig.instance.getPartitioner(),
+                                                          databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                           MessagingService.instance.readCommandSerializer);
         Row row = command.getRow(keyspace);
         Cell col = row.cf.getColumn(Util.cellname("Column1"));

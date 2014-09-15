@@ -211,7 +211,7 @@ public class DefsTest
 
         // now read and write to it.
         CellName col0 = cellname("col0");
-        DecoratedKey dk = Util.dk("key0");
+        DecoratedKey dk = Util.dk("key0", databaseDescriptor);
         Mutation rm = databaseDescriptor.getMutationFactory().create(ks, dk.getKey());
         rm.add(cf, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();
@@ -228,7 +228,7 @@ public class DefsTest
     @Test
     public void dropCf() throws ConfigurationException
     {
-        DecoratedKey dk = Util.dk("dropCf");
+        DecoratedKey dk = Util.dk("dropCf", databaseDescriptor);
         // sanity
         final KSMetaData ks = databaseDescriptor.getSchema().getKSMetaData(KEYSPACE1);
         Assert.assertNotNull(ks);
@@ -274,7 +274,7 @@ public class DefsTest
     @Test
     public void addNewKS() throws ConfigurationException
     {
-        DecoratedKey dk = Util.dk("key0");
+        DecoratedKey dk = Util.dk("key0", databaseDescriptor);
         CFMetaData newCf = addTestCF("NewKeyspace1", "AddedStandard1", "A new cf for a new ks");
 
         KSMetaData newKs = databaseDescriptor.getKSMetaDataFactory().testMetadata(newCf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(5), newCf);
@@ -302,7 +302,7 @@ public class DefsTest
     @Test
     public void dropKS() throws ConfigurationException
     {
-        DecoratedKey dk = Util.dk("dropKs");
+        DecoratedKey dk = Util.dk("dropKs", databaseDescriptor);
         // sanity
         final KSMetaData ks = databaseDescriptor.getSchema().getKSMetaData(KEYSPACE1);
         Assert.assertNotNull(ks);
@@ -353,7 +353,7 @@ public class DefsTest
     @Test
     public void dropKSUnflushed() throws ConfigurationException
     {
-        DecoratedKey dk = Util.dk("dropKs");
+        DecoratedKey dk = Util.dk("dropKs", databaseDescriptor);
         // sanity
         final KSMetaData ks = databaseDescriptor.getSchema().getKSMetaData(KEYSPACE3);
         Assert.assertNotNull(ks);
@@ -394,7 +394,7 @@ public class DefsTest
 
         // now read and write to it.
         CellName col0 = cellname("col0");
-        DecoratedKey dk = Util.dk("key0");
+        DecoratedKey dk = Util.dk("key0", databaseDescriptor);
         Mutation rm = databaseDescriptor.getMutationFactory().create(newKs.name, dk.getKey());
         rm.add(newCf.cfName, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();

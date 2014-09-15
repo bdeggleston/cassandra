@@ -82,7 +82,7 @@ public class AntiCompactionTest
         long timestamp = System.currentTimeMillis();
         for (int i = 0; i < 10; i++)
         {
-            DecoratedKey key = Util.dk(Integer.toString(i));
+            DecoratedKey key = Util.dk(Integer.toString(i), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int j = 0; j < 10; j++)
                 rm.add(CF, Util.cellname(Integer.toString(j)),
@@ -94,7 +94,7 @@ public class AntiCompactionTest
         store.forceBlockingFlush();
         Collection<SSTableReader> sstables = store.getUnrepairedSSTables();
         assertEquals(store.getSSTables().size(), sstables.size());
-        Range<Token> range = new Range<Token>(new BytesToken("0".getBytes(), LocatorConfig.instance.getPartitioner()), new BytesToken("4".getBytes(), LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range<Token> range = new Range<Token>(new BytesToken("0".getBytes(), databaseDescriptor.getLocatorConfig().getPartitioner()), new BytesToken("4".getBytes(), databaseDescriptor.getLocatorConfig().getPartitioner()), databaseDescriptor.getLocatorConfig().getPartitioner());
         List<Range<Token>> ranges = Arrays.asList(range);
 
         SSTableReader.acquireReferences(sstables);
@@ -132,7 +132,7 @@ public class AntiCompactionTest
     long timestamp = System.currentTimeMillis();
     for (int i = 0; i < 10; i++)
         {
-            DecoratedKey key = Util.dk(Integer.toString(i) + "-" + Suffix);
+            DecoratedKey key = Util.dk(Integer.toString(i) + "-" + Suffix, databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int j = 0; j < 10; j++)
                 rm.add("Standard1", Util.cellname(Integer.toString(j)),
@@ -168,7 +168,7 @@ public class AntiCompactionTest
         Collection<SSTableReader> sstables = store.getUnrepairedSSTables();
         assertEquals(store.getSSTables().size(), sstables.size());
 
-        Range<Token> range = new Range<Token>(new BytesToken("0".getBytes(), LocatorConfig.instance.getPartitioner()), new BytesToken("4".getBytes(), LocatorConfig.instance.getPartitioner()), LocatorConfig.instance.getPartitioner());
+        Range<Token> range = new Range<Token>(new BytesToken("0".getBytes(), databaseDescriptor.getLocatorConfig().getPartitioner()), new BytesToken("4".getBytes(), databaseDescriptor.getLocatorConfig().getPartitioner()), databaseDescriptor.getLocatorConfig().getPartitioner());
         List<Range<Token>> ranges = Arrays.asList(range);
 
         SSTableReader.acquireReferences(sstables);

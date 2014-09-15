@@ -67,17 +67,17 @@ public class SSTableScannerTest
 
     private static Bounds<RowPosition> boundsFor(int start, int end)
     {
-        return new Bounds<RowPosition>(new BytesToken(toKey(start).getBytes(), LocatorConfig.instance.getPartitioner()).minKeyBound(),
-                                       new BytesToken(toKey(end).getBytes(), LocatorConfig.instance.getPartitioner()).maxKeyBound(),
-                                       LocatorConfig.instance.getPartitioner());
+        return new Bounds<RowPosition>(new BytesToken(toKey(start).getBytes(), databaseDescriptor.getLocatorConfig().getPartitioner()).minKeyBound(),
+                                       new BytesToken(toKey(end).getBytes(), databaseDescriptor.getLocatorConfig().getPartitioner()).maxKeyBound(),
+                                       databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
 
     private static Range<Token> rangeFor(int start, int end)
     {
-        return new Range<Token>(new BytesToken(toKey(start).getBytes(), LocatorConfig.instance.getPartitioner()),
-                                new BytesToken(toKey(end).getBytes(), LocatorConfig.instance.getPartitioner()),
-                                LocatorConfig.instance.getPartitioner());
+        return new Range<Token>(new BytesToken(toKey(start).getBytes(), databaseDescriptor.getLocatorConfig().getPartitioner()),
+                                new BytesToken(toKey(end).getBytes(), databaseDescriptor.getLocatorConfig().getPartitioner()),
+                                databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
     private static Collection<Range<Token>> makeRanges(int ... keys)
@@ -91,7 +91,7 @@ public class SSTableScannerTest
     private static void insertRowWithKey(int key)
     {
         long timestamp = System.currentTimeMillis();
-        DecoratedKey decoratedKey = Util.dk(toKey(key));
+        DecoratedKey decoratedKey = Util.dk(toKey(key), databaseDescriptor);
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE, decoratedKey.getKey());
         rm.add(TABLE, Util.cellname("col"), ByteBufferUtil.EMPTY_BYTE_BUFFER, timestamp, 1000);
         rm.applyUnsafe();

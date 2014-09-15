@@ -59,7 +59,7 @@ public class SystemKeyspaceTest
         List<Token> tokens = new ArrayList<Token>()
         {{
             for (int i = 0; i < 9; i++)
-                add(new BytesToken(ByteBufferUtil.bytes(String.format("token%d", i)), LocatorConfig.instance.getPartitioner()));
+                add(new BytesToken(ByteBufferUtil.bytes(String.format("token%d", i)), databaseDescriptor.getLocatorConfig().getPartitioner()));
         }};
 
         databaseDescriptor.getSystemKeyspace().updateTokens(tokens);
@@ -72,7 +72,7 @@ public class SystemKeyspaceTest
     @Test
     public void testNonLocalToken() throws UnknownHostException
     {
-        BytesToken token = new BytesToken(ByteBufferUtil.bytes("token3"), LocatorConfig.instance.getPartitioner());
+        BytesToken token = new BytesToken(ByteBufferUtil.bytes("token3"), databaseDescriptor.getLocatorConfig().getPartitioner());
         InetAddress address = InetAddress.getByName("127.0.0.2");
         databaseDescriptor.getSystemKeyspace().updateTokens(address, Collections.<Token>singletonList(token));
         assert databaseDescriptor.getSystemKeyspace().loadTokens().get(address).contains(token);

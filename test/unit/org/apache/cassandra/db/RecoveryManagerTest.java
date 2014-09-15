@@ -85,7 +85,7 @@ public class RecoveryManagerTest
         Keyspace keyspace2 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE2);
 
         Mutation rm;
-        DecoratedKey dk = Util.dk("keymulti");
+        DecoratedKey dk = Util.dk("keymulti", databaseDescriptor);
         ColumnFamily cf;
 
         cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
@@ -114,7 +114,7 @@ public class RecoveryManagerTest
         Keyspace keyspace1 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
 
         Mutation rm;
-        DecoratedKey dk = Util.dk("key");
+        DecoratedKey dk = Util.dk("key", databaseDescriptor);
         ColumnFamily cf;
 
         for (int i = 0; i < 10; ++i)
@@ -146,7 +146,7 @@ public class RecoveryManagerTest
         long timeMS = date.getTime() - 5000;
 
         Keyspace keyspace1 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
-        DecoratedKey dk = Util.dk("dkey");
+        DecoratedKey dk = Util.dk("dkey", databaseDescriptor);
         for (int i = 0; i < 10; ++i)
         {
             long ts = TimeUnit.MILLISECONDS.toMicros(timeMS + (i * 1000));
@@ -171,7 +171,7 @@ public class RecoveryManagerTest
         long timeMS = date.getTime();
 
         Keyspace keyspace1 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
-        DecoratedKey dk = Util.dk("dkey");
+        DecoratedKey dk = Util.dk("dkey", databaseDescriptor);
 
         // Col 0 and 9 are the only ones to be recovered
         for (int i = 0; i < 10; ++i)

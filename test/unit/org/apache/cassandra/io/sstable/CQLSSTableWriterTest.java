@@ -74,7 +74,7 @@ public class CQLSSTableWriterTest
         CQLSSTableWriter writer = CQLSSTableWriter.builder(databaseDescriptor.getSchema(), databaseDescriptor.getQueryProcessor(), databaseDescriptor.getAuth(), databaseDescriptor.getKSMetaDataFactory(), databaseDescriptor.getDBConfig())
                                                   .inDirectory(dataDir)
                                                   .forTable(schema)
-                                                  .withPartitioner(LocatorConfig.instance.getPartitioner())
+                                                  .withPartitioner(databaseDescriptor.getLocatorConfig().getPartitioner())
                                                   .using(insert).build();
 
         writer.addRow(0, "test1", 24);
@@ -87,9 +87,9 @@ public class CQLSSTableWriterTest
         {
             public void init(String keyspace)
             {
-                for (Range<Token> range : LocatorConfig.instance.getLocalRanges("cql_keyspace"))
+                for (Range<Token> range : databaseDescriptor.getLocatorConfig().getLocalRanges("cql_keyspace"))
                     addRangeForEndpoint(range, DatabaseDescriptor.instance.getBroadcastAddress());
-                setPartitioner(LocatorConfig.instance.getPartitioner());
+                setPartitioner(databaseDescriptor.getLocatorConfig().getPartitioner());
             }
 
             public CFMetaData getCFMetaData(String keyspace, String cfName)

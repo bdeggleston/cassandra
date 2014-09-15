@@ -473,7 +473,7 @@ public class SchemaLoader
         ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(keyspace).getColumnFamilyStore(columnFamily);
         for (int i = offset; i < offset + numberOfRows; i++)
         {
-            DecoratedKey key = Util.dk("key" + i);
+            DecoratedKey key = Util.dk("key" + i, databaseDescriptor);
             store.getColumnFamily(Util.namesQueryFilter(store, key, databaseDescriptor, "col" + i));
         }
     }

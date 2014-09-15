@@ -59,7 +59,7 @@ public class KSMetaDataTest
                                             true,
                                             Collections.<CFMetaData>emptyList(),
                                             databaseDescriptor.getQueryProcessor(),
-                                            LocatorConfig.instance,
+                                            databaseDescriptor.getLocatorConfig(),
                                             databaseDescriptor.getSystemKeyspace(),
                                             databaseDescriptor.getCFMetaDataFactory(),
                                             databaseDescriptor.getMutationFactory());

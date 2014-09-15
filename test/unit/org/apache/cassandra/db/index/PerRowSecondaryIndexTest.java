@@ -187,7 +187,7 @@ public class PerRowSecondaryIndexTest
         @Override
         public void index(ByteBuffer rowKey, ColumnFamily cf)
         {
-            QueryFilter filter = QueryFilter.getIdentityFilter(LocatorConfig.instance.getPartitioner().decorateKey(rowKey),
+            QueryFilter filter = QueryFilter.getIdentityFilter(databaseDescriptor.getLocatorConfig().getPartitioner().decorateKey(rowKey),
                                                                baseCfs.getColumnFamilyName(),
                                                                System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
             LAST_INDEXED_ROW = cf;
@@ -229,7 +229,7 @@ public class PerRowSecondaryIndexTest
                 @Override
                 public List<Row> search(ExtendedFilter filter)
                 {
-                    return Arrays.asList(new Row(LAST_INDEXED_KEY, LAST_INDEXED_ROW, LocatorConfig.instance.getPartitioner()));
+                    return Arrays.asList(new Row(LAST_INDEXED_KEY, LAST_INDEXED_ROW, databaseDescriptor.getLocatorConfig().getPartitioner()));
                 }
 
                 @Override

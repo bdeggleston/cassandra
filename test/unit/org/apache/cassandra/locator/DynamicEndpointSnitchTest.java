@@ -34,6 +34,7 @@ import static org.junit.Assert.assertEquals;
 
 public class DynamicEndpointSnitchTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void setUpClass()
@@ -56,8 +57,8 @@ public class DynamicEndpointSnitchTest
     {
         // do this because SS needs to be initialized before DES can work properly.
         StorageService.instance.initClient(0);
-        SimpleSnitch ss = new SimpleSnitch(LocatorConfig.instance);
-        DynamicEndpointSnitch dsnitch = new DynamicEndpointSnitch(ss, LocatorConfig.instance, String.valueOf(ss.hashCode()));
+        SimpleSnitch ss = new SimpleSnitch(databaseDescriptor.getLocatorConfig());
+        DynamicEndpointSnitch dsnitch = new DynamicEndpointSnitch(ss, databaseDescriptor.getLocatorConfig(), String.valueOf(ss.hashCode()));
         dsnitch.gossiperStarting();
         InetAddress self = DatabaseDescriptor.instance.getBroadcastAddress();
         InetAddress host1 = InetAddress.getByName("127.0.0.2");

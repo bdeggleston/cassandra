@@ -57,7 +57,7 @@ public class RemoveColumnFamilyWithFlush1Test
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard1");
         Mutation rm;
-        DecoratedKey dk = Util.dk("key1");
+        DecoratedKey dk = Util.dk("key1", databaseDescriptor);
 
         // add data
         rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey());

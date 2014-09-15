@@ -133,7 +133,7 @@ public class CFMetaDataTest
 
     private void checkInverses(CFMetaData cfm) throws Exception
     {
-        DecoratedKey k = LocatorConfig.instance.getPartitioner().decorateKey(ByteBufferUtil.bytes(cfm.ksName));
+        DecoratedKey k = databaseDescriptor.getLocatorConfig().getPartitioner().decorateKey(ByteBufferUtil.bytes(cfm.ksName));
 
         // Test thrift conversion
         CFMetaData before = cfm;

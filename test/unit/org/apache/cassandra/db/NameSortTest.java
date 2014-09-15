@@ -118,7 +118,7 @@ public class NameSortTest
     {
         for (int i = 0; i < N; ++i)
         {
-            DecoratedKey key = Util.dk(Integer.toString(i));
+            DecoratedKey key = Util.dk(Integer.toString(i), databaseDescriptor);
             ColumnFamily cf;
 
             cf = Util.getColumnFamily(keyspace, key, "Standard1", databaseDescriptor);

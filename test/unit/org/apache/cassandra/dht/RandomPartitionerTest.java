@@ -26,6 +26,6 @@ public class RandomPartitionerTest extends PartitionerTestCase<BigIntegerToken>
 {
     public void initPartitioner()
     {
-        partitioner = new RandomPartitioner(LocatorConfig.instance);
+        partitioner = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
     }
 }

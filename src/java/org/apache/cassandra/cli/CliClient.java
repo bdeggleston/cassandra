@@ -32,6 +32,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Iterables;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.commons.lang3.StringUtils;
@@ -1235,7 +1236,7 @@ public class CliClient
             // adding default data center from SimpleSnitch
             if (currentStrategyOptions == null || currentStrategyOptions.isEmpty())
             {
-                SimpleSnitch snitch = new SimpleSnitch(LocatorConfig.instance);
+                SimpleSnitch snitch = new SimpleSnitch(DatabaseDescriptor.instance.getLocatorConfig());
                 Map<String, String> options = new HashMap<String, String>();
                 try
                 {

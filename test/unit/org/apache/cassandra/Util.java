@@ -64,24 +64,24 @@ public class Util
 {
     private static List<UUID> hostIdPool = new ArrayList<UUID>();
 
-    public static DecoratedKey dk(String key)
+    public static DecoratedKey dk(String key, DatabaseDescriptor databaseDescriptor)
     {
-        return LocatorConfig.instance.getPartitioner().decorateKey(ByteBufferUtil.bytes(key));
+        return databaseDescriptor.getLocatorConfig().getPartitioner().decorateKey(ByteBufferUtil.bytes(key));
     }
 
-    public static DecoratedKey dk(String key, AbstractType type)
+    public static DecoratedKey dk(String key, AbstractType type, DatabaseDescriptor databaseDescriptor)
     {
-        return LocatorConfig.instance.getPartitioner().decorateKey(type.fromString(key));
+        return databaseDescriptor.getLocatorConfig().getPartitioner().decorateKey(type.fromString(key));
     }
 
-    public static DecoratedKey dk(ByteBuffer key)
+    public static DecoratedKey dk(ByteBuffer key, DatabaseDescriptor databaseDescriptor)
     {
-        return LocatorConfig.instance.getPartitioner().decorateKey(key);
+        return databaseDescriptor.getLocatorConfig().getPartitioner().decorateKey(key);
     }
 
-    public static RowPosition rp(String key)
+    public static RowPosition rp(String key, DatabaseDescriptor databaseDescriptor)
     {
-        return rp(key, LocatorConfig.instance.getPartitioner());
+        return rp(key, databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
     public static RowPosition rp(String key, IPartitioner partitioner)
@@ -125,24 +125,24 @@ public class Util
         return new BufferExpiringCell(cellname(name), ByteBufferUtil.bytes(value), timestamp, ttl);
     }
 
-    public static Token token(String key)
+    public static Token token(String key, DatabaseDescriptor databaseDescriptor)
     {
-        return LocatorConfig.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key));
+        return databaseDescriptor.getLocatorConfig().getPartitioner().getToken(ByteBufferUtil.bytes(key));
     }
 
-    public static Range<RowPosition> range(String left, String right)
+    public static Range<RowPosition> range(String left, String right, DatabaseDescriptor databaseDescriptor)
     {
-        return new Range<RowPosition>(rp(left), rp(right), LocatorConfig.instance.getPartitioner());
+        return new Range<RowPosition>(rp(left, databaseDescriptor), rp(right, databaseDescriptor), databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
-    public static Range<RowPosition> range(IPartitioner p, String left, String right)
+    public static Range<RowPosition> range(IPartitioner p, String left, String right, DatabaseDescriptor databaseDescriptor)
     {
-        return new Range<RowPosition>(rp(left, p), rp(right, p), LocatorConfig.instance.getPartitioner());
+        return new Range<RowPosition>(rp(left, p), rp(right, p), databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
-    public static Bounds<RowPosition> bounds(String left, String right)
+    public static Bounds<RowPosition> bounds(String left, String right, DatabaseDescriptor databaseDescriptor)
     {
-        return new Bounds<RowPosition>(rp(left), rp(right), LocatorConfig.instance.getPartitioner());
+        return new Bounds<RowPosition>(rp(left, databaseDescriptor), rp(right, databaseDescriptor), databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
     public static void addMutation(Mutation rm, String columnFamilyName, String superColumnName, long columnName, String value, long timestamp)
@@ -182,8 +182,8 @@ public class Util
                                ? new IdentityQueryFilter(databaseDescriptor, tracing, databaseDescriptor.getDBConfig())
                                : new SliceQueryFilter(SuperColumns.startOf(superColumn), SuperColumns.endOf(superColumn), false, Integer.MAX_VALUE, databaseDescriptor, tracing, databaseDescriptor.getDBConfig());
 
-        Token min = LocatorConfig.instance.getPartitioner().getMinimumToken();
-        return cfs.getRangeSlice(new Bounds<Token>(min, min, LocatorConfig.instance.getPartitioner()).toRowBounds(), null, filter, 10000);
+        Token min = databaseDescriptor.getLocatorConfig().getPartitioner().getMinimumToken();
+        return cfs.getRangeSlice(new Bounds<Token>(min, min, databaseDescriptor.getLocatorConfig().getPartitioner()).toRowBounds(), null, filter, 10000);
     }
 
     /**
@@ -257,8 +257,8 @@ public class Util
 
         for (int i=0; i<howMany; i++)
         {
-            endpointTokens.add(new BigIntegerToken(String.valueOf(10 * i), LocatorConfig.instance.getPartitioner()));
-            keyTokens.add(new BigIntegerToken(String.valueOf(10 * i + 5), LocatorConfig.instance.getPartitioner()));
+            endpointTokens.add(new BigIntegerToken(String.valueOf(10 * i), databaseDescriptor.getLocatorConfig().getPartitioner()));
+            keyTokens.add(new BigIntegerToken(String.valueOf(10 * i + 5), databaseDescriptor.getLocatorConfig().getPartitioner()));
             hostIds.add(hostIdPool.get(i));
         }
 
@@ -275,7 +275,7 @@ public class Util
 
         // check that all nodes are in token metadata
         for (int i=0; i<endpointTokens.size(); ++i)
-            assertTrue(LocatorConfig.instance.getTokenMetadata().isMember(hosts.get(i)));
+            assertTrue(databaseDescriptor.getLocatorConfig().getTokenMetadata().isMember(hosts.get(i)));
     }
 
     public static Future<?> compactAll(ColumnFamilyStore cfs, int gcBefore, DatabaseDescriptor databaseDescriptor)

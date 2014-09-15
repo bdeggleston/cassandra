@@ -81,7 +81,7 @@ public class CleanupTest
     @Test
     public void testCleanup() throws ExecutionException, InterruptedException
     {
-        LocatorConfig.instance.getTokenMetadata().clearUnsafe();
+        databaseDescriptor.getLocatorConfig().getTokenMetadata().clearUnsafe();
 
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF2);
@@ -130,18 +130,18 @@ public class CleanupTest
         IndexExpression expr = new IndexExpression(COLUMN, IndexExpression.Operator.EQ, VALUE);
         List<IndexExpression> clause = Arrays.asList(expr);
         IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
-        Range<RowPosition> range = Util.range("", "");
+        Range<RowPosition> range = Util.range("", "", databaseDescriptor);
         rows = keyspace.getColumnFamilyStore(CF1).search(range, clause, filter, Integer.MAX_VALUE);
         assertEquals(LOOPS, rows.size());
 
         // we don't allow cleanup when the local host has no range to avoid wipping up all data when a node has not join the ring.
         // So to make sure cleanup erase everything here, we give the localhost the tiniest possible range.
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         byte[] tk1 = new byte[1], tk2 = new byte[1];
         tk1[0] = 2;
         tk2[0] = 1;
-        tmd.updateNormalToken(new BytesToken(tk1, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.1"));
-        tmd.updateNormalToken(new BytesToken(tk2, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.2"));
+        tmd.updateNormalToken(new BytesToken(tk1, databaseDescriptor.getLocatorConfig().getPartitioner()), InetAddress.getByName("127.0.0.1"));
+        tmd.updateNormalToken(new BytesToken(tk2, databaseDescriptor.getLocatorConfig().getPartitioner()), InetAddress.getByName("127.0.0.2"));
 
         databaseDescriptor.getCompactionManager().performCleanup(cfs);
 
@@ -160,7 +160,7 @@ public class CleanupTest
     @Test
     public void testCleanupWithNewToken() throws ExecutionException, InterruptedException, UnknownHostException
     {
-        LocatorConfig.instance.getTokenMetadata().clearUnsafe();
+        databaseDescriptor.getLocatorConfig().getTokenMetadata().clearUnsafe();
 
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF2);
@@ -173,13 +173,13 @@ public class CleanupTest
         rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing());
 
         assertEquals(LOOPS, rows.size());
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
 
         byte[] tk1 = new byte[1], tk2 = new byte[1];
         tk1[0] = 2;
         tk2[0] = 1;
-        tmd.updateNormalToken(new BytesToken(tk1, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.1"));
-        tmd.updateNormalToken(new BytesToken(tk2, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.2"));
+        tmd.updateNormalToken(new BytesToken(tk1, databaseDescriptor.getLocatorConfig().getPartitioner()), InetAddress.getByName("127.0.0.1"));
+        tmd.updateNormalToken(new BytesToken(tk2, databaseDescriptor.getLocatorConfig().getPartitioner()), InetAddress.getByName("127.0.0.2"));
         databaseDescriptor.getCompactionManager().performCleanup(cfs);
 
         rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing());

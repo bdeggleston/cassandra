@@ -125,7 +125,7 @@ public class AbstractQueryPagerTest
 
     private Row createRow(String name, int nbCol)
     {
-        return new Row(Util.dk(name), createCF(nbCol));
+        return new Row(Util.dk(name, databaseDescriptor), createCF(nbCol));
     }
 
     private ColumnFamily createCF(int nbCol)

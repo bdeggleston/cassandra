@@ -459,7 +459,7 @@ public class SSTableExport
         {
             if (cmd.hasOption(ENUMERATEKEYS_OPTION))
             {
-                enumeratekeys(descriptor, System.out, cfStore.metadata, LocatorConfig.instance.getPartitioner());
+                enumeratekeys(descriptor, System.out, cfStore.metadata, DatabaseDescriptor.instance.getLocatorConfig().getPartitioner());
             }
             else
             {

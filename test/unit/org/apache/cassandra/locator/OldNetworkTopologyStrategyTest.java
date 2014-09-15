@@ -61,7 +61,7 @@ public class OldNetworkTopologyStrategyTest
     public void init()
     {
         keyTokens = new ArrayList<Token>();
-        tmd = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
+        tmd = new TokenMetadata(databaseDescriptor.getFailureDetector(), databaseDescriptor.getLocatorConfig());
         expectedResults = new HashMap<String, ArrayList<InetAddress>>();
     }
 
@@ -73,9 +73,9 @@ public class OldNetworkTopologyStrategyTest
     @Test
     public void testBigIntegerEndpointsA() throws UnknownHostException
     {
-        RackInferringSnitch endpointSnitch = new RackInferringSnitch(LocatorConfig.instance);
+        RackInferringSnitch endpointSnitch = new RackInferringSnitch(databaseDescriptor.getLocatorConfig());
 
-        AbstractReplicationStrategy strategy = new OldNetworkTopologyStrategy("Keyspace1", tmd, endpointSnitch, KSMetaData.optsWithRF(1), LocatorConfig.instance);
+        AbstractReplicationStrategy strategy = new OldNetworkTopologyStrategy("Keyspace1", tmd, endpointSnitch, KSMetaData.optsWithRF(1), databaseDescriptor.getLocatorConfig());
         addEndpoint("0", "5", "254.0.0.1");
         addEndpoint("10", "15", "254.0.0.2");
         addEndpoint("20", "25", "254.0.0.3");
@@ -98,9 +98,9 @@ public class OldNetworkTopologyStrategyTest
     @Test
     public void testBigIntegerEndpointsB() throws UnknownHostException
     {
-        RackInferringSnitch endpointSnitch = new RackInferringSnitch(LocatorConfig.instance);
+        RackInferringSnitch endpointSnitch = new RackInferringSnitch(databaseDescriptor.getLocatorConfig());
 
-        AbstractReplicationStrategy strategy = new OldNetworkTopologyStrategy("Keyspace1", tmd, endpointSnitch, KSMetaData.optsWithRF(1), LocatorConfig.instance);
+        AbstractReplicationStrategy strategy = new OldNetworkTopologyStrategy("Keyspace1", tmd, endpointSnitch, KSMetaData.optsWithRF(1), databaseDescriptor.getLocatorConfig());
         addEndpoint("0", "5", "254.0.0.1");
         addEndpoint("10", "15", "254.0.0.2");
         addEndpoint("20", "25", "254.1.0.3");
@@ -124,9 +124,9 @@ public class OldNetworkTopologyStrategyTest
     @Test
     public void testBigIntegerEndpointsC() throws UnknownHostException
     {
-        RackInferringSnitch endpointSnitch = new RackInferringSnitch(LocatorConfig.instance);
+        RackInferringSnitch endpointSnitch = new RackInferringSnitch(databaseDescriptor.getLocatorConfig());
 
-        AbstractReplicationStrategy strategy = new OldNetworkTopologyStrategy("Keyspace1", tmd, endpointSnitch, KSMetaData.optsWithRF(1), LocatorConfig.instance);
+        AbstractReplicationStrategy strategy = new OldNetworkTopologyStrategy("Keyspace1", tmd, endpointSnitch, KSMetaData.optsWithRF(1), databaseDescriptor.getLocatorConfig());
         addEndpoint("0", "5", "254.0.0.1");
         addEndpoint("10", "15", "254.0.0.2");
         addEndpoint("20", "25", "254.0.1.3");
@@ -152,9 +152,9 @@ public class OldNetworkTopologyStrategyTest
 
     private void addEndpoint(String endpointTokenID, String keyTokenID, String endpointAddress) throws UnknownHostException
     {
-        BigIntegerToken endpointToken = new BigIntegerToken(endpointTokenID, LocatorConfig.instance.getPartitioner());
+        BigIntegerToken endpointToken = new BigIntegerToken(endpointTokenID, databaseDescriptor.getLocatorConfig().getPartitioner());
 
-        BigIntegerToken keyToken = new BigIntegerToken(keyTokenID, LocatorConfig.instance.getPartitioner());
+        BigIntegerToken keyToken = new BigIntegerToken(keyTokenID, databaseDescriptor.getLocatorConfig().getPartitioner());
         keyTokens.add(keyToken);
 
         InetAddress ep = InetAddress.getByName(endpointAddress);
@@ -185,7 +185,7 @@ public class OldNetworkTopologyStrategyTest
         // Moves to the left : nothing to fetch, last part to stream
 
         int movingNodeIdx = 1;
-        BigIntegerToken newToken = new BigIntegerToken("21267647932558653966460912964485513216", LocatorConfig.instance.getPartitioner());
+        BigIntegerToken newToken = new BigIntegerToken("21267647932558653966460912964485513216", databaseDescriptor.getLocatorConfig().getPartitioner());
         BigIntegerToken[] tokens = initTokens();
         BigIntegerToken[] tokensAfterMove = initTokensAfterMove(tokens, movingNodeIdx, newToken);
         Pair<Set<Range<Token>>, Set<Range<Token>>> ranges = calculateStreamAndFetchRanges(tokens, tokensAfterMove, movingNodeIdx);
@@ -202,7 +202,7 @@ public class OldNetworkTopologyStrategyTest
         // Moves to the right : last part to fetch, nothing to stream
 
         int movingNodeIdx = 1;
-        BigIntegerToken newToken = new BigIntegerToken("35267647932558653966460912964485513216", LocatorConfig.instance.getPartitioner());
+        BigIntegerToken newToken = new BigIntegerToken("35267647932558653966460912964485513216", databaseDescriptor.getLocatorConfig().getPartitioner());
         BigIntegerToken[] tokens = initTokens();
         BigIntegerToken[] tokensAfterMove = initTokensAfterMove(tokens, movingNodeIdx, newToken);
         Pair<Set<Range<Token>>, Set<Range<Token>>> ranges = calculateStreamAndFetchRanges(tokens, tokensAfterMove, movingNodeIdx);
@@ -220,7 +220,7 @@ public class OldNetworkTopologyStrategyTest
 
         int movingNodeIdx = 1;
         int movingNodeIdxAfterMove = 4;
-        BigIntegerToken newToken = new BigIntegerToken("90070591730234615865843651857942052864", LocatorConfig.instance.getPartitioner());
+        BigIntegerToken newToken = new BigIntegerToken("90070591730234615865843651857942052864", databaseDescriptor.getLocatorConfig().getPartitioner());
         BigIntegerToken[] tokens = initTokens();
         BigIntegerToken[] tokensAfterMove = initTokensAfterMove(tokens, movingNodeIdx, newToken);
         Pair<Set<Range<Token>>, Set<Range<Token>>> ranges = calculateStreamAndFetchRanges(tokens, tokensAfterMove, movingNodeIdx);
@@ -233,12 +233,12 @@ public class OldNetworkTopologyStrategyTest
 
         // build expected ranges
         Range[] toStreamExpected = new Range[2];
-        toStreamExpected[0] = new Range(getToken(movingNodeIdx - 2, tokens), getToken(movingNodeIdx - 1, tokens), LocatorConfig.instance.getPartitioner());
-        toStreamExpected[1] = new Range(getToken(movingNodeIdx - 1, tokens), getToken(movingNodeIdx, tokens), LocatorConfig.instance.getPartitioner());
+        toStreamExpected[0] = new Range(getToken(movingNodeIdx - 2, tokens), getToken(movingNodeIdx - 1, tokens), databaseDescriptor.getLocatorConfig().getPartitioner());
+        toStreamExpected[1] = new Range(getToken(movingNodeIdx - 1, tokens), getToken(movingNodeIdx, tokens), databaseDescriptor.getLocatorConfig().getPartitioner());
         Arrays.sort(toStreamExpected);
         Range[] toFetchExpected = new Range[2];
-        toFetchExpected[0] = new Range(getToken(movingNodeIdxAfterMove - 1, tokens), getToken(movingNodeIdxAfterMove, tokens), LocatorConfig.instance.getPartitioner());
-        toFetchExpected[1] = new Range(getToken(movingNodeIdxAfterMove, tokensAfterMove), getToken(movingNodeIdx, tokensAfterMove), LocatorConfig.instance.getPartitioner());
+        toFetchExpected[0] = new Range(getToken(movingNodeIdxAfterMove - 1, tokens), getToken(movingNodeIdxAfterMove, tokens), databaseDescriptor.getLocatorConfig().getPartitioner());
+        toFetchExpected[1] = new Range(getToken(movingNodeIdxAfterMove, tokensAfterMove), getToken(movingNodeIdx, tokensAfterMove), databaseDescriptor.getLocatorConfig().getPartitioner());
         Arrays.sort(toFetchExpected);
 
         assertEquals(Arrays.equals(toStream, toStreamExpected), true);
@@ -252,7 +252,7 @@ public class OldNetworkTopologyStrategyTest
 
         int movingNodeIdx = 1;
         int movingNodeIdxAfterMove = 2;
-        BigIntegerToken newToken = new BigIntegerToken("52535295865117307932921825928971026432", LocatorConfig.instance.getPartitioner());
+        BigIntegerToken newToken = new BigIntegerToken("52535295865117307932921825928971026432", databaseDescriptor.getLocatorConfig().getPartitioner());
         BigIntegerToken[] tokens = initTokens();
         BigIntegerToken[] tokensAfterMove = initTokensAfterMove(tokens, movingNodeIdx, newToken);
         Pair<Set<Range<Token>>, Set<Range<Token>>> ranges = calculateStreamAndFetchRanges(tokens, tokensAfterMove, movingNodeIdx);
@@ -266,11 +266,11 @@ public class OldNetworkTopologyStrategyTest
 
         // build expected ranges
         Range[] toStreamExpected = new Range[1];
-        toStreamExpected[0] = new Range(getToken(movingNodeIdx - 2, tokens), getToken(movingNodeIdx - 1, tokens), LocatorConfig.instance.getPartitioner());
+        toStreamExpected[0] = new Range(getToken(movingNodeIdx - 2, tokens), getToken(movingNodeIdx - 1, tokens), databaseDescriptor.getLocatorConfig().getPartitioner());
         Arrays.sort(toStreamExpected);
         Range[] toFetchExpected = new Range[2];
-        toFetchExpected[0] = new Range(getToken(movingNodeIdxAfterMove - 1, tokens), getToken(movingNodeIdxAfterMove, tokens), LocatorConfig.instance.getPartitioner());
-        toFetchExpected[1] = new Range(getToken(movingNodeIdxAfterMove, tokensAfterMove), getToken(movingNodeIdx, tokensAfterMove), LocatorConfig.instance.getPartitioner());
+        toFetchExpected[0] = new Range(getToken(movingNodeIdxAfterMove - 1, tokens), getToken(movingNodeIdxAfterMove, tokens), databaseDescriptor.getLocatorConfig().getPartitioner());
+        toFetchExpected[1] = new Range(getToken(movingNodeIdxAfterMove, tokensAfterMove), getToken(movingNodeIdx, tokensAfterMove), databaseDescriptor.getLocatorConfig().getPartitioner());
         Arrays.sort(toFetchExpected);
 
         assertEquals(Arrays.equals(toStream, toStreamExpected), true);
@@ -284,7 +284,7 @@ public class OldNetworkTopologyStrategyTest
 
         int movingNodeIdx = 1;
         int movingNodeIdxAfterMove = 7;
-        BigIntegerToken newToken = new BigIntegerToken("158873535527910577765226390751398592512", LocatorConfig.instance.getPartitioner());
+        BigIntegerToken newToken = new BigIntegerToken("158873535527910577765226390751398592512", databaseDescriptor.getLocatorConfig().getPartitioner());
         BigIntegerToken[] tokens = initTokens();
         BigIntegerToken[] tokensAfterMove = initTokensAfterMove(tokens, movingNodeIdx, newToken);
         Pair<Set<Range<Token>>, Set<Range<Token>>> ranges = calculateStreamAndFetchRanges(tokens, tokensAfterMove, movingNodeIdx);
@@ -295,11 +295,11 @@ public class OldNetworkTopologyStrategyTest
         Arrays.sort(toFetch);
 
         Range[] toStreamExpected = new Range[2];
-        toStreamExpected[0] = new Range(getToken(movingNodeIdx, tokensAfterMove), getToken(movingNodeIdx - 1, tokensAfterMove), LocatorConfig.instance.getPartitioner());
-        toStreamExpected[1] = new Range(getToken(movingNodeIdx - 1, tokens), getToken(movingNodeIdx, tokens), LocatorConfig.instance.getPartitioner());
+        toStreamExpected[0] = new Range(getToken(movingNodeIdx, tokensAfterMove), getToken(movingNodeIdx - 1, tokensAfterMove), databaseDescriptor.getLocatorConfig().getPartitioner());
+        toStreamExpected[1] = new Range(getToken(movingNodeIdx - 1, tokens), getToken(movingNodeIdx, tokens), databaseDescriptor.getLocatorConfig().getPartitioner());
         Arrays.sort(toStreamExpected);
         Range[] toFetchExpected = new Range[1];
-        toFetchExpected[0] = new Range(getToken(movingNodeIdxAfterMove - 1, tokens), getToken(movingNodeIdxAfterMove, tokens), LocatorConfig.instance.getPartitioner());
+        toFetchExpected[0] = new Range(getToken(movingNodeIdxAfterMove - 1, tokens), getToken(movingNodeIdxAfterMove, tokens), databaseDescriptor.getLocatorConfig().getPartitioner());
         Arrays.sort(toFetchExpected);
 
         System.out.println("toStream : " + Arrays.toString(toStream));
@@ -322,14 +322,14 @@ public class OldNetworkTopologyStrategyTest
     private BigIntegerToken[] initTokens()
     {
         BigIntegerToken[] tokens = new BigIntegerToken[] {
-                new BigIntegerToken("0", LocatorConfig.instance.getPartitioner()), // just to be able to test
-                new BigIntegerToken("34028236692093846346337460743176821145", LocatorConfig.instance.getPartitioner()),
-                new BigIntegerToken("42535295865117307932921825928971026432", LocatorConfig.instance.getPartitioner()),
-                new BigIntegerToken("63802943797675961899382738893456539648", LocatorConfig.instance.getPartitioner()),
-                new BigIntegerToken("85070591730234615865843651857942052864", LocatorConfig.instance.getPartitioner()),
-                new BigIntegerToken("106338239662793269832304564822427566080", LocatorConfig.instance.getPartitioner()),
-                new BigIntegerToken("127605887595351923798765477786913079296", LocatorConfig.instance.getPartitioner()),
-                new BigIntegerToken("148873535527910577765226390751398592512", LocatorConfig.instance.getPartitioner())
+                new BigIntegerToken("0", databaseDescriptor.getLocatorConfig().getPartitioner()), // just to be able to test
+                new BigIntegerToken("34028236692093846346337460743176821145", databaseDescriptor.getLocatorConfig().getPartitioner()),
+                new BigIntegerToken("42535295865117307932921825928971026432", databaseDescriptor.getLocatorConfig().getPartitioner()),
+                new BigIntegerToken("63802943797675961899382738893456539648", databaseDescriptor.getLocatorConfig().getPartitioner()),
+                new BigIntegerToken("85070591730234615865843651857942052864", databaseDescriptor.getLocatorConfig().getPartitioner()),
+                new BigIntegerToken("106338239662793269832304564822427566080", databaseDescriptor.getLocatorConfig().getPartitioner()),
+                new BigIntegerToken("127605887595351923798765477786913079296", databaseDescriptor.getLocatorConfig().getPartitioner()),
+                new BigIntegerToken("148873535527910577765226390751398592512", databaseDescriptor.getLocatorConfig().getPartitioner())
         };
         return tokens;
     }
@@ -337,7 +337,7 @@ public class OldNetworkTopologyStrategyTest
     private TokenMetadata initTokenMetadata(BigIntegerToken[] tokens)
             throws UnknownHostException
     {
-        TokenMetadata tokenMetadataCurrent = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
+        TokenMetadata tokenMetadataCurrent = new TokenMetadata(databaseDescriptor.getFailureDetector(), databaseDescriptor.getLocatorConfig());
 
         int lastIPPart = 1;
         for (BigIntegerToken token : tokens)
@@ -359,14 +359,14 @@ public class OldNetworkTopologyStrategyTest
 
     private Pair<Set<Range<Token>>, Set<Range<Token>>> calculateStreamAndFetchRanges(BigIntegerToken[] tokens, BigIntegerToken[] tokensAfterMove, int movingNodeIdx) throws UnknownHostException
     {
-        RackInferringSnitch endpointSnitch = new RackInferringSnitch(LocatorConfig.instance);
+        RackInferringSnitch endpointSnitch = new RackInferringSnitch(databaseDescriptor.getLocatorConfig());
 
         InetAddress movingNode = InetAddress.getByName("254.0.0." + Integer.toString(movingNodeIdx + 1));
 
 
         TokenMetadata tokenMetadataCurrent = initTokenMetadata(tokens);
         TokenMetadata tokenMetadataAfterMove = initTokenMetadata(tokensAfterMove);
-        AbstractReplicationStrategy strategy = new OldNetworkTopologyStrategy("Keyspace1", tokenMetadataCurrent, endpointSnitch, KSMetaData.optsWithRF(2), LocatorConfig.instance);
+        AbstractReplicationStrategy strategy = new OldNetworkTopologyStrategy("Keyspace1", tokenMetadataCurrent, endpointSnitch, KSMetaData.optsWithRF(2), databaseDescriptor.getLocatorConfig());
 
         Collection<Range<Token>> currentRanges = strategy.getAddressRanges().get(movingNode);
         Collection<Range<Token>> updatedRanges = strategy.getPendingAddressRanges(tokenMetadataAfterMove, tokensAfterMove[movingNodeIdx], movingNode);

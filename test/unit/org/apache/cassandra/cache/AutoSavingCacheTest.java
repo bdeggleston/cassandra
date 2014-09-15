@@ -65,7 +65,7 @@ public class AutoSavingCacheTest
 
         // preheat key cache
         for (SSTableReader sstable : cfs.getSSTables())
-            sstable.getPosition(Util.dk("key1"), SSTableReader.Operator.EQ);
+            sstable.getPosition(Util.dk("key1", databaseDescriptor), SSTableReader.Operator.EQ);
 
         AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = databaseDescriptor.getCacheService().keyCache;
 

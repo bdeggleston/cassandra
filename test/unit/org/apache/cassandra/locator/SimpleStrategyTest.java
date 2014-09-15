@@ -70,8 +70,8 @@ public class SimpleStrategyTest
         List<Token> endpointTokens = new ArrayList<Token>();
         List<Token> keyTokens = new ArrayList<Token>();
         for (int i = 0; i < 5; i++) {
-            endpointTokens.add(new BigIntegerToken(String.valueOf(10 * i), LocatorConfig.instance.getPartitioner()));
-            keyTokens.add(new BigIntegerToken(String.valueOf(10 * i + 5), LocatorConfig.instance.getPartitioner()));
+            endpointTokens.add(new BigIntegerToken(String.valueOf(10 * i), databaseDescriptor.getLocatorConfig().getPartitioner()));
+            keyTokens.add(new BigIntegerToken(String.valueOf(10 * i + 5), databaseDescriptor.getLocatorConfig().getPartitioner()));
         }
         verifyGetNaturalEndpoints(endpointTokens.toArray(new Token[0]), keyTokens.toArray(new Token[0]));
     }
@@ -79,12 +79,12 @@ public class SimpleStrategyTest
     @Test
     public void testStringEndpoints() throws UnknownHostException
     {
-        IPartitioner partitioner = new OrderPreservingPartitioner(LocatorConfig.instance);
+        IPartitioner partitioner = new OrderPreservingPartitioner(databaseDescriptor.getLocatorConfig());
 
         List<Token> endpointTokens = new ArrayList<Token>();
         List<Token> keyTokens = new ArrayList<Token>();
         for (int i = 0; i < 5; i++) {
-            endpointTokens.add(new StringToken(String.valueOf((char)('a' + i * 2)), LocatorConfig.instance.getPartitioner()));
+            endpointTokens.add(new StringToken(String.valueOf((char)('a' + i * 2)), databaseDescriptor.getLocatorConfig().getPartitioner()));
             keyTokens.add(partitioner.getToken(ByteBufferUtil.bytes(String.valueOf((char)('a' + i * 2 + 1)))));
         }
         verifyGetNaturalEndpoints(endpointTokens.toArray(new Token[0]), keyTokens.toArray(new Token[0]));
@@ -98,7 +98,7 @@ public class SimpleStrategyTest
         AbstractReplicationStrategy strategy;
         for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
-            tmd = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
+            tmd = new TokenMetadata(databaseDescriptor.getFailureDetector(), databaseDescriptor.getLocatorConfig());
             strategy = getStrategy(keyspaceName, tmd);
             List<InetAddress> hosts = new ArrayList<InetAddress>();
             for (int i = 0; i < endpointTokens.length; i++)
@@ -125,7 +125,7 @@ public class SimpleStrategyTest
     {
         // the token difference will be RING_SIZE * 2.
         final int RING_SIZE = 10;
-        TokenMetadata tmd = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
+        TokenMetadata tmd = new TokenMetadata(databaseDescriptor.getFailureDetector(), databaseDescriptor.getLocatorConfig());
         TokenMetadata oldTmd = StorageServiceAccessor.setTokenMetadata(tmd, StorageService.instance);
 
         Token[] endpointTokens = new Token[RING_SIZE];
@@ -133,8 +133,8 @@ public class SimpleStrategyTest
 
         for (int i = 0; i < RING_SIZE; i++)
         {
-            endpointTokens[i] = new BigIntegerToken(String.valueOf(RING_SIZE * 2 * i), LocatorConfig.instance.getPartitioner());
-            keyTokens[i] = new BigIntegerToken(String.valueOf(RING_SIZE * 2 * i + RING_SIZE), LocatorConfig.instance.getPartitioner());
+            endpointTokens[i] = new BigIntegerToken(String.valueOf(RING_SIZE * 2 * i), databaseDescriptor.getLocatorConfig().getPartitioner());
+            keyTokens[i] = new BigIntegerToken(String.valueOf(RING_SIZE * 2 * i + RING_SIZE), databaseDescriptor.getLocatorConfig().getPartitioner());
         }
 
         List<InetAddress> hosts = new ArrayList<InetAddress>();
@@ -146,7 +146,7 @@ public class SimpleStrategyTest
         }
 
         // bootstrap at the end of the ring
-        Token bsToken = new BigIntegerToken(String.valueOf(210), LocatorConfig.instance.getPartitioner());
+        Token bsToken = new BigIntegerToken(String.valueOf(210), databaseDescriptor.getLocatorConfig().getPartitioner());
         InetAddress bootstrapEndpoint = InetAddress.getByName("127.0.0.11");
         tmd.addBootstrapToken(bsToken, bootstrapEndpoint);
 
@@ -155,7 +155,7 @@ public class SimpleStrategyTest
         {
             strategy = getStrategy(keyspaceName, tmd);
 
-            PendingRangeCalculatorService.calculatePendingRanges(strategy, keyspaceName, LocatorConfig.instance.getTokenMetadata());
+            PendingRangeCalculatorService.calculatePendingRanges(strategy, keyspaceName, databaseDescriptor.getLocatorConfig().getTokenMetadata());
 
             int replicationFactor = strategy.getReplicationFactor();
 
@@ -188,8 +188,8 @@ public class SimpleStrategyTest
                 keyspaceName,
                 ksmd.strategyClass,
                 tmd,
-                new SimpleSnitch(LocatorConfig.instance),
+                new SimpleSnitch(databaseDescriptor.getLocatorConfig()),
                 ksmd.strategyOptions,
-                LocatorConfig.instance);
+                databaseDescriptor.getLocatorConfig());
     }
 }

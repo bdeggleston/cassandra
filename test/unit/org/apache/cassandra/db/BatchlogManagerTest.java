@@ -73,9 +73,9 @@ public class BatchlogManagerTest
     @Before
     public void setUp() throws Exception
     {
-        TokenMetadata metadata = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata metadata = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         InetAddress localhost = InetAddress.getByName("127.0.0.1");
-        metadata.updateNormalToken(Util.token("A"), localhost);
+        metadata.updateNormalToken(Util.token("A", databaseDescriptor), localhost);
         metadata.updateHostId(UUIDGen.getTimeUUID(), localhost);
     }
 

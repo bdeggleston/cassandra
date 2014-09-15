@@ -58,7 +58,7 @@ public class LeaveAndBootstrapTest
         DatabaseDescriptor.init();
         SchemaLoader.loadSchema();
         SchemaLoader.schemaDefinition("LeaveAndBootstrapTest");
-        assert LocatorConfig.instance.getPartitioner() instanceof  RandomPartitioner;
+        assert databaseDescriptor.getLocatorConfig().getPartitioner() instanceof  RandomPartitioner;
     }
 
     /**
@@ -72,9 +72,9 @@ public class LeaveAndBootstrapTest
         final int RING_SIZE = 6;
         final int LEAVING_NODE = 3;
 
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
-        IPartitioner partitioner = new RandomPartitioner(LocatorConfig.instance);
+        IPartitioner partitioner = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
 
         ArrayList<Token> endpointTokens = new ArrayList<Token>();
@@ -90,7 +90,7 @@ public class LeaveAndBootstrapTest
             for (Token token : keyTokens)
             {
                 List<InetAddress> endpoints = new ArrayList<InetAddress>();
-                Iterator<Token> tokenIter = TokenMetadata.ringIterator(tmd.sortedTokens(), token, false, LocatorConfig.instance.getPartitioner());
+                Iterator<Token> tokenIter = TokenMetadata.ringIterator(tmd.sortedTokens(), token, false, databaseDescriptor.getLocatorConfig().getPartitioner());
                 while (tokenIter.hasNext())
                 {
                     endpoints.add(tmd.getEndpoint(tokenIter.next()));
@@ -143,9 +143,9 @@ public class LeaveAndBootstrapTest
     {
         StorageService ss = StorageService.instance;
         final int RING_SIZE = 10;
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
-        IPartitioner partitioner = new RandomPartitioner(LocatorConfig.instance);
+        IPartitioner partitioner = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
 
         ArrayList<Token> endpointTokens = new ArrayList<Token>();
@@ -189,49 +189,49 @@ public class LeaveAndBootstrapTest
         // pre-calculate the results.
         Map<String, Multimap<Token, InetAddress>> expectedEndpoints = new HashMap<String, Multimap<Token, InetAddress>>();
         expectedEndpoints.put(KEYSPACE1, HashMultimap.<Token, InetAddress>create());
-        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("5", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.2"));
-        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("15", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.3"));
-        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("25", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.4"));
-        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("35", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.5"));
-        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("45", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.6"));
-        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("55", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.7", "127.0.0.8", "127.0.1.1"));
-        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("65", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.8"));
-        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("75", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.9", "127.0.1.2", "127.0.0.1"));
-        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("85", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.10", "127.0.0.1"));
-        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("95", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.1"));
+        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("5", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.2"));
+        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("15", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.3"));
+        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("25", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.4"));
+        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("35", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.5"));
+        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("45", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.6"));
+        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("55", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.7", "127.0.0.8", "127.0.1.1"));
+        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("65", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.8"));
+        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("75", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.9", "127.0.1.2", "127.0.0.1"));
+        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("85", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.10", "127.0.0.1"));
+        expectedEndpoints.get(KEYSPACE1).putAll(new BigIntegerToken("95", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.1"));
         expectedEndpoints.put(KEYSPACE2, HashMultimap.<Token, InetAddress>create());
-        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("5", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.2"));
-        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("15", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.3"));
-        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("25", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.4"));
-        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("35", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.5"));
-        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("45", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.6"));
-        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("55", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.7", "127.0.0.8", "127.0.1.1"));
-        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("65", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.8"));
-        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("75", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.9", "127.0.1.2", "127.0.0.1"));
-        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("85", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.10", "127.0.0.1"));
-        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("95", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.1"));
+        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("5", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.2"));
+        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("15", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.3"));
+        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("25", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.4"));
+        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("35", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.5"));
+        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("45", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.6"));
+        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("55", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.7", "127.0.0.8", "127.0.1.1"));
+        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("65", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.8"));
+        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("75", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.9", "127.0.1.2", "127.0.0.1"));
+        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("85", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.10", "127.0.0.1"));
+        expectedEndpoints.get(KEYSPACE2).putAll(new BigIntegerToken("95", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.1"));
         expectedEndpoints.put(KEYSPACE3, HashMultimap.<Token, InetAddress>create());
-        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("5", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6"));
-        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("15", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6", "127.0.0.7", "127.0.1.1", "127.0.0.8"));
-        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("25", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.4", "127.0.0.5", "127.0.0.6", "127.0.0.7", "127.0.0.8", "127.0.1.2", "127.0.0.1", "127.0.1.1"));
-        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("35", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.5", "127.0.0.6", "127.0.0.7", "127.0.0.8", "127.0.0.9", "127.0.1.2", "127.0.0.1", "127.0.0.2", "127.0.1.1"));
-        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("45", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.6", "127.0.0.7", "127.0.0.8", "127.0.0.9", "127.0.0.10", "127.0.1.2", "127.0.0.1", "127.0.0.2", "127.0.1.1", "127.0.0.3"));
-        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("55", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.7", "127.0.0.8", "127.0.0.9", "127.0.0.10", "127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.1.1", "127.0.1.2"));
-        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("65", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.8", "127.0.0.9", "127.0.0.10", "127.0.0.1", "127.0.0.2", "127.0.1.2", "127.0.0.3", "127.0.0.4"));
-        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("75", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.9", "127.0.0.10", "127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.1.2", "127.0.0.4", "127.0.0.5"));
-        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("85", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.10", "127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5"));
-        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("95", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5"));
+        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("5", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6"));
+        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("15", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6", "127.0.0.7", "127.0.1.1", "127.0.0.8"));
+        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("25", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.4", "127.0.0.5", "127.0.0.6", "127.0.0.7", "127.0.0.8", "127.0.1.2", "127.0.0.1", "127.0.1.1"));
+        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("35", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.5", "127.0.0.6", "127.0.0.7", "127.0.0.8", "127.0.0.9", "127.0.1.2", "127.0.0.1", "127.0.0.2", "127.0.1.1"));
+        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("45", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.6", "127.0.0.7", "127.0.0.8", "127.0.0.9", "127.0.0.10", "127.0.1.2", "127.0.0.1", "127.0.0.2", "127.0.1.1", "127.0.0.3"));
+        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("55", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.7", "127.0.0.8", "127.0.0.9", "127.0.0.10", "127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.1.1", "127.0.1.2"));
+        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("65", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.8", "127.0.0.9", "127.0.0.10", "127.0.0.1", "127.0.0.2", "127.0.1.2", "127.0.0.3", "127.0.0.4"));
+        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("75", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.9", "127.0.0.10", "127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.1.2", "127.0.0.4", "127.0.0.5"));
+        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("85", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.10", "127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5"));
+        expectedEndpoints.get(KEYSPACE3).putAll(new BigIntegerToken("95", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5"));
         expectedEndpoints.put(KEYSPACE4, HashMultimap.<Token, InetAddress>create());
-        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("5", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.2", "127.0.0.3", "127.0.0.4"));
-        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("15", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.3", "127.0.0.4", "127.0.0.5"));
-        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("25", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.4", "127.0.0.5", "127.0.0.6"));
-        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("35", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.5", "127.0.0.6", "127.0.0.7", "127.0.1.1", "127.0.0.8"));
-        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("45", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.6", "127.0.0.7", "127.0.0.8", "127.0.1.2", "127.0.0.1", "127.0.1.1"));
-        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("55", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.7", "127.0.0.8", "127.0.0.9", "127.0.0.1", "127.0.0.2", "127.0.1.1", "127.0.1.2"));
-        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("65", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.8", "127.0.0.9", "127.0.0.10", "127.0.1.2", "127.0.0.1", "127.0.0.2"));
-        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("75", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.9", "127.0.0.10", "127.0.0.1", "127.0.1.2", "127.0.0.2", "127.0.0.3"));
-        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("85", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.10", "127.0.0.1", "127.0.0.2", "127.0.0.3"));
-        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("95", LocatorConfig.instance.getPartitioner()), makeAddrs("127.0.0.1", "127.0.0.2", "127.0.0.3"));
+        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("5", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.2", "127.0.0.3", "127.0.0.4"));
+        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("15", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.3", "127.0.0.4", "127.0.0.5"));
+        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("25", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.4", "127.0.0.5", "127.0.0.6"));
+        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("35", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.5", "127.0.0.6", "127.0.0.7", "127.0.1.1", "127.0.0.8"));
+        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("45", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.6", "127.0.0.7", "127.0.0.8", "127.0.1.2", "127.0.0.1", "127.0.1.1"));
+        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("55", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.7", "127.0.0.8", "127.0.0.9", "127.0.0.1", "127.0.0.2", "127.0.1.1", "127.0.1.2"));
+        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("65", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.8", "127.0.0.9", "127.0.0.10", "127.0.1.2", "127.0.0.1", "127.0.0.2"));
+        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("75", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.9", "127.0.0.10", "127.0.0.1", "127.0.1.2", "127.0.0.2", "127.0.0.3"));
+        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("85", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.10", "127.0.0.1", "127.0.0.2", "127.0.0.3"));
+        expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("95", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.1", "127.0.0.2", "127.0.0.3"));
 
         PendingRangeCalculatorService.instance.blockUntilFinished();
 
@@ -336,24 +336,24 @@ public class LeaveAndBootstrapTest
         ss.onChange(boot1, ApplicationState.STATUS, valueFactory.normal(Collections.singleton(keyTokens.get(5))));
 
         // adjust precalcuated results.  this changes what the epected endpoints are.
-        expectedEndpoints.get(KEYSPACE1).get(new BigIntegerToken("55", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.8"));
-        expectedEndpoints.get(KEYSPACE1).get(new BigIntegerToken("85", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
-        expectedEndpoints.get(KEYSPACE2).get(new BigIntegerToken("55", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.8"));
-        expectedEndpoints.get(KEYSPACE2).get(new BigIntegerToken("85", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
-        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("15", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.8"));
-        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("25", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.1.2", "127.0.0.1"));
-        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("35", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.2"));
-        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("45", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.10", "127.0.0.3"));
-        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("55", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.10", "127.0.0.4"));
-        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("65", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
-        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("75", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
-        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("85", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
-        expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("35", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.8"));
-        expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("45", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.1.2", "127.0.0.1"));
-        expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("55", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.2", "127.0.0.7"));
-        expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("65", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
-        expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("75", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
-        expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("85", LocatorConfig.instance.getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
+        expectedEndpoints.get(KEYSPACE1).get(new BigIntegerToken("55", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.8"));
+        expectedEndpoints.get(KEYSPACE1).get(new BigIntegerToken("85", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
+        expectedEndpoints.get(KEYSPACE2).get(new BigIntegerToken("55", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.8"));
+        expectedEndpoints.get(KEYSPACE2).get(new BigIntegerToken("85", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
+        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("15", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.8"));
+        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("25", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.1.2", "127.0.0.1"));
+        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("35", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.2"));
+        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("45", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.10", "127.0.0.3"));
+        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("55", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.10", "127.0.0.4"));
+        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("65", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
+        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("75", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
+        expectedEndpoints.get(KEYSPACE3).get(new BigIntegerToken("85", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
+        expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("35", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.0.8"));
+        expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("45", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.7", "127.0.1.2", "127.0.0.1"));
+        expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("55", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.2", "127.0.0.7"));
+        expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("65", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
+        expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("75", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
+        expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("85", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
 
         PendingRangeCalculatorService.instance.blockUntilFinished();
 
@@ -443,9 +443,9 @@ public class LeaveAndBootstrapTest
     public void testStateJumpToBootstrap() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
-        IPartitioner partitioner = new RandomPartitioner(LocatorConfig.instance);
+        IPartitioner partitioner = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
 
         ArrayList<Token> endpointTokens = new ArrayList<Token>();
@@ -520,9 +520,9 @@ public class LeaveAndBootstrapTest
     public void testStateJumpToNormal() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
-        IPartitioner partitioner = new RandomPartitioner(LocatorConfig.instance);
+        IPartitioner partitioner = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
 
         ArrayList<Token> endpointTokens = new ArrayList<Token>();
@@ -562,9 +562,9 @@ public class LeaveAndBootstrapTest
     public void testStateJumpToLeaving() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
-        IPartitioner partitioner = new RandomPartitioner(LocatorConfig.instance);
+        IPartitioner partitioner = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
 
         ArrayList<Token> endpointTokens = new ArrayList<Token>();
@@ -612,9 +612,9 @@ public class LeaveAndBootstrapTest
     public void testStateJumpToLeft() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
-        IPartitioner partitioner = new RandomPartitioner(LocatorConfig.instance);
+        IPartitioner partitioner = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);
 
         ArrayList<Token> endpointTokens = new ArrayList<Token>();
@@ -656,12 +656,12 @@ public class LeaveAndBootstrapTest
     public void testStateChangeOnRemovedNode() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
-        VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(LocatorConfig.instance.getPartitioner());
+        VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(databaseDescriptor.getLocatorConfig().getPartitioner());
 
         // create a ring of 2 nodes
         ArrayList<Token> endpointTokens = new ArrayList<>();
         List<InetAddress> hosts = new ArrayList<>();
-        Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), endpointTokens, new ArrayList<Token>(), hosts, new ArrayList<UUID>(), 2, databaseDescriptor);
+        Util.createInitialRing(ss, databaseDescriptor.getLocatorConfig().getPartitioner(), endpointTokens, new ArrayList<Token>(), hosts, new ArrayList<UUID>(), 2, databaseDescriptor);
 
         InetAddress toRemove = hosts.get(1);
         databaseDescriptor.getSystemKeyspace().updatePeerInfo(toRemove, "data_center", "dc42");
@@ -684,8 +684,8 @@ public class LeaveAndBootstrapTest
     {
         // create a ring of 1 node
         StorageService ss = StorageService.instance;
-        VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(LocatorConfig.instance.getPartitioner());
-        Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), new ArrayList<Token>(), new ArrayList<Token>(),  new ArrayList<InetAddress>(), new ArrayList<UUID>(), 1, databaseDescriptor);
+        VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(databaseDescriptor.getLocatorConfig().getPartitioner());
+        Util.createInitialRing(ss, databaseDescriptor.getLocatorConfig().getPartitioner(), new ArrayList<Token>(), new ArrayList<Token>(),  new ArrayList<InetAddress>(), new ArrayList<UUID>(), 1, databaseDescriptor);
 
         // make a REMOVING state change on a non-member endpoint; without the CASSANDRA-6564 fix, this
         // would result in an ArrayIndexOutOfBoundsException
@@ -707,9 +707,9 @@ public class LeaveAndBootstrapTest
                 keyspaceName,
                 ksmd.strategyClass,
                 tmd,
-                new SimpleSnitch(LocatorConfig.instance),
+                new SimpleSnitch(databaseDescriptor.getLocatorConfig()),
                 ksmd.strategyOptions,
-                LocatorConfig.instance);
+                databaseDescriptor.getLocatorConfig());
     }
 
 }

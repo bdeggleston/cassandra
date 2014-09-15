@@ -24,6 +24,6 @@ public class ByteOrderedPartitionerTest extends PartitionerTestCase<BytesToken>
 {
     public void initPartitioner()
     {
-        partitioner = new ByteOrderedPartitioner(LocatorConfig.instance);
+        partitioner = new ByteOrderedPartitioner(databaseDescriptor.getLocatorConfig());
     }
 }

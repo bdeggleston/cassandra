@@ -85,7 +85,7 @@ public class TriggersTest
                                             databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
                                             StorageService.instance, databaseDescriptor.getCFMetaDataFactory(),
                                             DatabaseDescriptor.instance.getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
-                                            DatabaseDescriptor.instance.getQueryHandler(), LocatorConfig.instance,
+                                            DatabaseDescriptor.instance.getQueryHandler(), databaseDescriptor.getLocatorConfig(),
                                             databaseDescriptor.getDBConfig(), new ThriftSessionManager(DatabaseDescriptor.instance),
                                             ClientMetrics.instance);
             thriftServer.start();

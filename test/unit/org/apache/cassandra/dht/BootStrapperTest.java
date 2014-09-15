@@ -76,10 +76,10 @@ public class BootStrapperTest
     {
 
         generateFakeEndpoints(numOldNodes);
-        Token myToken = LocatorConfig.instance.getPartitioner().getRandomToken();
+        Token myToken = databaseDescriptor.getLocatorConfig().getPartitioner().getRandomToken();
         InetAddress myEndpoint = InetAddress.getByName("127.0.0.1");
 
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         assertEquals(numOldNodes, tmd.sortedTokens().size());
         RangeStreamer s = new RangeStreamer(tmd, myEndpoint, "Bootstrap", DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getGossiper(), databaseDescriptor.getStreamManager(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getDBConfig());
         IFailureDetector mockFailureDetector = new IFailureDetector()
@@ -117,9 +117,9 @@ public class BootStrapperTest
 
     private void generateFakeEndpoints(int numOldNodes) throws UnknownHostException
     {
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
-        IPartitioner<?> p = LocatorConfig.instance.getPartitioner();
+        IPartitioner<?> p = databaseDescriptor.getLocatorConfig().getPartitioner();
 
         for (int i = 1; i <= numOldNodes; i++)
         {

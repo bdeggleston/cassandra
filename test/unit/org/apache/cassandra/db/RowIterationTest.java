@@ -68,7 +68,7 @@ public class RowIterationTest
         final int ROWS_PER_SSTABLE = 10;
         Set<DecoratedKey> inserted = new HashSet<DecoratedKey>();
         for (int i = 0; i < ROWS_PER_SSTABLE; i++) {
-            DecoratedKey key = Util.dk(String.valueOf(i));
+            DecoratedKey key = Util.dk(String.valueOf(i), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             rm.add("Super3", CellNames.compositeDense(ByteBufferUtil.bytes("sc"), ByteBufferUtil.bytes(String.valueOf(i))), ByteBuffer.wrap(new byte[ROWS_PER_SSTABLE * 10 - i * 2]), i);
             rm.applyUnsafe();
@@ -84,7 +84,7 @@ public class RowIterationTest
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         String CF_NAME = "Standard3";
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(CF_NAME);
-        DecoratedKey key = Util.dk("key");
+        DecoratedKey key = Util.dk("key", databaseDescriptor);
 
         // Delete row in first sstable
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
@@ -112,7 +112,7 @@ public class RowIterationTest
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         String CF_NAME = "Standard3";
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(CF_NAME);
-        DecoratedKey key = Util.dk("key");
+        DecoratedKey key = Util.dk("key", databaseDescriptor);
 
         // Delete a row in first sstable
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());

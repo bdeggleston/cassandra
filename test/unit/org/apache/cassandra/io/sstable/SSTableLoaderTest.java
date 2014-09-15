@@ -77,9 +77,9 @@ public class SSTableLoaderTest
         CFMetaData cfmeta = databaseDescriptor.getSchema().getCFMetaData(KEYSPACE1, CF_STANDARD);
         SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(dataDir,
                                                                              cfmeta,
-                                                                             LocatorConfig.instance.getPartitioner(),
+                                                                             databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                                              1, databaseDescriptor.getDBConfig());
-        DecoratedKey key = Util.dk("key1");
+        DecoratedKey key = Util.dk("key1", databaseDescriptor);
         writer.newRow(key.getKey());
         writer.addColumn(ByteBufferUtil.bytes("col1"), ByteBufferUtil.bytes(100), 1);
         writer.close();
@@ -88,9 +88,9 @@ public class SSTableLoaderTest
         {
             public void init(String keyspace)
             {
-                for (Range<Token> range : LocatorConfig.instance.getLocalRanges(KEYSPACE1))
+                for (Range<Token> range : databaseDescriptor.getLocatorConfig().getLocalRanges(KEYSPACE1))
                     addRangeForEndpoint(range, DatabaseDescriptor.instance.getBroadcastAddress());
-                setPartitioner(LocatorConfig.instance.getPartitioner());
+                setPartitioner(databaseDescriptor.getLocatorConfig().getPartitioner());
             }
 
             public CFMetaData getCFMetaData(String keyspace, String cfName)

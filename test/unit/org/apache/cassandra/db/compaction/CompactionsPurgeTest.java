@@ -101,7 +101,7 @@ public class CompactionsPurgeTest
         String cfName = "Standard1";
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
 
-        DecoratedKey key = Util.dk("key1");
+        DecoratedKey key = Util.dk("key1", databaseDescriptor);
         Mutation rm;
 
         // inserts
@@ -147,7 +147,7 @@ public class CompactionsPurgeTest
 
         Mutation rm;
         for (int k = 1; k <= 2; ++k) {
-            DecoratedKey key = Util.dk("key" + k);
+            DecoratedKey key = Util.dk("key" + k, databaseDescriptor);
 
             // inserts
             rm = databaseDescriptor.getMutationFactory().create(KEYSPACE2, key.getKey());
@@ -168,8 +168,8 @@ public class CompactionsPurgeTest
             cfs.forceBlockingFlush();
         }
 
-        DecoratedKey key1 = Util.dk("key1");
-        DecoratedKey key2 = Util.dk("key2");
+        DecoratedKey key1 = Util.dk("key1", databaseDescriptor);
+        DecoratedKey key2 = Util.dk("key2", databaseDescriptor);
 
         // flush, remember the current sstable and then resurrect one column
         // for first key. Then submit minor compaction on remembered sstables.
@@ -204,7 +204,7 @@ public class CompactionsPurgeTest
         String cfName = "Standard1";
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         Mutation rm;
-        DecoratedKey key3 = Util.dk("key3");
+        DecoratedKey key3 = Util.dk("key3", databaseDescriptor);
 
         // inserts
         rm = databaseDescriptor.getMutationFactory().create(KEYSPACE2, key3.getKey());
@@ -244,7 +244,7 @@ public class CompactionsPurgeTest
         String cfName = "Standard2";
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
 
-        DecoratedKey key = Util.dk("key1");
+        DecoratedKey key = Util.dk("key1", databaseDescriptor);
         Mutation rm;
 
         // inserts
@@ -282,7 +282,7 @@ public class CompactionsPurgeTest
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
 
-        DecoratedKey key = Util.dk("key3");
+        DecoratedKey key = Util.dk("key3", databaseDescriptor);
         Mutation rm;
 
         // inserts
@@ -329,7 +329,7 @@ public class CompactionsPurgeTest
         String cfName = "Standard1";
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
-        DecoratedKey key = Util.dk("key3");
+        DecoratedKey key = Util.dk("key3", databaseDescriptor);
         Mutation rm;
         QueryFilter filter = QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 

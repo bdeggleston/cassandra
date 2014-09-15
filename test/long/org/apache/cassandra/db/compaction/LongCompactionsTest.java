@@ -112,7 +112,7 @@ public class LongCompactionsTest
                 }
                 rows.put(key, SSTableUtils.createCF(KEYSPACE1, CF_STANDARD, Long.MIN_VALUE, Integer.MIN_VALUE, databaseDescriptor, cols));
             }
-            SSTableReader sstable = SSTableUtils.prepare(databaseDescriptor.getSSTableWriterFactory()).write(rows);
+            SSTableReader sstable = SSTableUtils.prepare(databaseDescriptor).write(rows);
             sstables.add(sstable);
             store.addSSTable(sstable);
         }
@@ -149,7 +149,7 @@ public class LongCompactionsTest
         Set<DecoratedKey> inserted = new HashSet<DecoratedKey>();
         for (int j = 0; j < SSTABLES; j++) {
             for (int i = 0; i < ROWS_PER_SSTABLE; i++) {
-                DecoratedKey key = Util.dk(String.valueOf(i % 2));
+                DecoratedKey key = Util.dk(String.valueOf(i % 2), databaseDescriptor);
                 Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
                 long timestamp = j * ROWS_PER_SSTABLE + i;
                 rm.add("Standard1", Util.cellname(String.valueOf(i / 2)),

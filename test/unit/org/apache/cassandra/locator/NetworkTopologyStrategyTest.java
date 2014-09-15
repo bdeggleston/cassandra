@@ -61,9 +61,9 @@ public class NetworkTopologyStrategyTest
     @Test
     public void testProperties() throws IOException, ConfigurationException
     {
-        IEndpointSnitch snitch = new PropertyFileSnitch(LocatorConfig.instance);
-        LocatorConfig.instance.setEndpointSnitch(snitch);
-        TokenMetadata metadata = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
+        IEndpointSnitch snitch = new PropertyFileSnitch(databaseDescriptor.getLocatorConfig());
+        databaseDescriptor.getLocatorConfig().setEndpointSnitch(snitch);
+        TokenMetadata metadata = new TokenMetadata(databaseDescriptor.getFailureDetector(), databaseDescriptor.getLocatorConfig());
         createDummyTokens(metadata, true);
 
         Map<String, String> configOptions = new HashMap<String, String>();
@@ -72,12 +72,12 @@ public class NetworkTopologyStrategyTest
         configOptions.put("DC3", "1");
 
         // Set the localhost to the tokenmetadata. Embedded cassandra way?
-        NetworkTopologyStrategy strategy = new NetworkTopologyStrategy(keyspaceName, metadata, snitch, configOptions, LocatorConfig.instance);
+        NetworkTopologyStrategy strategy = new NetworkTopologyStrategy(keyspaceName, metadata, snitch, configOptions, databaseDescriptor.getLocatorConfig());
         assert strategy.getReplicationFactor("DC1") == 3;
         assert strategy.getReplicationFactor("DC2") == 2;
         assert strategy.getReplicationFactor("DC3") == 1;
         // Query for the natural hosts
-        ArrayList<InetAddress> endpoints = strategy.getNaturalEndpoints(new StringToken("123", LocatorConfig.instance.getPartitioner()));
+        ArrayList<InetAddress> endpoints = strategy.getNaturalEndpoints(new StringToken("123", databaseDescriptor.getLocatorConfig().getPartitioner()));
         assert 6 == endpoints.size();
         assert 6 == new HashSet<InetAddress>(endpoints).size(); // ensure uniqueness
     }
@@ -85,9 +85,9 @@ public class NetworkTopologyStrategyTest
     @Test
     public void testPropertiesWithEmptyDC() throws IOException, ConfigurationException
     {
-        IEndpointSnitch snitch = new PropertyFileSnitch(LocatorConfig.instance);
-        LocatorConfig.instance.setEndpointSnitch(snitch);
-        TokenMetadata metadata = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
+        IEndpointSnitch snitch = new PropertyFileSnitch(databaseDescriptor.getLocatorConfig());
+        databaseDescriptor.getLocatorConfig().setEndpointSnitch(snitch);
+        TokenMetadata metadata = new TokenMetadata(databaseDescriptor.getFailureDetector(), databaseDescriptor.getLocatorConfig());
         createDummyTokens(metadata, false);
 
         Map<String, String> configOptions = new HashMap<String, String>();
@@ -96,12 +96,12 @@ public class NetworkTopologyStrategyTest
         configOptions.put("DC3", "0");
 
         // Set the localhost to the tokenmetadata. Embedded cassandra way?
-        NetworkTopologyStrategy strategy = new NetworkTopologyStrategy(keyspaceName, metadata, snitch, configOptions, LocatorConfig.instance);
+        NetworkTopologyStrategy strategy = new NetworkTopologyStrategy(keyspaceName, metadata, snitch, configOptions, databaseDescriptor.getLocatorConfig());
         assert strategy.getReplicationFactor("DC1") == 3;
         assert strategy.getReplicationFactor("DC2") == 3;
         assert strategy.getReplicationFactor("DC3") == 0;
         // Query for the natural hosts
-        ArrayList<InetAddress> endpoints = strategy.getNaturalEndpoints(new StringToken("123", LocatorConfig.instance.getPartitioner()));
+        ArrayList<InetAddress> endpoints = strategy.getNaturalEndpoints(new StringToken("123", databaseDescriptor.getLocatorConfig().getPartitioner()));
         assert 6 == endpoints.size();
         assert 6 == new HashSet<InetAddress>(endpoints).size(); // ensure uniqueness
     }
@@ -113,9 +113,9 @@ public class NetworkTopologyStrategyTest
         int[] dcEndpoints = new int[]{128, 256, 512};
         int[] dcReplication = new int[]{2, 6, 6};
 
-        IEndpointSnitch snitch = new RackInferringSnitch(LocatorConfig.instance);
-        LocatorConfig.instance.setEndpointSnitch(snitch);
-        TokenMetadata metadata = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
+        IEndpointSnitch snitch = new RackInferringSnitch(databaseDescriptor.getLocatorConfig());
+        databaseDescriptor.getLocatorConfig().setEndpointSnitch(snitch);
+        TokenMetadata metadata = new TokenMetadata(databaseDescriptor.getFailureDetector(), databaseDescriptor.getLocatorConfig());
         Map<String, String> configOptions = new HashMap<String, String>();
         Multimap<InetAddress, Token> tokens = HashMultimap.create();
 
@@ -130,7 +130,7 @@ public class NetworkTopologyStrategyTest
                 {
                     byte[] ipBytes = new byte[]{10, (byte)dc, (byte)rack, (byte)ep};
                     InetAddress address = InetAddress.getByAddress(ipBytes);
-                    StringToken token = new StringToken(String.format("%02x%02x%02x", ep, rack, dc), LocatorConfig.instance.getPartitioner());
+                    StringToken token = new StringToken(String.format("%02x%02x%02x", ep, rack, dc), databaseDescriptor.getLocatorConfig().getPartitioner());
                     logger.debug("adding node {} at {}", address, token);
                     tokens.put(address, token);
                 }
@@ -138,11 +138,11 @@ public class NetworkTopologyStrategyTest
         }
         metadata.updateNormalTokens(tokens);
 
-        NetworkTopologyStrategy strategy = new NetworkTopologyStrategy(keyspaceName, metadata, snitch, configOptions, LocatorConfig.instance);
+        NetworkTopologyStrategy strategy = new NetworkTopologyStrategy(keyspaceName, metadata, snitch, configOptions, databaseDescriptor.getLocatorConfig());
 
         for (String testToken : new String[]{"123456", "200000", "000402", "ffffff", "400200"})
         {
-            List<InetAddress> endpoints = strategy.calculateNaturalEndpoints(new StringToken(testToken, LocatorConfig.instance.getPartitioner()), metadata);
+            List<InetAddress> endpoints = strategy.calculateNaturalEndpoints(new StringToken(testToken, databaseDescriptor.getLocatorConfig().getPartitioner()), metadata);
             Set<InetAddress> epSet = new HashSet<InetAddress>(endpoints);
 
             Assert.assertEquals(totalRF, endpoints.size());
@@ -175,7 +175,7 @@ public class NetworkTopologyStrategyTest
 
     public void tokenFactory(TokenMetadata metadata, String token, byte[] bytes) throws UnknownHostException
     {
-        Token token1 = new StringToken(token, LocatorConfig.instance.getPartitioner());
+        Token token1 = new StringToken(token, databaseDescriptor.getLocatorConfig().getPartitioner());
         InetAddress add1 = InetAddress.getByAddress(bytes);
         metadata.updateNormalToken(token1, add1);
     }

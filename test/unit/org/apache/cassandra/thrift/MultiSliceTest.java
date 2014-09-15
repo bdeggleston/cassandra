@@ -69,7 +69,7 @@ public class MultiSliceTest
                                      databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
                                      StorageService.instance, databaseDescriptor.getCFMetaDataFactory(),
                                      DatabaseDescriptor.instance.getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
-                                     databaseDescriptor.getQueryHandler(), LocatorConfig.instance,
+                                     databaseDescriptor.getQueryHandler(), databaseDescriptor.getLocatorConfig(),
                                      databaseDescriptor.getDBConfig(), thriftSessionManager,
                                      ClientMetrics.instance);
         server.set_keyspace(KEYSPACE1);

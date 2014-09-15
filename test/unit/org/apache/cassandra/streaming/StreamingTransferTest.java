@@ -133,10 +133,10 @@ public class StreamingTransferTest
     public void testRequestEmpty() throws Exception
     {
         // requesting empty data should succeed
-        IPartitioner p = LocatorConfig.instance.getPartitioner();
+        IPartitioner p = databaseDescriptor.getLocatorConfig().getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1")), LocatorConfig.instance.getPartitioner()));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken(), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1")), databaseDescriptor.getLocatorConfig().getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken(), databaseDescriptor.getLocatorConfig().getPartitioner()));
 
         StreamResultFuture futureResult = new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
                                                          databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig())
@@ -201,7 +201,7 @@ public class StreamingTransferTest
         {
             String key = "key" + offs[i];
             String col = "col" + offs[i];
-            assert cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk(key), cfs.name, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) != null;
+            assert cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk(key, databaseDescriptor), cfs.name, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) != null;
             assert rows.get(i).key.getKey().equals(ByteBufferUtil.bytes(key));
             assert rows.get(i).cf.getColumn(cellname(col)) != null;
         }
@@ -219,19 +219,19 @@ public class StreamingTransferTest
 
     private void transferSSTables(SSTableReader sstable) throws Exception
     {
-        IPartitioner p = LocatorConfig.instance.getPartitioner();
+        IPartitioner p = databaseDescriptor.getLocatorConfig().getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1")), LocatorConfig.instance.getPartitioner()));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken(), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1")), databaseDescriptor.getLocatorConfig().getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken(), databaseDescriptor.getLocatorConfig().getPartitioner()));
         transfer(sstable, ranges);
     }
 
     private void transferRanges(ColumnFamilyStore cfs) throws Exception
     {
-        IPartitioner p = LocatorConfig.instance.getPartitioner();
+        IPartitioner p = databaseDescriptor.getLocatorConfig().getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
         // wrapped range
-        ranges.add(new Range<Token>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key0")), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<Token>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key0")), databaseDescriptor.getLocatorConfig().getPartitioner()));
         new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
                        databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig()).transferRanges(LOCAL, cfs.keyspace.getName(), ranges, cfs.getColumnFamilyName()).execute().get();
     }
@@ -282,7 +282,7 @@ public class StreamingTransferTest
                                                        ByteBufferUtil.bytes(val));
             List<IndexExpression> clause = Arrays.asList(expr);
             IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
-            Range<RowPosition> range = Util.range("", "");
+            Range<RowPosition> range = Util.range("", "", databaseDescriptor);
             List<Row> rows = cfs.search(range, clause, filter, 100);
             assertEquals(1, rows.size());
             assert rows.get(0).key.getKey().equals(ByteBufferUtil.bytes(key));
@@ -361,7 +361,7 @@ public class StreamingTransferTest
 
                 entries.put(key, cf);
                 cleanedEntries.put(key, cfCleaned);
-                cfs.addSSTable(SSTableUtils.prepare(databaseDescriptor.getSSTableWriterFactory())
+                cfs.addSSTable(SSTableUtils.prepare(databaseDescriptor)
                     .ks(keyspace.getName())
                     .cf(cfs.name)
                     .generation(0)
@@ -371,7 +371,7 @@ public class StreamingTransferTest
 
         // filter pre-cleaned entries locally, and ensure that the end result is equal
         cleanedEntries.keySet().retainAll(keys);
-        SSTableReader cleaned = SSTableUtils.prepare(databaseDescriptor.getSSTableWriterFactory())
+        SSTableReader cleaned = SSTableUtils.prepare(databaseDescriptor)
             .ks(keyspace.getName())
             .cf(cfs.name)
             .generation(0)
@@ -394,7 +394,7 @@ public class StreamingTransferTest
         content.add("test");
         content.add("test2");
         content.add("test3");
-        SSTableReader sstable = new SSTableUtils(KEYSPACE1, CF_STANDARD).prepare(databaseDescriptor.getSSTableWriterFactory()).write(content, databaseDescriptor);
+        SSTableReader sstable = new SSTableUtils(KEYSPACE1, CF_STANDARD).prepare(databaseDescriptor).write(content, databaseDescriptor);
         String keyspaceName = sstable.getKeyspaceName();
         String cfname = sstable.getColumnFamilyName();
 
@@ -402,13 +402,13 @@ public class StreamingTransferTest
         content.add("transfer1");
         content.add("transfer2");
         content.add("transfer3");
-        SSTableReader sstable2 = SSTableUtils.prepare(databaseDescriptor.getSSTableWriterFactory()).write(content, databaseDescriptor);
+        SSTableReader sstable2 = SSTableUtils.prepare(databaseDescriptor).write(content, databaseDescriptor);
 
         // transfer the first and last key
-        IPartitioner p = LocatorConfig.instance.getPartitioner();
+        IPartitioner p = databaseDescriptor.getLocatorConfig().getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("test")), LocatorConfig.instance.getPartitioner()));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("transfer2")), p.getMinimumToken(), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("test")), databaseDescriptor.getLocatorConfig().getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("transfer2")), p.getMinimumToken(), databaseDescriptor.getLocatorConfig().getPartitioner()));
         // Acquiring references, transferSSTables needs it
         sstable.acquireReference();
         sstable2.acquireReference();
@@ -425,17 +425,17 @@ public class StreamingTransferTest
         assert rows.get(1).cf.getColumnCount() == 1;
 
         // these keys fall outside of the ranges and should not be transferred
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer1"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer2"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test2"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test3"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer1", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer2", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test2", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test3", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
     }
 
     @Test
     public void testTransferOfMultipleColumnFamilies() throws Exception
     {
         String keyspace = KEYSPACE_CACHEKEY;
-        IPartitioner p = LocatorConfig.instance.getPartitioner();
+        IPartitioner p = databaseDescriptor.getLocatorConfig().getPartitioner();
         String[] columnFamilies = new String[] { "Standard1", "Standard2", "Standard3" };
         List<SSTableReader> ssTableReaders = new ArrayList<>();
 
@@ -446,12 +446,12 @@ public class StreamingTransferTest
             content.add("data-" + cf + "-1");
             content.add("data-" + cf + "-2");
             content.add("data-" + cf + "-3");
-            SSTableUtils.Context context = SSTableUtils.prepare(databaseDescriptor.getSSTableWriterFactory()).ks(keyspace).cf(cf);
+            SSTableUtils.Context context = SSTableUtils.prepare(databaseDescriptor).ks(keyspace).cf(cf);
             ssTableReaders.add(context.write(content, databaseDescriptor));
 
             // collect dks for each string key
             for (String str : content)
-                keys.put(Util.dk(str), cf);
+                keys.put(Util.dk(str, databaseDescriptor), cf);
         }
 
         // transfer the first and last keys
@@ -459,9 +459,9 @@ public class StreamingTransferTest
         Map.Entry<DecoratedKey,String> last = keys.lastEntry();
         Map.Entry<DecoratedKey,String> secondtolast = keys.lowerEntry(last.getKey());
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), first.getKey().getToken(), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getMinimumToken(), first.getKey().getToken(), databaseDescriptor.getLocatorConfig().getPartitioner()));
         // the left hand side of the range is exclusive, so we transfer from the second-to-last token
-        ranges.add(new Range<>(secondtolast.getKey().getToken(), p.getMinimumToken(), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<>(secondtolast.getKey().getToken(), p.getMinimumToken(), databaseDescriptor.getLocatorConfig().getPartitioner()));
 
         // Acquiring references, transferSSTables needs it
         if (!SSTableReader.acquireReferences(ssTableReaders))
@@ -505,11 +505,11 @@ public class StreamingTransferTest
         SSTableReader sstable = cfs.getSSTables().iterator().next();
         cfs.clearUnsafe();
 
-        IPartitioner p = LocatorConfig.instance.getPartitioner();
+        IPartitioner p = databaseDescriptor.getLocatorConfig().getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key1000")), LocatorConfig.instance.getPartitioner()));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key5")), p.getToken(ByteBufferUtil.bytes("key500")), LocatorConfig.instance.getPartitioner()));
-        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key9")), p.getToken(ByteBufferUtil.bytes("key900")), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key1000")), databaseDescriptor.getLocatorConfig().getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key5")), p.getToken(ByteBufferUtil.bytes("key500")), databaseDescriptor.getLocatorConfig().getPartitioner()));
+        ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key9")), p.getToken(ByteBufferUtil.bytes("key900")), databaseDescriptor.getLocatorConfig().getPartitioner()));
         transfer(sstable, ranges);
         assertEquals(1, cfs.getSSTables().size());
         assertEquals(7, Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing()).size());

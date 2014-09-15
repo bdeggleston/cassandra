@@ -42,23 +42,24 @@ public class TokenMetadataTest
     public final static String SIX = "6";
 
     static TokenMetadata tmd;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void beforeClass() throws Throwable
     {
         DatabaseDescriptor.init();
-        tmd = LocatorConfig.instance.getTokenMetadata();
-        tmd.updateNormalToken(token(ONE), InetAddress.getByName("127.0.0.1"));
-        tmd.updateNormalToken(token(SIX), InetAddress.getByName("127.0.0.6"));
+        tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
+        tmd.updateNormalToken(token(ONE, databaseDescriptor), InetAddress.getByName("127.0.0.1"));
+        tmd.updateNormalToken(token(SIX, databaseDescriptor), InetAddress.getByName("127.0.0.6"));
     }
 
     private void testRingIterator(ArrayList<Token> ring, String start, boolean includeMin, String... expected)
     {
         ArrayList<Token> actual = new ArrayList<Token>();
-        Iterators.addAll(actual, TokenMetadata.ringIterator(ring, token(start), includeMin, LocatorConfig.instance.getPartitioner()));
+        Iterators.addAll(actual, TokenMetadata.ringIterator(ring, token(start, databaseDescriptor), includeMin, databaseDescriptor.getLocatorConfig().getPartitioner()));
         assertEquals(actual.toString(), expected.length, actual.size());
         for (int i = 0; i < expected.length; i++)
-            assertEquals("Mismatch at index " + i + ": " + actual, token(expected[i]), actual.get(i));
+            assertEquals("Mismatch at index " + i + ": " + actual, token(expected[i], databaseDescriptor), actual.get(i));
     }
 
     @Test

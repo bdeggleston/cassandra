@@ -180,7 +180,7 @@ public class SizeTieredCompactionStrategyTest
         int numSSTables = 3;
         for (int r = 0; r < numSSTables; r++)
         {
-            DecoratedKey key = Util.dk(String.valueOf(r));
+            DecoratedKey key = Util.dk(String.valueOf(r), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(ksname, key.getKey());
             rm.add(cfname, Util.cellname("column"), value, 0);
             rm.applyUnsafe();
@@ -224,7 +224,7 @@ public class SizeTieredCompactionStrategyTest
         int numSSTables = 10;
         for (int r = 0; r < numSSTables; r++)
         {
-            DecoratedKey key = Util.dk(String.valueOf(r));
+            DecoratedKey key = Util.dk(String.valueOf(r), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(ksname, key.getKey());
             rm.add(cfname, Util.cellname("column"), value, 0);
             rm.applyUnsafe();

@@ -91,7 +91,7 @@ public class RecoveryManagerTruncateTest
 		{
 			return null;
 		}
-		cf = cfStore.getColumnFamily(Util.namesQueryFilter(cfStore, Util.dk(keyName), databaseDescriptor, columnName));
+		cf = cfStore.getColumnFamily(Util.namesQueryFilter(cfStore, Util.dk(keyName, databaseDescriptor), databaseDescriptor, columnName));
 		if (cf == null)
 		{
 			return null;

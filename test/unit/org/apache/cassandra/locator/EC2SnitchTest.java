@@ -76,7 +76,7 @@ public class EC2SnitchTest
     public void testRac() throws IOException, ConfigurationException
     {
         az = "us-east-1d";
-        Ec2Snitch snitch = new TestEC2Snitch(LocatorConfig.instance);
+        Ec2Snitch snitch = new TestEC2Snitch(databaseDescriptor.getLocatorConfig());
         InetAddress local = InetAddress.getByName("127.0.0.1");
         InetAddress nonlocal = InetAddress.getByName("127.0.0.7");
 
@@ -96,7 +96,7 @@ public class EC2SnitchTest
     public void testNewRegions() throws IOException, ConfigurationException
     {
         az = "us-east-2d";
-        Ec2Snitch snitch = new TestEC2Snitch(LocatorConfig.instance);
+        Ec2Snitch snitch = new TestEC2Snitch(databaseDescriptor.getLocatorConfig());
         InetAddress local = InetAddress.getByName("127.0.0.1");
         assertEquals("us-east-2", snitch.getDatacenter(local));
         assertEquals("2d", snitch.getRack(local));

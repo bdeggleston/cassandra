@@ -118,7 +118,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                                          DatabaseDescriptor.instance.getStorageProxy(),
                                                          DatabaseDescriptor.instance.getFailureDetector(),
                                                          DatabaseDescriptor.instance.getPaxosManager(),
-                                                         LocatorConfig.instance,
+                                                         DatabaseDescriptor.instance.getLocatorConfig(),
                                                          DatabaseDescriptor.instance.getDBConfig());
 
     private final Set<InetAddress> replicatingNodes = Collections.synchronizedSet(new HashSet<InetAddress>());

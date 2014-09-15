@@ -151,7 +151,7 @@ public class QueryPagerTest
         SortedSet<CellName> s = new TreeSet<CellName>(cfs().metadata.comparator);
         for (String name : names)
             s.add(CellNames.simpleDense(bytes(name)));
-        return new SliceByNamesReadCommand(KEYSPACE1, bytes(key), CF_STANDARD, System.currentTimeMillis(), new NamesQueryFilter(s, true, databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance, databaseDescriptor.getSchema(), LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
+        return new SliceByNamesReadCommand(KEYSPACE1, bytes(key), CF_STANDARD, System.currentTimeMillis(), new NamesQueryFilter(s, true, databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getLocatorConfig().getPartitioner(), MessagingService.instance.readCommandSerializer);
     }
 
     private static ReadCommand sliceQuery(String key, String start, String end, int count)
@@ -163,7 +163,7 @@ public class QueryPagerTest
     {
         SliceQueryFilter filter = new SliceQueryFilter(CellNames.simpleDense(bytes(start)), CellNames.simpleDense(bytes(end)), reversed, count, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         // Note: for MultiQueryTest, we need the same timestamp/expireBefore for all queries, so we just use 0 as it doesn't matter here.
-        return new SliceFromReadCommand(KEYSPACE1, bytes(key), CF_STANDARD, 0, filter, DatabaseDescriptor.instance, databaseDescriptor.getSchema(), LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
+        return new SliceFromReadCommand(KEYSPACE1, bytes(key), CF_STANDARD, 0, filter, DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getLocatorConfig().getPartitioner(), MessagingService.instance.readCommandSerializer);
     }
 
     private static RangeSliceCommand rangeNamesQuery(AbstractBounds<RowPosition> range, int count, String... names)
@@ -208,7 +208,7 @@ public class QueryPagerTest
     public void namesQueryTest() throws Exception
     {
         QueryPager pager = QueryPagers.localPager(namesQuery("k0", "c1", "c5", "c7", "c8"), DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(),
-                                                  databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
+                                                  databaseDescriptor.getStorageProxy(), MessagingService.instance, databaseDescriptor.getLocatorConfig().getPartitioner());
 
         assertFalse(pager.isExhausted());
         List<Row> page = pager.fetchPage(3);
@@ -222,7 +222,7 @@ public class QueryPagerTest
     public void sliceQueryTest() throws Exception
     {
         QueryPager pager = QueryPagers.localPager(sliceQuery("k0", "c1", "c8", 10), DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(),
-                                                  databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
+                                                  databaseDescriptor.getStorageProxy(), MessagingService.instance, databaseDescriptor.getLocatorConfig().getPartitioner());
 
         List<Row> page;
 
@@ -248,7 +248,7 @@ public class QueryPagerTest
     public void reversedSliceQueryTest() throws Exception
     {
         QueryPager pager = QueryPagers.localPager(sliceQuery("k0", "c8", "c1", true, 10), DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(),
-                                                  databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
+                                                  databaseDescriptor.getStorageProxy(), MessagingService.instance, databaseDescriptor.getLocatorConfig().getPartitioner());
 
         List<Row> page;
 
@@ -276,7 +276,7 @@ public class QueryPagerTest
         QueryPager pager = QueryPagers.localPager(new Pageable.ReadCommands(new ArrayList<ReadCommand>() {{
             add(sliceQuery("k1", "c2", "c6", 10));
             add(sliceQuery("k4", "c3", "c5", 10));
-        }}), DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
+        }}), DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStorageProxy(), MessagingService.instance, databaseDescriptor.getLocatorConfig().getPartitioner());
 
         List<Row> page;
 
@@ -302,8 +302,8 @@ public class QueryPagerTest
     @Test
     public void rangeNamesQueryTest() throws Exception
     {
-        QueryPager pager = QueryPagers.localPager(rangeNamesQuery(range("k0", "k5"), 100, "c1", "c4", "c8"), DatabaseDescriptor.instance,
-                                                  databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
+        QueryPager pager = QueryPagers.localPager(rangeNamesQuery(range("k0", "k5", databaseDescriptor), 100, "c1", "c4", "c8"), DatabaseDescriptor.instance,
+                                                  databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStorageProxy(), MessagingService.instance, databaseDescriptor.getLocatorConfig().getPartitioner());
 
         List<Row> page;
 
@@ -325,8 +325,8 @@ public class QueryPagerTest
     @Test
     public void rangeSliceQueryTest() throws Exception
     {
-        QueryPager pager = QueryPagers.localPager(rangeSliceQuery(range("k1", "k5"), 100, "c1", "c7"), DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
-                                                  databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
+        QueryPager pager = QueryPagers.localPager(rangeSliceQuery(range("k1", "k5", databaseDescriptor), 100, "c1", "c7"), DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
+                                                  databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStorageProxy(), MessagingService.instance, databaseDescriptor.getLocatorConfig().getPartitioner());
 
         List<Row> page;
 
@@ -380,8 +380,8 @@ public class QueryPagerTest
             databaseDescriptor.getQueryProcessor().executeInternal(String.format("INSERT INTO %s.%s (k, c, v) VALUES ('k%d', 'c%d', null)", keyspace, table, 0, i));
 
         SliceQueryFilter filter = new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
-        QueryPager pager = QueryPagers.localPager(new SliceFromReadCommand(keyspace, bytes("k0"), table, 0, filter, DatabaseDescriptor.instance, databaseDescriptor.getSchema(), LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer),
-                                                  DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
+        QueryPager pager = QueryPagers.localPager(new SliceFromReadCommand(keyspace, bytes("k0"), table, 0, filter, DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getLocatorConfig().getPartitioner(), MessagingService.instance.readCommandSerializer),
+                                                  DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStorageProxy(), MessagingService.instance, databaseDescriptor.getLocatorConfig().getPartitioner());
 
         for (int i = 0; i < 5; i++)
         {

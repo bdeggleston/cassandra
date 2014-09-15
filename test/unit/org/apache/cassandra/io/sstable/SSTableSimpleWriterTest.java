@@ -67,7 +67,7 @@ public class SSTableSimpleWriterTest
         File dir = new Directories(databaseDescriptor.getSchema().getCFMetaData(keyspaceName, cfname), DatabaseDescriptor.instance, StorageService.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getColumnFamilyStoreManager().dataDirectories).getDirectoryForNewSSTables();
         assert dir.exists();
 
-        IPartitioner partitioner = LocatorConfig.instance.getPartitioner();
+        IPartitioner partitioner = databaseDescriptor.getLocatorConfig().getPartitioner();
         SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(dir, partitioner, keyspaceName, cfname, IntegerType.instance, null, 16, databaseDescriptor.getCFMetaDataFactory(), databaseDescriptor.getDBConfig());
 
         int k = 0;
@@ -110,7 +110,7 @@ public class SSTableSimpleWriterTest
         cfs.loadNewSSTables();
 
         // Check we get expected results
-        ColumnFamily cf = Util.getColumnFamily(t, Util.dk("Key10"), cfname, databaseDescriptor);
+        ColumnFamily cf = Util.getColumnFamily(t, Util.dk("Key10", databaseDescriptor), cfname, databaseDescriptor);
         assert cf.getColumnCount() == INC * NBCOL : "expecting " + (INC * NBCOL) + " columns, got " + cf.getColumnCount();
         int i = 0;
         for (Cell c : cf)
@@ -121,7 +121,7 @@ public class SSTableSimpleWriterTest
             ++i;
         }
 
-        cf = Util.getColumnFamily(t, Util.dk("Key19"), cfname, databaseDescriptor);
+        cf = Util.getColumnFamily(t, Util.dk("Key19", databaseDescriptor), cfname, databaseDescriptor);
         assert cf.getColumnCount() == 3 : "expecting 3 columns, got " + cf.getColumnCount();
     }
 }

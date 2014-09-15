@@ -113,16 +113,16 @@ public abstract class AntiEntropyServiceTestAbstract
         }
 
         aes = databaseDescriptor.getActiveRepairService();
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
-        StorageService.instance.setTokens(Collections.singleton(LocatorConfig.instance.getPartitioner().getRandomToken()));
-        tmd.updateNormalToken(LocatorConfig.instance.getPartitioner().getMinimumToken(), REMOTE);
+        StorageService.instance.setTokens(Collections.singleton(databaseDescriptor.getLocatorConfig().getPartitioner().getRandomToken()));
+        tmd.updateNormalToken(databaseDescriptor.getLocatorConfig().getPartitioner().getMinimumToken(), REMOTE);
         assert tmd.isMember(REMOTE);
 
         MessagingService.instance.setVersion(REMOTE, MessagingService.current_version);
         databaseDescriptor.getGossiper().initializeNodeUnsafe(REMOTE, UUID.randomUUID(), 1);
 
-        local_range = LocatorConfig.instance.getPrimaryRangesForEndpoint(keyspaceName, LOCAL).iterator().next();
+        local_range = databaseDescriptor.getLocatorConfig().getPrimaryRangesForEndpoint(keyspaceName, LOCAL).iterator().next();
 
         desc = new RepairJobDesc(UUID.randomUUID(), UUID.randomUUID(), keyspaceName, cfname, local_range);
         // Set a fake session corresponding to this fake request
@@ -141,7 +141,7 @@ public abstract class AntiEntropyServiceTestAbstract
         // generate rf+1 nodes, and ensure that all nodes are returned
         Set<InetAddress> expected = addTokens(1 + databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
         expected.remove(DatabaseDescriptor.instance.getBroadcastAddress());
-        Collection<Range<Token>> ranges = LocatorConfig.instance.getLocalRanges(keyspaceName);
+        Collection<Range<Token>> ranges = databaseDescriptor.getLocatorConfig().getLocalRanges(keyspaceName);
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
@@ -153,7 +153,7 @@ public abstract class AntiEntropyServiceTestAbstract
     @Test
     public void testGetNeighborsTimesTwo() throws Throwable
     {
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
 
         // generate rf*2 nodes, and ensure that only neighbors specified by the ARS are returned
         addTokens(2 * databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
@@ -164,7 +164,7 @@ public abstract class AntiEntropyServiceTestAbstract
             expected.addAll(ars.getRangeAddresses(tmd.cloneOnlyTokenMap()).get(replicaRange));
         }
         expected.remove(DatabaseDescriptor.instance.getBroadcastAddress());
-        Collection<Range<Token>> ranges = LocatorConfig.instance.getLocalRanges(keyspaceName);
+        Collection<Range<Token>> ranges = databaseDescriptor.getLocatorConfig().getLocalRanges(keyspaceName);
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
@@ -176,7 +176,7 @@ public abstract class AntiEntropyServiceTestAbstract
     @Test
     public void testGetNeighborsPlusOneInLocalDC() throws Throwable
     {
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         
         // generate rf+1 nodes, and ensure that all nodes are returned
         Set<InetAddress> expected = addTokens(1 + databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
@@ -186,7 +186,7 @@ public abstract class AntiEntropyServiceTestAbstract
         HashSet<InetAddress> localEndpoints = Sets.newHashSet(topology.getDatacenterEndpoints().get(DatabaseDescriptor.instance.getLocalDataCenter()));
         expected = Sets.intersection(expected, localEndpoints);
 
-        Collection<Range<Token>> ranges = LocatorConfig.instance.getLocalRanges(keyspaceName);
+        Collection<Range<Token>> ranges = databaseDescriptor.getLocatorConfig().getLocalRanges(keyspaceName);
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
@@ -198,7 +198,7 @@ public abstract class AntiEntropyServiceTestAbstract
     @Test
     public void testGetNeighborsTimesTwoInLocalDC() throws Throwable
     {
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
 
         // generate rf*2 nodes, and ensure that only neighbors specified by the ARS are returned
         addTokens(2 * databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
@@ -214,7 +214,7 @@ public abstract class AntiEntropyServiceTestAbstract
         HashSet<InetAddress> localEndpoints = Sets.newHashSet(topology.getDatacenterEndpoints().get(DatabaseDescriptor.instance.getLocalDataCenter()));
         expected = Sets.intersection(expected, localEndpoints);
         
-        Collection<Range<Token>> ranges = LocatorConfig.instance.getLocalRanges(keyspaceName);
+        Collection<Range<Token>> ranges = databaseDescriptor.getLocatorConfig().getLocalRanges(keyspaceName);
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
@@ -226,7 +226,7 @@ public abstract class AntiEntropyServiceTestAbstract
     @Test
     public void testGetNeighborsTimesTwoInSpecifiedHosts() throws Throwable
     {
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
 
         // generate rf*2 nodes, and ensure that only neighbors specified by the hosts are returned
         addTokens(2 * databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
@@ -240,7 +240,7 @@ public abstract class AntiEntropyServiceTestAbstract
         expected.remove(DatabaseDescriptor.instance.getBroadcastAddress());
         Collection<String> hosts = Arrays.asList(DatabaseDescriptor.instance.getBroadcastAddress().getCanonicalHostName(),expected.get(0).getCanonicalHostName());
 
-       assertEquals(expected.get(0), databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, LocatorConfig.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts).iterator().next());
+       assertEquals(expected.get(0), databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, databaseDescriptor.getLocatorConfig().getLocalRanges(keyspaceName).iterator().next(), null, hosts).iterator().next());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -249,17 +249,17 @@ public abstract class AntiEntropyServiceTestAbstract
         addTokens(2 * databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
         //Dont give local endpoint
         Collection<String> hosts = Arrays.asList("127.0.0.3");
-        databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, LocatorConfig.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts);
+        databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, databaseDescriptor.getLocatorConfig().getLocalRanges(keyspaceName).iterator().next(), null, hosts);
     }
 
     Set<InetAddress> addTokens(int max) throws Throwable
     {
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         Set<InetAddress> endpoints = new HashSet<InetAddress>();
         for (int i = 1; i <= max; i++)
         {
             InetAddress endpoint = InetAddress.getByName("127.0.0." + i);
-            tmd.updateNormalToken(LocatorConfig.instance.getPartitioner().getRandomToken(), endpoint);
+            tmd.updateNormalToken(databaseDescriptor.getLocatorConfig().getPartitioner().getRandomToken(), endpoint);
             endpoints.add(endpoint);
         }
         return endpoints;

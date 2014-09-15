@@ -46,6 +46,8 @@ public class TestRingCache
     private Cassandra.Client thriftClient;
     private Configuration conf;
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     public TestRingCache(String keyspace, LocatorConfig locatorConfig)
     {
         ConfigHelper.setOutputColumnFamily(conf, keyspace, "Standard1");
@@ -63,7 +65,7 @@ public class TestRingCache
         thriftClient = cassandraClient;
         String seed = DatabaseDescriptor.instance.getSeeds().iterator().next().getHostAddress();
         conf = new Configuration();
-        ConfigHelper.setOutputPartitioner(conf, LocatorConfig.instance.getPartitioner().getClass().getName());
+        ConfigHelper.setOutputPartitioner(conf, databaseDescriptor.getLocatorConfig().getPartitioner().getClass().getName());
         ConfigHelper.setOutputInitialAddress(conf, seed);
         ConfigHelper.setOutputRpcPort(conf, Integer.toString(DatabaseDescriptor.instance.getRpcPort()));
 
@@ -96,7 +98,7 @@ public class TestRingCache
             rowPrefix = "row";
         }
 
-        TestRingCache tester = new TestRingCache(keyspace, LocatorConfig.instance);
+        TestRingCache tester = new TestRingCache(keyspace, databaseDescriptor.getLocatorConfig());
 
         for (int nRows = minRow; nRows < maxRow; nRows++)
         {

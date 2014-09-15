@@ -81,7 +81,7 @@ public class SSTableReaderTest
 
     static Token t(int i)
     {
-        return LocatorConfig.instance.getPartitioner().getToken(ByteBufferUtil.bytes(String.valueOf(i)));
+        return databaseDescriptor.getLocatorConfig().getPartitioner().getToken(ByteBufferUtil.bytes(String.valueOf(i)));
     }
 
     @BeforeClass
@@ -120,13 +120,13 @@ public class SSTableReaderTest
 
         List<Range<Token>> ranges = new ArrayList<Range<Token>>();
         // 1 key
-        ranges.add(new Range<Token>(t(0), t(1), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<Token>(t(0), t(1), databaseDescriptor.getLocatorConfig().getPartitioner()));
         // 2 keys
-        ranges.add(new Range<Token>(t(2), t(4), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<Token>(t(2), t(4), databaseDescriptor.getLocatorConfig().getPartitioner()));
         // wrapping range from key to end
-        ranges.add(new Range<Token>(t(6), LocatorConfig.instance.getPartitioner().getMinimumToken(), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<Token>(t(6), databaseDescriptor.getLocatorConfig().getPartitioner().getMinimumToken(), databaseDescriptor.getLocatorConfig().getPartitioner()));
         // empty range (should be ignored)
-        ranges.add(new Range<Token>(t(9), t(91), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<Token>(t(9), t(91), databaseDescriptor.getLocatorConfig().getPartitioner()));
 
         // confirm that positions increase continuously
         SSTableReader sstable = store.getSSTables().iterator().next();
@@ -163,7 +163,7 @@ public class SSTableReaderTest
         SSTableReader sstable = store.getSSTables().iterator().next();
         for (int j = 0; j < 100; j += 2)
         {
-            DecoratedKey dk = Util.dk(String.valueOf(j));
+            DecoratedKey dk = Util.dk(String.valueOf(j), databaseDescriptor);
             FileDataInput file = sstable.getFileDataInput(sstable.getPosition(dk, SSTableReader.Operator.EQ).position);
             DecoratedKey keyInDisk = sstable.partitioner.decorateKey(ByteBufferUtil.readWithShortLength(file));
             assert keyInDisk.equals(dk) : String.format("%s != %s in %s", keyInDisk, dk, file.getPath());
@@ -172,7 +172,7 @@ public class SSTableReaderTest
         // check no false positives
         for (int j = 1; j < 110; j += 2)
         {
-            DecoratedKey dk = Util.dk(String.valueOf(j));
+            DecoratedKey dk = Util.dk(String.valueOf(j), databaseDescriptor);
             assert sstable.getPosition(dk, SSTableReader.Operator.EQ) == null;
         }
     }
@@ -269,7 +269,7 @@ public class SSTableReaderTest
         long timestamp = System.currentTimeMillis();
         for (int i = 0; i < store.metadata.getMinIndexInterval(); i++)
         {
-            DecoratedKey key = Util.dk(String.valueOf(i));
+            DecoratedKey key = Util.dk(String.valueOf(i), databaseDescriptor);
             if (firstKey == null)
                 firstKey = key;
             if (lastKey == null)
@@ -364,7 +364,7 @@ public class SSTableReaderTest
         // construct a range which is present in the sstable, but whose
         // keys are not found in the first segment of the index.
         List<Range<Token>> ranges = new ArrayList<Range<Token>>();
-        ranges.add(new Range<Token>(t(98), t(99), LocatorConfig.instance.getPartitioner()));
+        ranges.add(new Range<Token>(t(98), t(99), databaseDescriptor.getLocatorConfig().getPartitioner()));
 
         SSTableReader sstable = store.getSSTables().iterator().next();
         List<Pair<Long,Long>> sections = sstable.getPositionsForRanges(ranges);
@@ -446,14 +446,14 @@ public class SSTableReaderTest
         // query using index to see if sstable for secondary index opens
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr);
-        Range<RowPosition> range = Util.range("", "");
+        Range<RowPosition> range = Util.range("", "", databaseDescriptor);
         List<Row> rows = indexedCFS.search(range, clause, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100);
         assert rows.size() == 1;
     }
 
     private List<Range<Token>> makeRanges(Token left, Token right)
     {
-        return Arrays.asList(new Range<>(left, right, LocatorConfig.instance.getPartitioner()));
+        return Arrays.asList(new Range<>(left, right, databaseDescriptor.getLocatorConfig().getPartitioner()));
     }
 
     private DecoratedKey k(int i)

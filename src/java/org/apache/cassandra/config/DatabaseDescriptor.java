@@ -137,7 +137,7 @@ public class DatabaseDescriptor
 //        assert FailureDetector.instance != null;
 //        assert Gossiper.instance != null;
 //        assert Tracing.instance != null;
-        assert LocatorConfig.instance != null;
+//        assert LocatorConfig.instance != null;
 //        assert DBConfig.instance != null;
 //        assert KeyspaceManager.instance != null;
 //        assert MutationFactory.instance != null;
@@ -188,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final LocatorConfig locatorConfig;
     protected final DBConfig dbConfig;
     protected final CommitLog commitLog;
     protected final LoadBroadcaster loadBroadcaster;
@@ -242,6 +243,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        locatorConfig = createLocatorConfig();
         dbConfig = createDBConfig();
         commitLog = createCommitLog();
         loadBroadcaster = createLoadBroadcaster();
@@ -813,7 +815,7 @@ public class DatabaseDescriptor
     @Deprecated  // use LocatorConfig.instance.getEndpointSnitch
     public IEndpointSnitch getEndpointSnitch()
     {
-        return LocatorConfig.instance.getEndpointSnitch();
+        return getLocatorConfig().getEndpointSnitch();
     }
 
     public IRequestScheduler getRequestScheduler()
@@ -1584,13 +1586,13 @@ public class DatabaseDescriptor
     @Deprecated
     public String getLocalDataCenter()
     {
-        return LocatorConfig.instance.getLocalDC();
+        return getLocatorConfig().getLocalDC();
     }
 
     @Deprecated
     public Comparator<InetAddress> getLocalComparator()
     {
-        return LocatorConfig.instance.getLocalComparator();
+        return getLocatorConfig().getLocalComparator();
     }
 
     public Config.InternodeCompression internodeCompression()
@@ -1882,9 +1884,14 @@ public class DatabaseDescriptor
         return stageManager;
     }
 
+    public LocatorConfig createLocatorConfig() throws ConfigurationException
+    {
+        return new LocatorConfig(conf, this);
+    }
+
     public LocatorConfig getLocatorConfig()
     {
-        return LocatorConfig.instance;
+        return locatorConfig;
     }
 
     public SSTableReaderFactory createSSTableReaderFactory()

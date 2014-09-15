@@ -18,6 +18,7 @@
 */
 package org.apache.cassandra.dht;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -26,6 +27,8 @@ import org.apache.cassandra.SchemaLoader;
 
 public class OrderPreservingPartitionerTest extends PartitionerTestCase<StringToken>
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void cleanStatesFromPreviousTest()
     {
@@ -36,7 +39,7 @@ public class OrderPreservingPartitionerTest extends PartitionerTestCase<StringTo
 
     public void initPartitioner()
     {
-        partitioner = new OrderPreservingPartitioner(LocatorConfig.instance);
+        partitioner = new OrderPreservingPartitioner(databaseDescriptor.getLocatorConfig());
     }
 
     @Test

@@ -135,8 +135,8 @@ public class KeyCacheTest
         // KeyCache should start at size 0 if we're caching X% of zero data.
         assertKeyCacheSize(0, KEYSPACE1, COLUMN_FAMILY1);
 
-        DecoratedKey key1 = Util.dk("key1");
-        DecoratedKey key2 = Util.dk("key2");
+        DecoratedKey key1 = Util.dk("key1", databaseDescriptor);
+        DecoratedKey key2 = Util.dk("key2", databaseDescriptor);
         Mutation rm;
 
         // inserts

@@ -110,7 +110,7 @@ public class LeveledCompactionStrategyTest
         // Adds enough data to trigger multiple sstable per level
         for (int r = 0; r < rows; r++)
         {
-            DecoratedKey key = Util.dk(String.valueOf(r));
+            DecoratedKey key = Util.dk(String.valueOf(r), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int c = 0; c < columns; c++)
             {
@@ -159,7 +159,7 @@ public class LeveledCompactionStrategyTest
         // Adds enough data to trigger multiple sstable per level
         for (int r = 0; r < rows; r++)
         {
-            DecoratedKey key = Util.dk(String.valueOf(r));
+            DecoratedKey key = Util.dk(String.valueOf(r), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int c = 0; c < columns; c++)
             {
@@ -175,7 +175,7 @@ public class LeveledCompactionStrategyTest
         assert strategy.getLevelSize(1) > 0;
         assert strategy.getLevelSize(2) > 0;
 
-        Range<Token> range = new Range<>(Util.token(""), Util.token(""), LocatorConfig.instance.getPartitioner());
+        Range<Token> range = new Range<>(Util.token("", databaseDescriptor), Util.token("", databaseDescriptor), databaseDescriptor.getLocatorConfig().getPartitioner());
         int gcBefore = keyspace.getColumnFamilyStore(CF_STANDARDDLEVELED).gcBefore(System.currentTimeMillis());
         UUID parentRepSession = UUID.randomUUID();
         databaseDescriptor.getActiveRepairService().registerParentRepairSession(parentRepSession, Arrays.asList(cfs), Arrays.asList(range));
@@ -204,7 +204,7 @@ public class LeveledCompactionStrategyTest
         int columns = 10;
         for (int r = 0; r < rows; r++)
         {
-            DecoratedKey key = Util.dk(String.valueOf(r));
+            DecoratedKey key = Util.dk(String.valueOf(r), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int c = 0; c < columns; c++)
             {
@@ -243,7 +243,7 @@ public class LeveledCompactionStrategyTest
         // Adds enough data to trigger multiple sstable per level
         for (int r = 0; r < rows; r++)
         {
-            DecoratedKey key = Util.dk(String.valueOf(r));
+            DecoratedKey key = Util.dk(String.valueOf(r), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int c = 0; c < columns; c++)
             {
@@ -289,7 +289,7 @@ public class LeveledCompactionStrategyTest
         // Adds enough data to trigger multiple sstable per level
         for (int r = 0; r < rows; r++)
         {
-            DecoratedKey key = Util.dk(String.valueOf(r));
+            DecoratedKey key = Util.dk(String.valueOf(r), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int c = 0; c < columns; c++)
             {

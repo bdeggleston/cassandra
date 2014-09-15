@@ -76,7 +76,7 @@ public class LongLeveledCompactionStrategyTest
         // Adds enough data to trigger multiple sstable per level
         for (int r = 0; r < rows; r++)
         {
-            DecoratedKey key = Util.dk(String.valueOf(r));
+            DecoratedKey key = Util.dk(String.valueOf(r), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(ksname, key.getKey());
             for (int c = 0; c < columns; c++)
             {
@@ -130,7 +130,7 @@ public class LongLeveledCompactionStrategyTest
             {
                for (SSTableReader sstable : sstables)
                {
-                   Set<SSTableReader> overlaps = LeveledManifest.overlapping(sstable, sstables, LocatorConfig.instance.getPartitioner());
+                   Set<SSTableReader> overlaps = LeveledManifest.overlapping(sstable, sstables, databaseDescriptor.getLocatorConfig().getPartitioner());
                    assert overlaps.size() == 1 && overlaps.contains(sstable);
                }
             }

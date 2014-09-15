@@ -39,7 +39,7 @@ public class SerializationsTest extends AbstractSerializationsTester
     {
         IFilter bf = FilterFactory.getFilter(1000000, 0.0001, offheap, databaseDescriptor.getDBConfig().offHeapAllocator, databaseDescriptor.getDBConfig().murmur3BloomFilterSerializer);
         for (int i = 0; i < 100; i++)
-            bf.add(LocatorConfig.instance.getPartitioner().getTokenFactory().toByteArray(LocatorConfig.instance.getPartitioner().getRandomToken()));
+            bf.add(databaseDescriptor.getLocatorConfig().getPartitioner().getTokenFactory().toByteArray(databaseDescriptor.getLocatorConfig().getPartitioner().getRandomToken()));
         DataOutputStreamAndChannel out = getOutput("utils.BloomFilter.bin");
         FilterFactory.serialize(bf, out, databaseDescriptor.getDBConfig().murmur3BloomFilterSerializer);
         out.close();

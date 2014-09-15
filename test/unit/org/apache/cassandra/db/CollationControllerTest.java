@@ -60,7 +60,7 @@ public class CollationControllerTest
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF);
         Mutation rm;
-        DecoratedKey dk = Util.dk("key1");
+        DecoratedKey dk = Util.dk("key1", databaseDescriptor);
         
         // add data
         rm = databaseDescriptor.getMutationFactory().create(keyspace.getName(), dk.getKey());
@@ -75,7 +75,7 @@ public class CollationControllerTest
         
         // add another mutation because sstable maxtimestamp isn't set
         // correctly during flush if the most recent mutation is a row delete
-        rm = databaseDescriptor.getMutationFactory().create(keyspace.getName(), Util.dk("key2").getKey());
+        rm = databaseDescriptor.getMutationFactory().create(keyspace.getName(), Util.dk("key2", databaseDescriptor).getKey());
         rm.add(cfs.name, Util.cellname("Column1"), ByteBufferUtil.bytes("zxcv"), 20);
         rm.applyUnsafe();
         
@@ -111,7 +111,7 @@ public class CollationControllerTest
         cfs.disableAutoCompaction();
 
         Mutation rm;
-        DecoratedKey dk = Util.dk("key1");
+        DecoratedKey dk = Util.dk("key1", databaseDescriptor);
         CellName cellName = Util.cellname("Column1");
 
         // add data

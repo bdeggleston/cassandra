@@ -65,7 +65,7 @@ public class TTLExpiryTest
         cfs.disableAutoCompaction();
         cfs.metadata.gcGraceSeconds(0);
         long timestamp = System.currentTimeMillis();
-        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl").getKey());
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl", databaseDescriptor).getKey());
         rm.add("Standard1", Util.cellname("col"),
                ByteBufferUtil.EMPTY_BYTE_BUFFER,
                timestamp,
@@ -78,21 +78,21 @@ public class TTLExpiryTest
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl").getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl", databaseDescriptor).getKey());
                 rm.add("Standard1", Util.cellname("col2"),
                        ByteBufferUtil.EMPTY_BYTE_BUFFER,
                        timestamp,
                        1);
                 rm.applyUnsafe();
         cfs.forceBlockingFlush();
-        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl").getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl", databaseDescriptor).getKey());
         rm.add("Standard1", Util.cellname("col3"),
                    ByteBufferUtil.EMPTY_BYTE_BUFFER,
                    timestamp,
                    1);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
-        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl").getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl", databaseDescriptor).getKey());
         rm.add("Standard1", Util.cellname("col311"),
                    ByteBufferUtil.EMPTY_BYTE_BUFFER,
                    timestamp,
@@ -113,7 +113,7 @@ public class TTLExpiryTest
         cfs.disableAutoCompaction();
         cfs.metadata.gcGraceSeconds(0);
         long timestamp = System.currentTimeMillis();
-        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl").getKey());
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl", databaseDescriptor).getKey());
         rm.add("Standard1", Util.cellname("col"),
                ByteBufferUtil.EMPTY_BYTE_BUFFER,
                timestamp,
@@ -126,21 +126,21 @@ public class TTLExpiryTest
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl").getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl", databaseDescriptor).getKey());
                 rm.add("Standard1", Util.cellname("col2"),
                        ByteBufferUtil.EMPTY_BYTE_BUFFER,
                        timestamp,
                        1);
                 rm.applyUnsafe();
         cfs.forceBlockingFlush();
-        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl").getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("ttl", databaseDescriptor).getKey());
         rm.add("Standard1", Util.cellname("col3"),
                    ByteBufferUtil.EMPTY_BYTE_BUFFER,
                    timestamp,
                    1);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
-        DecoratedKey noTTLKey = Util.dk("nottl");
+        DecoratedKey noTTLKey = Util.dk("nottl", databaseDescriptor);
         rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, noTTLKey.getKey());
         rm.add("Standard1", Util.cellname("col311"),
                    ByteBufferUtil.EMPTY_BYTE_BUFFER,

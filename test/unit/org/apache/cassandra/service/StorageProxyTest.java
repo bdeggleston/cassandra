@@ -46,51 +46,51 @@ public class StorageProxyTest
 
     private static Range<RowPosition> range(RowPosition left, RowPosition right)
     {
-        return new Range<RowPosition>(left, right, LocatorConfig.instance.getPartitioner());
+        return new Range<RowPosition>(left, right, databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
     private static Bounds<RowPosition> bounds(RowPosition left, RowPosition right)
     {
-        return new Bounds<RowPosition>(left, right, LocatorConfig.instance.getPartitioner());
+        return new Bounds<RowPosition>(left, right, databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
     private static ExcludingBounds<RowPosition> exBounds(RowPosition left, RowPosition right)
     {
-        return new ExcludingBounds<RowPosition>(left, right, LocatorConfig.instance.getPartitioner());
+        return new ExcludingBounds<RowPosition>(left, right, databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
     private static IncludingExcludingBounds<RowPosition> incExBounds(RowPosition left, RowPosition right)
     {
-        return new IncludingExcludingBounds<RowPosition>(left, right, LocatorConfig.instance.getPartitioner());
+        return new IncludingExcludingBounds<RowPosition>(left, right, databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
     private static RowPosition startOf(String key)
     {
-        return LocatorConfig.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key)).minKeyBound();
+        return databaseDescriptor.getLocatorConfig().getPartitioner().getToken(ByteBufferUtil.bytes(key)).minKeyBound();
     }
 
     private static RowPosition endOf(String key)
     {
-        return LocatorConfig.instance.getPartitioner().getToken(ByteBufferUtil.bytes(key)).maxKeyBound();
+        return databaseDescriptor.getLocatorConfig().getPartitioner().getToken(ByteBufferUtil.bytes(key)).maxKeyBound();
     }
 
     private static Range<Token> tokenRange(String left, String right)
     {
-        return new Range<Token>(token(left), token(right), LocatorConfig.instance.getPartitioner());
+        return new Range<Token>(token(left, databaseDescriptor), token(right, databaseDescriptor), databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
     private static Bounds<Token> tokenBounds(String left, String right)
     {
-        return new Bounds<Token>(token(left), token(right), LocatorConfig.instance.getPartitioner());
+        return new Bounds<Token>(token(left, databaseDescriptor), token(right, databaseDescriptor), databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
     @BeforeClass
     public static void beforeClass() throws Throwable
     {
         DatabaseDescriptor.init();
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
-        tmd.updateNormalToken(token("1"), InetAddress.getByName("127.0.0.1"));
-        tmd.updateNormalToken(token("6"), InetAddress.getByName("127.0.0.6"));
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
+        tmd.updateNormalToken(token("1", databaseDescriptor), InetAddress.getByName("127.0.0.1"));
+        tmd.updateNormalToken(token("6", databaseDescriptor), InetAddress.getByName("127.0.0.6"));
     }
 
     // test getRestrictedRanges for token
@@ -136,28 +136,28 @@ public class StorageProxyTest
 
         // Keys
         // no splits
-        testGRRKeys(range(rp("2"), rp("5")), range(rp("2"), rp("5")));
-        testGRRKeys(bounds(rp("2"), rp("5")), bounds(rp("2"), rp("5")));
-        testGRRKeys(exBounds(rp("2"), rp("5")), exBounds(rp("2"), rp("5")));
+        testGRRKeys(range(rp("2", databaseDescriptor), rp("5", databaseDescriptor)), range(rp("2", databaseDescriptor), rp("5", databaseDescriptor)));
+        testGRRKeys(bounds(rp("2", databaseDescriptor), rp("5", databaseDescriptor)), bounds(rp("2", databaseDescriptor), rp("5", databaseDescriptor)));
+        testGRRKeys(exBounds(rp("2", databaseDescriptor), rp("5", databaseDescriptor)), exBounds(rp("2", databaseDescriptor), rp("5", databaseDescriptor)));
         // single split testGRRKeys(range("2", "7"), range(rp("2"), endOf("6")), range(endOf("6"), rp("7")));
-        testGRRKeys(bounds(rp("2"), rp("7")), bounds(rp("2"), endOf("6")), range(endOf("6"), rp("7")));
-        testGRRKeys(exBounds(rp("2"), rp("7")), range(rp("2"), endOf("6")), exBounds(endOf("6"), rp("7")));
-        testGRRKeys(incExBounds(rp("2"), rp("7")), bounds(rp("2"), endOf("6")), exBounds(endOf("6"), rp("7")));
+        testGRRKeys(bounds(rp("2", databaseDescriptor), rp("7", databaseDescriptor)), bounds(rp("2", databaseDescriptor), endOf("6")), range(endOf("6"), rp("7", databaseDescriptor)));
+        testGRRKeys(exBounds(rp("2", databaseDescriptor), rp("7", databaseDescriptor)), range(rp("2", databaseDescriptor), endOf("6")), exBounds(endOf("6"), rp("7", databaseDescriptor)));
+        testGRRKeys(incExBounds(rp("2", databaseDescriptor), rp("7", databaseDescriptor)), bounds(rp("2", databaseDescriptor), endOf("6")), exBounds(endOf("6"), rp("7", databaseDescriptor)));
         // single split starting from min
-        testGRRKeys(range(rp(""), rp("2")), range(rp(""), endOf("1")), range(endOf("1"), rp("2")));
-        testGRRKeys(bounds(rp(""), rp("2")), bounds(rp(""), endOf("1")), range(endOf("1"), rp("2")));
-        testGRRKeys(exBounds(rp(""), rp("2")), range(rp(""), endOf("1")), exBounds(endOf("1"), rp("2")));
-        testGRRKeys(incExBounds(rp(""), rp("2")), bounds(rp(""), endOf("1")), exBounds(endOf("1"), rp("2")));
+        testGRRKeys(range(rp("", databaseDescriptor), rp("2", databaseDescriptor)), range(rp("", databaseDescriptor), endOf("1")), range(endOf("1"), rp("2", databaseDescriptor)));
+        testGRRKeys(bounds(rp("", databaseDescriptor), rp("2", databaseDescriptor)), bounds(rp("", databaseDescriptor), endOf("1")), range(endOf("1"), rp("2", databaseDescriptor)));
+        testGRRKeys(exBounds(rp("", databaseDescriptor), rp("2", databaseDescriptor)), range(rp("", databaseDescriptor), endOf("1")), exBounds(endOf("1"), rp("2", databaseDescriptor)));
+        testGRRKeys(incExBounds(rp("", databaseDescriptor), rp("2", databaseDescriptor)), bounds(rp("", databaseDescriptor), endOf("1")), exBounds(endOf("1"), rp("2", databaseDescriptor)));
         // single split ending with max
-        testGRRKeys(range(rp("5"), rp("")), range(rp("5"), endOf("6")), range(endOf("6"), rp("")));
-        testGRRKeys(bounds(rp("5"), rp("")), bounds(rp("5"), endOf("6")), range(endOf("6"), rp("")));
-        testGRRKeys(exBounds(rp("5"), rp("")), range(rp("5"), endOf("6")), exBounds(endOf("6"), rp("")));
-        testGRRKeys(incExBounds(rp("5"), rp("")), bounds(rp("5"), endOf("6")), exBounds(endOf("6"), rp("")));
+        testGRRKeys(range(rp("5", databaseDescriptor), rp("", databaseDescriptor)), range(rp("5", databaseDescriptor), endOf("6")), range(endOf("6"), rp("", databaseDescriptor)));
+        testGRRKeys(bounds(rp("5", databaseDescriptor), rp("", databaseDescriptor)), bounds(rp("5", databaseDescriptor), endOf("6")), range(endOf("6"), rp("", databaseDescriptor)));
+        testGRRKeys(exBounds(rp("5", databaseDescriptor), rp("", databaseDescriptor)), range(rp("5", databaseDescriptor), endOf("6")), exBounds(endOf("6"), rp("", databaseDescriptor)));
+        testGRRKeys(incExBounds(rp("5", databaseDescriptor), rp("", databaseDescriptor)), bounds(rp("5", databaseDescriptor), endOf("6")), exBounds(endOf("6"), rp("", databaseDescriptor)));
         // two splits
-        testGRRKeys(range(rp("0"), rp("7")), range(rp("0"), endOf("1")), range(endOf("1"), endOf("6")), range(endOf("6"), rp("7")));
-        testGRRKeys(bounds(rp("0"), rp("7")), bounds(rp("0"), endOf("1")), range(endOf("1"), endOf("6")), range(endOf("6"), rp("7")));
-        testGRRKeys(exBounds(rp("0"), rp("7")), range(rp("0"), endOf("1")), range(endOf("1"), endOf("6")), exBounds(endOf("6"), rp("7")));
-        testGRRKeys(incExBounds(rp("0"), rp("7")), bounds(rp("0"), endOf("1")), range(endOf("1"), endOf("6")), exBounds(endOf("6"), rp("7")));
+        testGRRKeys(range(rp("0", databaseDescriptor), rp("7", databaseDescriptor)), range(rp("0", databaseDescriptor), endOf("1")), range(endOf("1"), endOf("6")), range(endOf("6"), rp("7", databaseDescriptor)));
+        testGRRKeys(bounds(rp("0", databaseDescriptor), rp("7", databaseDescriptor)), bounds(rp("0", databaseDescriptor), endOf("1")), range(endOf("1"), endOf("6")), range(endOf("6"), rp("7", databaseDescriptor)));
+        testGRRKeys(exBounds(rp("0", databaseDescriptor), rp("7", databaseDescriptor)), range(rp("0", databaseDescriptor), endOf("1")), range(endOf("1"), endOf("6")), exBounds(endOf("6"), rp("7", databaseDescriptor)));
+        testGRRKeys(incExBounds(rp("0", databaseDescriptor), rp("7", databaseDescriptor)), bounds(rp("0", databaseDescriptor), endOf("1")), range(endOf("1"), endOf("6")), exBounds(endOf("6"), rp("7", databaseDescriptor)));
     }
 
     @Test
@@ -177,22 +177,22 @@ public class StorageProxyTest
         // Keys
         // min
         testGRRKeys(range(endOf("1"), endOf("5")), range(endOf("1"), endOf("5")));
-        testGRRKeys(range(rp("1"), endOf("5")), range(rp("1"), endOf("1")), range(endOf("1"), endOf("5")));
+        testGRRKeys(range(rp("1", databaseDescriptor), endOf("5")), range(rp("1", databaseDescriptor), endOf("1")), range(endOf("1"), endOf("5")));
         testGRRKeys(bounds(startOf("1"), endOf("5")), bounds(startOf("1"), endOf("1")), range(endOf("1"), endOf("5")));
-        testGRRKeys(exBounds(endOf("1"), rp("5")), exBounds(endOf("1"), rp("5")));
-        testGRRKeys(exBounds(rp("1"), rp("5")), range(rp("1"), endOf("1")), exBounds(endOf("1"), rp("5")));
+        testGRRKeys(exBounds(endOf("1"), rp("5", databaseDescriptor)), exBounds(endOf("1"), rp("5", databaseDescriptor)));
+        testGRRKeys(exBounds(rp("1", databaseDescriptor), rp("5", databaseDescriptor)), range(rp("1", databaseDescriptor), endOf("1")), exBounds(endOf("1"), rp("5", databaseDescriptor)));
         testGRRKeys(exBounds(startOf("1"), endOf("5")), range(startOf("1"), endOf("1")), exBounds(endOf("1"), endOf("5")));
-        testGRRKeys(incExBounds(rp("1"), rp("5")), bounds(rp("1"), endOf("1")), exBounds(endOf("1"), rp("5")));
+        testGRRKeys(incExBounds(rp("1", databaseDescriptor), rp("5", databaseDescriptor)), bounds(rp("1", databaseDescriptor), endOf("1")), exBounds(endOf("1"), rp("5", databaseDescriptor)));
         // max
         testGRRKeys(range(endOf("2"), endOf("6")), range(endOf("2"), endOf("6")));
         testGRRKeys(bounds(startOf("2"), endOf("6")), bounds(startOf("2"), endOf("6")));
-        testGRRKeys(exBounds(rp("2"), rp("6")), exBounds(rp("2"), rp("6")));
-        testGRRKeys(incExBounds(rp("2"), rp("6")), incExBounds(rp("2"), rp("6")));
+        testGRRKeys(exBounds(rp("2", databaseDescriptor), rp("6", databaseDescriptor)), exBounds(rp("2", databaseDescriptor), rp("6", databaseDescriptor)));
+        testGRRKeys(incExBounds(rp("2", databaseDescriptor), rp("6", databaseDescriptor)), incExBounds(rp("2", databaseDescriptor), rp("6", databaseDescriptor)));
         // bothKeys
-        testGRRKeys(range(rp("1"), rp("6")), range(rp("1"), endOf("1")), range(endOf("1"), rp("6")));
-        testGRRKeys(bounds(rp("1"), rp("6")), bounds(rp("1"), endOf("1")), range(endOf("1"), rp("6")));
-        testGRRKeys(exBounds(rp("1"), rp("6")), range(rp("1"), endOf("1")), exBounds(endOf("1"), rp("6")));
-        testGRRKeys(incExBounds(rp("1"), rp("6")), bounds(rp("1"), endOf("1")), exBounds(endOf("1"), rp("6")));
+        testGRRKeys(range(rp("1", databaseDescriptor), rp("6", databaseDescriptor)), range(rp("1", databaseDescriptor), endOf("1")), range(endOf("1"), rp("6", databaseDescriptor)));
+        testGRRKeys(bounds(rp("1", databaseDescriptor), rp("6", databaseDescriptor)), bounds(rp("1", databaseDescriptor), endOf("1")), range(endOf("1"), rp("6", databaseDescriptor)));
+        testGRRKeys(exBounds(rp("1", databaseDescriptor), rp("6", databaseDescriptor)), range(rp("1", databaseDescriptor), endOf("1")), exBounds(endOf("1"), rp("6", databaseDescriptor)));
+        testGRRKeys(incExBounds(rp("1", databaseDescriptor), rp("6", databaseDescriptor)), bounds(rp("1", databaseDescriptor), endOf("1")), exBounds(endOf("1"), rp("6", databaseDescriptor)));
     }
 
     @Test
@@ -214,18 +214,18 @@ public class StorageProxyTest
 
         // Keys
         // one token in wrapped range
-        testGRRKeys(range(rp("7"), rp("0")), range(rp("7"), rp("")), range(rp(""), rp("0")));
+        testGRRKeys(range(rp("7", databaseDescriptor), rp("0", databaseDescriptor)), range(rp("7", databaseDescriptor), rp("", databaseDescriptor)), range(rp("", databaseDescriptor), rp("0", databaseDescriptor)));
         // two tokens in wrapped range
-        testGRRKeys(range(rp("5"), rp("0")), range(rp("5"), endOf("6")), range(endOf("6"), rp("")), range(rp(""), rp("0")));
-        testGRRKeys(range(rp("7"), rp("2")), range(rp("7"), rp("")), range(rp(""), endOf("1")), range(endOf("1"), rp("2")));
+        testGRRKeys(range(rp("5", databaseDescriptor), rp("0", databaseDescriptor)), range(rp("5", databaseDescriptor), endOf("6")), range(endOf("6"), rp("", databaseDescriptor)), range(rp("", databaseDescriptor), rp("0", databaseDescriptor)));
+        testGRRKeys(range(rp("7", databaseDescriptor), rp("2", databaseDescriptor)), range(rp("7", databaseDescriptor), rp("", databaseDescriptor)), range(rp("", databaseDescriptor), endOf("1")), range(endOf("1"), rp("2", databaseDescriptor)));
         // full wraps
-        testGRRKeys(range(rp("0"), rp("0")), range(rp("0"), endOf("1")), range(endOf("1"), endOf("6")), range(endOf("6"), rp("")), range(rp(""), rp("0")));
-        testGRRKeys(range(rp(""), rp("")), range(rp(""), endOf("1")), range(endOf("1"), endOf("6")), range(endOf("6"), rp("")));
+        testGRRKeys(range(rp("0", databaseDescriptor), rp("0", databaseDescriptor)), range(rp("0", databaseDescriptor), endOf("1")), range(endOf("1"), endOf("6")), range(endOf("6"), rp("", databaseDescriptor)), range(rp("", databaseDescriptor), rp("0", databaseDescriptor)));
+        testGRRKeys(range(rp("", databaseDescriptor), rp("", databaseDescriptor)), range(rp("", databaseDescriptor), endOf("1")), range(endOf("1"), endOf("6")), range(endOf("6"), rp("", databaseDescriptor)));
         // wrap on member tokens
-        testGRRKeys(range(rp("6"), rp("6")), range(rp("6"), endOf("6")), range(endOf("6"), rp("")), range(rp(""), endOf("1")), range(endOf("1"), rp("6")));
-        testGRRKeys(range(rp("6"), rp("1")), range(rp("6"), endOf("6")), range(endOf("6"), rp("")), range(rp(""), rp("1")));
+        testGRRKeys(range(rp("6", databaseDescriptor), rp("6", databaseDescriptor)), range(rp("6", databaseDescriptor), endOf("6")), range(endOf("6"), rp("", databaseDescriptor)), range(rp("", databaseDescriptor), endOf("1")), range(endOf("1"), rp("6", databaseDescriptor)));
+        testGRRKeys(range(rp("6", databaseDescriptor), rp("1", databaseDescriptor)), range(rp("6", databaseDescriptor), endOf("6")), range(endOf("6"), rp("", databaseDescriptor)), range(rp("", databaseDescriptor), rp("1", databaseDescriptor)));
         // end wrapped
-        testGRRKeys(range(rp("5"), rp("")), range(rp("5"), endOf("6")), range(endOf("6"), rp("")));
+        testGRRKeys(range(rp("5", databaseDescriptor), rp("", databaseDescriptor)), range(rp("5", databaseDescriptor), endOf("6")), range(endOf("6"), rp("", databaseDescriptor)));
     }
 
     @Test
@@ -238,10 +238,10 @@ public class StorageProxyTest
 
         // Keys
         // equal tokens are special cased as non-wrapping for bounds
-        testGRRKeys(bounds(rp("0"), rp("0")), bounds(rp("0"), rp("0")));
+        testGRRKeys(bounds(rp("0", databaseDescriptor), rp("0", databaseDescriptor)), bounds(rp("0", databaseDescriptor), rp("0", databaseDescriptor)));
         // completely empty bounds match everything
-        testGRRKeys(bounds(rp(""), rp("")), bounds(rp(""), endOf("1")), range(endOf("1"), endOf("6")), range(endOf("6"), rp("")));
-        testGRRKeys(exBounds(rp(""), rp("")), range(rp(""), endOf("1")), range(endOf("1"), endOf("6")), exBounds(endOf("6"), rp("")));
-        testGRRKeys(incExBounds(rp(""), rp("")), bounds(rp(""), endOf("1")), range(endOf("1"), endOf("6")), exBounds(endOf("6"), rp("")));
+        testGRRKeys(bounds(rp("", databaseDescriptor), rp("", databaseDescriptor)), bounds(rp("", databaseDescriptor), endOf("1")), range(endOf("1"), endOf("6")), range(endOf("6"), rp("", databaseDescriptor)));
+        testGRRKeys(exBounds(rp("", databaseDescriptor), rp("", databaseDescriptor)), range(rp("", databaseDescriptor), endOf("1")), range(endOf("1"), endOf("6")), exBounds(endOf("6"), rp("", databaseDescriptor)));
+        testGRRKeys(incExBounds(rp("", databaseDescriptor), rp("", databaseDescriptor)), bounds(rp("", databaseDescriptor), endOf("1")), range(endOf("1"), endOf("6")), exBounds(endOf("6"), rp("", databaseDescriptor)));
     }
 }

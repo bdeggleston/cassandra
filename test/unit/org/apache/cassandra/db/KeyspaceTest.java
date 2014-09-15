@@ -75,8 +75,8 @@ public class KeyspaceTest
     public static void defineSchema() throws ConfigurationException
     {
         DatabaseDescriptor.init();
-        TEST_KEY = Util.dk("key1");
-        TEST_SLICE_KEY = Util.dk("key1-slicerange");
+        TEST_KEY = Util.dk("key1", databaseDescriptor);
+        TEST_SLICE_KEY = Util.dk("key1-slicerange", databaseDescriptor);
         SchemaLoader.prepareServer();
         AbstractType<?> compositeMaxMin = CompositeType.getInstance(Arrays.asList(new AbstractType<?>[]{BytesType.instance, IntegerType.instance}));
         SchemaLoader.createKeyspace(KEYSPACE1,
@@ -207,7 +207,7 @@ public class KeyspaceTest
         // tests slicing against data from one row in a memtable and then flushed to an sstable
         final Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
-        final DecoratedKey ROW = Util.dk("row4");
+        final DecoratedKey ROW = Util.dk("row4", databaseDescriptor);
         final NumberFormat fmt = new DecimalFormat("000");
 
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
@@ -264,7 +264,7 @@ public class KeyspaceTest
     {
         final Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("StandardLong1");
-        final DecoratedKey ROW = Util.dk("row4");
+        final DecoratedKey ROW = Util.dk("row4", databaseDescriptor);
 
         for (int i = 0; i < 10; i++)
         {
@@ -295,11 +295,11 @@ public class KeyspaceTest
         ColumnFamily cf;
 
         // key before the rows that exists
-        cf = cfStore.getColumnFamily(Util.dk("a"), Composites.EMPTY, Composites.EMPTY, false, 1, System.currentTimeMillis());
+        cf = cfStore.getColumnFamily(Util.dk("a", databaseDescriptor), Composites.EMPTY, Composites.EMPTY, false, 1, System.currentTimeMillis());
         assertColumns(cf);
 
         // key after the rows that exist
-        cf = cfStore.getColumnFamily(Util.dk("z"), Composites.EMPTY, Composites.EMPTY, false, 1, System.currentTimeMillis());
+        cf = cfStore.getColumnFamily(Util.dk("z", databaseDescriptor), Composites.EMPTY, Composites.EMPTY, false, 1, System.currentTimeMillis());
         assertColumns(cf);
     }
 
@@ -309,7 +309,7 @@ public class KeyspaceTest
         // tests slicing against data from one row in a memtable and then flushed to an sstable
         final Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
-        final DecoratedKey ROW = Util.dk("row1");
+        final DecoratedKey ROW = Util.dk("row1", databaseDescriptor);
 
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.addColumn(column("col1", "val1", 1L));
@@ -364,7 +364,7 @@ public class KeyspaceTest
         // tests slicing against data from one row with expiring column in a memtable and then flushed to an sstable
         final Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
-        final DecoratedKey ROW = Util.dk("row5");
+        final DecoratedKey ROW = Util.dk("row5", databaseDescriptor);
 
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.addColumn(column("col1", "val1", 1L));
@@ -398,7 +398,7 @@ public class KeyspaceTest
         // tests slicing against data from one row spread across two sstables
         final Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
-        final DecoratedKey ROW = Util.dk("row2");
+        final DecoratedKey ROW = Util.dk("row2", databaseDescriptor);
 
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.addColumn(column("col1", "val1", 1L));
@@ -447,7 +447,7 @@ public class KeyspaceTest
         // tests slicing against 1000 columns in an sstable
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
-        DecoratedKey key = Util.dk("row3");
+        DecoratedKey key = Util.dk("row3", databaseDescriptor);
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         for (int i = 1000; i < 2000; i++)
             cf.addColumn(column("col" + i, ("v" + i), 1L));
@@ -476,7 +476,7 @@ public class KeyspaceTest
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
         cfStore.disableAutoCompaction();
-        DecoratedKey key = Util.dk("row_maxmin");
+        DecoratedKey key = Util.dk("row_maxmin", databaseDescriptor);
         for (int j = 0; j < 10; j++)
         {
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
@@ -543,7 +543,7 @@ public class KeyspaceTest
         cfs.disableAutoCompaction();
 
         CellNameType type = cfs.getComparator();
-        DecoratedKey key = Util.dk("k");
+        DecoratedKey key = Util.dk("k", databaseDescriptor);
         for (int j = 0; j < 10; j++)
         {
             for (int i = 0; i < 10; i++)
@@ -568,7 +568,7 @@ public class KeyspaceTest
 
     private void validateSliceLarge(ColumnFamilyStore cfStore) throws IOException
     {
-        DecoratedKey key = Util.dk("row3");
+        DecoratedKey key = Util.dk("row3", databaseDescriptor);
         ColumnFamily cf;
         cf = cfStore.getColumnFamily(key, cellname("col1000"), Composites.EMPTY, false, 3, System.currentTimeMillis());
         assertColumns(cf, "col1000", "col1001", "col1002");

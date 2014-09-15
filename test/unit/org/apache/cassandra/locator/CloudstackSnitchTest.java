@@ -75,7 +75,7 @@ public class CloudstackSnitchTest
     public void testRacks() throws IOException, ConfigurationException
     {
         az = "ch-gva-1";
-        CloudstackSnitch snitch = new TestCloudstackSnitch(LocatorConfig.instance);
+        CloudstackSnitch snitch = new TestCloudstackSnitch(databaseDescriptor.getLocatorConfig());
         InetAddress local = InetAddress.getByName("127.0.0.1");
         InetAddress nonlocal = InetAddress.getByName("127.0.0.7");
 
@@ -96,7 +96,7 @@ public class CloudstackSnitchTest
     public void testNewRegions() throws IOException, ConfigurationException
     {
         az = "ch-gva-1";
-        CloudstackSnitch snitch = new TestCloudstackSnitch(LocatorConfig.instance);
+        CloudstackSnitch snitch = new TestCloudstackSnitch(databaseDescriptor.getLocatorConfig());
         InetAddress local = InetAddress.getByName("127.0.0.1");
 
         assertEquals("ch-gva", snitch.getDatacenter(local));

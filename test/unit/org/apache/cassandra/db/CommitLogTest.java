@@ -373,7 +373,7 @@ public class CommitLogTest
         ColumnFamilyStore cfs = notDurableKs.getColumnFamilyStore("Standard1");
         CellNameType type = notDurableKs.getColumnFamilyStore("Standard1").getComparator();
         Mutation rm;
-        DecoratedKey dk = Util.dk("key1");
+        DecoratedKey dk = Util.dk("key1", databaseDescriptor);
 
         // add data
         rm = databaseDescriptor.getMutationFactory().create(KEYSPACE2, dk.getKey());
@@ -386,7 +386,7 @@ public class CommitLogTest
                                                           System.currentTimeMillis(),
                                                           new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                                           databaseDescriptor.getSchema(),
-                                                          LocatorConfig.instance.getPartitioner(),
+                                                          databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                           MessagingService.instance.readCommandSerializer);
         Row row = command.getRow(notDurableKs);
         Cell col = row.cf.getColumn(Util.cellname("Column1"));

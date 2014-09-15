@@ -74,7 +74,7 @@ public class DifferencerTest
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD));
-        partitioner = LocatorConfig.instance.getPartitioner();
+        partitioner = databaseDescriptor.getLocatorConfig().getPartitioner();
         assert partitioner instanceof Murmur3Partitioner;
     }
 

@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.util.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.columniterator.OnDiskAtomIterator;
 import org.apache.cassandra.service.ActiveRepairService;
@@ -125,9 +124,9 @@ public class SSTableUtils
     /**
      * @return A Context with chainable methods to configure and write a SSTable.
      */
-    public static Context prepare(SSTableWriterFactory ssTableWriterFactory)
+    public static Context prepare(DatabaseDescriptor databaseDescriptor)
     {
-        return new Context(ssTableWriterFactory);
+        return new Context(databaseDescriptor);
     }
 
     public static class Context
@@ -137,11 +136,13 @@ public class SSTableUtils
         private Descriptor dest = null;
         private boolean cleanup = true;
         private int generation = 0;
+        private final DatabaseDescriptor databaseDescriptor;
         private final SSTableWriterFactory ssTableWriterFactory;
 
-        Context(SSTableWriterFactory ssTableWriterFactory)
+        Context(DatabaseDescriptor databaseDescriptor)
         {
-            this.ssTableWriterFactory = ssTableWriterFactory;
+            this.databaseDescriptor = databaseDescriptor;
+            this.ssTableWriterFactory = databaseDescriptor.getSSTableWriterFactory();
         }
 
         public Context ks(String ksname)
@@ -209,7 +210,7 @@ public class SSTableUtils
         {
             SortedMap<DecoratedKey, ColumnFamily> sorted = new TreeMap<DecoratedKey, ColumnFamily>();
             for (Map.Entry<String, ColumnFamily> entry : entries.entrySet())
-                sorted.put(Util.dk(entry.getKey()), entry.getValue());
+                sorted.put(Util.dk(entry.getKey(), databaseDescriptor), entry.getValue());
 
             return write(sorted);
         }

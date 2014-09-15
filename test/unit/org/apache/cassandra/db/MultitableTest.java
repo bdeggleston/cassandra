@@ -62,7 +62,7 @@ public class MultitableTest
         Keyspace keyspace2 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE2);
 
         Mutation rm;
-        DecoratedKey dk = Util.dk("keymulti");
+        DecoratedKey dk = Util.dk("keymulti", databaseDescriptor);
         ColumnFamily cf;
 
         cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());

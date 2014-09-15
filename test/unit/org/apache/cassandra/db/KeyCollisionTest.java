@@ -68,13 +68,13 @@ public class KeyCollisionTest
 
     protected void setUp()
     {
-        oldPartitioner = LocatorConfig.instance.getPartitioner();
-        LocatorConfig.instance.setPartitioner(new LengthPartitioner());
+        oldPartitioner = databaseDescriptor.getLocatorConfig().getPartitioner();
+        databaseDescriptor.getLocatorConfig().setPartitioner(new LengthPartitioner());
     }
 
     protected void tearDown()
     {
-        LocatorConfig.instance.setPartitioner(oldPartitioner);
+        databaseDescriptor.getLocatorConfig().setPartitioner(oldPartitioner);
     }
 
     @Test
@@ -88,7 +88,7 @@ public class KeyCollisionTest
         insert("key1", "key2", "key3"); // token = 4
         insert("longKey1", "longKey2"); // token = 8
 
-        List<Row> rows = cfs.getRangeSlice(new Bounds<RowPosition>(dk("k2"), dk("key2"), LocatorConfig.instance.getPartitioner()), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 10000);
+        List<Row> rows = cfs.getRangeSlice(new Bounds<RowPosition>(dk("k2", databaseDescriptor), dk("key2", databaseDescriptor), databaseDescriptor.getLocatorConfig().getPartitioner()), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 10000);
         assert rows.size() == 4 : "Expecting 4 keys, got " + rows.size();
         assert rows.get(0).key.getKey().equals(ByteBufferUtil.bytes("k2"));
         assert rows.get(1).key.getKey().equals(ByteBufferUtil.bytes("k3"));
@@ -113,7 +113,7 @@ public class KeyCollisionTest
     public static class LengthPartitioner extends AbstractPartitioner<BigIntegerToken>
     {
         public static final BigInteger ZERO = new BigInteger("0");
-        public static final BigIntegerToken MINIMUM = new BigIntegerToken("-1", LocatorConfig.instance.getPartitioner());
+        public static final BigIntegerToken MINIMUM = new BigIntegerToken("-1", databaseDescriptor.getLocatorConfig().getPartitioner());
 
         private static final byte DELIMITER_BYTE = ":".getBytes()[0];
 
@@ -129,7 +129,7 @@ public class KeyCollisionTest
             BigInteger right = rtoken.equals(MINIMUM) ? ZERO : ((BigIntegerToken)rtoken).token;
             Pair<BigInteger,Boolean> midpair = FBUtilities.midpoint(left, right, 127);
             // discard the remainder
-            return new BigIntegerToken(midpair.left, LocatorConfig.instance.getPartitioner());
+            return new BigIntegerToken(midpair.left, databaseDescriptor.getLocatorConfig().getPartitioner());
         }
 
         public BigIntegerToken getMinimumToken()
@@ -139,7 +139,7 @@ public class KeyCollisionTest
 
         public BigIntegerToken getRandomToken()
         {
-            return new BigIntegerToken(BigInteger.valueOf(new Random().nextInt(15)), LocatorConfig.instance.getPartitioner());
+            return new BigIntegerToken(BigInteger.valueOf(new Random().nextInt(15)), databaseDescriptor.getLocatorConfig().getPartitioner());
         }
 
         private final Token.TokenFactory<BigInteger> tokenFactory = new Token.TokenFactory<BigInteger>() {
@@ -150,7 +150,7 @@ public class KeyCollisionTest
 
             public Token<BigInteger> fromByteArray(ByteBuffer bytes)
             {
-                return new BigIntegerToken(new BigInteger(ByteBufferUtil.getArray(bytes)), LocatorConfig.instance.getPartitioner());
+                return new BigIntegerToken(new BigInteger(ByteBufferUtil.getArray(bytes)), databaseDescriptor.getLocatorConfig().getPartitioner());
             }
 
             public String toString(Token<BigInteger> bigIntegerToken)
@@ -160,7 +160,7 @@ public class KeyCollisionTest
 
             public Token<BigInteger> fromString(String string)
             {
-                return new BigIntegerToken(new BigInteger(string), LocatorConfig.instance.getPartitioner());
+                return new BigIntegerToken(new BigInteger(string), databaseDescriptor.getLocatorConfig().getPartitioner());
             }
 
             public void validate(String token) {}
@@ -180,7 +180,7 @@ public class KeyCollisionTest
         {
             if (key.remaining() == 0)
                 return MINIMUM;
-            return new BigIntegerToken(BigInteger.valueOf(key.remaining()), LocatorConfig.instance.getPartitioner());
+            return new BigIntegerToken(BigInteger.valueOf(key.remaining()), databaseDescriptor.getLocatorConfig().getPartitioner());
         }
 
         @Override
@@ -200,7 +200,7 @@ public class KeyCollisionTest
             for (Token node : sortedTokens)
             {
                 allTokens.put(node, new Float(0.0));
-                sortedRanges.add(new Range<Token>(lastToken, node, LocatorConfig.instance.getPartitioner()));
+                sortedRanges.add(new Range<Token>(lastToken, node, databaseDescriptor.getLocatorConfig().getPartitioner()));
                 lastToken = node;
             }
 

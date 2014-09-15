@@ -94,12 +94,12 @@ public class SSTableExportTest
 
         // Add rowA
         cfamily.addColumn(Util.cellname("colA"), ByteBufferUtil.bytes("valA"), System.currentTimeMillis());
-        writer.append(Util.dk("rowA"), cfamily);
+        writer.append(Util.dk("rowA", databaseDescriptor), cfamily);
         cfamily.clear();
 
         // Add rowB
         cfamily.addColumn(Util.cellname("colB"), ByteBufferUtil.bytes("valB"), System.currentTimeMillis());
-        writer.append(Util.dk("rowB"), cfamily);
+        writer.append(Util.dk("rowB", databaseDescriptor), cfamily);
         cfamily.clear();
 
         writer.closeAndOpenReader();
@@ -108,7 +108,7 @@ public class SSTableExportTest
         File temp = File.createTempFile("Standard1", ".txt");
         final Descriptor descriptor = Descriptor.fromFilename(writer.getFilename());
         SSTableExport.enumeratekeys(descriptor, new PrintStream(temp.getPath()),
-                databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(descriptor.ksname, descriptor.cfname, BytesType.instance), LocatorConfig.instance.getPartitioner());
+                databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(descriptor.ksname, descriptor.cfname, BytesType.instance), databaseDescriptor.getLocatorConfig().getPartitioner());
 
 
         try (FileReader file = new FileReader(temp))
@@ -133,17 +133,17 @@ public class SSTableExportTest
         // Add rowA
         cfamily.addColumn(Util.cellname("colA"), ByteBufferUtil.bytes("valA"), System.currentTimeMillis());
         cfamily.addColumn(new BufferExpiringCell(Util.cellname("colExp"), ByteBufferUtil.bytes("valExp"), System.currentTimeMillis(), 42, nowInSec));
-        writer.append(Util.dk("rowA"), cfamily);
+        writer.append(Util.dk("rowA", databaseDescriptor), cfamily);
         cfamily.clear();
 
         // Add rowB
         cfamily.addColumn(Util.cellname("colB"), ByteBufferUtil.bytes("valB"), System.currentTimeMillis());
-        writer.append(Util.dk("rowB"), cfamily);
+        writer.append(Util.dk("rowB", databaseDescriptor), cfamily);
         cfamily.clear();
 
         // Add rowExclude
         cfamily.addColumn(Util.cellname("colX"), ByteBufferUtil.bytes("valX"), System.currentTimeMillis());
-        writer.append(Util.dk("rowExclude"), cfamily);
+        writer.append(Util.dk("rowExclude", databaseDescriptor), cfamily);
         cfamily.clear();
 
         SSTableReader reader = writer.closeAndOpenReader();
@@ -188,12 +188,12 @@ public class SSTableExportTest
 
         // Add rowA
         cfamily.addColumn(Util.cellname("name"), ByteBufferUtil.bytes("val"), System.currentTimeMillis());
-        writer.append(Util.dk("rowA"), cfamily);
+        writer.append(Util.dk("rowA", databaseDescriptor), cfamily);
         cfamily.clear();
 
         // Add rowExclude
         cfamily.addColumn(Util.cellname("name"), ByteBufferUtil.bytes("val"), System.currentTimeMillis());
-        writer.append(Util.dk("rowExclude"), cfamily);
+        writer.append(Util.dk("rowExclude", databaseDescriptor), cfamily);
         cfamily.clear();
 
         SSTableReader reader = writer.closeAndOpenReader();
@@ -208,13 +208,13 @@ public class SSTableExportTest
         new SSTableImport().importJson(tempJson.getPath(), KEYSPACE1, "Standard1", tempSS2.getPath());
 
         reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS2.getPath()));
-        QueryFilter qf = Util.namesQueryFilter(cfs, Util.dk("rowA"), databaseDescriptor, "name");
+        QueryFilter qf = Util.namesQueryFilter(cfs, Util.dk("rowA", databaseDescriptor), databaseDescriptor, "name");
         ColumnFamily cf = qf.getSSTableColumnIterator(reader).getColumnFamily();
         qf.collateOnDiskAtom(cf, qf.getSSTableColumnIterator(reader), Integer.MIN_VALUE);
         assertNotNull(cf);
         assertEquals(hexToBytes("76616c"), cf.getColumn(Util.cellname("name")).value());
 
-        qf = Util.namesQueryFilter(cfs, Util.dk("rowExclude"), databaseDescriptor, "name");
+        qf = Util.namesQueryFilter(cfs, Util.dk("rowExclude", databaseDescriptor), databaseDescriptor, "name");
         cf = qf.getSSTableColumnIterator(reader).getColumnFamily();
         assert cf == null;
     }
@@ -228,7 +228,7 @@ public class SSTableExportTest
 
         // Add rowA
         cfamily.addColumn(BufferCounterCell.createLocal(Util.cellname("colA"), 42, System.currentTimeMillis(), Long.MIN_VALUE, databaseDescriptor.getSystemKeyspace().getLocalHostId()));
-        writer.append(Util.dk("rowA"), cfamily);
+        writer.append(Util.dk("rowA", databaseDescriptor), cfamily);
         cfamily.clear();
 
         SSTableReader reader = writer.closeAndOpenReader();
@@ -260,7 +260,7 @@ public class SSTableExportTest
 
         // Add rowA
         cfamily.addColumn(new BufferCell(Util.cellname("data"), UTF8Type.instance.fromString("{\"foo\":\"bar\"}")));
-        writer.append(Util.dk("rowA"), cfamily);
+        writer.append(Util.dk("rowA", databaseDescriptor), cfamily);
         cfamily.clear();
 
         SSTableReader reader = writer.closeAndOpenReader();
@@ -294,7 +294,7 @@ public class SSTableExportTest
         cfamily.addColumn(Util.cellname("colName"), ByteBufferUtil.bytes("val"), System.currentTimeMillis());
         cfamily.addColumn(Util.cellname("colName1"), ByteBufferUtil.bytes("val1"), System.currentTimeMillis());
         cfamily.delete(new DeletionInfo(0, 0));
-        writer.append(Util.dk("rowA"), cfamily);
+        writer.append(Util.dk("rowA", databaseDescriptor), cfamily);
 
         SSTableReader reader = writer.closeAndOpenReader();
         // Export to JSON and verify
@@ -354,7 +354,7 @@ public class SSTableExportTest
 
         // Add a row
         cfamily.addColumn(column(CFMetaData.DEFAULT_KEY_ALIAS, "not a uuid", 1L));
-        writer.append(Util.dk(ByteBufferUtil.bytes(UUIDGen.getTimeUUID())), cfamily);
+        writer.append(Util.dk(ByteBufferUtil.bytes(UUIDGen.getTimeUUID()), databaseDescriptor), cfamily);
 
         SSTableReader reader = writer.closeAndOpenReader();
         // Export to JSON and verify
@@ -384,7 +384,7 @@ public class SSTableExportTest
 
         // Add a row
         cfamily.addColumn(column("column", "value", 1L));
-        writer.append(Util.dk("key", AsciiType.instance), cfamily);
+        writer.append(Util.dk("key", AsciiType.instance, databaseDescriptor), cfamily);
 
         SSTableReader reader = writer.closeAndOpenReader();
         // Export to JSON and verify

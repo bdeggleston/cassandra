@@ -129,7 +129,7 @@ public class IndexSummaryManagerTest
     {
         for (int i = 0; i < numRows; i++)
         {
-            DecoratedKey key = Util.dk(String.format("%3d", i));
+            DecoratedKey key = Util.dk(String.format("%3d", i), databaseDescriptor);
             QueryFilter filter = QueryFilter.getIdentityFilter(key, cfs.getColumnFamilyName(), System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
             ColumnFamily row = cfs.getColumnFamily(filter);
             assertNotNull(row);
@@ -160,7 +160,7 @@ public class IndexSummaryManagerTest
         {
             for (int row = 0; row < numRows; row++)
             {
-                DecoratedKey key = Util.dk(String.format("%3d", row));
+                DecoratedKey key = Util.dk(String.format("%3d", row), databaseDescriptor);
                 Mutation rm = databaseDescriptor.getMutationFactory().create(ksname, key.getKey());
                 rm.add(cfname, Util.cellname("column"), value, 0);
                 rm.applyUnsafe();
@@ -433,7 +433,7 @@ public class IndexSummaryManagerTest
         int numRows = 256;
         for (int row = 0; row < numRows; row++)
         {
-            DecoratedKey key = Util.dk(String.valueOf(row));
+            DecoratedKey key = Util.dk(String.valueOf(row), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(ksname, key.getKey());
             rm.add(cfname, Util.cellname("column"), value, 0);
             rm.applyUnsafe();
@@ -493,7 +493,7 @@ public class IndexSummaryManagerTest
         {
             for (int row = 0; row < numRows; row++)
             {
-                DecoratedKey key = Util.dk(String.valueOf(row));
+                DecoratedKey key = Util.dk(String.valueOf(row), databaseDescriptor);
                 Mutation rm = databaseDescriptor.getMutationFactory().create(ksname, key.getKey());
                 rm.add(cfname, Util.cellname("column"), value, 0);
                 rm.applyUnsafe();

@@ -59,7 +59,7 @@ public class ValidatorTest
     private static final String columnFamily = "Standard1";
 
     public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
-    private final IPartitioner partitioner = LocatorConfig.instance.getPartitioner();
+    private final IPartitioner partitioner = databaseDescriptor.getLocatorConfig().getPartitioner();
 
     @BeforeClass
     public static void defineSchema() throws Exception

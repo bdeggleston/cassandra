@@ -31,6 +31,8 @@ import org.junit.Test;
  */
 public class GossipingPropertyFileSnitchTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void setUpClass()
     {
@@ -42,7 +44,7 @@ public class GossipingPropertyFileSnitchTest
     {
         String confFile = FBUtilities.resourceToFile(SnitchProperties.RACKDC_PROPERTY_FILENAME);
         
-        final GossipingPropertyFileSnitch snitch = new GossipingPropertyFileSnitch(LocatorConfig.instance, /*refreshPeriodInSeconds*/1);
+        final GossipingPropertyFileSnitch snitch = new GossipingPropertyFileSnitch(databaseDescriptor.getLocatorConfig(), /*refreshPeriodInSeconds*/1);
         YamlFileNetworkTopologySnitchTest.checkEndpoint(snitch, DatabaseDescriptor.instance.getBroadcastAddress().getHostAddress(), "DC1", "RAC1");
 
         final Path effectiveFile = Paths.get(confFile);

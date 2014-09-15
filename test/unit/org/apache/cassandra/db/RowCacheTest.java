@@ -96,7 +96,7 @@ public class RowCacheTest
         // now reading rows one by one and checking if row change grows
         for (int i = 0; i < 100; i++)
         {
-            DecoratedKey key = Util.dk("key" + i);
+            DecoratedKey key = Util.dk("key" + i, databaseDescriptor);
 
             cachedStore.getColumnFamily(key, Composites.EMPTY, Composites.EMPTY, false, 1, System.currentTimeMillis());
             assert databaseDescriptor.getCacheService().rowCache.size() == i + 1;
@@ -118,7 +118,7 @@ public class RowCacheTest
 
         for (int i = 100; i < 110; i++)
         {
-            DecoratedKey key = Util.dk("key" + i);
+            DecoratedKey key = Util.dk("key" + i, databaseDescriptor);
 
             cachedStore.getColumnFamily(key, Composites.EMPTY, Composites.EMPTY, false, 1, System.currentTimeMillis());
             assert cachedStore.containsCachedRow(key); // cache should be populated with the latest rows read (old ones should be popped)
@@ -138,7 +138,7 @@ public class RowCacheTest
         int keysLeft = 109;
         for (int i = 109; i >= 10; i--)
         {
-            cachedStore.invalidateCachedRow(Util.dk("key" + i));
+            cachedStore.invalidateCachedRow(Util.dk("key" + i, databaseDescriptor));
             assert databaseDescriptor.getCacheService().rowCache.size() == keysLeft;
             keysLeft--;
         }
@@ -165,12 +165,12 @@ public class RowCacheTest
         assertEquals(databaseDescriptor.getCacheService().rowCache.getKeySet().size(), 100);
         store.cleanupCache();
         assertEquals(databaseDescriptor.getCacheService().rowCache.getKeySet().size(), 100);
-        TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
+        TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         byte[] tk1, tk2;
         tk1 = "key1000".getBytes();
         tk2 = "key1050".getBytes();
-        tmd.updateNormalToken(new BytesToken(tk1, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.1"));
-        tmd.updateNormalToken(new BytesToken(tk2, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.2"));
+        tmd.updateNormalToken(new BytesToken(tk1, databaseDescriptor.getLocatorConfig().getPartitioner()), InetAddress.getByName("127.0.0.1"));
+        tmd.updateNormalToken(new BytesToken(tk2, databaseDescriptor.getLocatorConfig().getPartitioner()), InetAddress.getByName("127.0.0.2"));
         store.cleanupCache();
         assertEquals(databaseDescriptor.getCacheService().rowCache.getKeySet().size(), 50);
         databaseDescriptor.getCacheService().setRowCacheCapacityInMB(0);

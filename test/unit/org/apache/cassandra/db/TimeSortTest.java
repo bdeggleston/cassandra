@@ -62,7 +62,7 @@ public class TimeSortTest
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore(CF_STANDARD1);
         Mutation rm;
-        DecoratedKey key = Util.dk("key0");
+        DecoratedKey key = Util.dk("key0", databaseDescriptor);
 
         rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
         rm.add(CF_STANDARD1, cellname(100), ByteBufferUtil.bytes("a"), 100);
@@ -100,7 +100,7 @@ public class TimeSortTest
         validateTimeSort(keyspace);
 
         // interleave some new data to test memtable + sstable
-        DecoratedKey key = Util.dk("900");
+        DecoratedKey key = Util.dk("900", databaseDescriptor);
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
         for (int j = 0; j < 4; ++j)
         {
@@ -127,7 +127,7 @@ public class TimeSortTest
         TreeSet<CellName> columnNames = new TreeSet<CellName>(cfStore.getComparator());
         columnNames.add(cellname(10));
         columnNames.add(cellname(0));
-        cf = cfStore.getColumnFamily(QueryFilter.getNamesFilter(Util.dk("900"), CF_STANDARD1, columnNames, System.currentTimeMillis(), databaseDescriptor.getDBConfig()));
+        cf = cfStore.getColumnFamily(QueryFilter.getNamesFilter(Util.dk("900", databaseDescriptor), CF_STANDARD1, columnNames, System.currentTimeMillis(), databaseDescriptor.getDBConfig()));
         assert "c".equals(ByteBufferUtil.string(cf.getColumn(cellname(0)).value()));
         assert "c".equals(ByteBufferUtil.string(cf.getColumn(cellname(10)).value()));
     }
@@ -136,7 +136,7 @@ public class TimeSortTest
     {
         for (int i = 900; i < 1000; ++i)
         {
-            DecoratedKey key = Util.dk(Integer.toString(i));
+            DecoratedKey key = Util.dk(Integer.toString(i), databaseDescriptor);
             for (int j = 0; j < 8; j += 3)
             {
                 ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_STANDARD1);

@@ -68,8 +68,8 @@ public class SerializationsTest extends AbstractSerializationsTester
     public SliceQueryFilter emptyRangePred = new SliceQueryFilter(emptyCol, emptyCol, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
     public SliceQueryFilter nonEmptyRangePred = new SliceQueryFilter(CellNames.simpleDense(startCol), CellNames.simpleDense(stopCol), true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
     public SliceQueryFilter nonEmptyRangeSCPred = new SliceQueryFilter(CellNames.compositeDense(statics.SC, startCol), CellNames.compositeDense(statics.SC, stopCol), true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
-    public SliceByNamesReadCommand.Serializer slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
-    public SliceFromReadCommand.Serializer slicefromReadSerializer = new SliceFromReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
+    public SliceByNamesReadCommand.Serializer slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getLocatorConfig().getPartitioner(), MessagingService.instance.readCommandSerializer);
+    public SliceFromReadCommand.Serializer slicefromReadSerializer = new SliceFromReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getLocatorConfig().getPartitioner(), MessagingService.instance.readCommandSerializer);
 
     public static void defineSchema() throws ConfigurationException
     {
@@ -89,8 +89,8 @@ public class SerializationsTest extends AbstractSerializationsTester
 
     private void testRangeSliceCommandWrite() throws IOException
     {
-        IPartitioner part = LocatorConfig.instance.getPartitioner();
-        AbstractBounds<RowPosition> bounds = new Range<Token>(part.getRandomToken(), part.getRandomToken(), LocatorConfig.instance.getPartitioner()).toRowBounds();
+        IPartitioner part = databaseDescriptor.getLocatorConfig().getPartitioner();
+        AbstractBounds<RowPosition> bounds = new Range<Token>(part.getRandomToken(), part.getRandomToken(), databaseDescriptor.getLocatorConfig().getPartitioner()).toRowBounds();
 
         RangeSliceCommand.Serializer serializer = MessagingService.instance.rangeSliceCommandSerializer;
 
@@ -145,7 +145,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                           statics.readTs,
                                                                           namesPred, DatabaseDescriptor.instance,
                                                                           databaseDescriptor.getSchema(),
-                                                                          LocatorConfig.instance.getPartitioner(),
+                                                                          databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                                           MessagingService.instance.readCommandSerializer);
         SliceByNamesReadCommand superCmd = new SliceByNamesReadCommand(statics.KS,
                                                                        statics.Key,
@@ -153,7 +153,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                        statics.readTs,
                                                                        namesSCPred, DatabaseDescriptor.instance,
                                                                        databaseDescriptor.getSchema(),
-                                                                       LocatorConfig.instance.getPartitioner(),
+                                                                       databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                                        MessagingService.instance.readCommandSerializer);
 
         DataOutputStreamAndChannel out = getOutput("db.SliceByNamesReadCommand.bin");
@@ -194,7 +194,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                     statics.readTs,
                                                                     nonEmptyRangePred, DatabaseDescriptor.instance,
                                                                     databaseDescriptor.getSchema(),
-                                                                    LocatorConfig.instance.getPartitioner(),
+                                                                    databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                                     MessagingService.instance.readCommandSerializer);
         SliceFromReadCommand superCmd = new SliceFromReadCommand(statics.KS,
                                                                  statics.Key,
@@ -202,7 +202,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                  statics.readTs,
                                                                  nonEmptyRangeSCPred, DatabaseDescriptor.instance,
                                                                  databaseDescriptor.getSchema(),
-                                                                 LocatorConfig.instance.getPartitioner(),
+                                                                 databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                                  MessagingService.instance.readCommandSerializer);
 
         DataOutputStreamAndChannel out = getOutput("db.SliceFromReadCommand.bin");
@@ -423,9 +423,9 @@ public class SerializationsTest extends AbstractSerializationsTester
         private final ColumnFamily StandardCf = ArrayBackedSortedColumns.factory.create(KS, StandardCF, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         private final ColumnFamily SuperCf = ArrayBackedSortedColumns.factory.create(KS, SuperCF, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
 
-        private final Row StandardRow = new Row(Util.dk("key0"), StandardCf);
-        private final Row SuperRow = new Row(Util.dk("key1"), SuperCf);
-        private final Row NullRow = new Row(Util.dk("key2"), null);
+        private final Row StandardRow = new Row(Util.dk("key0", databaseDescriptor), StandardCf);
+        private final Row SuperRow = new Row(Util.dk("key1", databaseDescriptor), SuperCf);
+        private final Row NullRow = new Row(Util.dk("key2", databaseDescriptor), null);
 
         private Statics()
         {

@@ -134,7 +134,7 @@ public class CompactionsTest
         long timestamp = System.currentTimeMillis();
         for (int i = startRowKey; i <= endRowKey; i++)
         {
-            DecoratedKey key = Util.dk(Integer.toString(i));
+            DecoratedKey key = Util.dk(Integer.toString(i), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(ks, key.getKey());
             for (int j = 0; j < 10; j++)
                 rm.add(cf,  Util.cellname(Integer.toString(j)),
@@ -171,7 +171,7 @@ public class CompactionsTest
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Super1");
         cfs.disableAutoCompaction();
 
-        DecoratedKey key = Util.dk("tskey");
+        DecoratedKey key = Util.dk("tskey", databaseDescriptor);
         ByteBuffer scName = ByteBufferUtil.bytes("TestSuperColumn");
 
         // a subcolumn
@@ -294,7 +294,7 @@ public class CompactionsTest
         // at least to trigger what was causing CASSANDRA-2653
         for (int i=1; i < 5; i++)
         {
-            DecoratedKey key = Util.dk(String.valueOf(i));
+            DecoratedKey key = Util.dk(String.valueOf(i), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             rm.add("Standard2", Util.cellname(String.valueOf(i)), ByteBufferUtil.EMPTY_BYTE_BUFFER, i);
             rm.applyUnsafe();
@@ -309,7 +309,7 @@ public class CompactionsTest
         // to make sure we use EchoedRow, otherwise it won't be used because purge can be done.
         for (int i=1; i < 5; i++)
         {
-            DecoratedKey key = Util.dk(String.valueOf(i));
+            DecoratedKey key = Util.dk(String.valueOf(i), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             rm.add("Standard2", Util.cellname(String.valueOf(i)), ByteBufferUtil.EMPTY_BYTE_BUFFER, i);
             rm.applyUnsafe();
@@ -354,7 +354,7 @@ public class CompactionsTest
 
         final int ROWS_PER_SSTABLE = 10;
         for (int i = 0; i < ROWS_PER_SSTABLE; i++) {
-            DecoratedKey key = Util.dk(String.valueOf(i));
+            DecoratedKey key = Util.dk(String.valueOf(i), databaseDescriptor);
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             rm.add(cfname, Util.cellname("col"),
                    ByteBufferUtil.EMPTY_BYTE_BUFFER,
@@ -399,7 +399,7 @@ public class CompactionsTest
 
         for (int i=0; i < 4; i++)
         {
-            keys.add(Util.dk(""+i));
+            keys.add(Util.dk(""+i, databaseDescriptor));
         }
 
         ArrayBackedSortedColumns cf = ArrayBackedSortedColumns.factory.create(cfmeta, databaseDescriptor.getDBConfig());
@@ -411,26 +411,26 @@ public class CompactionsTest
                                                                     0,
                                                                     0,
                                                                     cfs.metadata,
-                                                                    LocatorConfig.instance.getPartitioner(),
+                                                                    databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                                     new MetadataCollector(cfs.metadata.comparator));
 
 
-        writer.append(Util.dk("0"), cf);
-        writer.append(Util.dk("1"), cf);
-        writer.append(Util.dk("3"), cf);
+        writer.append(Util.dk("0", databaseDescriptor), cf);
+        writer.append(Util.dk("1", databaseDescriptor), cf);
+        writer.append(Util.dk("3", databaseDescriptor), cf);
 
         cfs.addSSTable(writer.closeAndOpenReader());
         writer = databaseDescriptor.getSSTableWriterFactory().create(cfs.getTempSSTablePath(dir.getDirectoryForNewSSTables()),
                                                       0,
                                                       0,
                                                       cfs.metadata,
-                                                      LocatorConfig.instance.getPartitioner(),
+                                                      databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                       new MetadataCollector(cfs.metadata.comparator));
 
-        writer.append(Util.dk("0"), cf);
-        writer.append(Util.dk("1"), cf);
-        writer.append(Util.dk("2"), cf);
-        writer.append(Util.dk("3"), cf);
+        writer.append(Util.dk("0", databaseDescriptor), cf);
+        writer.append(Util.dk("1", databaseDescriptor), cf);
+        writer.append(Util.dk("2", databaseDescriptor), cf);
+        writer.append(Util.dk("3", databaseDescriptor), cf);
         cfs.addSSTable(writer.closeAndOpenReader());
 
         Collection<SSTableReader> toCompact = cfs.getSSTables();
@@ -502,7 +502,7 @@ public class CompactionsTest
         cfs.disableAutoCompaction();
 
         // Add test row
-        DecoratedKey key = Util.dk(k);
+        DecoratedKey key = Util.dk(k, databaseDescriptor);
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
         rm.add(cfname, Util.cellname(ByteBufferUtil.bytes("sc"), ByteBufferUtil.bytes("c")), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
         rm.applyUnsafe();
@@ -541,9 +541,9 @@ public class CompactionsTest
 
     private static Range<Token> rangeFor(int start, int end)
     {
-        return new Range<Token>(new BytesToken(String.format("%03d", start).getBytes(), LocatorConfig.instance.getPartitioner()),
-                                new BytesToken(String.format("%03d", end).getBytes(), LocatorConfig.instance.getPartitioner()),
-                                LocatorConfig.instance.getPartitioner());
+        return new Range<Token>(new BytesToken(String.format("%03d", start).getBytes(), databaseDescriptor.getLocatorConfig().getPartitioner()),
+                                new BytesToken(String.format("%03d", end).getBytes(), databaseDescriptor.getLocatorConfig().getPartitioner()),
+                                databaseDescriptor.getLocatorConfig().getPartitioner());
     }
 
     private static Collection<Range<Token>> makeRanges(int ... keys)
@@ -557,7 +557,7 @@ public class CompactionsTest
     private static void insertRowWithKey(int key)
     {
         long timestamp = System.currentTimeMillis();
-        DecoratedKey decoratedKey = Util.dk(String.format("%03d", key));
+        DecoratedKey decoratedKey = Util.dk(String.format("%03d", key), databaseDescriptor);
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, decoratedKey.getKey());
         rm.add("CF_STANDARD1", Util.cellname("col"), ByteBufferUtil.EMPTY_BYTE_BUFFER, timestamp, 1000);
         rm.applyUnsafe();

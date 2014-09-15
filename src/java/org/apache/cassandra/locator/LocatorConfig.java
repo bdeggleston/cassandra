@@ -27,29 +27,6 @@ import java.util.*;
 public class LocatorConfig
 {
     private static final Logger logger = LoggerFactory.getLogger(LocatorConfig.class);
-    public static final LocatorConfig instance;
-
-    static
-    {
-        LocatorConfig locatorConfig = null;
-        try
-        {
-            locatorConfig = new LocatorConfig(DatabaseDescriptor.instance.getConfig(), DatabaseDescriptor.instance);
-        }
-        catch (ConfigurationException e)
-        {
-            logger.error("Fatal configuration error", e);
-            System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
-            System.exit(1);
-        }
-        catch (Exception e)
-        {
-            logger.error("Fatal error during configuration loading", e);
-            System.err.println(e.getMessage() + "\nFatal error during configuration loading; unable to start. See log for stacktrace.");
-            System.exit(1);
-        }
-        instance = locatorConfig;
-    }
 
     private final Config conf;
     private TokenMetadata tokenMetadata;

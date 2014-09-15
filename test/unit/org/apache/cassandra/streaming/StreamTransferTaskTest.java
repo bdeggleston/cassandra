@@ -91,7 +91,7 @@ public class StreamTransferTaskTest
         for (SSTableReader sstable : cfs.getSSTables())
         {
             List<Range<Token>> ranges = new ArrayList<>();
-            ranges.add(new Range<>(sstable.first.getToken(), sstable.last.getToken(), LocatorConfig.instance.getPartitioner()));
+            ranges.add(new Range<>(sstable.first.getToken(), sstable.last.getToken(), databaseDescriptor.getLocatorConfig().getPartitioner()));
             task.addTransferFile(sstable, 1, sstable.getPositionsForRanges(ranges), 0);
         }
         assertEquals(2, task.getTotalNumberOfFiles());

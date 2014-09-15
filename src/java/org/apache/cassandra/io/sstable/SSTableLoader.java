@@ -299,7 +299,7 @@ public class SSTableLoader implements StreamEventHandler
 
         protected void setPartitioner(String partclass) throws ConfigurationException
         {
-            setPartitioner(LocatorConfig.instance.createPartitioner(partclass));
+            setPartitioner(DatabaseDescriptor.instance.getLocatorConfig().createPartitioner(partclass));
         }
 
         protected void setPartitioner(IPartitioner partitioner)

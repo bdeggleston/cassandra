@@ -35,6 +35,7 @@ import static org.junit.Assert.fail;
 public abstract class PartitionerTestCase<T extends Token>
 {
     protected IPartitioner<T> partitioner;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     public abstract void initPartitioner();
 
@@ -75,7 +76,7 @@ public abstract class PartitionerTestCase<T extends Token>
     private void assertMidpoint(Token left, Token right, Random rand, int depth)
     {
         Token mid = partitioner.midpoint(left, right);
-        assert new Range<Token>(left, right, LocatorConfig.instance.getPartitioner()).contains(mid)
+        assert new Range<Token>(left, right, databaseDescriptor.getLocatorConfig().getPartitioner()).contains(mid)
                 : "For " + left + "," + right + ": range did not contain mid:" + mid;
         if (depth < 1)
             return;

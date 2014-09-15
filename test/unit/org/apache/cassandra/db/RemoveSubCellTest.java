@@ -66,7 +66,7 @@ public class RemoveSubCellTest
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Super1");
         Mutation rm;
-        DecoratedKey dk = Util.dk("key1");
+        DecoratedKey dk = Util.dk("key1", databaseDescriptor);
 
         // add data
         rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey());
@@ -91,7 +91,7 @@ public class RemoveSubCellTest
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Super1");
         Mutation rm;
-        DecoratedKey dk = Util.dk("key2");
+        DecoratedKey dk = Util.dk("key2", databaseDescriptor);
 
         // add data
         rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey());
