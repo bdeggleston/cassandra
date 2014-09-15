@@ -1782,7 +1782,7 @@ public class ColumnFamilyStoreTest
         String cf = CF_STANDARD3; // should be empty
 
         final CFMetaData cfmeta = Schema.instance.getCFMetaData(ks, cf);
-        Directories dir = new Directories(cfmeta, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, ColumnFamilyStoreManager.instance.dataDirectories);
+        Directories dir = new Directories(cfmeta, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
         ByteBuffer key = bytes("key");
 
         // 1st sstable
@@ -1827,7 +1827,7 @@ public class ColumnFamilyStoreTest
 
         Map<Integer, UUID> unfinishedCompaction = new HashMap<>();
         unfinishedCompaction.put(sstable1.descriptor.generation, compactionTaskID);
-        ColumnFamilyStoreManager.instance.removeUnfinishedCompactionLeftovers(cfmeta, unfinishedCompaction);
+        databaseDescriptor.getColumnFamilyStoreManager().removeUnfinishedCompactionLeftovers(cfmeta, unfinishedCompaction);
 
         // 2nd sstable should be removed (only 1st sstable exists in set of size 1)
         sstables = dir.sstableLister().list();
@@ -1848,7 +1848,7 @@ public class ColumnFamilyStoreTest
         final String cf = CF_STANDARD4; // should be empty
 
         final CFMetaData cfmeta = Schema.instance.getCFMetaData(ks, cf);
-        Directories dir = new Directories(cfmeta, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, ColumnFamilyStoreManager.instance.dataDirectories);
+        Directories dir = new Directories(cfmeta, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
         ByteBuffer key = bytes("key");
 
         // Write SSTable generation 3 that has ancestors 1 and 2
@@ -1885,7 +1885,7 @@ public class ColumnFamilyStoreTest
         UUID compactionTaskID = UUID.randomUUID();
         for (Integer ancestor : ancestors)
             unfinishedCompactions.put(ancestor, compactionTaskID);
-        ColumnFamilyStoreManager.instance.removeUnfinishedCompactionLeftovers(cfmeta, unfinishedCompactions);
+        databaseDescriptor.getColumnFamilyStoreManager().removeUnfinishedCompactionLeftovers(cfmeta, unfinishedCompactions);
 
         // SSTable should not be deleted
         sstables = dir.sstableLister().list();
@@ -1903,7 +1903,7 @@ public class ColumnFamilyStoreTest
         SSTableDeletingTask.waitForDeletions(StorageServiceExecutors.instance);
 
         final CFMetaData cfmeta = Schema.instance.getCFMetaData(ks, cf);
-        Directories dir = new Directories(cfs.metadata, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, ColumnFamilyStoreManager.instance.dataDirectories);
+        Directories dir = new Directories(cfs.metadata, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
 
         // clear old SSTables (probably left by CFS.clearUnsafe() calls in other tests)
         for (Map.Entry<Descriptor, Set<Component>> entry : dir.sstableLister().list().entrySet())

@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.service.StorageServiceExecutors;
 import org.junit.AfterClass;
@@ -52,6 +53,8 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 public abstract class CQLTester
 {
     protected static final Logger logger = LoggerFactory.getLogger(CQLTester.class);
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     private static final String KEYSPACE = "cql_test_keyspace";
     private static final boolean USE_PREPARED_VALUES = Boolean.valueOf(System.getProperty("cassandra.test.use_prepared", "true"));
@@ -157,7 +160,7 @@ public abstract class CQLTester
     private static void removeAllSSTables(String ks, String table)
     {
         // clean up data directory which are stored as data directory/keyspace/data files
-        for (File d : Directories.getKSChildDirectories(ks, ColumnFamilyStoreManager.instance.dataDirectories))
+        for (File d : Directories.getKSChildDirectories(ks, databaseDescriptor.getColumnFamilyStoreManager().dataDirectories))
         {
             if (d.exists() && d.getName().contains(table))
                 FileUtils.deleteRecursive(d);

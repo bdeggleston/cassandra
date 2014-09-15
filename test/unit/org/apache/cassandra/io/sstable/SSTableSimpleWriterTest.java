@@ -43,6 +43,8 @@ public class SSTableSimpleWriterTest
     public static final String KEYSPACE = "SSTableSimpleWriterTest";
     public static final String CF_STANDARDINT = "StandardInteger1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws Exception
     {
@@ -63,7 +65,7 @@ public class SSTableSimpleWriterTest
         String cfname = "StandardInteger1";
 
         Keyspace t = KeyspaceManager.instance.open(keyspaceName); // make sure we create the directory
-        File dir = new Directories(Schema.instance.getCFMetaData(keyspaceName, cfname), DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, ColumnFamilyStoreManager.instance.dataDirectories).getDirectoryForNewSSTables();
+        File dir = new Directories(Schema.instance.getCFMetaData(keyspaceName, cfname), DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, databaseDescriptor.getColumnFamilyStoreManager().dataDirectories).getDirectoryForNewSSTables();
         assert dir.exists();
 
         IPartitioner partitioner = LocatorConfig.instance.getPartitioner();

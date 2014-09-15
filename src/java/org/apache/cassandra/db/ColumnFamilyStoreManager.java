@@ -29,8 +29,6 @@ public class ColumnFamilyStoreManager
 {
     private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStore.class);
 
-    public static final ColumnFamilyStoreManager instance = new ColumnFamilyStoreManager(DatabaseDescriptor.instance, Tracing.instance);
-
     private final DatabaseDescriptor databaseDescriptor;
 
     public final TaskExecutors taskExecutors;

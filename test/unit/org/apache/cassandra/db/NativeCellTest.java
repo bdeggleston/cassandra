@@ -57,6 +57,7 @@ import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
 public class NativeCellTest
 {
     public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     private static final NativeAllocator nativeAllocator = new NativePool(Integer.MAX_VALUE, Integer.MAX_VALUE, 1f, null).newAllocator();
     private static final OpOrder.Group group = new OpOrder().start();
 
@@ -96,7 +97,7 @@ public class NativeCellTest
                                                               Tracing.instance,
                                                               databaseDescriptor.getSystemKeyspace(),
                                                               Schema.instance,
-                                                              ColumnFamilyStoreManager.instance,
+                                                              databaseDescriptor.getColumnFamilyStoreManager(),
                                                               KeyspaceManager.instance,
                                                               CFMetaDataFactory.instance,
                                                               MutationFactory.instance,

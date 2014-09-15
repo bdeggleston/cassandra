@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final ColumnFamilyStoreManager columnFamilyStoreManager;
     protected final DefsTables defsTables;
     protected final SystemKeyspace systemKeyspace;
     protected final IFailureDetector failureDetector;
@@ -219,6 +220,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        columnFamilyStoreManager = createColumnFamilyStoreManager();
         defsTables = createDefsTables();
         systemKeyspace = createSystemKeyspace();
         failureDetector = createFailureDetector();
@@ -1562,18 +1564,18 @@ public class DatabaseDescriptor
         switch (conf.memtable_allocation_type)
         {
             case unslabbed_heap_buffers:
-                return new HeapPool(heapLimit, conf.memtable_cleanup_threshold, new ColumnFamilyStore.FlushLargestColumnFamily(ColumnFamilyStoreManager.instance));
+                return new HeapPool(heapLimit, conf.memtable_cleanup_threshold, new ColumnFamilyStore.FlushLargestColumnFamily(getColumnFamilyStoreManager()));
             case heap_buffers:
-                return new SlabPool(heapLimit, 0, conf.memtable_cleanup_threshold, new ColumnFamilyStore.FlushLargestColumnFamily(ColumnFamilyStoreManager.instance));
+                return new SlabPool(heapLimit, 0, conf.memtable_cleanup_threshold, new ColumnFamilyStore.FlushLargestColumnFamily(getColumnFamilyStoreManager()));
             case offheap_buffers:
                 if (!FileUtils.isCleanerAvailable())
                 {
                     logger.error("Could not free direct byte buffer: offheap_buffers is not a safe memtable_allocation_type without this ability, please adjust your config. This feature is only guaranteed to work on an Oracle JVM. Refusing to start.");
                     System.exit(-1);
                 }
-                return new SlabPool(heapLimit, offHeapLimit, conf.memtable_cleanup_threshold, new ColumnFamilyStore.FlushLargestColumnFamily(ColumnFamilyStoreManager.instance));
+                return new SlabPool(heapLimit, offHeapLimit, conf.memtable_cleanup_threshold, new ColumnFamilyStore.FlushLargestColumnFamily(getColumnFamilyStoreManager()));
             case offheap_objects:
-                return new NativePool(heapLimit, offHeapLimit, conf.memtable_cleanup_threshold, new ColumnFamilyStore.FlushLargestColumnFamily(ColumnFamilyStoreManager.instance));
+                return new NativePool(heapLimit, offHeapLimit, conf.memtable_cleanup_threshold, new ColumnFamilyStore.FlushLargestColumnFamily(getColumnFamilyStoreManager()));
             default:
                 throw new AssertionError();
         }
@@ -1662,9 +1664,14 @@ public class DatabaseDescriptor
         return KeyspaceManager.instance;
     }
 
+    public ColumnFamilyStoreManager createColumnFamilyStoreManager()
+    {
+        return new ColumnFamilyStoreManager(this, getTracing());
+    }
+
     public ColumnFamilyStoreManager getColumnFamilyStoreManager()
     {
-        return ColumnFamilyStoreManager.instance;
+        return columnFamilyStoreManager;
     }
 
     public MutationFactory getMutationFactory()

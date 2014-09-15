@@ -39,6 +39,8 @@ public class LongFlushMemtableTest
 {
     public static final String KEYSPACE1 = "LongFlushMemtableTest";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -73,7 +75,7 @@ public class LongFlushMemtableTest
         }
 
         int flushes = 0;
-        for (ColumnFamilyStore cfs : ColumnFamilyStoreManager.instance.all())
+        for (ColumnFamilyStore cfs : databaseDescriptor.getColumnFamilyStoreManager().all())
         {
             if (cfs.name.startsWith("_CF"))
                 flushes += cfs.getMemtableSwitchCount();

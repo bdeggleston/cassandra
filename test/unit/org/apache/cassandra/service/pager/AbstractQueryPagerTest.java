@@ -146,7 +146,7 @@ public class AbstractQueryPagerTest
                               Tracing.instance,
                               databaseDescriptor.getSystemKeyspace(),
                               Schema.instance,
-                              ColumnFamilyStoreManager.instance,
+                              databaseDescriptor.getColumnFamilyStoreManager(),
                               KeyspaceManager.instance,
                               CFMetaDataFactory.instance,
                               MutationFactory.instance,

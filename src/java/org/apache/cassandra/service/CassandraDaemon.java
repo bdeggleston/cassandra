@@ -230,7 +230,13 @@ public class CassandraDaemon
         // until system keyspace is opened.
         SystemKeyspace systemKeyspace = DatabaseDescriptor.instance.getSystemKeyspace();  // FIXME: forcing initialization before system keyspace access
         for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(Keyspace.SYSTEM_KS).values())
-            ColumnFamilyStore.scrubDataDirectories(cfm, DatabaseDescriptor.instance, Tracing.instance, CFMetaDataFactory.instance, KeyspaceManager.instance, DBConfig.instance, ColumnFamilyStoreManager.instance.dataDirectories);
+            ColumnFamilyStore.scrubDataDirectories(cfm,
+                                                   DatabaseDescriptor.instance,
+                                                   Tracing.instance,
+                                                   CFMetaDataFactory.instance,
+                                                   KeyspaceManager.instance,
+                                                   DBConfig.instance,
+                                                   DatabaseDescriptor.instance.getColumnFamilyStoreManager().dataDirectories);
         try
         {
             DatabaseDescriptor.instance.getSystemKeyspace().checkHealth();
@@ -252,7 +258,7 @@ public class CassandraDaemon
             CFMetaData cfm = Schema.instance.getCFMetaData(kscf.left, kscf.right);
             // CFMetaData can be null if CF is already dropped
             if (cfm != null)
-                ColumnFamilyStoreManager.instance.removeUnfinishedCompactionLeftovers(cfm, unfinishedCompactions.get(kscf));
+                DatabaseDescriptor.instance.getColumnFamilyStoreManager().removeUnfinishedCompactionLeftovers(cfm, unfinishedCompactions.get(kscf));
         }
         DatabaseDescriptor.instance.getSystemKeyspace().discardCompactionsInProgress();
 
@@ -264,7 +270,13 @@ public class CassandraDaemon
                 continue;
 
             for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(keyspaceName).values())
-                ColumnFamilyStore.scrubDataDirectories(cfm, DatabaseDescriptor.instance, Tracing.instance, CFMetaDataFactory.instance, KeyspaceManager.instance, DBConfig.instance, ColumnFamilyStoreManager.instance.dataDirectories);
+                ColumnFamilyStore.scrubDataDirectories(cfm,
+                                                       DatabaseDescriptor.instance,
+                                                       Tracing.instance,
+                                                       CFMetaDataFactory.instance,
+                                                       KeyspaceManager.instance,
+                                                       DBConfig.instance,
+                                                       DatabaseDescriptor.instance.getColumnFamilyStoreManager().dataDirectories);
         }
 
         KeyspaceManager.instance.setInitialized();
