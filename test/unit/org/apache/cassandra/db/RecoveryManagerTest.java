@@ -75,7 +75,7 @@ public class RecoveryManagerTest
 
     @Test
     public void testNothingToRecover() throws IOException {
-        CommitLog.instance.recover();
+        databaseDescriptor.getCommitLog().recover();
     }
 
     @Test
@@ -101,8 +101,8 @@ public class RecoveryManagerTest
         keyspace1.getColumnFamilyStore("Standard1").clearUnsafe();
         keyspace2.getColumnFamilyStore("Standard3").clearUnsafe();
 
-        CommitLog.instance.resetUnsafe(); // disassociate segments from live CL
-        CommitLog.instance.recover();
+        databaseDescriptor.getCommitLog().resetUnsafe(); // disassociate segments from live CL
+        databaseDescriptor.getCommitLog().recover();
 
         assertColumns(Util.getColumnFamily(keyspace1, dk, "Standard1", databaseDescriptor), "col1");
         assertColumns(Util.getColumnFamily(keyspace2, dk, "Standard3", databaseDescriptor), "col2");
@@ -127,8 +127,8 @@ public class RecoveryManagerTest
 
         keyspace1.getColumnFamilyStore("Counter1").clearUnsafe();
 
-        CommitLog.instance.resetUnsafe(); // disassociate segments from live CL
-        CommitLog.instance.recover();
+        databaseDescriptor.getCommitLog().resetUnsafe(); // disassociate segments from live CL
+        databaseDescriptor.getCommitLog().recover();
 
         cf = Util.getColumnFamily(keyspace1, dk, "Counter1", databaseDescriptor);
 
@@ -156,8 +156,8 @@ public class RecoveryManagerTest
             rm.apply();
         }
         keyspace1.getColumnFamilyStore("Standard1").clearUnsafe();
-        CommitLog.instance.resetUnsafe(); // disassociate segments from live CL
-        CommitLog.instance.recover();
+        databaseDescriptor.getCommitLog().resetUnsafe(); // disassociate segments from live CL
+        databaseDescriptor.getCommitLog().recover();
 
         ColumnFamily cf = Util.getColumnFamily(keyspace1, dk, "Standard1", databaseDescriptor);
         Assert.assertEquals(6, cf.getColumnCount());
@@ -192,8 +192,8 @@ public class RecoveryManagerTest
         Assert.assertEquals(10, cf.getColumnCount());
 
         keyspace1.getColumnFamilyStore("Standard1").clearUnsafe();
-        CommitLog.instance.resetUnsafe(); // disassociate segments from live CL
-        CommitLog.instance.recover();
+        databaseDescriptor.getCommitLog().resetUnsafe(); // disassociate segments from live CL
+        databaseDescriptor.getCommitLog().recover();
 
         cf = Util.getColumnFamily(keyspace1, dk, "Standard1", databaseDescriptor);
         Assert.assertEquals(2, cf.getColumnCount());

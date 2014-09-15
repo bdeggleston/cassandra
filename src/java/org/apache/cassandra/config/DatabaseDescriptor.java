@@ -188,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final CommitLog commitLog;
     protected final LoadBroadcaster loadBroadcaster;
     protected final ActiveRepairService activeRepairService;
     protected final StorageProxy storageProxy;
@@ -240,6 +241,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        commitLog = createCommitLog();
         loadBroadcaster = createLoadBroadcaster();
         activeRepairService = createActiveRepairService();
         storageProxy = createStorageProxy();
@@ -1848,9 +1850,14 @@ public class DatabaseDescriptor
         return failureDetector;
     }
 
+    public CommitLog createCommitLog()
+    {
+        return CommitLog.create(this, getTracing(), getSchema(), getKeyspaceManager());
+    }
+
     public CommitLog getCommitLog()
     {
-        return CommitLog.instance;
+        return commitLog;
     }
 
     public CacheService createCacheService()

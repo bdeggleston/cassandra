@@ -310,7 +310,7 @@ public class CassandraDaemon
         // replay the log if necessary
         try
         {
-            CommitLog.instance.recover();
+            DatabaseDescriptor.instance.getCommitLog().recover();
         }
         catch (IOException e)
         {

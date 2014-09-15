@@ -86,7 +86,7 @@ public class CommitLogTest
     @Test
     public void testRecoveryWithEmptyLog() throws Exception
     {
-        CommitLog.instance.recover(new File[]{ tmpFile() });
+        databaseDescriptor.getCommitLog().recover(new File[]{ tmpFile() });
     }
 
     @Test
@@ -141,73 +141,73 @@ public class CommitLogTest
     @Test
     public void testDontDeleteIfDirty() throws Exception
     {
-        CommitLog.instance.resetUnsafe();
+        databaseDescriptor.getCommitLog().resetUnsafe();
         // Roughly 32 MB mutation
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate(DatabaseDescriptor.instance.getCommitLogSegmentSize()/4), 0);
 
         // Adding it 5 times
-        CommitLog.instance.add(rm);
-        CommitLog.instance.add(rm);
-        CommitLog.instance.add(rm);
-        CommitLog.instance.add(rm);
-        CommitLog.instance.add(rm);
+        databaseDescriptor.getCommitLog().add(rm);
+        databaseDescriptor.getCommitLog().add(rm);
+        databaseDescriptor.getCommitLog().add(rm);
+        databaseDescriptor.getCommitLog().add(rm);
+        databaseDescriptor.getCommitLog().add(rm);
 
         // Adding new mutation on another CF
         Mutation rm2 = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm2.add(CF2, Util.cellname("c1"), ByteBuffer.allocate(4), 0);
-        CommitLog.instance.add(rm2);
+        databaseDescriptor.getCommitLog().add(rm2);
 
-        assert CommitLog.instance.activeSegments() == 2 : "Expecting 2 segments, got " + CommitLog.instance.activeSegments();
+        assert databaseDescriptor.getCommitLog().activeSegments() == 2 : "Expecting 2 segments, got " + databaseDescriptor.getCommitLog().activeSegments();
 
         UUID cfid2 = rm2.getColumnFamilyIds().iterator().next();
-        CommitLog.instance.discardCompletedSegments(cfid2, CommitLog.instance.getContext());
+        databaseDescriptor.getCommitLog().discardCompletedSegments(cfid2, databaseDescriptor.getCommitLog().getContext());
 
         // Assert we still have both our segment
-        assert CommitLog.instance.activeSegments() == 2 : "Expecting 2 segments, got " + CommitLog.instance.activeSegments();
+        assert databaseDescriptor.getCommitLog().activeSegments() == 2 : "Expecting 2 segments, got " + databaseDescriptor.getCommitLog().activeSegments();
     }
 
     @Test
     public void testDeleteIfNotDirty() throws Exception
     {
         DatabaseDescriptor.instance.getCommitLogSegmentSize();
-        CommitLog.instance.resetUnsafe();
+        databaseDescriptor.getCommitLog().resetUnsafe();
         // Roughly 32 MB mutation
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate((DatabaseDescriptor.instance.getCommitLogSegmentSize()/4) - 1), 0);
 
         // Adding it twice (won't change segment)
-        CommitLog.instance.add(rm);
-        CommitLog.instance.add(rm);
+        databaseDescriptor.getCommitLog().add(rm);
+        databaseDescriptor.getCommitLog().add(rm);
 
-        assert CommitLog.instance.activeSegments() == 1 : "Expecting 1 segment, got " + CommitLog.instance.activeSegments();
+        assert databaseDescriptor.getCommitLog().activeSegments() == 1 : "Expecting 1 segment, got " + databaseDescriptor.getCommitLog().activeSegments();
 
         // "Flush": this won't delete anything
         UUID cfid1 = rm.getColumnFamilyIds().iterator().next();
-        CommitLog.instance.sync(true);
-        CommitLog.instance.discardCompletedSegments(cfid1, CommitLog.instance.getContext());
+        databaseDescriptor.getCommitLog().sync(true);
+        databaseDescriptor.getCommitLog().discardCompletedSegments(cfid1, databaseDescriptor.getCommitLog().getContext());
 
-        assert CommitLog.instance.activeSegments() == 1 : "Expecting 1 segment, got " + CommitLog.instance.activeSegments();
+        assert databaseDescriptor.getCommitLog().activeSegments() == 1 : "Expecting 1 segment, got " + databaseDescriptor.getCommitLog().activeSegments();
 
         // Adding new mutation on another CF, large enough (including CL entry overhead) that a new segment is created
         Mutation rm2 = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm2.add(CF2, Util.cellname("c1"), ByteBuffer.allocate((DatabaseDescriptor.instance.getCommitLogSegmentSize()/2) - 100), 0);
-        CommitLog.instance.add(rm2);
+        databaseDescriptor.getCommitLog().add(rm2);
         // also forces a new segment, since each entry-with-overhead is just under half the CL size
-        CommitLog.instance.add(rm2);
-        CommitLog.instance.add(rm2);
+        databaseDescriptor.getCommitLog().add(rm2);
+        databaseDescriptor.getCommitLog().add(rm2);
 
-        assert CommitLog.instance.activeSegments() == 3 : "Expecting 3 segments, got " + CommitLog.instance.activeSegments();
+        assert databaseDescriptor.getCommitLog().activeSegments() == 3 : "Expecting 3 segments, got " + databaseDescriptor.getCommitLog().activeSegments();
 
 
         // "Flush" second cf: The first segment should be deleted since we
         // didn't write anything on cf1 since last flush (and we flush cf2)
 
         UUID cfid2 = rm2.getColumnFamilyIds().iterator().next();
-        CommitLog.instance.discardCompletedSegments(cfid2, CommitLog.instance.getContext());
+        databaseDescriptor.getCommitLog().discardCompletedSegments(cfid2, databaseDescriptor.getCommitLog().getContext());
 
         // Assert we still have both our segment
-        assert CommitLog.instance.activeSegments() == 1 : "Expecting 1 segment, got " + CommitLog.instance.activeSegments();
+        assert databaseDescriptor.getCommitLog().activeSegments() == 1 : "Expecting 1 segment, got " + databaseDescriptor.getCommitLog().activeSegments();
     }
 
     private static int getMaxRecordDataSize(String keyspace, ByteBuffer key, String table, CellName column)
@@ -229,22 +229,22 @@ public class CommitLogTest
     @Test
     public void testEqualRecordLimit() throws Exception
     {
-        CommitLog.instance.resetUnsafe();
+        databaseDescriptor.getCommitLog().resetUnsafe();
 
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate(getMaxRecordDataSize()), 0);
-        CommitLog.instance.add(rm);
+        databaseDescriptor.getCommitLog().add(rm);
     }
 
     @Test
     public void testExceedRecordLimit() throws Exception
     {
-        CommitLog.instance.resetUnsafe();
+        databaseDescriptor.getCommitLog().resetUnsafe();
         try
         {
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
             rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate(1 + getMaxRecordDataSize()), 0);
-            CommitLog.instance.add(rm);
+            databaseDescriptor.getCommitLog().add(rm);
             throw new AssertionError("mutation larger than limit was accepted");
         }
         catch (IllegalArgumentException e)
@@ -286,7 +286,7 @@ public class CommitLogTest
         {
             lout.write(logData);
             //statics make it annoying to test things correctly
-            CommitLog.instance.recover(new File[]{ logFile }); //CASSANDRA-1119 / CASSANDRA-1179 throw on failure*/
+            databaseDescriptor.getCommitLog().recover(new File[]{ logFile }); //CASSANDRA-1119 / CASSANDRA-1179 throw on failure*/
         }
     }
     
@@ -320,7 +320,7 @@ public class CommitLogTest
             rm.add("Standard1", Util.cellname("c1"), ByteBuffer.allocate(100), 0);
 
             // Adding it twice (won't change segment)
-            CommitLog.instance.add(rm);
+            databaseDescriptor.getCommitLog().add(rm);
             Uninterruptibles.sleepUninterruptibly((int) DatabaseDescriptor.instance.getCommitLogSyncBatchWindow(), TimeUnit.MILLISECONDS);
             Assert.assertFalse(StorageService.instance.isRPCServerRunning());
             Assert.assertFalse(StorageService.instance.isNativeTransportRunning());
@@ -336,7 +336,7 @@ public class CommitLogTest
     @Test
     public void testTruncateWithoutSnapshot()  throws ExecutionException, InterruptedException
     {
-        CommitLog.instance.resetUnsafe();
+        databaseDescriptor.getCommitLog().resetUnsafe();
         boolean prev = DatabaseDescriptor.instance.isAutoSnapshot();
         DatabaseDescriptor.instance.setAutoSnapshot(false);
         ColumnFamilyStore cfs1 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard1");
@@ -351,21 +351,21 @@ public class CommitLogTest
         rm2.add("Standard2", Util.cellname("c1"), ByteBuffer.allocate(DatabaseDescriptor.instance.getCommitLogSegmentSize() / 4), 0);
 
         for (int i = 0 ; i < 5 ; i++)
-            CommitLog.instance.add(rm2);
+            databaseDescriptor.getCommitLog().add(rm2);
 
-        Assert.assertEquals(2, CommitLog.instance.activeSegments());
-        ReplayPosition position = CommitLog.instance.getContext();
+        Assert.assertEquals(2, databaseDescriptor.getCommitLog().activeSegments());
+        ReplayPosition position = databaseDescriptor.getCommitLog().getContext();
         for (Keyspace ks : databaseDescriptor.getKeyspaceManager().system())
             for (ColumnFamilyStore syscfs : ks.getColumnFamilyStores())
-                CommitLog.instance.discardCompletedSegments(syscfs.metadata.cfId, position);
-        CommitLog.instance.discardCompletedSegments(cfs2.metadata.cfId, position);
-        Assert.assertEquals(1, CommitLog.instance.activeSegments());
+                databaseDescriptor.getCommitLog().discardCompletedSegments(syscfs.metadata.cfId, position);
+        databaseDescriptor.getCommitLog().discardCompletedSegments(cfs2.metadata.cfId, position);
+        Assert.assertEquals(1, databaseDescriptor.getCommitLog().activeSegments());
     }
 
     @Test
     public void testTruncateWithoutSnapshotNonDurable()  throws ExecutionException, InterruptedException
     {
-        CommitLog.instance.resetUnsafe();
+        databaseDescriptor.getCommitLog().resetUnsafe();
         boolean prevAutoSnapshot = DatabaseDescriptor.instance.isAutoSnapshot();
         DatabaseDescriptor.instance.setAutoSnapshot(false);
         Keyspace notDurableKs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE2);

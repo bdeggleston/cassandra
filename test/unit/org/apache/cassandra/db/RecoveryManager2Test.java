@@ -86,8 +86,8 @@ public class RecoveryManager2Test
         logger.debug("begin manual replay");
         // replay the commit log (nothing on Standard1 should be replayed since everything was flushed, so only the row on Standard2
         // will be replayed)
-        CommitLog.instance.resetUnsafe();
-        int replayed = CommitLog.instance.recover();
+        databaseDescriptor.getCommitLog().resetUnsafe();
+        int replayed = databaseDescriptor.getCommitLog().recover();
         assert replayed == 1 : "Expecting only 1 replayed mutation, got " + replayed;
     }
 

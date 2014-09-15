@@ -68,7 +68,7 @@ public class SchemaLoader
         DatabaseDescriptor.init();
         cleanupAndLeaveDirs();
 
-        CommitLog.instance.allocator.enableReserveSegmentCreation();
+        databaseDescriptor.getCommitLog().allocator.enableReserveSegmentCreation();
 
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler()
         {
@@ -424,7 +424,7 @@ public class SchemaLoader
         mkdirs();
         cleanup();
         mkdirs();
-        CommitLog.instance.resetUnsafe(); // cleanup screws w/ CommitLog, this brings it back to safe state
+        databaseDescriptor.getCommitLog().resetUnsafe(); // cleanup screws w/ CommitLog, this brings it back to safe state
     }
 
     public static void cleanup()

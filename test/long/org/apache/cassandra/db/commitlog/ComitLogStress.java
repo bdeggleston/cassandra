@@ -92,7 +92,7 @@ public class ComitLogStress
             Mutation mutation = DatabaseDescriptor.instance.getMutationFactory().create(ks, key);
             mutation.add("Standard1", Util.cellname("name"), ByteBufferUtil.bytes("value"),
                     System.currentTimeMillis());
-            CommitLog.instance.add(mutation);
+            DatabaseDescriptor.instance.getCommitLog().add(mutation);
         }
     }
 }

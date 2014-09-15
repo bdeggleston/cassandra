@@ -50,8 +50,6 @@ public class CommitLog implements CommitLogMBean
 {
     private static final Logger logger = LoggerFactory.getLogger(CommitLog.class);
 
-    public static final CommitLog instance = new CommitLog(DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(), DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getKeyspaceManager());
-
     // we only permit records HALF the size of a commit log, to ensure we don't spin allocating many mostly
     // empty segments when writing large records
     private final long MAX_MUTATION_SIZE;
@@ -66,6 +64,23 @@ public class CommitLog implements CommitLogMBean
 
     private final DatabaseDescriptor databaseDescriptor;
 
+    public static CommitLog create(DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, KeyspaceManager keyspaceManager)
+    {
+        CommitLog commitLog = new CommitLog(databaseDescriptor, tracing, schema, keyspaceManager);
+
+        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+        try
+        {
+            mbs.registerMBean(commitLog, new ObjectName("org.apache.cassandra.db:type=Commitlog"));
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
+
+        return commitLog;
+    }
+
     private CommitLog(DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, KeyspaceManager keyspaceManager)
     {
 
@@ -74,6 +89,7 @@ public class CommitLog implements CommitLogMBean
         assert keyspaceManager != null;
 
         this.databaseDescriptor = databaseDescriptor;
+        MAX_MUTATION_SIZE = databaseDescriptor.getCommitLogSegmentSize() >> 1;
 
         databaseDescriptor.createAllDirectories();
         long maxId = Long.MIN_VALUE;
@@ -90,23 +106,12 @@ public class CommitLog implements CommitLogMBean
                  ? new BatchCommitLogService(this, databaseDescriptor)
                  : new PeriodicCommitLogService(this, databaseDescriptor);
 
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        try
-        {
-            mbs.registerMBean(this, new ObjectName("org.apache.cassandra.db:type=Commitlog"));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
-        }
-
         archiver = new CommitLogArchiver(databaseDescriptor.getCommitLogLocation(), tracing);
 
         // register metrics
         metrics = new CommitLogMetrics(executor, allocator);
         allocator.start();
         executor.start();
-        MAX_MUTATION_SIZE = databaseDescriptor.getCommitLogSegmentSize() >> 1;
     }
 
     long getNextId()
