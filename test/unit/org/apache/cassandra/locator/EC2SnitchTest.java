@@ -55,7 +55,7 @@ public class EC2SnitchTest
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();
         databaseDescriptor.getKeyspaceManager().setInitialized();
-        StorageService.instance.initServer(0);
+        databaseDescriptor.getStorageService().initServer(0);
     }
 
     private class TestEC2Snitch extends Ec2Snitch
@@ -82,8 +82,8 @@ public class EC2SnitchTest
 
         databaseDescriptor.getGossiper().addSavedEndpoint(nonlocal);
         Map<ApplicationState,VersionedValue> stateMap = databaseDescriptor.getGossiper().getEndpointStateForEndpoint(nonlocal).getApplicationStateMap();
-        stateMap.put(ApplicationState.DC, StorageService.instance.valueFactory.datacenter("us-west"));
-        stateMap.put(ApplicationState.RACK, StorageService.instance.valueFactory.datacenter("1a"));
+        stateMap.put(ApplicationState.DC, databaseDescriptor.getStorageService().valueFactory.datacenter("us-west"));
+        stateMap.put(ApplicationState.RACK, databaseDescriptor.getStorageService().valueFactory.datacenter("1a"));
 
         assertEquals("us-west", snitch.getDatacenter(nonlocal));
         assertEquals("1a", snitch.getRack(nonlocal));
@@ -121,6 +121,6 @@ public class EC2SnitchTest
     @AfterClass
     public static void tearDown()
     {
-        StorageService.instance.stopClient();
+        databaseDescriptor.getStorageService().stopClient();
     }
 }

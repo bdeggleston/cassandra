@@ -84,7 +84,7 @@ public class MoveTest
     @Test
     public void newTestWriteEndpointsDuringMove() throws Exception
     {
-        StorageService ss = StorageService.instance;
+        StorageService ss = databaseDescriptor.getStorageService();
         final int RING_SIZE = 10;
         final int MOVING_NODE = 3; // index of the moving node
 
@@ -157,7 +157,7 @@ public class MoveTest
     @Test
     public void testSimultaneousMove() throws UnknownHostException
     {
-        StorageService ss = StorageService.instance;
+        StorageService ss = databaseDescriptor.getStorageService();
         final int RING_SIZE = 10;
         TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         IPartitioner partitioner = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
@@ -500,7 +500,7 @@ public class MoveTest
     @Test
     public void testStateJumpToNormal() throws UnknownHostException
     {
-        StorageService ss = StorageService.instance;
+        StorageService ss = databaseDescriptor.getStorageService();
         TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         IPartitioner partitioner = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(partitioner);

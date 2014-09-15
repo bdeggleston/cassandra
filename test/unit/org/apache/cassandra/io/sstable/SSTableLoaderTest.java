@@ -65,7 +65,7 @@ public class SSTableLoaderTest
 
     public static void setup() throws Exception
     {
-        StorageService.instance.initServer();
+        databaseDescriptor.getStorageService().initServer();
     }
 
     @Test

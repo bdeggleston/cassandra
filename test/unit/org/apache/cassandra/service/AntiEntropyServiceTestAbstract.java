@@ -115,7 +115,7 @@ public abstract class AntiEntropyServiceTestAbstract
         aes = databaseDescriptor.getActiveRepairService();
         TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
-        StorageService.instance.setTokens(Collections.singleton(databaseDescriptor.getLocatorConfig().getPartitioner().getRandomToken()));
+        databaseDescriptor.getStorageService().setTokens(Collections.singleton(databaseDescriptor.getLocatorConfig().getPartitioner().getRandomToken()));
         tmd.updateNormalToken(databaseDescriptor.getLocatorConfig().getPartitioner().getMinimumToken(), REMOTE);
         assert tmd.isMember(REMOTE);
 

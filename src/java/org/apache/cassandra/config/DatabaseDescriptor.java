@@ -149,7 +149,7 @@ public class DatabaseDescriptor
 //        assert ActiveRepairService.instance != null;
 //        assert CompactionManager.instance != null;
 //        assert DefsTables.instance != null;
-        assert StorageService.instance != null;
+//        assert StorageService.instance != null;
 
 //        CFMetaDataFactory.instance.init();
 //        KSMetaDataFactory.instance.init();
@@ -188,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final StorageService storageService;
     protected final MessagingService messagingService;
     protected final PendingRangeCalculatorService pendingRangeCalculatorService;
     protected final LocatorConfig locatorConfig;
@@ -245,6 +246,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        storageService = createStorageService();
         messagingService = createMessagingService();
         pendingRangeCalculatorService = createPendingRangeCalculatorService();
         locatorConfig = createLocatorConfig();
@@ -1716,9 +1718,32 @@ public class DatabaseDescriptor
         return schema;
     }
 
+    public StorageService createStorageService()
+    {
+        return StorageService.create(this,
+                                     getTracing(),
+                                     getSchema(),
+                                     getStageManager(),
+                                     getSystemKeyspace(),
+                                     getDefsTables(),
+                                     getMessagingService(),
+                                     getCompactionManager(),
+                                     getMutationFactory(),
+                                     getColumnFamilyStoreManager(),
+                                     getKeyspaceManager(),
+                                     getGossiper(),
+                                     getActiveRepairService(),
+                                     getStreamManager(),
+                                     getStorageProxy(),
+                                     getFailureDetector(),
+                                     getPaxosManager(),
+                                     getLocatorConfig(),
+                                     getDBConfig());
+    }
+
     public StorageService getStorageService()
     {
-        return StorageService.instance;
+        return storageService;
     }
 
     public StorageServiceExecutors getStorageServiceExecutors()

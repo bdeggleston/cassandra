@@ -118,7 +118,7 @@ public class LegacySSTableTest
     @Test
     public void testStreaming() throws Throwable
     {
-        StorageService.instance.initServer();
+        databaseDescriptor.getStorageService().initServer();
 
         for (File version : LEGACY_SSTABLE_ROOT.listFiles())
             if (Descriptor.Version.validate(version.getName()) && new Descriptor.Version(version.getName()).isCompatible())

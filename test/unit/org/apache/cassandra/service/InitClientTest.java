@@ -37,6 +37,6 @@ public class InitClientTest // extends CleanupHelper
     @Test
     public void testInitClientStartup() throws ConfigurationException
     {
-        StorageService.instance.initClient(0);
+        DatabaseDescriptor.instance.getStorageService().initClient(0);
     }
 }

@@ -83,7 +83,7 @@ public class StreamingTransferTest
     public static void defineSchema() throws Exception
     {
         SchemaLoader.prepareServer();
-        StorageService.instance.initServer();
+        databaseDescriptor.getStorageService().initServer();
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),

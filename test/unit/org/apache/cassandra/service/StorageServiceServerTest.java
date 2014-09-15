@@ -83,7 +83,7 @@ public class StorageServiceServerTest
     {
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();
-        StorageService.instance.initServer(0);
+        databaseDescriptor.getStorageService().initServer(0);
         for (String path : DatabaseDescriptor.instance.getAllDataFileLocations())
         {
             // verify that storage directories are there.
@@ -92,29 +92,29 @@ public class StorageServiceServerTest
         // a proper test would be to call decommission here, but decommission() mixes both shutdown and datatransfer
         // calls.  This test is only interested in the shutdown-related items which a properly handled by just
         // stopping the client.
-        //StorageService.instance.decommission();
-        StorageService.instance.stopClient();
+        //databaseDescriptor.getStorageService().decommission();
+        databaseDescriptor.getStorageService().stopClient();
     }
 
     @Test
     public void testGetAllRangesEmpty()
     {
         List<Token> toks = Collections.emptyList();
-        assertEquals(Collections.emptyList(), StorageService.instance.getAllRanges(toks));
+        assertEquals(Collections.emptyList(), databaseDescriptor.getStorageService().getAllRanges(toks));
     }
 
     @Test
     public void testSnapshot() throws IOException
     {
         // no need to insert extra data, even an "empty" database will have a little information in the system keyspace
-        StorageService.instance.takeSnapshot("snapshot", new String[0]);
+        databaseDescriptor.getStorageService().takeSnapshot("snapshot", new String[0]);
     }
 
     @Test
     public void testColumnFamilySnapshot() throws IOException
     {
         // no need to insert extra data, even an "empty" database will have a little information in the system keyspace
-        StorageService.instance.takeColumnFamilySnapshot(Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_KEYSPACES_CF, "cf_snapshot");
+        databaseDescriptor.getStorageService().takeColumnFamilySnapshot(Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_KEYSPACES_CF, "cf_snapshot");
     }
 
     @Test

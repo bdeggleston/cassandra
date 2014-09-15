@@ -71,7 +71,7 @@ public class RemoveTest
     @Before
     public void setup() throws IOException, ConfigurationException
     {
-        ss = StorageService.instance;
+        ss = databaseDescriptor.getStorageService();
         tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
 

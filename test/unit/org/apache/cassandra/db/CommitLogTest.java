@@ -322,9 +322,9 @@ public class CommitLogTest
             // Adding it twice (won't change segment)
             databaseDescriptor.getCommitLog().add(rm);
             Uninterruptibles.sleepUninterruptibly((int) DatabaseDescriptor.instance.getCommitLogSyncBatchWindow(), TimeUnit.MILLISECONDS);
-            Assert.assertFalse(StorageService.instance.isRPCServerRunning());
-            Assert.assertFalse(StorageService.instance.isNativeTransportRunning());
-            Assert.assertFalse(StorageService.instance.isInitialized());
+            Assert.assertFalse(databaseDescriptor.getStorageService().isRPCServerRunning());
+            Assert.assertFalse(databaseDescriptor.getStorageService().isNativeTransportRunning());
+            Assert.assertFalse(databaseDescriptor.getStorageService().isInitialized());
 
         }
         finally

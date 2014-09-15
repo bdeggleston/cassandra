@@ -56,7 +56,7 @@ public class DynamicEndpointSnitchTest
     public void testSnitch() throws InterruptedException, IOException, ConfigurationException
     {
         // do this because SS needs to be initialized before DES can work properly.
-        StorageService.instance.initClient(0);
+        databaseDescriptor.getStorageService().initClient(0);
         SimpleSnitch ss = new SimpleSnitch(databaseDescriptor.getLocatorConfig());
         DynamicEndpointSnitch dsnitch = new DynamicEndpointSnitch(ss, databaseDescriptor.getLocatorConfig(), String.valueOf(ss.hashCode()));
         dsnitch.gossiperStarting();

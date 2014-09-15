@@ -75,7 +75,7 @@ public class TriggersTest
     @Before
     public void setup() throws Exception
     {
-        StorageService.instance.initServer(0);
+        databaseDescriptor.getStorageService().initServer(0);
         if (thriftServer == null || ! thriftServer.isRunning())
         {
             thriftServer = new ThriftServer(InetAddress.getLocalHost(), 9170, 50,
@@ -83,7 +83,7 @@ public class TriggersTest
                                             databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), databaseDescriptor.getStorageProxy(),
                                             databaseDescriptor.getMessagingService(), databaseDescriptor.getKeyspaceManager(),
                                             databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
-                                            StorageService.instance, databaseDescriptor.getCFMetaDataFactory(),
+                                            databaseDescriptor.getStorageService(), databaseDescriptor.getCFMetaDataFactory(),
                                             DatabaseDescriptor.instance.getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
                                             DatabaseDescriptor.instance.getQueryHandler(), databaseDescriptor.getLocatorConfig(),
                                             databaseDescriptor.getDBConfig(), new ThriftSessionManager(DatabaseDescriptor.instance),

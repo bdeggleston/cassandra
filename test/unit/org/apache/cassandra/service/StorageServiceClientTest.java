@@ -29,18 +29,20 @@ import java.io.File;
 
 public class StorageServiceClientTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @Test
     public void testClientOnlyMode() throws ConfigurationException
     {
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();
-        StorageService.instance.initClient(0);
+        databaseDescriptor.getStorageService().initClient(0);
 
         // verify that no storage directories were created.
         for (String path : DatabaseDescriptor.instance.getAllDataFileLocations())
         {
             assertFalse(new File(path).exists());
         }
-        StorageService.instance.stopClient();
+        databaseDescriptor.getStorageService().stopClient();
     }
 }

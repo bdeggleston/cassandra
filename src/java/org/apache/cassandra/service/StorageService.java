@@ -101,26 +101,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public volatile VersionedValue.VersionedValueFactory valueFactory;
 
-    public static final StorageService instance = create(DatabaseDescriptor.instance,
-                                                         DatabaseDescriptor.instance.getTracing(),
-                                                         DatabaseDescriptor.instance.getSchema(),
-                                                         DatabaseDescriptor.instance.getStageManager(),
-                                                         DatabaseDescriptor.instance.getSystemKeyspace(),
-                                                         DatabaseDescriptor.instance.getDefsTables(),
-                                                         DatabaseDescriptor.instance.getMessagingService(),
-                                                         DatabaseDescriptor.instance.getCompactionManager(),
-                                                         DatabaseDescriptor.instance.getMutationFactory(),
-                                                         DatabaseDescriptor.instance.getColumnFamilyStoreManager(),
-                                                         DatabaseDescriptor.instance.getKeyspaceManager(),
-                                                         DatabaseDescriptor.instance.getGossiper(),
-                                                         DatabaseDescriptor.instance.getActiveRepairService(),
-                                                         DatabaseDescriptor.instance.getStreamManager(),
-                                                         DatabaseDescriptor.instance.getStorageProxy(),
-                                                         DatabaseDescriptor.instance.getFailureDetector(),
-                                                         DatabaseDescriptor.instance.getPaxosManager(),
-                                                         DatabaseDescriptor.instance.getLocatorConfig(),
-                                                         DatabaseDescriptor.instance.getDBConfig());
-
     private final Set<InetAddress> replicatingNodes = Collections.synchronizedSet(new HashSet<InetAddress>());
     private CassandraDaemon daemon;
 

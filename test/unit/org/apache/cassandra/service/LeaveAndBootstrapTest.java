@@ -68,7 +68,7 @@ public class LeaveAndBootstrapTest
     @Test
     public void newTestWriteEndpointsDuringLeave() throws Exception
     {
-        StorageService ss = StorageService.instance;
+        StorageService ss = databaseDescriptor.getStorageService();
         final int RING_SIZE = 6;
         final int LEAVING_NODE = 3;
 
@@ -141,7 +141,7 @@ public class LeaveAndBootstrapTest
     @Test
     public void testSimultaneousMove() throws UnknownHostException
     {
-        StorageService ss = StorageService.instance;
+        StorageService ss = databaseDescriptor.getStorageService();
         final int RING_SIZE = 10;
         TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
@@ -442,7 +442,7 @@ public class LeaveAndBootstrapTest
     @Test
     public void testStateJumpToBootstrap() throws UnknownHostException
     {
-        StorageService ss = StorageService.instance;
+        StorageService ss = databaseDescriptor.getStorageService();
         TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
@@ -519,7 +519,7 @@ public class LeaveAndBootstrapTest
     @Test
     public void testStateJumpToNormal() throws UnknownHostException
     {
-        StorageService ss = StorageService.instance;
+        StorageService ss = databaseDescriptor.getStorageService();
         TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
@@ -561,7 +561,7 @@ public class LeaveAndBootstrapTest
     @Test
     public void testStateJumpToLeaving() throws UnknownHostException
     {
-        StorageService ss = StorageService.instance;
+        StorageService ss = databaseDescriptor.getStorageService();
         TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
@@ -611,7 +611,7 @@ public class LeaveAndBootstrapTest
     @Test
     public void testStateJumpToLeft() throws UnknownHostException
     {
-        StorageService ss = StorageService.instance;
+        StorageService ss = databaseDescriptor.getStorageService();
         TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.clearUnsafe();
         IPartitioner partitioner = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
@@ -655,7 +655,7 @@ public class LeaveAndBootstrapTest
     @Test
     public void testStateChangeOnRemovedNode() throws UnknownHostException
     {
-        StorageService ss = StorageService.instance;
+        StorageService ss = databaseDescriptor.getStorageService();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(databaseDescriptor.getLocatorConfig().getPartitioner());
 
         // create a ring of 2 nodes
@@ -683,7 +683,7 @@ public class LeaveAndBootstrapTest
     public void testRemovingStatusForNonMember()  throws UnknownHostException
     {
         // create a ring of 1 node
-        StorageService ss = StorageService.instance;
+        StorageService ss = databaseDescriptor.getStorageService();
         VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(databaseDescriptor.getLocatorConfig().getPartitioner());
         Util.createInitialRing(ss, databaseDescriptor.getLocatorConfig().getPartitioner(), new ArrayList<Token>(), new ArrayList<Token>(),  new ArrayList<InetAddress>(), new ArrayList<UUID>(), 1, databaseDescriptor);
 

@@ -371,7 +371,7 @@ public class OldNetworkTopologyStrategyTest
         Collection<Range<Token>> currentRanges = strategy.getAddressRanges().get(movingNode);
         Collection<Range<Token>> updatedRanges = strategy.getPendingAddressRanges(tokenMetadataAfterMove, tokensAfterMove[movingNodeIdx], movingNode);
 
-        Pair<Set<Range<Token>>, Set<Range<Token>>> ranges = StorageService.instance.calculateStreamAndFetchRanges(currentRanges, updatedRanges);
+        Pair<Set<Range<Token>>, Set<Range<Token>>> ranges = databaseDescriptor.getStorageService().calculateStreamAndFetchRanges(currentRanges, updatedRanges);
 
         return ranges;
     }

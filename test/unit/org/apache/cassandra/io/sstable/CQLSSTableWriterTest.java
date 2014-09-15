@@ -52,7 +52,7 @@ public class CQLSSTableWriterTest
     {
         DatabaseDescriptor.init();
         databaseDescriptor.getKeyspaceManager().setInitialized();
-        StorageService.instance.initServer();
+        databaseDescriptor.getStorageService().initServer();
     }
 
     @Test

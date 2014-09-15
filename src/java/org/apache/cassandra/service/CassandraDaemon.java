@@ -175,7 +175,7 @@ public class CassandraDaemon
                             logger.error("Exception in thread {}", t, e2);
                         FileUtils.handleFSError((FSError) e2,
                                                 DatabaseDescriptor.instance.getDiskFailurePolicy(),
-                                                StorageService.instance,
+                                                DatabaseDescriptor.instance.getStorageService(),
                                                 DatabaseDescriptor.instance.getKeyspaceManager());
                     }
 
@@ -185,7 +185,7 @@ public class CassandraDaemon
                             logger.error("Exception in thread " + t, e2);
                         FileUtils.handleCorruptSSTable((CorruptSSTableException) e2,
                                                        DatabaseDescriptor.instance.getDiskFailurePolicy(),
-                                                       StorageService.instance);
+                                                       DatabaseDescriptor.instance.getStorageService());
                     }
                 }
             }
@@ -349,10 +349,10 @@ public class CassandraDaemon
         DatabaseDescriptor.instance.getSystemKeyspace().finishStartup();
 
         // start server internals
-        StorageService.instance.registerDaemon(this);
+        DatabaseDescriptor.instance.getStorageService().registerDaemon(this);
         try
         {
-            StorageService.instance.initServer();
+            DatabaseDescriptor.instance.getStorageService().initServer();
         }
         catch (ConfigurationException e)
         {
@@ -391,7 +391,7 @@ public class CassandraDaemon
                                         DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getAuth(), DatabaseDescriptor.instance.getStorageProxy(),
                                         DatabaseDescriptor.instance.getMessagingService(), DatabaseDescriptor.instance.getKeyspaceManager(),
                                         DatabaseDescriptor.instance.getMutationFactory(), DatabaseDescriptor.instance.getCounterMutationFactory(),
-                                        StorageService.instance, DatabaseDescriptor.instance.getCFMetaDataFactory(),
+                                        DatabaseDescriptor.instance.getStorageService(), DatabaseDescriptor.instance.getCFMetaDataFactory(),
                                         DatabaseDescriptor.instance.getMigrationManager(), DatabaseDescriptor.instance.getKSMetaDataFactory(),
                                         DatabaseDescriptor.instance.getQueryHandler(), DatabaseDescriptor.instance.getLocatorConfig(),
                                         DatabaseDescriptor.instance.getDBConfig(),
@@ -415,7 +415,7 @@ public class CassandraDaemon
                                                                            DatabaseDescriptor.instance.getDBConfig(),
                                                                            DatabaseDescriptor.instance.getLocatorConfig());
         nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort, codecs, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(),
-                                                                 DatabaseDescriptor.instance.getAuth(), ClientMetrics.instance, StorageService.instance,
+                                                                 DatabaseDescriptor.instance.getAuth(), ClientMetrics.instance, DatabaseDescriptor.instance.getStorageService(),
                                                                  DatabaseDescriptor.instance.getMigrationManager());
     }
 

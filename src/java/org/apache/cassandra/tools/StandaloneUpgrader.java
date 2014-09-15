@@ -95,7 +95,7 @@ public class StandaloneUpgrader
             {
                 try
                 {
-                    Upgrader upgrader = new Upgrader(cfs, sstable, handler, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getDBConfig(), StorageService.instance);
+                    Upgrader upgrader = new Upgrader(cfs, sstable, handler, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getDBConfig(), DatabaseDescriptor.instance.getStorageService());
                     upgrader.upgrade();
                 }
                 catch (Exception e)

@@ -48,7 +48,7 @@ public class CloudstackSnitchTest
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();
         databaseDescriptor.getKeyspaceManager().setInitialized();
-        StorageService.instance.initServer(0);
+        databaseDescriptor.getStorageService().initServer(0);
     }
 
     private class TestCloudstackSnitch extends CloudstackSnitch
@@ -81,8 +81,8 @@ public class CloudstackSnitchTest
 
         databaseDescriptor.getGossiper().addSavedEndpoint(nonlocal);
         Map<ApplicationState,VersionedValue> stateMap = databaseDescriptor.getGossiper().getEndpointStateForEndpoint(nonlocal).getApplicationStateMap();
-        stateMap.put(ApplicationState.DC, StorageService.instance.valueFactory.datacenter("ch-zrh"));
-        stateMap.put(ApplicationState.RACK, StorageService.instance.valueFactory.rack("2"));
+        stateMap.put(ApplicationState.DC, databaseDescriptor.getStorageService().valueFactory.datacenter("ch-zrh"));
+        stateMap.put(ApplicationState.RACK, databaseDescriptor.getStorageService().valueFactory.rack("2"));
 
         assertEquals("ch-zrh", snitch.getDatacenter(nonlocal));
         assertEquals("2", snitch.getRack(nonlocal));
@@ -106,6 +106,6 @@ public class CloudstackSnitchTest
     @AfterClass
     public static void tearDown()
     {
-        StorageService.instance.stopClient();
+        databaseDescriptor.getStorageService().stopClient();
     }
 }

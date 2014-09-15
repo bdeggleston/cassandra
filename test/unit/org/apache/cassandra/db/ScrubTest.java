@@ -140,7 +140,7 @@ public class ScrubTest
         file.close();
 
         // with skipCorrupted == false, the scrub is expected to fail
-        Scrubber scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), false, false, DatabaseDescriptor.instance, databaseDescriptor.getDBConfig(), StorageService.instance);
+        Scrubber scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), false, false, DatabaseDescriptor.instance, databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
         try
         {
             scrubber.scrub();
@@ -149,7 +149,7 @@ public class ScrubTest
         catch (IOError err) {}
 
         // with skipCorrupted == true, the corrupt row will be skipped
-        scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), true, false, DatabaseDescriptor.instance, databaseDescriptor.getDBConfig(), StorageService.instance);
+        scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), true, false, DatabaseDescriptor.instance, databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
         scrubber.scrub();
         scrubber.close();
         assertEquals(1, cfs.getSSTables().size());
@@ -254,7 +254,7 @@ public class ScrubTest
         components.add(Component.TOC);
         SSTableReader sstable = DatabaseDescriptor.instance.getSSTableReaderFactory().openNoValidation(desc, components, metadata);
 
-        Scrubber scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), false, true, DatabaseDescriptor.instance, databaseDescriptor.getDBConfig(), StorageService.instance);
+        Scrubber scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), false, true, DatabaseDescriptor.instance, databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
         scrubber.scrub();
 
         cfs.loadNewSSTables();

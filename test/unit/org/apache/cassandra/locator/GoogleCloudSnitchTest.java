@@ -52,7 +52,7 @@ public class GoogleCloudSnitchTest
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();
         databaseDescriptor.getKeyspaceManager().setInitialized();
-        StorageService.instance.initServer(0);
+        databaseDescriptor.getStorageService().initServer(0);
     }
 
     private class TestGoogleCloudSnitch extends GoogleCloudSnitch
@@ -79,8 +79,8 @@ public class GoogleCloudSnitchTest
 
         databaseDescriptor.getGossiper().addSavedEndpoint(nonlocal);
         Map<ApplicationState,VersionedValue> stateMap = databaseDescriptor.getGossiper().getEndpointStateForEndpoint(nonlocal).getApplicationStateMap();
-        stateMap.put(ApplicationState.DC, StorageService.instance.valueFactory.datacenter("europe-west1"));
-        stateMap.put(ApplicationState.RACK, StorageService.instance.valueFactory.datacenter("a"));
+        stateMap.put(ApplicationState.DC, databaseDescriptor.getStorageService().valueFactory.datacenter("europe-west1"));
+        stateMap.put(ApplicationState.RACK, databaseDescriptor.getStorageService().valueFactory.datacenter("a"));
 
         assertEquals("europe-west1", snitch.getDatacenter(nonlocal));
         assertEquals("a", snitch.getRack(nonlocal));
@@ -102,6 +102,6 @@ public class GoogleCloudSnitchTest
     @AfterClass
     public static void tearDown()
     {
-        StorageService.instance.stopClient();
+        databaseDescriptor.getStorageService().stopClient();
     }
 }

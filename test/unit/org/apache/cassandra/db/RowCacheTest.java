@@ -157,7 +157,7 @@ public class RowCacheTest
     @Test
     public void testRowCacheCleanup() throws Exception
     {
-        StorageService.instance.initServer(0);
+        databaseDescriptor.getStorageService().initServer(0);
         databaseDescriptor.getCacheService().setRowCacheCapacityInMB(1);
         rowCacheLoad(100, Integer.MAX_VALUE, 1000);
 

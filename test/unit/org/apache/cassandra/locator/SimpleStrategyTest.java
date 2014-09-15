@@ -126,7 +126,7 @@ public class SimpleStrategyTest
         // the token difference will be RING_SIZE * 2.
         final int RING_SIZE = 10;
         TokenMetadata tmd = new TokenMetadata(databaseDescriptor.getFailureDetector(), databaseDescriptor.getLocatorConfig());
-        TokenMetadata oldTmd = StorageServiceAccessor.setTokenMetadata(tmd, StorageService.instance);
+        TokenMetadata oldTmd = StorageServiceAccessor.setTokenMetadata(tmd, databaseDescriptor.getStorageService());
 
         Token[] endpointTokens = new Token[RING_SIZE];
         Token[] keyTokens = new Token[RING_SIZE];
@@ -178,7 +178,7 @@ public class SimpleStrategyTest
             }
         }
 
-        StorageServiceAccessor.setTokenMetadata(oldTmd, StorageService.instance);
+        StorageServiceAccessor.setTokenMetadata(oldTmd, databaseDescriptor.getStorageService());
     }
 
     private AbstractReplicationStrategy getStrategy(String keyspaceName, TokenMetadata tmd)
