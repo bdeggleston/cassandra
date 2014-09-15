@@ -49,6 +49,8 @@ public class OldNetworkTopologyStrategyTest
     private TokenMetadata tmd;
     private Map<String, ArrayList<InetAddress>> expectedResults;
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void setUpClass()
     {
@@ -59,7 +61,7 @@ public class OldNetworkTopologyStrategyTest
     public void init()
     {
         keyTokens = new ArrayList<Token>();
-        tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
+        tmd = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
         expectedResults = new HashMap<String, ArrayList<InetAddress>>();
     }
 
@@ -335,7 +337,7 @@ public class OldNetworkTopologyStrategyTest
     private TokenMetadata initTokenMetadata(BigIntegerToken[] tokens)
             throws UnknownHostException
     {
-        TokenMetadata tokenMetadataCurrent = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
+        TokenMetadata tokenMetadataCurrent = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
 
         int lastIPPart = 1;
         for (BigIntegerToken token : tokens)

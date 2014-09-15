@@ -22,6 +22,7 @@ package org.apache.cassandra.locator;
 import java.net.InetAddress;
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.commons.lang3.StringUtils;
@@ -41,6 +42,8 @@ public class ReplicationStrategyEndpointCacheTest
     private AbstractReplicationStrategy strategy;
     public static final String KEYSPACE = "ReplicationStrategyEndpointCacheTest";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws Exception
     {
@@ -52,7 +55,7 @@ public class ReplicationStrategyEndpointCacheTest
 
     public void setup(Class stratClass, Map<String, String> strategyOptions) throws Exception
     {
-        tmd = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
+        tmd = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
         searchToken = new BigIntegerToken(String.valueOf(15), LocatorConfig.instance.getPartitioner());
 
         strategy = getStrategyWithNewTokenMetadata(KeyspaceManager.instance.open(KEYSPACE).getReplicationStrategy(), tmd);

@@ -50,6 +50,8 @@ public class NetworkTopologyStrategyTest
     private String keyspaceName = "Keyspace1";
     private static final Logger logger = LoggerFactory.getLogger(NetworkTopologyStrategyTest.class);
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void setUpClass()
     {
@@ -61,7 +63,7 @@ public class NetworkTopologyStrategyTest
     {
         IEndpointSnitch snitch = new PropertyFileSnitch(LocatorConfig.instance);
         LocatorConfig.instance.setEndpointSnitch(snitch);
-        TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
+        TokenMetadata metadata = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
         createDummyTokens(metadata, true);
 
         Map<String, String> configOptions = new HashMap<String, String>();
@@ -85,7 +87,7 @@ public class NetworkTopologyStrategyTest
     {
         IEndpointSnitch snitch = new PropertyFileSnitch(LocatorConfig.instance);
         LocatorConfig.instance.setEndpointSnitch(snitch);
-        TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
+        TokenMetadata metadata = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
         createDummyTokens(metadata, false);
 
         Map<String, String> configOptions = new HashMap<String, String>();
@@ -113,7 +115,7 @@ public class NetworkTopologyStrategyTest
 
         IEndpointSnitch snitch = new RackInferringSnitch(LocatorConfig.instance);
         LocatorConfig.instance.setEndpointSnitch(snitch);
-        TokenMetadata metadata = new TokenMetadata(FailureDetector.instance, LocatorConfig.instance);
+        TokenMetadata metadata = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
         Map<String, String> configOptions = new HashMap<String, String>();
         Multimap<InetAddress, Token> tokens = HashMultimap.create();
 

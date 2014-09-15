@@ -133,7 +133,7 @@ public class DatabaseDescriptor
         instance = databaseDescriptor;
         assert CFMetaDataFactory.instance != null;
         assert KSMetaDataFactory.instance != null;
-        assert FailureDetector.instance != null;
+//        assert FailureDetector.instance != null;
         assert Gossiper.instance != null;
         assert Tracing.instance != null;
         assert LocatorConfig.instance != null;
@@ -147,7 +147,6 @@ public class DatabaseDescriptor
         assert Schema.instance != null;
         assert ActiveRepairService.instance != null;
         assert CompactionManager.instance != null;
-        assert FailureDetector.instance != null;
         assert DefsTables.instance != null;
         assert StorageService.instance != null;
 
@@ -188,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final IFailureDetector failureDetector;
     protected final IndexSummaryManager indexSummaryManager;
     protected final SSTableWriterFactory ssTableWriterFactory;
     protected final SSTableReaderFactory ssTableReaderFactory;
@@ -217,6 +217,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        failureDetector = createFailureDetector();
         indexSummaryManager = createIndexSummaryManager();
         ssTableWriterFactory = createSSTableWriterFactory();
         ssTableReaderFactory = createSSTableReaderFactory();
@@ -1702,9 +1703,14 @@ public class DatabaseDescriptor
         return CompactionManager.instance;
     }
 
+    public IFailureDetector createFailureDetector()
+    {
+        return FailureDetector.create(this);
+    }
+
     public IFailureDetector getFailureDetector()
     {
-        return FailureDetector.instance;
+        return failureDetector;
     }
 
     public CommitLog getCommitLog()
