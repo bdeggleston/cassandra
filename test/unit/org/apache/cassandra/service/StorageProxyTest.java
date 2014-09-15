@@ -42,6 +42,8 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class StorageProxyTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     private static Range<RowPosition> range(RowPosition left, RowPosition right)
     {
         return new Range<RowPosition>(left, right, LocatorConfig.instance.getPartitioner());
@@ -95,7 +97,7 @@ public class StorageProxyTest
     private void testGRR(AbstractBounds<Token> queryRange, AbstractBounds<Token>... expected)
     {
         // Testing for tokens
-        List<AbstractBounds<Token>> restricted = StorageProxy.instance.getRestrictedRanges(queryRange);
+        List<AbstractBounds<Token>> restricted = databaseDescriptor.getStorageProxy().getRestrictedRanges(queryRange);
         assertEquals(restricted.toString(), expected.length, restricted.size());
         for (int i = 0; i < expected.length; i++)
             assertEquals("Mismatch for index " + i + ": " + restricted, expected[i], restricted.get(i));
@@ -105,7 +107,7 @@ public class StorageProxyTest
     private void testGRRKeys(AbstractBounds<RowPosition> queryRange, AbstractBounds<RowPosition>... expected)
     {
         // Testing for keys
-        List<AbstractBounds<RowPosition>> restrictedKeys = StorageProxy.instance.getRestrictedRanges(queryRange);
+        List<AbstractBounds<RowPosition>> restrictedKeys = databaseDescriptor.getStorageProxy().getRestrictedRanges(queryRange);
         assertEquals(restrictedKeys.toString(), expected.length, restrictedKeys.size());
         for (int i = 0; i < expected.length; i++)
             assertEquals("Mismatch for index " + i + ": " + restrictedKeys, expected[i], restrictedKeys.get(i));

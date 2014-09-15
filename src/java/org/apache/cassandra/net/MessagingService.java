@@ -272,7 +272,7 @@ public final class MessagingService implements MessagingServiceMBean
                                                            DatabaseDescriptor.instance.getSchema(),
                                                            DatabaseDescriptor.instance.getStageManager(),
                                                            StorageServiceExecutors.instance,
-                                                           StorageProxy.instance,
+                                                           DatabaseDescriptor.instance.getStorageProxy(),
                                                            DatabaseDescriptor.instance.getKeyspaceManager(),
                                                            DatabaseDescriptor.instance.getMutationFactory(),
                                                            LocatorConfig.instance,

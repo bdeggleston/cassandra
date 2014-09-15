@@ -45,6 +45,7 @@ import com.google.common.collect.Sets;
 
 import com.yammer.metrics.reporting.JmxReporter;
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutorMBean;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStoreMBean;
 import org.apache.cassandra.db.HintedHandOffManager;
 import org.apache.cassandra.db.HintedHandOffManagerMBean;
@@ -165,7 +166,7 @@ public class NodeProbe implements AutoCloseable
             fdProxy = JMX.newMBeanProxy(mbeanServerConn, name, FailureDetectorMBean.class);
             name = new ObjectName(CacheService.MBEAN_NAME);
             cacheService = JMX.newMBeanProxy(mbeanServerConn, name, CacheServiceMBean.class);
-            name = new ObjectName(StorageProxy.instance.MBEAN_NAME);
+            name = new ObjectName(DatabaseDescriptor.instance.getStorageProxy().MBEAN_NAME);
             spProxy = JMX.newMBeanProxy(mbeanServerConn, name, StorageProxyMBean.class);
             name = new ObjectName(HintedHandOffManager.MBEAN_NAME);
             hhProxy = JMX.newMBeanProxy(mbeanServerConn, name, HintedHandOffManagerMBean.class);

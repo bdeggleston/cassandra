@@ -388,7 +388,7 @@ public class CassandraDaemon
         int listenBacklog = DatabaseDescriptor.instance.getRpcListenBacklog();
         thriftServer = new ThriftServer(rpcAddr, rpcPort, listenBacklog,
                                         DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(),
-                                        DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getAuth(), StorageProxy.instance,
+                                        DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getAuth(), DatabaseDescriptor.instance.getStorageProxy(),
                                         MessagingService.instance, DatabaseDescriptor.instance.getKeyspaceManager(),
                                         DatabaseDescriptor.instance.getMutationFactory(), DatabaseDescriptor.instance.getCounterMutationFactory(),
                                         StorageService.instance, DatabaseDescriptor.instance.getCFMetaDataFactory(),
@@ -408,7 +408,7 @@ public class CassandraDaemon
                                                                            DatabaseDescriptor.instance.getQueryHandler(),
                                                                            DatabaseDescriptor.instance.getQueryProcessor(),
                                                                            DatabaseDescriptor.instance.getKeyspaceManager(),
-                                                                           StorageProxy.instance,
+                                                                           DatabaseDescriptor.instance.getStorageProxy(),
                                                                            DatabaseDescriptor.instance.getMutationFactory(),
                                                                            DatabaseDescriptor.instance.getCounterMutationFactory(),
                                                                            MessagingService.instance,

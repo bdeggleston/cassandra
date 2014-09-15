@@ -208,7 +208,7 @@ public class QueryPagerTest
     public void namesQueryTest() throws Exception
     {
         QueryPager pager = QueryPagers.localPager(namesQuery("k0", "c1", "c5", "c7", "c8"), DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(),
-                                                  StorageProxy.instance, MessagingService.instance, LocatorConfig.instance.getPartitioner());
+                                                  databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
 
         assertFalse(pager.isExhausted());
         List<Row> page = pager.fetchPage(3);
@@ -222,7 +222,7 @@ public class QueryPagerTest
     public void sliceQueryTest() throws Exception
     {
         QueryPager pager = QueryPagers.localPager(sliceQuery("k0", "c1", "c8", 10), DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(),
-                                                  StorageProxy.instance, MessagingService.instance, LocatorConfig.instance.getPartitioner());
+                                                  databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
 
         List<Row> page;
 
@@ -248,7 +248,7 @@ public class QueryPagerTest
     public void reversedSliceQueryTest() throws Exception
     {
         QueryPager pager = QueryPagers.localPager(sliceQuery("k0", "c8", "c1", true, 10), DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(),
-                                                  StorageProxy.instance, MessagingService.instance, LocatorConfig.instance.getPartitioner());
+                                                  databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
 
         List<Row> page;
 
@@ -276,7 +276,7 @@ public class QueryPagerTest
         QueryPager pager = QueryPagers.localPager(new Pageable.ReadCommands(new ArrayList<ReadCommand>() {{
             add(sliceQuery("k1", "c2", "c6", 10));
             add(sliceQuery("k4", "c3", "c5", 10));
-        }}), DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), StorageProxy.instance, MessagingService.instance, LocatorConfig.instance.getPartitioner());
+        }}), DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
 
         List<Row> page;
 
@@ -303,7 +303,7 @@ public class QueryPagerTest
     public void rangeNamesQueryTest() throws Exception
     {
         QueryPager pager = QueryPagers.localPager(rangeNamesQuery(range("k0", "k5"), 100, "c1", "c4", "c8"), DatabaseDescriptor.instance,
-                                                  databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), StorageProxy.instance, MessagingService.instance, LocatorConfig.instance.getPartitioner());
+                                                  databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
 
         List<Row> page;
 
@@ -326,7 +326,7 @@ public class QueryPagerTest
     public void rangeSliceQueryTest() throws Exception
     {
         QueryPager pager = QueryPagers.localPager(rangeSliceQuery(range("k1", "k5"), 100, "c1", "c7"), DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
-                                                  databaseDescriptor.getKeyspaceManager(), StorageProxy.instance, MessagingService.instance, LocatorConfig.instance.getPartitioner());
+                                                  databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
 
         List<Row> page;
 
@@ -381,7 +381,7 @@ public class QueryPagerTest
 
         SliceQueryFilter filter = new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
         QueryPager pager = QueryPagers.localPager(new SliceFromReadCommand(keyspace, bytes("k0"), table, 0, filter, DatabaseDescriptor.instance, databaseDescriptor.getSchema(), LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer),
-                                                  DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), StorageProxy.instance, MessagingService.instance, LocatorConfig.instance.getPartitioner());
+                                                  DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStorageProxy(), MessagingService.instance, LocatorConfig.instance.getPartitioner());
 
         for (int i = 0; i < 5; i++)
         {

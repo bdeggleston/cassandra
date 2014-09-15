@@ -115,7 +115,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                                          DatabaseDescriptor.instance.getGossiper(),
                                                          ActiveRepairService.instance,
                                                          DatabaseDescriptor.instance.getStreamManager(),
-                                                         StorageProxy.instance,
+                                                         DatabaseDescriptor.instance.getStorageProxy(),
                                                          DatabaseDescriptor.instance.getFailureDetector(),
                                                          DatabaseDescriptor.instance.getPaxosManager(),
                                                          LocatorConfig.instance,

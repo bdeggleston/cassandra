@@ -65,8 +65,6 @@ public class StorageProxy implements StorageProxyMBean
     public static final String MBEAN_NAME = "org.apache.cassandra.db:type=StorageProxy";
     private static final Logger logger = LoggerFactory.getLogger(StorageProxy.class);
 
-    public static final StorageProxy instance = create(DatabaseDescriptor.instance, DatabaseDescriptor.instance.getStageManager(), DatabaseDescriptor.instance.getFailureDetector());
-
     static final boolean OPTIMIZE_LOCAL_REQUESTS = true; // set to false to test messagingservice path on single node
 
     public static final String UNREACHABLE = "UNREACHABLE";

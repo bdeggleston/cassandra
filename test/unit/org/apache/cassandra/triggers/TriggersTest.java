@@ -80,7 +80,7 @@ public class TriggersTest
         {
             thriftServer = new ThriftServer(InetAddress.getLocalHost(), 9170, 50,
                                             DatabaseDescriptor.instance, databaseDescriptor.getTracing(),
-                                            databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), StorageProxy.instance,
+                                            databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), databaseDescriptor.getStorageProxy(),
                                             MessagingService.instance, databaseDescriptor.getKeyspaceManager(),
                                             databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
                                             StorageService.instance, databaseDescriptor.getCFMetaDataFactory(),
@@ -215,7 +215,7 @@ public class TriggersTest
         assertUpdateIsAugmented(6);
     }
 
-    // Unfortunately, an IRE thrown from StorageProxy.instance.cas
+    // Unfortunately, an IRE thrown from databaseDescriptor.getStorageProxy().cas
     // results in a RuntimeException from QueryProcessor.instance.process
     @Test(expected=RuntimeException.class)
     public void onCqlUpdateWithConditionsRejectGeneratedUpdatesForDifferentPartition() throws Exception
@@ -233,7 +233,7 @@ public class TriggersTest
         }
     }
 
-    // Unfortunately, an IRE thrown from StorageProxy.instance.cas
+    // Unfortunately, an IRE thrown from databaseDescriptor.getStorageProxy().cas
     // results in a RuntimeException from QueryProcessor.instance.process
     @Test(expected=RuntimeException.class)
     public void onCqlUpdateWithConditionsRejectGeneratedUpdatesForDifferentTable() throws Exception

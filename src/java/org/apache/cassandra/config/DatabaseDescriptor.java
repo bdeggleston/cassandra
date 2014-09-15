@@ -188,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final StorageProxy storageProxy;
     protected final Gossiper gossiper;
     protected final CFMetaDataFactory cfMetaDataFactory;
     protected final KSMetaDataFactory ksMetaDataFactory;
@@ -237,6 +238,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        storageProxy = createStorageProxy();
         gossiper = createGossiper();
         cfMetaDataFactory = createCFMetaDataFactory();
         ksMetaDataFactory = createKSMetaDataFactory();
@@ -1755,9 +1757,14 @@ public class DatabaseDescriptor
         return mutationFactory;
     }
 
+    public StorageProxy createStorageProxy()
+    {
+        return StorageProxy.create(this, getStageManager(), getFailureDetector());
+    }
+
     public StorageProxy getStorageProxy()
     {
-        return StorageProxy.instance;
+        return storageProxy;
     }
 
     public CounterMutationFactory createCounterMutationFactory()
