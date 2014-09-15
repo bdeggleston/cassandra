@@ -48,6 +48,8 @@ public class RecoveryManager3Test
     private static final String KEYSPACE2 = "RecoveryManager3Test2";
     private static final String CF_STANDARD3 = "Standard3";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -72,12 +74,12 @@ public class RecoveryManager3Test
         DecoratedKey dk = Util.dk("keymulti");
         ColumnFamily cf;
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1L));
         rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey(), cf);
         rm.apply();
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3", Schema.instance, DBConfig.instance);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3", databaseDescriptor.getSchema(), DBConfig.instance);
         cf.addColumn(column("col2", "val2", 1L));
         rm = MutationFactory.instance.create(KEYSPACE2, dk.getKey(), cf);
         rm.apply();

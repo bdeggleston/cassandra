@@ -27,6 +27,7 @@ import java.io.IOException;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
@@ -51,6 +52,8 @@ public class EncodedStreamsTest
     private static final String CF_STANDARD = "Standard1";
     private static final String CF_COUNTER = "Counter1";
     private int version = MessagingService.current_version;
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -116,7 +119,7 @@ public class EncodedStreamsTest
 
     private ColumnFamily createCF()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD, Schema.instance, DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD, databaseDescriptor.getSchema(), DBConfig.instance);
         cf.addColumn(column("vijay", "try", 1));
         cf.addColumn(column("to", "be_nice", 1));
         return cf;
@@ -124,7 +127,7 @@ public class EncodedStreamsTest
 
     private ColumnFamily createCounterCF()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER, Schema.instance, DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER, databaseDescriptor.getSchema(), DBConfig.instance);
         cf.addCounter(cellname("vijay"), 1);
         cf.addCounter(cellname("wants"), 1000000);
         return cf;

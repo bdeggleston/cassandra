@@ -94,7 +94,7 @@ public class CompactionManager implements CompactionManagerMBean
 {
     public static final String MBEAN_OBJECT_NAME = "org.apache.cassandra.db:type=CompactionManager";
     private static final Logger logger = LoggerFactory.getLogger(CompactionManager.class);
-    public static final CompactionManager instance = create(DatabaseDescriptor.instance, Tracing.instance, Schema.instance, KeyspaceManager.instance);
+    public static final CompactionManager instance = create(DatabaseDescriptor.instance, Tracing.instance, DatabaseDescriptor.instance.getSchema(), KeyspaceManager.instance);
 
     public static final int NO_GC = Integer.MIN_VALUE;
     public static final int GC_ALL = Integer.MAX_VALUE;

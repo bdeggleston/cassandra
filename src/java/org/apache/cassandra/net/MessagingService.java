@@ -269,7 +269,7 @@ public final class MessagingService implements MessagingServiceMBean
     private final ConcurrentMap<InetAddress, Integer> versions = new NonBlockingHashMap<InetAddress, Integer>();
 
     public static final MessagingService instance = create(DatabaseDescriptor.instance,
-                                                           Schema.instance,
+                                                           DatabaseDescriptor.instance.getSchema(),
                                                            StageManager.instance,
                                                            StorageServiceExecutors.instance,
                                                            StorageProxy.instance,

@@ -38,6 +38,8 @@ public class TriggersSchemaTest
     String triggerName = "trigger_" + System.nanoTime();
     String triggerClass = "org.apache.cassandra.triggers.NoSuchTrigger.class";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void beforeTest() throws ConfigurationException
     {
@@ -57,7 +59,7 @@ public class TriggersSchemaTest
                                                 Collections.singletonList(cfm1));
         DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(ksm);
 
-        CFMetaData cfm2 = Schema.instance.getCFMetaData(ksName, cfName);
+        CFMetaData cfm2 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName);
         assertFalse(cfm2.getTriggers().isEmpty());
         assertEquals(1, cfm2.getTriggers().size());
         assertEquals(td, cfm2.getTriggers().get(triggerName));
@@ -79,7 +81,7 @@ public class TriggersSchemaTest
 
         DatabaseDescriptor.instance.getMigrationManager().announceNewColumnFamily(cfm1);
 
-        CFMetaData cfm2 = Schema.instance.getCFMetaData(ksName, cfName);
+        CFMetaData cfm2 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName);
         assertFalse(cfm2.getTriggers().isEmpty());
         assertEquals(1, cfm2.getTriggers().size());
         assertEquals(td, cfm2.getTriggers().get(triggerName));
@@ -96,12 +98,12 @@ public class TriggersSchemaTest
                                                 Collections.singletonList(cfm1));
         DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(ksm);
 
-        CFMetaData cfm2 = Schema.instance.getCFMetaData(ksName, cfName).copy();
+        CFMetaData cfm2 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName).copy();
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass, CFMetaDataFactory.instance);
         cfm2.addTriggerDefinition(td);
         DatabaseDescriptor.instance.getMigrationManager().announceColumnFamilyUpdate(cfm2, false);
 
-        CFMetaData cfm3 = Schema.instance.getCFMetaData(ksName, cfName);
+        CFMetaData cfm3 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName);
         assertFalse(cfm3.getTriggers().isEmpty());
         assertEquals(1, cfm3.getTriggers().size());
         assertEquals(td, cfm3.getTriggers().get(triggerName));
@@ -120,11 +122,11 @@ public class TriggersSchemaTest
                                                 Collections.singletonList(cfm1));
         DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(ksm);
 
-        CFMetaData cfm2 = Schema.instance.getCFMetaData(ksName, cfName).copy();
+        CFMetaData cfm2 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName).copy();
         cfm2.removeTrigger(triggerName);
         DatabaseDescriptor.instance.getMigrationManager().announceColumnFamilyUpdate(cfm2, false);
 
-        CFMetaData cfm3 = Schema.instance.getCFMetaData(ksName, cfName).copy();
+        CFMetaData cfm3 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName).copy();
         assertTrue(cfm3.getTriggers().isEmpty());
     }
 }

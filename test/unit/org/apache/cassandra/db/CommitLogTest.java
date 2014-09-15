@@ -62,6 +62,8 @@ public class CommitLogTest
     private static final String CF1 = "Standard1";
     private static final String CF2 = "Standard2";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -383,7 +385,7 @@ public class CommitLogTest
                                                           "Standard1",
                                                           System.currentTimeMillis(),
                                                           new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), DBConfig.instance), DatabaseDescriptor.instance,
-                                                          Schema.instance,
+                                                          databaseDescriptor.getSchema(),
                                                           LocatorConfig.instance.getPartitioner(),
                                                           MessagingService.instance.readCommandSerializer);
         Row row = command.getRow(notDurableKs);

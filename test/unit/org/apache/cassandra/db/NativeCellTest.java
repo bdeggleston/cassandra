@@ -96,7 +96,7 @@ public class NativeCellTest
                                                               DatabaseDescriptor.instance,
                                                               Tracing.instance,
                                                               databaseDescriptor.getSystemKeyspace(),
-                                                              Schema.instance,
+                                                              databaseDescriptor.getSchema(),
                                                               databaseDescriptor.getColumnFamilyStoreManager(),
                                                               KeyspaceManager.instance,
                                                               CFMetaDataFactory.instance,

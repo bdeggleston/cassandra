@@ -26,6 +26,7 @@ import java.io.IOException;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.commitlog.CommitLog;
@@ -42,6 +43,8 @@ public class RecoveryManagerTruncateTest
 {
     private static final String KEYSPACE1 = "RecoveryManagerTruncateTest";
     private static final String CF_STANDARD1 = "Standard1";
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -63,7 +66,7 @@ public class RecoveryManagerTruncateTest
 		ColumnFamily cf;
 
 		// add a single cell
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
 		cf.addColumn(column("col1", "val1", 1L));
         rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("keymulti"), cf);
 		rm.applyUnsafe();

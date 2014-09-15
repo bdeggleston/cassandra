@@ -136,7 +136,7 @@ public class LegacySSTableTest
         details.add(new StreamSession.SSTableStreamingSections(sstable,
                                                                sstable.getPositionsForRanges(ranges),
                                                                sstable.estimatedKeysForRanges(ranges), sstable.getSSTableMetadata().repairedAt));
-        new StreamPlan("LegacyStreamingTest", DatabaseDescriptor.instance, Schema.instance,
+        new StreamPlan("LegacyStreamingTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
                        KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).transferFiles(DatabaseDescriptor.instance.getBroadcastAddress(), details)
                                              .execute().get();
 

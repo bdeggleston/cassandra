@@ -67,7 +67,7 @@ public class SSTableLevelResetter
             String keyspaceName = args[1];
             String columnfamily = args[2];
             // validate columnfamily
-            if (Schema.instance.getCFMetaData(keyspaceName, columnfamily) == null)
+            if (DatabaseDescriptor.instance.getSchema().getCFMetaData(keyspaceName, columnfamily) == null)
             {
                 System.err.println("ColumnFamily not found: " + keyspaceName + "/" + columnfamily);
                 System.exit(1);

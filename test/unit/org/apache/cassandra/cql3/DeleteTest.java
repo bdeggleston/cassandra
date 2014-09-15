@@ -55,7 +55,7 @@ public class DeleteTest extends SchemaLoader
     @BeforeClass()
     public static void setup() throws ConfigurationException, IOException
     {
-        Schema.instance.clear();
+        databaseDescriptor.getSchema().clear();
 
         cassandra = new EmbeddedCassandraService();
         cassandra.start();

@@ -90,7 +90,7 @@ public class DefsTest
                                         DatabaseDescriptor.instance,
                                         Tracing.instance,
                                         databaseDescriptor.getSystemKeyspace(),
-                                        Schema.instance,
+                                        databaseDescriptor.getSchema(),
                                         databaseDescriptor.getColumnFamilyStoreManager(),
                                         KeyspaceManager.instance,
                                         CFMetaDataFactory.instance,
@@ -155,10 +155,10 @@ public class DefsTest
         List<KSMetaData> defs = new ArrayList<KSMetaData>(DefsTables.instance.loadFromStorage(first));
 
         Assert.assertTrue(defs.size() > 0);
-        Assert.assertEquals(defs.size(), Schema.instance.getNonSystemKeyspaces().size());
+        Assert.assertEquals(defs.size(), databaseDescriptor.getSchema().getNonSystemKeyspaces().size());
         for (KSMetaData loaded : defs)
         {
-            KSMetaData defined = Schema.instance.getKeyspaceDefinition(loaded.name);
+            KSMetaData defined = databaseDescriptor.getSchema().getKeyspaceDefinition(loaded.name);
             Assert.assertTrue(String.format("%s != %s", loaded, defined), defined.equals(loaded));
         }
         */
@@ -183,15 +183,15 @@ public class DefsTest
     {
         final String ks = KEYSPACE1;
         final String cf = "BrandNewCfWithNull";
-        KSMetaData original = Schema.instance.getKSMetaData(ks);
+        KSMetaData original = databaseDescriptor.getSchema().getKSMetaData(ks);
 
         CFMetaData newCf = addTestCF(original.name, cf, null);
 
-        Assert.assertFalse(Schema.instance.getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
+        Assert.assertFalse(databaseDescriptor.getSchema().getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
         DatabaseDescriptor.instance.getMigrationManager().announceNewColumnFamily(newCf);
 
-        Assert.assertTrue(Schema.instance.getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
-        Assert.assertEquals(newCf, Schema.instance.getKSMetaData(ks).cfMetaData().get(newCf.cfName));
+        Assert.assertTrue(databaseDescriptor.getSchema().getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
+        Assert.assertEquals(newCf, databaseDescriptor.getSchema().getKSMetaData(ks).cfMetaData().get(newCf.cfName));
     }
 
     @Test
@@ -199,15 +199,15 @@ public class DefsTest
     {
         final String ks = KEYSPACE1;
         final String cf = "BrandNewCf";
-        KSMetaData original = Schema.instance.getKSMetaData(ks);
+        KSMetaData original = databaseDescriptor.getSchema().getKSMetaData(ks);
 
         CFMetaData newCf = addTestCF(original.name, cf, "A New Table");
 
-        Assert.assertFalse(Schema.instance.getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
+        Assert.assertFalse(databaseDescriptor.getSchema().getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
         DatabaseDescriptor.instance.getMigrationManager().announceNewColumnFamily(newCf);
 
-        Assert.assertTrue(Schema.instance.getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
-        Assert.assertEquals(newCf, Schema.instance.getKSMetaData(ks).cfMetaData().get(newCf.cfName));
+        Assert.assertTrue(databaseDescriptor.getSchema().getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
+        Assert.assertEquals(newCf, databaseDescriptor.getSchema().getKSMetaData(ks).cfMetaData().get(newCf.cfName));
 
         // now read and write to it.
         CellName col0 = cellname("col0");
@@ -230,7 +230,7 @@ public class DefsTest
     {
         DecoratedKey dk = Util.dk("dropCf");
         // sanity
-        final KSMetaData ks = Schema.instance.getKSMetaData(KEYSPACE1);
+        final KSMetaData ks = databaseDescriptor.getSchema().getKSMetaData(KEYSPACE1);
         Assert.assertNotNull(ks);
         final CFMetaData cfm = ks.cfMetaData().get("Standard1");
         Assert.assertNotNull(cfm);
@@ -247,7 +247,7 @@ public class DefsTest
 
         DatabaseDescriptor.instance.getMigrationManager().announceColumnFamilyDrop(ks.name, cfm.cfName);
 
-        Assert.assertFalse(Schema.instance.getKSMetaData(ks.name).cfMetaData().containsKey(cfm.cfName));
+        Assert.assertFalse(databaseDescriptor.getSchema().getKSMetaData(ks.name).cfMetaData().containsKey(cfm.cfName));
 
         // any write should fail.
         rm = MutationFactory.instance.create(ks.name, dk.getKey());
@@ -281,8 +281,8 @@ public class DefsTest
 
         DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(newKs);
 
-        Assert.assertNotNull(Schema.instance.getKSMetaData(newCf.ksName));
-        Assert.assertEquals(Schema.instance.getKSMetaData(newCf.ksName), newKs);
+        Assert.assertNotNull(databaseDescriptor.getSchema().getKSMetaData(newCf.ksName));
+        Assert.assertEquals(databaseDescriptor.getSchema().getKSMetaData(newCf.ksName), newKs);
 
         // test reads and writes.
         CellName col0 = cellname("col0");
@@ -304,7 +304,7 @@ public class DefsTest
     {
         DecoratedKey dk = Util.dk("dropKs");
         // sanity
-        final KSMetaData ks = Schema.instance.getKSMetaData(KEYSPACE1);
+        final KSMetaData ks = databaseDescriptor.getSchema().getKSMetaData(KEYSPACE1);
         Assert.assertNotNull(ks);
         final CFMetaData cfm = ks.cfMetaData().get("Standard2");
         Assert.assertNotNull(cfm);
@@ -321,7 +321,7 @@ public class DefsTest
 
         DatabaseDescriptor.instance.getMigrationManager().announceKeyspaceDrop(ks.name);
 
-        Assert.assertNull(Schema.instance.getKSMetaData(ks.name));
+        Assert.assertNull(databaseDescriptor.getSchema().getKSMetaData(ks.name));
 
         // write should fail.
         rm = MutationFactory.instance.create(ks.name, dk.getKey());
@@ -355,7 +355,7 @@ public class DefsTest
     {
         DecoratedKey dk = Util.dk("dropKs");
         // sanity
-        final KSMetaData ks = Schema.instance.getKSMetaData(KEYSPACE3);
+        final KSMetaData ks = databaseDescriptor.getSchema().getKSMetaData(KEYSPACE3);
         Assert.assertNotNull(ks);
         final CFMetaData cfm = ks.cfMetaData().get("Standard1");
         Assert.assertNotNull(cfm);
@@ -368,29 +368,29 @@ public class DefsTest
 
         DatabaseDescriptor.instance.getMigrationManager().announceKeyspaceDrop(ks.name);
 
-        Assert.assertNull(Schema.instance.getKSMetaData(ks.name));
+        Assert.assertNull(databaseDescriptor.getSchema().getKSMetaData(ks.name));
     }
 
     @Test
     public void createEmptyKsAddNewCf() throws ConfigurationException
     {
-        Assert.assertNull(Schema.instance.getKSMetaData(EMPTYKEYSPACE));
+        Assert.assertNull(databaseDescriptor.getSchema().getKSMetaData(EMPTYKEYSPACE));
 
         KSMetaData newKs = KSMetaDataFactory.instance.testMetadata(EMPTYKEYSPACE, SimpleStrategy.class, KSMetaData.optsWithRF(5));
 
         DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(newKs);
-        Assert.assertNotNull(Schema.instance.getKSMetaData(EMPTYKEYSPACE));
+        Assert.assertNotNull(databaseDescriptor.getSchema().getKSMetaData(EMPTYKEYSPACE));
 
         CFMetaData newCf = addTestCF(EMPTYKEYSPACE, "AddedLater", "A new CF to add to an empty KS");
 
         //should not exist until apply
-        Assert.assertFalse(Schema.instance.getKSMetaData(newKs.name).cfMetaData().containsKey(newCf.cfName));
+        Assert.assertFalse(databaseDescriptor.getSchema().getKSMetaData(newKs.name).cfMetaData().containsKey(newCf.cfName));
 
         //add the new CF to the empty space
         DatabaseDescriptor.instance.getMigrationManager().announceNewColumnFamily(newCf);
 
-        Assert.assertTrue(Schema.instance.getKSMetaData(newKs.name).cfMetaData().containsKey(newCf.cfName));
-        Assert.assertEquals(Schema.instance.getKSMetaData(newKs.name).cfMetaData().get(newCf.cfName), newCf);
+        Assert.assertTrue(databaseDescriptor.getSchema().getKSMetaData(newKs.name).cfMetaData().containsKey(newCf.cfName));
+        Assert.assertEquals(databaseDescriptor.getSchema().getKSMetaData(newKs.name).cfMetaData().get(newCf.cfName), newCf);
 
         // now read and write to it.
         CellName col0 = cellname("col0");
@@ -417,8 +417,8 @@ public class DefsTest
 
         DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(oldKs);
 
-        Assert.assertNotNull(Schema.instance.getKSMetaData(cf.ksName));
-        Assert.assertEquals(Schema.instance.getKSMetaData(cf.ksName), oldKs);
+        Assert.assertNotNull(databaseDescriptor.getSchema().getKSMetaData(cf.ksName));
+        Assert.assertEquals(databaseDescriptor.getSchema().getKSMetaData(cf.ksName), oldKs);
 
         // names should match.
         KSMetaData newBadKs2 = KSMetaDataFactory.instance.testMetadata(cf.ksName + "trash", SimpleStrategy.class, KSMetaData.optsWithRF(4));
@@ -435,7 +435,7 @@ public class DefsTest
         KSMetaData newKs = KSMetaDataFactory.instance.testMetadata(cf.ksName, OldNetworkTopologyStrategy.class, KSMetaData.optsWithRF(1));
         DatabaseDescriptor.instance.getMigrationManager().announceKeyspaceUpdate(newKs);
 
-        KSMetaData newFetchedKs = Schema.instance.getKSMetaData(newKs.name);
+        KSMetaData newFetchedKs = databaseDescriptor.getSchema().getKSMetaData(newKs.name);
         Assert.assertEquals(newFetchedKs.strategyClass, newKs.strategyClass);
         Assert.assertFalse(newFetchedKs.strategyClass.equals(oldKs.strategyClass));
     }
@@ -448,9 +448,9 @@ public class DefsTest
         KSMetaData ksm = KSMetaDataFactory.instance.testMetadata(cf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(1), cf);
         DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(ksm);
 
-        Assert.assertNotNull(Schema.instance.getKSMetaData(cf.ksName));
-        Assert.assertEquals(Schema.instance.getKSMetaData(cf.ksName), ksm);
-        Assert.assertNotNull(Schema.instance.getCFMetaData(cf.ksName, cf.cfName));
+        Assert.assertNotNull(databaseDescriptor.getSchema().getKSMetaData(cf.ksName));
+        Assert.assertEquals(databaseDescriptor.getSchema().getKSMetaData(cf.ksName), ksm);
+        Assert.assertNotNull(databaseDescriptor.getSchema().getCFMetaData(cf.ksName, cf.cfName));
 
         // updating certain fields should fail.
         CFMetaData newCfm = cf.copy();
@@ -480,10 +480,10 @@ public class DefsTest
         // can't test changing the reconciler because there is only one impl.
 
         // check the cumulative affect.
-        Assert.assertEquals(Schema.instance.getCFMetaData(cf.ksName, cf.cfName).getComment(), newCfm.getComment());
-        Assert.assertEquals(Schema.instance.getCFMetaData(cf.ksName, cf.cfName).getReadRepairChance(), newCfm.getReadRepairChance(), 0.0001);
-        Assert.assertEquals(Schema.instance.getCFMetaData(cf.ksName, cf.cfName).getGcGraceSeconds(), newCfm.getGcGraceSeconds());
-        Assert.assertEquals(UTF8Type.instance, Schema.instance.getCFMetaData(cf.ksName, cf.cfName).getDefaultValidator());
+        Assert.assertEquals(databaseDescriptor.getSchema().getCFMetaData(cf.ksName, cf.cfName).getComment(), newCfm.getComment());
+        Assert.assertEquals(databaseDescriptor.getSchema().getCFMetaData(cf.ksName, cf.cfName).getReadRepairChance(), newCfm.getReadRepairChance(), 0.0001);
+        Assert.assertEquals(databaseDescriptor.getSchema().getCFMetaData(cf.ksName, cf.cfName).getGcGraceSeconds(), newCfm.getGcGraceSeconds());
+        Assert.assertEquals(UTF8Type.instance, databaseDescriptor.getSchema().getCFMetaData(cf.ksName, cf.cfName).getDefaultValidator());
 
         // Change cfId
         newCfm = new CFMetaData(cf.ksName,
@@ -493,7 +493,7 @@ public class DefsTest
                                 DatabaseDescriptor.instance,
                                 Tracing.instance,
                                 databaseDescriptor.getSystemKeyspace(),
-                                Schema.instance,
+                                databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 KeyspaceManager.instance,
                                 CFMetaDataFactory.instance,
@@ -515,7 +515,7 @@ public class DefsTest
                                 DatabaseDescriptor.instance,
                                 Tracing.instance,
                                 databaseDescriptor.getSystemKeyspace(),
-                                Schema.instance,
+                                databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 KeyspaceManager.instance,
                                 CFMetaDataFactory.instance,
@@ -537,7 +537,7 @@ public class DefsTest
                                 DatabaseDescriptor.instance,
                                 Tracing.instance,
                                 databaseDescriptor.getSystemKeyspace(),
-                                Schema.instance,
+                                databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 KeyspaceManager.instance,
                                 CFMetaDataFactory.instance,
@@ -559,7 +559,7 @@ public class DefsTest
                                 DatabaseDescriptor.instance,
                                 Tracing.instance,
                                 databaseDescriptor.getSystemKeyspace(),
-                                Schema.instance,
+                                databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 KeyspaceManager.instance,
                                 CFMetaDataFactory.instance,
@@ -581,7 +581,7 @@ public class DefsTest
                                 DatabaseDescriptor.instance,
                                 Tracing.instance,
                                 databaseDescriptor.getSystemKeyspace(),
-                                Schema.instance,
+                                databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 KeyspaceManager.instance,
                                 CFMetaDataFactory.instance,
@@ -600,7 +600,7 @@ public class DefsTest
     public void testDropIndex() throws ConfigurationException
     {
         // persist keyspace definition in the system keyspace
-        Schema.instance.getKSMetaData(KEYSPACE6).toSchema(System.currentTimeMillis()).applyUnsafe();
+        databaseDescriptor.getSchema().getKSMetaData(KEYSPACE6).toSchema(System.currentTimeMillis()).applyUnsafe();
         ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE6).getColumnFamilyStore("Indexed1");
 
         // insert some data.  save the sstable descriptor so we can make sure it's marked for delete after the drop
@@ -634,7 +634,7 @@ public class DefsTest
                                             DatabaseDescriptor.instance,
                                             Tracing.instance,
                                             databaseDescriptor.getSystemKeyspace(),
-                                            Schema.instance,
+                                            databaseDescriptor.getSchema(),
                                             databaseDescriptor.getColumnFamilyStoreManager(),
                                             KeyspaceManager.instance,
                                             CFMetaDataFactory.instance,

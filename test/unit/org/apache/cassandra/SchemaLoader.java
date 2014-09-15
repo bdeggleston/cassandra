@@ -301,7 +301,7 @@ public class SchemaLoader
             useCompression(schema);
 
         // if you're messing with low-level sstable stuff, it can be useful to inject the schema directly
-        // Schema.instance.load(schemaDefinition());
+        // databaseDescriptor.getSchema().load(schemaDefinition());
         for (KSMetaData ksm : schema)
             DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(ksm, false);
     }

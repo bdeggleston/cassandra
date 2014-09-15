@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.db;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -35,6 +36,8 @@ public class LongKeyspaceTest
 {
     public static final String KEYSPACE1 = "LongKeyspaceTest";
     public static final String CF_STANDARD = "Standard1";
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -55,7 +58,7 @@ public class LongKeyspaceTest
         for (int i = 1; i < 5000; i += 100)
         {
             Mutation rm = MutationFactory.instance.create(KEYSPACE1, Util.dk("key" + i).getKey());
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
             for (int j = 0; j < i; j++)
                 cf.addColumn(column("c" + j, "v" + j, 1L));
             rm.add(cf);

@@ -43,6 +43,8 @@ public class CliTest
     private static final String KEYSPACE1 = "CliTest";
     private static final String CF_STANDARD1 = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     // please add new statements here so they could be auto-runned by this test.
     private String[] statements = {
         "use " + KEYSPACE1,
@@ -238,7 +240,7 @@ public class CliTest
     @Test
     public void testCli() throws IOException, TException, TimedOutException, NotFoundException, SchemaDisagreementException, NoSuchFieldException, InvalidRequestException, UnavailableException, InstantiationException, IllegalAccessException
     {
-        Schema.instance.clear(); // Schema are now written on disk and will be reloaded
+        databaseDescriptor.getSchema().clear(); // Schema are now written on disk and will be reloaded
         new EmbeddedCassandraService().start();
 
         // new error/output streams for CliSessionState

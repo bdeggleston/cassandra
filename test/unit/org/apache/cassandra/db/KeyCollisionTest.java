@@ -54,6 +54,8 @@ public class KeyCollisionTest
     private static final String KEYSPACE1 = "KeyCollisionTest1";
     private static final String CF = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -202,9 +204,9 @@ public class KeyCollisionTest
                 lastToken = node;
             }
 
-            for (String ks : Schema.instance.getKeyspaces())
+            for (String ks : databaseDescriptor.getSchema().getKeyspaces())
             {
-                for (CFMetaData cfmd : Schema.instance.getKSMetaData(ks).cfMetaData().values())
+                for (CFMetaData cfmd : databaseDescriptor.getSchema().getKSMetaData(ks).cfMetaData().values())
                 {
                     for (Range<Token> r : sortedRanges)
                     {

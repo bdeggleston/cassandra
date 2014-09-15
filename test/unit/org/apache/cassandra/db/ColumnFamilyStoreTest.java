@@ -843,7 +843,7 @@ public class ColumnFamilyStoreTest
         SliceByNamesReadCommand cmd = new SliceByNamesReadCommand(
             KEYSPACE1, ByteBufferUtil.bytes("k1"), cfname, System.currentTimeMillis(),
             new NamesQueryFilter(FBUtilities.singleton(column1, cfs.getComparator()), DBConfig.instance), DatabaseDescriptor.instance,
-            Schema.instance,
+            databaseDescriptor.getSchema(),
             LocatorConfig.instance.getPartitioner(),
             MessagingService.instance.readCommandSerializer);
 
@@ -857,7 +857,7 @@ public class ColumnFamilyStoreTest
         cmd = new SliceByNamesReadCommand(
             KEYSPACE1, ByteBufferUtil.bytes("k1"), cfname, System.currentTimeMillis(),
             new NamesQueryFilter(FBUtilities.singleton(column2, cfs.getComparator()), DBConfig.instance), DatabaseDescriptor.instance,
-            Schema.instance,
+            databaseDescriptor.getSchema(),
             LocatorConfig.instance.getPartitioner(),
             MessagingService.instance.readCommandSerializer);
 
@@ -965,7 +965,7 @@ public class ColumnFamilyStoreTest
 
     private static void putColsSuper(ColumnFamilyStore cfs, DecoratedKey key, ByteBuffer scfName, Cell... cols) throws Throwable
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfs.keyspace.getName(), cfs.name, Schema.instance, DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfs.keyspace.getName(), cfs.name, databaseDescriptor.getSchema(), DBConfig.instance);
         for (Cell col : cols)
             cf.addColumn(col.withUpdatedName(CellNames.compositeDense(scfName, col.name().toByteBuffer())));
         Mutation rm = MutationFactory.instance.create(cfs.keyspace.getName(), key.getKey(), cf);
@@ -974,7 +974,7 @@ public class ColumnFamilyStoreTest
 
     private static void putColsStandard(ColumnFamilyStore cfs, DecoratedKey key, Cell... cols) throws Throwable
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfs.keyspace.getName(), cfs.name, Schema.instance, DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfs.keyspace.getName(), cfs.name, databaseDescriptor.getSchema(), DBConfig.instance);
         for (Cell col : cols)
             cf.addColumn(col);
         Mutation rm = MutationFactory.instance.create(cfs.keyspace.getName(), key.getKey(), cf);
@@ -1097,7 +1097,7 @@ public class ColumnFamilyStoreTest
                                                                   cfName,
                                                                   System.currentTimeMillis(),
                                                                   new NamesQueryFilter(sliceColNames, DBConfig.instance), DatabaseDescriptor.instance,
-                                                                  Schema.instance,
+                                                                  databaseDescriptor.getSchema(),
                                                                   LocatorConfig.instance.getPartitioner(),
                                                                   MessagingService.instance.readCommandSerializer);
         ColumnFamily cfSliced = cmd.getRow(keyspace).cf;
@@ -1140,14 +1140,14 @@ public class ColumnFamilyStoreTest
                                                                   cfName,
                                                                   System.currentTimeMillis(),
                                                                   new NamesQueryFilter(FBUtilities.singleton(cname, cfs.getComparator()), DBConfig.instance), DatabaseDescriptor.instance,
-                                                                  Schema.instance,
+                                                                  databaseDescriptor.getSchema(),
                                                                   LocatorConfig.instance.getPartitioner(),
                                                                   MessagingService.instance.readCommandSerializer);
         ColumnFamily cf = cmd.getRow(keyspace).cf;
         Cell cell = cf.getColumn(cname);
         assert cell.value().equals(ByteBufferUtil.bytes("a")) : "expecting a, got " + ByteBufferUtil.string(cell.value());
 
-        Keyspace.clear(KEYSPACE1, Schema.instance); // CASSANDRA-7195
+        Keyspace.clear(KEYSPACE1, databaseDescriptor.getSchema()); // CASSANDRA-7195
     }
 
     private static void assertTotalColCount(Collection<Row> rows, int expectedCount)
@@ -1781,7 +1781,7 @@ public class ColumnFamilyStoreTest
         String ks = KEYSPACE1;
         String cf = CF_STANDARD3; // should be empty
 
-        final CFMetaData cfmeta = Schema.instance.getCFMetaData(ks, cf);
+        final CFMetaData cfmeta = databaseDescriptor.getSchema().getCFMetaData(ks, cf);
         Directories dir = new Directories(cfmeta, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
         ByteBuffer key = bytes("key");
 
@@ -1847,7 +1847,7 @@ public class ColumnFamilyStoreTest
         final String ks = KEYSPACE1;
         final String cf = CF_STANDARD4; // should be empty
 
-        final CFMetaData cfmeta = Schema.instance.getCFMetaData(ks, cf);
+        final CFMetaData cfmeta = databaseDescriptor.getSchema().getCFMetaData(ks, cf);
         Directories dir = new Directories(cfmeta, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
         ByteBuffer key = bytes("key");
 
@@ -1902,7 +1902,7 @@ public class ColumnFamilyStoreTest
         cfs.truncateBlocking();
         SSTableDeletingTask.waitForDeletions(StorageServiceExecutors.instance);
 
-        final CFMetaData cfmeta = Schema.instance.getCFMetaData(ks, cf);
+        final CFMetaData cfmeta = databaseDescriptor.getSchema().getCFMetaData(ks, cf);
         Directories dir = new Directories(cfs.metadata, DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
 
         // clear old SSTables (probably left by CFS.clearUnsafe() calls in other tests)

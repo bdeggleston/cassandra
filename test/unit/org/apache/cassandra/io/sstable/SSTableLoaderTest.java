@@ -74,7 +74,7 @@ public class SSTableLoaderTest
         File tempdir = Files.createTempDir();
         File dataDir = new File(tempdir.getAbsolutePath() + File.separator + KEYSPACE1 + File.separator + CF_STANDARD);
         assert dataDir.mkdirs();
-        CFMetaData cfmeta = Schema.instance.getCFMetaData(KEYSPACE1, CF_STANDARD);
+        CFMetaData cfmeta = databaseDescriptor.getSchema().getCFMetaData(KEYSPACE1, CF_STANDARD);
         SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(dataDir,
                                                                              cfmeta,
                                                                              LocatorConfig.instance.getPartitioner(),
@@ -95,7 +95,7 @@ public class SSTableLoaderTest
 
             public CFMetaData getCFMetaData(String keyspace, String cfName)
             {
-                return Schema.instance.getCFMetaData(keyspace, cfName);
+                return databaseDescriptor.getSchema().getCFMetaData(keyspace, cfName);
             }
         }, new OutputHandler.SystemOutput(false, false), DatabaseDescriptor.instance, databaseDescriptor.getSSTableReaderFactory());
 

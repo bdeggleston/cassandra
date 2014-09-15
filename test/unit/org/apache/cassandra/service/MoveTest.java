@@ -53,6 +53,8 @@ public class MoveTest
     private static final String KEYSPACE3 = "MoveTestKeyspace3";
     private static final String KEYSPACE4 = "MoveTestKeyspace4";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     /*
      * NOTE: the tests above uses RandomPartitioner, which is not the default
      * test partitioner. Changing the partitioner should be done before
@@ -118,7 +120,7 @@ public class MoveTest
         assertTrue(tmd.isMoving(hosts.get(MOVING_NODE)));
 
         AbstractReplicationStrategy strategy;
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
             strategy = getStrategy(keyspaceName, tmd);
             int numMoved = 0;
@@ -546,7 +548,7 @@ public class MoveTest
 
     private AbstractReplicationStrategy getStrategy(String keyspaceName, TokenMetadata tmd)
     {
-        KSMetaData ksmd = Schema.instance.getKSMetaData(keyspaceName);
+        KSMetaData ksmd = databaseDescriptor.getSchema().getKSMetaData(keyspaceName);
         return AbstractReplicationStrategy.createReplicationStrategy(
                 keyspaceName,
                 ksmd.strategyClass,

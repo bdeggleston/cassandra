@@ -234,7 +234,7 @@ public abstract class CQLTester
 
     protected CFMetaData currentTableMetadata()
     {
-        return Schema.instance.getCFMetaData(KEYSPACE, currentTable);
+        return databaseDescriptor.getSchema().getCFMetaData(KEYSPACE, currentTable);
     }
 
     protected UntypedResultSet execute(String query, Object... values) throws Throwable

@@ -50,6 +50,8 @@ public class StreamTransferTaskTest
     public static final String KEYSPACE1 = "StreamTransferTaskTest";
     public static final String CF_STANDARD = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -71,7 +73,7 @@ public class StreamTransferTaskTest
                                                   0,
                                                   DatabaseDescriptor.instance.getBroadcastAddress(),
                                                   DatabaseDescriptor.instance.getMaxStreamingRetries(),
-                                                  Schema.instance,
+                                                  databaseDescriptor.getSchema(),
                                                   KeyspaceManager.instance,
                                                   StreamManager.instance,
                                                   DBConfig.instance);

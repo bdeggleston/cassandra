@@ -21,6 +21,7 @@ package org.apache.cassandra.db;
  */
 
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -45,6 +46,8 @@ public class RecoveryManager2Test
     private static final String KEYSPACE1 = "RecoveryManager2Test";
     private static final String CF_STANDARD1 = "Standard1";
     private static final String CF_STANDARD2 = "Standard2";
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -90,7 +93,7 @@ public class RecoveryManager2Test
 
     private void insertRow(String cfname, String key) 
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, cfname, Schema.instance, DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, cfname, databaseDescriptor.getSchema(), DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1L));
         Mutation rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes(key), cf);
         rm.apply();

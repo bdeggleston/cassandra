@@ -57,10 +57,12 @@ public class CorruptionTest extends SchemaLoader
     private static String VALUE;
     private final int THREADPOOL_SIZE=40;
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass()
     public static void setup() throws ConfigurationException, IOException
     {
-        Schema.instance.clear();
+        databaseDescriptor.getSchema().clear();
 
         cassandra = new EmbeddedCassandraService();
         cassandra.start();

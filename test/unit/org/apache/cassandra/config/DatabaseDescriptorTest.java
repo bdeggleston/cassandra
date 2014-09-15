@@ -38,6 +38,8 @@ import static org.junit.Assert.assertNull;
 public class DatabaseDescriptorTest
 {
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void setUpClass()
     {
@@ -48,9 +50,9 @@ public class DatabaseDescriptorTest
     public void testCFMetaDataSerialization() throws Exception
     {
         // test serialization of all defined test CFs.
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
-            for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(keyspaceName).values())
+            for (CFMetaData cfm : databaseDescriptor.getSchema().getKeyspaceMetaData(keyspaceName).values())
             {
                 CFMetaData cfmDupe = CFMetaDataFactory.instance.fromThrift(cfm.toThrift());
                 assertNotNull(cfmDupe);
@@ -62,7 +64,7 @@ public class DatabaseDescriptorTest
     @Test
     public void testKSMetaDataSerialization() throws ConfigurationException
     {
-        for (KSMetaData ksm : Schema.instance.getKeyspaceDefinitions())
+        for (KSMetaData ksm : databaseDescriptor.getSchema().getKeyspaceDefinitions())
         {
             if (ksm.name.equals(Keyspace.SYSTEM_KS))
                 continue;
@@ -79,7 +81,7 @@ public class DatabaseDescriptorTest
     {
         SchemaLoader.cleanupAndLeaveDirs();
         DatabaseDescriptor.instance.loadSchemas();
-        assertEquals(0, Schema.instance.getNonSystemKeyspaces().size());
+        assertEquals(0, databaseDescriptor.getSchema().getNonSystemKeyspaces().size());
 
         Gossiper.instance.start((int)(System.currentTimeMillis() / 1000));
         KeyspaceManager.instance.setInitialized();
@@ -90,19 +92,19 @@ public class DatabaseDescriptorTest
             DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(KSMetaDataFactory.instance.testMetadata("ks0", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
             DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(KSMetaDataFactory.instance.testMetadata("ks1", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
 
-            assertNotNull(Schema.instance.getKSMetaData("ks0"));
-            assertNotNull(Schema.instance.getKSMetaData("ks1"));
+            assertNotNull(databaseDescriptor.getSchema().getKSMetaData("ks0"));
+            assertNotNull(databaseDescriptor.getSchema().getKSMetaData("ks1"));
 
-            Schema.instance.clearKeyspaceDefinition(Schema.instance.getKSMetaData("ks0"));
-            Schema.instance.clearKeyspaceDefinition(Schema.instance.getKSMetaData("ks1"));
+            databaseDescriptor.getSchema().clearKeyspaceDefinition(databaseDescriptor.getSchema().getKSMetaData("ks0"));
+            databaseDescriptor.getSchema().clearKeyspaceDefinition(databaseDescriptor.getSchema().getKSMetaData("ks1"));
 
-            assertNull(Schema.instance.getKSMetaData("ks0"));
-            assertNull(Schema.instance.getKSMetaData("ks1"));
+            assertNull(databaseDescriptor.getSchema().getKSMetaData("ks0"));
+            assertNull(databaseDescriptor.getSchema().getKSMetaData("ks1"));
 
             DatabaseDescriptor.instance.loadSchemas();
 
-            assertNotNull(Schema.instance.getKSMetaData("ks0"));
-            assertNotNull(Schema.instance.getKSMetaData("ks1"));
+            assertNotNull(databaseDescriptor.getSchema().getKSMetaData("ks0"));
+            assertNotNull(databaseDescriptor.getSchema().getKSMetaData("ks1"));
         }
         finally
         {

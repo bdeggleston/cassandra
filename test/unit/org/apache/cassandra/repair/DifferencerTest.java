@@ -62,6 +62,8 @@ public class DifferencerTest
     public static final String KEYSPACE1 = "DifferencerTest";
     public static final String CF_STANDARD = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws Exception
     {
@@ -121,7 +123,7 @@ public class DifferencerTest
         // note: we reuse the same endpoint which is bogus in theory but fine here
         TreeResponse r1 = new TreeResponse(ep1, tree1);
         TreeResponse r2 = new TreeResponse(ep2, tree2);
-        Differencer diff = new Differencer(desc, r1, r2, DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, ActiveRepairService.instance, StreamManager.instance, MessagingService.instance, DBConfig.instance);
+        Differencer diff = new Differencer(desc, r1, r2, DatabaseDescriptor.instance, databaseDescriptor.getSchema(), KeyspaceManager.instance, ActiveRepairService.instance, StreamManager.instance, MessagingService.instance, DBConfig.instance);
         diff.run();
 
         assertTrue(diff.differences.isEmpty());
@@ -155,7 +157,7 @@ public class DifferencerTest
         // note: we reuse the same endpoint which is bogus in theory but fine here
         TreeResponse r1 = new TreeResponse(InetAddress.getByName("127.0.0.1"), tree1);
         TreeResponse r2 = new TreeResponse(InetAddress.getByName("127.0.0.2"), tree2);
-        Differencer diff = new Differencer(desc, r1, r2, DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, ActiveRepairService.instance, StreamManager.instance, MessagingService.instance, DBConfig.instance);
+        Differencer diff = new Differencer(desc, r1, r2, DatabaseDescriptor.instance, databaseDescriptor.getSchema(), KeyspaceManager.instance, ActiveRepairService.instance, StreamManager.instance, MessagingService.instance, DBConfig.instance);
         diff.run();
 
         // ensure that the changed range was recorded

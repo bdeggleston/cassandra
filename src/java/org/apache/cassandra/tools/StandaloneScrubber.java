@@ -55,7 +55,7 @@ public class StandaloneScrubber
             // load keyspace descriptions.
             DatabaseDescriptor.instance.loadSchemas();
 
-            if (Schema.instance.getCFMetaData(options.keyspaceName, options.cfName) == null)
+            if (DatabaseDescriptor.instance.getSchema().getCFMetaData(options.keyspaceName, options.cfName) == null)
                 throw new IllegalArgumentException(String.format("Unknown keyspace/table %s.%s",
                                                                  options.keyspaceName,
                                                                  options.cfName));

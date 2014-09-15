@@ -46,6 +46,8 @@ public class ArrayBackedSortedColumnsTest
     private static final String KEYSPACE1 = "ArrayBackedSortedColumnsTest";
     private static final String CF_STANDARD1 = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -65,7 +67,7 @@ public class ArrayBackedSortedColumnsTest
 
     private CFMetaData metadata()
     {
-        return Schema.instance.getCFMetaData(KEYSPACE1, CF_STANDARD1);
+        return databaseDescriptor.getSchema().getCFMetaData(KEYSPACE1, CF_STANDARD1);
     }
 
     private void testAddInternal(boolean reversed)

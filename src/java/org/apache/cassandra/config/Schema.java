@@ -41,8 +41,6 @@ public class Schema
 {
     private static final Logger logger = LoggerFactory.getLogger(Schema.class);
 
-    public static final Schema instance = new Schema(DatabaseDescriptor.instance);
-
     /**
      * longest permissible KS or CF name.  Our main concern is that filename not be more than 255 characters;
      * the filename will contain both the KS and CF names. Since non-schema-name components only take up

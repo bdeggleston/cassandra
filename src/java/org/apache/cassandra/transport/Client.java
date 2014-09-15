@@ -257,7 +257,7 @@ public class Client extends SimpleClient
 
         Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
                                                                            Tracing.instance,
-                                                                           Schema.instance,
+                                                                           DatabaseDescriptor.instance.getSchema(),
                                                                            Auth.instance.getAuthenticator(),
                                                                            QueryHandlerInstance.instance,
                                                                            DatabaseDescriptor.instance.getQueryProcessor(),

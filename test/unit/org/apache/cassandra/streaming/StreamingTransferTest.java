@@ -69,6 +69,7 @@ import static org.apache.cassandra.Util.column;
 public class StreamingTransferTest
 {
     private static final Logger logger = LoggerFactory.getLogger(StreamingTransferTest.class);
+
     public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     public static final InetAddress LOCAL = databaseDescriptor.getLocatorConfig().getBroadcastAddress();
@@ -111,7 +112,7 @@ public class StreamingTransferTest
     @Test
     public void testEmptyStreamPlan() throws Exception
     {
-        StreamResultFuture futureResult = new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, Schema.instance,
+        StreamResultFuture futureResult = new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
                                                          KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).execute();
         final UUID planId = futureResult.planId;
         Futures.addCallback(futureResult, new FutureCallback<StreamState>()
@@ -141,7 +142,7 @@ public class StreamingTransferTest
         ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1")), LocatorConfig.instance.getPartitioner()));
         ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken(), LocatorConfig.instance.getPartitioner()));
 
-        StreamResultFuture futureResult = new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, Schema.instance,
+        StreamResultFuture futureResult = new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
                                                          KeyspaceManager.instance, StreamManager.instance, DBConfig.instance)
                                                   .requestRanges(LOCAL, KEYSPACE2, ranges)
                                                   .execute();
@@ -235,13 +236,13 @@ public class StreamingTransferTest
         List<Range<Token>> ranges = new ArrayList<>();
         // wrapped range
         ranges.add(new Range<Token>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key0")), LocatorConfig.instance.getPartitioner()));
-        new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, Schema.instance,
+        new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
                        KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).transferRanges(LOCAL, cfs.keyspace.getName(), ranges, cfs.getColumnFamilyName()).execute().get();
     }
 
     private void transfer(SSTableReader sstable, List<Range<Token>> ranges) throws Exception
     {
-        new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, Schema.instance,
+        new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
                        KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).transferFiles(LOCAL, makeStreamingDetails(ranges, Arrays.asList(sstable))).execute().get();
     }
 
@@ -267,7 +268,7 @@ public class StreamingTransferTest
             public void mutate(String key, String col, long timestamp) throws Exception
             {
                 long val = key.hashCode();
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(keyspace.getName(), cfs.name, Schema.instance, DBConfig.instance);
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(keyspace.getName(), cfs.name, databaseDescriptor.getSchema(), DBConfig.instance);
                 cf.addColumn(column(col, "v", timestamp));
                 cf.addColumn(new BufferCell(cellname("birthdate"), ByteBufferUtil.bytes(val), timestamp));
                 Mutation rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes(key), cf);
@@ -415,7 +416,7 @@ public class StreamingTransferTest
         // Acquiring references, transferSSTables needs it
         sstable.acquireReference();
         sstable2.acquireReference();
-        new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, Schema.instance,
+        new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
                        KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).transferFiles(LOCAL, makeStreamingDetails(ranges, Arrays.asList(sstable, sstable2))).execute().get();
 
         // confirm that the sstables were transferred and registered and that 2 keys arrived
@@ -470,7 +471,7 @@ public class StreamingTransferTest
         if (!SSTableReader.acquireReferences(ssTableReaders))
             throw new AssertionError();
 
-        new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, Schema.instance,
+        new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
                        KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).transferFiles(LOCAL, makeStreamingDetails(ranges, ssTableReaders)).execute().get();
 
         // check that only two keys were transferred
@@ -492,7 +493,7 @@ public class StreamingTransferTest
         {
             public void mutate(String key, String colName, long timestamp) throws Exception
             {
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(keyspace.getName(), cfs.name, Schema.instance, DBConfig.instance);
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(keyspace.getName(), cfs.name, databaseDescriptor.getSchema(), DBConfig.instance);
                 cf.addColumn(column(colName, "value", timestamp));
                 cf.addColumn(new BufferCell(cellname("birthdate"), ByteBufferUtil.bytes(new Date(timestamp).toString()), timestamp));
                 Mutation rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes(key), cf);

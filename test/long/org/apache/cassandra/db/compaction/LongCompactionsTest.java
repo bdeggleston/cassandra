@@ -121,7 +121,7 @@ public class LongCompactionsTest
         Thread.sleep(1000);
 
         long start = System.nanoTime();
-        final int gcBefore = (int) (System.currentTimeMillis() / 1000) - Schema.instance.getCFMetaData(KEYSPACE1, "Standard1").getGcGraceSeconds();
+        final int gcBefore = (int) (System.currentTimeMillis() / 1000) - databaseDescriptor.getSchema().getCFMetaData(KEYSPACE1, "Standard1").getGcGraceSeconds();
         new CompactionTask(store, sstables, gcBefore, false, DatabaseDescriptor.instance, databaseDescriptor.getSystemKeyspace(), DBConfig.instance, StorageService.instance).execute(null);
         System.out.println(String.format("%s: sstables=%d rowsper=%d colsper=%d: %d ms",
                                          this.getClass().getName(),

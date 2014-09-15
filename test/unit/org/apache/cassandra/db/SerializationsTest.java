@@ -54,11 +54,8 @@ import java.util.*;
 
 public class SerializationsTest extends AbstractSerializationsTester
 {
-    static
-    {
-        DatabaseDescriptor.init();
-    }
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     Statics statics = new Statics();
 
@@ -71,8 +68,8 @@ public class SerializationsTest extends AbstractSerializationsTester
     public SliceQueryFilter emptyRangePred = new SliceQueryFilter(emptyCol, emptyCol, false, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
     public SliceQueryFilter nonEmptyRangePred = new SliceQueryFilter(CellNames.simpleDense(startCol), CellNames.simpleDense(stopCol), true, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
     public SliceQueryFilter nonEmptyRangeSCPred = new SliceQueryFilter(CellNames.compositeDense(statics.SC, startCol), CellNames.compositeDense(statics.SC, stopCol), true, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
-    public SliceByNamesReadCommand.Serializer slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(DatabaseDescriptor.instance, Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
-    public SliceFromReadCommand.Serializer slicefromReadSerializer = new SliceFromReadCommand.Serializer(DatabaseDescriptor.instance, Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
+    public SliceByNamesReadCommand.Serializer slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
+    public SliceFromReadCommand.Serializer slicefromReadSerializer = new SliceFromReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
 
     public static void defineSchema() throws ConfigurationException
     {
@@ -147,7 +144,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                           statics.StandardCF,
                                                                           statics.readTs,
                                                                           namesPred, DatabaseDescriptor.instance,
-                                                                          Schema.instance,
+                                                                          databaseDescriptor.getSchema(),
                                                                           LocatorConfig.instance.getPartitioner(),
                                                                           MessagingService.instance.readCommandSerializer);
         SliceByNamesReadCommand superCmd = new SliceByNamesReadCommand(statics.KS,
@@ -155,7 +152,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                        statics.SuperCF,
                                                                        statics.readTs,
                                                                        namesSCPred, DatabaseDescriptor.instance,
-                                                                       Schema.instance,
+                                                                       databaseDescriptor.getSchema(),
                                                                        LocatorConfig.instance.getPartitioner(),
                                                                        MessagingService.instance.readCommandSerializer);
 
@@ -196,7 +193,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                     statics.StandardCF,
                                                                     statics.readTs,
                                                                     nonEmptyRangePred, DatabaseDescriptor.instance,
-                                                                    Schema.instance,
+                                                                    databaseDescriptor.getSchema(),
                                                                     LocatorConfig.instance.getPartitioner(),
                                                                     MessagingService.instance.readCommandSerializer);
         SliceFromReadCommand superCmd = new SliceFromReadCommand(statics.KS,
@@ -204,7 +201,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                  statics.SuperCF,
                                                                  statics.readTs,
                                                                  nonEmptyRangeSCPred, DatabaseDescriptor.instance,
-                                                                 Schema.instance,
+                                                                 databaseDescriptor.getSchema(),
                                                                  LocatorConfig.instance.getPartitioner(),
                                                                  MessagingService.instance.readCommandSerializer);
 
@@ -423,8 +420,8 @@ public class SerializationsTest extends AbstractSerializationsTester
 
         private final long readTs = 1369935512292L;
 
-        private final ColumnFamily StandardCf = ArrayBackedSortedColumns.factory.create(KS, StandardCF, Schema.instance, DBConfig.instance);
-        private final ColumnFamily SuperCf = ArrayBackedSortedColumns.factory.create(KS, SuperCF, Schema.instance, DBConfig.instance);
+        private final ColumnFamily StandardCf = ArrayBackedSortedColumns.factory.create(KS, StandardCF, databaseDescriptor.getSchema(), DBConfig.instance);
+        private final ColumnFamily SuperCf = ArrayBackedSortedColumns.factory.create(KS, SuperCF, databaseDescriptor.getSchema(), DBConfig.instance);
 
         private final Row StandardRow = new Row(Util.dk("key0"), StandardCf);
         private final Row SuperRow = new Row(Util.dk("key1"), SuperCf);

@@ -54,6 +54,8 @@ import static org.junit.Assert.assertTrue;
 public class StorageServiceServerTest
 {
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     public static class ConfigLoader extends YamlConfigurationLoader
     {
         @Override
@@ -131,9 +133,9 @@ public class StorageServiceServerTest
         configOptions.put("DC1", "1");
         configOptions.put("DC2", "1");
 
-        Keyspace.clear("Keyspace1", Schema.instance);
+        Keyspace.clear("Keyspace1", databaseDescriptor.getSchema());
         KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
-        Schema.instance.setKeyspaceDefinition(meta);
+        databaseDescriptor.getSchema().setKeyspaceDefinition(meta);
 
         Collection<Range<Token>> primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
         assert primaryRanges.size() == 1;
@@ -167,9 +169,9 @@ public class StorageServiceServerTest
         Map<String, String> configOptions = new HashMap<String, String>();
         configOptions.put("DC2", "2");
 
-        Keyspace.clear("Keyspace1", Schema.instance);
+        Keyspace.clear("Keyspace1", databaseDescriptor.getSchema());
         KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
-        Schema.instance.setKeyspaceDefinition(meta);
+        databaseDescriptor.getSchema().setKeyspaceDefinition(meta);
 
         // endpoints in DC1 should not have primary range
         Collection<Range<Token>> primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
@@ -217,9 +219,9 @@ public class StorageServiceServerTest
         Map<String, String> configOptions = new HashMap<String, String>();
         configOptions.put("DC2", "2");
 
-        Keyspace.clear("Keyspace1", Schema.instance);
+        Keyspace.clear("Keyspace1", databaseDescriptor.getSchema());
         KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "NetworkTopologyStrategy", configOptions, false);
-        Schema.instance.setKeyspaceDefinition(meta);
+        databaseDescriptor.getSchema().setKeyspaceDefinition(meta);
 
         // endpoints in DC1 should not have primary range
         Collection<Range<Token>> primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
@@ -265,9 +267,9 @@ public class StorageServiceServerTest
         Map<String, String> configOptions = new HashMap<String, String>();
         configOptions.put("replication_factor", "2");
 
-        Keyspace.clear("Keyspace1", Schema.instance);
+        Keyspace.clear("Keyspace1", databaseDescriptor.getSchema());
         KSMetaData meta = KSMetaDataFactory.instance.newKeyspace("Keyspace1", "SimpleStrategy", configOptions, false);
-        Schema.instance.setKeyspaceDefinition(meta);
+        databaseDescriptor.getSchema().setKeyspaceDefinition(meta);
 
         Collection<Range<Token>> primaryRanges = LocatorConfig.instance.getPrimaryRangesForEndpoint(meta.name, InetAddress.getByName("127.0.0.1"));
         assert primaryRanges.size() == 1;

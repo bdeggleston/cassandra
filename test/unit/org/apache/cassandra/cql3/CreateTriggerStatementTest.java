@@ -100,14 +100,14 @@ public class CreateTriggerStatementTest extends CQLTester
 
     private void assertTriggerExists(String name, Class<?> clazz)
     {
-        CFMetaData cfm = Schema.instance.getCFMetaData(keyspace(), currentTable()).copy();
+        CFMetaData cfm = databaseDescriptor.getSchema().getCFMetaData(keyspace(), currentTable()).copy();
         assertTrue("the trigger does not exist", cfm.containsTriggerDefinition(TriggerDefinition.create(name,
                 clazz.getName(), CFMetaDataFactory.instance)));
     }
 
     private void assertTriggerDoesNotExists(String name, Class<?> clazz)
     {
-        CFMetaData cfm = Schema.instance.getCFMetaData(keyspace(), currentTable()).copy();
+        CFMetaData cfm = databaseDescriptor.getSchema().getCFMetaData(keyspace(), currentTable()).copy();
         assertFalse("the trigger exists", cfm.containsTriggerDefinition(TriggerDefinition.create(name,
                 clazz.getName(), CFMetaDataFactory.instance)));
     }

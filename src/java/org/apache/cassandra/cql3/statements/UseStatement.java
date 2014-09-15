@@ -58,7 +58,7 @@ public class UseStatement extends ParsedStatement implements CQLStatement
 
     public ResultMessage execute(QueryState state, QueryOptions options) throws InvalidRequestException
     {
-        state.getClientState().setKeyspace(keyspace, Schema.instance);
+        state.getClientState().setKeyspace(keyspace, schema);
         return new ResultMessage.SetKeyspace(keyspace);
     }
 

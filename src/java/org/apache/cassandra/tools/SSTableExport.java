@@ -426,7 +426,7 @@ public class SSTableExport
         Descriptor descriptor = Descriptor.fromFilename(ssTableFileName);
 
         // Start by validating keyspace name
-        if (Schema.instance.getKSMetaData(descriptor.ksname) == null)
+        if (DatabaseDescriptor.instance.getSchema().getKSMetaData(descriptor.ksname) == null)
         {
             System.err.println(String.format("Filename %s references to nonexistent keyspace: %s!",
                                              ssTableFileName, descriptor.ksname));

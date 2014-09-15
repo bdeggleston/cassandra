@@ -71,7 +71,7 @@ public class CQLSSTableWriterTest
                       + "  v2 int"
                       + ")";
         String insert = "INSERT INTO cql_keyspace.table1 (k, v1, v2) VALUES (?, ?, ?)";
-        CQLSSTableWriter writer = CQLSSTableWriter.builder(Schema.instance, databaseDescriptor.getQueryProcessor(), Auth.instance, KSMetaDataFactory.instance, DBConfig.instance)
+        CQLSSTableWriter writer = CQLSSTableWriter.builder(databaseDescriptor.getSchema(), databaseDescriptor.getQueryProcessor(), Auth.instance, KSMetaDataFactory.instance, DBConfig.instance)
                                                   .inDirectory(dataDir)
                                                   .forTable(schema)
                                                   .withPartitioner(LocatorConfig.instance.getPartitioner())
@@ -94,7 +94,7 @@ public class CQLSSTableWriterTest
 
             public CFMetaData getCFMetaData(String keyspace, String cfName)
             {
-                return Schema.instance.getCFMetaData(keyspace, cfName);
+                return databaseDescriptor.getSchema().getCFMetaData(keyspace, cfName);
             }
         }, new OutputHandler.SystemOutput(false, false), DatabaseDescriptor.instance, databaseDescriptor.getSSTableReaderFactory());
 

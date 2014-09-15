@@ -144,7 +144,7 @@ public class DatabaseDescriptor
 //        assert DatabaseDescriptor.instance != null;
 //        assert SystemKeyspace.instance != null;
         assert StageManager.instance != null;
-        assert Schema.instance != null;
+//        assert Schema.instance != null;
         assert ActiveRepairService.instance != null;
         assert CompactionManager.instance != null;
 //        assert DefsTables.instance != null;
@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final Schema schema;
     protected final QueryProcessor queryProcessor;
     protected final BatchlogManager batchlogManager;
     protected final ColumnFamilyStoreManager columnFamilyStoreManager;
@@ -222,6 +223,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        schema = createSchema();
         queryProcessor = createQueryProcessor();
         batchlogManager = createBatchlogManager();
         columnFamilyStoreManager = createColumnFamilyStoreManager();
@@ -689,10 +691,10 @@ public class DatabaseDescriptor
         }
         else
         {
-            Schema.instance.load(getDefsTables().loadFromKeyspace());
+            getSchema().load(getDefsTables().loadFromKeyspace());
         }
 
-        Schema.instance.updateVersion();
+        getSchema().updateVersion();
     }
 
     private boolean hasExistingNoSystemTables()
@@ -1643,9 +1645,14 @@ public class DatabaseDescriptor
         return queryProcessor;
     }
 
+    public Schema createSchema()
+    {
+        return new Schema(this);
+    }
+
     public Schema getSchema()
     {
-        return Schema.instance;
+        return schema;
     }
 
     public StorageService getStorageService()

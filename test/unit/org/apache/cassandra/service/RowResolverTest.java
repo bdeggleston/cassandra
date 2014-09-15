@@ -47,6 +47,8 @@ public class RowResolverTest
     public static final String KEYSPACE1 = "Keyspace1";
     public static final String CF_STANDARD = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -60,10 +62,10 @@ public class RowResolverTest
     @Test
     public void testResolveSupersetNewer()
     {
-        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf1.addColumn(column("c1", "v1", 0));
 
-        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf2.addColumn(column("c1", "v2", 1));
 
         ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, cf2), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
@@ -75,10 +77,10 @@ public class RowResolverTest
     @Test
     public void testResolveSupersetDisjoint()
     {
-        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf1.addColumn(column("c1", "v1", 0));
 
-        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf2.addColumn(column("c2", "v2", 1));
 
         ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, cf2), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
@@ -90,7 +92,7 @@ public class RowResolverTest
     @Test
     public void testResolveSupersetNullOne()
     {
-        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf2.addColumn(column("c2", "v2", 1));
 
         ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(null, cf2), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
@@ -102,7 +104,7 @@ public class RowResolverTest
     @Test
     public void testResolveSupersetNullTwo()
     {
-        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf1.addColumn(column("c1", "v1", 0));
 
         ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, null), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
@@ -121,10 +123,10 @@ public class RowResolverTest
     public void testResolveDeleted()
     {
         // one CF with columns timestamped before a delete in another cf
-        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf1.addColumn(column("one", "A", 0));
 
-        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf2.delete(new DeletionInfo(1L, (int) (System.currentTimeMillis() / 1000)));
 
         ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, cf2), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
@@ -139,19 +141,19 @@ public class RowResolverTest
     {
         // deletes and columns with interleaved timestamp, with out of order return sequence
 
-        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf1.delete(new DeletionInfo(0L, (int) (System.currentTimeMillis() / 1000)));
 
         // these columns created after the previous deletion
-        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf2.addColumn(column("one", "A", 1));
         cf2.addColumn(column("two", "A", 1));
 
         //this column created after the next delete
-        ColumnFamily cf3 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf3 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf3.addColumn(column("two", "B", 3));
 
-        ColumnFamily cf4 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf4 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf4.delete(new DeletionInfo(2L, (int) (System.currentTimeMillis() / 1000)));
 
         ColumnFamily resolved = RowDataResolver.resolveSuperset(Arrays.asList(cf1, cf2, cf3, cf4), System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);

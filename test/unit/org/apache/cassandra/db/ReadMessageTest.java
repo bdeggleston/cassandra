@@ -52,6 +52,8 @@ public class ReadMessageTest
     private static final String KEYSPACENOCOMMIT = "ReadMessageTest_NoCommit";
     private static final String CF = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -86,7 +88,7 @@ public class ReadMessageTest
                                          "Standard1",
                                          ts,
                                          new NamesQueryFilter(colList, DBConfig.instance), DatabaseDescriptor.instance,
-                                         Schema.instance,
+                                         databaseDescriptor.getSchema(),
                                          LocatorConfig.instance.getPartitioner(),
                                          MessagingService.instance.readCommandSerializer);
         rm2 = serializeAndDeserializeReadMessage(rm);
@@ -97,7 +99,7 @@ public class ReadMessageTest
                                       "Standard1",
                                       ts,
                                       new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, true, 2, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), DatabaseDescriptor.instance,
-                                      Schema.instance,
+                                      databaseDescriptor.getSchema(),
                                       LocatorConfig.instance.getPartitioner(),
                                       MessagingService.instance.readCommandSerializer);
         rm2 = serializeAndDeserializeReadMessage(rm);
@@ -108,7 +110,7 @@ public class ReadMessageTest
                                       "Standard1",
                                       ts,
                                       new SliceQueryFilter(Util.cellname("a"), Util.cellname("z"), true, 5, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), DatabaseDescriptor.instance,
-                                      Schema.instance,
+                                      databaseDescriptor.getSchema(),
                                       LocatorConfig.instance.getPartitioner(),
                                       MessagingService.instance.readCommandSerializer);
         rm2 = serializeAndDeserializeReadMessage(rm);
@@ -144,7 +146,7 @@ public class ReadMessageTest
                                                           "Standard1",
                                                           System.currentTimeMillis(),
                                                           new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), DBConfig.instance), DatabaseDescriptor.instance,
-                                                          Schema.instance,
+                                                          databaseDescriptor.getSchema(),
                                                           LocatorConfig.instance.getPartitioner(),
                                                           MessagingService.instance.readCommandSerializer);
         Row row = command.getRow(keyspace);

@@ -38,6 +38,8 @@ public class StandaloneUpgrader
     private static final String DEBUG_OPTION  = "debug";
     private static final String HELP_OPTION  = "help";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     public static void main(String args[])
     {
         Options options = Options.parseArgs(args);
@@ -46,7 +48,7 @@ public class StandaloneUpgrader
             // load keyspace descriptions.
             DatabaseDescriptor.instance.loadSchemas();
 
-            if (Schema.instance.getCFMetaData(options.keyspace, options.cf) == null)
+            if (databaseDescriptor.getSchema().getCFMetaData(options.keyspace, options.cf) == null)
                 throw new IllegalArgumentException(String.format("Unknown keyspace/table %s.%s",
                                                                  options.keyspace,
                                                                  options.cf));

@@ -113,7 +113,7 @@ public class CFMetaDataTest
     @Test
     public void testConversionsInverses() throws Exception
     {
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
             for (ColumnFamilyStore cfs : KeyspaceManager.instance.open(keyspaceName).getColumnFamilyStores())
             {
@@ -142,8 +142,8 @@ public class CFMetaDataTest
 
         // Test schema conversion
         Mutation rm = cfm.toSchema(System.currentTimeMillis());
-        ColumnFamily serializedCf = rm.getColumnFamily(Schema.instance.getId(Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF));
-        ColumnFamily serializedCD = rm.getColumnFamily(Schema.instance.getId(Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_COLUMNS_CF));
+        ColumnFamily serializedCf = rm.getColumnFamily(databaseDescriptor.getSchema().getId(Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF));
+        ColumnFamily serializedCD = rm.getColumnFamily(databaseDescriptor.getSchema().getId(Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_COLUMNS_CF));
         UntypedResultSet.Row result = databaseDescriptor.getQueryProcessor().resultify("SELECT * FROM system.schema_columnfamilies", new Row(k, serializedCf)).one();
         CFMetaData newCfm = CFMetaDataFactory.instance.fromSchemaNoTriggers(result, ColumnDefinition.resultify(new Row(k, serializedCD), databaseDescriptor.getQueryProcessor()));
         assert cfm.equals(newCfm) : String.format("%n%s%n!=%n%s", cfm, newCfm);

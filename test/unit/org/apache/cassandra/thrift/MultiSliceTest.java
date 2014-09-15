@@ -41,7 +41,6 @@ import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.metrics.ClientMetrics;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.EmbeddedCassandraService;
-import org.apache.cassandra.service.MigrationManager;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
@@ -56,6 +55,7 @@ public class MultiSliceTest
     public static final String KEYSPACE1 = "MultiSliceTest";
     public static final String CF_STANDARD = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
     public static ThriftSessionManager thriftSessionManager;
 
     @BeforeClass
@@ -70,7 +70,7 @@ public class MultiSliceTest
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD));
         server = new CassandraServer(DatabaseDescriptor.instance, Tracing.instance,
-                                     Schema.instance, Auth.instance, StorageProxy.instance,
+                                     databaseDescriptor.getSchema(), Auth.instance, StorageProxy.instance,
                                      MessagingService.instance, KeyspaceManager.instance,
                                      MutationFactory.instance, CounterMutationFactory.instance,
                                      StorageService.instance, CFMetaDataFactory.instance,

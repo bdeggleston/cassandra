@@ -11,7 +11,7 @@ import java.util.UUID;
 
 public class MutationFactory
 {
-    public static final MutationFactory instance = new MutationFactory(DatabaseDescriptor.instance, Schema.instance, KeyspaceManager.instance, DBConfig.instance);
+    public static final MutationFactory instance = new MutationFactory(DatabaseDescriptor.instance, DatabaseDescriptor.instance.getSchema(), KeyspaceManager.instance, DBConfig.instance);
 
     public final Mutation.Serializer serializer;
 

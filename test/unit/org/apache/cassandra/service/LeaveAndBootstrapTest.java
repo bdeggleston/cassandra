@@ -87,7 +87,7 @@ public class LeaveAndBootstrapTest
         Util.createInitialRing(ss, partitioner, endpointTokens, keyTokens, hosts, hostIds, RING_SIZE);
 
         Map<Token, List<InetAddress>> expectedEndpoints = new HashMap<Token, List<InetAddress>>();
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
             for (Token token : keyTokens)
             {
@@ -111,7 +111,7 @@ public class LeaveAndBootstrapTest
         PendingRangeCalculatorService.instance.blockUntilFinished();
 
         AbstractReplicationStrategy strategy;
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
             strategy = getStrategy(keyspaceName, tmd);
             for (Token token : keyTokens)
@@ -704,7 +704,7 @@ public class LeaveAndBootstrapTest
 
     private AbstractReplicationStrategy getStrategy(String keyspaceName, TokenMetadata tmd)
     {
-        KSMetaData ksmd = Schema.instance.getKSMetaData(keyspaceName);
+        KSMetaData ksmd = databaseDescriptor.getSchema().getKSMetaData(keyspaceName);
         return AbstractReplicationStrategy.createReplicationStrategy(
                 keyspaceName,
                 ksmd.strategyClass,

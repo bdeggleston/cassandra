@@ -96,7 +96,7 @@ public class SimpleStrategyTest
     {
         TokenMetadata tmd;
         AbstractReplicationStrategy strategy;
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
             tmd = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
             strategy = getStrategy(keyspaceName, tmd);
@@ -151,7 +151,7 @@ public class SimpleStrategyTest
         tmd.addBootstrapToken(bsToken, bootstrapEndpoint);
 
         AbstractReplicationStrategy strategy = null;
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
             strategy = getStrategy(keyspaceName, tmd);
 
@@ -183,7 +183,7 @@ public class SimpleStrategyTest
 
     private AbstractReplicationStrategy getStrategy(String keyspaceName, TokenMetadata tmd)
     {
-        KSMetaData ksmd = Schema.instance.getKSMetaData(keyspaceName);
+        KSMetaData ksmd = databaseDescriptor.getSchema().getKSMetaData(keyspaceName);
         return AbstractReplicationStrategy.createReplicationStrategy(
                 keyspaceName,
                 ksmd.strategyClass,

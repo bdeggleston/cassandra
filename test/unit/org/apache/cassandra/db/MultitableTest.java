@@ -20,6 +20,7 @@ package org.apache.cassandra.db;
  *
  */
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -37,6 +38,8 @@ public class MultitableTest
     private static final String KEYSPACE1 = "MultitableTest1";
     private static final String KEYSPACE2 = "MultitableTest2";
     private static final String CF1 = "Standard1";
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -62,12 +65,12 @@ public class MultitableTest
         DecoratedKey dk = Util.dk("keymulti");
         ColumnFamily cf;
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1L));
         rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey(), cf);
         rm.applyUnsafe();
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard1", Schema.instance, DBConfig.instance);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf.addColumn(column("col2", "val2", 1L));
         rm = MutationFactory.instance.create(KEYSPACE2, dk.getKey(), cf);
         rm.applyUnsafe();

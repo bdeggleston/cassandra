@@ -48,6 +48,8 @@ import static org.junit.Assert.*;
 @RunWith(OrderedJUnit4ClassRunner.class)
 public class BootStrapperTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void setup() throws ConfigurationException
     {
@@ -61,7 +63,7 @@ public class BootStrapperTest
     public void testSourceTargetComputation() throws UnknownHostException
     {
         final int[] clusterSizes = new int[] { 1, 3, 5, 10, 100};
-        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
             int replicationFactor = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor();
             for (int clusterSize : clusterSizes)
@@ -79,7 +81,7 @@ public class BootStrapperTest
 
         TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         assertEquals(numOldNodes, tmd.sortedTokens().size());
-        RangeStreamer s = new RangeStreamer(tmd, myEndpoint, "Bootstrap", DatabaseDescriptor.instance, Schema.instance, Gossiper.instance, StreamManager.instance, KeyspaceManager.instance, DBConfig.instance);
+        RangeStreamer s = new RangeStreamer(tmd, myEndpoint, "Bootstrap", DatabaseDescriptor.instance, databaseDescriptor.getSchema(), Gossiper.instance, StreamManager.instance, KeyspaceManager.instance, DBConfig.instance);
         IFailureDetector mockFailureDetector = new IFailureDetector()
         {
             public boolean isAlive(InetAddress ep)

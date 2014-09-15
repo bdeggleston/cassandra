@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.DBConfig;
 import org.junit.BeforeClass;
@@ -53,6 +54,8 @@ public class CacheProviderTest
     private static final long CAPACITY = 4;
     private static final String KEYSPACE1 = "CacheProviderTest1";
     private static final String CF_STANDARD1 = "Standard1";
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -116,7 +119,7 @@ public class CacheProviderTest
 
     private ColumnFamily createCF()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, Schema.instance, DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), DBConfig.instance);
         cf.addColumn(column("vijay", "great", 1));
         cf.addColumn(column("awesome", "vijay", 1));
         return cf;
@@ -137,14 +140,14 @@ public class CacheProviderTest
         UUID cfId = UUID.randomUUID();
 
         byte[] b1 = {1, 2, 3, 4};
-        RowCacheKey key1 = new RowCacheKey(cfId, ByteBuffer.wrap(b1), Schema.instance);
+        RowCacheKey key1 = new RowCacheKey(cfId, ByteBuffer.wrap(b1), databaseDescriptor.getSchema());
         byte[] b2 = {1, 2, 3, 4};
-        RowCacheKey key2 = new RowCacheKey(cfId, ByteBuffer.wrap(b2), Schema.instance);
+        RowCacheKey key2 = new RowCacheKey(cfId, ByteBuffer.wrap(b2), databaseDescriptor.getSchema());
         assertEquals(key1, key2);
         assertEquals(key1.hashCode(), key2.hashCode());
         
         byte[] b3 = {1, 2, 3, 5};
-        RowCacheKey key3 = new RowCacheKey(cfId, ByteBuffer.wrap(b3), Schema.instance);
+        RowCacheKey key3 = new RowCacheKey(cfId, ByteBuffer.wrap(b3), databaseDescriptor.getSchema());
         assertNotSame(key1, key3);
         assertNotSame(key1.hashCode(), key3.hashCode());
     }

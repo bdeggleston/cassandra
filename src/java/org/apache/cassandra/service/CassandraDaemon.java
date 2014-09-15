@@ -229,7 +229,7 @@ public class CassandraDaemon
         // we do a one-off scrub of the system keyspace first; we can't load the list of the rest of the keyspaces,
         // until system keyspace is opened.
         SystemKeyspace systemKeyspace = DatabaseDescriptor.instance.getSystemKeyspace();  // FIXME: forcing initialization before system keyspace access
-        for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(Keyspace.SYSTEM_KS).values())
+        for (CFMetaData cfm : DatabaseDescriptor.instance.getSchema().getKeyspaceMetaData(Keyspace.SYSTEM_KS).values())
             ColumnFamilyStore.scrubDataDirectories(cfm,
                                                    DatabaseDescriptor.instance,
                                                    Tracing.instance,
@@ -255,7 +255,7 @@ public class CassandraDaemon
         Map<Pair<String, String>, Map<Integer, UUID>> unfinishedCompactions = DatabaseDescriptor.instance.getSystemKeyspace().getUnfinishedCompactions();
         for (Pair<String, String> kscf : unfinishedCompactions.keySet())
         {
-            CFMetaData cfm = Schema.instance.getCFMetaData(kscf.left, kscf.right);
+            CFMetaData cfm = DatabaseDescriptor.instance.getSchema().getCFMetaData(kscf.left, kscf.right);
             // CFMetaData can be null if CF is already dropped
             if (cfm != null)
                 DatabaseDescriptor.instance.getColumnFamilyStoreManager().removeUnfinishedCompactionLeftovers(cfm, unfinishedCompactions.get(kscf));
@@ -263,13 +263,13 @@ public class CassandraDaemon
         DatabaseDescriptor.instance.getSystemKeyspace().discardCompactionsInProgress();
 
         // clean up debris in the rest of the keyspaces
-        for (String keyspaceName : Schema.instance.getKeyspaces())
+        for (String keyspaceName : DatabaseDescriptor.instance.getSchema().getKeyspaces())
         {
             // Skip system as we've already cleaned it
             if (keyspaceName.equals(Keyspace.SYSTEM_KS))
                 continue;
 
-            for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(keyspaceName).values())
+            for (CFMetaData cfm : DatabaseDescriptor.instance.getSchema().getKeyspaceMetaData(keyspaceName).values())
                 ColumnFamilyStore.scrubDataDirectories(cfm,
                                                        DatabaseDescriptor.instance,
                                                        Tracing.instance,
@@ -281,7 +281,7 @@ public class CassandraDaemon
 
         KeyspaceManager.instance.setInitialized();
         // initialize keyspaces
-        for (String keyspaceName : Schema.instance.getKeyspaces())
+        for (String keyspaceName : DatabaseDescriptor.instance.getSchema().getKeyspaces())
         {
             if (logger.isDebugEnabled())
                 logger.debug("opening keyspace {}", keyspaceName);
@@ -391,7 +391,7 @@ public class CassandraDaemon
         int listenBacklog = DatabaseDescriptor.instance.getRpcListenBacklog();
         thriftServer = new ThriftServer(rpcAddr, rpcPort, listenBacklog,
                                         DatabaseDescriptor.instance, Tracing.instance,
-                                        Schema.instance, Auth.instance, StorageProxy.instance,
+                                        DatabaseDescriptor.instance.getSchema(), Auth.instance, StorageProxy.instance,
                                         MessagingService.instance, KeyspaceManager.instance,
                                         MutationFactory.instance, CounterMutationFactory.instance,
                                         StorageService.instance, CFMetaDataFactory.instance,
@@ -406,7 +406,7 @@ public class CassandraDaemon
         int nativePort = DatabaseDescriptor.instance.getNativeTransportPort();
         Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
                                                                            Tracing.instance,
-                                                                           Schema.instance,
+                                                                           DatabaseDescriptor.instance.getSchema(),
                                                                            Auth.instance.getAuthenticator(),
                                                                            QueryHandlerInstance.instance,
                                                                            DatabaseDescriptor.instance.getQueryProcessor(),

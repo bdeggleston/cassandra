@@ -87,7 +87,7 @@ public class TriggersTest
         {
             thriftServer = new ThriftServer(InetAddress.getLocalHost(), 9170, 50,
                                             DatabaseDescriptor.instance, Tracing.instance,
-                                            Schema.instance, Auth.instance, StorageProxy.instance,
+                                            databaseDescriptor.getSchema(), Auth.instance, StorageProxy.instance,
                                             MessagingService.instance, KeyspaceManager.instance,
                                             MutationFactory.instance, CounterMutationFactory.instance,
                                             StorageService.instance, CFMetaDataFactory.instance,
@@ -338,7 +338,7 @@ public class TriggersTest
     private org.apache.cassandra.thrift.Column getColumnForInsert(String columnName, int value)
     {
         org.apache.cassandra.thrift.Column column = new org.apache.cassandra.thrift.Column();
-        column.setName(Schema.instance.getCFMetaData(ksName, cfName).comparator.asAbstractType().fromString(columnName));
+        column.setName(databaseDescriptor.getSchema().getCFMetaData(ksName, cfName).comparator.asAbstractType().fromString(columnName));
         column.setValue(bytes(value));
         column.setTimestamp(System.currentTimeMillis());
         return column;
@@ -370,7 +370,7 @@ public class TriggersTest
     {
         public Collection<Mutation> augment(ByteBuffer key, ColumnFamily update)
         {
-            ColumnFamily extraUpdate = ArrayBackedSortedColumns.factory.create(ksName, otherCf, Schema.instance, DBConfig.instance);
+            ColumnFamily extraUpdate = ArrayBackedSortedColumns.factory.create(ksName, otherCf, databaseDescriptor.getSchema(), DBConfig.instance);
             extraUpdate.addColumn(new BufferCell(extraUpdate.metadata().comparator.makeCellName(bytes("v2")), bytes(999)));
             return Collections.singletonList(MutationFactory.instance.create(ksName, key, extraUpdate));
         }

@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -44,6 +45,8 @@ public class RowTest
     private static final String KEYSPACE1 = "RowTest";
     private static final String CF_STANDARD1 = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -57,10 +60,10 @@ public class RowTest
     @Test
     public void testDiffColumnFamily()
     {
-        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf1.addColumn(column("one", "onev", 0));
 
-        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         DeletionInfo delInfo = new DeletionInfo(0, 0);
         cf2.delete(delInfo);
 
@@ -104,10 +107,10 @@ public class RowTest
     @Test
     public void testResolve()
     {
-        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf1.addColumn(column("one", "A", 0));
 
-        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", Schema.instance, DBConfig.instance);
+        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf2.addColumn(column("one", "B", 1));
         cf2.addColumn(column("two", "C", 1));
 

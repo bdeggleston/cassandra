@@ -48,6 +48,8 @@ public class ThriftValidationTest
     public static final String CF_UUID = "UUIDKeys";
     public static final String CF_STANDARDLONG3 = "StandardLong3";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException, IOException, TException
     {
@@ -64,19 +66,19 @@ public class ThriftValidationTest
     @Test(expected=org.apache.cassandra.exceptions.InvalidRequestException.class)
     public void testValidateCommutativeWithStandard() throws org.apache.cassandra.exceptions.InvalidRequestException
     {
-        ThriftValidation.validateColumnFamily(KEYSPACE1, "Standard1", true, Schema.instance);
+        ThriftValidation.validateColumnFamily(KEYSPACE1, "Standard1", true, databaseDescriptor.getSchema());
     }
 
     @Test
     public void testValidateCommutativeWithCounter() throws org.apache.cassandra.exceptions.InvalidRequestException
     {
-        ThriftValidation.validateColumnFamily(KEYSPACE1, "Counter1", true, Schema.instance);
+        ThriftValidation.validateColumnFamily(KEYSPACE1, "Counter1", true, databaseDescriptor.getSchema());
     }
 
     @Test
     public void testColumnNameEqualToKeyAlias() throws org.apache.cassandra.exceptions.InvalidRequestException
     {
-        CFMetaData metaData = Schema.instance.getCFMetaData(KEYSPACE1, "Standard1");
+        CFMetaData metaData = databaseDescriptor.getSchema().getCFMetaData(KEYSPACE1, "Standard1");
         CFMetaData newMetadata = metaData.copy();
 
         boolean gotException = false;
@@ -121,7 +123,7 @@ public class ThriftValidationTest
     @Test
     public void testColumnNameEqualToDefaultKeyAlias() throws org.apache.cassandra.exceptions.InvalidRequestException
     {
-        CFMetaData metaData = Schema.instance.getCFMetaData(KEYSPACE1, "UUIDKeys");
+        CFMetaData metaData = databaseDescriptor.getSchema().getCFMetaData(KEYSPACE1, "UUIDKeys");
         ColumnDefinition definition = metaData.getColumnDefinition(ByteBufferUtil.bytes(CFMetaData.DEFAULT_KEY_ALIAS));
         assertNotNull(definition);
         assertEquals(ColumnDefinition.Kind.PARTITION_KEY, definition.kind);
@@ -139,7 +141,7 @@ public class ThriftValidationTest
     @Test
     public void testColumnNameEqualToDefaultColumnAlias() throws org.apache.cassandra.exceptions.InvalidRequestException
     {
-        CFMetaData metaData = Schema.instance.getCFMetaData(KEYSPACE1, "StandardLong3");
+        CFMetaData metaData = databaseDescriptor.getSchema().getCFMetaData(KEYSPACE1, "StandardLong3");
         ColumnDefinition definition = metaData.getColumnDefinition(ByteBufferUtil.bytes(CFMetaData.DEFAULT_COLUMN_ALIAS + 1));
         assertNotNull(definition);
 
