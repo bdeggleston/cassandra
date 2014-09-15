@@ -42,13 +42,7 @@ import static org.junit.Assert.assertTrue;
 public class SecondaryIndexCellSizeTest
 {
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
-
-    @BeforeClass
-    public static void setUpClass()
-    {
-        DatabaseDescriptor.init();
-    }
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @Test
     public void test64kColumn()

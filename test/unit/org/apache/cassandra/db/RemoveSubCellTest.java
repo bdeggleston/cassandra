@@ -48,7 +48,7 @@ public class RemoveSubCellTest
     private static final String KEYSPACE1 = "RemoveSubCellTest";
     private static final String CF_SUPER1 = "Super1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -80,7 +80,7 @@ public class RemoveSubCellTest
         rm.delete("Super1", cname, 1);
         rm.applyUnsafe();
 
-        ColumnFamily retrieved = store.getColumnFamily(QueryFilter.getIdentityFilter(dk, "Super1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+        ColumnFamily retrieved = store.getColumnFamily(QueryFilter.getIdentityFilter(dk, "Super1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         assertFalse(retrieved.getColumn(cname).isLive());
         assertNull(Util.cloneAndRemoveDeleted(retrieved, Integer.MAX_VALUE));
     }
@@ -108,7 +108,7 @@ public class RemoveSubCellTest
 
         // Mark current time and make sure the next insert happens at least
         // one second after the previous one (since gc resolution is the second)
-        QueryFilter filter = QueryFilter.getIdentityFilter(dk, "Super1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter filter = QueryFilter.getIdentityFilter(dk, "Super1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
 
         // remove the column itself

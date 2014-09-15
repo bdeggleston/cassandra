@@ -175,8 +175,8 @@ public class SSTableLoader implements StreamEventHandler
         client.init(keyspace);
         outputHandler.output("Established connection to initial hosts");
 
-        StreamPlan plan = new StreamPlan("Bulk Load", 0, connectionsPerHost, databaseDescriptor, DatabaseDescriptor.instance.getSchema(),
-                                         DatabaseDescriptor.instance.getKeyspaceManager(), DatabaseDescriptor.instance.getStreamManager(), DatabaseDescriptor.instance.getDBConfig()).connectionFactory(client.getConnectionFactory());
+        StreamPlan plan = new StreamPlan("Bulk Load", 0, connectionsPerHost, databaseDescriptor, databaseDescriptor.getSchema(),
+                                         databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig()).connectionFactory(client.getConnectionFactory());
 
         Map<InetAddress, Collection<Range<Token>>> endpointToRanges = client.getEndpointToRangesMap();
         openSSTables(endpointToRanges);
@@ -299,7 +299,7 @@ public class SSTableLoader implements StreamEventHandler
 
         protected void setPartitioner(String partclass) throws ConfigurationException
         {
-            setPartitioner(DatabaseDescriptor.instance.getLocatorConfig().createPartitioner(partclass));
+            setPartitioner(databaseDescriptor.getLocatorConfig().createPartitioner(partclass));
         }
 
         protected void setPartitioner(IPartitioner partitioner)

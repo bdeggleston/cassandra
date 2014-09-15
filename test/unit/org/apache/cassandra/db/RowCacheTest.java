@@ -54,7 +54,7 @@ public class RowCacheTest
     private static final String CF_CACHED = "CachedCF";
     private static final String CF_CACHEDINT = "CachedIntCF";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -212,7 +212,7 @@ public class RowCacheTest
                                                                 Composites.EMPTY,
                                                                 Composites.EMPTY,
                                                                 false, 10, System.currentTimeMillis(),
-                                                                DatabaseDescriptor.instance,
+                                                                DatabaseDescriptor.createMain(false),
                                                                 databaseDescriptor.getTracing(),
                                                                 databaseDescriptor.getDBConfig()));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
@@ -222,7 +222,7 @@ public class RowCacheTest
                                                                 Composites.EMPTY,
                                                                 Composites.EMPTY,
                                                                 false, 20, System.currentTimeMillis(),
-                                                                DatabaseDescriptor.instance,
+                                                                DatabaseDescriptor.createMain(false),
                                                                 databaseDescriptor.getTracing(),
                                                                 databaseDescriptor.getDBConfig()));
         assertEquals(++startRowCacheHits, cachedStore.metric.rowCacheHit.count());
@@ -233,7 +233,7 @@ public class RowCacheTest
                                                                CellNames.simpleDense(ByteBufferUtil.bytes(95)),
                                                                CellNames.simpleDense(ByteBufferUtil.bytes(105)),
                                                                false, 10, System.currentTimeMillis(),
-                                                                DatabaseDescriptor.instance,
+                                                                DatabaseDescriptor.createMain(false),
                                                                 databaseDescriptor.getTracing(),
                                                                 databaseDescriptor.getDBConfig()));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
@@ -244,7 +244,7 @@ public class RowCacheTest
                                                                Composites.EMPTY,
                                                                Composites.EMPTY,
                                                                false, 101, System.currentTimeMillis(),
-                                                                DatabaseDescriptor.instance,
+                                                                DatabaseDescriptor.createMain(false),
                                                                 databaseDescriptor.getTracing(),
                                                                 databaseDescriptor.getDBConfig()));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
@@ -258,7 +258,7 @@ public class RowCacheTest
                                                                 Composites.EMPTY,
                                                                 Composites.EMPTY,
                                                                 false, 105, System.currentTimeMillis(),
-                                                                DatabaseDescriptor.instance,
+                                                                DatabaseDescriptor.createMain(false),
                                                                 databaseDescriptor.getTracing(),
                                                                 databaseDescriptor.getDBConfig()));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());

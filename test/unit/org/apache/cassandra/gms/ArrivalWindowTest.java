@@ -29,11 +29,6 @@ import org.junit.Test;
 
 public class ArrivalWindowTest
 {
-    @BeforeClass
-    public static void setUpTest()
-    {
-        DatabaseDescriptor.init();
-    }
 
     @Test
     public void testWithNanoTime()

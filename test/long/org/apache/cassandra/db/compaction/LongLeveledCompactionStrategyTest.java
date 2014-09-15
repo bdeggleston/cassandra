@@ -40,7 +40,7 @@ public class LongLeveledCompactionStrategyTest
     public static final String KEYSPACE1 = "LongLeveledCompactionStrategyTest";
     public static final String CF_STANDARDLVL = "StandardLeveled";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

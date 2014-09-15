@@ -59,7 +59,7 @@ public class CleanupTest
     public static final ByteBuffer COLUMN = ByteBufferUtil.bytes("birthdate");
     public static final ByteBuffer VALUE = ByteBuffer.allocate(8);
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     static
     {
@@ -94,7 +94,7 @@ public class CleanupTest
         // record max timestamps of the sstables pre-cleanup
         List<Long> expectedMaxTimestamps = getMaxTimestampList(cfs);
 
-        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing());
+        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing());
         assertEquals(LOOPS, rows.size());
 
         // with one token in the ring, owned by the local node, cleanup should be a no-op
@@ -104,7 +104,7 @@ public class CleanupTest
         assert expectedMaxTimestamps.equals(getMaxTimestampList(cfs));
 
         // check data is still there
-        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing());
+        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing());
         assertEquals(LOOPS, rows.size());
     }
 
@@ -118,7 +118,7 @@ public class CleanupTest
 
         // insert data and verify we get it back w/ range query
         fillCF(cfs, LOOPS);
-        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing());
+        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing());
         assertEquals(LOOPS, rows.size());
 
         SecondaryIndex index = cfs.indexManager.getIndexForColumn(COLUMN);
@@ -129,7 +129,7 @@ public class CleanupTest
         // verify we get it back w/ index query too
         IndexExpression expr = new IndexExpression(COLUMN, IndexExpression.Operator.EQ, VALUE);
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         Range<RowPosition> range = Util.range("", "", databaseDescriptor);
         rows = keyspace.getColumnFamilyStore(CF1).search(range, clause, filter, Integer.MAX_VALUE);
         assertEquals(LOOPS, rows.size());
@@ -146,7 +146,7 @@ public class CleanupTest
         databaseDescriptor.getCompactionManager().performCleanup(cfs);
 
         // row data should be gone
-        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing());
+        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing());
         assertEquals(0, rows.size());
 
         // not only should it be gone but there should be no data on disk, not even tombstones
@@ -170,7 +170,7 @@ public class CleanupTest
         // insert data and verify we get it back w/ range query
         fillCF(cfs, LOOPS);
 
-        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing());
+        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing());
 
         assertEquals(LOOPS, rows.size());
         TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
@@ -182,7 +182,7 @@ public class CleanupTest
         tmd.updateNormalToken(new BytesToken(tk2, databaseDescriptor.getLocatorConfig().getPartitioner()), InetAddress.getByName("127.0.0.2"));
         databaseDescriptor.getCompactionManager().performCleanup(cfs);
 
-        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing());
+        rows = Util.getRangeSlice(cfs, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing());
         assertEquals(0, rows.size());
     }
 

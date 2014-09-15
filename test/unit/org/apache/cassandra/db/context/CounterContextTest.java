@@ -42,13 +42,7 @@ import static org.junit.Assert.assertTrue;
 
 public class CounterContextTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
-
-    @BeforeClass
-    public static void setUpClass()
-    {
-        DatabaseDescriptor.init();
-    }
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     private static final int headerSizeLength = 2;
     private static final int headerEltLength = 2;

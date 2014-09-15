@@ -42,12 +42,11 @@ public class TokenMetadataTest
     public final static String SIX = "6";
 
     static TokenMetadata tmd;
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void beforeClass() throws Throwable
     {
-        DatabaseDescriptor.init();
         tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.updateNormalToken(token(ONE, databaseDescriptor), InetAddress.getByName("127.0.0.1"));
         tmd.updateNormalToken(token(SIX, databaseDescriptor), InetAddress.getByName("127.0.0.6"));

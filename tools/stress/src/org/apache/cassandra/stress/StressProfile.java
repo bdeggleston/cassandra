@@ -106,6 +106,13 @@ public class StressProfile implements Serializable
     transient volatile Map<String, PreparedStatement> queryStatements;
     transient volatile Map<String, Integer> thriftQueryIds;
 
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public StressProfile(DatabaseDescriptor databaseDescriptor)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+    }
+
     private void init(StressYaml yaml) throws RequestValidationException
     {
         keyspaceName = yaml.keyspace;
@@ -122,7 +129,7 @@ public class StressProfile implements Serializable
 
         if (keyspaceCql != null && keyspaceCql.length() > 0)
         {
-            String name = ((CreateKeyspaceStatement) DatabaseDescriptor.instance.getQueryProcessor().parseStatement(keyspaceCql)).keyspace();
+            String name = ((CreateKeyspaceStatement) databaseDescriptor.getQueryProcessor().parseStatement(keyspaceCql)).keyspace();
             assert name.equalsIgnoreCase(keyspaceName) : "Name in keyspace_definition doesn't match keyspace property: '" + name + "' != '" + keyspaceName + "'";
         }
         else
@@ -132,7 +139,7 @@ public class StressProfile implements Serializable
 
         if (tableCql != null && tableCql.length() > 0)
         {
-            String name = DatabaseDescriptor.instance.getCFMetaDataFactory().compile(tableCql, keyspaceName).cfName;
+            String name = databaseDescriptor.getCFMetaDataFactory().compile(tableCql, keyspaceName).cfName;
             assert name.equalsIgnoreCase(tableName) : "Name in table_definition doesn't match table property: '" + name + "' != '" + tableName + "'";
         }
         else
@@ -479,7 +486,7 @@ public class StressProfile implements Serializable
 
             StressYaml profileYaml = yaml.loadAs(new ByteArrayInputStream(profileBytes), StressYaml.class);
 
-            StressProfile profile = new StressProfile();
+            StressProfile profile = new StressProfile(DatabaseDescriptor.createMain(false));
             profile.init(profileYaml);
 
             return profile;

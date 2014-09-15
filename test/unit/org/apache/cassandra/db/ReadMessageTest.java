@@ -52,7 +52,7 @@ public class ReadMessageTest
     private static final String KEYSPACENOCOMMIT = "ReadMessageTest_NoCommit";
     private static final String CF = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -87,7 +87,7 @@ public class ReadMessageTest
                                          dk.getKey(),
                                          "Standard1",
                                          ts,
-                                         new NamesQueryFilter(colList, databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
+                                         new NamesQueryFilter(colList, databaseDescriptor.getDBConfig()), DatabaseDescriptor.createMain(false),
                                          databaseDescriptor.getSchema(),
                                          databaseDescriptor.getLocatorConfig().getPartitioner(),
                                          databaseDescriptor.getMessagingService().readCommandSerializer);
@@ -98,7 +98,7 @@ public class ReadMessageTest
                                       dk.getKey(),
                                       "Standard1",
                                       ts,
-                                      new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, true, 2, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
+                                      new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, true, 2, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), DatabaseDescriptor.createMain(false),
                                       databaseDescriptor.getSchema(),
                                       databaseDescriptor.getLocatorConfig().getPartitioner(),
                                       databaseDescriptor.getMessagingService().readCommandSerializer);
@@ -109,7 +109,7 @@ public class ReadMessageTest
                                       dk.getKey(),
                                       "Standard1",
                                       ts,
-                                      new SliceQueryFilter(Util.cellname("a"), Util.cellname("z"), true, 5, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
+                                      new SliceQueryFilter(Util.cellname("a"), Util.cellname("z"), true, 5, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), DatabaseDescriptor.createMain(false),
                                       databaseDescriptor.getSchema(),
                                       databaseDescriptor.getLocatorConfig().getPartitioner(),
                                       databaseDescriptor.getMessagingService().readCommandSerializer);
@@ -145,7 +145,7 @@ public class ReadMessageTest
                                                           dk.getKey(),
                                                           "Standard1",
                                                           System.currentTimeMillis(),
-                                                          new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
+                                                          new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), databaseDescriptor.getDBConfig()), DatabaseDescriptor.createMain(false),
                                                           databaseDescriptor.getSchema(),
                                                           databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                           databaseDescriptor.getMessagingService().readCommandSerializer);
@@ -168,7 +168,7 @@ public class ReadMessageTest
         boolean commitLogMessageFound = false;
         boolean noCommitLogMessageFound = false;
 
-        File commitLogDir = new File(DatabaseDescriptor.instance.getCommitLogLocation());
+        File commitLogDir = new File(DatabaseDescriptor.createMain(false).getCommitLogLocation());
 
         byte[] commitBytes = "commit".getBytes("UTF-8");
 

@@ -61,19 +61,20 @@ public class SSTableLevelResetter
         // So we have to explicitly call System.exit.
         try
         {
+            DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true);
             // load keyspace descriptions.
-            DatabaseDescriptor.instance.loadSchemas();
+            databaseDescriptor.loadSchemas();
 
             String keyspaceName = args[1];
             String columnfamily = args[2];
             // validate columnfamily
-            if (DatabaseDescriptor.instance.getSchema().getCFMetaData(keyspaceName, columnfamily) == null)
+            if (databaseDescriptor.getSchema().getCFMetaData(keyspaceName, columnfamily) == null)
             {
                 System.err.println("ColumnFamily not found: " + keyspaceName + "/" + columnfamily);
                 System.exit(1);
             }
 
-            Keyspace keyspace = DatabaseDescriptor.instance.getKeyspaceManager().openWithoutSSTables(keyspaceName);
+            Keyspace keyspace = databaseDescriptor.getKeyspaceManager().openWithoutSSTables(keyspaceName);
             ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(columnfamily);
             boolean foundSSTable = false;
             for (Map.Entry<Descriptor, Set<Component>> sstable : cfs.directories.sstableLister().list().entrySet())

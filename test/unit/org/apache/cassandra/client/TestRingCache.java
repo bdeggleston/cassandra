@@ -46,7 +46,7 @@ public class TestRingCache
     private Cassandra.Client thriftClient;
     private Configuration conf;
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     public TestRingCache(String keyspace, LocatorConfig locatorConfig)
     {
@@ -63,11 +63,11 @@ public class TestRingCache
         Cassandra.Client cassandraClient = new Cassandra.Client(binaryProtocol);
         socket.open();
         thriftClient = cassandraClient;
-        String seed = DatabaseDescriptor.instance.getSeeds().iterator().next().getHostAddress();
+        String seed = DatabaseDescriptor.createMain(false).getSeeds().iterator().next().getHostAddress();
         conf = new Configuration();
         ConfigHelper.setOutputPartitioner(conf, databaseDescriptor.getLocatorConfig().getPartitioner().getClass().getName());
         ConfigHelper.setOutputInitialAddress(conf, seed);
-        ConfigHelper.setOutputRpcPort(conf, Integer.toString(DatabaseDescriptor.instance.getRpcPort()));
+        ConfigHelper.setOutputRpcPort(conf, Integer.toString(DatabaseDescriptor.createMain(false).getRpcPort()));
 
     }
 
@@ -112,7 +112,7 @@ public class TestRingCache
                               new String(row.array()), StringUtils.join(endpoints, ","), firstEndpoint);
 
             // now, read the row back directly from the host owning the row locally
-            tester.setup(firstEndpoint.getHostAddress(), DatabaseDescriptor.instance.getRpcPort());
+            tester.setup(firstEndpoint.getHostAddress(), DatabaseDescriptor.createMain(false).getRpcPort());
             tester.thriftClient.set_keyspace(keyspace);
             tester.thriftClient.insert(row, parent, new Column(ByteBufferUtil.bytes("col1")).setValue(ByteBufferUtil.bytes("val1")).setTimestamp(1), ConsistencyLevel.ONE);
             Column column = tester.thriftClient.get(row, col, ConsistencyLevel.ONE).column;

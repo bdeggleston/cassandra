@@ -135,7 +135,7 @@ public class DataOutputTest
     public void testSequentialWriter() throws IOException
     {
         File file = FileUtils.createTempFile("dataoutput", "test");
-        final SequentialWriter writer = new SequentialWriter(file, 32, DatabaseDescriptor.instance);
+        final SequentialWriter writer = new SequentialWriter(file, 32, DatabaseDescriptor.createMain(false));
         DataOutputStreamAndChannel write = new DataOutputStreamAndChannel(writer, writer);
         DataInput canon = testWrite(write);
         write.flush();

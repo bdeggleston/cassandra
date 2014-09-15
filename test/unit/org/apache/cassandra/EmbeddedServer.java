@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.service.CassandraDaemon;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -54,7 +55,7 @@ public class EmbeddedServer extends SchemaLoader
                 {
                     case Thrift:
                     default:
-                        daemon = new org.apache.cassandra.service.CassandraDaemon();
+                        daemon = new org.apache.cassandra.service.CassandraDaemon(DatabaseDescriptor.createMain(false));
                 }
                 daemon.activate();
             }

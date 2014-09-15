@@ -39,7 +39,7 @@ public class LongFlushMemtableTest
 {
     public static final String KEYSPACE1 = "LongFlushMemtableTest";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -57,7 +57,7 @@ public class LongFlushMemtableTest
         for (int i = 0; i < 100; i++)
         {
             CFMetaData metadata = databaseDescriptor.getCFMetaDataFactory().denseCFMetaData(keyspace.getName(), "_CF" + i, UTF8Type.instance);
-            DatabaseDescriptor.instance.getMigrationManager().announceNewColumnFamily(metadata);
+            DatabaseDescriptor.createMain(false).getMigrationManager().announceNewColumnFamily(metadata);
         }
 
         for (int j = 0; j < 200; j++)

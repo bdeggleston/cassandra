@@ -45,12 +45,11 @@ import static org.junit.Assert.assertFalse;
 
 public class CQLSSTableWriterTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void setup() throws Exception
     {
-        DatabaseDescriptor.init();
         databaseDescriptor.getKeyspaceManager().setInitialized();
         databaseDescriptor.getStorageService().initServer();
     }
@@ -83,12 +82,12 @@ public class CQLSSTableWriterTest
         writer.addRow(ImmutableMap.<String, Object>of("k", 3, "v2", 12));
         writer.close();
 
-        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client(DatabaseDescriptor.instance, databaseDescriptor.getDBConfig())
+        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client(DatabaseDescriptor.createMain(false), databaseDescriptor.getDBConfig())
         {
             public void init(String keyspace)
             {
                 for (Range<Token> range : databaseDescriptor.getLocatorConfig().getLocalRanges("cql_keyspace"))
-                    addRangeForEndpoint(range, DatabaseDescriptor.instance.getBroadcastAddress());
+                    addRangeForEndpoint(range, DatabaseDescriptor.createMain(false).getBroadcastAddress());
                 setPartitioner(databaseDescriptor.getLocatorConfig().getPartitioner());
             }
 
@@ -96,7 +95,7 @@ public class CQLSSTableWriterTest
             {
                 return databaseDescriptor.getSchema().getCFMetaData(keyspace, cfName);
             }
-        }, new OutputHandler.SystemOutput(false, false), DatabaseDescriptor.instance, databaseDescriptor.getSSTableReaderFactory());
+        }, new OutputHandler.SystemOutput(false, false), DatabaseDescriptor.createMain(false), databaseDescriptor.getSSTableReaderFactory());
 
         loader.stream().get();
 

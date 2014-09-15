@@ -49,7 +49,7 @@ public class MultiSliceTest
     public static final String KEYSPACE1 = "MultiSliceTest";
     public static final String CF_STANDARD = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
     public static ThriftSessionManager thriftSessionManager;
 
     @BeforeClass
@@ -57,18 +57,18 @@ public class MultiSliceTest
     {
         SchemaLoader.prepareServer();
         new EmbeddedCassandraService().start();
-        thriftSessionManager = new ThriftSessionManager(DatabaseDescriptor.instance);
+        thriftSessionManager = new ThriftSessionManager(DatabaseDescriptor.createMain(false));
         thriftSessionManager.setCurrentSocket(new InetSocketAddress(9160));
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD));
-        server = new CassandraServer(DatabaseDescriptor.instance, databaseDescriptor.getTracing(),
+        server = new CassandraServer(DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(),
                                      databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), databaseDescriptor.getStorageProxy(),
                                      databaseDescriptor.getMessagingService(), databaseDescriptor.getKeyspaceManager(),
                                      databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
                                      databaseDescriptor.getStorageService(), databaseDescriptor.getCFMetaDataFactory(),
-                                     DatabaseDescriptor.instance.getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
+                                     DatabaseDescriptor.createMain(false).getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
                                      databaseDescriptor.getQueryHandler(), databaseDescriptor.getLocatorConfig(),
                                      databaseDescriptor.getDBConfig(), thriftSessionManager,
                                      ClientMetrics.instance);

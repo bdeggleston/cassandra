@@ -24,6 +24,7 @@ import java.nio.charset.CharacterCodingException;
 import java.util.Iterator;
 
 import org.apache.cassandra.cli.CliMain;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.thrift.AuthenticationException;
 import org.apache.cassandra.thrift.AuthorizationException;
@@ -46,7 +47,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class ThriftColumnFamilyTest extends PigTestBase
-{    
+{
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+
     private static String[] statements = {
             "create keyspace thriftKs with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy' and" +
             " strategy_options={replication_factor:1};",
@@ -773,7 +776,7 @@ public class ThriftColumnFamilyTest extends PigTestBase
 
     private void executeCliStatements(String[] statements) throws CharacterCodingException, ClassNotFoundException, TException, TimedOutException, NotFoundException, InvalidRequestException, NoSuchFieldException, UnavailableException, IllegalAccessException, InstantiationException
     {
-        CliMain.connect("127.0.0.1", 9170);
+        CliMain.connect("127.0.0.1", 9170, databaseDescriptor);
         try
         {
             for (String stmt : statements)

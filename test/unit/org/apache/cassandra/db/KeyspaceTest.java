@@ -69,12 +69,11 @@ public class KeyspaceTest
     private static final String KEYSPACE2 = "Keyspace2";
     private static final String CF_STANDARD3 = "Standard3";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
-        DatabaseDescriptor.init();
         TEST_KEY = Util.dk("key1", databaseDescriptor);
         TEST_SLICE_KEY = Util.dk("key1-slicerange", databaseDescriptor);
         SchemaLoader.prepareServer();
@@ -119,7 +118,7 @@ public class KeyspaceTest
                 cf = cfStore.getColumnFamily(Util.namesQueryFilter(cfStore, TEST_KEY, databaseDescriptor));
                 assertColumns(cf);
 
-                cf = cfStore.getColumnFamily(QueryFilter.getSliceFilter(TEST_KEY, "Standard3", Composites.EMPTY, Composites.EMPTY, false, 0, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                cf = cfStore.getColumnFamily(QueryFilter.getSliceFilter(TEST_KEY, "Standard3", Composites.EMPTY, Composites.EMPTY, false, 0, System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
                 assertColumns(cf);
 
                 cf = cfStore.getColumnFamily(Util.namesQueryFilter(cfStore, TEST_KEY, databaseDescriptor, "col99"));
@@ -225,7 +224,7 @@ public class KeyspaceTest
                 ColumnFamily cf;
 
                 // blocks are partitioned like this: 000-097, 098-193, 194-289, 290-299, assuming a 4k column index size.
-                assert DatabaseDescriptor.instance.getColumnIndexSize() == 4096 : "Unexpected column index size, block boundaries won't be where tests expect them.";
+                assert DatabaseDescriptor.createMain(false).getColumnIndexSize() == 4096 : "Unexpected column index size, block boundaries won't be where tests expect them.";
 
                 // test forward, spanning a segment.
                 cf = cfStore.getColumnFamily(ROW, cellname("col096"), cellname("col099"), false, 4, System.currentTimeMillis());

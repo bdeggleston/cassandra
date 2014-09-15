@@ -48,7 +48,7 @@ public class DynamicCompositeTypeTest
     private static final String CF_STANDARDDYNCOMPOSITE = "StandardDynamicComposite";
     private static Map<Byte, AbstractType<?>> aliases = new HashMap<>();
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     private static final DynamicCompositeType comparator;
     static
@@ -202,7 +202,7 @@ public class DynamicCompositeTypeTest
         addColumn(rm, cname3);
         rm.applyUnsafe();
 
-        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("k", databaseDescriptor), CF_STANDARDDYNCOMPOSITE, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("k", databaseDescriptor), CF_STANDARDDYNCOMPOSITE, System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
 
         Iterator<Cell> iter = cf.getSortedColumns().iterator();
 

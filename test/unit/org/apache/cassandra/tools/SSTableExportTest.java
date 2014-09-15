@@ -64,7 +64,7 @@ public class SSTableExportTest
     public static final String CF_UUID = "UUIDKeys";
     public static final String CF_VALSWITHQUOTES = "ValuesWithQuotes";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException, IOException, TException
@@ -107,7 +107,7 @@ public class SSTableExportTest
         // Enumerate and verify
         File temp = File.createTempFile("Standard1", ".txt");
         final Descriptor descriptor = Descriptor.fromFilename(writer.getFilename());
-        SSTableExport.enumeratekeys(descriptor, new PrintStream(temp.getPath()),
+        new SSTableExport(databaseDescriptor).enumeratekeys(descriptor, new PrintStream(temp.getPath()),
                 databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(descriptor.ksname, descriptor.cfname, BytesType.instance), databaseDescriptor.getLocatorConfig().getPartitioner());
 
 
@@ -150,7 +150,7 @@ public class SSTableExportTest
 
         // Export to JSON and verify
         File tempJson = File.createTempFile("Standard1", ".json");
-        SSTableExport.export(reader, new PrintStream(tempJson.getPath()), new String[]{asHex("rowExclude")},
+        new SSTableExport(databaseDescriptor).export(reader, new PrintStream(tempJson.getPath()), new String[]{asHex("rowExclude")},
                 databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(KEYSPACE1, "Standard1", BytesType.instance));
 
         JSONArray json = (JSONArray)JSONValue.parseWithException(new FileReader(tempJson));
@@ -200,12 +200,12 @@ public class SSTableExportTest
 
         // Export to JSON and verify
         File tempJson = File.createTempFile("Standard1", ".json");
-        SSTableExport.export(reader, new PrintStream(tempJson.getPath()), new String[]{asHex("rowExclude")},
+        new SSTableExport(databaseDescriptor).export(reader, new PrintStream(tempJson.getPath()), new String[]{asHex("rowExclude")},
                 databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(KEYSPACE1, "Standard1", BytesType.instance));
 
         // Import JSON to another SSTable file
         File tempSS2 = tempSSTableFile(KEYSPACE1, "Standard1");
-        new SSTableImport().importJson(tempJson.getPath(), KEYSPACE1, "Standard1", tempSS2.getPath());
+        new SSTableImport(databaseDescriptor).importJson(tempJson.getPath(), KEYSPACE1, "Standard1", tempSS2.getPath());
 
         reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS2.getPath()));
         QueryFilter qf = Util.namesQueryFilter(cfs, Util.dk("rowA", databaseDescriptor), databaseDescriptor, "name");
@@ -235,7 +235,7 @@ public class SSTableExportTest
 
         // Export to JSON and verify
         File tempJson = File.createTempFile("Counter1", ".json");
-        SSTableExport.export(reader, new PrintStream(tempJson.getPath()), new String[0],
+        new SSTableExport(databaseDescriptor).export(reader, new PrintStream(tempJson.getPath()), new String[0],
                 databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(KEYSPACE1, "Counter1", BytesType.instance));
         JSONArray json = (JSONArray)JSONValue.parseWithException(new FileReader(tempJson));
         assertEquals("unexpected number of rows", 1, json.size());
@@ -267,7 +267,7 @@ public class SSTableExportTest
 
         // Export to JSON and verify
         File tempJson = File.createTempFile("ValuesWithQuotes", ".json");
-        SSTableExport.export(reader, new PrintStream(tempJson.getPath()), new String[0],
+        new SSTableExport(databaseDescriptor).export(reader, new PrintStream(tempJson.getPath()), new String[0],
                 databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(KEYSPACE1, "ValuesWithQuotes", BytesType.instance));
 
         JSONArray json = (JSONArray)JSONValue.parseWithException(new FileReader(tempJson));
@@ -299,7 +299,7 @@ public class SSTableExportTest
         SSTableReader reader = writer.closeAndOpenReader();
         // Export to JSON and verify
         File tempJson = File.createTempFile("CFWithDeletionInfo", ".json");
-        SSTableExport.export(reader, new PrintStream(tempJson.getPath()), new String[0],
+        new SSTableExport(databaseDescriptor).export(reader, new PrintStream(tempJson.getPath()), new String[0],
                 databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(KEYSPACE1, "Counter1", BytesType.instance));
 
         JSONArray json = (JSONArray)JSONValue.parseWithException(new FileReader(tempJson));
@@ -359,7 +359,7 @@ public class SSTableExportTest
         SSTableReader reader = writer.closeAndOpenReader();
         // Export to JSON and verify
         File tempJson = File.createTempFile("CFWithColumnNameEqualToDefaultKeyAlias", ".json");
-        SSTableExport.export(reader, new PrintStream(tempJson.getPath()), new String[0],
+        new SSTableExport(databaseDescriptor).export(reader, new PrintStream(tempJson.getPath()), new String[0],
                 databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(KEYSPACE1, "UUIDKeys", BytesType.instance));
 
         JSONArray json = (JSONArray)JSONValue.parseWithException(new FileReader(tempJson));
@@ -389,7 +389,7 @@ public class SSTableExportTest
         SSTableReader reader = writer.closeAndOpenReader();
         // Export to JSON and verify
         File tempJson = File.createTempFile("CFWithAsciiKeys", ".json");
-        SSTableExport.export(reader,
+        new SSTableExport(databaseDescriptor).export(reader,
                              new PrintStream(tempJson.getPath()),
                              new String[0],
                              databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(KEYSPACE1, "AsciiKeys", BytesType.instance));

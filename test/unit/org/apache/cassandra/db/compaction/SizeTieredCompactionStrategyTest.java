@@ -47,7 +47,7 @@ public class SizeTieredCompactionStrategyTest
     public static final String KEYSPACE1 = "SizeTieredCompactionStrategyTest";
     private static final String CF_STANDARD1 = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

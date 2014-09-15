@@ -48,7 +48,7 @@ public class RecoveryManager3Test
     private static final String KEYSPACE2 = "RecoveryManager3Test2";
     private static final String CF_STANDARD3 = "Standard3";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -88,7 +88,7 @@ public class RecoveryManager3Test
         keyspace2.getColumnFamilyStore("Standard3").clearUnsafe();
 
         // nuke the header
-        for (File file : new File(DatabaseDescriptor.instance.getCommitLogLocation()).listFiles())
+        for (File file : new File(DatabaseDescriptor.createMain(false).getCommitLogLocation()).listFiles())
         {
             if (file.getName().endsWith(".header"))
                 FileUtils.deleteWithConfirm(file);

@@ -20,6 +20,7 @@ package org.apache.cassandra.cli;
 import java.io.InputStream;
 import java.io.PrintStream;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.EncryptionOptions;
 import org.apache.cassandra.config.EncryptionOptions.ClientEncryptionOptions;
 import org.apache.cassandra.thrift.ITransportFactory;
@@ -53,12 +54,14 @@ public class CliSessionState
     public InputStream in;
     public PrintStream out;
     public PrintStream err;
+    private final DatabaseDescriptor databaseDescriptor;
 
     public CliSessionState()
     {
         in = System.in;
         out = System.out;
         err = System.err;
+        databaseDescriptor = DatabaseDescriptor.createMain(true);
     }
 
     public void setOut(PrintStream newOut)
@@ -81,8 +84,8 @@ public class CliSessionState
         try
         {
             return jmxUsername != null && jmxPassword != null
-                   ? new NodeProbe(hostName, jmxPort, jmxUsername, jmxPassword)
-                   : new NodeProbe(hostName, jmxPort);
+                   ? new NodeProbe(hostName, jmxPort, jmxUsername, jmxPassword, databaseDescriptor)
+                   : new NodeProbe(hostName, jmxPort, databaseDescriptor);
         }
         catch (Exception e)
         {

@@ -35,7 +35,7 @@ public class SessionInfoTest
     public void testTotals()
     {
         UUID cfId = UUID.randomUUID();
-        InetAddress local = DatabaseDescriptor.instance.getLocalAddress();
+        InetAddress local = DatabaseDescriptor.createMain(false).getLocalAddress();
 
         Collection<StreamSummary> summaries = new ArrayList<>();
         for (int i = 0; i < 10; i++)

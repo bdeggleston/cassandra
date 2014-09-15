@@ -27,7 +27,7 @@ import static org.junit.Assert.assertEquals;
 
 public class RowCacheCQLTest extends CQLTester
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @Test
     public void test7636() throws Throwable

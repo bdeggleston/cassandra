@@ -75,6 +75,7 @@ public class BulkLoader
 
     public static void main(String args[])
     {
+        DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true);
         LoaderOptions options = LoaderOptions.parseArgs(args);
         OutputHandler handler = new OutputHandler.SystemOutput(options.verbose, options.debug);
         SSTableLoader loader = new SSTableLoader(
@@ -88,13 +89,13 @@ public class BulkLoader
                         options.storagePort,
                         options.sslStoragePort,
                         options.serverEncOptions,
-                        DatabaseDescriptor.instance,
-                        DatabaseDescriptor.instance.getDBConfig()),
+                        databaseDescriptor,
+                        databaseDescriptor.getDBConfig()),
                 handler,
                 options.connectionsPerHost,
-                DatabaseDescriptor.instance,
-                DatabaseDescriptor.instance.getSSTableReaderFactory());
-        DatabaseDescriptor.instance.setStreamThroughputOutboundMegabitsPerSec(options.throttle);
+                databaseDescriptor,
+                databaseDescriptor.getSSTableReaderFactory());
+        databaseDescriptor.setStreamThroughputOutboundMegabitsPerSec(options.throttle);
         StreamResultFuture future = null;
 
         ProgressIndicator indicator = new ProgressIndicator();
@@ -331,7 +332,7 @@ public class BulkLoader
                                                             columnFamily);
                         CqlResult columnsRes = client.execute_cql3_query(ByteBufferUtil.bytes(columnsQuery), Compression.NONE, ConsistencyLevel.ONE);
 
-                        CFMetaData metadata = DatabaseDescriptor.instance.getCFMetaDataFactory().fromThriftCqlRow(row, columnsRes);
+                        CFMetaData metadata = databaseDescriptor.getCFMetaDataFactory().fromThriftCqlRow(row, columnsRes);
                         knownCfs.put(metadata.cfName, metadata);
                     }
                     break;

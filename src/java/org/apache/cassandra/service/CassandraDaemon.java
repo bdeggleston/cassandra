@@ -36,9 +36,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.metrics.ClientMetrics;
-import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.thrift.ThriftSessionManager;
 import org.apache.cassandra.transport.Message;
 import org.apache.cassandra.utils.*;
@@ -49,7 +47,6 @@ import com.addthis.metrics.reporter.config.ReporterConfig;
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.cql3.functions.Functions;
-import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.FSError;
 import org.apache.cassandra.io.sstable.CorruptSSTableException;
@@ -81,7 +78,11 @@ public class CassandraDaemon
 
     private static final Logger logger = LoggerFactory.getLogger(CassandraDaemon.class);
 
-    private static final CassandraDaemon instance = new CassandraDaemon();
+    private final DatabaseDescriptor databaseDescriptor;
+    public CassandraDaemon(DatabaseDescriptor databaseDescriptor)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+    }
 
     public Server thriftServer;
     public Server nativeServer;
@@ -104,7 +105,7 @@ public class CassandraDaemon
             logger.info("Could not resolve local host");
         }
         // log warnings for different kinds of sub-optimal JVMs.  tldr use 64-bit Oracle >= 1.6u32
-        if (!DatabaseDescriptor.instance.hasLargeAddressSpace())
+        if (!databaseDescriptor.hasLargeAddressSpace())
             logger.info("32bit JVM detected.  It is recommended to run Cassandra on a 64bit JVM for better performance.");
         String javaVersion = System.getProperty("java.version");
         String javaVmName = System.getProperty("java.vm.name");
@@ -162,7 +163,7 @@ public class CassandraDaemon
             {
                 StorageMetrics.exceptions.inc();
                 logger.error("Exception in thread {}", t, e);
-                DatabaseDescriptor.instance.getTracing().trace("Exception in thread {}", t, e);
+                databaseDescriptor.getTracing().trace("Exception in thread {}", t, e);
                 for (Throwable e2 = e; e2 != null; e2 = e2.getCause())
                 {
                     // some code, like FileChannel.map, will wrap an OutOfMemoryError in another exception
@@ -174,9 +175,9 @@ public class CassandraDaemon
                         if (e2 != e) // make sure FSError gets logged exactly once.
                             logger.error("Exception in thread {}", t, e2);
                         FileUtils.handleFSError((FSError) e2,
-                                                DatabaseDescriptor.instance.getDiskFailurePolicy(),
-                                                DatabaseDescriptor.instance.getStorageService(),
-                                                DatabaseDescriptor.instance.getKeyspaceManager());
+                                                databaseDescriptor.getDiskFailurePolicy(),
+                                                databaseDescriptor.getStorageService(),
+                                                databaseDescriptor.getKeyspaceManager());
                     }
 
                     if (e2 instanceof CorruptSSTableException)
@@ -184,17 +185,17 @@ public class CassandraDaemon
                         if (e2 != e)
                             logger.error("Exception in thread " + t, e2);
                         FileUtils.handleCorruptSSTable((CorruptSSTableException) e2,
-                                                       DatabaseDescriptor.instance.getDiskFailurePolicy(),
-                                                       DatabaseDescriptor.instance.getStorageService());
+                                                       databaseDescriptor.getDiskFailurePolicy(),
+                                                       databaseDescriptor.getStorageService());
                     }
                 }
             }
         });
 
         // check all directories(data, commitlog, saved cache) for existence and permission
-        Iterable<String> dirs = Iterables.concat(Arrays.asList(DatabaseDescriptor.instance.getAllDataFileLocations()),
-                                                 Arrays.asList(DatabaseDescriptor.instance.getCommitLogLocation(),
-                                                               DatabaseDescriptor.instance.getSavedCachesLocation()));
+        Iterable<String> dirs = Iterables.concat(Arrays.asList(databaseDescriptor.getAllDataFileLocations()),
+                                                 Arrays.asList(databaseDescriptor.getCommitLogLocation(),
+                                                               databaseDescriptor.getSavedCachesLocation()));
         for (String dataDir : dirs)
         {
             logger.debug("Checking directory {}", dataDir);
@@ -219,24 +220,24 @@ public class CassandraDaemon
             }
         }
 
-        if (DatabaseDescriptor.instance.getCacheService() == null) // should never happen
+        if (databaseDescriptor.getCacheService() == null) // should never happen
             throw new RuntimeException("Failed to initialize Cache Service.");
 
         // check the system keyspace to keep user from shooting self in foot by changing partitioner, cluster name, etc.
         // we do a one-off scrub of the system keyspace first; we can't load the list of the rest of the keyspaces,
         // until system keyspace is opened.
-        SystemKeyspace systemKeyspace = DatabaseDescriptor.instance.getSystemKeyspace();  // FIXME: forcing initialization before system keyspace access
-        for (CFMetaData cfm : DatabaseDescriptor.instance.getSchema().getKeyspaceMetaData(Keyspace.SYSTEM_KS).values())
+        SystemKeyspace systemKeyspace = databaseDescriptor.getSystemKeyspace();  // FIXME: forcing initialization before system keyspace access
+        for (CFMetaData cfm : databaseDescriptor.getSchema().getKeyspaceMetaData(Keyspace.SYSTEM_KS).values())
             ColumnFamilyStore.scrubDataDirectories(cfm,
-                                                   DatabaseDescriptor.instance,
-                                                   DatabaseDescriptor.instance.getTracing(),
-                                                   DatabaseDescriptor.instance.getCFMetaDataFactory(),
-                                                   DatabaseDescriptor.instance.getKeyspaceManager(),
-                                                   DatabaseDescriptor.instance.getDBConfig(),
-                                                   DatabaseDescriptor.instance.getColumnFamilyStoreManager().dataDirectories);
+                                                   databaseDescriptor,
+                                                   databaseDescriptor.getTracing(),
+                                                   databaseDescriptor.getCFMetaDataFactory(),
+                                                   databaseDescriptor.getKeyspaceManager(),
+                                                   databaseDescriptor.getDBConfig(),
+                                                   databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
         try
         {
-            DatabaseDescriptor.instance.getSystemKeyspace().checkHealth();
+            databaseDescriptor.getSystemKeyspace().checkHealth();
         }
         catch (ConfigurationException e)
         {
@@ -245,45 +246,45 @@ public class CassandraDaemon
         }
 
         // load keyspace && function descriptions.
-        DatabaseDescriptor.instance.loadSchemas();
-        Functions.loadUDFFromSchema(DatabaseDescriptor.instance.getQueryProcessor(), DatabaseDescriptor.instance.getMutationFactory(), DatabaseDescriptor.instance.getCFMetaDataFactory());
+        databaseDescriptor.loadSchemas();
+        Functions.loadUDFFromSchema(databaseDescriptor.getQueryProcessor(), databaseDescriptor.getMutationFactory(), databaseDescriptor.getCFMetaDataFactory());
 
         // clean up compaction leftovers
-        Map<Pair<String, String>, Map<Integer, UUID>> unfinishedCompactions = DatabaseDescriptor.instance.getSystemKeyspace().getUnfinishedCompactions();
+        Map<Pair<String, String>, Map<Integer, UUID>> unfinishedCompactions = databaseDescriptor.getSystemKeyspace().getUnfinishedCompactions();
         for (Pair<String, String> kscf : unfinishedCompactions.keySet())
         {
-            CFMetaData cfm = DatabaseDescriptor.instance.getSchema().getCFMetaData(kscf.left, kscf.right);
+            CFMetaData cfm = databaseDescriptor.getSchema().getCFMetaData(kscf.left, kscf.right);
             // CFMetaData can be null if CF is already dropped
             if (cfm != null)
-                DatabaseDescriptor.instance.getColumnFamilyStoreManager().removeUnfinishedCompactionLeftovers(cfm, unfinishedCompactions.get(kscf));
+                databaseDescriptor.getColumnFamilyStoreManager().removeUnfinishedCompactionLeftovers(cfm, unfinishedCompactions.get(kscf));
         }
-        DatabaseDescriptor.instance.getSystemKeyspace().discardCompactionsInProgress();
+        databaseDescriptor.getSystemKeyspace().discardCompactionsInProgress();
 
         // clean up debris in the rest of the keyspaces
-        for (String keyspaceName : DatabaseDescriptor.instance.getSchema().getKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getKeyspaces())
         {
             // Skip system as we've already cleaned it
             if (keyspaceName.equals(Keyspace.SYSTEM_KS))
                 continue;
 
-            for (CFMetaData cfm : DatabaseDescriptor.instance.getSchema().getKeyspaceMetaData(keyspaceName).values())
+            for (CFMetaData cfm : databaseDescriptor.getSchema().getKeyspaceMetaData(keyspaceName).values())
                 ColumnFamilyStore.scrubDataDirectories(cfm,
-                                                       DatabaseDescriptor.instance,
-                                                       DatabaseDescriptor.instance.getTracing(),
-                                                       DatabaseDescriptor.instance.getCFMetaDataFactory(),
-                                                       DatabaseDescriptor.instance.getKeyspaceManager(),
-                                                       DatabaseDescriptor.instance.getDBConfig(),
-                                                       DatabaseDescriptor.instance.getColumnFamilyStoreManager().dataDirectories);
+                                                       databaseDescriptor,
+                                                       databaseDescriptor.getTracing(),
+                                                       databaseDescriptor.getCFMetaDataFactory(),
+                                                       databaseDescriptor.getKeyspaceManager(),
+                                                       databaseDescriptor.getDBConfig(),
+                                                       databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
         }
 
-        DatabaseDescriptor.instance.getKeyspaceManager().setInitialized();
+        databaseDescriptor.getKeyspaceManager().setInitialized();
         // initialize keyspaces
-        for (String keyspaceName : DatabaseDescriptor.instance.getSchema().getKeyspaces())
+        for (String keyspaceName : databaseDescriptor.getSchema().getKeyspaces())
         {
             if (logger.isDebugEnabled())
                 logger.debug("opening keyspace {}", keyspaceName);
             // disable auto compaction until commit log replay ends
-            for (ColumnFamilyStore cfs : DatabaseDescriptor.instance.getKeyspaceManager().open(keyspaceName).getColumnFamilyStores())
+            for (ColumnFamilyStore cfs : databaseDescriptor.getKeyspaceManager().open(keyspaceName).getColumnFamilyStores())
             {
                 for (ColumnFamilyStore store : cfs.concatWithIndexes())
                 {
@@ -292,15 +293,15 @@ public class CassandraDaemon
             }
         }
 
-        if (DatabaseDescriptor.instance.getCacheService().keyCache.size() > 0)
-            logger.info("completed pre-loading ({} keys) key cache.", DatabaseDescriptor.instance.getCacheService().keyCache.size());
+        if (databaseDescriptor.getCacheService().keyCache.size() > 0)
+            logger.info("completed pre-loading ({} keys) key cache.", databaseDescriptor.getCacheService().keyCache.size());
 
-        if (DatabaseDescriptor.instance.getCacheService().rowCache.size() > 0)
-            logger.info("completed pre-loading ({} keys) row cache.", DatabaseDescriptor.instance.getCacheService().rowCache.size());
+        if (databaseDescriptor.getCacheService().rowCache.size() > 0)
+            logger.info("completed pre-loading ({} keys) row cache.", databaseDescriptor.getCacheService().rowCache.size());
 
         try
         {
-            GCInspector.register(DatabaseDescriptor.instance.getStatusLogger());
+            GCInspector.register(databaseDescriptor.getStatusLogger());
         }
         catch (Throwable t)
         {
@@ -310,7 +311,7 @@ public class CassandraDaemon
         // replay the log if necessary
         try
         {
-            DatabaseDescriptor.instance.getCommitLog().recover();
+            databaseDescriptor.getCommitLog().recover();
         }
         catch (IOException e)
         {
@@ -318,7 +319,7 @@ public class CassandraDaemon
         }
 
         // enable auto compaction
-        for (Keyspace keyspace : DatabaseDescriptor.instance.getKeyspaceManager().all())
+        for (Keyspace keyspace : databaseDescriptor.getKeyspaceManager().all())
         {
             for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
             {
@@ -334,25 +335,25 @@ public class CassandraDaemon
         {
             public void run()
             {
-                for (Keyspace keyspaceName : DatabaseDescriptor.instance.getKeyspaceManager().all())
+                for (Keyspace keyspaceName : databaseDescriptor.getKeyspaceManager().all())
                 {
                     for (ColumnFamilyStore cf : keyspaceName.getColumnFamilyStores())
                     {
                         for (ColumnFamilyStore store : cf.concatWithIndexes())
-                            DatabaseDescriptor.instance.getCompactionManager().submitBackground(store);
+                            databaseDescriptor.getCompactionManager().submitBackground(store);
                     }
                 }
             }
         };
-        DatabaseDescriptor.instance.getStorageServiceExecutors().optionalTasks.schedule(runnable, 5 * 60, TimeUnit.SECONDS);
+        databaseDescriptor.getStorageServiceExecutors().optionalTasks.schedule(runnable, 5 * 60, TimeUnit.SECONDS);
 
-        DatabaseDescriptor.instance.getSystemKeyspace().finishStartup();
+        databaseDescriptor.getSystemKeyspace().finishStartup();
 
         // start server internals
-        DatabaseDescriptor.instance.getStorageService().registerDaemon(this);
+        databaseDescriptor.getStorageService().registerDaemon(this);
         try
         {
-            DatabaseDescriptor.instance.getStorageService().initServer();
+            databaseDescriptor.getStorageService().initServer();
         }
         catch (ConfigurationException e)
         {
@@ -361,7 +362,7 @@ public class CassandraDaemon
             System.exit(1);
         }
 
-        Mx4jTool.maybeLoad(DatabaseDescriptor.instance.getBroadcastAddress());
+        Mx4jTool.maybeLoad(databaseDescriptor.getBroadcastAddress());
 
         // Metrics
         String metricsReporterConfigFile = System.getProperty("cassandra.metricsReporterConfigFile");
@@ -379,44 +380,44 @@ public class CassandraDaemon
             }
         }
 
-        if (!DatabaseDescriptor.instance.getBroadcastAddress().equals(InetAddress.getLoopbackAddress()))
+        if (!databaseDescriptor.getBroadcastAddress().equals(InetAddress.getLoopbackAddress()))
             waitForGossipToSettle();
 
         // Thift
-        InetAddress rpcAddr = DatabaseDescriptor.instance.getRpcAddress();
-        int rpcPort = DatabaseDescriptor.instance.getRpcPort();
-        int listenBacklog = DatabaseDescriptor.instance.getRpcListenBacklog();
+        InetAddress rpcAddr = databaseDescriptor.getRpcAddress();
+        int rpcPort = databaseDescriptor.getRpcPort();
+        int listenBacklog = databaseDescriptor.getRpcListenBacklog();
         thriftServer = new ThriftServer(rpcAddr, rpcPort, listenBacklog,
-                                        DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(),
-                                        DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getAuth(), DatabaseDescriptor.instance.getStorageProxy(),
-                                        DatabaseDescriptor.instance.getMessagingService(), DatabaseDescriptor.instance.getKeyspaceManager(),
-                                        DatabaseDescriptor.instance.getMutationFactory(), DatabaseDescriptor.instance.getCounterMutationFactory(),
-                                        DatabaseDescriptor.instance.getStorageService(), DatabaseDescriptor.instance.getCFMetaDataFactory(),
-                                        DatabaseDescriptor.instance.getMigrationManager(), DatabaseDescriptor.instance.getKSMetaDataFactory(),
-                                        DatabaseDescriptor.instance.getQueryHandler(), DatabaseDescriptor.instance.getLocatorConfig(),
-                                        DatabaseDescriptor.instance.getDBConfig(),
-                                        new ThriftSessionManager(DatabaseDescriptor.instance),
+                                        databaseDescriptor, databaseDescriptor.getTracing(),
+                                        databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), databaseDescriptor.getStorageProxy(),
+                                        databaseDescriptor.getMessagingService(), databaseDescriptor.getKeyspaceManager(),
+                                        databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
+                                        databaseDescriptor.getStorageService(), databaseDescriptor.getCFMetaDataFactory(),
+                                        databaseDescriptor.getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
+                                        databaseDescriptor.getQueryHandler(), databaseDescriptor.getLocatorConfig(),
+                                        databaseDescriptor.getDBConfig(),
+                                        new ThriftSessionManager(databaseDescriptor),
                                         ClientMetrics.instance);
 
         // Native transport
-        InetAddress nativeAddr = DatabaseDescriptor.instance.getRpcAddress();
-        int nativePort = DatabaseDescriptor.instance.getNativeTransportPort();
-        Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
-                                                                           DatabaseDescriptor.instance.getTracing(),
-                                                                           DatabaseDescriptor.instance.getSchema(),
-                                                                           DatabaseDescriptor.instance.getAuth().getAuthenticator(),
-                                                                           DatabaseDescriptor.instance.getQueryHandler(),
-                                                                           DatabaseDescriptor.instance.getQueryProcessor(),
-                                                                           DatabaseDescriptor.instance.getKeyspaceManager(),
-                                                                           DatabaseDescriptor.instance.getStorageProxy(),
-                                                                           DatabaseDescriptor.instance.getMutationFactory(),
-                                                                           DatabaseDescriptor.instance.getCounterMutationFactory(),
-                                                                           DatabaseDescriptor.instance.getMessagingService(),
-                                                                           DatabaseDescriptor.instance.getDBConfig(),
-                                                                           DatabaseDescriptor.instance.getLocatorConfig());
-        nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort, codecs, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(),
-                                                                 DatabaseDescriptor.instance.getAuth(), ClientMetrics.instance, DatabaseDescriptor.instance.getStorageService(),
-                                                                 DatabaseDescriptor.instance.getMigrationManager());
+        InetAddress nativeAddr = databaseDescriptor.getRpcAddress();
+        int nativePort = databaseDescriptor.getNativeTransportPort();
+        Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(databaseDescriptor,
+                                                                           databaseDescriptor.getTracing(),
+                                                                           databaseDescriptor.getSchema(),
+                                                                           databaseDescriptor.getAuth().getAuthenticator(),
+                                                                           databaseDescriptor.getQueryHandler(),
+                                                                           databaseDescriptor.getQueryProcessor(),
+                                                                           databaseDescriptor.getKeyspaceManager(),
+                                                                           databaseDescriptor.getStorageProxy(),
+                                                                           databaseDescriptor.getMutationFactory(),
+                                                                           databaseDescriptor.getCounterMutationFactory(),
+                                                                           databaseDescriptor.getMessagingService(),
+                                                                           databaseDescriptor.getDBConfig(),
+                                                                           databaseDescriptor.getLocatorConfig());
+        nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort, codecs, databaseDescriptor, databaseDescriptor.getTracing(),
+                                                                 databaseDescriptor.getAuth(), ClientMetrics.instance, databaseDescriptor.getStorageService(),
+                                                                 databaseDescriptor.getMigrationManager());
     }
 
     /**
@@ -442,13 +443,13 @@ public class CassandraDaemon
     public void start()
     {
         String nativeFlag = System.getProperty("cassandra.start_native_transport");
-        if ((nativeFlag != null && Boolean.parseBoolean(nativeFlag)) || (nativeFlag == null && DatabaseDescriptor.instance.startNativeTransport()))
+        if ((nativeFlag != null && Boolean.parseBoolean(nativeFlag)) || (nativeFlag == null && databaseDescriptor.startNativeTransport()))
             nativeServer.start();
         else
             logger.info("Not starting native transport as requested. Use JMX (StorageService->startNativeTransport()) or nodetool (enablebinary) to start it");
 
         String rpcFlag = System.getProperty("cassandra.start_rpc");
-        if ((rpcFlag != null && Boolean.parseBoolean(rpcFlag)) || (rpcFlag == null && DatabaseDescriptor.instance.startRpc()))
+        if ((rpcFlag != null && Boolean.parseBoolean(rpcFlag)) || (rpcFlag == null && databaseDescriptor.startRpc()))
             thriftServer.start();
         else
             logger.info("Not starting RPC server as requested. Use JMX (StorageService->startRPCServer()) or nodetool (enablethrift) to start it");
@@ -547,7 +548,7 @@ public class CassandraDaemon
         Uninterruptibles.sleepUninterruptibly(GOSSIP_SETTLE_MIN_WAIT_MS, TimeUnit.MILLISECONDS);
         int totalPolls = 0;
         int numOkay = 0;
-        JMXEnabledThreadPoolExecutor gossipStage = (JMXEnabledThreadPoolExecutor)DatabaseDescriptor.instance.getStageManager().getStage(Stage.GOSSIP);
+        JMXEnabledThreadPoolExecutor gossipStage = (JMXEnabledThreadPoolExecutor)databaseDescriptor.getStageManager().getStage(Stage.GOSSIP);
         while (numOkay < GOSSIP_SETTLE_POLL_SUCCESSES_REQUIRED)
         {
             Uninterruptibles.sleepUninterruptibly(GOSSIP_SETTLE_POLL_INTERVAL_MS, TimeUnit.MILLISECONDS);
@@ -578,14 +579,15 @@ public class CassandraDaemon
             logger.info("No gossip backlog; proceeding");
     }
 
-    public static void stop(String[] args)
+    public void stop(String[] args)
     {
-        instance.deactivate();
+        deactivate();
     }
 
     public static void main(String[] args)
     {
-        instance.activate();
+        CassandraDaemon daemon = new CassandraDaemon(DatabaseDescriptor.createMain(false));
+        daemon.activate();
     }
     
     static class NativeAccess implements NativeAccessMBean

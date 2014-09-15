@@ -54,7 +54,7 @@ import static org.junit.Assert.assertTrue;
 public class StorageServiceServerTest
 {
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     public static class ConfigLoader extends YamlConfigurationLoader
     {
@@ -71,9 +71,8 @@ public class StorageServiceServerTest
     public static void setUp() throws ConfigurationException
     {
         System.setProperty("cassandra.config.loader", ConfigLoader.class.getName());
-        DatabaseDescriptor.init();
 //        IEndpointSnitch snitch = new PropertyFileSnitch();
-//        DatabaseDescriptor.instance.setEndpointSnitch(snitch);
+//        DatabaseDescriptor.createMain(false).setEndpointSnitch(snitch);
         databaseDescriptor.getKeyspaceManager().setInitialized();
 //        snitch.gossiperStarting();
     }
@@ -84,7 +83,7 @@ public class StorageServiceServerTest
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();
         databaseDescriptor.getStorageService().initServer(0);
-        for (String path : DatabaseDescriptor.instance.getAllDataFileLocations())
+        for (String path : DatabaseDescriptor.createMain(false).getAllDataFileLocations())
         {
             // verify that storage directories are there.
             assertTrue(new File(path).exists());

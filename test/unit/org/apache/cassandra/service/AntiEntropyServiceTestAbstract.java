@@ -74,7 +74,7 @@ public abstract class AntiEntropyServiceTestAbstract
     public static final String CF_STANDRAD1 = "Standard1";
     public static final String CF_COUNTER = "Counter1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -97,7 +97,7 @@ public abstract class AntiEntropyServiceTestAbstract
 
             init();
 
-            LOCAL = DatabaseDescriptor.instance.getBroadcastAddress();
+            LOCAL = DatabaseDescriptor.createMain(false).getBroadcastAddress();
             // generate a fake endpoint for which we can spoof receiving/sending trees
             REMOTE = InetAddress.getByName("127.0.0.2");
             store = null;
@@ -140,7 +140,7 @@ public abstract class AntiEntropyServiceTestAbstract
     {
         // generate rf+1 nodes, and ensure that all nodes are returned
         Set<InetAddress> expected = addTokens(1 + databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
-        expected.remove(DatabaseDescriptor.instance.getBroadcastAddress());
+        expected.remove(DatabaseDescriptor.createMain(false).getBroadcastAddress());
         Collection<Range<Token>> ranges = databaseDescriptor.getLocatorConfig().getLocalRanges(keyspaceName);
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
@@ -159,11 +159,11 @@ public abstract class AntiEntropyServiceTestAbstract
         addTokens(2 * databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
         AbstractReplicationStrategy ars = databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy();
         Set<InetAddress> expected = new HashSet<InetAddress>();
-        for (Range<Token> replicaRange : ars.getAddressRanges().get(DatabaseDescriptor.instance.getBroadcastAddress()))
+        for (Range<Token> replicaRange : ars.getAddressRanges().get(DatabaseDescriptor.createMain(false).getBroadcastAddress()))
         {
             expected.addAll(ars.getRangeAddresses(tmd.cloneOnlyTokenMap()).get(replicaRange));
         }
-        expected.remove(DatabaseDescriptor.instance.getBroadcastAddress());
+        expected.remove(DatabaseDescriptor.createMain(false).getBroadcastAddress());
         Collection<Range<Token>> ranges = databaseDescriptor.getLocatorConfig().getLocalRanges(keyspaceName);
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
@@ -180,17 +180,17 @@ public abstract class AntiEntropyServiceTestAbstract
         
         // generate rf+1 nodes, and ensure that all nodes are returned
         Set<InetAddress> expected = addTokens(1 + databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
-        expected.remove(DatabaseDescriptor.instance.getBroadcastAddress());
+        expected.remove(DatabaseDescriptor.createMain(false).getBroadcastAddress());
         // remove remote endpoints
         TokenMetadata.Topology topology = tmd.cloneOnlyTokenMap().getTopology();
-        HashSet<InetAddress> localEndpoints = Sets.newHashSet(topology.getDatacenterEndpoints().get(DatabaseDescriptor.instance.getLocalDataCenter()));
+        HashSet<InetAddress> localEndpoints = Sets.newHashSet(topology.getDatacenterEndpoints().get(DatabaseDescriptor.createMain(false).getLocalDataCenter()));
         expected = Sets.intersection(expected, localEndpoints);
 
         Collection<Range<Token>> ranges = databaseDescriptor.getLocatorConfig().getLocalRanges(keyspaceName);
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
-            neighbors.addAll(databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, range, Arrays.asList(DatabaseDescriptor.instance.getLocalDataCenter()), null));
+            neighbors.addAll(databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, range, Arrays.asList(DatabaseDescriptor.createMain(false).getLocalDataCenter()), null));
         }
         assertEquals(expected, neighbors);
     }
@@ -204,21 +204,21 @@ public abstract class AntiEntropyServiceTestAbstract
         addTokens(2 * databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
         AbstractReplicationStrategy ars = databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy();
         Set<InetAddress> expected = new HashSet<InetAddress>();
-        for (Range<Token> replicaRange : ars.getAddressRanges().get(DatabaseDescriptor.instance.getBroadcastAddress()))
+        for (Range<Token> replicaRange : ars.getAddressRanges().get(DatabaseDescriptor.createMain(false).getBroadcastAddress()))
         {
             expected.addAll(ars.getRangeAddresses(tmd.cloneOnlyTokenMap()).get(replicaRange));
         }
-        expected.remove(DatabaseDescriptor.instance.getBroadcastAddress());
+        expected.remove(DatabaseDescriptor.createMain(false).getBroadcastAddress());
         // remove remote endpoints
         TokenMetadata.Topology topology = tmd.cloneOnlyTokenMap().getTopology();
-        HashSet<InetAddress> localEndpoints = Sets.newHashSet(topology.getDatacenterEndpoints().get(DatabaseDescriptor.instance.getLocalDataCenter()));
+        HashSet<InetAddress> localEndpoints = Sets.newHashSet(topology.getDatacenterEndpoints().get(DatabaseDescriptor.createMain(false).getLocalDataCenter()));
         expected = Sets.intersection(expected, localEndpoints);
         
         Collection<Range<Token>> ranges = databaseDescriptor.getLocatorConfig().getLocalRanges(keyspaceName);
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
-            neighbors.addAll(databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, range, Arrays.asList(DatabaseDescriptor.instance.getLocalDataCenter()), null));
+            neighbors.addAll(databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, range, Arrays.asList(DatabaseDescriptor.createMain(false).getLocalDataCenter()), null));
         }
         assertEquals(expected, neighbors);
     }
@@ -232,13 +232,13 @@ public abstract class AntiEntropyServiceTestAbstract
         addTokens(2 * databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
         AbstractReplicationStrategy ars = databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy();
         List<InetAddress> expected = new ArrayList<>();
-        for (Range<Token> replicaRange : ars.getAddressRanges().get(DatabaseDescriptor.instance.getBroadcastAddress()))
+        for (Range<Token> replicaRange : ars.getAddressRanges().get(DatabaseDescriptor.createMain(false).getBroadcastAddress()))
         {
             expected.addAll(ars.getRangeAddresses(tmd.cloneOnlyTokenMap()).get(replicaRange));
         }
 
-        expected.remove(DatabaseDescriptor.instance.getBroadcastAddress());
-        Collection<String> hosts = Arrays.asList(DatabaseDescriptor.instance.getBroadcastAddress().getCanonicalHostName(),expected.get(0).getCanonicalHostName());
+        expected.remove(DatabaseDescriptor.createMain(false).getBroadcastAddress());
+        Collection<String> hosts = Arrays.asList(DatabaseDescriptor.createMain(false).getBroadcastAddress().getCanonicalHostName(),expected.get(0).getCanonicalHostName());
 
        assertEquals(expected.get(0), databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, databaseDescriptor.getLocatorConfig().getLocalRanges(keyspaceName).iterator().next(), null, hosts).iterator().next());
     }

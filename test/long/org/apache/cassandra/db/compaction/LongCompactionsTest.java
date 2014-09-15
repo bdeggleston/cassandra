@@ -48,7 +48,7 @@ public class LongCompactionsTest
     public static final String KEYSPACE1 = "Keyspace1";
     public static final String CF_STANDARD = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -122,7 +122,7 @@ public class LongCompactionsTest
 
         long start = System.nanoTime();
         final int gcBefore = (int) (System.currentTimeMillis() / 1000) - databaseDescriptor.getSchema().getCFMetaData(KEYSPACE1, "Standard1").getGcGraceSeconds();
-        new CompactionTask(store, sstables, gcBefore, false, DatabaseDescriptor.instance, databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService()).execute(null);
+        new CompactionTask(store, sstables, gcBefore, false, DatabaseDescriptor.createMain(false), databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService()).execute(null);
         System.out.println(String.format("%s: sstables=%d rowsper=%d colsper=%d: %d ms",
                                          this.getClass().getName(),
                                          sstableCount,
@@ -161,12 +161,12 @@ public class LongCompactionsTest
             }
             cfs.forceBlockingFlush();
             CompactionsTest.assertMaxTimestamp(cfs, maxTimestampExpected);
-            assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing()).size());
+            assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(cfs, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing()).size());
         }
 
         forceCompactions(cfs);
 
-        assertEquals(inserted.size(), Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing()).size());
+        assertEquals(inserted.size(), Util.getRangeSlice(cfs, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing()).size());
 
         // make sure max timestamp of compacted sstables is recorded properly after compaction.
         CompactionsTest.assertMaxTimestamp(cfs, maxTimestampExpected);

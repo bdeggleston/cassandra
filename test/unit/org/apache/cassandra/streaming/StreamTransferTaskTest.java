@@ -50,7 +50,7 @@ public class StreamTransferTaskTest
     public static final String KEYSPACE1 = "StreamTransferTaskTest";
     public static final String CF_STANDARD = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -68,11 +68,11 @@ public class StreamTransferTaskTest
         String ks = KEYSPACE1;
         String cf = "Standard1";
 
-        StreamSession session = new StreamSession(DatabaseDescriptor.instance.getBroadcastAddress(),
+        StreamSession session = new StreamSession(DatabaseDescriptor.createMain(false).getBroadcastAddress(),
                                                   null,
                                                   0,
-                                                  DatabaseDescriptor.instance.getBroadcastAddress(),
-                                                  DatabaseDescriptor.instance.getMaxStreamingRetries(),
+                                                  DatabaseDescriptor.createMain(false).getBroadcastAddress(),
+                                                  DatabaseDescriptor.createMain(false).getMaxStreamingRetries(),
                                                   databaseDescriptor.getSchema(),
                                                   databaseDescriptor.getKeyspaceManager(),
                                                   databaseDescriptor.getStreamManager(),

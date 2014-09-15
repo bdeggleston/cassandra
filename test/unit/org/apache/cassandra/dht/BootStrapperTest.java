@@ -48,12 +48,11 @@ import static org.junit.Assert.*;
 @RunWith(OrderedJUnit4ClassRunner.class)
 public class BootStrapperTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void setup() throws ConfigurationException
     {
-        DatabaseDescriptor.init();
         SchemaLoader.startGossiper();
         SchemaLoader.prepareServer();
         SchemaLoader.schemaDefinition("BootStrapperTest");
@@ -81,7 +80,7 @@ public class BootStrapperTest
 
         TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         assertEquals(numOldNodes, tmd.sortedTokens().size());
-        RangeStreamer s = new RangeStreamer(tmd, myEndpoint, "Bootstrap", DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getGossiper(), databaseDescriptor.getStreamManager(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getDBConfig());
+        RangeStreamer s = new RangeStreamer(tmd, myEndpoint, "Bootstrap", DatabaseDescriptor.createMain(false), databaseDescriptor.getSchema(), databaseDescriptor.getGossiper(), databaseDescriptor.getStreamManager(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getDBConfig());
         IFailureDetector mockFailureDetector = new IFailureDetector()
         {
             public boolean isAlive(InetAddress ep)

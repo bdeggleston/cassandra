@@ -49,8 +49,10 @@ public class StandaloneSplitter
         Options options = Options.parseArgs(args);
         try
         {
+
+            DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true);
             // load keyspace descriptions.
-            DatabaseDescriptor.instance.loadSchemas();
+            databaseDescriptor.loadSchemas();
 
             String ksName = null;
             String cfName = null;
@@ -104,7 +106,7 @@ public class StandaloneSplitter
             }
 
             // Do not load sstables since they might be broken
-            Keyspace keyspace = DatabaseDescriptor.instance.getKeyspaceManager().openWithoutSSTables(ksName);
+            Keyspace keyspace = databaseDescriptor.getKeyspaceManager().openWithoutSSTables(ksName);
             ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
 
             String snapshotName = "pre-split-" + System.currentTimeMillis();
@@ -114,7 +116,7 @@ public class StandaloneSplitter
             {
                 try
                 {
-                    SSTableReader sstable = DatabaseDescriptor.instance.getSSTableReaderFactory().openNoValidation(fn.getKey(), fn.getValue(), cfs.metadata);
+                    SSTableReader sstable = databaseDescriptor.getSSTableReaderFactory().openNoValidation(fn.getKey(), fn.getValue(), cfs.metadata);
                     sstables.add(sstable);
 
                     if (options.snapshot) {
@@ -138,7 +140,7 @@ public class StandaloneSplitter
             {
                 try
                 {
-                    new SSTableSplitter(cfs, sstable, options.sizeInMB, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getSystemKeyspace(), DatabaseDescriptor.instance.getStorageService(), DatabaseDescriptor.instance.getDBConfig()).split();
+                    new SSTableSplitter(cfs, sstable, options.sizeInMB, databaseDescriptor, databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getStorageService(), databaseDescriptor.getDBConfig()).split();
                 }
                 catch (Exception e)
                 {
@@ -147,7 +149,7 @@ public class StandaloneSplitter
                         e.printStackTrace(System.err);
                 }
             }
-            SSTableDeletingTask.waitForDeletions(DatabaseDescriptor.instance.getStorageServiceExecutors());
+            SSTableDeletingTask.waitForDeletions(databaseDescriptor.getStorageServiceExecutors());
             System.exit(0); // We need that to stop non daemonized threads
         }
         catch (Exception e)

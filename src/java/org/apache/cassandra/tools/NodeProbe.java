@@ -89,6 +89,8 @@ public class NodeProbe implements AutoCloseable
     private HintedHandOffManagerMBean hhProxy;
     private boolean failed;
 
+    private final DatabaseDescriptor databaseDescriptor;
+
     /**
      * Creates a NodeProbe using the specified JMX host, port, username, and password.
      *
@@ -96,7 +98,7 @@ public class NodeProbe implements AutoCloseable
      * @param port TCP port of the remote JMX agent
      * @throws IOException on connection failures
      */
-    public NodeProbe(String host, int port, String username, String password) throws IOException
+    public NodeProbe(String host, int port, String username, String password, DatabaseDescriptor databaseDescriptor) throws IOException
     {
         assert username != null && !username.isEmpty() && password != null && !password.isEmpty()
                : "neither username nor password can be blank";
@@ -105,6 +107,7 @@ public class NodeProbe implements AutoCloseable
         this.port = port;
         this.username = username;
         this.password = password;
+        this.databaseDescriptor = databaseDescriptor;
         connect();
     }
 
@@ -115,10 +118,11 @@ public class NodeProbe implements AutoCloseable
      * @param port TCP port of the remote JMX agent
      * @throws IOException on connection failures
      */
-    public NodeProbe(String host, int port) throws IOException
+    public NodeProbe(String host, int port, DatabaseDescriptor databaseDescriptor) throws IOException
     {
         this.host = host;
         this.port = port;
+        this.databaseDescriptor = databaseDescriptor;
         connect();
     }
 
@@ -128,10 +132,11 @@ public class NodeProbe implements AutoCloseable
      * @param host hostname or IP address of the JMX agent
      * @throws IOException on connection failures
      */
-    public NodeProbe(String host) throws IOException
+    public NodeProbe(String host, DatabaseDescriptor databaseDescriptor) throws IOException
     {
         this.host = host;
         this.port = defaultPort;
+        this.databaseDescriptor = databaseDescriptor;
         connect();
     }
 
@@ -166,7 +171,7 @@ public class NodeProbe implements AutoCloseable
             fdProxy = JMX.newMBeanProxy(mbeanServerConn, name, FailureDetectorMBean.class);
             name = new ObjectName(CacheService.MBEAN_NAME);
             cacheService = JMX.newMBeanProxy(mbeanServerConn, name, CacheServiceMBean.class);
-            name = new ObjectName(DatabaseDescriptor.instance.getStorageProxy().MBEAN_NAME);
+            name = new ObjectName(databaseDescriptor.getStorageProxy().MBEAN_NAME);
             spProxy = JMX.newMBeanProxy(mbeanServerConn, name, StorageProxyMBean.class);
             name = new ObjectName(HintedHandOffManager.MBEAN_NAME);
             hhProxy = JMX.newMBeanProxy(mbeanServerConn, name, HintedHandOffManagerMBean.class);

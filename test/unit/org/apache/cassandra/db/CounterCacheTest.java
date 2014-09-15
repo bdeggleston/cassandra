@@ -43,7 +43,7 @@ public class CounterCacheTest
     private static final String KEYSPACE1 = "CounterCacheTest";
     private static final String CF = "Counter1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

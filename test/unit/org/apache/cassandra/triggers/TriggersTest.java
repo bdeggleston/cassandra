@@ -63,12 +63,11 @@ public class TriggersTest
     private static String cfName = "test_table";
     private static String otherCf = "other_table";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void beforeTest() throws ConfigurationException
     {
-        DatabaseDescriptor.init();
         SchemaLoader.loadSchema();
     }
 
@@ -79,14 +78,14 @@ public class TriggersTest
         if (thriftServer == null || ! thriftServer.isRunning())
         {
             thriftServer = new ThriftServer(InetAddress.getLocalHost(), 9170, 50,
-                                            DatabaseDescriptor.instance, databaseDescriptor.getTracing(),
+                                            DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(),
                                             databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), databaseDescriptor.getStorageProxy(),
                                             databaseDescriptor.getMessagingService(), databaseDescriptor.getKeyspaceManager(),
                                             databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
                                             databaseDescriptor.getStorageService(), databaseDescriptor.getCFMetaDataFactory(),
-                                            DatabaseDescriptor.instance.getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
-                                            DatabaseDescriptor.instance.getQueryHandler(), databaseDescriptor.getLocatorConfig(),
-                                            databaseDescriptor.getDBConfig(), new ThriftSessionManager(DatabaseDescriptor.instance),
+                                            DatabaseDescriptor.createMain(false).getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
+                                            DatabaseDescriptor.createMain(false).getQueryHandler(), databaseDescriptor.getLocatorConfig(),
+                                            databaseDescriptor.getDBConfig(), new ThriftSessionManager(DatabaseDescriptor.createMain(false)),
                                             ClientMetrics.instance);
             thriftServer.start();
         }

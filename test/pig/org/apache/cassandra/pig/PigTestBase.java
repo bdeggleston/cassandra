@@ -70,7 +70,7 @@ public class PigTestBase extends SchemaLoader
                                                "&native_read_timeout=10000000&send_buff_size=4096&receive_buff_size=4096&solinger=3" +
                                                "&tcp_nodelay=true&reuse_address=true&keep_alive=true&native_port=9052";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     static
     {
@@ -138,7 +138,7 @@ public class PigTestBase extends SchemaLoader
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
 
         // checking if we can connect to the running cassandra node on localhost
-        CliMain.connect("127.0.0.1", 9170);
+        CliMain.connect("127.0.0.1", 9170, databaseDescriptor);
 
         // setting new output stream
         CliMain.sessionState.setOut(new PrintStream(outStream));

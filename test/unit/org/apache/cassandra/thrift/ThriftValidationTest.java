@@ -48,7 +48,7 @@ public class ThriftValidationTest
     public static final String CF_UUID = "UUIDKeys";
     public static final String CF_STANDARDLONG3 = "StandardLong3";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException, IOException, TException

@@ -52,16 +52,17 @@ public class StandaloneScrubber
         Options options = Options.parseArgs(args);
         try
         {
+            DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true);
             // load keyspace descriptions.
-            DatabaseDescriptor.instance.loadSchemas();
+            databaseDescriptor.loadSchemas();
 
-            if (DatabaseDescriptor.instance.getSchema().getCFMetaData(options.keyspaceName, options.cfName) == null)
+            if (databaseDescriptor.getSchema().getCFMetaData(options.keyspaceName, options.cfName) == null)
                 throw new IllegalArgumentException(String.format("Unknown keyspace/table %s.%s",
                                                                  options.keyspaceName,
                                                                  options.cfName));
 
             // Do not load sstables since they might be broken
-            Keyspace keyspace = DatabaseDescriptor.instance.getKeyspaceManager().openWithoutSSTables(options.keyspaceName);
+            Keyspace keyspace = databaseDescriptor.getKeyspaceManager().openWithoutSSTables(options.keyspaceName);
             ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(options.cfName);
             String snapshotName = "pre-scrub-" + System.currentTimeMillis();
 
@@ -79,7 +80,7 @@ public class StandaloneScrubber
 
                 try
                 {
-                    SSTableReader sstable = DatabaseDescriptor.instance.getSSTableReaderFactory().openNoValidation(entry.getKey(), components, cfs.metadata);
+                    SSTableReader sstable = databaseDescriptor.getSSTableReaderFactory().openNoValidation(entry.getKey(), components, cfs.metadata);
                     sstables.add(sstable);
 
                     File snapshotDirectory = Directories.getSnapshotDirectory(sstable.descriptor, snapshotName);
@@ -100,7 +101,7 @@ public class StandaloneScrubber
             if (cfs.getCompactionStrategy() instanceof LeveledCompactionStrategy)
             {
                 int maxSizeInMB = (int)((cfs.getCompactionStrategy().getMaxSSTableBytes()) / (1024L * 1024L));
-                manifest = LeveledManifest.create(cfs, maxSizeInMB, sstables, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getLocatorConfig());
+                manifest = LeveledManifest.create(cfs, maxSizeInMB, sstables, databaseDescriptor, databaseDescriptor.getLocatorConfig());
             }
 
             if (!options.manifestCheckOnly)
@@ -109,7 +110,7 @@ public class StandaloneScrubber
                 {
                     try
                     {
-                        Scrubber scrubber = new Scrubber(cfs, sstable, DatabaseDescriptor.instance.getCompactionManager(), options.skipCorrupted, handler, true, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getDBConfig(), DatabaseDescriptor.instance.getStorageService());
+                        Scrubber scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), options.skipCorrupted, handler, true, databaseDescriptor, databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
                         try
                         {
                             scrubber.scrub();
@@ -135,7 +136,7 @@ public class StandaloneScrubber
             if (manifest != null)
                 checkManifest(manifest);
 
-            SSTableDeletingTask.waitForDeletions(DatabaseDescriptor.instance.getStorageServiceExecutors());
+            SSTableDeletingTask.waitForDeletions(databaseDescriptor.getStorageServiceExecutors());
             System.exit(0); // We need that to stop non daemonized threads
         }
         catch (Exception e)

@@ -73,7 +73,7 @@ public class SSTableImportTest
     public static final String CF_COUNTER = "Counter1";
     public static final String CQL_TABLE = "table1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException, IOException, TException
@@ -94,11 +94,11 @@ public class SSTableImportTest
         // Import JSON to temp SSTable file
         String jsonUrl = resourcePath("SimpleCF.json");
         File tempSS = tempSSTableFile(KEYSPACE1, "Standard1");
-        new SSTableImport(true).importJson(jsonUrl, KEYSPACE1, "Standard1", tempSS.getPath());
+        new SSTableImport(true, databaseDescriptor).importJson(jsonUrl, KEYSPACE1, "Standard1", tempSS.getPath());
 
         // Verify results
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
-        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter = qf.getSSTableColumnIterator(reader);
         ColumnFamily cf = cloneForAdditions(iter);
         while (iter.hasNext()) cf.addAtom(iter.next());
@@ -128,10 +128,10 @@ public class SSTableImportTest
         String jsonUrl = resourcePath("UnsortedCF.json");
         File tempSS = tempSSTableFile(KEYSPACE1, "Standard1");
 
-        new SSTableImport().importJson(jsonUrl, KEYSPACE1, "Standard1", tempSS.getPath());
+        new SSTableImport(databaseDescriptor).importJson(jsonUrl, KEYSPACE1, "Standard1", tempSS.getPath());
 
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
-        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter = qf.getSSTableColumnIterator(reader);
         ColumnFamily cf = cloneForAdditions(iter);
         while (iter.hasNext())
@@ -150,11 +150,11 @@ public class SSTableImportTest
         // Import JSON to temp SSTable file
         String jsonUrl = resourcePath("SimpleCFWithDeletionInfo.json");
         File tempSS = tempSSTableFile(KEYSPACE1, "Standard1");
-        new SSTableImport(true).importJson(jsonUrl, KEYSPACE1, "Standard1", tempSS.getPath());
+        new SSTableImport(true, databaseDescriptor).importJson(jsonUrl, KEYSPACE1, "Standard1", tempSS.getPath());
 
         // Verify results
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
-        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter = qf.getSSTableColumnIterator(reader);
         ColumnFamily cf = cloneForAdditions(iter);
         assertEquals(cf.deletionInfo(), new DeletionInfo(0, 0));
@@ -174,11 +174,11 @@ public class SSTableImportTest
         // Import JSON to temp SSTable file
         String jsonUrl = resourcePath("CounterCF.json");
         File tempSS = tempSSTableFile(KEYSPACE1, "Counter1");
-        new SSTableImport(true).importJson(jsonUrl, KEYSPACE1, "Counter1", tempSS.getPath());
+        new SSTableImport(true, databaseDescriptor).importJson(jsonUrl, KEYSPACE1, "Counter1", tempSS.getPath());
 
         // Verify results
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
-        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Counter1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Counter1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter = qf.getSSTableColumnIterator(reader);
         ColumnFamily cf = cloneForAdditions(iter);
         while (iter.hasNext()) cf.addAtom(iter.next());
@@ -193,15 +193,15 @@ public class SSTableImportTest
         // Import JSON to temp SSTable file
         String jsonUrl = resourcePath("SimpleCF.json");
         File tempSS = tempSSTableFile(KEYSPACE1, "AsciiKeys");
-        new SSTableImport(true).importJson(jsonUrl, KEYSPACE1, "AsciiKeys", tempSS.getPath());
+        new SSTableImport(true, databaseDescriptor).importJson(jsonUrl, KEYSPACE1, "AsciiKeys", tempSS.getPath());
 
         // Verify results
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
         // check that keys are treated as ascii
-        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("726f7741", AsciiType.instance, databaseDescriptor), "AsciiKeys", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("726f7741", AsciiType.instance, databaseDescriptor), "AsciiKeys", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter = qf.getSSTableColumnIterator(reader);
         assert iter.hasNext(); // "ascii" key exists
-        QueryFilter qf2 = QueryFilter.getIdentityFilter(Util.dk("726f7741", BytesType.instance, databaseDescriptor), "AsciiKeys", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf2 = QueryFilter.getIdentityFilter(Util.dk("726f7741", BytesType.instance, databaseDescriptor), "AsciiKeys", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter2 = qf2.getSSTableColumnIterator(reader);
         assert !iter2.hasNext(); // "bytes" key does not exist
     }
@@ -214,12 +214,12 @@ public class SSTableImportTest
         File tempSS = tempSSTableFile(KEYSPACE1, "AsciiKeys");
         // To ignore current key validator
         System.setProperty("skip.key.validator", "true");
-        new SSTableImport(true).importJson(jsonUrl, KEYSPACE1, "AsciiKeys", tempSS.getPath());
+        new SSTableImport(true, databaseDescriptor).importJson(jsonUrl, KEYSPACE1, "AsciiKeys", tempSS.getPath());
 
         // Verify results
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
         // check that keys are treated as bytes
-        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "AsciiKeys", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "AsciiKeys", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter = qf.getSSTableColumnIterator(reader);
         assert iter.hasNext(); // "bytes" key exists
     }
@@ -233,7 +233,7 @@ public class SSTableImportTest
     {
         String jsonUrl = resourcePath("CQLTable.json");
         File tempSS = tempSSTableFile(KEYSPACE1, CQL_TABLE);
-        new SSTableImport(true).importJson(jsonUrl, KEYSPACE1, CQL_TABLE, tempSS.getPath());
+        new SSTableImport(true, databaseDescriptor).importJson(jsonUrl, KEYSPACE1, CQL_TABLE, tempSS.getPath());
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
         databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CQL_TABLE).addSSTable(reader);
 
@@ -248,7 +248,7 @@ public class SSTableImportTest
     {
         String jsonUrl = resourcePath("CQLTable.json");
         File tempSS = tempSSTableFile("Keyspace1", "Counter1");
-        new SSTableImport(true).importJson(jsonUrl, "Keyspace1", "Counter1", tempSS.getPath());
+        new SSTableImport(true, databaseDescriptor).importJson(jsonUrl, "Keyspace1", "Counter1", tempSS.getPath());
     }
     
     private static Matcher<UntypedResultSet.Row> withElements(final int key, final String v1, final int v2) {

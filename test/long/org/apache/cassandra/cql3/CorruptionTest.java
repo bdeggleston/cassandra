@@ -57,7 +57,7 @@ public class CorruptionTest extends SchemaLoader
     private static String VALUE;
     private final int THREADPOOL_SIZE=40;
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass()
     public static void setup() throws ConfigurationException, IOException
@@ -69,7 +69,7 @@ public class CorruptionTest extends SchemaLoader
 
         cluster = Cluster.builder().addContactPoint("127.0.0.1")
                          .withRetryPolicy(new LoggingRetryPolicy(Policies.defaultRetryPolicy()))
-                         .withPort(DatabaseDescriptor.instance.getNativeTransportPort()).build();
+                         .withPort(DatabaseDescriptor.createMain(false).getNativeTransportPort()).build();
         session = cluster.connect();
 
         session.execute("CREATE KEYSPACE IF NOT EXISTS " + KEYSPACE +" WITH replication " +

@@ -43,11 +43,10 @@ import static org.junit.Assert.*;
 
 public class MerkleTreeTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
     static
     {
         System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
-        DatabaseDescriptor.init();
         assert databaseDescriptor.getLocatorConfig().getPartitioner() instanceof RandomPartitioner;
     }
 

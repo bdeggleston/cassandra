@@ -37,22 +37,22 @@ public class StandaloneUpgrader
     private static final String DEBUG_OPTION  = "debug";
     private static final String HELP_OPTION  = "help";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     public static void main(String args[])
     {
         Options options = Options.parseArgs(args);
         try
         {
+            DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true);
             // load keyspace descriptions.
-            DatabaseDescriptor.instance.loadSchemas();
+            databaseDescriptor.loadSchemas();
 
             if (databaseDescriptor.getSchema().getCFMetaData(options.keyspace, options.cf) == null)
                 throw new IllegalArgumentException(String.format("Unknown keyspace/table %s.%s",
                                                                  options.keyspace,
                                                                  options.cf));
 
-            Keyspace keyspace = DatabaseDescriptor.instance.getKeyspaceManager().openWithoutSSTables(options.keyspace);
+            Keyspace keyspace = databaseDescriptor.getKeyspaceManager().openWithoutSSTables(options.keyspace);
             ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(options.cf);
 
             OutputHandler handler = new OutputHandler.SystemOutput(false, options.debug);
@@ -73,7 +73,7 @@ public class StandaloneUpgrader
 
                 try
                 {
-                    SSTableReader sstable = DatabaseDescriptor.instance.getSSTableReaderFactory().openNoValidation(entry.getKey(), components, cfs.metadata);
+                    SSTableReader sstable = databaseDescriptor.getSSTableReaderFactory().openNoValidation(entry.getKey(), components, cfs.metadata);
                     if (sstable.descriptor.version.equals(Descriptor.Version.CURRENT))
                         continue;
                     readers.add(sstable);
@@ -95,7 +95,7 @@ public class StandaloneUpgrader
             {
                 try
                 {
-                    Upgrader upgrader = new Upgrader(cfs, sstable, handler, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getDBConfig(), DatabaseDescriptor.instance.getStorageService());
+                    Upgrader upgrader = new Upgrader(cfs, sstable, handler, databaseDescriptor, databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
                     upgrader.upgrade();
                 }
                 catch (Exception e)
@@ -106,7 +106,7 @@ public class StandaloneUpgrader
                 }
             }
 
-            SSTableDeletingTask.waitForDeletions(DatabaseDescriptor.instance.getStorageServiceExecutors());
+            SSTableDeletingTask.waitForDeletions(databaseDescriptor.getStorageServiceExecutors());
             System.exit(0);
         }
         catch (Exception e)

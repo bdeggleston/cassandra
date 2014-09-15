@@ -27,10 +27,6 @@ import java.util.*;
 import com.datastax.driver.core.Metadata;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.EncryptionOptions;
-import org.apache.cassandra.db.DBConfig;
-import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.stress.util.JavaDriverClient;
 import org.apache.cassandra.stress.util.SimpleThriftClient;
 import org.apache.cassandra.stress.util.SmartThriftClient;
@@ -55,8 +51,9 @@ public class StressSettings implements Serializable
     public final SettingsTransport transport;
     public final SettingsPort port;
     public final String sendToDaemon;
+    private final DatabaseDescriptor databaseDescriptor;
 
-    public StressSettings(SettingsCommand command, SettingsRate rate, SettingsKey keys, SettingsColumn columns, SettingsLog log, SettingsMode mode, SettingsNode node, SettingsSchema schema, SettingsTransport transport, SettingsPort port, String sendToDaemon)
+    public StressSettings(SettingsCommand command, SettingsRate rate, SettingsKey keys, SettingsColumn columns, SettingsLog log, SettingsMode mode, SettingsNode node, SettingsSchema schema, SettingsTransport transport, SettingsPort port, String sendToDaemon, DatabaseDescriptor databaseDescriptor)
     {
         this.command = command;
         this.rate = rate;
@@ -69,6 +66,7 @@ public class StressSettings implements Serializable
         this.transport = transport;
         this.port = port;
         this.sendToDaemon = sendToDaemon;
+        this.databaseDescriptor = databaseDescriptor;
     }
 
     private SmartThriftClient tclient;
@@ -147,23 +145,23 @@ public class StressSettings implements Serializable
         try
         {
             String currentNode = node.randomNode();
-            SimpleClient client = new SimpleClient(currentNode, port.nativePort, Message.Type.getCodecMap(DatabaseDescriptor.instance,
-                                                                                                          DatabaseDescriptor.instance.getTracing(),
-                                                                                                          DatabaseDescriptor.instance.getSchema(),
-                                                                                                          DatabaseDescriptor.instance.getAuth().getAuthenticator(),
-                                                                                                          DatabaseDescriptor.instance.getQueryHandler(),
-                                                                                                          DatabaseDescriptor.instance.getQueryProcessor(),
-                                                                                                          DatabaseDescriptor.instance.getKeyspaceManager(),
-                                                                                                          DatabaseDescriptor.instance.getStorageProxy(),
-                                                                                                          DatabaseDescriptor.instance.getMutationFactory(),
-                                                                                                          DatabaseDescriptor.instance.getCounterMutationFactory(),
-                                                                                                          DatabaseDescriptor.instance.getMessagingService(),
-                                                                                                          DatabaseDescriptor.instance.getDBConfig(),
-                                                                                                          DatabaseDescriptor.instance.getLocatorConfig()),
-                                                   DatabaseDescriptor.instance,
-                                                   DatabaseDescriptor.instance.getTracing(),
-                                                   DatabaseDescriptor.instance.getAuth(),
-                                                   DatabaseDescriptor.instance.getQueryHandler());
+            SimpleClient client = new SimpleClient(currentNode, port.nativePort, Message.Type.getCodecMap(databaseDescriptor,
+                                                                                                          databaseDescriptor.getTracing(),
+                                                                                                          databaseDescriptor.getSchema(),
+                                                                                                          databaseDescriptor.getAuth().getAuthenticator(),
+                                                                                                          databaseDescriptor.getQueryHandler(),
+                                                                                                          databaseDescriptor.getQueryProcessor(),
+                                                                                                          databaseDescriptor.getKeyspaceManager(),
+                                                                                                          databaseDescriptor.getStorageProxy(),
+                                                                                                          databaseDescriptor.getMutationFactory(),
+                                                                                                          databaseDescriptor.getCounterMutationFactory(),
+                                                                                                          databaseDescriptor.getMessagingService(),
+                                                                                                          databaseDescriptor.getDBConfig(),
+                                                                                                          databaseDescriptor.getLocatorConfig()),
+                                                   databaseDescriptor,
+                                                   databaseDescriptor.getTracing(),
+                                                   databaseDescriptor.getAuth(),
+                                                   databaseDescriptor.getQueryHandler());
             client.connect(false);
             client.execute("USE \"" + schema.keyspace + "\";", org.apache.cassandra.db.ConsistencyLevel.ONE);
             return client;
@@ -266,7 +264,7 @@ public class StressSettings implements Serializable
             }
             System.exit(1);
         }
-        return new StressSettings(command, rate, keys, columns, log, mode, node, schema, transport, port, sendToDaemon);
+        return new StressSettings(command, rate, keys, columns, log, mode, node, schema, transport, port, sendToDaemon, DatabaseDescriptor.createMain(false));
     }
 
     private static Map<String, String[]> parseMap(String[] args)

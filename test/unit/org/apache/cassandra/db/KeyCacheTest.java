@@ -52,7 +52,7 @@ public class KeyCacheTest
     private static final String COLUMN_FAMILY1 = "Standard1";
     private static final String COLUMN_FAMILY2 = "Standard2";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -158,7 +158,7 @@ public class KeyCacheTest
                                                        false,
                                                        10,
                                                        System.currentTimeMillis(),
-                                                       DatabaseDescriptor.instance,
+                                                       DatabaseDescriptor.createMain(false),
                                                        databaseDescriptor.getTracing(),
                                                        databaseDescriptor.getDBConfig()));
 
@@ -169,7 +169,7 @@ public class KeyCacheTest
                                                        false,
                                                        10,
                                                        System.currentTimeMillis(),
-                                                       DatabaseDescriptor.instance,
+                                                       DatabaseDescriptor.createMain(false),
                                                        databaseDescriptor.getTracing(),
                                                        databaseDescriptor.getDBConfig()));
 
@@ -202,7 +202,7 @@ public class KeyCacheTest
                                                        false,
                                                        10,
                                                        System.currentTimeMillis(),
-                                                       DatabaseDescriptor.instance,
+                                                       DatabaseDescriptor.createMain(false),
                                                        databaseDescriptor.getTracing(),
                                                        databaseDescriptor.getDBConfig()));
 
@@ -213,7 +213,7 @@ public class KeyCacheTest
                                                        false,
                                                        10,
                                                        System.currentTimeMillis(),
-                                                       DatabaseDescriptor.instance,
+                                                       DatabaseDescriptor.createMain(false),
                                                        databaseDescriptor.getTracing(),
                                                        databaseDescriptor.getDBConfig()));
 

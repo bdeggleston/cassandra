@@ -162,11 +162,15 @@ public class CliClient
     private ConsistencyLevel consistencyLevel = ConsistencyLevel.ONE;
     private final CfAssumptions assumptions = new CfAssumptions();
     private CliUserHelp help;
-    public CliClient(CliSessionState cliSessionState, Cassandra.Client thriftClient)
+
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public CliClient(CliSessionState cliSessionState, Cassandra.Client thriftClient, DatabaseDescriptor databaseDescriptor)
     {
         this.sessionState = cliSessionState;
         this.thriftClient = thriftClient;
         this.cfKeysComparators = new HashMap<String, AbstractType<?>>();
+        this.databaseDescriptor = databaseDescriptor;
         assumptions.readAssumptions();
     }
 
@@ -1236,7 +1240,7 @@ public class CliClient
             // adding default data center from SimpleSnitch
             if (currentStrategyOptions == null || currentStrategyOptions.isEmpty())
             {
-                SimpleSnitch snitch = new SimpleSnitch(DatabaseDescriptor.instance.getLocatorConfig());
+                SimpleSnitch snitch = new SimpleSnitch(databaseDescriptor.getLocatorConfig());
                 Map<String, String> options = new HashMap<String, String>();
                 try
                 {
@@ -2391,7 +2395,7 @@ public class CliClient
             sessionState.password = CliUtils.unescapeSQLString(statement.getChild(3).getText());
         }
 
-        CliMain.connect(sessionState.hostName, sessionState.thriftPort);
+        CliMain.connect(sessionState.hostName, sessionState.thriftPort, databaseDescriptor);
     }
 
     /**

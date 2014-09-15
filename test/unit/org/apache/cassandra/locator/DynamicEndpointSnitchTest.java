@@ -34,13 +34,7 @@ import static org.junit.Assert.assertEquals;
 
 public class DynamicEndpointSnitchTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
-
-    @BeforeClass
-    public static void setUpClass()
-    {
-        DatabaseDescriptor.init();
-    }
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     private static void setScores(DynamicEndpointSnitch dsnitch,  int rounds, List<InetAddress> hosts, Integer... scores) throws InterruptedException
     {
@@ -60,7 +54,7 @@ public class DynamicEndpointSnitchTest
         SimpleSnitch ss = new SimpleSnitch(databaseDescriptor.getLocatorConfig());
         DynamicEndpointSnitch dsnitch = new DynamicEndpointSnitch(ss, databaseDescriptor.getLocatorConfig(), String.valueOf(ss.hashCode()));
         dsnitch.gossiperStarting();
-        InetAddress self = DatabaseDescriptor.instance.getBroadcastAddress();
+        InetAddress self = DatabaseDescriptor.createMain(false).getBroadcastAddress();
         InetAddress host1 = InetAddress.getByName("127.0.0.2");
         InetAddress host2 = InetAddress.getByName("127.0.0.3");
         InetAddress host3 = InetAddress.getByName("127.0.0.4");

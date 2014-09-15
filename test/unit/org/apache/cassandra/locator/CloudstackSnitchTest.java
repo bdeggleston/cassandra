@@ -40,7 +40,7 @@ public class CloudstackSnitchTest
 {
     private static String az;
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void setup() throws Exception

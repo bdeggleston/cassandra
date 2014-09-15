@@ -39,7 +39,7 @@ public class RemoveColumnFamilyWithFlush1Test
     private static final String KEYSPACE1 = "RemoveColumnFamilyWithFlush1Test";
     private static final String CF_STANDARD1 = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -71,7 +71,7 @@ public class RemoveColumnFamilyWithFlush1Test
         rm.delete("Standard1", 1);
         rm.applyUnsafe();
 
-        ColumnFamily retrieved = store.getColumnFamily(QueryFilter.getIdentityFilter(dk, "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+        ColumnFamily retrieved = store.getColumnFamily(QueryFilter.getIdentityFilter(dk, "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         assert retrieved.isMarkedForDelete();
         assertNull(retrieved.getColumn(Util.cellname("Column1")));
         assertNull(Util.cloneAndRemoveDeleted(retrieved, Integer.MAX_VALUE));

@@ -56,14 +56,13 @@ public class RemoveTest
     InetAddress removalhost;
     UUID removalId;
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void setupClass() throws ConfigurationException
     {
         System.setProperty("cassandra.ring_delay_ms", "2000");
         System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
-        DatabaseDescriptor.init();
         SchemaLoader.loadSchema();
         assert databaseDescriptor.getLocatorConfig().getPartitioner() instanceof RandomPartitioner;
     }
@@ -78,7 +77,7 @@ public class RemoveTest
         // create a ring of 5 nodes
         Util.createInitialRing(ss, databaseDescriptor.getLocatorConfig().getPartitioner(), endpointTokens, keyTokens, hosts, hostIds, 6, databaseDescriptor);
 
-        databaseDescriptor.getMessagingService().listen(DatabaseDescriptor.instance.getBroadcastAddress());
+        databaseDescriptor.getMessagingService().listen(DatabaseDescriptor.createMain(false).getBroadcastAddress());
         databaseDescriptor.getGossiper().start(1);
         removalhost = hosts.get(5);
         hosts.remove(removalhost);
@@ -140,7 +139,7 @@ public class RemoveTest
         for (InetAddress host : hosts)
         {
             MessageOut msg = new MessageOut(databaseDescriptor.getMessagingService(), host, MessagingService.Verb.REPLICATION_FINISHED, null, null, Collections.<String, byte[]>emptyMap());
-            databaseDescriptor.getMessagingService().sendRR(msg, DatabaseDescriptor.instance.getBroadcastAddress());
+            databaseDescriptor.getMessagingService().sendRR(msg, DatabaseDescriptor.createMain(false).getBroadcastAddress());
         }
 
         remover.join();

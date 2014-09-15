@@ -39,6 +39,7 @@ import com.yammer.metrics.reporting.JmxReporter;
 import io.airlift.command.*;
 
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutorMBean;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStoreMBean;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.CompactionManagerMBean;
@@ -52,6 +53,7 @@ import org.apache.cassandra.streaming.SessionInfo;
 import org.apache.cassandra.streaming.StreamState;
 import org.apache.cassandra.utils.EstimatedHistogram;
 import org.apache.cassandra.utils.FBUtilities;
+import sun.plugin.dom.exception.InvalidStateException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -153,7 +155,9 @@ public class NodeTool
         int status = 0;
         try
         {
-            Runnable parse = parser.parse(args);
+            DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true);
+            NodeToolCmd parse = (NodeToolCmd) parser.parse(args);
+            parse.setDatabaseDescriptor(databaseDescriptor);
             printHistory(args);
             parse.run();
         } catch (IllegalArgumentException |
@@ -213,6 +217,13 @@ public class NodeTool
     public static abstract class NodeToolCmd implements Runnable
     {
 
+        private volatile DatabaseDescriptor databaseDescriptor;
+
+        public void setDatabaseDescriptor(DatabaseDescriptor databaseDescriptor)
+        {
+            this.databaseDescriptor = databaseDescriptor;
+        }
+
         @Option(type = OptionType.GLOBAL, name = {"-h", "--host"}, description = "Node hostname or ip address")
         private String host = "127.0.0.1";
 
@@ -231,6 +242,9 @@ public class NodeTool
         @Override
         public void run()
         {
+            if (databaseDescriptor == null)
+                throw new InvalidStateException("DatabaseDescriptor must be set");
+
             if (isNotEmpty(username)) {
                 if (isNotEmpty(passwordFilePath))
                     password = readUserPasswordFromFile(username, passwordFilePath);
@@ -297,9 +311,9 @@ public class NodeTool
             try
             {
                 if (username.isEmpty())
-                    nodeClient = new NodeProbe(host, parseInt(port));
+                    nodeClient = new NodeProbe(host, parseInt(port), databaseDescriptor);
                 else
-                    nodeClient = new NodeProbe(host, parseInt(port), username, password);
+                    nodeClient = new NodeProbe(host, parseInt(port), username, password, databaseDescriptor);
             } catch (IOException e)
             {
                 Throwable rootCause = Throwables.getRootCause(e);

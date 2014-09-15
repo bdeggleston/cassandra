@@ -22,12 +22,10 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
 
-import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -53,10 +51,12 @@ public class SSTableExport
     private static final Options options = new Options();
     private static CommandLine cmd;
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    private final DatabaseDescriptor databaseDescriptor;
 
-    static
+    public SSTableExport(DatabaseDescriptor databaseDescriptor)
     {
+        this.databaseDescriptor = databaseDescriptor;
+
         Option optKey = new Option(KEY_OPTION, true, "Row key");
         // Number of times -k <key> can be passed on the command line.
         optKey.setArgs(500);
@@ -79,7 +79,7 @@ public class SSTableExport
      *
      * @param out The PrintStream to be check
      */
-    private static void checkStream(PrintStream out) throws IOException
+    private void checkStream(PrintStream out) throws IOException
     {
         if (out.checkError())
             throw new IOException("Error writing output stream");
@@ -91,13 +91,13 @@ public class SSTableExport
      * @param out   The output steam to write data
      * @param value value to set as a key
      */
-    private static void writeKey(PrintStream out, String value)
+    private void writeKey(PrintStream out, String value)
     {
         writeJSON(out, value);
         out.print(": ");
     }
 
-    private static List<Object> serializeAtom(OnDiskAtom atom, CFMetaData cfMetaData)
+    private List<Object> serializeAtom(OnDiskAtom atom, CFMetaData cfMetaData)
     {
         if (atom instanceof Cell)
         {
@@ -134,7 +134,7 @@ public class SSTableExport
      * @param cfMetaData Column Family metadata (to get validator)
      * @return cell as serialized list
      */
-    private static List<Object> serializeColumn(Cell cell, CFMetaData cfMetaData)
+    private List<Object> serializeColumn(Cell cell, CFMetaData cfMetaData)
     {
         CellNameType comparator = cfMetaData.comparator;
         ArrayList<Object> serializedColumn = new ArrayList<Object>();
@@ -179,12 +179,12 @@ public class SSTableExport
      * @param key Decorated Key for the required row
      * @param out output stream
      */
-    private static void serializeRow(SSTableIdentityIterator row, DecoratedKey key, PrintStream out)
+    private void serializeRow(SSTableIdentityIterator row, DecoratedKey key, PrintStream out)
     {
         serializeRow(row.getColumnFamily().deletionInfo(), row, row.getColumnFamily().metadata(), key, out);
     }
 
-    private static void serializeRow(DeletionInfo deletionInfo, Iterator<OnDiskAtom> atoms, CFMetaData metadata, DecoratedKey key, PrintStream out)
+    private void serializeRow(DeletionInfo deletionInfo, Iterator<OnDiskAtom> atoms, CFMetaData metadata, DecoratedKey key, PrintStream out)
     {
         out.print("{");
         writeKey(out, "key");
@@ -225,7 +225,7 @@ public class SSTableExport
      * @param metadata Metadata to print keys in a proper format
      * @throws IOException on failure to read/write input/output
      */
-    public static void enumeratekeys(Descriptor desc, PrintStream outs, CFMetaData metadata, IPartitioner partitioner)
+    public void enumeratekeys(Descriptor desc, PrintStream outs, CFMetaData metadata, IPartitioner partitioner)
     throws IOException
     {
         KeyIterator iter = new KeyIterator(desc, partitioner);
@@ -261,7 +261,7 @@ public class SSTableExport
      * @param metadata Metadata to print keys in a proper format
      * @throws IOException on failure to read/write input/output
      */
-    public static void export(Descriptor desc, PrintStream outs, Collection<String> toExport, String[] excludes, CFMetaData metadata) throws IOException
+    public void export(Descriptor desc, PrintStream outs, Collection<String> toExport, String[] excludes, CFMetaData metadata) throws IOException
     {
         SSTableReader sstable = databaseDescriptor.getSSTableReaderFactory().open(desc);
         RandomAccessReader dfile = sstable.openDataReader();
@@ -316,7 +316,7 @@ public class SSTableExport
 
     // This is necessary to accommodate the test suite since you cannot open a Reader more
     // than once from within the same process.
-    static void export(SSTableReader reader, PrintStream outs, String[] excludes, CFMetaData metadata) throws IOException
+    void export(SSTableReader reader, PrintStream outs, String[] excludes, CFMetaData metadata) throws IOException
     {
         Set<String> excludeSet = new HashSet<String>();
 
@@ -367,7 +367,7 @@ public class SSTableExport
      * @param metadata Metadata to print keys in a proper format
      * @throws IOException on failure to read/write input/output
      */
-    public static void export(Descriptor desc, PrintStream outs, String[] excludes, CFMetaData metadata) throws IOException
+    public void export(Descriptor desc, PrintStream outs, String[] excludes, CFMetaData metadata) throws IOException
     {
         export(databaseDescriptor.getSSTableReaderFactory().open(desc), outs, excludes, metadata);
     }
@@ -380,7 +380,7 @@ public class SSTableExport
      * @param metadata Metadata to print keys in a proper format
      * @throws IOException on failure to read/write SSTable/standard out
      */
-    public static void export(Descriptor desc, String[] excludes, CFMetaData metadata) throws IOException
+    public void export(Descriptor desc, String[] excludes, CFMetaData metadata) throws IOException
     {
         export(desc, System.out, excludes, metadata);
     }
@@ -396,6 +396,8 @@ public class SSTableExport
     public static void main(String[] args) throws ConfigurationException
     {
         String usage = String.format("Usage: %s <sstable> [-k key [-k key [...]] -x key [-x key [...]]]%n", SSTableExport.class.getName());
+
+        DatabaseDescriptor dd = DatabaseDescriptor.createMain(true);
 
         CommandLineParser parser = new PosixParser();
         try
@@ -417,22 +419,24 @@ public class SSTableExport
             System.exit(1);
         }
 
+        SSTableExport ssTableExport = new SSTableExport(dd);
+
 
         String[] keys = cmd.getOptionValues(KEY_OPTION);
         String[] excludes = cmd.getOptionValues(EXCLUDEKEY_OPTION);
         String ssTableFileName = new File(cmd.getArgs()[0]).getAbsolutePath();
 
-        DatabaseDescriptor.instance.loadSchemas();
+        dd.loadSchemas();
         Descriptor descriptor = Descriptor.fromFilename(ssTableFileName);
 
         // Start by validating keyspace name
-        if (DatabaseDescriptor.instance.getSchema().getKSMetaData(descriptor.ksname) == null)
+        if (dd.getSchema().getKSMetaData(descriptor.ksname) == null)
         {
             System.err.println(String.format("Filename %s references to nonexistent keyspace: %s!",
                                              ssTableFileName, descriptor.ksname));
             System.exit(1);
         }
-        Keyspace keyspace = DatabaseDescriptor.instance.getKeyspaceManager().open(descriptor.ksname);
+        Keyspace keyspace = dd.getKeyspaceManager().open(descriptor.ksname);
 
         // Make it works for indexes too - find parent cf if necessary
         String baseName = descriptor.cfname;
@@ -459,14 +463,14 @@ public class SSTableExport
         {
             if (cmd.hasOption(ENUMERATEKEYS_OPTION))
             {
-                enumeratekeys(descriptor, System.out, cfStore.metadata, DatabaseDescriptor.instance.getLocatorConfig().getPartitioner());
+                ssTableExport.enumeratekeys(descriptor, System.out, cfStore.metadata, dd.getLocatorConfig().getPartitioner());
             }
             else
             {
                 if ((keys != null) && (keys.length > 0))
-                    export(descriptor, System.out, Arrays.asList(keys), excludes, cfStore.metadata);
+                    ssTableExport.export(descriptor, System.out, Arrays.asList(keys), excludes, cfStore.metadata);
                 else
-                    export(descriptor, excludes, cfStore.metadata);
+                    ssTableExport.export(descriptor, excludes, cfStore.metadata);
             }
         }
         catch (IOException e)
@@ -478,7 +482,7 @@ public class SSTableExport
         System.exit(0);
     }
 
-    private static void writeJSON(PrintStream out, Object value)
+    private void writeJSON(PrintStream out, Object value)
     {
         try
         {

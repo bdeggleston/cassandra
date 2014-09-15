@@ -53,7 +53,7 @@ public class EncodedStreamsTest
     private static final String CF_COUNTER = "Counter1";
     private int version = MessagingService.current_version;
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

@@ -32,9 +32,9 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class RangeTombstoneListTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
-    private static final Comparator<Composite> cmp = new SimpleDenseCellNameType(IntegerType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+    private static final Comparator<Composite> cmp = new SimpleDenseCellNameType(IntegerType.instance, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
     private static final Random rand = new Random();
 
     @Test

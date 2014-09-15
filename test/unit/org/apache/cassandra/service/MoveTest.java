@@ -53,7 +53,7 @@ public class MoveTest
     private static final String KEYSPACE3 = "MoveTestKeyspace3";
     private static final String KEYSPACE4 = "MoveTestKeyspace4";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     /*
      * NOTE: the tests above uses RandomPartitioner, which is not the default
@@ -65,7 +65,6 @@ public class MoveTest
     public static void setup() throws ConfigurationException
     {
         System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
-        DatabaseDescriptor.init();
         SchemaLoader.loadSchema();
         SchemaLoader.schemaDefinition("MoveTest");
     }

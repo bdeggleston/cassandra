@@ -49,13 +49,7 @@ public class OldNetworkTopologyStrategyTest
     private TokenMetadata tmd;
     private Map<String, ArrayList<InetAddress>> expectedResults;
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
-
-    @BeforeClass
-    public static void setUpClass()
-    {
-        DatabaseDescriptor.init();
-    }
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @Before
     public void init()

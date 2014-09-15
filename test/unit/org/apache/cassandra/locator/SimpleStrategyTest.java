@@ -47,7 +47,7 @@ public class SimpleStrategyTest
 {
     public static final String KEYSPACE1 = "SimpleStrategyTest";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws Exception

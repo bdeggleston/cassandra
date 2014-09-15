@@ -49,13 +49,12 @@ public class LeaveAndBootstrapTest
     private static final String KEYSPACE3 = "LeaveAndBootstrapTestKeyspace3";
     private static final String KEYSPACE4 = "LeaveAndBootstrapTestKeyspace4";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws Exception
     {
         System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
-        DatabaseDescriptor.init();
         SchemaLoader.loadSchema();
         SchemaLoader.schemaDefinition("LeaveAndBootstrapTest");
         assert databaseDescriptor.getLocatorConfig().getPartitioner() instanceof  RandomPartitioner;

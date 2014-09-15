@@ -81,8 +81,6 @@ public class DatabaseDescriptor
 {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseDescriptor.class);
 
-    public static final DatabaseDescriptor instance;
-
     /**
      * Tokens are serialized in a Gossip VersionedValue String.  VV are restricted to 64KB
      * when we send them over the wire, which works out to about 1700 tokens.
@@ -113,25 +111,25 @@ public class DatabaseDescriptor
 
     static
     {
-        DatabaseDescriptor databaseDescriptor = null;
-        try
-        {
-            databaseDescriptor = create();
-        }
-        catch (ConfigurationException e)
-        {
-            logger.error("Fatal configuration error", e);
-            System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
-            System.exit(1);
-        }
-        catch (Exception e)
-        {
-            logger.error("Fatal error during configuration loading", e);
-            System.err.println(e.getMessage() + "\nFatal error during configuration loading; unable to start. See log for stacktrace.");
-            System.exit(1);
-        }
+//        DatabaseDescriptor databaseDescriptor = null;
+//        try
+//        {
+//            databaseDescriptor = create();
+//        }
+//        catch (ConfigurationException e)
+//        {
+//            logger.error("Fatal configuration error", e);
+//            System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
+//            System.exit(1);
+//        }
+//        catch (Exception e)
+//        {
+//            logger.error("Fatal error during configuration loading", e);
+//            System.err.println(e.getMessage() + "\nFatal error during configuration loading; unable to start. See log for stacktrace.");
+//            System.exit(1);
+//        }
 
-        instance = databaseDescriptor;
+//        instance = databaseDescriptor;
 //        assert CFMetaDataFactory.instance != null;
 //        assert KSMetaDataFactory.instance != null;
 //        assert FailureDetector.instance != null;
@@ -142,7 +140,7 @@ public class DatabaseDescriptor
 //        assert KeyspaceManager.instance != null;
 //        assert MutationFactory.instance != null;
 //        assert MessagingService.instance != null;
-//        assert DatabaseDescriptor.instance != null;
+//        assert databaseDescriptor != null;
 //        assert SystemKeyspace.instance != null;
 //        assert StageManager.instance != null;
 //        assert Schema.instance != null;
@@ -172,9 +170,26 @@ public class DatabaseDescriptor
         return new DatabaseDescriptor(clientMode, conf);
     }
 
-    public static DatabaseDescriptor init()
+    public static DatabaseDescriptor createMain(boolean clientMode)
     {
-        return instance;
+        DatabaseDescriptor databaseDescriptor = null;
+        try
+        {
+            databaseDescriptor = DatabaseDescriptor.create(clientMode);
+        }
+        catch (ConfigurationException e)
+        {
+            logger.error("Fatal configuration error", e);
+            System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
+            System.exit(1);
+        }
+        catch (Exception e)
+        {
+            logger.error("Fatal error during configuration loading", e);
+            System.err.println(e.getMessage() + "\nFatal error during configuration loading; unable to start. See log for stacktrace.");
+            System.exit(1);
+        }
+        return databaseDescriptor;
     }
 
     public static Config loadConfig() throws ConfigurationException
@@ -248,37 +263,36 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        schema = createSchema();
         storageServiceExecutors = createStorageServiceExecutors();
-        sinkManager = createSinkManager();
-        storageService = createStorageService();
-        messagingService = createMessagingService();
-        pendingRangeCalculatorService = createPendingRangeCalculatorService();
-        locatorConfig = createLocatorConfig();
-        dbConfig = createDBConfig();
-        commitLog = createCommitLog();
-        loadBroadcaster = createLoadBroadcaster();
-        activeRepairService = createActiveRepairService();
-        storageProxy = createStorageProxy();
-        gossiper = createGossiper();
+
         cfMetaDataFactory = createCFMetaDataFactory();
         ksMetaDataFactory = createKSMetaDataFactory();
-        queryHandler = createQueryHandler();
+        failureDetector = createFailureDetector();
+        gossiper = createGossiper();
+        locatorConfig = createLocatorConfig();
+        tracing = createTracing();
+        stageManager = createStageManager();
+        storageProxy = createStorageProxy();
+        dbConfig = createDBConfig();
+        keyspaceManager = createKeyspaceManager();
         mutationFactory = createMutationFactory();
         counterMutationFactory = createCounterMutationFactory();
-        tracing = createTracing();
-        keyspaceManager = createKeyspaceManager();
-        streamManager = createStreamManager();
-        stageManager = createStageManager();
-        hintedHandOffManager = createHintedHandOffManager();
+        messagingService = createMessagingService();
+        systemKeyspace = createSystemKeyspace();
+        activeRepairService = createActiveRepairService();
         compactionManager = createCompactionManager();
+        defsTables = createDefsTables();
+
+        sinkManager = createSinkManager();
+        pendingRangeCalculatorService = createPendingRangeCalculatorService();
+        commitLog = createCommitLog();
+        loadBroadcaster = createLoadBroadcaster();
+        queryHandler = createQueryHandler();
+        streamManager = createStreamManager();
         auth = createAuth();
-        schema = createSchema();
         queryProcessor = createQueryProcessor();
         batchlogManager = createBatchlogManager();
-        columnFamilyStoreManager = createColumnFamilyStoreManager();
-        defsTables = createDefsTables();
-        systemKeyspace = createSystemKeyspace();
-        failureDetector = createFailureDetector();
         indexSummaryManager = createIndexSummaryManager();
         ssTableWriterFactory = createSSTableWriterFactory();
         ssTableReaderFactory = createSSTableReaderFactory();
@@ -289,8 +303,13 @@ public class DatabaseDescriptor
         triggerExecutor = createTriggerExecutor();
         statusLogger = createStatusLogger();
 
+        columnFamilyStoreManager = createColumnFamilyStoreManager();
+        storageService = createStorageService();
+
         cfMetaDataFactory.init();
         ksMetaDataFactory.init();
+
+        hintedHandOffManager = createHintedHandOffManager();
     }
 
     public Config getConfig()
@@ -1849,7 +1868,7 @@ public class DatabaseDescriptor
 
     public QueryHandler createQueryHandler() throws ConfigurationException
     {
-        QueryHandler handler = DatabaseDescriptor.instance.getQueryProcessor();
+        QueryHandler handler = getQueryProcessor();
         String customHandlerClass = System.getProperty("cassandra.custom_query_handler_class");
         if (customHandlerClass != null)
         {

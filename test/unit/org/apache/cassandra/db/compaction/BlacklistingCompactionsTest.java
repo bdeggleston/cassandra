@@ -50,7 +50,7 @@ public class BlacklistingCompactionsTest
     private static final String KEYSPACE1 = "BlacklistingCompactionsTest";
     private static final String CF_STANDARD1 = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -116,7 +116,7 @@ public class BlacklistingCompactionsTest
             }
             cfs.forceBlockingFlush();
             CompactionsTest.assertMaxTimestamp(cfs, maxTimestampExpected);
-            assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing()).size());
+            assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(cfs, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing()).size());
         }
 
         Collection<SSTableReader> sstables = cfs.getSSTables();

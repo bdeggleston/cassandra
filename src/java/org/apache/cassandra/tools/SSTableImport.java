@@ -26,7 +26,6 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.Option;
@@ -39,7 +38,6 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.dht.IPartitioner;
@@ -68,8 +66,6 @@ public class SSTableImport
 
     private Integer keyCountToImport;
     private final boolean isSorted;
-
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     private static final JsonFactory factory = new MappingJsonFactory().configure(
             JsonParser.Feature.INTERN_FIELD_NAMES, false);
@@ -183,20 +179,23 @@ public class SSTableImport
         }
     }
 
-    public SSTableImport()
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public SSTableImport(DatabaseDescriptor databaseDescriptor)
     {
-        this(null, false);
+        this(null, false, databaseDescriptor);
     }
 
-    public SSTableImport(boolean isSorted)
+    public SSTableImport(boolean isSorted, DatabaseDescriptor databaseDescriptor)
     {
-        this(null, isSorted);
+        this(null, isSorted, databaseDescriptor);
     }
 
-    public SSTableImport(Integer keyCountToImport, boolean isSorted)
+    public SSTableImport(Integer keyCountToImport, boolean isSorted, DatabaseDescriptor databaseDescriptor)
     {
         this.keyCountToImport = keyCountToImport;
         this.isSorted = isSorted;
+        this.databaseDescriptor = databaseDescriptor;
     }
 
     /**
@@ -283,8 +282,8 @@ public class SSTableImport
      */
     public int importJson(String jsonFile, String keyspace, String cf, String ssTablePath) throws IOException
     {
-        ColumnFamily columnFamily = ArrayBackedSortedColumns.factory.create(keyspace, cf, DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getDBConfig());
-        IPartitioner<?> partitioner = DatabaseDescriptor.instance.getLocatorConfig().getPartitioner();
+        ColumnFamily columnFamily = ArrayBackedSortedColumns.factory.create(keyspace, cf, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
+        IPartitioner<?> partitioner = databaseDescriptor.getLocatorConfig().getPartitioner();
 
         int importedKeys = (isSorted) ? importSorted(jsonFile, columnFamily, ssTablePath, partitioner)
                                       : importUnsorted(jsonFile, columnFamily, ssTablePath, partitioner);
@@ -503,8 +502,10 @@ public class SSTableImport
             isSorted = true;
         }
 
-        DatabaseDescriptor.instance.loadSchemas();
-        if (DatabaseDescriptor.instance.getSchema().getNonSystemKeyspaces().size() < 1)
+        DatabaseDescriptor dd = DatabaseDescriptor.createMain(true);
+
+        dd.loadSchemas();
+        if (dd.getSchema().getNonSystemKeyspaces().size() < 1)
         {
             String msg = "no non-system keyspaces are defined";
             System.err.println(msg);
@@ -513,7 +514,7 @@ public class SSTableImport
 
         try
         {
-           new SSTableImport(keyCountToImport, isSorted).importJson(json, keyspace, cfamily, ssTable);
+           new SSTableImport(keyCountToImport, isSorted, dd).importJson(json, keyspace, cfamily, ssTable);
         }
         catch (Exception e)
         {

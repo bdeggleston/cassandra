@@ -35,16 +35,9 @@ import static org.junit.Assert.fail;
 public abstract class PartitionerTestCase<T extends Token>
 {
     protected IPartitioner<T> partitioner;
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     public abstract void initPartitioner();
-
-    @BeforeClass
-    public static void setupClass()
-    {
-        DatabaseDescriptor.init();
-    }
-
     @Before
     public void clean()
     {

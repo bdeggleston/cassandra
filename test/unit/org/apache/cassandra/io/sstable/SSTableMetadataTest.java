@@ -58,7 +58,7 @@ public class SSTableMetadataTest
     public static final String CF_STANDARDCOMPOSITE2 = "StandardComposite2";
     public static final String CF_COUNTER1 = "Counter1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws Exception

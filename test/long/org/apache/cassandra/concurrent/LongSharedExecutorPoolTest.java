@@ -36,7 +36,7 @@ import org.junit.Test;
 
 public class LongSharedExecutorPoolTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     private static final class WaitTask implements Runnable
     {

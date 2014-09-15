@@ -252,20 +252,22 @@ public class Client extends SimpleClient
         ClientEncryptionOptions encryptionOptions = new ClientEncryptionOptions();
         System.out.println("CQL binary protocol console " + host + "@" + port);
 
-        Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
-                                                                           DatabaseDescriptor.instance.getTracing(),
-                                                                           DatabaseDescriptor.instance.getSchema(),
-                                                                           DatabaseDescriptor.instance.getAuth().getAuthenticator(),
-                                                                           DatabaseDescriptor.instance.getQueryHandler(),
-                                                                           DatabaseDescriptor.instance.getQueryProcessor(),
-                                                                           DatabaseDescriptor.instance.getKeyspaceManager(),
-                                                                           DatabaseDescriptor.instance.getStorageProxy(),
-                                                                           DatabaseDescriptor.instance.getMutationFactory(),
-                                                                           DatabaseDescriptor.instance.getCounterMutationFactory(),
-                                                                           DatabaseDescriptor.instance.getMessagingService(),
-                                                                           DatabaseDescriptor.instance.getDBConfig(),
-                                                                           DatabaseDescriptor.instance.getLocatorConfig());
-        new Client(host, port, encryptionOptions, codecs, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(), DatabaseDescriptor.instance.getAuth(), DatabaseDescriptor.instance.getQueryHandler()).run();
+        DatabaseDescriptor dd = DatabaseDescriptor.create();
+
+        Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(dd,
+                                                                           dd.getTracing(),
+                                                                           dd.getSchema(),
+                                                                           dd.getAuth().getAuthenticator(),
+                                                                           dd.getQueryHandler(),
+                                                                           dd.getQueryProcessor(),
+                                                                           dd.getKeyspaceManager(),
+                                                                           dd.getStorageProxy(),
+                                                                           dd.getMutationFactory(),
+                                                                           dd.getCounterMutationFactory(),
+                                                                           dd.getMessagingService(),
+                                                                           dd.getDBConfig(),
+                                                                           dd.getLocatorConfig());
+        new Client(host, port, encryptionOptions, codecs, dd, dd.getTracing(), dd.getAuth(), dd.getQueryHandler()).run();
         System.exit(0);
     }
 }

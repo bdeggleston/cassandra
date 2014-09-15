@@ -28,15 +28,9 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 public class InitClientTest // extends CleanupHelper
 {
 
-    @BeforeClass
-    public static void setUpClass()
-    {
-        DatabaseDescriptor.init();
-    }
-
     @Test
     public void testInitClientStartup() throws ConfigurationException
     {
-        DatabaseDescriptor.instance.getStorageService().initClient(0);
+        DatabaseDescriptor.createMain(false).getStorageService().initClient(0);
     }
 }

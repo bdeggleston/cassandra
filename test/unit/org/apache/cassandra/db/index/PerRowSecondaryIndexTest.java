@@ -66,7 +66,7 @@ public class PerRowSecondaryIndexTest
     private static final String KEYSPACE1 = "PerRowSecondaryIndexTest";
     private static final String CF_INDEXED = "Indexed1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -189,7 +189,7 @@ public class PerRowSecondaryIndexTest
         {
             QueryFilter filter = QueryFilter.getIdentityFilter(databaseDescriptor.getLocatorConfig().getPartitioner().decorateKey(rowKey),
                                                                baseCfs.getColumnFamilyName(),
-                                                               System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+                                                               System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
             LAST_INDEXED_ROW = cf;
             LAST_INDEXED_KEY = rowKey;
         }
@@ -223,7 +223,7 @@ public class PerRowSecondaryIndexTest
         @Override
         protected SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns)
         {
-            return new SecondaryIndexSearcher(baseCfs.indexManager, columns, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())
+            return new SecondaryIndexSearcher(baseCfs.indexManager, columns, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())
             {
                 
                 @Override

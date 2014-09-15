@@ -45,7 +45,7 @@ public class BloomFilterTest
 {
     public IFilter bf;
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     public BloomFilterTest()
     {

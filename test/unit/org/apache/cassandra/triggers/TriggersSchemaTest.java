@@ -38,7 +38,7 @@ public class TriggersSchemaTest
     String triggerName = "trigger_" + System.nanoTime();
     String triggerClass = "org.apache.cassandra.triggers.NoSuchTrigger.class";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void beforeTest() throws ConfigurationException
@@ -57,7 +57,7 @@ public class TriggersSchemaTest
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
                                                 Collections.singletonList(cfm1));
-        DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(ksm);
+        DatabaseDescriptor.createMain(false).getMigrationManager().announceNewKeyspace(ksm);
 
         CFMetaData cfm2 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName);
         assertFalse(cfm2.getTriggers().isEmpty());
@@ -73,13 +73,13 @@ public class TriggersSchemaTest
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
                                                 Collections.EMPTY_LIST);
-        DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(ksm);
+        DatabaseDescriptor.createMain(false).getMigrationManager().announceNewKeyspace(ksm);
 
         CFMetaData cfm1 = databaseDescriptor.getCFMetaDataFactory().compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName);
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass, databaseDescriptor.getCFMetaDataFactory());
         cfm1.addTriggerDefinition(td);
 
-        DatabaseDescriptor.instance.getMigrationManager().announceNewColumnFamily(cfm1);
+        DatabaseDescriptor.createMain(false).getMigrationManager().announceNewColumnFamily(cfm1);
 
         CFMetaData cfm2 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName);
         assertFalse(cfm2.getTriggers().isEmpty());
@@ -96,12 +96,12 @@ public class TriggersSchemaTest
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
                                                 Collections.singletonList(cfm1));
-        DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(ksm);
+        DatabaseDescriptor.createMain(false).getMigrationManager().announceNewKeyspace(ksm);
 
         CFMetaData cfm2 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName).copy();
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass, databaseDescriptor.getCFMetaDataFactory());
         cfm2.addTriggerDefinition(td);
-        DatabaseDescriptor.instance.getMigrationManager().announceColumnFamilyUpdate(cfm2, false);
+        DatabaseDescriptor.createMain(false).getMigrationManager().announceColumnFamilyUpdate(cfm2, false);
 
         CFMetaData cfm3 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName);
         assertFalse(cfm3.getTriggers().isEmpty());
@@ -120,11 +120,11 @@ public class TriggersSchemaTest
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
                                                 Collections.singletonList(cfm1));
-        DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(ksm);
+        DatabaseDescriptor.createMain(false).getMigrationManager().announceNewKeyspace(ksm);
 
         CFMetaData cfm2 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName).copy();
         cfm2.removeTrigger(triggerName);
-        DatabaseDescriptor.instance.getMigrationManager().announceColumnFamilyUpdate(cfm2, false);
+        DatabaseDescriptor.createMain(false).getMigrationManager().announceColumnFamilyUpdate(cfm2, false);
 
         CFMetaData cfm3 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName).copy();
         assertTrue(cfm3.getTriggers().isEmpty());

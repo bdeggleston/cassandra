@@ -42,7 +42,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class StorageProxyTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     private static Range<RowPosition> range(RowPosition left, RowPosition right)
     {
@@ -87,7 +87,6 @@ public class StorageProxyTest
     @BeforeClass
     public static void beforeClass() throws Throwable
     {
-        DatabaseDescriptor.init();
         TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         tmd.updateNormalToken(token("1", databaseDescriptor), InetAddress.getByName("127.0.0.1"));
         tmd.updateNormalToken(token("6", databaseDescriptor), InetAddress.getByName("127.0.0.6"));

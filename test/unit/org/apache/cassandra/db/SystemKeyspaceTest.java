@@ -40,19 +40,13 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class SystemKeyspaceTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
-
-    @BeforeClass
-    public static void setUpClass()
-    {
-        DatabaseDescriptor.init();
-    }
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @Test
     public void testLocalTokens()
     {
         // Remove all existing tokens
-        Collection<Token> current = databaseDescriptor.getSystemKeyspace().loadTokens().asMap().get(DatabaseDescriptor.instance.getLocalAddress());
+        Collection<Token> current = databaseDescriptor.getSystemKeyspace().loadTokens().asMap().get(DatabaseDescriptor.createMain(false).getLocalAddress());
         if (current != null && !current.isEmpty())
             databaseDescriptor.getSystemKeyspace().updateTokens(current);
 

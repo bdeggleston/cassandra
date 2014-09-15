@@ -40,7 +40,7 @@ public class BatchlogEndpointFilterTest
 {
     private static final String LOCAL = "local";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @Test
     public void shouldSelect2hostsFromNonLocalRacks() throws UnknownHostException

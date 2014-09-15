@@ -210,7 +210,7 @@ public class Util
     {
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore(cfName);
         assert cfStore != null : "Table " + cfName + " has not been defined";
-        return cfStore.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+        return cfStore.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
     }
 
     public static byte[] concatByteArrays(byte[] first, byte[]... remaining)
@@ -322,7 +322,7 @@ public class Util
             DataOutputBuffer out = new DataOutputBuffer();
             DeletionTime.serializer.serialize(cf.deletionInfo().getTopLevelDeletion(), out);
             out.writeInt(cf.getColumnCount());
-            new ColumnIndex.Builder(cf, ByteBufferUtil.EMPTY_BYTE_BUFFER, out, DatabaseDescriptor.instance.getColumnIndexSize()).build(cf);
+            new ColumnIndex.Builder(cf, ByteBufferUtil.EMPTY_BYTE_BUFFER, out, DatabaseDescriptor.createMain(false).getColumnIndexSize()).build(cf);
             return ByteBuffer.wrap(out.toByteArray());
         }
         catch (IOException e)

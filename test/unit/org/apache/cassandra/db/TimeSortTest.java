@@ -44,7 +44,7 @@ public class TimeSortTest
     private static final String KEYSPACE1 = "TimeSortTest";
     private static final String CF_STANDARD1 = "StandardLong1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

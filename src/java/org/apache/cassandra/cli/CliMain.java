@@ -25,6 +25,7 @@ import java.nio.charset.CharacterCodingException;
 import java.util.*;
 
 import org.apache.cassandra.auth.IAuthenticator;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.thrift.*;
 import org.apache.cassandra.utils.FBUtilities;
@@ -55,7 +56,7 @@ public class CliMain
      * @param server - hostname or IP of the server
      * @param port   - Thrift port number
      */
-    public static void connect(String server, int port)
+    public static void connect(String server, int port, DatabaseDescriptor databaseDescriptor)
     {
         if (transport != null)
             transport.close();
@@ -74,7 +75,7 @@ public class CliMain
 
         TBinaryProtocol binaryProtocol = new TBinaryProtocol(transport, true, true);
         thriftClient = new Cassandra.Client(binaryProtocol);
-        cliClient = new CliClient(sessionState, thriftClient);
+        cliClient = new CliClient(sessionState, thriftClient, databaseDescriptor);
 
         if ((sessionState.username != null) && (sessionState.password != null))
         {
@@ -229,12 +230,14 @@ public class CliMain
         CliOptions cliOptions = new CliOptions();
         cliOptions.processArgs(sessionState, args);
 
+        DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true);
+
         // connect to cassandra server if host argument specified.
         if (sessionState.hostName != null)
         {
             try
             {
-                connect(sessionState.hostName, sessionState.thriftPort);
+                connect(sessionState.hostName, sessionState.thriftPort, databaseDescriptor);
             }
             catch (RuntimeException e)
             {
@@ -246,7 +249,7 @@ public class CliMain
         {
             // Connection parameter was either invalid or not present.
             // User must connect explicitly using the "connect" CLI statement.
-            cliClient = new CliClient(sessionState, null);
+            cliClient = new CliClient(sessionState, null, databaseDescriptor);
         }
 
         // load statements from file and process them
