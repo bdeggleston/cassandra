@@ -4,8 +4,6 @@ import org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor;
 
 public class StorageServiceExecutors
 {
-    public static final StorageServiceExecutors instance = new StorageServiceExecutors();
-
     /**
      * This pool is used for periodic short (sub-second) tasks.
      */

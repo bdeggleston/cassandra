@@ -189,7 +189,7 @@ public class KeyCacheTest
             reader.releaseReference();
 
         Uninterruptibles.sleepUninterruptibly(10, TimeUnit.MILLISECONDS);;
-        while (StorageServiceExecutors.instance.tasks.getActiveCount() + StorageServiceExecutors.instance.tasks.getQueue().size() > 0);
+        while (databaseDescriptor.getStorageServiceExecutors().tasks.getActiveCount() + databaseDescriptor.getStorageServiceExecutors().tasks.getQueue().size() > 0);
 
         // after releasing the reference this should drop to 2
         assertKeyCacheSize(2, KEYSPACE1, COLUMN_FAMILY1);

@@ -621,7 +621,7 @@ public class DefsTest
 
         // check
         Assert.assertTrue(cfs.indexManager.getIndexes().isEmpty());
-        SSTableDeletingTask.waitForDeletions(StorageServiceExecutors.instance);
+        SSTableDeletingTask.waitForDeletions(databaseDescriptor.getStorageServiceExecutors());
         Assert.assertFalse(new File(desc.filenameFor(Component.DATA)).exists());
     }
 

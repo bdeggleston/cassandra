@@ -344,7 +344,7 @@ public class CassandraDaemon
                 }
             }
         };
-        StorageServiceExecutors.instance.optionalTasks.schedule(runnable, 5 * 60, TimeUnit.SECONDS);
+        DatabaseDescriptor.instance.getStorageServiceExecutors().optionalTasks.schedule(runnable, 5 * 60, TimeUnit.SECONDS);
 
         DatabaseDescriptor.instance.getSystemKeyspace().finishStartup();
 

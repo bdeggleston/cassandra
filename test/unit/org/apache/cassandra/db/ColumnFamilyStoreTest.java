@@ -1900,7 +1900,7 @@ public class ColumnFamilyStoreTest
         String cf = CF_STANDARD1;
         ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(ks).getColumnFamilyStore(cf);
         cfs.truncateBlocking();
-        SSTableDeletingTask.waitForDeletions(StorageServiceExecutors.instance);
+        SSTableDeletingTask.waitForDeletions(databaseDescriptor.getStorageServiceExecutors());
 
         final CFMetaData cfmeta = databaseDescriptor.getSchema().getCFMetaData(ks, cf);
         Directories dir = new Directories(cfs.metadata, DatabaseDescriptor.instance, databaseDescriptor.getStorageService(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);

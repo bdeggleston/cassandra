@@ -147,7 +147,7 @@ public class StandaloneSplitter
                         e.printStackTrace(System.err);
                 }
             }
-            SSTableDeletingTask.waitForDeletions(StorageServiceExecutors.instance);
+            SSTableDeletingTask.waitForDeletions(DatabaseDescriptor.instance.getStorageServiceExecutors());
             System.exit(0); // We need that to stop non daemonized threads
         }
         catch (Exception e)

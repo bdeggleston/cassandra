@@ -188,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final StorageServiceExecutors storageServiceExecutors;
     protected final SinkManager sinkManager;
     protected final StorageService storageService;
     protected final MessagingService messagingService;
@@ -247,6 +248,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        storageServiceExecutors = createStorageServiceExecutors();
         sinkManager = createSinkManager();
         storageService = createStorageService();
         messagingService = createMessagingService();
@@ -1748,9 +1750,14 @@ public class DatabaseDescriptor
         return storageService;
     }
 
+    public StorageServiceExecutors createStorageServiceExecutors()
+    {
+        return new StorageServiceExecutors();
+    }
+
     public StorageServiceExecutors getStorageServiceExecutors()
     {
-        return StorageServiceExecutors.instance;
+        return storageServiceExecutors;
     }
 
     public Tracing createTracing()

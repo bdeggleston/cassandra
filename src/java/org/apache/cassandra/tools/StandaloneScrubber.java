@@ -135,7 +135,7 @@ public class StandaloneScrubber
             if (manifest != null)
                 checkManifest(manifest);
 
-            SSTableDeletingTask.waitForDeletions(StorageServiceExecutors.instance);
+            SSTableDeletingTask.waitForDeletions(DatabaseDescriptor.instance.getStorageServiceExecutors());
             System.exit(0); // We need that to stop non daemonized threads
         }
         catch (Exception e)

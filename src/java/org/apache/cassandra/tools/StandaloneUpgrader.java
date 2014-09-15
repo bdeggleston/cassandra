@@ -106,7 +106,7 @@ public class StandaloneUpgrader
                 }
             }
 
-            SSTableDeletingTask.waitForDeletions(StorageServiceExecutors.instance);
+            SSTableDeletingTask.waitForDeletions(DatabaseDescriptor.instance.getStorageServiceExecutors());
             System.exit(0);
         }
         catch (Exception e)
