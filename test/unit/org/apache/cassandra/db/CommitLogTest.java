@@ -339,8 +339,8 @@ public class CommitLogTest
         CommitLog.instance.resetUnsafe();
         boolean prev = DatabaseDescriptor.instance.isAutoSnapshot();
         DatabaseDescriptor.instance.setAutoSnapshot(false);
-        ColumnFamilyStore cfs1 = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Standard1");
-        ColumnFamilyStore cfs2 = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Standard2");
+        ColumnFamilyStore cfs1 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard1");
+        ColumnFamilyStore cfs2 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard2");
 
         final Mutation rm1 = MutationFactory.instance.create(KEYSPACE1, bytes("k"));
         rm1.add("Standard1", Util.cellname("c1"), ByteBuffer.allocate(100), 0);
@@ -355,7 +355,7 @@ public class CommitLogTest
 
         Assert.assertEquals(2, CommitLog.instance.activeSegments());
         ReplayPosition position = CommitLog.instance.getContext();
-        for (Keyspace ks : KeyspaceManager.instance.system())
+        for (Keyspace ks : databaseDescriptor.getKeyspaceManager().system())
             for (ColumnFamilyStore syscfs : ks.getColumnFamilyStores())
                 CommitLog.instance.discardCompletedSegments(syscfs.metadata.cfId, position);
         CommitLog.instance.discardCompletedSegments(cfs2.metadata.cfId, position);
@@ -368,7 +368,7 @@ public class CommitLogTest
         CommitLog.instance.resetUnsafe();
         boolean prevAutoSnapshot = DatabaseDescriptor.instance.isAutoSnapshot();
         DatabaseDescriptor.instance.setAutoSnapshot(false);
-        Keyspace notDurableKs = KeyspaceManager.instance.open(KEYSPACE2);
+        Keyspace notDurableKs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE2);
         Assert.assertFalse(notDurableKs.metadata.durableWrites);
         ColumnFamilyStore cfs = notDurableKs.getColumnFamilyStore("Standard1");
         CellNameType type = notDurableKs.getColumnFamilyStore("Standard1").getComparator();

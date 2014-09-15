@@ -68,7 +68,7 @@ public class AntiCompactionTest
     @After
     public void truncateCF()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(CF);
         store.truncateBlocking();
     }
@@ -76,7 +76,7 @@ public class AntiCompactionTest
     @Test
     public void antiCompactOne() throws InterruptedException, ExecutionException, IOException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(CF);
         store.disableAutoCompaction();
         long timestamp = System.currentTimeMillis();
@@ -156,7 +156,7 @@ public class AntiCompactionTest
 
     public void antiCompactTen(String compactionStrategy) throws InterruptedException, ExecutionException, IOException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(CF);
         store.setCompactionStrategyClass(compactionStrategy);
         store.disableAutoCompaction();

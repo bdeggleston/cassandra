@@ -73,7 +73,7 @@ public class ReadMessageTest
     @Test
     public void testMakeReadMessage() throws IOException
     {
-        CellNameType type = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Standard1").getComparator();
+        CellNameType type = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard1").getComparator();
 
         SortedSet<CellName> colList = new TreeSet<CellName>(type);
         colList.add(Util.cellname("col1"));
@@ -131,7 +131,7 @@ public class ReadMessageTest
     @Test
     public void testGetColumn()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         CellNameType type = keyspace.getColumnFamilyStore("Standard1").getComparator();
         Mutation rm;
         DecoratedKey dk = Util.dk("key1");

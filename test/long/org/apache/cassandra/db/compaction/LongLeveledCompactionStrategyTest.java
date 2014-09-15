@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -38,6 +39,8 @@ public class LongLeveledCompactionStrategyTest
 {
     public static final String KEYSPACE1 = "LongLeveledCompactionStrategyTest";
     public static final String CF_STANDARDLVL = "StandardLeveled";
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -58,7 +61,7 @@ public class LongLeveledCompactionStrategyTest
     {
         String ksname = KEYSPACE1;
         String cfname = "StandardLeveled";
-        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(ksname);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(cfname);
         store.disableAutoCompaction();
 

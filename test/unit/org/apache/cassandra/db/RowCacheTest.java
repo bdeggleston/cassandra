@@ -81,7 +81,7 @@ public class RowCacheTest
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE_CACHED);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE_CACHED);
         ColumnFamilyStore cachedStore  = keyspace.getColumnFamilyStore(CF_CACHED);
 
         // empty the row cache
@@ -161,7 +161,7 @@ public class RowCacheTest
         databaseDescriptor.getCacheService().setRowCacheCapacityInMB(1);
         rowCacheLoad(100, Integer.MAX_VALUE, 1000);
 
-        ColumnFamilyStore store = KeyspaceManager.instance.open(KEYSPACE_CACHED).getColumnFamilyStore(CF_CACHED);
+        ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(KEYSPACE_CACHED).getColumnFamilyStore(CF_CACHED);
         assertEquals(databaseDescriptor.getCacheService().rowCache.getKeySet().size(), 100);
         store.cleanupCache();
         assertEquals(databaseDescriptor.getCacheService().rowCache.getKeySet().size(), 100);
@@ -188,7 +188,7 @@ public class RowCacheTest
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE_CACHED);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE_CACHED);
         String cf = "CachedIntCF";
         ColumnFamilyStore cachedStore  = keyspace.getColumnFamilyStore(cf);
         long startRowCacheHits = cachedStore.metric.rowCacheHit.count();
@@ -276,7 +276,7 @@ public class RowCacheTest
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
-        ColumnFamilyStore store = KeyspaceManager.instance.open(KEYSPACE_CACHED).getColumnFamilyStore(CF_CACHED);
+        ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(KEYSPACE_CACHED).getColumnFamilyStore(CF_CACHED);
 
         // empty the cache
         databaseDescriptor.getCacheService().invalidateRowCache();

@@ -95,7 +95,7 @@ public class CompactionsTest
 
     public ColumnFamilyStore testSingleSSTableCompaction(String strategyClassName) throws Exception
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(CF_STANDARD1);
         store.clearUnsafe();
         store.metadata.gcGraceSeconds(1);
@@ -167,7 +167,7 @@ public class CompactionsTest
     @Test
     public void testSuperColumnTombstones() throws ExecutionException, InterruptedException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Super1");
         cfs.disableAutoCompaction();
 
@@ -204,7 +204,7 @@ public class CompactionsTest
     @Test
     public void testUncheckedTombstoneSizeTieredCompaction() throws Exception
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(CF_STANDARD1);
         store.clearUnsafe();
         store.metadata.gcGraceSeconds(1);
@@ -284,7 +284,7 @@ public class CompactionsTest
     {
         // This test check that EchoedRow doesn't skipp rows: see CASSANDRA-2653
 
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Standard2");
 
         // disable compaction while flushing
@@ -345,7 +345,7 @@ public class CompactionsTest
     @Test
     public void testUserDefinedCompaction() throws Exception
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final String cfname = "Standard3"; // use clean(no sstable) CF
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
 
@@ -385,7 +385,7 @@ public class CompactionsTest
     @Test
     public void testRangeTombstones() throws IOException, ExecutionException, InterruptedException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Standard2");
         cfs.clearUnsafe();
 
@@ -468,7 +468,7 @@ public class CompactionsTest
         databaseDescriptor.getSystemKeyspace().discardCompactionsInProgress();
 
         String cf = "Standard4";
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(cf);
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(cf);
         SchemaLoader.insertData(KEYSPACE1, cf, 0, 1);
         cfs.forceBlockingFlush();
 
@@ -494,7 +494,7 @@ public class CompactionsTest
     private void testDontPurgeAccidentaly(String k, String cfname) throws InterruptedException
     {
         // This test catches the regression of CASSANDRA-2786
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
 
         // disable compaction while flushing
@@ -567,7 +567,7 @@ public class CompactionsTest
     @Ignore("making ranges based on the keys, not on the tokens")
     public void testNeedsCleanup()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("CF_STANDARD1");
         store.clearUnsafe();
 

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Map;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -39,12 +40,14 @@ public class CloudstackSnitchTest
 {
     private static String az;
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void setup() throws Exception
     {
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();
-        KeyspaceManager.instance.setInitialized();
+        databaseDescriptor.getKeyspaceManager().setInitialized();
         StorageService.instance.initServer(0);
     }
 

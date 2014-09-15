@@ -61,7 +61,7 @@ public class StandaloneScrubber
                                                                  options.cfName));
 
             // Do not load sstables since they might be broken
-            Keyspace keyspace = KeyspaceManager.instance.openWithoutSSTables(options.keyspaceName);
+            Keyspace keyspace = DatabaseDescriptor.instance.getKeyspaceManager().openWithoutSSTables(options.keyspaceName);
             ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(options.cfName);
             String snapshotName = "pre-scrub-" + System.currentTimeMillis();
 

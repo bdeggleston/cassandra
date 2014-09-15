@@ -50,6 +50,8 @@ public class BlacklistingCompactionsTest
     private static final String KEYSPACE1 = "BlacklistingCompactionsTest";
     private static final String CF_STANDARD1 = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -86,7 +88,7 @@ public class BlacklistingCompactionsTest
     public void testBlacklisting(String compactionStrategy) throws Exception
     {
         // this test does enough rows to force multiple block indexes to be used
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Standard1");
 
         final int ROWS_PER_SSTABLE = 10;

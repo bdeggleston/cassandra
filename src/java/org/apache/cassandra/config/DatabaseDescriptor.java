@@ -138,7 +138,7 @@ public class DatabaseDescriptor
         assert Tracing.instance != null;
         assert LocatorConfig.instance != null;
         assert DBConfig.instance != null;
-        assert KeyspaceManager.instance != null;
+//        assert KeyspaceManager.instance != null;
         assert MutationFactory.instance != null;
         assert MessagingService.instance != null;
 //        assert DatabaseDescriptor.instance != null;
@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final KeyspaceManager keyspaceManager;
     protected final StreamManager streamManager;
     protected final StageManager stageManager;
     protected final HintedHandOffManager hintedHandOffManager;
@@ -228,6 +229,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        keyspaceManager = createKeyspaceManager();
         streamManager = createStreamManager();
         stageManager = createStageManager();
         hintedHandOffManager = createHintedHandOffManager();
@@ -1690,9 +1692,14 @@ public class DatabaseDescriptor
         return MessagingService.instance;
     }
 
+    public KeyspaceManager createKeyspaceManager()
+    {
+        return new KeyspaceManager(this);
+    }
+
     public KeyspaceManager getKeyspaceManager()
     {
-        return KeyspaceManager.instance;
+        return keyspaceManager;
     }
 
     public ColumnFamilyStoreManager createColumnFamilyStoreManager()

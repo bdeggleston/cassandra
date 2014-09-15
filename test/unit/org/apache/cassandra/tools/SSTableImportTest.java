@@ -235,7 +235,7 @@ public class SSTableImportTest
         File tempSS = tempSSTableFile(KEYSPACE1, CQL_TABLE);
         new SSTableImport(true).importJson(jsonUrl, KEYSPACE1, CQL_TABLE, tempSS.getPath());
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
-        KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CQL_TABLE).addSSTable(reader);
+        databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CQL_TABLE).addSSTable(reader);
 
         UntypedResultSet result = databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("SELECT * FROM \"%s\".%s", KEYSPACE1, CQL_TABLE));
         assertThat(result.size(), is(2));

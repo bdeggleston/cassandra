@@ -71,7 +71,7 @@ public class HintedHandOffTest
     public void testCompactionOfHintsCF() throws Exception
     {
         // prepare hints column family
-        Keyspace systemKeyspace = KeyspaceManager.instance.open("system");
+        Keyspace systemKeyspace = databaseDescriptor.getKeyspaceManager().open("system");
         ColumnFamilyStore hintStore = systemKeyspace.getColumnFamilyStore(SystemKeyspace.HINTS_CF);
         hintStore.clearUnsafe();
         hintStore.metadata.gcGraceSeconds(36000); // 10 hours
@@ -117,7 +117,7 @@ public class HintedHandOffTest
     @Test(timeout = 5000)
     public void testTruncateHints() throws Exception
     {
-        Keyspace systemKeyspace = KeyspaceManager.instance.open("system");
+        Keyspace systemKeyspace = databaseDescriptor.getKeyspaceManager().open("system");
         ColumnFamilyStore hintStore = systemKeyspace.getColumnFamilyStore(SystemKeyspace.HINTS_CF);
         hintStore.clearUnsafe();
 

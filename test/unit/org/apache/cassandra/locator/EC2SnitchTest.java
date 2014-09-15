@@ -26,6 +26,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Map;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.KeyspaceManager;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -46,13 +47,14 @@ import static org.junit.Assert.assertEquals;
 public class EC2SnitchTest
 {
     private static String az;
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void setup() throws Exception
     {
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();
-        KeyspaceManager.instance.setInitialized();
+        databaseDescriptor.getKeyspaceManager().setInitialized();
         StorageService.instance.initServer(0);
     }
 

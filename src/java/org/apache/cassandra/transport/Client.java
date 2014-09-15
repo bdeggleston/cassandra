@@ -261,7 +261,7 @@ public class Client extends SimpleClient
                                                                            DatabaseDescriptor.instance.getAuth().getAuthenticator(),
                                                                            QueryHandlerInstance.instance,
                                                                            DatabaseDescriptor.instance.getQueryProcessor(),
-                                                                           KeyspaceManager.instance,
+                                                                           DatabaseDescriptor.instance.getKeyspaceManager(),
                                                                            StorageProxy.instance,
                                                                            MutationFactory.instance,
                                                                            CounterMutationFactory.instance,

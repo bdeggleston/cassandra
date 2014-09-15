@@ -74,7 +74,7 @@ public class StorageServiceServerTest
         DatabaseDescriptor.init();
 //        IEndpointSnitch snitch = new PropertyFileSnitch();
 //        DatabaseDescriptor.instance.setEndpointSnitch(snitch);
-        KeyspaceManager.instance.setInitialized();
+        databaseDescriptor.getKeyspaceManager().setInitialized();
 //        snitch.gossiperStarting();
     }
 

@@ -140,7 +140,7 @@ public abstract class CQLTester
         try
         {
             if (currentTable != null)
-                KeyspaceManager.instance.open(KEYSPACE).getColumnFamilyStore(currentTable).forceFlush().get();
+                databaseDescriptor.getKeyspaceManager().open(KEYSPACE).getColumnFamilyStore(currentTable).forceFlush().get();
         }
         catch (InterruptedException e)
         {

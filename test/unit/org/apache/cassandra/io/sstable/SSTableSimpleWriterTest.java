@@ -64,8 +64,8 @@ public class SSTableSimpleWriterTest
         String keyspaceName = KEYSPACE;
         String cfname = "StandardInteger1";
 
-        Keyspace t = KeyspaceManager.instance.open(keyspaceName); // make sure we create the directory
-        File dir = new Directories(databaseDescriptor.getSchema().getCFMetaData(keyspaceName, cfname), DatabaseDescriptor.instance, StorageService.instance, KeyspaceManager.instance, databaseDescriptor.getColumnFamilyStoreManager().dataDirectories).getDirectoryForNewSSTables();
+        Keyspace t = databaseDescriptor.getKeyspaceManager().open(keyspaceName); // make sure we create the directory
+        File dir = new Directories(databaseDescriptor.getSchema().getCFMetaData(keyspaceName, cfname), DatabaseDescriptor.instance, StorageService.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getColumnFamilyStoreManager().dataDirectories).getDirectoryForNewSSTables();
         assert dir.exists();
 
         IPartitioner partitioner = LocatorConfig.instance.getPartitioner();

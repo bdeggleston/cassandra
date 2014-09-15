@@ -123,7 +123,7 @@ public class DifferencerTest
         // note: we reuse the same endpoint which is bogus in theory but fine here
         TreeResponse r1 = new TreeResponse(ep1, tree1);
         TreeResponse r2 = new TreeResponse(ep2, tree2);
-        Differencer diff = new Differencer(desc, r1, r2, DatabaseDescriptor.instance, databaseDescriptor.getSchema(), KeyspaceManager.instance, ActiveRepairService.instance, databaseDescriptor.getStreamManager(), MessagingService.instance, DBConfig.instance);
+        Differencer diff = new Differencer(desc, r1, r2, DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), ActiveRepairService.instance, databaseDescriptor.getStreamManager(), MessagingService.instance, DBConfig.instance);
         diff.run();
 
         assertTrue(diff.differences.isEmpty());
@@ -134,7 +134,7 @@ public class DifferencerTest
     {
         Range<Token> range = new Range<>(partitioner.getMinimumToken(), partitioner.getRandomToken(), partitioner);
         UUID parentRepairSession = UUID.randomUUID();
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Standard1");
 
         ActiveRepairService.instance.registerParentRepairSession(parentRepairSession, Arrays.asList(cfs), Arrays.asList(range));
@@ -157,7 +157,7 @@ public class DifferencerTest
         // note: we reuse the same endpoint which is bogus in theory but fine here
         TreeResponse r1 = new TreeResponse(InetAddress.getByName("127.0.0.1"), tree1);
         TreeResponse r2 = new TreeResponse(InetAddress.getByName("127.0.0.2"), tree2);
-        Differencer diff = new Differencer(desc, r1, r2, DatabaseDescriptor.instance, databaseDescriptor.getSchema(), KeyspaceManager.instance, ActiveRepairService.instance, databaseDescriptor.getStreamManager(), MessagingService.instance, DBConfig.instance);
+        Differencer diff = new Differencer(desc, r1, r2, DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), ActiveRepairService.instance, databaseDescriptor.getStreamManager(), MessagingService.instance, DBConfig.instance);
         diff.run();
 
         // ensure that the changed range was recorded

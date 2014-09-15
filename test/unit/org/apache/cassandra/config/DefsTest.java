@@ -92,7 +92,7 @@ public class DefsTest
                                         databaseDescriptor.getSystemKeyspace(),
                                         databaseDescriptor.getSchema(),
                                         databaseDescriptor.getColumnFamilyStoreManager(),
-                                        KeyspaceManager.instance,
+                                        databaseDescriptor.getKeyspaceManager(),
                                         CFMetaDataFactory.instance,
                                         MutationFactory.instance,
                                         DBConfig.instance);
@@ -215,7 +215,7 @@ public class DefsTest
         Mutation rm = MutationFactory.instance.create(ks, dk.getKey());
         rm.add(cf, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();
-        ColumnFamilyStore store = KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf);
+        ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(ks).getColumnFamilyStore(cf);
         Assert.assertNotNull(store);
         store.forceBlockingFlush();
 
@@ -240,7 +240,7 @@ public class DefsTest
         for (int i = 0; i < 100; i++)
             rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.applyUnsafe();
-        ColumnFamilyStore store = KeyspaceManager.instance.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
+        ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
         Assert.assertNotNull(store);
         store.forceBlockingFlush();
         Assert.assertTrue(store.directories.sstableLister().list().size() > 0);
@@ -289,7 +289,7 @@ public class DefsTest
         Mutation rm = MutationFactory.instance.create(newCf.ksName, dk.getKey());
         rm.add(newCf.cfName, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();
-        ColumnFamilyStore store = KeyspaceManager.instance.open(newCf.ksName).getColumnFamilyStore(newCf.cfName);
+        ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(newCf.ksName).getColumnFamilyStore(newCf.cfName);
         Assert.assertNotNull(store);
         store.forceBlockingFlush();
 
@@ -314,7 +314,7 @@ public class DefsTest
         for (int i = 0; i < 100; i++)
             rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.applyUnsafe();
-        ColumnFamilyStore store = KeyspaceManager.instance.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
+        ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
         Assert.assertNotNull(store);
         store.forceBlockingFlush();
         Assert.assertTrue(store.directories.sstableLister().list().size() > 0);
@@ -341,7 +341,7 @@ public class DefsTest
         boolean threw = false;
         try
         {
-            KeyspaceManager.instance.open(ks.name);
+            databaseDescriptor.getKeyspaceManager().open(ks.name);
         }
         catch (Throwable th)
         {
@@ -398,7 +398,7 @@ public class DefsTest
         Mutation rm = MutationFactory.instance.create(newKs.name, dk.getKey());
         rm.add(newCf.cfName, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();
-        ColumnFamilyStore store = KeyspaceManager.instance.open(newKs.name).getColumnFamilyStore(newCf.cfName);
+        ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(newKs.name).getColumnFamilyStore(newCf.cfName);
         Assert.assertNotNull(store);
         store.forceBlockingFlush();
 
@@ -495,7 +495,7 @@ public class DefsTest
                                 databaseDescriptor.getSystemKeyspace(),
                                 databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
-                                KeyspaceManager.instance,
+                                databaseDescriptor.getKeyspaceManager(),
                                 CFMetaDataFactory.instance,
                                 MutationFactory.instance,
                                 DBConfig.instance);
@@ -517,7 +517,7 @@ public class DefsTest
                                 databaseDescriptor.getSystemKeyspace(),
                                 databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
-                                KeyspaceManager.instance,
+                                databaseDescriptor.getKeyspaceManager(),
                                 CFMetaDataFactory.instance,
                                 MutationFactory.instance,
                                 DBConfig.instance);
@@ -539,7 +539,7 @@ public class DefsTest
                                 databaseDescriptor.getSystemKeyspace(),
                                 databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
-                                KeyspaceManager.instance,
+                                databaseDescriptor.getKeyspaceManager(),
                                 CFMetaDataFactory.instance,
                                 MutationFactory.instance,
                                 DBConfig.instance);
@@ -561,7 +561,7 @@ public class DefsTest
                                 databaseDescriptor.getSystemKeyspace(),
                                 databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
-                                KeyspaceManager.instance,
+                                databaseDescriptor.getKeyspaceManager(),
                                 CFMetaDataFactory.instance,
                                 MutationFactory.instance,
                                 DBConfig.instance);
@@ -583,7 +583,7 @@ public class DefsTest
                                 databaseDescriptor.getSystemKeyspace(),
                                 databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
-                                KeyspaceManager.instance,
+                                databaseDescriptor.getKeyspaceManager(),
                                 CFMetaDataFactory.instance,
                                 MutationFactory.instance,
                                 DBConfig.instance);
@@ -601,7 +601,7 @@ public class DefsTest
     {
         // persist keyspace definition in the system keyspace
         databaseDescriptor.getSchema().getKSMetaData(KEYSPACE6).toSchema(System.currentTimeMillis()).applyUnsafe();
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE6).getColumnFamilyStore("Indexed1");
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE6).getColumnFamilyStore("Indexed1");
 
         // insert some data.  save the sstable descriptor so we can make sure it's marked for delete after the drop
         Mutation rm = MutationFactory.instance.create(KEYSPACE6, ByteBufferUtil.bytes("k1"));
@@ -636,7 +636,7 @@ public class DefsTest
                                             databaseDescriptor.getSystemKeyspace(),
                                             databaseDescriptor.getSchema(),
                                             databaseDescriptor.getColumnFamilyStoreManager(),
-                                            KeyspaceManager.instance,
+                                            databaseDescriptor.getKeyspaceManager(),
                                             CFMetaDataFactory.instance,
                                             MutationFactory.instance,
                                             DBConfig.instance);

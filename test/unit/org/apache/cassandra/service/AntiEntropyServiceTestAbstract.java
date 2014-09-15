@@ -101,7 +101,7 @@ public abstract class AntiEntropyServiceTestAbstract
             // generate a fake endpoint for which we can spoof receiving/sending trees
             REMOTE = InetAddress.getByName("127.0.0.2");
             store = null;
-            for (ColumnFamilyStore cfs : KeyspaceManager.instance.open(keyspaceName).getColumnFamilyStores())
+            for (ColumnFamilyStore cfs : databaseDescriptor.getKeyspaceManager().open(keyspaceName).getColumnFamilyStores())
             {
                 if (cfs.name.equals(cfname))
                 {
@@ -139,7 +139,7 @@ public abstract class AntiEntropyServiceTestAbstract
     public void testGetNeighborsPlusOne() throws Throwable
     {
         // generate rf+1 nodes, and ensure that all nodes are returned
-        Set<InetAddress> expected = addTokens(1 + KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor());
+        Set<InetAddress> expected = addTokens(1 + databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
         expected.remove(DatabaseDescriptor.instance.getBroadcastAddress());
         Collection<Range<Token>> ranges = LocatorConfig.instance.getLocalRanges(keyspaceName);
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
@@ -156,8 +156,8 @@ public abstract class AntiEntropyServiceTestAbstract
         TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
 
         // generate rf*2 nodes, and ensure that only neighbors specified by the ARS are returned
-        addTokens(2 * KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor());
-        AbstractReplicationStrategy ars = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
+        addTokens(2 * databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
+        AbstractReplicationStrategy ars = databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy();
         Set<InetAddress> expected = new HashSet<InetAddress>();
         for (Range<Token> replicaRange : ars.getAddressRanges().get(DatabaseDescriptor.instance.getBroadcastAddress()))
         {
@@ -179,7 +179,7 @@ public abstract class AntiEntropyServiceTestAbstract
         TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         
         // generate rf+1 nodes, and ensure that all nodes are returned
-        Set<InetAddress> expected = addTokens(1 + KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor());
+        Set<InetAddress> expected = addTokens(1 + databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
         expected.remove(DatabaseDescriptor.instance.getBroadcastAddress());
         // remove remote endpoints
         TokenMetadata.Topology topology = tmd.cloneOnlyTokenMap().getTopology();
@@ -201,8 +201,8 @@ public abstract class AntiEntropyServiceTestAbstract
         TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
 
         // generate rf*2 nodes, and ensure that only neighbors specified by the ARS are returned
-        addTokens(2 * KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor());
-        AbstractReplicationStrategy ars = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
+        addTokens(2 * databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
+        AbstractReplicationStrategy ars = databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy();
         Set<InetAddress> expected = new HashSet<InetAddress>();
         for (Range<Token> replicaRange : ars.getAddressRanges().get(DatabaseDescriptor.instance.getBroadcastAddress()))
         {
@@ -229,8 +229,8 @@ public abstract class AntiEntropyServiceTestAbstract
         TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
 
         // generate rf*2 nodes, and ensure that only neighbors specified by the hosts are returned
-        addTokens(2 * KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor());
-        AbstractReplicationStrategy ars = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy();
+        addTokens(2 * databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
+        AbstractReplicationStrategy ars = databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy();
         List<InetAddress> expected = new ArrayList<>();
         for (Range<Token> replicaRange : ars.getAddressRanges().get(DatabaseDescriptor.instance.getBroadcastAddress()))
         {
@@ -246,7 +246,7 @@ public abstract class AntiEntropyServiceTestAbstract
     @Test(expected = IllegalArgumentException.class)
     public void testGetNeighborsSpecifiedHostsWithNoLocalHost() throws Throwable
     {
-        addTokens(2 * KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor());
+        addTokens(2 * databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
         //Dont give local endpoint
         Collection<String> hosts = Arrays.asList("127.0.0.3");
         ActiveRepairService.instance.getNeighbors(keyspaceName, LocatorConfig.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts);

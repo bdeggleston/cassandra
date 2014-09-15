@@ -179,7 +179,10 @@ public class CassandraDaemon
                     {
                         if (e2 != e) // make sure FSError gets logged exactly once.
                             logger.error("Exception in thread {}", t, e2);
-                        FileUtils.handleFSError((FSError) e2, DatabaseDescriptor.instance.getDiskFailurePolicy(), StorageService.instance, KeyspaceManager.instance);
+                        FileUtils.handleFSError((FSError) e2,
+                                                DatabaseDescriptor.instance.getDiskFailurePolicy(),
+                                                StorageService.instance,
+                                                DatabaseDescriptor.instance.getKeyspaceManager());
                     }
 
                     if (e2 instanceof CorruptSSTableException)
@@ -234,7 +237,7 @@ public class CassandraDaemon
                                                    DatabaseDescriptor.instance,
                                                    Tracing.instance,
                                                    CFMetaDataFactory.instance,
-                                                   KeyspaceManager.instance,
+                                                   DatabaseDescriptor.instance.getKeyspaceManager(),
                                                    DBConfig.instance,
                                                    DatabaseDescriptor.instance.getColumnFamilyStoreManager().dataDirectories);
         try
@@ -274,19 +277,19 @@ public class CassandraDaemon
                                                        DatabaseDescriptor.instance,
                                                        Tracing.instance,
                                                        CFMetaDataFactory.instance,
-                                                       KeyspaceManager.instance,
+                                                       DatabaseDescriptor.instance.getKeyspaceManager(),
                                                        DBConfig.instance,
                                                        DatabaseDescriptor.instance.getColumnFamilyStoreManager().dataDirectories);
         }
 
-        KeyspaceManager.instance.setInitialized();
+        DatabaseDescriptor.instance.getKeyspaceManager().setInitialized();
         // initialize keyspaces
         for (String keyspaceName : DatabaseDescriptor.instance.getSchema().getKeyspaces())
         {
             if (logger.isDebugEnabled())
                 logger.debug("opening keyspace {}", keyspaceName);
             // disable auto compaction until commit log replay ends
-            for (ColumnFamilyStore cfs : KeyspaceManager.instance.open(keyspaceName).getColumnFamilyStores())
+            for (ColumnFamilyStore cfs : DatabaseDescriptor.instance.getKeyspaceManager().open(keyspaceName).getColumnFamilyStores())
             {
                 for (ColumnFamilyStore store : cfs.concatWithIndexes())
                 {
@@ -321,7 +324,7 @@ public class CassandraDaemon
         }
 
         // enable auto compaction
-        for (Keyspace keyspace : KeyspaceManager.instance.all())
+        for (Keyspace keyspace : DatabaseDescriptor.instance.getKeyspaceManager().all())
         {
             for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
             {
@@ -337,7 +340,7 @@ public class CassandraDaemon
         {
             public void run()
             {
-                for (Keyspace keyspaceName : KeyspaceManager.instance.all())
+                for (Keyspace keyspaceName : DatabaseDescriptor.instance.getKeyspaceManager().all())
                 {
                     for (ColumnFamilyStore cf : keyspaceName.getColumnFamilyStores())
                     {
@@ -392,7 +395,7 @@ public class CassandraDaemon
         thriftServer = new ThriftServer(rpcAddr, rpcPort, listenBacklog,
                                         DatabaseDescriptor.instance, Tracing.instance,
                                         DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getAuth(), StorageProxy.instance,
-                                        MessagingService.instance, KeyspaceManager.instance,
+                                        MessagingService.instance, DatabaseDescriptor.instance.getKeyspaceManager(),
                                         MutationFactory.instance, CounterMutationFactory.instance,
                                         StorageService.instance, CFMetaDataFactory.instance,
                                         DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
@@ -410,7 +413,7 @@ public class CassandraDaemon
                                                                            DatabaseDescriptor.instance.getAuth().getAuthenticator(),
                                                                            QueryHandlerInstance.instance,
                                                                            DatabaseDescriptor.instance.getQueryProcessor(),
-                                                                           KeyspaceManager.instance,
+                                                                           DatabaseDescriptor.instance.getKeyspaceManager(),
                                                                            StorageProxy.instance,
                                                                            MutationFactory.instance,
                                                                            CounterMutationFactory.instance,

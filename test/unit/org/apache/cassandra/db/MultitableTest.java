@@ -58,8 +58,8 @@ public class MultitableTest
     @Test
     public void testSameCFs()
     {
-        Keyspace keyspace1 = KeyspaceManager.instance.open(KEYSPACE1);
-        Keyspace keyspace2 = KeyspaceManager.instance.open(KEYSPACE2);
+        Keyspace keyspace1 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
+        Keyspace keyspace2 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE2);
 
         Mutation rm;
         DecoratedKey dk = Util.dk("keymulti");

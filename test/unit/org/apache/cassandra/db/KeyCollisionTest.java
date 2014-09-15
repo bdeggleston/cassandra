@@ -80,7 +80,7 @@ public class KeyCollisionTest
     @Test
     public void testGetSliceWithCollision() throws Exception
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF);
         cfs.clearUnsafe();
 

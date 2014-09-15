@@ -21,6 +21,7 @@ package org.apache.cassandra.db;
 import java.io.IOException;
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
@@ -43,6 +44,8 @@ public class TimeSortTest
     private static final String KEYSPACE1 = "TimeSortTest";
     private static final String CF_STANDARD1 = "StandardLong1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -56,7 +59,7 @@ public class TimeSortTest
     @Test
     public void testMixedSources()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore(CF_STANDARD1);
         Mutation rm;
         DecoratedKey key = Util.dk("key0");
@@ -78,7 +81,7 @@ public class TimeSortTest
     @Test
     public void testTimeSort() throws IOException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore(CF_STANDARD1);
 
         for (int i = 900; i < 1000; ++i)

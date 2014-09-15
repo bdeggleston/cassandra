@@ -49,6 +49,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 public class SchemaLoader
 {
     private static Logger logger = LoggerFactory.getLogger(SchemaLoader.class);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void loadSchema() throws ConfigurationException
@@ -77,7 +78,7 @@ public class SchemaLoader
             }
         });
 
-        KeyspaceManager.instance.setInitialized();
+        databaseDescriptor.getKeyspaceManager().setInitialized();
     }
 
     public static void startGossiper()
@@ -469,7 +470,7 @@ public class SchemaLoader
     /* usually used to populate the cache */
     public static void readData(String keyspace, String columnFamily, int offset, int numberOfRows)
     {
-        ColumnFamilyStore store = KeyspaceManager.instance.open(keyspace).getColumnFamilyStore(columnFamily);
+        ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(keyspace).getColumnFamilyStore(columnFamily);
         for (int i = offset; i < offset + numberOfRows; i++)
         {
             DecoratedKey key = Util.dk("key" + i);

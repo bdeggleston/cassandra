@@ -192,7 +192,7 @@ public class Util
      * @param mutations A group of Mutations for the same keyspace and column family.
      * @return The ColumnFamilyStore that was used.
      */
-    public static ColumnFamilyStore writeColumnFamily(List<Mutation> mutations)
+    public static ColumnFamilyStore writeColumnFamily(List<Mutation> mutations, DatabaseDescriptor databaseDescriptor)
     {
         IMutation first = mutations.get(0);
         String keyspaceName = first.getKeyspaceName();
@@ -201,7 +201,7 @@ public class Util
         for (Mutation rm : mutations)
             rm.applyUnsafe();
 
-        ColumnFamilyStore store = KeyspaceManager.instance.open(keyspaceName).getColumnFamilyStore(cfid);
+        ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(keyspaceName).getColumnFamilyStore(cfid);
         store.forceBlockingFlush();
         return store;
     }

@@ -52,7 +52,7 @@ public class LongKeyspaceTest
     @Test
     public void testGetRowMultiColumn() throws Throwable
     {
-        final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        final Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
 
         for (int i = 1; i < 5000; i += 100)

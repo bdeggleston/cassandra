@@ -115,7 +115,7 @@ public class ValidatorTest
 
         InetAddress remote = InetAddress.getByName("127.0.0.2");
 
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(keyspace).getColumnFamilyStore(columnFamily);
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(keyspace).getColumnFamilyStore(columnFamily);
 
         Validator validator = new Validator(desc, remote, 0, DatabaseDescriptor.instance, databaseDescriptor.getStageManager(), MessagingService.instance);
         MerkleTree tree = new MerkleTree(cfs.partitioner, validator.desc.range, MerkleTree.RECOMMENDED_DEPTH, (int) Math.pow(2, 15));

@@ -63,7 +63,7 @@ public class CounterMutationTest
     @Test
     public void testSingleCell() throws WriteTimeoutException
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF1);
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CF1);
         cfs.truncateBlocking();
 
         // Do the initial update (+1)
@@ -92,7 +92,7 @@ public class CounterMutationTest
     @Test
     public void testTwoCells() throws WriteTimeoutException
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF1);
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CF1);
         cfs.truncateBlocking();
 
         // Do the initial update (+1, -1)
@@ -129,8 +129,8 @@ public class CounterMutationTest
     @Test
     public void testBatch() throws WriteTimeoutException
     {
-        ColumnFamilyStore cfs1 = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF1);
-        ColumnFamilyStore cfs2 = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF2);
+        ColumnFamilyStore cfs1 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CF1);
+        ColumnFamilyStore cfs2 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CF2);
 
         cfs1.truncateBlocking();
         cfs2.truncateBlocking();
@@ -169,7 +169,7 @@ public class CounterMutationTest
     @Test
     public void testDeletes() throws WriteTimeoutException
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF1);
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CF1);
         cfs.truncateBlocking();
 
         // Do the initial update (+1, -1)
@@ -218,7 +218,7 @@ public class CounterMutationTest
     @Test
     public void testDuplicateCells() throws WriteTimeoutException
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF1);
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CF1);
         cfs.truncateBlocking();
 
         ColumnFamily cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);

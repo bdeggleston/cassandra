@@ -61,7 +61,7 @@ public class SimpleStrategyTest
     @Test
     public void tryValidKeyspace()
     {
-        assert KeyspaceManager.instance.open(KEYSPACE1).getReplicationStrategy() != null;
+        assert databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getReplicationStrategy() != null;
     }
 
     @Test

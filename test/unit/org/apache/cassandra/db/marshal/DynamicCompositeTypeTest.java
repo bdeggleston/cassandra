@@ -48,6 +48,8 @@ public class DynamicCompositeTypeTest
     private static final String CF_STANDARDDYNCOMPOSITE = "StandardDynamicComposite";
     private static Map<Byte, AbstractType<?>> aliases = new HashMap<>();
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     private static final DynamicCompositeType comparator;
     static
     {
@@ -182,7 +184,7 @@ public class DynamicCompositeTypeTest
     @Test
     public void testFullRound() throws Exception
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_STANDARDDYNCOMPOSITE);
 
         ByteBuffer cname1 = createDynamicCompositeKey("test1", null, -1, false);

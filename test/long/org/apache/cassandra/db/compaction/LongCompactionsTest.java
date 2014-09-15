@@ -94,7 +94,7 @@ public class LongCompactionsTest
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard1");
 
         ArrayList<SSTableReader> sstables = new ArrayList<SSTableReader>();
@@ -135,7 +135,7 @@ public class LongCompactionsTest
     public void testStandardColumnCompactions() throws IOException, ExecutionException, InterruptedException
     {
         // this test does enough rows to force multiple block indexes to be used
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Standard1");
         cfs.clearUnsafe();
 

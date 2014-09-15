@@ -46,6 +46,8 @@ public class TTLExpiryTest
     public static final String KEYSPACE1 = "TTLExpiryTest";
     private static final String CF_STANDARD1 = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -59,7 +61,7 @@ public class TTLExpiryTest
     @Test
     public void testSimpleExpire() throws InterruptedException
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Standard1");
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard1");
         cfs.disableAutoCompaction();
         cfs.metadata.gcGraceSeconds(0);
         long timestamp = System.currentTimeMillis();
@@ -107,7 +109,7 @@ public class TTLExpiryTest
     @Test
     public void testNoExpire() throws InterruptedException
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Standard1");
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard1");
         cfs.disableAutoCompaction();
         cfs.metadata.gcGraceSeconds(0);
         long timestamp = System.currentTimeMillis();

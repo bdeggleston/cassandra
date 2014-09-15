@@ -50,7 +50,7 @@ public class CommitLog implements CommitLogMBean
 {
     private static final Logger logger = LoggerFactory.getLogger(CommitLog.class);
 
-    public static final CommitLog instance = new CommitLog(DatabaseDescriptor.instance, Tracing.instance, DatabaseDescriptor.instance.getSchema(), KeyspaceManager.instance);
+    public static final CommitLog instance = new CommitLog(DatabaseDescriptor.instance, Tracing.instance, DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getKeyspaceManager());
 
     // we only permit records HALF the size of a commit log, to ensure we don't spin allocating many mostly
     // empty segments when writing large records

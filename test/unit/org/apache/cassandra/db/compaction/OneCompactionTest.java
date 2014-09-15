@@ -67,7 +67,7 @@ public class OneCompactionTest
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(columnFamilyName);
 
         Set<DecoratedKey> inserted = new HashSet<DecoratedKey>();

@@ -46,6 +46,8 @@ public class RowIterationTest
     public static final String KEYSPACE1 = "RowIterationTest";
     public static final InetAddress LOCAL = DatabaseDescriptor.instance.getBroadcastAddress();
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -60,7 +62,7 @@ public class RowIterationTest
     @Test
     public void testRowIteration()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Super3");
 
         final int ROWS_PER_SSTABLE = 10;
@@ -79,7 +81,7 @@ public class RowIterationTest
     @Test
     public void testRowIterationDeletionTime()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         String CF_NAME = "Standard3";
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(CF_NAME);
         DecoratedKey key = Util.dk("key");
@@ -107,7 +109,7 @@ public class RowIterationTest
     @Test
     public void testRowIterationDeletion()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         String CF_NAME = "Standard3";
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(CF_NAME);
         DecoratedKey key = Util.dk("key");

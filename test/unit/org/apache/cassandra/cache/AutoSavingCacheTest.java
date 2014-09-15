@@ -52,7 +52,7 @@ public class AutoSavingCacheTest
     @Test
     public void testSerializeAndLoadKeyCache() throws Exception
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD1);
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD1);
         for (int i = 0; i < 2; i++)
         {
             Mutation rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("key1"));

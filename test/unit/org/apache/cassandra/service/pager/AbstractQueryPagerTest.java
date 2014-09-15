@@ -147,7 +147,7 @@ public class AbstractQueryPagerTest
                               databaseDescriptor.getSystemKeyspace(),
                               databaseDescriptor.getSchema(),
                               databaseDescriptor.getColumnFamilyStoreManager(),
-                              KeyspaceManager.instance,
+                              databaseDescriptor.getKeyspaceManager(),
                               CFMetaDataFactory.instance,
                               MutationFactory.instance,
                               DBConfig.instance);

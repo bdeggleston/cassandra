@@ -181,7 +181,7 @@ public class SSTableExportTest
     @Test
     public void testRoundTripStandardCf() throws IOException
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Standard1");
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard1");
         File tempSS = tempSSTableFile(KEYSPACE1, "Standard1");
         ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         SSTableWriter writer = databaseDescriptor.getSSTableWriterFactory().create(tempSS.getPath(), 2, ActiveRepairService.UNREPAIRED_SSTABLE);

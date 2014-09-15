@@ -25,7 +25,6 @@ import org.apache.cassandra.service.StorageServiceExecutors;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.compaction.Upgrader;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.utils.OutputHandler;
@@ -53,7 +52,7 @@ public class StandaloneUpgrader
                                                                  options.keyspace,
                                                                  options.cf));
 
-            Keyspace keyspace = KeyspaceManager.instance.openWithoutSSTables(options.keyspace);
+            Keyspace keyspace = DatabaseDescriptor.instance.getKeyspaceManager().openWithoutSSTables(options.keyspace);
             ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(options.cf);
 
             OutputHandler handler = new OutputHandler.SystemOutput(false, options.debug);

@@ -64,7 +64,7 @@ public class CounterCacheTest
     @Test
     public void testReadWrite()
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF);
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CF);
         databaseDescriptor.getCacheService().invalidateCounterCache();
 
         assertEquals(0, databaseDescriptor.getCacheService().counterCache.size());
@@ -88,7 +88,7 @@ public class CounterCacheTest
     @Test
     public void testSaveLoad() throws ExecutionException, InterruptedException, WriteTimeoutException
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CF);
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CF);
         databaseDescriptor.getCacheService().invalidateCounterCache();
 
         ColumnFamily cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);

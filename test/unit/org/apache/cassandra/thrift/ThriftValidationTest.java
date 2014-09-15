@@ -117,7 +117,7 @@ public class ThriftValidationTest
         Column column = new Column(ByteBufferUtil.bytes("id"));
         column.setValue(ByteBufferUtil.bytes("not a long"));
         column.setTimestamp(1234);
-        ThriftValidation.validateColumnData(newMetadata, null, column, KeyspaceManager.instance);
+        ThriftValidation.validateColumnData(newMetadata, null, column, databaseDescriptor.getKeyspaceManager());
     }
 
     @Test
@@ -132,10 +132,10 @@ public class ThriftValidationTest
         Column column = new Column(ByteBufferUtil.bytes(CFMetaData.DEFAULT_KEY_ALIAS));
         column.setValue(ByteBufferUtil.bytes("not a uuid"));
         column.setTimestamp(1234);
-        ThriftValidation.validateColumnData(metaData, null, column, KeyspaceManager.instance);
+        ThriftValidation.validateColumnData(metaData, null, column, databaseDescriptor.getKeyspaceManager());
 
         IndexExpression expression = new IndexExpression(ByteBufferUtil.bytes(CFMetaData.DEFAULT_KEY_ALIAS), IndexOperator.EQ, ByteBufferUtil.bytes("a"));
-        ThriftValidation.validateFilterClauses(metaData, Arrays.asList(expression), KeyspaceManager.instance);
+        ThriftValidation.validateFilterClauses(metaData, Arrays.asList(expression), databaseDescriptor.getKeyspaceManager());
     }
 
     @Test
@@ -149,7 +149,7 @@ public class ThriftValidationTest
         Column column = new Column(ByteBufferUtil.bytes(CFMetaData.DEFAULT_COLUMN_ALIAS + 1));
         column.setValue(ByteBufferUtil.bytes("not a long"));
         column.setTimestamp(1234);
-        ThriftValidation.validateColumnData(metaData, null, column, KeyspaceManager.instance);
+        ThriftValidation.validateColumnData(metaData, null, column, databaseDescriptor.getKeyspaceManager());
     }
 
     @Test

@@ -103,7 +103,7 @@ public class SSTableReaderTest
     @Test
     public void testGetPositionsForRanges() throws ExecutionException, InterruptedException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard2");
 
         // insert data and compact to a single sstable
@@ -144,7 +144,7 @@ public class SSTableReaderTest
     {
         MmappedSegmentedFile.MAX_SEGMENT_SIZE = 40; // each index entry is ~11 bytes, so this will generate lots of segments
 
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard1");
 
         // insert a bunch of data and compact to a single sstable
@@ -181,7 +181,7 @@ public class SSTableReaderTest
     public void testPersistentStatistics()
     {
 
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard1");
 
         for (int j = 0; j < 100; j += 2)
@@ -206,7 +206,7 @@ public class SSTableReaderTest
     @Test
     public void testGetPositionsForRangesWithKeyCache() throws ExecutionException, InterruptedException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard2");
         databaseDescriptor.getCacheService().keyCache.setCapacity(100);
 
@@ -241,7 +241,7 @@ public class SSTableReaderTest
     public void testPersistentStatisticsWithSecondaryIndex()
     {
         // Create secondary index and flush to disk
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Indexed1");
         ByteBuffer key = ByteBufferUtil.bytes(String.valueOf("k1"));
         Mutation rm = MutationFactory.instance.create(KEYSPACE1, key);
@@ -260,7 +260,7 @@ public class SSTableReaderTest
         String cf = "Standard1";
 
         // clear and create just one sstable for this test
-        Keyspace keyspace = KeyspaceManager.instance.open(ks);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(ks);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(cf);
         store.clearUnsafe();
         store.disableAutoCompaction();
@@ -297,7 +297,7 @@ public class SSTableReaderTest
     @Test
     public void testLoadingSummaryUsesCorrectPartitioner() throws Exception
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Indexed1");
         ByteBuffer key = ByteBufferUtil.bytes(String.valueOf("k1"));
         Mutation rm = MutationFactory.instance.create(KEYSPACE1, key);
@@ -324,7 +324,7 @@ public class SSTableReaderTest
     @Test
     public void testGetScannerForNoIntersectingRanges()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard1");
         ByteBuffer key = ByteBufferUtil.bytes(String.valueOf("k1"));
         Mutation rm = MutationFactory.instance.create(KEYSPACE1, key);
@@ -344,7 +344,7 @@ public class SSTableReaderTest
     @Test
     public void testGetPositionsForRangesFromTableOpenedForBulkLoading() throws IOException, ExecutionException, InterruptedException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard2");
 
         // insert data and compact to a single sstable. The
@@ -380,7 +380,7 @@ public class SSTableReaderTest
     @Test
     public void testIndexSummaryReplacement() throws IOException, ExecutionException, InterruptedException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore store = keyspace.getColumnFamilyStore("StandardLowIndexInterval"); // index interval of 8, no key caching
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
 

@@ -176,7 +176,7 @@ public class SSTableLoader implements StreamEventHandler
         outputHandler.output("Established connection to initial hosts");
 
         StreamPlan plan = new StreamPlan("Bulk Load", 0, connectionsPerHost, databaseDescriptor, DatabaseDescriptor.instance.getSchema(),
-                                         KeyspaceManager.instance, DatabaseDescriptor.instance.getStreamManager(), DBConfig.instance).connectionFactory(client.getConnectionFactory());
+                                         DatabaseDescriptor.instance.getKeyspaceManager(), DatabaseDescriptor.instance.getStreamManager(), DBConfig.instance).connectionFactory(client.getConnectionFactory());
 
         Map<InetAddress, Collection<Range<Token>>> endpointToRanges = client.getEndpointToRangesMap();
         openSSTables(endpointToRanges);

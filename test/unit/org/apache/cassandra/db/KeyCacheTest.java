@@ -76,7 +76,7 @@ public class KeyCacheTest
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
-        ColumnFamilyStore store = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(COLUMN_FAMILY2);
+        ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(COLUMN_FAMILY2);
 
         // empty the cache
         databaseDescriptor.getCacheService().invalidateKeyCache();
@@ -126,7 +126,7 @@ public class KeyCacheTest
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(COLUMN_FAMILY1);
 
         // just to make sure that everything is clean

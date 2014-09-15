@@ -77,7 +77,7 @@ public class LegacySSTableTest
 
     public static void beforeClass()
     {
-        KeyspaceManager.instance.setInitialized();
+        databaseDescriptor.getKeyspaceManager().setInitialized();
         String scp = System.getProperty(LEGACY_SSTABLE_PROP);
         assert scp != null;
         LEGACY_SSTABLE_ROOT = new File(scp).getAbsoluteFile();
@@ -137,10 +137,10 @@ public class LegacySSTableTest
                                                                sstable.getPositionsForRanges(ranges),
                                                                sstable.estimatedKeysForRanges(ranges), sstable.getSSTableMetadata().repairedAt));
         new StreamPlan("LegacyStreamingTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
-                       KeyspaceManager.instance, databaseDescriptor.getStreamManager(), DBConfig.instance).transferFiles(DatabaseDescriptor.instance.getBroadcastAddress(), details)
+                       databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), DBConfig.instance).transferFiles(DatabaseDescriptor.instance.getBroadcastAddress(), details)
                                              .execute().get();
 
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KSNAME).getColumnFamilyStore(CFNAME);
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KSNAME).getColumnFamilyStore(CFNAME);
         assert cfs.getSSTables().size() == 1;
         sstable = cfs.getSSTables().iterator().next();
         CellNameType type = sstable.metadata.comparator;

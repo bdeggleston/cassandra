@@ -51,7 +51,7 @@ public class CQLSSTableWriterTest
     public static void setup() throws Exception
     {
         DatabaseDescriptor.init();
-        KeyspaceManager.instance.setInitialized();
+        databaseDescriptor.getKeyspaceManager().setInitialized();
         StorageService.instance.initServer();
     }
 

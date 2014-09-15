@@ -46,6 +46,9 @@ public class CompositeTypeTest
     private static final String KEYSPACE1 = "CompositeTypeTest";
     private static final String CF_STANDARDCOMPOSITE = "StandardComposite";
     private static final CompositeType comparator;
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     static
     {
         List<AbstractType<?>> subComparators = new ArrayList<AbstractType<?>>();
@@ -179,7 +182,7 @@ public class CompositeTypeTest
     @Test
     public void testFullRound() throws Exception
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_STANDARDCOMPOSITE);
 
         ByteBuffer cname1 = createCompositeKey("test1", null, -1, false);

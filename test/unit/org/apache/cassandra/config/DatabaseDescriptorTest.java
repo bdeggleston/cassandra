@@ -84,7 +84,7 @@ public class DatabaseDescriptorTest
         assertEquals(0, databaseDescriptor.getSchema().getNonSystemKeyspaces().size());
 
         Gossiper.instance.start((int)(System.currentTimeMillis() / 1000));
-        KeyspaceManager.instance.setInitialized();
+        databaseDescriptor.getKeyspaceManager().setInitialized();
 
         try
         {
@@ -118,7 +118,7 @@ public class DatabaseDescriptorTest
         // By default, we should load from the yaml
         Config config = DatabaseDescriptor.loadConfig();
         assertEquals("Test Cluster", config.cluster_name);
-        KeyspaceManager.instance.setInitialized();
+        databaseDescriptor.getKeyspaceManager().setInitialized();
 
         // Now try custom loader
         ConfigurationLoader testLoader = new TestLoader();

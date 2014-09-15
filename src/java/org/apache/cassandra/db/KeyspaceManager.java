@@ -3,20 +3,12 @@ package org.apache.cassandra.db;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.KSMetaDataFactory;
 import org.apache.cassandra.config.Schema;
 
 import java.io.File;
 
 public class KeyspaceManager
 {
-    public static final KeyspaceManager instance;
-    static
-    {
-        instance = new KeyspaceManager(DatabaseDescriptor.instance);
-        assert KSMetaDataFactory.instance != null;
-    }
-
     public final Function<String,Keyspace> keyspaceTransformer;
 
     private final DatabaseDescriptor databaseDescriptor;

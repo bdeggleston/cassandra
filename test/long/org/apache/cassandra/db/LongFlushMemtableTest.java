@@ -53,7 +53,7 @@ public class LongFlushMemtableTest
     @Test
     public void testFlushMemtables() throws IOException, ConfigurationException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         for (int i = 0; i < 100; i++)
         {
             CFMetaData metadata = CFMetaDataFactory.instance.denseCFMetaData(keyspace.getName(), "_CF" + i, UTF8Type.instance);

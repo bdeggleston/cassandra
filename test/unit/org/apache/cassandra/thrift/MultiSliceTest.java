@@ -71,7 +71,7 @@ public class MultiSliceTest
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD));
         server = new CassandraServer(DatabaseDescriptor.instance, Tracing.instance,
                                      databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), StorageProxy.instance,
-                                     MessagingService.instance, KeyspaceManager.instance,
+                                     MessagingService.instance, databaseDescriptor.getKeyspaceManager(),
                                      MutationFactory.instance, CounterMutationFactory.instance,
                                      StorageService.instance, CFMetaDataFactory.instance,
                                      DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,

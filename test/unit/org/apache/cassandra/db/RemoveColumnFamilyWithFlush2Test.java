@@ -39,6 +39,8 @@ public class RemoveColumnFamilyWithFlush2Test
     private static final String KEYSPACE1 = "RemoveColumnFamilyWithFlush2Test";
     private static final String CF_STANDARD1 = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -52,7 +54,7 @@ public class RemoveColumnFamilyWithFlush2Test
     @Test
     public void testRemoveColumnFamilyWithFlush2()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard1");
         Mutation rm;
         DecoratedKey dk = Util.dk("key1");

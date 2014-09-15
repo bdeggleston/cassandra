@@ -26,6 +26,7 @@ import java.util.Collection;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.exceptions.ConfigurationException;
@@ -40,6 +41,8 @@ public class NameSortTest
     private static final String KEYSPACE1 = "NameSortTest";
     private static final String CF = "Standard1";
     private static final String CFSUPER = "Super1";
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -75,7 +78,7 @@ public class NameSortTest
 
     private void testNameSort(int N) throws IOException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
 
         for (int i = 0; i < N; ++i)
         {

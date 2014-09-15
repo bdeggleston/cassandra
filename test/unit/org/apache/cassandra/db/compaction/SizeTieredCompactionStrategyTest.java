@@ -20,6 +20,7 @@ package org.apache.cassandra.db.compaction;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -45,6 +46,8 @@ public class SizeTieredCompactionStrategyTest
 {
     public static final String KEYSPACE1 = "SizeTieredCompactionStrategyTest";
     private static final String CF_STANDARD1 = "Standard1";
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -166,7 +169,7 @@ public class SizeTieredCompactionStrategyTest
     {
         String ksname = KEYSPACE1;
         String cfname = "Standard1";
-        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
@@ -210,7 +213,7 @@ public class SizeTieredCompactionStrategyTest
     {
         String ksname = KEYSPACE1;
         String cfname = "Standard1";
-        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();

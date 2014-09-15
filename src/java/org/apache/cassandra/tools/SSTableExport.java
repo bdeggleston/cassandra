@@ -432,7 +432,7 @@ public class SSTableExport
                                              ssTableFileName, descriptor.ksname));
             System.exit(1);
         }
-        Keyspace keyspace = KeyspaceManager.instance.open(descriptor.ksname);
+        Keyspace keyspace = DatabaseDescriptor.instance.getKeyspaceManager().open(descriptor.ksname);
 
         // Make it works for indexes too - find parent cf if necessary
         String baseName = descriptor.cfname;

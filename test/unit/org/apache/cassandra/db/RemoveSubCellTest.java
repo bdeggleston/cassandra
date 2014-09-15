@@ -48,6 +48,8 @@ public class RemoveSubCellTest
     private static final String KEYSPACE1 = "RemoveSubCellTest";
     private static final String CF_SUPER1 = "Super1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -61,7 +63,7 @@ public class RemoveSubCellTest
     @Test
     public void testRemoveSubColumn()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Super1");
         Mutation rm;
         DecoratedKey dk = Util.dk("key1");
@@ -86,7 +88,7 @@ public class RemoveSubCellTest
     @Test
     public void testRemoveSubColumnAndContainer()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Super1");
         Mutation rm;
         DecoratedKey dk = Util.dk("key2");

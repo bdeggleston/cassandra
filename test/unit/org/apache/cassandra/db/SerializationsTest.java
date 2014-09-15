@@ -94,17 +94,17 @@ public class SerializationsTest extends AbstractSerializationsTester
 
         RangeSliceCommand.Serializer serializer = MessagingService.instance.rangeSliceCommandSerializer;
 
-        RangeSliceCommand namesCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, namesPred, bounds, 100, DatabaseDescriptor.instance, KeyspaceManager.instance, serializer);
+        RangeSliceCommand namesCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, namesPred, bounds, 100, DatabaseDescriptor.instance, databaseDescriptor.getKeyspaceManager(), serializer);
         MessageOut<RangeSliceCommand> namesCmdMsg = namesCmd.createMessage(MessagingService.instance);
-        RangeSliceCommand emptyRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, emptyRangePred, bounds, 100, DatabaseDescriptor.instance, KeyspaceManager.instance, serializer);
+        RangeSliceCommand emptyRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, emptyRangePred, bounds, 100, DatabaseDescriptor.instance, databaseDescriptor.getKeyspaceManager(), serializer);
         MessageOut<RangeSliceCommand> emptyRangeCmdMsg = emptyRangeCmd.createMessage(MessagingService.instance);
-        RangeSliceCommand regRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, nonEmptyRangePred, bounds, 100, DatabaseDescriptor.instance, KeyspaceManager.instance, serializer);
+        RangeSliceCommand regRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, nonEmptyRangePred, bounds, 100, DatabaseDescriptor.instance, databaseDescriptor.getKeyspaceManager(), serializer);
         MessageOut<RangeSliceCommand> regRangeCmdMsg = regRangeCmd.createMessage(MessagingService.instance);
-        RangeSliceCommand namesCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, namesSCPred, bounds, 100, DatabaseDescriptor.instance, KeyspaceManager.instance, serializer);
+        RangeSliceCommand namesCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, namesSCPred, bounds, 100, DatabaseDescriptor.instance, databaseDescriptor.getKeyspaceManager(), serializer);
         MessageOut<RangeSliceCommand> namesCmdSupMsg = namesCmdSup.createMessage(MessagingService.instance);
-        RangeSliceCommand emptyRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, emptyRangePred, bounds, 100, DatabaseDescriptor.instance, KeyspaceManager.instance, serializer);
+        RangeSliceCommand emptyRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, emptyRangePred, bounds, 100, DatabaseDescriptor.instance, databaseDescriptor.getKeyspaceManager(), serializer);
         MessageOut<RangeSliceCommand> emptyRangeCmdSupMsg = emptyRangeCmdSup.createMessage(MessagingService.instance);
-        RangeSliceCommand regRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, nonEmptyRangeSCPred, bounds, 100, DatabaseDescriptor.instance, KeyspaceManager.instance, serializer);
+        RangeSliceCommand regRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, nonEmptyRangeSCPred, bounds, 100, DatabaseDescriptor.instance, databaseDescriptor.getKeyspaceManager(), serializer);
         MessageOut<RangeSliceCommand> regRangeCmdSupMsg = regRangeCmdSup.createMessage(MessagingService.instance);
 
         DataOutputStreamAndChannel out = getOutput("db.RangeSliceCommand.bin");

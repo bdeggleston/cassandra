@@ -85,7 +85,7 @@ public class IndexSummaryManagerTest
     {
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL; // index interval of 8, no key caching
-        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         originalMinIndexInterval = cfs.metadata.getMinIndexInterval();
         originalMaxIndexInterval = cfs.metadata.getMaxIndexInterval();
@@ -97,7 +97,7 @@ public class IndexSummaryManagerTest
     {
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL; // index interval of 8, no key caching
-        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.metadata.minIndexInterval(originalMinIndexInterval);
         cfs.metadata.maxIndexInterval(originalMaxIndexInterval);
@@ -118,7 +118,7 @@ public class IndexSummaryManagerTest
         for (SSTableReader sstable : sstables)
             sstable.readMeter = new RestorableMeter(100.0, 100.0);
 
-        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, originalOffHeapSize * sstables.size(), KeyspaceManager.instance);
+        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, originalOffHeapSize * sstables.size(), databaseDescriptor.getKeyspaceManager());
         for (SSTableReader sstable : sstables)
             assertEquals(BASE_SAMPLING_LEVEL, sstable.getIndexSummarySamplingLevel());
 
@@ -149,7 +149,7 @@ public class IndexSummaryManagerTest
 
     private void createSSTables(String ksname, String cfname, int numSSTables, int numRows)
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
@@ -190,7 +190,7 @@ public class IndexSummaryManagerTest
     {
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL; // index interval of 8, no key caching
-        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         int numSSTables = 1;
         int numRows = 256;
@@ -226,7 +226,7 @@ public class IndexSummaryManagerTest
         cfs.metadata.minIndexInterval(originalMinIndexInterval / 2);
         SSTableReader sstable = cfs.getSSTables().iterator().next();
         long summarySpace = sstable.getIndexSummaryOffHeapSize();
-        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, Arrays.asList(sstable), summarySpace, KeyspaceManager.instance);
+        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, Arrays.asList(sstable), summarySpace, databaseDescriptor.getKeyspaceManager());
         sstable = cfs.getSSTables().iterator().next();
         assertEquals(originalMinIndexInterval, sstable.getEffectiveIndexInterval(), 0.001);
         assertEquals(numRows / originalMinIndexInterval, sstable.getIndexSummarySize());
@@ -234,7 +234,7 @@ public class IndexSummaryManagerTest
         // keep the min_index_interval the same, but now give the summary enough space to grow by 50%
         double previousInterval = sstable.getEffectiveIndexInterval();
         int previousSize = sstable.getIndexSummarySize();
-        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, Arrays.asList(sstable), (long) Math.ceil(summarySpace * 1.5), KeyspaceManager.instance);
+        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, Arrays.asList(sstable), (long) Math.ceil(summarySpace * 1.5), databaseDescriptor.getKeyspaceManager());
         sstable = cfs.getSSTables().iterator().next();
         assertEquals(previousSize * 1.5, (double) sstable.getIndexSummarySize(), 1);
         assertEquals(previousInterval * (1.0 / 1.5), sstable.getEffectiveIndexInterval(), 0.001);
@@ -242,7 +242,7 @@ public class IndexSummaryManagerTest
         // return min_index_interval to it's original value (double it), but only give the summary enough space
         // to have an effective index interval of twice the new min
         cfs.metadata.minIndexInterval(originalMinIndexInterval);
-        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, Arrays.asList(sstable), (long) Math.ceil(summarySpace / 2.0), KeyspaceManager.instance);
+        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, Arrays.asList(sstable), (long) Math.ceil(summarySpace / 2.0), databaseDescriptor.getKeyspaceManager());
         sstable = cfs.getSSTables().iterator().next();
         assertEquals(originalMinIndexInterval * 2, sstable.getEffectiveIndexInterval(), 0.001);
         assertEquals(numRows / (originalMinIndexInterval * 2), sstable.getIndexSummarySize());
@@ -252,7 +252,7 @@ public class IndexSummaryManagerTest
         // result in an effective interval above the new max)
         cfs.metadata.minIndexInterval(originalMinIndexInterval * 4);
         cfs.metadata.maxIndexInterval(originalMinIndexInterval * 4);
-        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, Arrays.asList(sstable), 10, KeyspaceManager.instance);
+        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, Arrays.asList(sstable), 10, databaseDescriptor.getKeyspaceManager());
         sstable = cfs.getSSTables().iterator().next();
         assertEquals(cfs.metadata.getMinIndexInterval(), sstable.getEffectiveIndexInterval(), 0.001);
     }
@@ -262,7 +262,7 @@ public class IndexSummaryManagerTest
     {
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL; // index interval of 8, no key caching
-        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         int numSSTables = 1;
         int numRows = 256;
@@ -272,14 +272,14 @@ public class IndexSummaryManagerTest
         for (SSTableReader sstable : sstables)
             sstable.readMeter = new RestorableMeter(100.0, 100.0);
 
-        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, sstables, 1, KeyspaceManager.instance);
+        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, sstables, 1, databaseDescriptor.getKeyspaceManager());
         sstables = new ArrayList<>(cfs.getSSTables());
         for (SSTableReader sstable : sstables)
             assertEquals(cfs.metadata.getMaxIndexInterval(), sstable.getEffectiveIndexInterval(), 0.01);
 
         // halve the max_index_interval
         cfs.metadata.maxIndexInterval(cfs.metadata.getMaxIndexInterval() / 2);
-        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, sstables, 1, KeyspaceManager.instance);
+        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, sstables, 1, databaseDescriptor.getKeyspaceManager());
         sstables = new ArrayList<>(cfs.getSSTables());
         for (SSTableReader sstable : sstables)
         {
@@ -289,7 +289,7 @@ public class IndexSummaryManagerTest
 
         // return max_index_interval to its original value
         cfs.metadata.maxIndexInterval(cfs.metadata.getMaxIndexInterval() * 2);
-        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, sstables, 1, KeyspaceManager.instance);
+        IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST, sstables, 1, databaseDescriptor.getKeyspaceManager());
         for (SSTableReader sstable : cfs.getSSTables())
         {
             assertEquals(cfs.metadata.getMaxIndexInterval(), sstable.getEffectiveIndexInterval(), 0.01);
@@ -302,7 +302,7 @@ public class IndexSummaryManagerTest
     {
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL; // index interval of 8, no key caching
-        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         int numSSTables = 4;
         int numRows = 256;
@@ -317,7 +317,7 @@ public class IndexSummaryManagerTest
         long singleSummaryOffHeapSpace = sstables.get(0).getIndexSummaryOffHeapSize();
 
         // there should be enough space to not downsample anything
-        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * numSSTables), KeyspaceManager.instance);
+        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * numSSTables), databaseDescriptor.getKeyspaceManager());
         for (SSTableReader sstable : sstables)
             assertEquals(BASE_SAMPLING_LEVEL, sstable.getIndexSummarySamplingLevel());
         assertEquals(singleSummaryOffHeapSpace * numSSTables, totalOffHeapSize(sstables));
@@ -325,26 +325,26 @@ public class IndexSummaryManagerTest
 
         // everything should get cut in half
         assert sstables.size() == 4;
-        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * (numSSTables / 2)), KeyspaceManager.instance);
+        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * (numSSTables / 2)), databaseDescriptor.getKeyspaceManager());
         for (SSTableReader sstable : sstables)
             assertEquals(BASE_SAMPLING_LEVEL / 2, sstable.getIndexSummarySamplingLevel());
         validateData(cfs, numRows);
 
         // everything should get cut to a quarter
-        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * (numSSTables / 4)), KeyspaceManager.instance);
+        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * (numSSTables / 4)), databaseDescriptor.getKeyspaceManager());
         for (SSTableReader sstable : sstables)
             assertEquals(BASE_SAMPLING_LEVEL / 4, sstable.getIndexSummarySamplingLevel());
         validateData(cfs, numRows);
 
         // upsample back up to half
-        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables,(singleSummaryOffHeapSpace * (numSSTables / 2) + 4), KeyspaceManager.instance);
+        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables,(singleSummaryOffHeapSpace * (numSSTables / 2) + 4), databaseDescriptor.getKeyspaceManager());
         assert sstables.size() == 4;
         for (SSTableReader sstable : sstables)
             assertEquals(BASE_SAMPLING_LEVEL / 2, sstable.getIndexSummarySamplingLevel());
         validateData(cfs, numRows);
 
         // upsample back up to the original index summary
-        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * numSSTables), KeyspaceManager.instance);
+        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * numSSTables), databaseDescriptor.getKeyspaceManager());
         for (SSTableReader sstable : sstables)
             assertEquals(BASE_SAMPLING_LEVEL, sstable.getIndexSummarySamplingLevel());
         validateData(cfs, numRows);
@@ -353,7 +353,7 @@ public class IndexSummaryManagerTest
         // so the two cold sstables should get downsampled to be half of their original size
         sstables.get(0).readMeter = new RestorableMeter(50.0, 50.0);
         sstables.get(1).readMeter = new RestorableMeter(50.0, 50.0);
-        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * 3), KeyspaceManager.instance);
+        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * 3), databaseDescriptor.getKeyspaceManager());
         Collections.sort(sstables, hotnessComparator);
         assertEquals(BASE_SAMPLING_LEVEL / 2, sstables.get(0).getIndexSummarySamplingLevel());
         assertEquals(BASE_SAMPLING_LEVEL / 2, sstables.get(1).getIndexSummarySamplingLevel());
@@ -366,7 +366,7 @@ public class IndexSummaryManagerTest
         double higherRate = 50.0 * (UPSAMPLE_THRESHOLD - (UPSAMPLE_THRESHOLD * 0.10));
         sstables.get(0).readMeter = new RestorableMeter(lowerRate, lowerRate);
         sstables.get(1).readMeter = new RestorableMeter(higherRate, higherRate);
-        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * 3), KeyspaceManager.instance);
+        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * 3), databaseDescriptor.getKeyspaceManager());
         Collections.sort(sstables, hotnessComparator);
         assertEquals(BASE_SAMPLING_LEVEL / 2, sstables.get(0).getIndexSummarySamplingLevel());
         assertEquals(BASE_SAMPLING_LEVEL / 2, sstables.get(1).getIndexSummarySamplingLevel());
@@ -381,7 +381,7 @@ public class IndexSummaryManagerTest
         sstables.get(2).readMeter = new RestorableMeter(1000.0, 1000.0);
         sstables.get(3).readMeter = new RestorableMeter(1000.0, 1000.0);
 
-        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * 3) + 50, KeyspaceManager.instance);
+        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (singleSummaryOffHeapSpace * 3) + 50, databaseDescriptor.getKeyspaceManager());
         Collections.sort(sstables, hotnessComparator);
 
         if (sstables.get(0).getIndexSummarySamplingLevel() == minSamplingLevel)
@@ -402,7 +402,7 @@ public class IndexSummaryManagerTest
         sstables.get(1).readMeter = new RestorableMeter(0.0, 0.0);
         sstables.get(2).readMeter = new RestorableMeter(92, 92);
         sstables.get(3).readMeter = new RestorableMeter(128.0, 128.0);
-        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (long) (singleSummaryOffHeapSpace + (singleSummaryOffHeapSpace * (92.0 / BASE_SAMPLING_LEVEL))), KeyspaceManager.instance);
+        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, (long) (singleSummaryOffHeapSpace + (singleSummaryOffHeapSpace * (92.0 / BASE_SAMPLING_LEVEL))), databaseDescriptor.getKeyspaceManager());
         Collections.sort(sstables, hotnessComparator);
         assertEquals(1, sstables.get(0).getIndexSummarySize());  // at the min sampling level
         assertEquals(1, sstables.get(0).getIndexSummarySize());  // at the min sampling level
@@ -412,7 +412,7 @@ public class IndexSummaryManagerTest
         validateData(cfs, numRows);
 
         // Don't leave enough space for even the minimal index summaries
-        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, 10, KeyspaceManager.instance);
+        sstables = redistributeSummaries(Collections.EMPTY_LIST, sstables, 10, databaseDescriptor.getKeyspaceManager());
         for (SSTableReader sstable : sstables)
             assertEquals(1, sstable.getIndexSummarySize());  // at the min sampling level
         validateData(cfs, numRows);
@@ -423,7 +423,7 @@ public class IndexSummaryManagerTest
     {
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL;
-        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
@@ -480,7 +480,7 @@ public class IndexSummaryManagerTest
 
         String ksname = KEYSPACE1;
         String cfname = CF_STANDARDLOWiINTERVAL; // index interval of 8, no key caching
-        Keyspace keyspace = KeyspaceManager.instance.open(ksname);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(ksname);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();

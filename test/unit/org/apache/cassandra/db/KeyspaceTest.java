@@ -102,7 +102,7 @@ public class KeyspaceTest
     @Test
     public void testGetRowNoColumns() throws Throwable
     {
-        final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE2);
+        final Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE2);
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard3");
 
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3", databaseDescriptor.getSchema(), DBConfig.instance);
@@ -132,7 +132,7 @@ public class KeyspaceTest
     @Test
     public void testGetRowSingleColumn() throws Throwable
     {
-        final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        final Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
 
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
@@ -162,7 +162,7 @@ public class KeyspaceTest
     public void testGetRowSliceByRange() throws Throwable
     {
         DecoratedKey key = TEST_SLICE_KEY;
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         // First write "a", "b", "c"
@@ -185,7 +185,7 @@ public class KeyspaceTest
     @Test
     public void testGetSliceNoMatch() throws Throwable
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard2", databaseDescriptor.getSchema(), DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1));
         Mutation rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("row1000"), cf);
@@ -205,7 +205,7 @@ public class KeyspaceTest
     public void testGetSliceWithCutoff() throws Throwable
     {
         // tests slicing against data from one row in a memtable and then flushed to an sstable
-        final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        final Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
         final DecoratedKey ROW = Util.dk("row4");
         final NumberFormat fmt = new DecimalFormat("000");
@@ -262,7 +262,7 @@ public class KeyspaceTest
     @Test
     public void testReversedWithFlushing()
     {
-        final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        final Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("StandardLong1");
         final DecoratedKey ROW = Util.dk("row4");
 
@@ -307,7 +307,7 @@ public class KeyspaceTest
     public void testGetSliceFromBasic() throws Throwable
     {
         // tests slicing against data from one row in a memtable and then flushed to an sstable
-        final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        final Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
         final DecoratedKey ROW = Util.dk("row1");
 
@@ -362,7 +362,7 @@ public class KeyspaceTest
     public void testGetSliceWithExpiration() throws Throwable
     {
         // tests slicing against data from one row with expiring column in a memtable and then flushed to an sstable
-        final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        final Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
         final DecoratedKey ROW = Util.dk("row5");
 
@@ -396,7 +396,7 @@ public class KeyspaceTest
     public void testGetSliceFromAdvanced() throws Throwable
     {
         // tests slicing against data from one row spread across two sstables
-        final Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        final Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         final ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
         final DecoratedKey ROW = Util.dk("row2");
 
@@ -445,7 +445,7 @@ public class KeyspaceTest
     public void testGetSliceFromLarge() throws Throwable
     {
         // tests slicing against 1000 columns in an sstable
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
         DecoratedKey key = Util.dk("row3");
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
@@ -473,7 +473,7 @@ public class KeyspaceTest
     @Test
     public void testLimitSSTables() throws CharacterCodingException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore("Standard1");
         cfStore.disableAutoCompaction();
         DecoratedKey key = Util.dk("row_maxmin");
@@ -537,7 +537,7 @@ public class KeyspaceTest
         ---------------------
         then we slice out col1 = a5 and col2 > 85 -> which should let us just check 2 sstables and get 2 columns
          */
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
 
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("StandardComposite2");
         cfs.disableAutoCompaction();

@@ -115,7 +115,7 @@ public class CFMetaDataTest
     {
         for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
-            for (ColumnFamilyStore cfs : KeyspaceManager.instance.open(keyspaceName).getColumnFamilyStores())
+            for (ColumnFamilyStore cfs : databaseDescriptor.getKeyspaceManager().open(keyspaceName).getColumnFamilyStores())
             {
                 CFMetaData cfm = cfs.metadata;
                 if (!cfm.isThriftCompatible())

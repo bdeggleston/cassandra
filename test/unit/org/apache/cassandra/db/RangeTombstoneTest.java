@@ -84,7 +84,7 @@ public class RangeTombstoneTest
     @Test
     public void simpleQueryWithRangeTombstoneTest() throws Exception
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KSNAME);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KSNAME);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CFNAME);
 
         // Inserting data
@@ -145,7 +145,7 @@ public class RangeTombstoneTest
     public void rangeTombstoneFilteringTest() throws Exception
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
-        Keyspace keyspace = KeyspaceManager.instance.open(KSNAME);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KSNAME);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CFNAME);
 
         // Inserting data
@@ -261,7 +261,7 @@ public class RangeTombstoneTest
     @Test
     public void test7810() throws ExecutionException, InterruptedException, IOException
     {
-        Keyspace ks = KeyspaceManager.instance.open(KSNAME);
+        Keyspace ks = databaseDescriptor.getKeyspaceManager().open(KSNAME);
         ColumnFamilyStore cfs = ks.getColumnFamilyStore(CFNAME);
         cfs.metadata.gcGraceSeconds(2);
 
@@ -286,7 +286,7 @@ public class RangeTombstoneTest
     @Test
     public void test7808_1() throws ExecutionException, InterruptedException
     {
-        Keyspace ks = KeyspaceManager.instance.open(KSNAME);
+        Keyspace ks = databaseDescriptor.getKeyspaceManager().open(KSNAME);
         ColumnFamilyStore cfs = ks.getColumnFamilyStore(CFNAME);
         cfs.metadata.gcGraceSeconds(2);
 
@@ -309,7 +309,7 @@ public class RangeTombstoneTest
     @Test
     public void test7808_2() throws ExecutionException, InterruptedException, IOException
     {
-        Keyspace ks = KeyspaceManager.instance.open(KSNAME);
+        Keyspace ks = databaseDescriptor.getKeyspaceManager().open(KSNAME);
         ColumnFamilyStore cfs = ks.getColumnFamilyStore(CFNAME);
         cfs.metadata.gcGraceSeconds(2);
 
@@ -340,7 +340,7 @@ public class RangeTombstoneTest
     public void overlappingRangeTest() throws Exception
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
-        Keyspace keyspace = KeyspaceManager.instance.open(KSNAME);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KSNAME);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CFNAME);
 
         // Inserting data
@@ -396,7 +396,7 @@ public class RangeTombstoneTest
     @Test
     public void reverseQueryTest() throws Exception
     {
-        Keyspace table = KeyspaceManager.instance.open(KSNAME);
+        Keyspace table = databaseDescriptor.getKeyspaceManager().open(KSNAME);
         ColumnFamilyStore cfs = table.getColumnFamilyStore(CFNAME);
 
         // Inserting data
@@ -434,7 +434,7 @@ public class RangeTombstoneTest
     @Test
     public void testRangeTombstoneCompaction() throws Exception
     {
-        Keyspace table = KeyspaceManager.instance.open(KSNAME);
+        Keyspace table = databaseDescriptor.getKeyspaceManager().open(KSNAME);
         ColumnFamilyStore cfs = table.getColumnFamilyStore(CFNAME);
         ByteBuffer key = ByteBufferUtil.bytes("k4");
 
@@ -483,7 +483,7 @@ public class RangeTombstoneTest
     @Test
     public void testOverwritesToDeletedColumns() throws Exception
     {
-        Keyspace table = KeyspaceManager.instance.open(KSNAME);
+        Keyspace table = databaseDescriptor.getKeyspaceManager().open(KSNAME);
         ColumnFamilyStore cfs = table.getColumnFamilyStore(CFNAME);
         ByteBuffer key = ByteBufferUtil.bytes("k6");
         ByteBuffer indexedColumnName = ByteBufferUtil.bytes(1);
@@ -526,7 +526,7 @@ public class RangeTombstoneTest
 
     private void runCompactionWithRangeTombstoneAndCheckSecondaryIndex() throws Exception
     {
-        Keyspace table = KeyspaceManager.instance.open(KSNAME);
+        Keyspace table = databaseDescriptor.getKeyspaceManager().open(KSNAME);
         ColumnFamilyStore cfs = table.getColumnFamilyStore(CFNAME);
         ByteBuffer key = ByteBufferUtil.bytes("k5");
         ByteBuffer indexedColumnName = ByteBufferUtil.bytes(1);

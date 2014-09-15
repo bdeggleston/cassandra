@@ -58,7 +58,7 @@ public class ReplicationStrategyEndpointCacheTest
         tmd = new TokenMetadata(databaseDescriptor.getFailureDetector(), LocatorConfig.instance);
         searchToken = new BigIntegerToken(String.valueOf(15), LocatorConfig.instance.getPartitioner());
 
-        strategy = getStrategyWithNewTokenMetadata(KeyspaceManager.instance.open(KEYSPACE).getReplicationStrategy(), tmd);
+        strategy = getStrategyWithNewTokenMetadata(databaseDescriptor.getKeyspaceManager().open(KEYSPACE).getReplicationStrategy(), tmd);
 
         tmd.updateNormalToken(new BigIntegerToken(String.valueOf(10), LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.1"));
         tmd.updateNormalToken(new BigIntegerToken(String.valueOf(20), LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.2"));

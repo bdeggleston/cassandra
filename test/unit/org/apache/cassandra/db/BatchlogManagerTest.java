@@ -87,7 +87,7 @@ public class BatchlogManagerTest
 
         // Generate 1000 mutations and put them all into the batchlog.
         // Half (500) ready to be replayed, half not.
-        CellNameType comparator = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Standard1").metadata.comparator;
+        CellNameType comparator = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard1").metadata.comparator;
         for (int i = 0; i < 1000; i++)
         {
             Mutation mutation = MutationFactory.instance.create(KEYSPACE1, bytes(i));
@@ -108,7 +108,7 @@ public class BatchlogManagerTest
         }
 
         // Flush the batchlog to disk (see CASSANDRA-6822).
-        KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF).forceBlockingFlush();
+        databaseDescriptor.getKeyspaceManager().open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF).forceBlockingFlush();
 
         assertEquals(1000, databaseDescriptor.getBatchlogManager().countAllBatches() - initialAllBatches);
         assertEquals(0, databaseDescriptor.getBatchlogManager().getTotalBatchesReplayed() - initialReplayedBatches);
@@ -143,8 +143,8 @@ public class BatchlogManagerTest
     @Test
     public void testTruncatedReplay() throws InterruptedException, ExecutionException
     {
-        CellNameType comparator2 = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Standard2").metadata.comparator;
-        CellNameType comparator3 = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Standard3").metadata.comparator;
+        CellNameType comparator2 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard2").metadata.comparator;
+        CellNameType comparator3 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard3").metadata.comparator;
         // Generate 2000 mutations (1000 batchlog entries) and put them all into the batchlog.
         // Each batchlog entry with a mutation for Standard2 and Standard3.
         // In the middle of the process, 'truncate' Standard2.
@@ -160,7 +160,7 @@ public class BatchlogManagerTest
             long timestamp = System.currentTimeMillis() - DatabaseDescriptor.instance.getWriteRpcTimeout() * 2;
 
             if (i == 500)
-                databaseDescriptor.getSystemKeyspace().saveTruncationRecord(KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Standard2"),
+                databaseDescriptor.getSystemKeyspace().saveTruncationRecord(databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard2"),
                                                              timestamp,
                                                              ReplayPosition.NONE);
 
@@ -181,7 +181,7 @@ public class BatchlogManagerTest
         }
 
         // Flush the batchlog to disk (see CASSANDRA-6822).
-        KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF).forceFlush();
+        databaseDescriptor.getKeyspaceManager().open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF).forceFlush();
 
         // Force batchlog replay.
         databaseDescriptor.getBatchlogManager().replayAllFailedBatches();

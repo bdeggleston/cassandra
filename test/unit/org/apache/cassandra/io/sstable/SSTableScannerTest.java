@@ -48,6 +48,8 @@ public class SSTableScannerTest
     public static final String KEYSPACE = "SSTableScannerTest";
     public static final String TABLE = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws Exception
     {
@@ -112,7 +114,7 @@ public class SSTableScannerTest
     @Test
     public void testSingleDataRange()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(TABLE);
         store.clearUnsafe();
 
@@ -175,7 +177,7 @@ public class SSTableScannerTest
     @Test
     public void testMultipleRanges()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(TABLE);
         store.clearUnsafe();
 
@@ -307,7 +309,7 @@ public class SSTableScannerTest
     @Test
     public void testSingleKeyMultipleRanges()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(TABLE);
         store.clearUnsafe();
 

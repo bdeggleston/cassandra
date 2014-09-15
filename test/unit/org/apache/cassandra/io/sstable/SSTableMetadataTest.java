@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -57,6 +58,8 @@ public class SSTableMetadataTest
     public static final String CF_STANDARDCOMPOSITE2 = "StandardComposite2";
     public static final String CF_COUNTER1 = "Counter1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws Exception
     {
@@ -75,7 +78,7 @@ public class SSTableMetadataTest
     @Test
     public void testTrackMaxDeletionTime()
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard1");
         long timestamp = System.currentTimeMillis();
         for(int i = 0; i < 10; i++)
@@ -148,7 +151,7 @@ public class SSTableMetadataTest
     @Test
     public void testWithDeletes() throws ExecutionException, InterruptedException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard2");
         long timestamp = System.currentTimeMillis();
         DecoratedKey key = Util.dk("deletetest");
@@ -198,7 +201,7 @@ public class SSTableMetadataTest
     @Test
     public void trackMaxMinColNames() throws CharacterCodingException, ExecutionException, InterruptedException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard3");
         store.getCompactionStrategy();
         for (int j = 0; j < 8; j++)
@@ -250,7 +253,7 @@ public class SSTableMetadataTest
         ---------------------
         meaning max columns are b9 and 9, min is a0 and 0
          */
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
 
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("StandardComposite2");
 
@@ -289,7 +292,7 @@ public class SSTableMetadataTest
     @Test
     public void testLegacyCounterShardTracking()
     {
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Counter1");
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Counter1");
 
         // A cell with all shards
         CounterContext.ContextState state = CounterContext.ContextState.allocate(1, 1, 1);

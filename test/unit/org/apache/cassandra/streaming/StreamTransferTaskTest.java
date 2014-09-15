@@ -74,10 +74,10 @@ public class StreamTransferTaskTest
                                                   DatabaseDescriptor.instance.getBroadcastAddress(),
                                                   DatabaseDescriptor.instance.getMaxStreamingRetries(),
                                                   databaseDescriptor.getSchema(),
-                                                  KeyspaceManager.instance,
+                                                  databaseDescriptor.getKeyspaceManager(),
                                                   databaseDescriptor.getStreamManager(),
                                                   DBConfig.instance);
-        ColumnFamilyStore cfs = KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf);
+        ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(ks).getColumnFamilyStore(cf);
 
         // create two sstables
         for (int i = 0; i < 2; i++)

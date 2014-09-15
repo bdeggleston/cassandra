@@ -65,7 +65,7 @@ public class BootStrapperTest
         final int[] clusterSizes = new int[] { 1, 3, 5, 10, 100};
         for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
         {
-            int replicationFactor = KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getReplicationFactor();
+            int replicationFactor = databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor();
             for (int clusterSize : clusterSizes)
                 if (clusterSize >= replicationFactor)
                     testSourceTargetComputation(keyspaceName, clusterSize, replicationFactor);
@@ -81,7 +81,7 @@ public class BootStrapperTest
 
         TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         assertEquals(numOldNodes, tmd.sortedTokens().size());
-        RangeStreamer s = new RangeStreamer(tmd, myEndpoint, "Bootstrap", DatabaseDescriptor.instance, databaseDescriptor.getSchema(), Gossiper.instance, databaseDescriptor.getStreamManager(), KeyspaceManager.instance, DBConfig.instance);
+        RangeStreamer s = new RangeStreamer(tmd, myEndpoint, "Bootstrap", DatabaseDescriptor.instance, databaseDescriptor.getSchema(), Gossiper.instance, databaseDescriptor.getStreamManager(), databaseDescriptor.getKeyspaceManager(), DBConfig.instance);
         IFailureDetector mockFailureDetector = new IFailureDetector()
         {
             public boolean isAlive(InetAddress ep)
@@ -97,7 +97,7 @@ public class BootStrapperTest
             public void forceConviction(InetAddress ep) { throw new UnsupportedOperationException(); }
         };
         s.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(mockFailureDetector));
-        s.addRanges(keyspaceName, KeyspaceManager.instance.open(keyspaceName).getReplicationStrategy().getPendingAddressRanges(tmd, myToken, myEndpoint));
+        s.addRanges(keyspaceName, databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getPendingAddressRanges(tmd, myToken, myEndpoint));
 
         Collection<Map.Entry<InetAddress, Collection<Range<Token>>>> toFetch = s.toFetch().get(keyspaceName);
 

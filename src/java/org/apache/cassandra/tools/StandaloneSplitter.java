@@ -104,7 +104,7 @@ public class StandaloneSplitter
             }
 
             // Do not load sstables since they might be broken
-            Keyspace keyspace = KeyspaceManager.instance.openWithoutSSTables(ksName);
+            Keyspace keyspace = DatabaseDescriptor.instance.getKeyspaceManager().openWithoutSSTables(ksName);
             ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
 
             String snapshotName = "pre-split-" + System.currentTimeMillis();

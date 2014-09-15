@@ -95,7 +95,7 @@ public class ScrubTest
     public void testScrubOneRow() throws ExecutionException, InterruptedException
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF);
         cfs.clearUnsafe();
 
@@ -117,7 +117,7 @@ public class ScrubTest
     public void testScrubCorruptedCounterRow() throws IOException, WriteTimeoutException
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(COUNTER_CF);
         cfs.clearUnsafe();
 
@@ -163,7 +163,7 @@ public class ScrubTest
     public void testScrubDeletedRow() throws ExecutionException, InterruptedException
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF2);
         cfs.clearUnsafe();
 
@@ -181,7 +181,7 @@ public class ScrubTest
     public void testScrubMultiRow() throws ExecutionException, InterruptedException
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF);
         cfs.clearUnsafe();
 
@@ -203,7 +203,7 @@ public class ScrubTest
     public void testScrubOutOfOrder() throws Exception
     {
         databaseDescriptor.getCompactionManager().disableAutoCompaction();
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE);
         String columnFamily = CF3;
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(columnFamily);
         cfs.clearUnsafe();
@@ -311,7 +311,7 @@ public class ScrubTest
     {
         databaseDescriptor.getQueryProcessor().process(String.format("CREATE TABLE \"%s\".test_compact_static_columns (a bigint, b timeuuid, c boolean static, d text, PRIMARY KEY (a, b))", KEYSPACE), ConsistencyLevel.ONE);
 
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("test_compact_static_columns");
 
         databaseDescriptor.getQueryProcessor().executeInternal(String.format("INSERT INTO \"%s\".test_compact_static_columns (a, b, c, d) VALUES (123, c3db07e8-b602-11e3-bc6b-e0b9a54a6d93, true, 'foobar')", KEYSPACE));
@@ -325,7 +325,7 @@ public class ScrubTest
     @Test
     public void testColumnNameEqualToDefaultKeyAlias() throws ExecutionException, InterruptedException
     {
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_UUID);
 
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF_UUID, databaseDescriptor.getSchema(), DBConfig.instance);
@@ -347,7 +347,7 @@ public class ScrubTest
     {
         databaseDescriptor.getQueryProcessor().process(String.format("CREATE TABLE \"%s\".test_compact_dynamic_columns (a int, b text, c text, PRIMARY KEY (a, b)) WITH COMPACT STORAGE", KEYSPACE), ConsistencyLevel.ONE);
 
-        Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
+        Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("test_compact_dynamic_columns");
 
         databaseDescriptor.getQueryProcessor().executeInternal(String.format("INSERT INTO \"%s\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'a', 'foo')", KEYSPACE));
