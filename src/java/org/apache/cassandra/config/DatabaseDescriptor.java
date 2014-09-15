@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final StreamManager streamManager;
     protected final StageManager stageManager;
     protected final HintedHandOffManager hintedHandOffManager;
     protected final CompactionManager compactionManager;
@@ -227,6 +228,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        streamManager = createStreamManager();
         stageManager = createStageManager();
         hintedHandOffManager = createHintedHandOffManager();
         compactionManager = createCompactionManager();
@@ -1848,9 +1850,14 @@ public class DatabaseDescriptor
         return statusLogger;
     }
 
+    public StreamManager createStreamManager()
+    {
+        return new StreamManager(getTracing());
+    }
+
     public StreamManager getStreamManager()
     {
-        return StreamManager.instance;
+        return streamManager;
     }
 
     public DefsTables createDefsTables()

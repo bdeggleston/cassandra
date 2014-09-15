@@ -75,7 +75,7 @@ public class StreamTransferTaskTest
                                                   DatabaseDescriptor.instance.getMaxStreamingRetries(),
                                                   databaseDescriptor.getSchema(),
                                                   KeyspaceManager.instance,
-                                                  StreamManager.instance,
+                                                  databaseDescriptor.getStreamManager(),
                                                   DBConfig.instance);
         ColumnFamilyStore cfs = KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf);
 

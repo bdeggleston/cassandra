@@ -52,8 +52,6 @@ import org.apache.cassandra.streaming.management.StreamStateCompositeData;
  */
 public class StreamManager implements StreamManagerMBean
 {
-    public static final StreamManager instance = new StreamManager(Tracing.instance);
-
     private final ThreadPoolExecutor receiveTaskExecutor;
 
     // Executor strictly for establishing the initial connections. Once we're connected to the other end the rest of the

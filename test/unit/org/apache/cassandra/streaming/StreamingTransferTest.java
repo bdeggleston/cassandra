@@ -113,7 +113,7 @@ public class StreamingTransferTest
     public void testEmptyStreamPlan() throws Exception
     {
         StreamResultFuture futureResult = new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
-                                                         KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).execute();
+                                                         KeyspaceManager.instance, databaseDescriptor.getStreamManager(), DBConfig.instance).execute();
         final UUID planId = futureResult.planId;
         Futures.addCallback(futureResult, new FutureCallback<StreamState>()
         {
@@ -143,7 +143,7 @@ public class StreamingTransferTest
         ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken(), LocatorConfig.instance.getPartitioner()));
 
         StreamResultFuture futureResult = new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
-                                                         KeyspaceManager.instance, StreamManager.instance, DBConfig.instance)
+                                                         KeyspaceManager.instance, databaseDescriptor.getStreamManager(), DBConfig.instance)
                                                   .requestRanges(LOCAL, KEYSPACE2, ranges)
                                                   .execute();
 
@@ -237,13 +237,13 @@ public class StreamingTransferTest
         // wrapped range
         ranges.add(new Range<Token>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key0")), LocatorConfig.instance.getPartitioner()));
         new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
-                       KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).transferRanges(LOCAL, cfs.keyspace.getName(), ranges, cfs.getColumnFamilyName()).execute().get();
+                       KeyspaceManager.instance, databaseDescriptor.getStreamManager(), DBConfig.instance).transferRanges(LOCAL, cfs.keyspace.getName(), ranges, cfs.getColumnFamilyName()).execute().get();
     }
 
     private void transfer(SSTableReader sstable, List<Range<Token>> ranges) throws Exception
     {
         new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
-                       KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).transferFiles(LOCAL, makeStreamingDetails(ranges, Arrays.asList(sstable))).execute().get();
+                       KeyspaceManager.instance, databaseDescriptor.getStreamManager(), DBConfig.instance).transferFiles(LOCAL, makeStreamingDetails(ranges, Arrays.asList(sstable))).execute().get();
     }
 
     private Collection<StreamSession.SSTableStreamingSections> makeStreamingDetails(List<Range<Token>> ranges, Collection<SSTableReader> sstables)
@@ -417,7 +417,7 @@ public class StreamingTransferTest
         sstable.acquireReference();
         sstable2.acquireReference();
         new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
-                       KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).transferFiles(LOCAL, makeStreamingDetails(ranges, Arrays.asList(sstable, sstable2))).execute().get();
+                       KeyspaceManager.instance, databaseDescriptor.getStreamManager(), DBConfig.instance).transferFiles(LOCAL, makeStreamingDetails(ranges, Arrays.asList(sstable, sstable2))).execute().get();
 
         // confirm that the sstables were transferred and registered and that 2 keys arrived
         ColumnFamilyStore cfstore = KeyspaceManager.instance.open(keyspaceName).getColumnFamilyStore(cfname);
@@ -472,7 +472,7 @@ public class StreamingTransferTest
             throw new AssertionError();
 
         new StreamPlan("StreamingTransferTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
-                       KeyspaceManager.instance, StreamManager.instance, DBConfig.instance).transferFiles(LOCAL, makeStreamingDetails(ranges, ssTableReaders)).execute().get();
+                       KeyspaceManager.instance, databaseDescriptor.getStreamManager(), DBConfig.instance).transferFiles(LOCAL, makeStreamingDetails(ranges, ssTableReaders)).execute().get();
 
         // check that only two keys were transferred
         for (Map.Entry<DecoratedKey,String> entry : Arrays.asList(first, last))
