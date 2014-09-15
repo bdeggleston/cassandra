@@ -228,12 +228,12 @@ public class CassandraDaemon
         // check the system keyspace to keep user from shooting self in foot by changing partitioner, cluster name, etc.
         // we do a one-off scrub of the system keyspace first; we can't load the list of the rest of the keyspaces,
         // until system keyspace is opened.
-        SystemKeyspace systemKeyspace = SystemKeyspace.instance;  // FIXME: forcing initialization before system keyspace access
+        SystemKeyspace systemKeyspace = DatabaseDescriptor.instance.getSystemKeyspace();  // FIXME: forcing initialization before system keyspace access
         for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(Keyspace.SYSTEM_KS).values())
             ColumnFamilyStore.scrubDataDirectories(cfm, DatabaseDescriptor.instance, Tracing.instance, CFMetaDataFactory.instance, KeyspaceManager.instance, DBConfig.instance, ColumnFamilyStoreManager.instance.dataDirectories);
         try
         {
-            SystemKeyspace.instance.checkHealth();
+            DatabaseDescriptor.instance.getSystemKeyspace().checkHealth();
         }
         catch (ConfigurationException e)
         {
@@ -246,7 +246,7 @@ public class CassandraDaemon
         Functions.loadUDFFromSchema(QueryProcessor.instance, MutationFactory.instance, CFMetaDataFactory.instance);
 
         // clean up compaction leftovers
-        Map<Pair<String, String>, Map<Integer, UUID>> unfinishedCompactions = SystemKeyspace.instance.getUnfinishedCompactions();
+        Map<Pair<String, String>, Map<Integer, UUID>> unfinishedCompactions = DatabaseDescriptor.instance.getSystemKeyspace().getUnfinishedCompactions();
         for (Pair<String, String> kscf : unfinishedCompactions.keySet())
         {
             CFMetaData cfm = Schema.instance.getCFMetaData(kscf.left, kscf.right);
@@ -254,7 +254,7 @@ public class CassandraDaemon
             if (cfm != null)
                 ColumnFamilyStoreManager.instance.removeUnfinishedCompactionLeftovers(cfm, unfinishedCompactions.get(kscf));
         }
-        SystemKeyspace.instance.discardCompactionsInProgress();
+        DatabaseDescriptor.instance.getSystemKeyspace().discardCompactionsInProgress();
 
         // clean up debris in the rest of the keyspaces
         for (String keyspaceName : Schema.instance.getKeyspaces())
@@ -337,7 +337,7 @@ public class CassandraDaemon
         };
         StorageServiceExecutors.instance.optionalTasks.schedule(runnable, 5 * 60, TimeUnit.SECONDS);
 
-        SystemKeyspace.instance.finishStartup();
+        DatabaseDescriptor.instance.getSystemKeyspace().finishStartup();
 
         // start server internals
         StorageService.instance.registerDaemon(this);

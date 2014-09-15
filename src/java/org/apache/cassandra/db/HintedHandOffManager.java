@@ -91,7 +91,10 @@ import org.cliffc.high_scale_lib.NonBlockingHashSet;
 public class HintedHandOffManager implements HintedHandOffManagerMBean
 {
     public static final String MBEAN_NAME = "org.apache.cassandra.db:type=HintedHandoffManager";
-    public static final HintedHandOffManager instance = new HintedHandOffManager(DatabaseDescriptor.instance, Tracing.instance, SystemKeyspace.instance, KeyspaceManager.instance);
+    public static final HintedHandOffManager instance = new HintedHandOffManager(DatabaseDescriptor.instance,
+                                                                                 Tracing.instance,
+                                                                                 DatabaseDescriptor.instance.getSystemKeyspace(),
+                                                                                 KeyspaceManager.instance);
 
     private static final Logger logger = LoggerFactory.getLogger(HintedHandOffManager.class);
     private static final int PAGE_SIZE = 128;

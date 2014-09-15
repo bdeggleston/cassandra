@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.context.CounterContext;
@@ -54,6 +55,8 @@ public class RecoveryManagerTest
 
     private static final String KEYSPACE2 = "RecoveryManagerTest2";
     private static final String CF_STANDARD3 = "Standard3";
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -117,7 +120,7 @@ public class RecoveryManagerTest
         for (int i = 0; i < 10; ++i)
         {
             cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Counter1", Schema.instance, DBConfig.instance);
-            cf.addColumn(BufferCounterCell.createLocal(cellname("col"), 1L, 1L, Long.MIN_VALUE, SystemKeyspace.instance.getLocalHostId()));
+            cf.addColumn(BufferCounterCell.createLocal(cellname("col"), 1L, 1L, Long.MIN_VALUE, databaseDescriptor.getSystemKeyspace().getLocalHostId()));
             rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey(), cf);
             rm.apply();
         }

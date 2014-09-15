@@ -56,7 +56,7 @@ import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
 
 public class NativeCellTest
 {
-
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
     private static final NativeAllocator nativeAllocator = new NativePool(Integer.MAX_VALUE, Integer.MAX_VALUE, 1f, null).newAllocator();
     private static final OpOrder.Group group = new OpOrder().start();
 
@@ -94,7 +94,7 @@ public class NativeCellTest
                                                               null,
                                                               DatabaseDescriptor.instance,
                                                               Tracing.instance,
-                                                              SystemKeyspace.instance,
+                                                              databaseDescriptor.getSystemKeyspace(),
                                                               Schema.instance,
                                                               ColumnFamilyStoreManager.instance,
                                                               KeyspaceManager.instance,
@@ -139,7 +139,7 @@ public class NativeCellTest
             test(test, buf, nat);
 
             // test CounterCell
-            buf = new BufferCounterCell(test.name, CounterContext.createLocal(rand.nextLong(), SystemKeyspace.instance.getLocalHostId()), rand.nextLong(),  rand.nextInt(100000));
+            buf = new BufferCounterCell(test.name, CounterContext.createLocal(rand.nextLong(), databaseDescriptor.getSystemKeyspace().getLocalHostId()), rand.nextLong(),  rand.nextInt(100000));
             nat = buf.localCopy(metadata, nativeAllocator, group);
             test(test, buf, nat);
         }
@@ -208,10 +208,10 @@ public class NativeCellTest
 
 
             // test CounterCell
-            buf = new BufferCounterCell(test.name, CounterContext.createLocal(rand.nextLong(), SystemKeyspace.instance.getLocalHostId()), rand.nextLong(),  rand.nextInt(100000));
+            buf = new BufferCounterCell(test.name, CounterContext.createLocal(rand.nextLong(), databaseDescriptor.getSystemKeyspace().getLocalHostId()), rand.nextLong(),  rand.nextInt(100000));
             nat = buf.localCopy(metadata, nativeAllocator, group);
 
-            buf2 = new BufferCounterCell(test.name, CounterContext.createLocal(rand.nextLong(), SystemKeyspace.instance.getLocalHostId()), rand.nextLong(),  rand.nextInt(100000));
+            buf2 = new BufferCounterCell(test.name, CounterContext.createLocal(rand.nextLong(), databaseDescriptor.getSystemKeyspace().getLocalHostId()), rand.nextLong(),  rand.nextInt(100000));
             nat2 = buf2.localCopy(metadata, nativeAllocator, group);
 
             assert test.type.compare(buf.name(), nat.name()) == 0;

@@ -37,6 +37,7 @@ import static org.junit.Assert.assertTrue;
 
 public class KSMetaDataTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void setUpClass()
@@ -59,7 +60,7 @@ public class KSMetaDataTest
                                             Collections.<CFMetaData>emptyList(),
                                             QueryProcessor.instance,
                                             LocatorConfig.instance,
-                                            SystemKeyspace.instance,
+                                            databaseDescriptor.getSystemKeyspace(),
                                             CFMetaDataFactory.instance,
                                             MutationFactory.instance);
 

@@ -40,6 +40,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class SystemKeyspaceTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void setUpClass()
@@ -51,9 +52,9 @@ public class SystemKeyspaceTest
     public void testLocalTokens()
     {
         // Remove all existing tokens
-        Collection<Token> current = SystemKeyspace.instance.loadTokens().asMap().get(DatabaseDescriptor.instance.getLocalAddress());
+        Collection<Token> current = databaseDescriptor.getSystemKeyspace().loadTokens().asMap().get(DatabaseDescriptor.instance.getLocalAddress());
         if (current != null && !current.isEmpty())
-            SystemKeyspace.instance.updateTokens(current);
+            databaseDescriptor.getSystemKeyspace().updateTokens(current);
 
         List<Token> tokens = new ArrayList<Token>()
         {{
@@ -61,10 +62,10 @@ public class SystemKeyspaceTest
                 add(new BytesToken(ByteBufferUtil.bytes(String.format("token%d", i)), LocatorConfig.instance.getPartitioner()));
         }};
 
-        SystemKeyspace.instance.updateTokens(tokens);
+        databaseDescriptor.getSystemKeyspace().updateTokens(tokens);
         int count = 0;
 
-        for (Token tok : SystemKeyspace.instance.getSavedTokens())
+        for (Token tok : databaseDescriptor.getSystemKeyspace().getSavedTokens())
             assert tokens.get(count++).equals(tok);
     }
 
@@ -73,17 +74,17 @@ public class SystemKeyspaceTest
     {
         BytesToken token = new BytesToken(ByteBufferUtil.bytes("token3"), LocatorConfig.instance.getPartitioner());
         InetAddress address = InetAddress.getByName("127.0.0.2");
-        SystemKeyspace.instance.updateTokens(address, Collections.<Token>singletonList(token));
-        assert SystemKeyspace.instance.loadTokens().get(address).contains(token);
-        SystemKeyspace.instance.removeEndpoint(address);
-        assert !SystemKeyspace.instance.loadTokens().containsValue(token);
+        databaseDescriptor.getSystemKeyspace().updateTokens(address, Collections.<Token>singletonList(token));
+        assert databaseDescriptor.getSystemKeyspace().loadTokens().get(address).contains(token);
+        databaseDescriptor.getSystemKeyspace().removeEndpoint(address);
+        assert !databaseDescriptor.getSystemKeyspace().loadTokens().containsValue(token);
     }
 
     @Test
     public void testLocalHostID()
     {
-        UUID firstId = SystemKeyspace.instance.getLocalHostId();
-        UUID secondId = SystemKeyspace.instance.getLocalHostId();
+        UUID firstId = databaseDescriptor.getSystemKeyspace().getLocalHostId();
+        UUID secondId = databaseDescriptor.getSystemKeyspace().getLocalHostId();
         assert firstId.equals(secondId) : String.format("%s != %s%n", firstId.toString(), secondId.toString());
     }
 }

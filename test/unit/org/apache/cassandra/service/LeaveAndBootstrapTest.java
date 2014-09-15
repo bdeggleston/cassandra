@@ -51,6 +51,8 @@ public class LeaveAndBootstrapTest
     private static final String KEYSPACE3 = "LeaveAndBootstrapTestKeyspace3";
     private static final String KEYSPACE4 = "LeaveAndBootstrapTestKeyspace4";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws Exception
     {
@@ -664,9 +666,9 @@ public class LeaveAndBootstrapTest
         Util.createInitialRing(ss, LocatorConfig.instance.getPartitioner(), endpointTokens, new ArrayList<Token>(), hosts, new ArrayList<UUID>(), 2);
 
         InetAddress toRemove = hosts.get(1);
-        SystemKeyspace.instance.updatePeerInfo(toRemove, "data_center", "dc42");
-        SystemKeyspace.instance.updatePeerInfo(toRemove, "rack", "rack42");
-        assertEquals("rack42", SystemKeyspace.instance.loadDcRackInfo().get(toRemove).get("rack"));
+        databaseDescriptor.getSystemKeyspace().updatePeerInfo(toRemove, "data_center", "dc42");
+        databaseDescriptor.getSystemKeyspace().updatePeerInfo(toRemove, "rack", "rack42");
+        assertEquals("rack42", databaseDescriptor.getSystemKeyspace().loadDcRackInfo().get(toRemove).get("rack"));
 
         // mark the node as removed
         Gossiper.instance.injectApplicationState(toRemove, ApplicationState.STATUS,
@@ -676,7 +678,7 @@ public class LeaveAndBootstrapTest
         // state changes made after the endpoint has left should be ignored
         ss.onChange(hosts.get(1), ApplicationState.RACK,
                 valueFactory.rack("rack9999"));
-        assertEquals("rack42", SystemKeyspace.instance.loadDcRackInfo().get(toRemove).get("rack"));
+        assertEquals("rack42", databaseDescriptor.getSystemKeyspace().loadDcRackInfo().get(toRemove).get("rack"));
     }
 
     @Test

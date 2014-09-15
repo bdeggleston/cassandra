@@ -35,6 +35,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class AbstractQueryPagerTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void setUpClass()
@@ -143,7 +144,7 @@ public class AbstractQueryPagerTest
                               CellNames.fromAbstractType(Int32Type.instance, false, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                               DatabaseDescriptor.instance,
                               Tracing.instance,
-                              SystemKeyspace.instance,
+                              databaseDescriptor.getSystemKeyspace(),
                               Schema.instance,
                               ColumnFamilyStoreManager.instance,
                               KeyspaceManager.instance,

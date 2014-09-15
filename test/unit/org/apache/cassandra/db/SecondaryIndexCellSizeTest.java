@@ -42,6 +42,8 @@ import static org.junit.Assert.assertTrue;
 public class SecondaryIndexCellSizeTest
 {
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void setUpClass()
     {
@@ -63,8 +65,8 @@ public class SecondaryIndexCellSizeTest
         buffer.flip();
         Cell cell = new BufferCell(CellNames.simpleDense(ByteBufferUtil.bytes("test")), buffer, 0);
 
-        SecondaryIndexCellSizeTest.MockRowIndex mockRowIndex = new SecondaryIndexCellSizeTest.MockRowIndex(SystemKeyspace.instance, CompactionManager.instance, StorageService.instance, DBConfig.instance);
-        SecondaryIndexCellSizeTest.MockColumnIndex mockColumnIndex = new SecondaryIndexCellSizeTest.MockColumnIndex(SystemKeyspace.instance, CompactionManager.instance, StorageService.instance, DBConfig.instance);
+        SecondaryIndexCellSizeTest.MockRowIndex mockRowIndex = new SecondaryIndexCellSizeTest.MockRowIndex(databaseDescriptor.getSystemKeyspace(), CompactionManager.instance, StorageService.instance, DBConfig.instance);
+        SecondaryIndexCellSizeTest.MockColumnIndex mockColumnIndex = new SecondaryIndexCellSizeTest.MockColumnIndex(databaseDescriptor.getSystemKeyspace(), CompactionManager.instance, StorageService.instance, DBConfig.instance);
 
         assertTrue(mockRowIndex.validate(cell));
         assertFalse(mockColumnIndex.validate(cell));

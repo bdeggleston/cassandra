@@ -51,6 +51,8 @@ public class CounterCellTest
 
     private static final int stepLength;
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     static
     {
         idLength      = CounterId.LENGTH;
@@ -71,14 +73,14 @@ public class CounterCellTest
     {
         long delta = 3L;
         CounterCell cell = new BufferCounterCell(Util.cellname("x"),
-                                           CounterContext.createLocal(delta, SystemKeyspace.instance.getLocalHostId()),
+                                           CounterContext.createLocal(delta, databaseDescriptor.getSystemKeyspace().getLocalHostId()),
                                            1L,
                                            Long.MIN_VALUE);
 
         Assert.assertEquals(delta, cell.total());
         Assert.assertEquals(1, cell.value().getShort(0));
         Assert.assertEquals(0, cell.value().getShort(2));
-        Assert.assertTrue(CounterId.wrap(cell.value(), 4).isLocalId(SystemKeyspace.instance.getLocalHostId()));
+        Assert.assertTrue(CounterId.wrap(cell.value(), 4).isLocalId(databaseDescriptor.getSystemKeyspace().getLocalHostId()));
         Assert.assertEquals(1L, cell.value().getLong(4 + idLength));
         Assert.assertEquals(delta, cell.value().getLong(4 + idLength + clockLength));
     }
@@ -101,48 +103,48 @@ public class CounterCellTest
 
         // tombstone > live
         left  = new BufferDeletedCell(cellname("x"), 1, 2L);
-        right = BufferCounterCell.createLocal(cellname("x"), 0L, 1L, Long.MIN_VALUE, SystemKeyspace.instance.getLocalHostId());
+        right = BufferCounterCell.createLocal(cellname("x"), 0L, 1L, Long.MIN_VALUE, databaseDescriptor.getSystemKeyspace().getLocalHostId());
 
         assert left.reconcile(right) == left;
 
         // tombstone < live last delete
         left  = new BufferDeletedCell(cellname("x"), 1, 1L);
-        right = BufferCounterCell.createLocal(cellname("x"), 0L, 4L, 2L, SystemKeyspace.instance.getLocalHostId());
+        right = BufferCounterCell.createLocal(cellname("x"), 0L, 4L, 2L, databaseDescriptor.getSystemKeyspace().getLocalHostId());
 
         assert left.reconcile(right) == left;
 
         // tombstone == live last delete
         left  = new BufferDeletedCell(cellname("x"), 1, 2L);
-        right = BufferCounterCell.createLocal(cellname("x"), 0L, 4L, 2L, SystemKeyspace.instance.getLocalHostId());
+        right = BufferCounterCell.createLocal(cellname("x"), 0L, 4L, 2L, databaseDescriptor.getSystemKeyspace().getLocalHostId());
 
         assert left.reconcile(right) == left;
 
         // tombstone > live last delete
         left  = new BufferDeletedCell(cellname("x"), 1, 4L);
-        right = BufferCounterCell.createLocal(cellname("x"), 0L, 9L, 1L, SystemKeyspace.instance.getLocalHostId());
+        right = BufferCounterCell.createLocal(cellname("x"), 0L, 9L, 1L, databaseDescriptor.getSystemKeyspace().getLocalHostId());
 
         assert left.reconcile(right) == left;
 
         // live < tombstone
-        left  = BufferCounterCell.createLocal(cellname("x"), 0L, 1L, Long.MIN_VALUE, SystemKeyspace.instance.getLocalHostId());
+        left  = BufferCounterCell.createLocal(cellname("x"), 0L, 1L, Long.MIN_VALUE, databaseDescriptor.getSystemKeyspace().getLocalHostId());
         right = new BufferDeletedCell(cellname("x"), 1, 2L);
 
         assert left.reconcile(right) == right;
 
         // live last delete > tombstone
-        left  = BufferCounterCell.createLocal(cellname("x"), 0L, 4L, 2L, SystemKeyspace.instance.getLocalHostId());
+        left  = BufferCounterCell.createLocal(cellname("x"), 0L, 4L, 2L, databaseDescriptor.getSystemKeyspace().getLocalHostId());
         right = new BufferDeletedCell(cellname("x"), 1, 1L);
 
         assert left.reconcile(right) == right;
 
         // live last delete == tombstone
-        left  = BufferCounterCell.createLocal(cellname("x"), 0L, 4L, 2L, SystemKeyspace.instance.getLocalHostId());
+        left  = BufferCounterCell.createLocal(cellname("x"), 0L, 4L, 2L, databaseDescriptor.getSystemKeyspace().getLocalHostId());
         right = new BufferDeletedCell(cellname("x"), 1, 2L);
 
         assert left.reconcile(right) == right;
 
         // live last delete < tombstone
-        left  = BufferCounterCell.createLocal(cellname("x"), 0L, 9L, 1L, SystemKeyspace.instance.getLocalHostId());
+        left  = BufferCounterCell.createLocal(cellname("x"), 0L, 9L, 1L, databaseDescriptor.getSystemKeyspace().getLocalHostId());
         right = new BufferDeletedCell(cellname("x"), 1, 4L);
 
         assert left.reconcile(right) == right;
@@ -209,15 +211,15 @@ public class CounterCellTest
         CounterCell rightCell;
 
         // timestamp
-        leftCell = BufferCounterCell.createLocal(cellname("x"), 0, 1L, Long.MIN_VALUE, SystemKeyspace.instance.getLocalHostId());
-        rightCell = BufferCounterCell.createLocal(cellname("x"), 0, 2L, Long.MIN_VALUE, SystemKeyspace.instance.getLocalHostId());
+        leftCell = BufferCounterCell.createLocal(cellname("x"), 0, 1L, Long.MIN_VALUE, databaseDescriptor.getSystemKeyspace().getLocalHostId());
+        rightCell = BufferCounterCell.createLocal(cellname("x"), 0, 2L, Long.MIN_VALUE, databaseDescriptor.getSystemKeyspace().getLocalHostId());
 
         assert rightCell == leftCell.diff(rightCell);
         assert null      == rightCell.diff(leftCell);
 
         // timestampOfLastDelete
-        leftCell = BufferCounterCell.createLocal(cellname("x"), 0, 1L, 1L, SystemKeyspace.instance.getLocalHostId());
-        rightCell = BufferCounterCell.createLocal(cellname("x"), 0, 1L, 2L, SystemKeyspace.instance.getLocalHostId());
+        leftCell = BufferCounterCell.createLocal(cellname("x"), 0, 1L, 1L, databaseDescriptor.getSystemKeyspace().getLocalHostId());
+        rightCell = BufferCounterCell.createLocal(cellname("x"), 0, 1L, 2L, databaseDescriptor.getSystemKeyspace().getLocalHostId());
 
         assert rightCell == leftCell.diff(rightCell);
         assert null      == rightCell.diff(leftCell);

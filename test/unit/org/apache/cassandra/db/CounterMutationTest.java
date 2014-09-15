@@ -47,6 +47,8 @@ public class CounterMutationTest
     private static final String CF1 = "Counter1";
     private static final String CF2 = "Counter2";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -229,7 +231,7 @@ public class CounterMutationTest
         ColumnFamily current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
         ByteBuffer context = current.getColumn(cellname(1)).value();
         assertEquals(10L, CounterContext.total(context));
-        assertEquals(ClockAndCount.create(1L, 10L), CounterContext.getLocalClockAndCount(context, SystemKeyspace.instance.getLocalHostId()));
+        assertEquals(ClockAndCount.create(1L, 10L), CounterContext.getLocalClockAndCount(context, databaseDescriptor.getSystemKeyspace().getLocalHostId()));
         assertEquals(ClockAndCount.create(1L, 10L), cfs.getCachedCounter(bytes(1), cellname(1)));
     }
 }

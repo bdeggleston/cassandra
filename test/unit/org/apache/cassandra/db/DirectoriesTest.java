@@ -59,6 +59,8 @@ public class DirectoriesTest
     private static final Set<CFMetaData> CFM = new HashSet<>(CFS.length);
     private static Map<String, List<File>> files = new HashMap<String, List<File>>();
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void beforeClass() throws IOException
     {
@@ -71,7 +73,7 @@ public class DirectoriesTest
                                    null,
                                    DatabaseDescriptor.instance,
                                    Tracing.instance,
-                                   SystemKeyspace.instance,
+                                   databaseDescriptor.getSystemKeyspace(),
                                    Schema.instance,
                                    ColumnFamilyStoreManager.instance,
                                    KeyspaceManager.instance,
@@ -221,7 +223,7 @@ public class DirectoriesTest
                                             null,
                                             DatabaseDescriptor.instance,
                                             Tracing.instance,
-                                            SystemKeyspace.instance,
+                                            databaseDescriptor.getSystemKeyspace(),
                                             Schema.instance,
                                             ColumnFamilyStoreManager.instance,
                                             KeyspaceManager.instance,

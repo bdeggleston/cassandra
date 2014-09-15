@@ -1821,7 +1821,7 @@ public class ColumnFamilyStoreTest
         sstables = dir.sstableLister().list();
         assertEquals(2, sstables.size());
 
-        UUID compactionTaskID = SystemKeyspace.instance.startCompaction(
+        UUID compactionTaskID = databaseDescriptor.getSystemKeyspace().startCompaction(
                 KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf),
                 Collections.singleton(databaseDescriptor.getSSTableReaderFactory().open(sstable1.descriptor)));
 
@@ -1834,7 +1834,7 @@ public class ColumnFamilyStoreTest
         assertEquals(1, sstables.size());
         assertTrue(sstables.containsKey(sstable1.descriptor));
 
-        Map<Pair<String, String>, Map<Integer, UUID>> unfinished = SystemKeyspace.instance.getUnfinishedCompactions();
+        Map<Pair<String, String>, Map<Integer, UUID>> unfinished = databaseDescriptor.getSystemKeyspace().getUnfinishedCompactions();
         assertTrue(unfinished.isEmpty());
     }
 

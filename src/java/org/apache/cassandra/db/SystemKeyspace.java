@@ -60,13 +60,6 @@ public class SystemKeyspace
 {
     private static final Logger logger = LoggerFactory.getLogger(SystemKeyspace.class);
 
-    public static final SystemKeyspace instance;
-    static
-    {
-        instance = new SystemKeyspace(DatabaseDescriptor.instance);
-        KSMetaDataFactory ksmdf = KSMetaDataFactory.instance;
-    }
-
     // see CFMetaData for schema definitions
     public static final String PEERS_CF = "peers";
     public static final String PEER_EVENTS_CF = "peer_events";

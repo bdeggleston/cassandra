@@ -56,6 +56,8 @@ public class BatchlogManagerTest
     private static final String CF_STANDARD2 = "Standard2";
     private static final String CF_STANDARD3 = "Standard3";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -158,7 +160,7 @@ public class BatchlogManagerTest
             long timestamp = System.currentTimeMillis() - DatabaseDescriptor.instance.getWriteRpcTimeout() * 2;
 
             if (i == 500)
-                SystemKeyspace.instance.saveTruncationRecord(KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Standard2"),
+                databaseDescriptor.getSystemKeyspace().saveTruncationRecord(KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore("Standard2"),
                                                              timestamp,
                                                              ReplayPosition.NONE);
 

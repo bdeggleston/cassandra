@@ -465,7 +465,7 @@ public class CompactionsTest
     @Test
     public void testCompactionLog() throws Exception
     {
-        SystemKeyspace.instance.discardCompactionsInProgress();
+        databaseDescriptor.getSystemKeyspace().discardCompactionsInProgress();
 
         String cf = "Standard4";
         ColumnFamilyStore cfs = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(cf);
@@ -481,13 +481,13 @@ public class CompactionsTest
                 return sstable.descriptor.generation;
             }
         }));
-        UUID taskId = SystemKeyspace.instance.startCompaction(cfs, sstables);
-        Map<Pair<String, String>, Map<Integer, UUID>> compactionLogs = SystemKeyspace.instance.getUnfinishedCompactions();
+        UUID taskId = databaseDescriptor.getSystemKeyspace().startCompaction(cfs, sstables);
+        Map<Pair<String, String>, Map<Integer, UUID>> compactionLogs = databaseDescriptor.getSystemKeyspace().getUnfinishedCompactions();
         Set<Integer> unfinishedCompactions = compactionLogs.get(Pair.create(KEYSPACE1, cf)).keySet();
         assertTrue(unfinishedCompactions.containsAll(generations));
 
-        SystemKeyspace.instance.finishCompaction(taskId);
-        compactionLogs = SystemKeyspace.instance.getUnfinishedCompactions();
+        databaseDescriptor.getSystemKeyspace().finishCompaction(taskId);
+        compactionLogs = databaseDescriptor.getSystemKeyspace().getUnfinishedCompactions();
         assertFalse(compactionLogs.containsKey(Pair.create(KEYSPACE1, cf)));
     }
 

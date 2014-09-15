@@ -141,8 +141,8 @@ public class DatabaseDescriptor
         assert KeyspaceManager.instance != null;
         assert MutationFactory.instance != null;
         assert MessagingService.instance != null;
-        assert DatabaseDescriptor.instance != null;
-        assert SystemKeyspace.instance != null;
+//        assert DatabaseDescriptor.instance != null;
+//        assert SystemKeyspace.instance != null;
         assert StageManager.instance != null;
         assert Schema.instance != null;
         assert ActiveRepairService.instance != null;
@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final SystemKeyspace systemKeyspace;
     protected final IFailureDetector failureDetector;
     protected final IndexSummaryManager indexSummaryManager;
     protected final SSTableWriterFactory ssTableWriterFactory;
@@ -217,6 +218,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        systemKeyspace = createSystemKeyspace();
         failureDetector = createFailureDetector();
         indexSummaryManager = createIndexSummaryManager();
         ssTableWriterFactory = createSSTableWriterFactory();
@@ -665,7 +667,7 @@ public class DatabaseDescriptor
     /** load keyspace (keyspace) definitions, but do not initialize the keyspace instances. */
     public void loadSchemas()
     {
-        ColumnFamilyStore schemaCFS = SystemKeyspace.instance.schemaCFS(SystemKeyspace.SCHEMA_KEYSPACES_CF);
+        ColumnFamilyStore schemaCFS = getSystemKeyspace().schemaCFS(SystemKeyspace.SCHEMA_KEYSPACES_CF);
 
         // if keyspace with definitions is empty try loading the old way
         if (schemaCFS.estimateKeys() == 0)
@@ -823,7 +825,7 @@ public class DatabaseDescriptor
 
     public boolean isReplacing()
     {
-        if (System.getProperty("cassandra.replace_address_first_boot", null) != null && SystemKeyspace.instance.bootstrapComplete())
+        if (System.getProperty("cassandra.replace_address_first_boot", null) != null && getSystemKeyspace().bootstrapComplete())
         {
             logger.info("Replace address on first boot requested; this node is already bootstrapped");
             return false;
@@ -1678,9 +1680,14 @@ public class DatabaseDescriptor
         return CounterMutationFactory.instance;
     }
 
+    public SystemKeyspace createSystemKeyspace()
+    {
+        return new SystemKeyspace(this);
+    }
+
     public SystemKeyspace getSystemKeyspace()
     {
-        return SystemKeyspace.instance;
+        return systemKeyspace;
     }
 
     public QueryHandler getQueryHandler()

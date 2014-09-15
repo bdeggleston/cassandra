@@ -57,6 +57,8 @@ public class DefsTest
     private static final String CF_STANDARD2 = "Standard2";
     private static final String CF_INDEXED = "Indexed1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -87,7 +89,7 @@ public class DefsTest
                                         new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                         DatabaseDescriptor.instance,
                                         Tracing.instance,
-                                        SystemKeyspace.instance,
+                                        databaseDescriptor.getSystemKeyspace(),
                                         Schema.instance,
                                         ColumnFamilyStoreManager.instance,
                                         KeyspaceManager.instance,
@@ -490,7 +492,7 @@ public class DefsTest
                                 cf.comparator,
                                 DatabaseDescriptor.instance,
                                 Tracing.instance,
-                                SystemKeyspace.instance,
+                                databaseDescriptor.getSystemKeyspace(),
                                 Schema.instance,
                                 ColumnFamilyStoreManager.instance,
                                 KeyspaceManager.instance,
@@ -512,7 +514,7 @@ public class DefsTest
                                 cf.comparator,
                                 DatabaseDescriptor.instance,
                                 Tracing.instance,
-                                SystemKeyspace.instance,
+                                databaseDescriptor.getSystemKeyspace(),
                                 Schema.instance,
                                 ColumnFamilyStoreManager.instance,
                                 KeyspaceManager.instance,
@@ -534,7 +536,7 @@ public class DefsTest
                                 cf.comparator,
                                 DatabaseDescriptor.instance,
                                 Tracing.instance,
-                                SystemKeyspace.instance,
+                                databaseDescriptor.getSystemKeyspace(),
                                 Schema.instance,
                                 ColumnFamilyStoreManager.instance,
                                 KeyspaceManager.instance,
@@ -556,7 +558,7 @@ public class DefsTest
                                 cf.comparator,
                                 DatabaseDescriptor.instance,
                                 Tracing.instance,
-                                SystemKeyspace.instance,
+                                databaseDescriptor.getSystemKeyspace(),
                                 Schema.instance,
                                 ColumnFamilyStoreManager.instance,
                                 KeyspaceManager.instance,
@@ -578,7 +580,7 @@ public class DefsTest
                                 new SimpleDenseCellNameType(TimeUUIDType.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                 DatabaseDescriptor.instance,
                                 Tracing.instance,
-                                SystemKeyspace.instance,
+                                databaseDescriptor.getSystemKeyspace(),
                                 Schema.instance,
                                 ColumnFamilyStoreManager.instance,
                                 KeyspaceManager.instance,
@@ -631,7 +633,7 @@ public class DefsTest
                                             new SimpleDenseCellNameType(UTF8Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance),
                                             DatabaseDescriptor.instance,
                                             Tracing.instance,
-                                            SystemKeyspace.instance,
+                                            databaseDescriptor.getSystemKeyspace(),
                                             Schema.instance,
                                             ColumnFamilyStoreManager.instance,
                                             KeyspaceManager.instance,
