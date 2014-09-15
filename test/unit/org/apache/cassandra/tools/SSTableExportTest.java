@@ -89,7 +89,7 @@ public class SSTableExportTest
     public void testEnumeratekeys() throws IOException
     {
         File tempSS = tempSSTableFile(KEYSPACE1, "Standard1");
-        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         SSTableWriter writer = databaseDescriptor.getSSTableWriterFactory().create(tempSS.getPath(), 2, ActiveRepairService.UNREPAIRED_SSTABLE);
 
         // Add rowA
@@ -126,7 +126,7 @@ public class SSTableExportTest
     public void testExportSimpleCf() throws IOException, ParseException
     {
         File tempSS = tempSSTableFile(KEYSPACE1, "Standard1");
-        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         SSTableWriter writer = databaseDescriptor.getSSTableWriterFactory().create(tempSS.getPath(), 2, ActiveRepairService.UNREPAIRED_SSTABLE);
 
         int nowInSec = (int)(System.currentTimeMillis() / 1000) + 42; //live for 42 seconds
@@ -183,7 +183,7 @@ public class SSTableExportTest
     {
         ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard1");
         File tempSS = tempSSTableFile(KEYSPACE1, "Standard1");
-        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         SSTableWriter writer = databaseDescriptor.getSSTableWriterFactory().create(tempSS.getPath(), 2, ActiveRepairService.UNREPAIRED_SSTABLE);
 
         // Add rowA
@@ -208,13 +208,13 @@ public class SSTableExportTest
         new SSTableImport().importJson(tempJson.getPath(), KEYSPACE1, "Standard1", tempSS2.getPath());
 
         reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS2.getPath()));
-        QueryFilter qf = Util.namesQueryFilter(cfs, Util.dk("rowA"), "name");
+        QueryFilter qf = Util.namesQueryFilter(cfs, Util.dk("rowA"), databaseDescriptor, "name");
         ColumnFamily cf = qf.getSSTableColumnIterator(reader).getColumnFamily();
         qf.collateOnDiskAtom(cf, qf.getSSTableColumnIterator(reader), Integer.MIN_VALUE);
         assertNotNull(cf);
         assertEquals(hexToBytes("76616c"), cf.getColumn(Util.cellname("name")).value());
 
-        qf = Util.namesQueryFilter(cfs, Util.dk("rowExclude"), "name");
+        qf = Util.namesQueryFilter(cfs, Util.dk("rowExclude"), databaseDescriptor, "name");
         cf = qf.getSSTableColumnIterator(reader).getColumnFamily();
         assert cf == null;
     }
@@ -223,7 +223,7 @@ public class SSTableExportTest
     public void testExportCounterCf() throws IOException, ParseException
     {
         File tempSS = tempSSTableFile(KEYSPACE1, "Counter1");
-        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Counter1", databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Counter1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         SSTableWriter writer = databaseDescriptor.getSSTableWriterFactory().create(tempSS.getPath(), 2, ActiveRepairService.UNREPAIRED_SSTABLE);
 
         // Add rowA
@@ -255,7 +255,7 @@ public class SSTableExportTest
     public void testEscapingDoubleQuotes() throws IOException, ParseException
     {
         File tempSS = tempSSTableFile(KEYSPACE1, "ValuesWithQuotes");
-        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "ValuesWithQuotes", databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "ValuesWithQuotes", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         SSTableWriter writer = databaseDescriptor.getSSTableWriterFactory().create(tempSS.getPath(), 2, ActiveRepairService.UNREPAIRED_SSTABLE);
 
         // Add rowA
@@ -287,7 +287,7 @@ public class SSTableExportTest
     public void testExportColumnsWithMetadata() throws IOException, ParseException
     {
         File tempSS = tempSSTableFile(KEYSPACE1, "Standard1");
-        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         SSTableWriter writer = databaseDescriptor.getSSTableWriterFactory().create(tempSS.getPath(), 2, ActiveRepairService.UNREPAIRED_SSTABLE);
 
         // Add rowA
@@ -349,7 +349,7 @@ public class SSTableExportTest
     public void testColumnNameEqualToDefaultKeyAlias() throws IOException, ParseException
     {
         File tempSS = tempSSTableFile(KEYSPACE1, "UUIDKeys");
-        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "UUIDKeys", databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "UUIDKeys", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         SSTableWriter writer = databaseDescriptor.getSSTableWriterFactory().create(tempSS.getPath(), 2, ActiveRepairService.UNREPAIRED_SSTABLE);
 
         // Add a row
@@ -379,7 +379,7 @@ public class SSTableExportTest
     public void testAsciiKeyValidator() throws IOException, ParseException
     {
         File tempSS = tempSSTableFile(KEYSPACE1, "AsciiKeys");
-        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "AsciiKeys", databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cfamily = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "AsciiKeys", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         SSTableWriter writer = databaseDescriptor.getSSTableWriterFactory().create(tempSS.getPath(), 2, ActiveRepairService.UNREPAIRED_SSTABLE);
 
         // Add a row

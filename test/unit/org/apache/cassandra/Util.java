@@ -179,8 +179,8 @@ public class Util
     public static List<Row> getRangeSlice(ColumnFamilyStore cfs, ByteBuffer superColumn, DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
         IDiskAtomFilter filter = superColumn == null
-                               ? new IdentityQueryFilter(databaseDescriptor, tracing, DBConfig.instance)
-                               : new SliceQueryFilter(SuperColumns.startOf(superColumn), SuperColumns.endOf(superColumn), false, Integer.MAX_VALUE, databaseDescriptor, tracing, DBConfig.instance);
+                               ? new IdentityQueryFilter(databaseDescriptor, tracing, databaseDescriptor.getDBConfig())
+                               : new SliceQueryFilter(SuperColumns.startOf(superColumn), SuperColumns.endOf(superColumn), false, Integer.MAX_VALUE, databaseDescriptor, tracing, databaseDescriptor.getDBConfig());
 
         Token min = LocatorConfig.instance.getPartitioner().getMinimumToken();
         return cfs.getRangeSlice(new Bounds<Token>(min, min, LocatorConfig.instance.getPartitioner()).toRowBounds(), null, filter, 10000);
@@ -210,7 +210,7 @@ public class Util
     {
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore(cfName);
         assert cfStore != null : "Table " + cfName + " has not been defined";
-        return cfStore.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
+        return cfStore.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
     }
 
     public static byte[] concatByteArrays(byte[] first, byte[]... remaining)
@@ -331,34 +331,34 @@ public class Util
         }
     }
 
-    public static QueryFilter namesQueryFilter(ColumnFamilyStore cfs, DecoratedKey key)
+    public static QueryFilter namesQueryFilter(ColumnFamilyStore cfs, DecoratedKey key, DatabaseDescriptor databaseDescriptor)
     {
         SortedSet<CellName> s = new TreeSet<CellName>(cfs.getComparator());
-        return QueryFilter.getNamesFilter(key, cfs.name, s, System.currentTimeMillis(), DBConfig.instance);
+        return QueryFilter.getNamesFilter(key, cfs.name, s, System.currentTimeMillis(), databaseDescriptor.getDBConfig());
     }
 
-    public static QueryFilter namesQueryFilter(ColumnFamilyStore cfs, DecoratedKey key, String... names)
+    public static QueryFilter namesQueryFilter(ColumnFamilyStore cfs, DecoratedKey key, DatabaseDescriptor databaseDescriptor, String... names)
     {
         SortedSet<CellName> s = new TreeSet<CellName>(cfs.getComparator());
         for (String str : names)
             s.add(cellname(str));
-        return QueryFilter.getNamesFilter(key, cfs.name, s, System.currentTimeMillis(), DBConfig.instance);
+        return QueryFilter.getNamesFilter(key, cfs.name, s, System.currentTimeMillis(), databaseDescriptor.getDBConfig());
     }
 
-    public static QueryFilter namesQueryFilter(ColumnFamilyStore cfs, DecoratedKey key, CellName... names)
+    public static QueryFilter namesQueryFilter(ColumnFamilyStore cfs, DecoratedKey key, DatabaseDescriptor databaseDescriptor, CellName... names)
     {
         SortedSet<CellName> s = new TreeSet<CellName>(cfs.getComparator());
         for (CellName n : names)
             s.add(n);
-        return QueryFilter.getNamesFilter(key, cfs.name, s, System.currentTimeMillis(), DBConfig.instance);
+        return QueryFilter.getNamesFilter(key, cfs.name, s, System.currentTimeMillis(), databaseDescriptor.getDBConfig());
     }
 
-    public static NamesQueryFilter namesFilter(ColumnFamilyStore cfs, String... names)
+    public static NamesQueryFilter namesFilter(ColumnFamilyStore cfs, DatabaseDescriptor databaseDescriptor, String... names)
     {
         SortedSet<CellName> s = new TreeSet<CellName>(cfs.getComparator());
         for (String str : names)
             s.add(cellname(str));
-        return new NamesQueryFilter(s, DBConfig.instance);
+        return new NamesQueryFilter(s, databaseDescriptor.getDBConfig());
     }
 
     public static String string(ByteBuffer bb)

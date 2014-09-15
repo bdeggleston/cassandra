@@ -276,7 +276,7 @@ public final class MessagingService implements MessagingServiceMBean
                                                            DatabaseDescriptor.instance.getKeyspaceManager(),
                                                            DatabaseDescriptor.instance.getMutationFactory(),
                                                            LocatorConfig.instance,
-                                                           DBConfig.instance);
+                                                           DatabaseDescriptor.instance.getDBConfig());
     private final MessageOut closeSentinel;
 
     private final DatabaseDescriptor databaseDescriptor;

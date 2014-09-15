@@ -65,8 +65,8 @@ public class SecondaryIndexCellSizeTest
         buffer.flip();
         Cell cell = new BufferCell(CellNames.simpleDense(ByteBufferUtil.bytes("test")), buffer, 0);
 
-        SecondaryIndexCellSizeTest.MockRowIndex mockRowIndex = new SecondaryIndexCellSizeTest.MockRowIndex(databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getCompactionManager(), StorageService.instance, DBConfig.instance);
-        SecondaryIndexCellSizeTest.MockColumnIndex mockColumnIndex = new SecondaryIndexCellSizeTest.MockColumnIndex(databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getCompactionManager(), StorageService.instance, DBConfig.instance);
+        SecondaryIndexCellSizeTest.MockRowIndex mockRowIndex = new SecondaryIndexCellSizeTest.MockRowIndex(databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getCompactionManager(), StorageService.instance, databaseDescriptor.getDBConfig());
+        SecondaryIndexCellSizeTest.MockColumnIndex mockColumnIndex = new SecondaryIndexCellSizeTest.MockColumnIndex(databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getCompactionManager(), StorageService.instance, databaseDescriptor.getDBConfig());
 
         assertTrue(mockRowIndex.validate(cell));
         assertFalse(mockColumnIndex.validate(cell));

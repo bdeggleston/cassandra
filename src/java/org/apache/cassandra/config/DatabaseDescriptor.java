@@ -138,7 +138,7 @@ public class DatabaseDescriptor
 //        assert Gossiper.instance != null;
 //        assert Tracing.instance != null;
         assert LocatorConfig.instance != null;
-        assert DBConfig.instance != null;
+//        assert DBConfig.instance != null;
 //        assert KeyspaceManager.instance != null;
 //        assert MutationFactory.instance != null;
         assert MessagingService.instance != null;
@@ -188,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final DBConfig dbConfig;
     protected final CommitLog commitLog;
     protected final LoadBroadcaster loadBroadcaster;
     protected final ActiveRepairService activeRepairService;
@@ -241,6 +242,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        dbConfig = createDBConfig();
         commitLog = createCommitLog();
         loadBroadcaster = createLoadBroadcaster();
         activeRepairService = createActiveRepairService();
@@ -2025,8 +2027,13 @@ public class DatabaseDescriptor
         return indexSummaryManager;
     }
 
+    public DBConfig createDBConfig()
+    {
+        return new DBConfig(this, getTracing(), getSchema(), getLocatorConfig());
+    }
+
     public DBConfig getDBConfig()
     {
-        return DBConfig.instance;
+        return dbConfig;
     }
 }

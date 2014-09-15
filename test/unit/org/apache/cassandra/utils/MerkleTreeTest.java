@@ -43,6 +43,7 @@ import static org.junit.Assert.*;
 
 public class MerkleTreeTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
     static
     {
         System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
@@ -401,11 +402,11 @@ public class MerkleTreeTest
         byte[] initialhash = mt.hash(full);
 
         DataOutputBuffer out = new DataOutputBuffer();
-        DBConfig.instance.merkleTreeSerializer.serialize(mt, out, MessagingService.current_version);
+        databaseDescriptor.getDBConfig().merkleTreeSerializer.serialize(mt, out, MessagingService.current_version);
         byte[] serialized = out.toByteArray();
 
         ByteArrayDataInput in = ByteStreams.newDataInput(serialized);
-        MerkleTree restored = DBConfig.instance.merkleTreeSerializer.deserialize(in, MessagingService.current_version);
+        MerkleTree restored = databaseDescriptor.getDBConfig().merkleTreeSerializer.deserialize(in, MessagingService.current_version);
 
         assertHashEquals(initialhash, restored.hash(full));
     }

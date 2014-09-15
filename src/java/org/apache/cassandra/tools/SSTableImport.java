@@ -283,7 +283,7 @@ public class SSTableImport
      */
     public int importJson(String jsonFile, String keyspace, String cf, String ssTablePath) throws IOException
     {
-        ColumnFamily columnFamily = ArrayBackedSortedColumns.factory.create(keyspace, cf, DatabaseDescriptor.instance.getSchema(), DBConfig.instance);
+        ColumnFamily columnFamily = ArrayBackedSortedColumns.factory.create(keyspace, cf, DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getDBConfig());
         IPartitioner<?> partitioner = LocatorConfig.instance.getPartitioner();
 
         int importedKeys = (isSorted) ? importSorted(jsonFile, columnFamily, ssTablePath, partitioner)

@@ -66,7 +66,7 @@ public class RecoveryManagerTruncateTest
 		ColumnFamily cf;
 
 		// add a single cell
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
 		cf.addColumn(column("col1", "val1", 1L));
         rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, ByteBufferUtil.bytes("keymulti"), cf);
 		rm.applyUnsafe();
@@ -91,7 +91,7 @@ public class RecoveryManagerTruncateTest
 		{
 			return null;
 		}
-		cf = cfStore.getColumnFamily(Util.namesQueryFilter(cfStore, Util.dk(keyName), columnName));
+		cf = cfStore.getColumnFamily(Util.namesQueryFilter(cfStore, Util.dk(keyName), databaseDescriptor, columnName));
 		if (cf == null)
 		{
 			return null;

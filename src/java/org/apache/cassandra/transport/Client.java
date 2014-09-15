@@ -263,7 +263,7 @@ public class Client extends SimpleClient
                                                                            DatabaseDescriptor.instance.getMutationFactory(),
                                                                            DatabaseDescriptor.instance.getCounterMutationFactory(),
                                                                            MessagingService.instance,
-                                                                           DBConfig.instance,
+                                                                           DatabaseDescriptor.instance.getDBConfig(),
                                                                            LocatorConfig.instance);
         new Client(host, port, encryptionOptions, codecs, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(), DatabaseDescriptor.instance.getAuth(), DatabaseDescriptor.instance.getQueryHandler()).run();
         System.exit(0);

@@ -65,12 +65,12 @@ public class MultitableTest
         DecoratedKey dk = Util.dk("keymulti");
         ColumnFamily cf;
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.addColumn(column("col1", "val1", 1L));
         rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey(), cf);
         rm.applyUnsafe();
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.addColumn(column("col2", "val2", 1L));
         rm = databaseDescriptor.getMutationFactory().create(KEYSPACE2, dk.getKey(), cf);
         rm.applyUnsafe();

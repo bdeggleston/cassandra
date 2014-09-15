@@ -41,6 +41,8 @@ import static org.junit.Assert.assertEquals;
 
 public class BitSetTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void setUpClass()
     {
@@ -53,8 +55,8 @@ public class BitSetTest
     @Test
     public void compareBitSets()
     {
-        BloomFilter bf2 = (BloomFilter) FilterFactory.getFilter(FilterTestHelper.ELEMENTS / 2, FilterTestHelper.MAX_FAILURE_RATE, false, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
-        BloomFilter bf3 = (BloomFilter) FilterFactory.getFilter(FilterTestHelper.ELEMENTS / 2, FilterTestHelper.MAX_FAILURE_RATE, true, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
+        BloomFilter bf2 = (BloomFilter) FilterFactory.getFilter(FilterTestHelper.ELEMENTS / 2, FilterTestHelper.MAX_FAILURE_RATE, false, databaseDescriptor.getDBConfig().offHeapAllocator, databaseDescriptor.getDBConfig().murmur3BloomFilterSerializer);
+        BloomFilter bf3 = (BloomFilter) FilterFactory.getFilter(FilterTestHelper.ELEMENTS / 2, FilterTestHelper.MAX_FAILURE_RATE, true, databaseDescriptor.getDBConfig().offHeapAllocator, databaseDescriptor.getDBConfig().murmur3BloomFilterSerializer);
 
         RandomStringGenerator gen1 = new KeyGenerator.RandomStringGenerator(new Random().nextInt(), FilterTestHelper.ELEMENTS);
 

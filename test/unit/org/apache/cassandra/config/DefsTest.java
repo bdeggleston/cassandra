@@ -86,7 +86,7 @@ public class DefsTest
         CFMetaData cfm = new CFMetaData(KEYSPACE1,
                                         "TestApplyCFM_CF",
                                         ColumnFamilyType.Standard,
-                                        new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                                        new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                                         DatabaseDescriptor.instance,
                                         databaseDescriptor.getTracing(),
                                         databaseDescriptor.getSystemKeyspace(),
@@ -95,7 +95,7 @@ public class DefsTest
                                         databaseDescriptor.getKeyspaceManager(),
                                         databaseDescriptor.getCFMetaDataFactory(),
                                         databaseDescriptor.getMutationFactory(),
-                                        DBConfig.instance);
+                                        databaseDescriptor.getDBConfig());
 
         for (int i = 0; i < 5; i++)
         {
@@ -219,7 +219,7 @@ public class DefsTest
         Assert.assertNotNull(store);
         store.forceBlockingFlush();
 
-        ColumnFamily cfam = store.getColumnFamily(Util.namesQueryFilter(store, dk, col0));
+        ColumnFamily cfam = store.getColumnFamily(Util.namesQueryFilter(store, dk, databaseDescriptor, col0));
         Assert.assertNotNull(cfam.getColumn(col0));
         Cell col = cfam.getColumn(col0);
         Assert.assertEquals(ByteBufferUtil.bytes("value0"), col.value());
@@ -293,7 +293,7 @@ public class DefsTest
         Assert.assertNotNull(store);
         store.forceBlockingFlush();
 
-        ColumnFamily cfam = store.getColumnFamily(Util.namesQueryFilter(store, dk, col0));
+        ColumnFamily cfam = store.getColumnFamily(Util.namesQueryFilter(store, dk, databaseDescriptor, col0));
         Assert.assertNotNull(cfam.getColumn(col0));
         Cell col = cfam.getColumn(col0);
         Assert.assertEquals(ByteBufferUtil.bytes("value0"), col.value());
@@ -402,7 +402,7 @@ public class DefsTest
         Assert.assertNotNull(store);
         store.forceBlockingFlush();
 
-        ColumnFamily cfam = store.getColumnFamily(Util.namesQueryFilter(store, dk, col0));
+        ColumnFamily cfam = store.getColumnFamily(Util.namesQueryFilter(store, dk, databaseDescriptor, col0));
         Assert.assertNotNull(cfam.getColumn(col0));
         Cell col = cfam.getColumn(col0);
         Assert.assertEquals(ByteBufferUtil.bytes("value0"), col.value());
@@ -498,7 +498,7 @@ public class DefsTest
                                 databaseDescriptor.getKeyspaceManager(),
                                 databaseDescriptor.getCFMetaDataFactory(),
                                 databaseDescriptor.getMutationFactory(),
-                                DBConfig.instance);
+                                databaseDescriptor.getDBConfig());
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -520,7 +520,7 @@ public class DefsTest
                                 databaseDescriptor.getKeyspaceManager(),
                                 databaseDescriptor.getCFMetaDataFactory(),
                                 databaseDescriptor.getMutationFactory(),
-                                DBConfig.instance);
+                                databaseDescriptor.getDBConfig());
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -542,7 +542,7 @@ public class DefsTest
                                 databaseDescriptor.getKeyspaceManager(),
                                 databaseDescriptor.getCFMetaDataFactory(),
                                 databaseDescriptor.getMutationFactory(),
-                                DBConfig.instance);
+                                databaseDescriptor.getDBConfig());
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -564,7 +564,7 @@ public class DefsTest
                                 databaseDescriptor.getKeyspaceManager(),
                                 databaseDescriptor.getCFMetaDataFactory(),
                                 databaseDescriptor.getMutationFactory(),
-                                DBConfig.instance);
+                                databaseDescriptor.getDBConfig());
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -577,7 +577,7 @@ public class DefsTest
         newCfm = new CFMetaData(cf.ksName,
                                 cf.cfName,
                                 cf.cfType,
-                                new SimpleDenseCellNameType(TimeUUIDType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                                new SimpleDenseCellNameType(TimeUUIDType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                                 DatabaseDescriptor.instance,
                                 databaseDescriptor.getTracing(),
                                 databaseDescriptor.getSystemKeyspace(),
@@ -586,7 +586,7 @@ public class DefsTest
                                 databaseDescriptor.getKeyspaceManager(),
                                 databaseDescriptor.getCFMetaDataFactory(),
                                 databaseDescriptor.getMutationFactory(),
-                                DBConfig.instance);
+                                databaseDescriptor.getDBConfig());
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -630,7 +630,7 @@ public class DefsTest
         CFMetaData newCFMD = new CFMetaData(ks,
                                             cf,
                                             ColumnFamilyType.Standard,
-                                            new SimpleDenseCellNameType(UTF8Type.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                                            new SimpleDenseCellNameType(UTF8Type.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                                             DatabaseDescriptor.instance,
                                             databaseDescriptor.getTracing(),
                                             databaseDescriptor.getSystemKeyspace(),
@@ -639,7 +639,7 @@ public class DefsTest
                                             databaseDescriptor.getKeyspaceManager(),
                                             databaseDescriptor.getCFMetaDataFactory(),
                                             databaseDescriptor.getMutationFactory(),
-                                            DBConfig.instance);
+                                            databaseDescriptor.getDBConfig());
         newCFMD.comment(comment)
                .readRepairChance(0.0);
 

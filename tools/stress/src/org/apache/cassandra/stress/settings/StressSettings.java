@@ -158,7 +158,7 @@ public class StressSettings implements Serializable
                                                                                                           DatabaseDescriptor.instance.getMutationFactory(),
                                                                                                           DatabaseDescriptor.instance.getCounterMutationFactory(),
                                                                                                           MessagingService.instance,
-                                                                                                          DBConfig.instance,
+                                                                                                          DatabaseDescriptor.instance.getDBConfig(),
                                                                                                           LocatorConfig.instance),
                                                    DatabaseDescriptor.instance,
                                                    DatabaseDescriptor.instance.getTracing(),

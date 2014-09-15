@@ -232,7 +232,7 @@ public class CassandraDaemon
                                                    DatabaseDescriptor.instance.getTracing(),
                                                    DatabaseDescriptor.instance.getCFMetaDataFactory(),
                                                    DatabaseDescriptor.instance.getKeyspaceManager(),
-                                                   DBConfig.instance,
+                                                   DatabaseDescriptor.instance.getDBConfig(),
                                                    DatabaseDescriptor.instance.getColumnFamilyStoreManager().dataDirectories);
         try
         {
@@ -272,7 +272,7 @@ public class CassandraDaemon
                                                        DatabaseDescriptor.instance.getTracing(),
                                                        DatabaseDescriptor.instance.getCFMetaDataFactory(),
                                                        DatabaseDescriptor.instance.getKeyspaceManager(),
-                                                       DBConfig.instance,
+                                                       DatabaseDescriptor.instance.getDBConfig(),
                                                        DatabaseDescriptor.instance.getColumnFamilyStoreManager().dataDirectories);
         }
 
@@ -394,7 +394,7 @@ public class CassandraDaemon
                                         StorageService.instance, DatabaseDescriptor.instance.getCFMetaDataFactory(),
                                         DatabaseDescriptor.instance.getMigrationManager(), DatabaseDescriptor.instance.getKSMetaDataFactory(),
                                         DatabaseDescriptor.instance.getQueryHandler(), LocatorConfig.instance,
-                                        DBConfig.instance,
+                                        DatabaseDescriptor.instance.getDBConfig(),
                                         new ThriftSessionManager(DatabaseDescriptor.instance),
                                         ClientMetrics.instance);
 
@@ -412,7 +412,7 @@ public class CassandraDaemon
                                                                            DatabaseDescriptor.instance.getMutationFactory(),
                                                                            DatabaseDescriptor.instance.getCounterMutationFactory(),
                                                                            MessagingService.instance,
-                                                                           DBConfig.instance,
+                                                                           DatabaseDescriptor.instance.getDBConfig(),
                                                                            LocatorConfig.instance);
         nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort, codecs, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(),
                                                                  DatabaseDescriptor.instance.getAuth(), ClientMetrics.instance, StorageService.instance,

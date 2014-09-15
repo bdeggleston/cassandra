@@ -89,7 +89,7 @@ public class BulkLoader
                         options.sslStoragePort,
                         options.serverEncOptions,
                         DatabaseDescriptor.instance,
-                        DBConfig.instance),
+                        DatabaseDescriptor.instance.getDBConfig()),
                 handler,
                 options.connectionsPerHost,
                 DatabaseDescriptor.instance,

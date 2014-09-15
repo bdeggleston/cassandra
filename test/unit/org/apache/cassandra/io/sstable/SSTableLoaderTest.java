@@ -78,13 +78,13 @@ public class SSTableLoaderTest
         SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(dataDir,
                                                                              cfmeta,
                                                                              LocatorConfig.instance.getPartitioner(),
-                                                                             1, DBConfig.instance);
+                                                                             1, databaseDescriptor.getDBConfig());
         DecoratedKey key = Util.dk("key1");
         writer.newRow(key.getKey());
         writer.addColumn(ByteBufferUtil.bytes("col1"), ByteBufferUtil.bytes(100), 1);
         writer.close();
 
-        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client(DatabaseDescriptor.instance, DBConfig.instance)
+        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client(DatabaseDescriptor.instance, databaseDescriptor.getDBConfig())
         {
             public void init(String keyspace)
             {

@@ -68,7 +68,7 @@ public class SSTableSimpleWriterTest
         assert dir.exists();
 
         IPartitioner partitioner = LocatorConfig.instance.getPartitioner();
-        SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(dir, partitioner, keyspaceName, cfname, IntegerType.instance, null, 16, databaseDescriptor.getCFMetaDataFactory(), DBConfig.instance);
+        SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(dir, partitioner, keyspaceName, cfname, IntegerType.instance, null, 16, databaseDescriptor.getCFMetaDataFactory(), databaseDescriptor.getDBConfig());
 
         int k = 0;
 

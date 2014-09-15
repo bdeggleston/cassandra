@@ -50,7 +50,7 @@ public class IndexHelperTest
         indexes.add(new IndexInfo(cn(10L), cn(15L), 0, 0));
         indexes.add(new IndexInfo(cn(20L), cn(25L), 0, 0));
 
-        CellNameType comp = new SimpleDenseCellNameType(IntegerType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        CellNameType comp = new SimpleDenseCellNameType(IntegerType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         assertEquals(0, IndexHelper.indexFor(cn(-1L), indexes, comp, false, -1));
         assertEquals(0, IndexHelper.indexFor(cn(5L), indexes, comp, false, -1));

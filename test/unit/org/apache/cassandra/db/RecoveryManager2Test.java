@@ -93,7 +93,7 @@ public class RecoveryManager2Test
 
     private void insertRow(String cfname, String key) 
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, cfname, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, cfname, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.addColumn(column("col1", "val1", 1L));
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, ByteBufferUtil.bytes(key), cf);
         rm.apply();

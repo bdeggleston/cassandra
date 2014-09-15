@@ -214,7 +214,7 @@ public class RowCacheTest
                                                                 false, 10, System.currentTimeMillis(),
                                                                 DatabaseDescriptor.instance,
                                                                 databaseDescriptor.getTracing(),
-                                                                DBConfig.instance));
+                                                                databaseDescriptor.getDBConfig()));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
 
         // do another query, limit is 20, which is < 100 that we cache, we should get a hit and it should be in range
@@ -224,7 +224,7 @@ public class RowCacheTest
                                                                 false, 20, System.currentTimeMillis(),
                                                                 DatabaseDescriptor.instance,
                                                                 databaseDescriptor.getTracing(),
-                                                                DBConfig.instance));
+                                                                databaseDescriptor.getDBConfig()));
         assertEquals(++startRowCacheHits, cachedStore.metric.rowCacheHit.count());
         assertEquals(startRowCacheOutOfRange, cachedStore.metric.rowCacheHitOutOfRange.count());
 
@@ -235,7 +235,7 @@ public class RowCacheTest
                                                                false, 10, System.currentTimeMillis(),
                                                                 DatabaseDescriptor.instance,
                                                                 databaseDescriptor.getTracing(),
-                                                                DBConfig.instance));
+                                                                databaseDescriptor.getDBConfig()));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
         assertEquals(++startRowCacheOutOfRange, cachedStore.metric.rowCacheHitOutOfRange.count());
 
@@ -246,7 +246,7 @@ public class RowCacheTest
                                                                false, 101, System.currentTimeMillis(),
                                                                 DatabaseDescriptor.instance,
                                                                 databaseDescriptor.getTracing(),
-                                                                DBConfig.instance));
+                                                                databaseDescriptor.getDBConfig()));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
         assertEquals(++startRowCacheOutOfRange, cachedStore.metric.rowCacheHitOutOfRange.count());
 
@@ -260,7 +260,7 @@ public class RowCacheTest
                                                                 false, 105, System.currentTimeMillis(),
                                                                 DatabaseDescriptor.instance,
                                                                 databaseDescriptor.getTracing(),
-                                                                DBConfig.instance));
+                                                                databaseDescriptor.getDBConfig()));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
         // validate the stuff in cache;
         ColumnFamily cachedCf = (ColumnFamily)databaseDescriptor.getCacheService().rowCache.get(rck);

@@ -138,7 +138,7 @@ public class StandaloneSplitter
             {
                 try
                 {
-                    new SSTableSplitter(cfs, sstable, options.sizeInMB, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getSystemKeyspace(), StorageService.instance, DBConfig.instance).split();
+                    new SSTableSplitter(cfs, sstable, options.sizeInMB, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getSystemKeyspace(), StorageService.instance, DatabaseDescriptor.instance.getDBConfig()).split();
                 }
                 catch (Exception e)
                 {

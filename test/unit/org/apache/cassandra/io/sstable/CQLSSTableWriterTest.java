@@ -71,7 +71,7 @@ public class CQLSSTableWriterTest
                       + "  v2 int"
                       + ")";
         String insert = "INSERT INTO cql_keyspace.table1 (k, v1, v2) VALUES (?, ?, ?)";
-        CQLSSTableWriter writer = CQLSSTableWriter.builder(databaseDescriptor.getSchema(), databaseDescriptor.getQueryProcessor(), databaseDescriptor.getAuth(), databaseDescriptor.getKSMetaDataFactory(), DBConfig.instance)
+        CQLSSTableWriter writer = CQLSSTableWriter.builder(databaseDescriptor.getSchema(), databaseDescriptor.getQueryProcessor(), databaseDescriptor.getAuth(), databaseDescriptor.getKSMetaDataFactory(), databaseDescriptor.getDBConfig())
                                                   .inDirectory(dataDir)
                                                   .forTable(schema)
                                                   .withPartitioner(LocatorConfig.instance.getPartitioner())
@@ -83,7 +83,7 @@ public class CQLSSTableWriterTest
         writer.addRow(ImmutableMap.<String, Object>of("k", 3, "v2", 12));
         writer.close();
 
-        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client(DatabaseDescriptor.instance, DBConfig.instance)
+        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client(DatabaseDescriptor.instance, databaseDescriptor.getDBConfig())
         {
             public void init(String keyspace)
             {

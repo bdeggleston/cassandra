@@ -103,7 +103,7 @@ public class BatchlogManagerTest
                                                    timestamp,
                                                    databaseDescriptor.getCFMetaDataFactory(),
                                                    databaseDescriptor.getMutationFactory(),
-                                                   DBConfig.instance)
+                                                   databaseDescriptor.getDBConfig())
                            .applyUnsafe();
         }
 
@@ -176,7 +176,7 @@ public class BatchlogManagerTest
                                                    timestamp * 1000,
                                                    databaseDescriptor.getCFMetaDataFactory(),
                                                    databaseDescriptor.getMutationFactory(),
-                                                   DBConfig.instance)
+                                                   databaseDescriptor.getDBConfig())
                            .applyUnsafe();
         }
 

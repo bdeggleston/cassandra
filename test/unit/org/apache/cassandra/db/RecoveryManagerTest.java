@@ -88,12 +88,12 @@ public class RecoveryManagerTest
         DecoratedKey dk = Util.dk("keymulti");
         ColumnFamily cf;
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.addColumn(column("col1", "val1", 1L));
         rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey(), cf);
         rm.apply();
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3", databaseDescriptor.getSchema(), DBConfig.instance);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.addColumn(column("col2", "val2", 1L));
         rm = databaseDescriptor.getMutationFactory().create(KEYSPACE2, dk.getKey(), cf);
         rm.apply();
@@ -119,7 +119,7 @@ public class RecoveryManagerTest
 
         for (int i = 0; i < 10; ++i)
         {
-            cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Counter1", databaseDescriptor.getSchema(), DBConfig.instance);
+            cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Counter1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
             cf.addColumn(BufferCounterCell.createLocal(cellname("col"), 1L, 1L, Long.MIN_VALUE, databaseDescriptor.getSystemKeyspace().getLocalHostId()));
             rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey(), cf);
             rm.apply();
@@ -150,7 +150,7 @@ public class RecoveryManagerTest
         for (int i = 0; i < 10; ++i)
         {
             long ts = TimeUnit.MILLISECONDS.toMicros(timeMS + (i * 1000));
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
             cf.addColumn(column("name-" + i, "value", ts));
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey(), cf);
             rm.apply();
@@ -182,7 +182,7 @@ public class RecoveryManagerTest
             else
                 ts = TimeUnit.MILLISECONDS.toMicros(timeMS + (i * 1000));
 
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
             cf.addColumn(column("name-" + i, "value", ts));
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey(), cf);
             rm.apply();

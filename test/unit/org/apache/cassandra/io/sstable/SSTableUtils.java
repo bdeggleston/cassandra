@@ -46,14 +46,14 @@ public class SSTableUtils
     }
 
     /**/
-    public static ColumnFamily createCF(long mfda, int ldt, Cell... cols)
+    public static ColumnFamily createCF(long mfda, int ldt, DatabaseDescriptor databaseDescriptor, Cell... cols)
     {
-        return createCF(KEYSPACENAME, CFNAME, mfda, ldt, cols);
+        return createCF(KEYSPACENAME, CFNAME, mfda, ldt, databaseDescriptor, cols);
     }
 
-    public static ColumnFamily createCF(String ksname, String cfname, long mfda, int ldt, Cell... cols)
+    public static ColumnFamily createCF(String ksname, String cfname, long mfda, int ldt, DatabaseDescriptor databaseDescriptor, Cell... cols)
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(ksname, cfname, DatabaseDescriptor.instance.getSchema(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(ksname, cfname, DatabaseDescriptor.instance.getSchema(), databaseDescriptor.getDBConfig());
         cf.delete(new DeletionInfo(mfda, ldt));
         for (Cell col : cols)
             cf.addColumn(col);
@@ -176,12 +176,12 @@ public class SSTableUtils
             return this;
         }
 
-        public SSTableReader write(Set<String> keys) throws IOException
+        public SSTableReader write(Set<String> keys, DatabaseDescriptor databaseDescriptor) throws IOException
         {
             Map<String, ColumnFamily> map = new HashMap<String, ColumnFamily>();
             for (String key : keys)
             {
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(ksname, cfname, DatabaseDescriptor.instance.getSchema(), DBConfig.instance);
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(ksname, cfname, DatabaseDescriptor.instance.getSchema(), databaseDescriptor.getDBConfig());
                 cf.addColumn(new BufferCell(Util.cellname(key), ByteBufferUtil.bytes(key), 0));
                 map.put(key, cf);
             }

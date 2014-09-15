@@ -87,7 +87,7 @@ public class ReadMessageTest
                                          dk.getKey(),
                                          "Standard1",
                                          ts,
-                                         new NamesQueryFilter(colList, DBConfig.instance), DatabaseDescriptor.instance,
+                                         new NamesQueryFilter(colList, databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                          databaseDescriptor.getSchema(),
                                          LocatorConfig.instance.getPartitioner(),
                                          MessagingService.instance.readCommandSerializer);
@@ -98,7 +98,7 @@ public class ReadMessageTest
                                       dk.getKey(),
                                       "Standard1",
                                       ts,
-                                      new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, true, 2, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), DatabaseDescriptor.instance,
+                                      new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, true, 2, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                       databaseDescriptor.getSchema(),
                                       LocatorConfig.instance.getPartitioner(),
                                       MessagingService.instance.readCommandSerializer);
@@ -109,7 +109,7 @@ public class ReadMessageTest
                                       dk.getKey(),
                                       "Standard1",
                                       ts,
-                                      new SliceQueryFilter(Util.cellname("a"), Util.cellname("z"), true, 5, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), DatabaseDescriptor.instance,
+                                      new SliceQueryFilter(Util.cellname("a"), Util.cellname("z"), true, 5, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                       databaseDescriptor.getSchema(),
                                       LocatorConfig.instance.getPartitioner(),
                                       MessagingService.instance.readCommandSerializer);
@@ -145,7 +145,7 @@ public class ReadMessageTest
                                                           dk.getKey(),
                                                           "Standard1",
                                                           System.currentTimeMillis(),
-                                                          new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), DBConfig.instance), DatabaseDescriptor.instance,
+                                                          new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                                           databaseDescriptor.getSchema(),
                                                           LocatorConfig.instance.getPartitioner(),
                                                           MessagingService.instance.readCommandSerializer);

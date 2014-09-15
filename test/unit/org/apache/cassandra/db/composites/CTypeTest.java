@@ -39,9 +39,9 @@ public class CTypeTest
         types.add(Int32Type.instance);
     }
 
-    static final CellNameType cdtype = new CompoundDenseCellNameType(types, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-    static final CellNameType stype1 = new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-    static final CellNameType stype2 = new SimpleDenseCellNameType(UUIDType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+    static final CellNameType cdtype = new CompoundDenseCellNameType(types, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+    static final CellNameType stype1 = new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+    static final CellNameType stype2 = new SimpleDenseCellNameType(UUIDType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
     @Test
     public void testCompoundType()

@@ -103,13 +103,13 @@ public class ScrubTest
 
         // insert data and verify we get it back w/ range query
         fillCF(cfs, 1);
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assertEquals(1, rows.size());
 
         databaseDescriptor.getCompactionManager().performScrub(cfs, false);
 
         // check data is still there
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assertEquals(1, rows.size());
     }
 
@@ -123,7 +123,7 @@ public class ScrubTest
 
         fillCounterCF(cfs, 2);
 
-        List<Row> rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
+        List<Row> rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assertEquals(2, rows.size());
 
         SSTableReader sstable = cfs.getSSTables().iterator().next();
@@ -140,7 +140,7 @@ public class ScrubTest
         file.close();
 
         // with skipCorrupted == false, the scrub is expected to fail
-        Scrubber scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), false, false, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
+        Scrubber scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), false, false, DatabaseDescriptor.instance, databaseDescriptor.getDBConfig(), StorageService.instance);
         try
         {
             scrubber.scrub();
@@ -149,13 +149,13 @@ public class ScrubTest
         catch (IOError err) {}
 
         // with skipCorrupted == true, the corrupt row will be skipped
-        scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), true, false, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
+        scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), true, false, DatabaseDescriptor.instance, databaseDescriptor.getDBConfig(), StorageService.instance);
         scrubber.scrub();
         scrubber.close();
         assertEquals(1, cfs.getSSTables().size());
 
         // verify that we can read all of the rows, and there is now one less row
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assertEquals(1, rows.size());
     }
 
@@ -167,7 +167,7 @@ public class ScrubTest
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF2);
         cfs.clearUnsafe();
 
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF2, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF2, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.delete(new DeletionInfo(0, 1)); // expired tombstone
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE, ByteBufferUtil.bytes(1), cf);
         rm.applyUnsafe();
@@ -189,13 +189,13 @@ public class ScrubTest
 
         // insert data and verify we get it back w/ range query
         fillCF(cfs, 10);
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assertEquals(10, rows.size());
 
         databaseDescriptor.getCompactionManager().performScrub(cfs, false);
 
         // check data is still there
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assertEquals(10, rows.size());
     }
 
@@ -254,11 +254,11 @@ public class ScrubTest
         components.add(Component.TOC);
         SSTableReader sstable = DatabaseDescriptor.instance.getSSTableReaderFactory().openNoValidation(desc, components, metadata);
 
-        Scrubber scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), false, true, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
+        Scrubber scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), false, true, DatabaseDescriptor.instance, databaseDescriptor.getDBConfig(), StorageService.instance);
         scrubber.scrub();
 
         cfs.loadNewSSTables();
-        List<Row> rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
+        List<Row> rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assert isRowOrdered(rows) : "Scrub failed: " + rows;
         assert rows.size() == 6 : "Got " + rows.size();
     }
@@ -281,7 +281,7 @@ public class ScrubTest
         {
             String key = String.valueOf(i);
             // create a row and update the birthdate value, test that the index query fetches the new version
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF, databaseDescriptor.getSchema(), DBConfig.instance);
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
             cf.addColumn(column("c1", "1", 1L));
             cf.addColumn(column("c2", "2", 1L));
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE, ByteBufferUtil.bytes(key), cf);
@@ -296,7 +296,7 @@ public class ScrubTest
         for (int i = 0; i < rowsPerSSTable; i++)
         {
             String key = String.valueOf(i);
-            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, COUNTER_CF, databaseDescriptor.getSchema(), DBConfig.instance);
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, COUNTER_CF, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE, ByteBufferUtil.bytes(key), cf);
             rm.addCounter(COUNTER_CF, cellname("Column1"), 100);
             CounterMutation cm = databaseDescriptor.getCounterMutationFactory().create(rm, ConsistencyLevel.ONE);
@@ -328,7 +328,7 @@ public class ScrubTest
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_UUID);
 
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF_UUID, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF_UUID, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.addColumn(column(CFMetaData.DEFAULT_KEY_ALIAS, "not a uuid", 1L));
         Mutation mutation = databaseDescriptor.getMutationFactory().create(KEYSPACE, ByteBufferUtil.bytes(UUIDGen.getTimeUUID()), cf);
         mutation.applyUnsafe();

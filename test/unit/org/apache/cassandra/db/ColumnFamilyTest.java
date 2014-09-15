@@ -82,13 +82,13 @@ public class ColumnFamilyTest
     {
         ColumnFamily cf;
 
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), DBConfig.instance);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.addColumn(column("C", "v", 1));
         DataOutputBuffer bufOut = new DataOutputBuffer();
-        DBConfig.instance.columnFamilySerializer.serialize(cf, bufOut, version);
+        databaseDescriptor.getDBConfig().columnFamilySerializer.serialize(cf, bufOut, version);
 
         ByteArrayInputStream bufIn = new ByteArrayInputStream(bufOut.getData(), 0, bufOut.getLength());
-        cf = DBConfig.instance.columnFamilySerializer.deserialize(new DataInputStream(bufIn), version);
+        cf = databaseDescriptor.getDBConfig().columnFamilySerializer.deserialize(new DataInputStream(bufIn), version);
         assert cf != null;
         assert cf.metadata().cfName.equals(CF_STANDARD1);
         assert cf.getSortedColumns().size() == 1;
@@ -106,17 +106,17 @@ public class ColumnFamilyTest
         }
 
         // write
-        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), DBConfig.instance);
+        cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         DataOutputBuffer bufOut = new DataOutputBuffer();
         for (String cName : map.navigableKeySet())
         {
             cf.addColumn(column(cName, map.get(cName), 314));
         }
-        DBConfig.instance.columnFamilySerializer.serialize(cf, bufOut, version);
+        databaseDescriptor.getDBConfig().columnFamilySerializer.serialize(cf, bufOut, version);
 
         // verify
         ByteArrayInputStream bufIn = new ByteArrayInputStream(bufOut.getData(), 0, bufOut.getLength());
-        cf = DBConfig.instance.columnFamilySerializer.deserialize(new DataInputStream(bufIn), version);
+        cf = databaseDescriptor.getDBConfig().columnFamilySerializer.deserialize(new DataInputStream(bufIn), version);
         for (String cName : map.navigableKeySet())
         {
             ByteBuffer val = cf.getColumn(cellname(cName)).value();
@@ -128,7 +128,7 @@ public class ColumnFamilyTest
     @Test
     public void testGetColumnCount()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
 
         cf.addColumn(column("col1", "", 1));
         cf.addColumn(column("col2", "", 2));
@@ -141,8 +141,8 @@ public class ColumnFamilyTest
     @Test
     public void testDigest()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), DBConfig.instance);
-        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
+        ColumnFamily cf2 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
 
         ByteBuffer digest = ColumnFamily.digest(cf);
 
@@ -183,7 +183,7 @@ public class ColumnFamilyTest
     @Test
     public void testTimestamp()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
 
         cf.addColumn(column("col1", "val1", 2));
         cf.addColumn(column("col1", "val2", 2)); // same timestamp, new value
@@ -195,9 +195,9 @@ public class ColumnFamilyTest
     @Test
     public void testMergeAndAdd()
     {
-        ColumnFamily cf_new = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), DBConfig.instance);
-        ColumnFamily cf_old = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), DBConfig.instance);
-        ColumnFamily cf_result = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf_new = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
+        ColumnFamily cf_old = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
+        ColumnFamily cf_result = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         ByteBuffer val = ByteBufferUtil.bytes("sample value");
         ByteBuffer val2 = ByteBufferUtil.bytes("x value ");
 
@@ -233,7 +233,7 @@ public class ColumnFamilyTest
         long timestamp = System.currentTimeMillis();
         int localDeletionTime = (int) (System.currentTimeMillis() / 1000);
 
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.delete(new DeletionInfo(timestamp, localDeletionTime));
         ColumnStats stats = cf.getColumnStats();
         assertEquals(timestamp, stats.maxTimestamp);
@@ -266,14 +266,14 @@ public class ColumnFamilyTest
         assertTrue(counter.reconcile(tombstone) == tombstone);
 
         // check that a range tombstone overrides the counter cell, even with a lower timestamp than the counter
-        ColumnFamily cf0 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER1, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf0 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER1, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf0.addColumn(counter);
         cf0.delete(new RangeTombstone(cellname("counter0"), cellname("counter2"), 0L, (int) (System.currentTimeMillis() / 1000)));
         assertTrue(cf0.deletionInfo().isDeleted(counter));
         assertTrue(cf0.deletionInfo().inOrderTester(false).isDeleted(counter));
 
         // check that a top-level deletion info overrides the counter cell, even with a lower timestamp than the counter
-        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER1, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf1 = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER1, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf1.addColumn(counter);
         cf1.delete(new DeletionInfo(0L, (int) (System.currentTimeMillis() / 1000)));
         assertTrue(cf1.deletionInfo().isDeleted(counter));

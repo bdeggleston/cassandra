@@ -160,7 +160,7 @@ public class KeyCacheTest
                                                        System.currentTimeMillis(),
                                                        DatabaseDescriptor.instance,
                                                        databaseDescriptor.getTracing(),
-                                                       DBConfig.instance));
+                                                       databaseDescriptor.getDBConfig()));
 
         cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,
                                                        COLUMN_FAMILY1,
@@ -171,7 +171,7 @@ public class KeyCacheTest
                                                        System.currentTimeMillis(),
                                                        DatabaseDescriptor.instance,
                                                        databaseDescriptor.getTracing(),
-                                                       DBConfig.instance));
+                                                       databaseDescriptor.getDBConfig()));
 
         assertKeyCacheSize(2, KEYSPACE1, COLUMN_FAMILY1);
 
@@ -204,7 +204,7 @@ public class KeyCacheTest
                                                        System.currentTimeMillis(),
                                                        DatabaseDescriptor.instance,
                                                        databaseDescriptor.getTracing(),
-                                                       DBConfig.instance));
+                                                       databaseDescriptor.getDBConfig()));
 
         cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,
                                                        COLUMN_FAMILY1,
@@ -215,7 +215,7 @@ public class KeyCacheTest
                                                        System.currentTimeMillis(),
                                                        DatabaseDescriptor.instance,
                                                        databaseDescriptor.getTracing(),
-                                                       DBConfig.instance));
+                                                       databaseDescriptor.getDBConfig()));
 
         assertKeyCacheSize(2, KEYSPACE1, COLUMN_FAMILY1);
     }

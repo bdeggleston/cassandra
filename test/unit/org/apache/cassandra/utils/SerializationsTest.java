@@ -33,18 +33,15 @@ import java.io.IOException;
 
 public class SerializationsTest extends AbstractSerializationsTester
 {
-    static
-    {
-        DatabaseDescriptor.init();
-    }
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     private void testBloomFilterWrite(boolean offheap) throws IOException
     {
-        IFilter bf = FilterFactory.getFilter(1000000, 0.0001, offheap, DBConfig.instance.offHeapAllocator, DBConfig.instance.murmur3BloomFilterSerializer);
+        IFilter bf = FilterFactory.getFilter(1000000, 0.0001, offheap, databaseDescriptor.getDBConfig().offHeapAllocator, databaseDescriptor.getDBConfig().murmur3BloomFilterSerializer);
         for (int i = 0; i < 100; i++)
             bf.add(LocatorConfig.instance.getPartitioner().getTokenFactory().toByteArray(LocatorConfig.instance.getPartitioner().getRandomToken()));
         DataOutputStreamAndChannel out = getOutput("utils.BloomFilter.bin");
-        FilterFactory.serialize(bf, out, DBConfig.instance.murmur3BloomFilterSerializer);
+        FilterFactory.serialize(bf, out, databaseDescriptor.getDBConfig().murmur3BloomFilterSerializer);
         out.close();
     }
 
@@ -55,7 +52,7 @@ public class SerializationsTest extends AbstractSerializationsTester
             testBloomFilterWrite(true);
 
         DataInputStream in = getInput("utils.BloomFilter.bin");
-        assert FilterFactory.deserialize(in, true, DBConfig.instance.murmur3BloomFilterSerializer) != null;
+        assert FilterFactory.deserialize(in, true, databaseDescriptor.getDBConfig().murmur3BloomFilterSerializer) != null;
         in.close();
     }
 

@@ -182,7 +182,7 @@ public class ColumnFamilyStoreTest
         cfs.forceBlockingFlush();
 
         cfs.getRecentSSTablesPerReadHistogram(); // resets counts
-        cfs.getColumnFamily(Util.namesQueryFilter(cfs, Util.dk("key1"), "Column1"));
+        cfs.getColumnFamily(Util.namesQueryFilter(cfs, Util.dk("key1"), databaseDescriptor, "Column1"));
         assertEquals(1, cfs.getRecentSSTablesPerReadHistogram()[0]);
     }
 
@@ -203,7 +203,7 @@ public class ColumnFamilyStoreTest
         List<SSTableReader> ssTables = keyspace.getAllSSTables();
         assertEquals(1, ssTables.size());
         ssTables.get(0).forceFilterFailures();
-        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("key2"), CF_STANDARD1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
+        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("key2"), CF_STANDARD1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         assertNull(cf);
     }
 
@@ -223,12 +223,12 @@ public class ColumnFamilyStoreTest
             public void runMayThrow() throws IOException
             {
                 QueryFilter sliceFilter = QueryFilter.getSliceFilter(Util.dk("key1"), CF_STANDARD2, Composites.EMPTY, Composites.EMPTY, false,
-                                                                     1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                                                                     1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
                 ColumnFamily cf = store.getColumnFamily(sliceFilter);
                 assertTrue(cf.isMarkedForDelete());
                 assertFalse(cf.hasColumns());
 
-                QueryFilter namesFilter = Util.namesQueryFilter(store, Util.dk("key1"), "a");
+                QueryFilter namesFilter = Util.namesQueryFilter(store, Util.dk("key1"), databaseDescriptor, "a");
                 cf = store.getColumnFamily(namesFilter);
                 assertTrue(cf.isMarkedForDelete());
                 assertFalse(cf.hasColumns());
@@ -246,7 +246,7 @@ public class ColumnFamilyStoreTest
         IPartitioner<?> p = LocatorConfig.instance.getPartitioner();
         List<Row> result = cfs.getRangeSlice(Util.range(p, "key1", "key2"),
                                              null,
-                                             Util.namesFilter(cfs, "asdf"),
+                                             Util.namesFilter(cfs, databaseDescriptor, "asdf"),
                                              10);
         assertEquals(1, result.size());
         assert result.get(0).key.getKey().equals(ByteBufferUtil.bytes("key2"));
@@ -283,7 +283,7 @@ public class ColumnFamilyStoreTest
         // basic single-expression query
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = cfs.search(range, clause, filter, 100);
 
@@ -309,7 +309,7 @@ public class ColumnFamilyStoreTest
         assert "k3".equals( key );
 
         // same query again, but with resultset not including the subordinate expression
-        rows = cfs.search(range, clause, Util.namesFilter(cfs, "birthdate"), 100);
+        rows = cfs.search(range, clause, Util.namesFilter(cfs, databaseDescriptor, "birthdate"), 100);
 
         assert rows.size() == 1 : StringUtils.join(rows, ",");
         key = new String(rows.get(0).key.getKey().array(), rows.get(0).key.getKey().position(), rows.get(0).key.getKey().remaining());
@@ -318,7 +318,7 @@ public class ColumnFamilyStoreTest
         assert rows.get(0).cf.getColumnCount() == 1 : rows.get(0).cf;
 
         // once more, this time with a slice rowset that needs to be expanded
-        SliceQueryFilter emptyFilter = new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, false, 0, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        SliceQueryFilter emptyFilter = new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, false, 0, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         rows = cfs.search(range, clause, emptyFilter, 100);
 
         assert rows.size() == 1 : StringUtils.join(rows, ",");
@@ -352,7 +352,7 @@ public class ColumnFamilyStoreTest
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(34L));
         IndexExpression expr2 = new IndexExpression(ByteBufferUtil.bytes("notbirthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr, expr2);
-        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = cfs.search(range, clause, filter, 100);
 
@@ -377,7 +377,7 @@ public class ColumnFamilyStoreTest
 
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = cfs.search(range, clause, filter, 100);
         assert rows.size() == 1 : StringUtils.join(rows, ",");
@@ -477,7 +477,7 @@ public class ColumnFamilyStoreTest
 
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = cfs.search(range, clause, filter, 100);
         assert rows.size() == 0;
@@ -513,7 +513,7 @@ public class ColumnFamilyStoreTest
 
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(100L));
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = keyspace.getColumnFamilyStore("Indexed1").search(range, clause, filter, 100);
         assertEquals(1, rows.size());
@@ -575,7 +575,7 @@ public class ColumnFamilyStoreTest
         rm.applyUnsafe();
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, val1);
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(1, rows.size());
@@ -597,7 +597,7 @@ public class ColumnFamilyStoreTest
         // now check for the updated value
         expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, val2);
         clause = Arrays.asList(expr);
-        filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         range = Util.range("", "");
         rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(0, rows.size());
@@ -610,7 +610,7 @@ public class ColumnFamilyStoreTest
 
         expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         clause = Arrays.asList(expr);
-        filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         range = Util.range("", "");
         rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(0, rows.size());
@@ -645,7 +645,7 @@ public class ColumnFamilyStoreTest
         // test that the index query fetches this version
         IndexExpression expr = new IndexExpression(colName, IndexExpression.Operator.EQ, val1);
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(1, rows.size());
@@ -669,7 +669,7 @@ public class ColumnFamilyStoreTest
         // now check for the updated value
         expr = new IndexExpression(colName, IndexExpression.Operator.EQ, val2);
         clause = Arrays.asList(expr);
-        filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         range = Util.range("", "");
         rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(0, rows.size());
@@ -682,7 +682,7 @@ public class ColumnFamilyStoreTest
 
         expr = new IndexExpression(colName, IndexExpression.Operator.EQ, val1);
         clause = Arrays.asList(expr);
-        filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         range = Util.range("", "");
         rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(0, rows.size());
@@ -728,7 +728,7 @@ public class ColumnFamilyStoreTest
         // haven't read yet nor compacted) but the data read itself will return null
         IndexExpression expr = new IndexExpression(colName, IndexExpression.Operator.EQ, val1);
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = keyspace.getColumnFamilyStore(cfName).search(range, clause, filter, 100);
         assertEquals(0, rows.size());
@@ -768,7 +768,7 @@ public class ColumnFamilyStoreTest
         IndexExpression expr1 = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         IndexExpression expr2 = new IndexExpression(ByteBufferUtil.bytes("notbirthdate"), IndexExpression.Operator.GT, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr1, expr2);
-        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = cfs.search(range, clause, filter, 1);
 
@@ -812,7 +812,7 @@ public class ColumnFamilyStoreTest
     {
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr);
-        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         List<Row> rows = keyspace.getColumnFamilyStore(CF_INDEX2).search(Util.range("", ""), clause, filter, 100);
         assert rows.size() == 1 : StringUtils.join(rows, ",");
         assertEquals("k1", ByteBufferUtil.string(rows.get(0).key.getKey()));
@@ -842,7 +842,7 @@ public class ColumnFamilyStoreTest
         // fetch by the first column name; we should get the second version of the column value
         SliceByNamesReadCommand cmd = new SliceByNamesReadCommand(
             KEYSPACE1, ByteBufferUtil.bytes("k1"), cfname, System.currentTimeMillis(),
-            new NamesQueryFilter(FBUtilities.singleton(column1, cfs.getComparator()), DBConfig.instance), DatabaseDescriptor.instance,
+            new NamesQueryFilter(FBUtilities.singleton(column1, cfs.getComparator()), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
             databaseDescriptor.getSchema(),
             LocatorConfig.instance.getPartitioner(),
             MessagingService.instance.readCommandSerializer);
@@ -856,7 +856,7 @@ public class ColumnFamilyStoreTest
         // fetch by the second column name; we should get the second version of the column value
         cmd = new SliceByNamesReadCommand(
             KEYSPACE1, ByteBufferUtil.bytes("k1"), cfname, System.currentTimeMillis(),
-            new NamesQueryFilter(FBUtilities.singleton(column2, cfs.getComparator()), DBConfig.instance), DatabaseDescriptor.instance,
+            new NamesQueryFilter(FBUtilities.singleton(column2, cfs.getComparator()), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
             databaseDescriptor.getSchema(),
             LocatorConfig.instance.getPartitioner(),
             MessagingService.instance.readCommandSerializer);
@@ -875,7 +875,7 @@ public class ColumnFamilyStoreTest
 
         List<Row> result = cfs.getRangeSlice(Util.bounds("key1", "key2"),
                                              null,
-                                             Util.namesFilter(cfs, "asdf"),
+                                             Util.namesFilter(cfs, databaseDescriptor, "asdf"),
                                              10);
         assertEquals(2, result.size());
         assert result.get(0).key.getKey().equals(ByteBufferUtil.bytes("key1"));
@@ -911,7 +911,7 @@ public class ColumnFamilyStoreTest
         sp.getSlice_range().setStart(ArrayUtils.EMPTY_BYTE_ARRAY);
         sp.getSlice_range().setFinish(ArrayUtils.EMPTY_BYTE_ARRAY);
 
-        assertRowAndColCount(1, 6, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 100));
+        assertRowAndColCount(1, 6, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100));
 
         // delete
         Mutation rm = databaseDescriptor.getMutationFactory().create(keyspace.getName(), key.getKey());
@@ -919,13 +919,13 @@ public class ColumnFamilyStoreTest
         rm.applyUnsafe();
 
         // verify delete.
-        assertRowAndColCount(1, 0, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 100));
+        assertRowAndColCount(1, 0, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100));
 
         // flush
         cfs.forceBlockingFlush();
 
         // re-verify delete.
-        assertRowAndColCount(1, 0, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 100));
+        assertRowAndColCount(1, 0, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100));
 
         // late insert.
         putColsSuper(cfs, key, scfName,
@@ -933,14 +933,14 @@ public class ColumnFamilyStoreTest
                 new BufferCell(cellname(7L), ByteBufferUtil.bytes("val7"), 1L));
 
         // re-verify delete.
-        assertRowAndColCount(1, 0, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 100));
+        assertRowAndColCount(1, 0, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100));
 
         // make sure new writes are recognized.
         putColsSuper(cfs, key, scfName,
                 new BufferCell(cellname(3L), ByteBufferUtil.bytes("val3"), 3),
                 new BufferCell(cellname(8L), ByteBufferUtil.bytes("val8"), 3),
                 new BufferCell(cellname(9L), ByteBufferUtil.bytes("val9"), 3));
-        assertRowAndColCount(1, 3, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 100));
+        assertRowAndColCount(1, 3, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, scfName, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100));
     }
 
     private static void assertRowAndColCount(int rowCount, int colCount, boolean isDeleted, Collection<Row> rows) throws CharacterCodingException
@@ -965,7 +965,7 @@ public class ColumnFamilyStoreTest
 
     private static void putColsSuper(ColumnFamilyStore cfs, DecoratedKey key, ByteBuffer scfName, Cell... cols) throws Throwable
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfs.keyspace.getName(), cfs.name, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfs.keyspace.getName(), cfs.name, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         for (Cell col : cols)
             cf.addColumn(col.withUpdatedName(CellNames.compositeDense(scfName, col.name().toByteBuffer())));
         Mutation rm = databaseDescriptor.getMutationFactory().create(cfs.keyspace.getName(), key.getKey(), cf);
@@ -974,7 +974,7 @@ public class ColumnFamilyStoreTest
 
     private static void putColsStandard(ColumnFamilyStore cfs, DecoratedKey key, Cell... cols) throws Throwable
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfs.keyspace.getName(), cfs.name, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfs.keyspace.getName(), cfs.name, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         for (Cell col : cols)
             cf.addColumn(col);
         Mutation rm = databaseDescriptor.getMutationFactory().create(cfs.keyspace.getName(), key.getKey(), cf);
@@ -999,14 +999,14 @@ public class ColumnFamilyStoreTest
 
         // insert
         putColsStandard(cfs, key, column("col1", "val1", 1), column("col2", "val2", 1));
-        assertRowAndColCount(1, 2, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 100));
+        assertRowAndColCount(1, 2, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100));
 
         // flush.
         cfs.forceBlockingFlush();
 
         // insert, don't flush
         putColsStandard(cfs, key, column("col3", "val3", 1), column("col4", "val4", 1));
-        assertRowAndColCount(1, 4, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 100));
+        assertRowAndColCount(1, 4, false, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100));
 
         // delete (from sstable and memtable)
         Mutation rm = databaseDescriptor.getMutationFactory().create(keyspace.getName(), key.getKey());
@@ -1014,27 +1014,27 @@ public class ColumnFamilyStoreTest
         rm.applyUnsafe();
 
         // verify delete
-        assertRowAndColCount(1, 0, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 100));
+        assertRowAndColCount(1, 0, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100));
 
         // flush
         cfs.forceBlockingFlush();
 
         // re-verify delete. // first breakage is right here because of CASSANDRA-1837.
-        assertRowAndColCount(1, 0, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 100));
+        assertRowAndColCount(1, 0, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100));
 
         // simulate a 'late' insertion that gets put in after the deletion. should get inserted, but fail on read.
         putColsStandard(cfs, key, column("col5", "val5", 1), column("col2", "val2", 1));
 
         // should still be nothing there because we deleted this row. 2nd breakage, but was undetected because of 1837.
-        assertRowAndColCount(1, 0, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 100));
+        assertRowAndColCount(1, 0, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100));
 
         // make sure that new writes are recognized.
         putColsStandard(cfs, key, column("col6", "val6", 3), column("col7", "val7", 3));
-        assertRowAndColCount(1, 2, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 100));
+        assertRowAndColCount(1, 2, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100));
 
         // and it remains so after flush. (this wasn't failing before, but it's good to check.)
         cfs.forceBlockingFlush();
-        assertRowAndColCount(1, 2, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 100));
+        assertRowAndColCount(1, 2, true, cfs.getRangeSlice(Util.range("f", "g"), null, ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100));
     }
 
 
@@ -1084,7 +1084,7 @@ public class ColumnFamilyStoreTest
                                              new BufferCell(cellname("b"), ByteBufferUtil.bytes("B"), 1));
 
         // Get the entire supercolumn like normal
-        ColumnFamily cfGet = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
+        ColumnFamily cfGet = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         assertEquals(ByteBufferUtil.bytes("A"), cfGet.getColumn(CellNames.compositeDense(superColName, ByteBufferUtil.bytes("a"))).value());
         assertEquals(ByteBufferUtil.bytes("B"), cfGet.getColumn(CellNames.compositeDense(superColName, ByteBufferUtil.bytes("b"))).value());
 
@@ -1096,7 +1096,7 @@ public class ColumnFamilyStoreTest
                                                                   key.getKey(),
                                                                   cfName,
                                                                   System.currentTimeMillis(),
-                                                                  new NamesQueryFilter(sliceColNames, DBConfig.instance), DatabaseDescriptor.instance,
+                                                                  new NamesQueryFilter(sliceColNames, databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                                                   databaseDescriptor.getSchema(),
                                                                   LocatorConfig.instance.getPartitioner(),
                                                                   MessagingService.instance.readCommandSerializer);
@@ -1139,7 +1139,7 @@ public class ColumnFamilyStoreTest
                                                                   key.getKey(),
                                                                   cfName,
                                                                   System.currentTimeMillis(),
-                                                                  new NamesQueryFilter(FBUtilities.singleton(cname, cfs.getComparator()), DBConfig.instance), DatabaseDescriptor.instance,
+                                                                  new NamesQueryFilter(FBUtilities.singleton(cname, cfs.getComparator()), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                                                   databaseDescriptor.getSchema(),
                                                                   LocatorConfig.instance.getPartitioner(),
                                                                   MessagingService.instance.readCommandSerializer);
@@ -1155,7 +1155,7 @@ public class ColumnFamilyStoreTest
         int columns = 0;
         for (Row row : rows)
         {
-            columns += row.getLiveCount(new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, expectedCount, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), System.currentTimeMillis());
+            columns += row.getLiveCount(new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, expectedCount, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), System.currentTimeMillis());
         }
         assert columns == expectedCount : "Expected " + expectedCount + " live columns but got " + columns + ": " + rows;
     }
@@ -1187,7 +1187,7 @@ public class ColumnFamilyStoreTest
 
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                                               3,
                                               System.currentTimeMillis(),
                                               true,
@@ -1195,7 +1195,7 @@ public class ColumnFamilyStoreTest
                             3);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                                               5,
                                               System.currentTimeMillis(),
                                               true,
@@ -1203,7 +1203,7 @@ public class ColumnFamilyStoreTest
                             5);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                                               8,
                                               System.currentTimeMillis(),
                                               true,
@@ -1211,7 +1211,7 @@ public class ColumnFamilyStoreTest
                             8);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                                               10,
                                               System.currentTimeMillis(),
                                               true,
@@ -1219,7 +1219,7 @@ public class ColumnFamilyStoreTest
                             10);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                                               100,
                                               System.currentTimeMillis(),
                                               true,
@@ -1237,7 +1237,7 @@ public class ColumnFamilyStoreTest
 
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                                               1,
                                               System.currentTimeMillis(),
                                               true,
@@ -1245,7 +1245,7 @@ public class ColumnFamilyStoreTest
                             3);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                                               4,
                                               System.currentTimeMillis(),
                                               true,
@@ -1253,7 +1253,7 @@ public class ColumnFamilyStoreTest
                             5);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                                               5,
                                               System.currentTimeMillis(),
                                               true,
@@ -1261,7 +1261,7 @@ public class ColumnFamilyStoreTest
                             5);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                                               6,
                                               System.currentTimeMillis(),
                                               true,
@@ -1269,7 +1269,7 @@ public class ColumnFamilyStoreTest
                             8);
         assertTotalColCount(cfs.getRangeSlice(Util.range("", ""),
                                               null,
-                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                                              ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                                               100,
                                               System.currentTimeMillis(),
                                               true,
@@ -1309,7 +1309,7 @@ public class ColumnFamilyStoreTest
 
         Collection<Row> rows;
         Row row, row1, row2;
-        IDiskAtomFilter filter = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        IDiskAtomFilter filter = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         rows = cfs.getRangeSlice(cfs.makeExtendedFilter(Util.range("", ""), filter, null, 3, true, true, System.currentTimeMillis()));
         assert rows.size() == 1 : "Expected 1 row, got " + toString(rows);
@@ -1317,7 +1317,7 @@ public class ColumnFamilyStoreTest
         assertColumnNames(row, "c0", "c1", "c2");
 
         sp.getSlice_range().setStart(ByteBufferUtil.getArray(ByteBufferUtil.bytes("c2")));
-        filter = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        filter = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(ka, min, LocatorConfig.instance.getPartitioner()), filter, null, 3, true, true, System.currentTimeMillis()));
         assert rows.size() == 2 : "Expected 2 rows, got " + toString(rows);
         Iterator<Row> iter = rows.iterator();
@@ -1327,14 +1327,14 @@ public class ColumnFamilyStoreTest
         assertColumnNames(row2, "c0");
 
         sp.getSlice_range().setStart(ByteBufferUtil.getArray(ByteBufferUtil.bytes("c0")));
-        filter = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        filter = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(row2.key, min, LocatorConfig.instance.getPartitioner()), filter, null, 3, true, true, System.currentTimeMillis()));
         assert rows.size() == 1 : "Expected 1 row, got " + toString(rows);
         row = rows.iterator().next();
         assertColumnNames(row, "c0", "c1", "c2");
 
         sp.getSlice_range().setStart(ByteBufferUtil.getArray(ByteBufferUtil.bytes("c2")));
-        filter = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        filter = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(row.key, min, LocatorConfig.instance.getPartitioner()), filter, null, 3, true, true, System.currentTimeMillis()));
         assert rows.size() == 2 : "Expected 2 rows, got " + toString(rows);
         iter = rows.iterator();
@@ -1350,7 +1350,7 @@ public class ColumnFamilyStoreTest
                                                    0,
                                                    DatabaseDescriptor.instance,
                                                    databaseDescriptor.getTracing(),
-                                                   DBConfig.instance);
+                                                   databaseDescriptor.getDBConfig());
         rows = cfs.getRangeSlice(cfs.makeExtendedFilter(new Bounds<RowPosition>(ka, kc, LocatorConfig.instance.getPartitioner()), sf, cellname("c2"), cellname("c1"), null, 2, true, System.currentTimeMillis()));
         assert rows.size() == 2 : "Expected 2 rows, got " + toString(rows);
         iter = rows.iterator();
@@ -1440,7 +1440,7 @@ public class ColumnFamilyStoreTest
         sp.getSlice_range().setCount(1);
         sp.getSlice_range().setStart(ArrayUtils.EMPTY_BYTE_ARRAY);
         sp.getSlice_range().setFinish(ArrayUtils.EMPTY_BYTE_ARRAY);
-        IDiskAtomFilter qf = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        IDiskAtomFilter qf = ThriftValidation.asIFilter(sp, cfs.metadata, null, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         List<Row> rows;
 
@@ -1490,7 +1490,7 @@ public class ColumnFamilyStoreTest
 
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, LongType.instance.decompose(1L));
         // explicitly tell to the KeysSearcher to use column limiting for rowsPerQuery to trigger bogus columnsRead--; (CASSANDRA-3996)
-        List<Row> rows = store.search(store.makeExtendedFilter(Util.range("", ""), new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), Arrays.asList(expr), 10, true, false, System.currentTimeMillis()));
+        List<Row> rows = store.search(store.makeExtendedFilter(Util.range("", ""), new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), Arrays.asList(expr), 10, true, false, System.currentTimeMillis()));
 
         assert rows.size() == 10;
     }
@@ -1533,10 +1533,10 @@ public class ColumnFamilyStoreTest
 
         cfs.forceBlockingFlush();
 
-        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForward, "a", "colA", "colC", "colD", "colI");
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForwardWithCounting, "a", "colA", "colC", "colD");
@@ -1582,10 +1582,10 @@ public class ColumnFamilyStoreTest
 
         cfs.forceBlockingFlush();
 
-        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForward, "a", "colA", "colC", "colD", "colI");
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForwardWithCounting, "a", "colA", "colC", "colD");
@@ -1631,10 +1631,10 @@ public class ColumnFamilyStoreTest
 
         cfs.forceBlockingFlush();
 
-        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForward, "a", "colA", "colC", "colD", "colE", "colF", "colG", "colI");
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForwardWithCounting, "a", "colA", "colC", "colD");
@@ -1681,10 +1681,10 @@ public class ColumnFamilyStoreTest
 
         cfs.forceBlockingFlush();
 
-        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForward, "a", "colA", "colC", "colD", "colE", "colF", "colG", "colI");
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForwardWithCounting, "a", "colA", "colC", "colD");
@@ -1742,10 +1742,10 @@ public class ColumnFamilyStoreTest
         // range2 [colG, ColG]
         // range3 [colI, ____]
 
-        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        SliceQueryFilter multiRangeForward = new SliceQueryFilter(ranges, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeForwardWithCounting = new SliceQueryFilter(ranges, false, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeReverse = new SliceQueryFilter(rangesReversed, true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        SliceQueryFilter multiRangeReverseWithCounting = new SliceQueryFilter(rangesReversed, true, 3, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForward, "a", "colA", "colC", "colD", "colE", "colG", "colI");
         findRowGetSlicesAndAssertColsFound(cfs, multiRangeForwardWithCounting, "a", "colA", "colC", "colD");
@@ -1786,7 +1786,7 @@ public class ColumnFamilyStoreTest
         ByteBuffer key = bytes("key");
 
         // 1st sstable
-        SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(), cfmeta, LocatorConfig.instance.getPartitioner(), DBConfig.instance);
+        SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(), cfmeta, LocatorConfig.instance.getPartitioner(), databaseDescriptor.getDBConfig());
         writer.newRow(key);
         writer.addColumn(bytes("col"), bytes("val"), 1);
         writer.close();
@@ -1799,7 +1799,7 @@ public class ColumnFamilyStoreTest
 
         // simulate incomplete compaction
         writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                         cfmeta, LocatorConfig.instance.getPartitioner(), DBConfig.instance)
+                                         cfmeta, LocatorConfig.instance.getPartitioner(), databaseDescriptor.getDBConfig())
         {
             protected SSTableWriter getWriter()
             {
@@ -1854,7 +1854,7 @@ public class ColumnFamilyStoreTest
         // Write SSTable generation 3 that has ancestors 1 and 2
         final Set<Integer> ancestors = Sets.newHashSet(1, 2);
         SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                                cfmeta, LocatorConfig.instance.getPartitioner(), DBConfig.instance)
+                                                cfmeta, LocatorConfig.instance.getPartitioner(), databaseDescriptor.getDBConfig())
         {
             protected SSTableWriter getWriter()
             {
@@ -1921,13 +1921,13 @@ public class ColumnFamilyStoreTest
         ByteBuffer key = bytes("key");
 
         SSTableSimpleWriter writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                                             cfmeta, LocatorConfig.instance.getPartitioner(), DBConfig.instance);
+                                                             cfmeta, LocatorConfig.instance.getPartitioner(), databaseDescriptor.getDBConfig());
         writer.newRow(key);
         writer.addColumn(bytes("col"), bytes("val"), 1);
         writer.close();
 
         writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
-                                         cfmeta, LocatorConfig.instance.getPartitioner(), DBConfig.instance);
+                                         cfmeta, LocatorConfig.instance.getPartitioner(), databaseDescriptor.getDBConfig());
         writer.newRow(key);
         writer.addColumn(bytes("col"), bytes("val"), 1);
         writer.close();
@@ -2036,42 +2036,42 @@ public class ColumnFamilyStoreTest
                 new ColumnSlice[] { new ColumnSlice(Composites.EMPTY, cellname("colj")) };
 
         SliceQueryFilter startOnlyFilter = new SliceQueryFilter(startOnlyRange, false,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         SliceQueryFilter startOnlyFilterReversed = new SliceQueryFilter(startOnlyRangeReversed, true,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         SliceQueryFilter startOnlyFilterWithCounting = new SliceQueryFilter(startOnlyRange, false, 1,
-                                                                            DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                                                                            DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         SliceQueryFilter startOnlyFilterReversedWithCounting = new SliceQueryFilter(startOnlyRangeReversed,
-                true, 1, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                true, 1, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         SliceQueryFilter middleOnlyFilter = new SliceQueryFilter(middleOnlyRanges,
                 false,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         SliceQueryFilter middleOnlyFilterReversed = new SliceQueryFilter(middleOnlyRangesReversed, true,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         SliceQueryFilter middleOnlyFilterWithCounting = new SliceQueryFilter(middleOnlyRanges, false, 1,
-                                                                             DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                                                                             DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         SliceQueryFilter middleOnlyFilterReversedWithCounting = new SliceQueryFilter(middleOnlyRangesReversed,
-                true, 1, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                true, 1, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         SliceQueryFilter endOnlyFilter = new SliceQueryFilter(endOnlyRanges, false,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         SliceQueryFilter endOnlyReversed = new SliceQueryFilter(endOnlyRangesReversed, true,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         SliceQueryFilter endOnlyWithCounting = new SliceQueryFilter(endOnlyRanges, false, 1,
-                                                                    DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                                                                    DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         SliceQueryFilter endOnlyWithReversedCounting = new SliceQueryFilter(endOnlyRangesReversed,
-                true, 1, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                true, 1, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         SliceQueryFilter startMiddleAndEndFilter = new SliceQueryFilter(startMiddleAndEndRanges, false,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         SliceQueryFilter startMiddleAndEndFilterReversed = new SliceQueryFilter(startMiddleAndEndRangesReversed, true,
-                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                Integer.MAX_VALUE, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         SliceQueryFilter startMiddleAndEndFilterWithCounting = new SliceQueryFilter(startMiddleAndEndRanges, false,
-                1, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                1, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         SliceQueryFilter startMiddleAndEndFilterReversedWithCounting = new SliceQueryFilter(
                 startMiddleAndEndRangesReversed, true,
-                1, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+                1, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         findRowGetSlicesAndAssertColsFound(cfs, startOnlyFilter, "a", "cola");
         findRowGetSlicesAndAssertColsFound(cfs, startOnlyFilterReversed, "a", "cola");
@@ -2239,7 +2239,7 @@ public class ColumnFamilyStoreTest
     {
         DecoratedKey ROW = Util.dk(rowKey);
         System.err.println("Original:");
-        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(ROW, CF_STANDARD1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
+        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(ROW, CF_STANDARD1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         System.err.println("Row key: " + rowKey + " Cols: "
                 + Iterables.transform(cf.getSortedColumns(), new Function<Cell, String>()
                 {

@@ -63,11 +63,11 @@ public class SerializationsTest extends AbstractSerializationsTester
     private ByteBuffer startCol = ByteBufferUtil.bytes("Start");
     private ByteBuffer stopCol = ByteBufferUtil.bytes("Stop");
     private Composite emptyCol = Composites.EMPTY;
-    public NamesQueryFilter namesPred = new NamesQueryFilter(statics.NamedCols, DBConfig.instance);
-    public NamesQueryFilter namesSCPred = new NamesQueryFilter(statics.NamedSCCols, DBConfig.instance);
-    public SliceQueryFilter emptyRangePred = new SliceQueryFilter(emptyCol, emptyCol, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-    public SliceQueryFilter nonEmptyRangePred = new SliceQueryFilter(CellNames.simpleDense(startCol), CellNames.simpleDense(stopCol), true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-    public SliceQueryFilter nonEmptyRangeSCPred = new SliceQueryFilter(CellNames.compositeDense(statics.SC, startCol), CellNames.compositeDense(statics.SC, stopCol), true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+    public NamesQueryFilter namesPred = new NamesQueryFilter(statics.NamedCols, databaseDescriptor.getDBConfig());
+    public NamesQueryFilter namesSCPred = new NamesQueryFilter(statics.NamedSCCols, databaseDescriptor.getDBConfig());
+    public SliceQueryFilter emptyRangePred = new SliceQueryFilter(emptyCol, emptyCol, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+    public SliceQueryFilter nonEmptyRangePred = new SliceQueryFilter(CellNames.simpleDense(startCol), CellNames.simpleDense(stopCol), true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+    public SliceQueryFilter nonEmptyRangeSCPred = new SliceQueryFilter(CellNames.compositeDense(statics.SC, startCol), CellNames.compositeDense(statics.SC, stopCol), true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
     public SliceByNamesReadCommand.Serializer slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
     public SliceFromReadCommand.Serializer slicefromReadSerializer = new SliceFromReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
 
@@ -239,15 +239,15 @@ public class SerializationsTest extends AbstractSerializationsTester
     private void testRowWrite() throws IOException
     {
         DataOutputStreamAndChannel out = getOutput("db.Row.bin");
-        DBConfig.instance.rowSerializer.serialize(statics.StandardRow, out, getVersion());
-        DBConfig.instance.rowSerializer.serialize(statics.SuperRow, out, getVersion());
-        DBConfig.instance.rowSerializer.serialize(statics.NullRow, out, getVersion());
+        databaseDescriptor.getDBConfig().rowSerializer.serialize(statics.StandardRow, out, getVersion());
+        databaseDescriptor.getDBConfig().rowSerializer.serialize(statics.SuperRow, out, getVersion());
+        databaseDescriptor.getDBConfig().rowSerializer.serialize(statics.NullRow, out, getVersion());
         out.close();
 
         // test serializedSize
-        testSerializedSize(statics.StandardRow, DBConfig.instance.rowSerializer);
-        testSerializedSize(statics.SuperRow, DBConfig.instance.rowSerializer);
-        testSerializedSize(statics.NullRow, DBConfig.instance.rowSerializer);
+        testSerializedSize(statics.StandardRow, databaseDescriptor.getDBConfig().rowSerializer);
+        testSerializedSize(statics.SuperRow, databaseDescriptor.getDBConfig().rowSerializer);
+        testSerializedSize(statics.NullRow, databaseDescriptor.getDBConfig().rowSerializer);
     }
 
     @Test
@@ -258,9 +258,9 @@ public class SerializationsTest extends AbstractSerializationsTester
         testRowWrite();
 
         DataInputStream in = getInput("db.Row.bin");
-        assert DBConfig.instance.rowSerializer.deserialize(in, getVersion()) != null;
-        assert DBConfig.instance.rowSerializer.deserialize(in, getVersion()) != null;
-        assert DBConfig.instance.rowSerializer.deserialize(in, getVersion()) != null;
+        assert databaseDescriptor.getDBConfig().rowSerializer.deserialize(in, getVersion()) != null;
+        assert databaseDescriptor.getDBConfig().rowSerializer.deserialize(in, getVersion()) != null;
+        assert databaseDescriptor.getDBConfig().rowSerializer.deserialize(in, getVersion()) != null;
         in.close();
     }
 
@@ -402,14 +402,14 @@ public class SerializationsTest extends AbstractSerializationsTester
     {
         private final String KS = KEYSPACE1;
         private final ByteBuffer Key = ByteBufferUtil.bytes("Key01");
-        private final SortedSet<CellName> NamedCols = new TreeSet<CellName>(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance))
+        private final SortedSet<CellName> NamedCols = new TreeSet<CellName>(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()))
         {{
             add(CellNames.simpleDense(ByteBufferUtil.bytes("AAA")));
             add(CellNames.simpleDense(ByteBufferUtil.bytes("BBB")));
             add(CellNames.simpleDense(ByteBufferUtil.bytes("CCC")));
         }};
         private final ByteBuffer SC = ByteBufferUtil.bytes("SCName");
-        private final SortedSet<CellName> NamedSCCols = new TreeSet<CellName>(new CompoundDenseCellNameType(Arrays.<AbstractType<?>>asList(BytesType.instance, BytesType.instance), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance))
+        private final SortedSet<CellName> NamedSCCols = new TreeSet<CellName>(new CompoundDenseCellNameType(Arrays.<AbstractType<?>>asList(BytesType.instance, BytesType.instance), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()))
         {{
             add(CellNames.compositeDense(SC, ByteBufferUtil.bytes("AAA")));
             add(CellNames.compositeDense(SC, ByteBufferUtil.bytes("BBB")));
@@ -420,8 +420,8 @@ public class SerializationsTest extends AbstractSerializationsTester
 
         private final long readTs = 1369935512292L;
 
-        private final ColumnFamily StandardCf = ArrayBackedSortedColumns.factory.create(KS, StandardCF, databaseDescriptor.getSchema(), DBConfig.instance);
-        private final ColumnFamily SuperCf = ArrayBackedSortedColumns.factory.create(KS, SuperCF, databaseDescriptor.getSchema(), DBConfig.instance);
+        private final ColumnFamily StandardCf = ArrayBackedSortedColumns.factory.create(KS, StandardCF, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
+        private final ColumnFamily SuperCf = ArrayBackedSortedColumns.factory.create(KS, SuperCF, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
 
         private final Row StandardRow = new Row(Util.dk("key0"), StandardCf);
         private final Row SuperRow = new Row(Util.dk("key1"), SuperCf);

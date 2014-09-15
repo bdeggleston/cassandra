@@ -86,7 +86,7 @@ public class TriggersTest
                                             StorageService.instance, databaseDescriptor.getCFMetaDataFactory(),
                                             DatabaseDescriptor.instance.getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
                                             DatabaseDescriptor.instance.getQueryHandler(), LocatorConfig.instance,
-                                            DBConfig.instance, new ThriftSessionManager(DatabaseDescriptor.instance),
+                                            databaseDescriptor.getDBConfig(), new ThriftSessionManager(DatabaseDescriptor.instance),
                                             ClientMetrics.instance);
             thriftServer.start();
         }
@@ -363,7 +363,7 @@ public class TriggersTest
     {
         public Collection<Mutation> augment(ByteBuffer key, ColumnFamily update)
         {
-            ColumnFamily extraUpdate = ArrayBackedSortedColumns.factory.create(ksName, otherCf, databaseDescriptor.getSchema(), DBConfig.instance);
+            ColumnFamily extraUpdate = ArrayBackedSortedColumns.factory.create(ksName, otherCf, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
             extraUpdate.addColumn(new BufferCell(extraUpdate.metadata().comparator.makeCellName(bytes("v2")), bytes(999)));
             return Collections.singletonList(databaseDescriptor.getMutationFactory().create(ksName, key, extraUpdate));
         }

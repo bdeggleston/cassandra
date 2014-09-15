@@ -137,7 +137,7 @@ public class LegacySSTableTest
                                                                sstable.getPositionsForRanges(ranges),
                                                                sstable.estimatedKeysForRanges(ranges), sstable.getSSTableMetadata().repairedAt));
         new StreamPlan("LegacyStreamingTest", DatabaseDescriptor.instance, databaseDescriptor.getSchema(),
-                       databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), DBConfig.instance).transferFiles(DatabaseDescriptor.instance.getBroadcastAddress(), details)
+                       databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig()).transferFiles(DatabaseDescriptor.instance.getBroadcastAddress(), details)
                                              .execute().get();
 
         ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KSNAME).getColumnFamilyStore(CFNAME);
@@ -147,7 +147,7 @@ public class LegacySSTableTest
         for (String keystring : TEST_DATA)
         {
             ByteBuffer key = ByteBufferUtil.bytes(keystring);
-            SSTableNamesIterator iter = new SSTableNamesIterator(sstable, Util.dk(key), FBUtilities.singleton(Util.cellname(key), type), DBConfig.instance);
+            SSTableNamesIterator iter = new SSTableNamesIterator(sstable, Util.dk(key), FBUtilities.singleton(Util.cellname(key), type), databaseDescriptor.getDBConfig());
             ColumnFamily cf = iter.getColumnFamily();
 
             // check not deleted (CASSANDRA-6527)
@@ -184,7 +184,7 @@ public class LegacySSTableTest
                 ByteBuffer key = ByteBufferUtil.bytes(keystring);
                 // confirm that the bloom filter does not reject any keys/names
                 DecoratedKey dk = reader.partitioner.decorateKey(key);
-                SSTableNamesIterator iter = new SSTableNamesIterator(reader, dk, FBUtilities.singleton(Util.cellname(key), type), DBConfig.instance);
+                SSTableNamesIterator iter = new SSTableNamesIterator(reader, dk, FBUtilities.singleton(Util.cellname(key), type), databaseDescriptor.getDBConfig());
                 assert iter.next().name().toByteBuffer().equals(key);
             }
 

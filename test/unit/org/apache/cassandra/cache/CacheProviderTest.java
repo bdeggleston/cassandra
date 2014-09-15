@@ -119,7 +119,7 @@ public class CacheProviderTest
 
     private ColumnFamily createCF()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD1, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.addColumn(column("vijay", "great", 1));
         cf.addColumn(column("awesome", "vijay", 1));
         return cf;
@@ -128,7 +128,7 @@ public class CacheProviderTest
     @Test
     public void testSerializingCache() throws InterruptedException
     {
-        ICache<MeasureableString, IRowCacheEntry> cache = SerializingCache.create(CAPACITY, Weighers.<RefCountedMemory>singleton(), new SerializingCacheProvider.RowCacheSerializer(DBConfig.instance.columnFamilySerializer), DBConfig.instance.offHeapAllocator);
+        ICache<MeasureableString, IRowCacheEntry> cache = SerializingCache.create(CAPACITY, Weighers.<RefCountedMemory>singleton(), new SerializingCacheProvider.RowCacheSerializer(databaseDescriptor.getDBConfig().columnFamilySerializer), databaseDescriptor.getDBConfig().offHeapAllocator);
         ColumnFamily cf = createCF();
         simpleCase(cf, cache);
         concurrentCase(cf, cache);

@@ -119,7 +119,7 @@ public class EncodedStreamsTest
 
     private ColumnFamily createCF()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_STANDARD, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.addColumn(column("vijay", "try", 1));
         cf.addColumn(column("to", "be_nice", 1));
         return cf;
@@ -127,7 +127,7 @@ public class EncodedStreamsTest
 
     private ColumnFamily createCounterCF()
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER, databaseDescriptor.getSchema(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, CF_COUNTER, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.addCounter(cellname("vijay"), 1);
         cf.addCounter(cellname("wants"), 1000000);
         return cf;
@@ -138,13 +138,13 @@ public class EncodedStreamsTest
     {
         ByteArrayOutputStream byteArrayOStream1 = new ByteArrayOutputStream();
         EncodedDataOutputStream odos = new EncodedDataOutputStream(byteArrayOStream1);
-        DBConfig.instance.columnFamilySerializer.serialize(createCF(), odos, version);
+        databaseDescriptor.getDBConfig().columnFamilySerializer.serialize(createCF(), odos, version);
 
         ByteArrayInputStream byteArrayIStream1 = new ByteArrayInputStream(byteArrayOStream1.toByteArray());
         EncodedDataInputStream odis = new EncodedDataInputStream(new DataInputStream(byteArrayIStream1));
-        ColumnFamily cf = DBConfig.instance.columnFamilySerializer.deserialize(odis, version);
+        ColumnFamily cf = databaseDescriptor.getDBConfig().columnFamilySerializer.deserialize(odis, version);
         Assert.assertEquals(cf, createCF());
-        Assert.assertEquals(byteArrayOStream1.size(), (int) DBConfig.instance.columnFamilySerializer.serializedSize(cf, TypeSizes.VINT, version));
+        Assert.assertEquals(byteArrayOStream1.size(), (int) databaseDescriptor.getDBConfig().columnFamilySerializer.serializedSize(cf, TypeSizes.VINT, version));
     }
 
     @Test
@@ -154,13 +154,13 @@ public class EncodedStreamsTest
 
         ByteArrayOutputStream byteArrayOStream1 = new ByteArrayOutputStream();
         EncodedDataOutputStream odos = new EncodedDataOutputStream(byteArrayOStream1);
-        DBConfig.instance.columnFamilySerializer.serialize(counterCF, odos, version);
+        databaseDescriptor.getDBConfig().columnFamilySerializer.serialize(counterCF, odos, version);
 
         ByteArrayInputStream byteArrayIStream1 = new ByteArrayInputStream(byteArrayOStream1.toByteArray());
         EncodedDataInputStream odis = new EncodedDataInputStream(new DataInputStream(byteArrayIStream1));
-        ColumnFamily cf = DBConfig.instance.columnFamilySerializer.deserialize(odis, version);
+        ColumnFamily cf = databaseDescriptor.getDBConfig().columnFamilySerializer.deserialize(odis, version);
         Assert.assertEquals(cf, counterCF);
-        Assert.assertEquals(byteArrayOStream1.size(), (int) DBConfig.instance.columnFamilySerializer.serializedSize(cf, TypeSizes.VINT, version));
+        Assert.assertEquals(byteArrayOStream1.size(), (int) databaseDescriptor.getDBConfig().columnFamilySerializer.serializedSize(cf, TypeSizes.VINT, version));
     }
 }
 

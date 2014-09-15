@@ -110,7 +110,7 @@ public class LongCompactionsTest
                     // last sstable has highest timestamps
                     cols[i] = Util.column(String.valueOf(i), String.valueOf(i), k);
                 }
-                rows.put(key, SSTableUtils.createCF(KEYSPACE1, CF_STANDARD, Long.MIN_VALUE, Integer.MIN_VALUE, cols));
+                rows.put(key, SSTableUtils.createCF(KEYSPACE1, CF_STANDARD, Long.MIN_VALUE, Integer.MIN_VALUE, databaseDescriptor, cols));
             }
             SSTableReader sstable = SSTableUtils.prepare(databaseDescriptor.getSSTableWriterFactory()).write(rows);
             sstables.add(sstable);
@@ -122,7 +122,7 @@ public class LongCompactionsTest
 
         long start = System.nanoTime();
         final int gcBefore = (int) (System.currentTimeMillis() / 1000) - databaseDescriptor.getSchema().getCFMetaData(KEYSPACE1, "Standard1").getGcGraceSeconds();
-        new CompactionTask(store, sstables, gcBefore, false, DatabaseDescriptor.instance, databaseDescriptor.getSystemKeyspace(), DBConfig.instance, StorageService.instance).execute(null);
+        new CompactionTask(store, sstables, gcBefore, false, DatabaseDescriptor.instance, databaseDescriptor.getSystemKeyspace(), databaseDescriptor.getDBConfig(), StorageService.instance).execute(null);
         System.out.println(String.format("%s: sstables=%d rowsper=%d colsper=%d: %d ms",
                                          this.getClass().getName(),
                                          sstableCount,

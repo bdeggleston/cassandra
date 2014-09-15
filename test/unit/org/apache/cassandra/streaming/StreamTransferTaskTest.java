@@ -76,7 +76,7 @@ public class StreamTransferTaskTest
                                                   databaseDescriptor.getSchema(),
                                                   databaseDescriptor.getKeyspaceManager(),
                                                   databaseDescriptor.getStreamManager(),
-                                                  DBConfig.instance);
+                                                  databaseDescriptor.getDBConfig());
         ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(ks).getColumnFamilyStore(cf);
 
         // create two sstables

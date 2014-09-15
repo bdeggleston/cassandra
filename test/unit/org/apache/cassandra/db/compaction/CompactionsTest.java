@@ -194,7 +194,7 @@ public class CompactionsTest
         // check that the shadowed column is gone
         SSTableReader sstable = cfs.getSSTables().iterator().next();
         Range keyRange = new Range<RowPosition>(key, sstable.partitioner.getMinimumToken().maxKeyBound(), sstable.partitioner);
-        SSTableScanner scanner = sstable.getScanner(DataRange.forKeyRange(keyRange, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
+        SSTableScanner scanner = sstable.getScanner(DataRange.forKeyRange(keyRange, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         OnDiskAtomIterator iter = scanner.next();
         assertEquals(key, iter.getKey());
         assertTrue(iter.next() instanceof RangeTombstone);
@@ -402,7 +402,7 @@ public class CompactionsTest
             keys.add(Util.dk(""+i));
         }
 
-        ArrayBackedSortedColumns cf = ArrayBackedSortedColumns.factory.create(cfmeta, DBConfig.instance);
+        ArrayBackedSortedColumns cf = ArrayBackedSortedColumns.factory.create(cfmeta, databaseDescriptor.getDBConfig());
         cf.addColumn(Util.column("01", "a", 1)); // this must not resurrect
         cf.addColumn(Util.column("a", "a", 3));
         cf.deletionInfo().add(new RangeTombstone(Util.cellname("0"), Util.cellname("b"), 2, (int) (System.currentTimeMillis()/1000)),cfmeta.comparator);
@@ -511,7 +511,7 @@ public class CompactionsTest
 
         Collection<SSTableReader> sstablesBefore = cfs.getSSTables();
 
-        QueryFilter filter = QueryFilter.getIdentityFilter(key, cfname, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+        QueryFilter filter = QueryFilter.getIdentityFilter(key, cfname, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         assertTrue(cfs.getColumnFamily(filter).hasColumns());
 
         // Remove key

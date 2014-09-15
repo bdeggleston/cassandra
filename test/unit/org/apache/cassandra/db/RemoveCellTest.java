@@ -70,7 +70,7 @@ public class RemoveCellTest
         rm.delete("Standard1", Util.cellname("Column1"), 1);
         rm.applyUnsafe();
 
-        ColumnFamily retrieved = store.getColumnFamily(Util.namesQueryFilter(store, dk, "Column1"));
+        ColumnFamily retrieved = store.getColumnFamily(Util.namesQueryFilter(store, dk, databaseDescriptor, "Column1"));
         assertFalse(retrieved.getColumn(Util.cellname("Column1")).isLive());
         assertNull(Util.cloneAndRemoveDeleted(retrieved, Integer.MAX_VALUE));
         assertNull(Util.cloneAndRemoveDeleted(store.getColumnFamily(QueryFilter.getIdentityFilter(dk,
@@ -78,7 +78,7 @@ public class RemoveCellTest
                                                                                                   System.currentTimeMillis(),
                                                                                                   DatabaseDescriptor.instance,
                                                                                                   databaseDescriptor.getTracing(),
-                                                                                                  DBConfig.instance)),
+                                                                                                  databaseDescriptor.getDBConfig())),
                                               Integer.MAX_VALUE));
     }
 

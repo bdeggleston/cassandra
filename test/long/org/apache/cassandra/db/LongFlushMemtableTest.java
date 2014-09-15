@@ -65,7 +65,7 @@ public class LongFlushMemtableTest
             for (int i = 0; i < 100; i++)
             {
                 Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, ByteBufferUtil.bytes("key" + j));
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "_CF" + i, databaseDescriptor.getSchema(), DBConfig.instance);
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "_CF" + i, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
                 // don't cheat by allocating this outside of the loop; that defeats the purpose of deliberately using lots of memory
                 ByteBuffer value = ByteBuffer.allocate(100000);
                 cf.addColumn(new BufferCell(Util.cellname("c"), value));

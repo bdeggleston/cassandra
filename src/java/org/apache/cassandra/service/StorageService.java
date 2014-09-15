@@ -119,7 +119,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                                          DatabaseDescriptor.instance.getFailureDetector(),
                                                          DatabaseDescriptor.instance.getPaxosManager(),
                                                          LocatorConfig.instance,
-                                                         DBConfig.instance);
+                                                         DatabaseDescriptor.instance.getDBConfig());
 
     private final Set<InetAddress> replicatingNodes = Collections.synchronizedSet(new HashSet<InetAddress>());
     private CassandraDaemon daemon;

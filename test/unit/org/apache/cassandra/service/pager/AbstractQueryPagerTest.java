@@ -130,7 +130,7 @@ public class AbstractQueryPagerTest
 
     private ColumnFamily createCF(int nbCol)
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(createMetadata(), DBConfig.instance);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(createMetadata(), databaseDescriptor.getDBConfig());
         for (int i = 0; i < nbCol; i++)
             cf.addColumn(CellNames.simpleDense(bb(i)), bb(i), 0);
         return cf;
@@ -141,7 +141,7 @@ public class AbstractQueryPagerTest
         return new CFMetaData("ks",
                               "cf",
                               ColumnFamilyType.Standard,
-                              CellNames.fromAbstractType(Int32Type.instance, false, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance),
+                              CellNames.fromAbstractType(Int32Type.instance, false, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
                               DatabaseDescriptor.instance,
                               databaseDescriptor.getTracing(),
                               databaseDescriptor.getSystemKeyspace(),
@@ -150,7 +150,7 @@ public class AbstractQueryPagerTest
                               databaseDescriptor.getKeyspaceManager(),
                               databaseDescriptor.getCFMetaDataFactory(),
                               databaseDescriptor.getMutationFactory(),
-                              DBConfig.instance);
+                              databaseDescriptor.getDBConfig());
     }
 
     private static ByteBuffer bb(int i)

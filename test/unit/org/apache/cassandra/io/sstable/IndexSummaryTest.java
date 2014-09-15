@@ -45,6 +45,7 @@ import static org.junit.Assert.*;
 
 public class IndexSummaryTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void setUpClass()
@@ -81,13 +82,13 @@ public class IndexSummaryTest
     {
         Pair<List<DecoratedKey>, IndexSummary> random = generateRandomIndex(100, 1);
         DataOutputBuffer dos = new DataOutputBuffer();
-        DBConfig.instance.indexSummarySerializer.serialize(random.right, dos, false);
+        databaseDescriptor.getDBConfig().indexSummarySerializer.serialize(random.right, dos, false);
         // write junk
         dos.writeUTF("JUNK");
         dos.writeUTF("JUNK");
         FileUtils.closeQuietly(dos);
         DataInputStream dis = new DataInputStream(new ByteArrayInputStream(dos.toByteArray()));
-        IndexSummary is = DBConfig.instance.indexSummarySerializer.deserialize(dis, LocatorConfig.instance.getPartitioner(), false, 1, 1);
+        IndexSummary is = databaseDescriptor.getDBConfig().indexSummarySerializer.deserialize(dis, LocatorConfig.instance.getPartitioner(), false, 1, 1);
         for (int i = 0; i < 100; i++)
             assertEquals(i, is.binarySearch(random.left.get(i)));
         // read the junk
@@ -100,7 +101,7 @@ public class IndexSummaryTest
     public void testAddEmptyKey() throws Exception
     {
         IPartitioner p = new RandomPartitioner(LocatorConfig.instance);
-        IndexSummaryBuilder builder = new IndexSummaryBuilder(1, 1, BASE_SAMPLING_LEVEL, DBConfig.instance.offHeapAllocator);
+        IndexSummaryBuilder builder = new IndexSummaryBuilder(1, 1, BASE_SAMPLING_LEVEL, databaseDescriptor.getDBConfig().offHeapAllocator);
         builder.maybeAddEntry(p.decorateKey(ByteBufferUtil.EMPTY_BYTE_BUFFER), 0);
         IndexSummary summary = builder.build(p);
         assertEquals(1, summary.size());
@@ -108,9 +109,9 @@ public class IndexSummaryTest
         assertArrayEquals(new byte[0], summary.getKey(0));
 
         DataOutputBuffer dos = new DataOutputBuffer();
-        DBConfig.instance.indexSummarySerializer.serialize(summary, dos, false);
+        databaseDescriptor.getDBConfig().indexSummarySerializer.serialize(summary, dos, false);
         DataInputStream dis = new DataInputStream(new ByteArrayInputStream(dos.toByteArray()));
-        IndexSummary loaded = DBConfig.instance.indexSummarySerializer.deserialize(dis, p, false, 1, 1);
+        IndexSummary loaded = databaseDescriptor.getDBConfig().indexSummarySerializer.deserialize(dis, p, false, 1, 1);
 
         assertEquals(1, loaded.size());
         assertEquals(summary.getPosition(0), loaded.getPosition(0));
@@ -120,7 +121,7 @@ public class IndexSummaryTest
     private Pair<List<DecoratedKey>, IndexSummary> generateRandomIndex(int size, int interval)
     {
         List<DecoratedKey> list = Lists.newArrayList();
-        IndexSummaryBuilder builder = new IndexSummaryBuilder(list.size(), interval, BASE_SAMPLING_LEVEL, DBConfig.instance.offHeapAllocator);
+        IndexSummaryBuilder builder = new IndexSummaryBuilder(list.size(), interval, BASE_SAMPLING_LEVEL, databaseDescriptor.getDBConfig().offHeapAllocator);
         for (int i = 0; i < size; i++)
         {
             UUID uuid = UUID.randomUUID();
@@ -178,7 +179,7 @@ public class IndexSummaryTest
         int downsamplingRound = 1;
         for (int samplingLevel = BASE_SAMPLING_LEVEL - 1; samplingLevel >= 1; samplingLevel--)
         {
-            IndexSummary downsampled = downsample(original, samplingLevel, 128, LocatorConfig.instance.getPartitioner(), DBConfig.instance.offHeapAllocator);
+            IndexSummary downsampled = downsample(original, samplingLevel, 128, LocatorConfig.instance.getPartitioner(), databaseDescriptor.getDBConfig().offHeapAllocator);
             assertEquals(entriesAtSamplingLevel(samplingLevel, original.getMaxNumberOfEntries()), downsampled.size());
 
             int sampledCount = 0;
@@ -199,7 +200,7 @@ public class IndexSummaryTest
         downsamplingRound = 1;
         for (int downsampleLevel = BASE_SAMPLING_LEVEL - 1; downsampleLevel >= 1; downsampleLevel--)
         {
-            IndexSummary downsampled = downsample(previous, downsampleLevel, 128, LocatorConfig.instance.getPartitioner(), DBConfig.instance.offHeapAllocator);
+            IndexSummary downsampled = downsample(previous, downsampleLevel, 128, LocatorConfig.instance.getPartitioner(), databaseDescriptor.getDBConfig().offHeapAllocator);
             assertEquals(entriesAtSamplingLevel(downsampleLevel, original.getMaxNumberOfEntries()), downsampled.size());
 
             int sampledCount = 0;

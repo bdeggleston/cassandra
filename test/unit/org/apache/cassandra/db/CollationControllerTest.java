@@ -89,16 +89,16 @@ public class CollationControllerTest
 
         // A NamesQueryFilter goes down one code path (through collectTimeOrderedData())
         // It should only iterate the last flushed sstable, since it probably contains the most recent value for Column1
-        QueryFilter filter = Util.namesQueryFilter(cfs, dk, "Column1");
-        CollationController controller = new CollationController(cfs, filter, Integer.MIN_VALUE, DBConfig.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
+        QueryFilter filter = Util.namesQueryFilter(cfs, dk, databaseDescriptor, "Column1");
+        CollationController controller = new CollationController(cfs, filter, Integer.MIN_VALUE, databaseDescriptor.getDBConfig(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
         controller.getTopLevelColumns(true);
         assertEquals(1, controller.getSstablesIterated());
 
         // SliceQueryFilter goes down another path (through collectAllData())
         // We will read "only" the last sstable in that case, but because the 2nd sstable has a tombstone that is more
         // recent than the maxTimestamp of the very first sstable we flushed, we should only read the 2 first sstables.
-        filter = QueryFilter.getIdentityFilter(dk, cfs.name, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        controller = new CollationController(cfs, filter, Integer.MIN_VALUE, DBConfig.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
+        filter = QueryFilter.getIdentityFilter(dk, cfs.name, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        controller = new CollationController(cfs, filter, Integer.MIN_VALUE, databaseDescriptor.getDBConfig(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
         controller.getTopLevelColumns(true);
         assertEquals(2, controller.getSstablesIterated());
     }
@@ -131,12 +131,12 @@ public class CollationControllerTest
         long queryAt = System.currentTimeMillis() + 1000;
         int gcBefore = cfs.gcBefore(queryAt);
 
-        filter = QueryFilter.getNamesFilter(dk, cfs.name, FBUtilities.singleton(cellName, cfs.getComparator()), queryAt, DBConfig.instance);
-        CollationController controller = new CollationController(cfs, filter, gcBefore, DBConfig.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
+        filter = QueryFilter.getNamesFilter(dk, cfs.name, FBUtilities.singleton(cellName, cfs.getComparator()), queryAt, databaseDescriptor.getDBConfig());
+        CollationController controller = new CollationController(cfs, filter, gcBefore, databaseDescriptor.getDBConfig(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
         assert ColumnFamilyStore.removeDeleted(controller.getTopLevelColumns(true), gcBefore) == null;
 
-        filter = QueryFilter.getIdentityFilter(dk, cfs.name, queryAt, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        controller = new CollationController(cfs, filter, gcBefore, DBConfig.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
+        filter = QueryFilter.getIdentityFilter(dk, cfs.name, queryAt, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        controller = new CollationController(cfs, filter, gcBefore, databaseDescriptor.getDBConfig(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
         assert ColumnFamilyStore.removeDeleted(controller.getTopLevelColumns(true), gcBefore) == null;
     }
 }

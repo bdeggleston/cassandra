@@ -312,7 +312,7 @@ public class SSTableReaderTest
 
         SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.instance.getIndexAccessMode(), databaseDescriptor.getFileCacheService(), DatabaseDescriptor.instance.getDiskAccessMode());
         SegmentedFile.Builder dbuilder = sstable.compression
-                                          ? SegmentedFile.getCompressedBuilder(databaseDescriptor.getFileCacheService(), DatabaseDescriptor.instance.getDiskAccessMode(), DBConfig.instance.offHeapAllocator)
+                                          ? SegmentedFile.getCompressedBuilder(databaseDescriptor.getFileCacheService(), DatabaseDescriptor.instance.getDiskAccessMode(), databaseDescriptor.getDBConfig().offHeapAllocator)
                                           : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), databaseDescriptor.getFileCacheService(), DatabaseDescriptor.instance.getDiskAccessMode());
         sstable.saveSummary(ibuilder, dbuilder);
 
@@ -447,7 +447,7 @@ public class SSTableReaderTest
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr);
         Range<RowPosition> range = Util.range("", "");
-        List<Row> rows = indexedCFS.search(range, clause, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 100);
+        List<Row> rows = indexedCFS.search(range, clause, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100);
         assert rows.size() == 1;
     }
 
