@@ -73,7 +73,7 @@ public class MoveTest
     @Before
     public void clearTokenMetadata()
     {
-        PendingRangeCalculatorService.instance.blockUntilFinished();
+        databaseDescriptor.getPendingRangeCalculatorService().blockUntilFinished();
         databaseDescriptor.getLocatorConfig().getTokenMetadata().clearUnsafe();
     }
 
@@ -115,7 +115,7 @@ public class MoveTest
 
         // Third node leaves
         ss.onChange(hosts.get(MOVING_NODE), ApplicationState.STATUS, valueFactory.moving(newToken));
-        PendingRangeCalculatorService.instance.blockUntilFinished();
+        databaseDescriptor.getPendingRangeCalculatorService().blockUntilFinished();
 
         assertTrue(tmd.isMoving(hosts.get(MOVING_NODE)));
 
@@ -197,7 +197,7 @@ public class MoveTest
         ss.onChange(boot1,
                     ApplicationState.STATUS,
                     valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(5))));
-        PendingRangeCalculatorService.instance.blockUntilFinished();
+        databaseDescriptor.getPendingRangeCalculatorService().blockUntilFinished();
 
         InetAddress boot2 = InetAddress.getByName("127.0.1.2");
         databaseDescriptor.getGossiper().initializeNodeUnsafe(boot2, UUID.randomUUID(), 1);
@@ -205,7 +205,7 @@ public class MoveTest
         ss.onChange(boot2,
                     ApplicationState.STATUS,
                     valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(7))));
-        PendingRangeCalculatorService.instance.blockUntilFinished();
+        databaseDescriptor.getPendingRangeCalculatorService().blockUntilFinished();
 
         // don't require test update every time a new keyspace is added to test/conf/cassandra.yaml
         Map<String, AbstractReplicationStrategy> keyspaceStrategyMap = new HashMap<String, AbstractReplicationStrategy>();

@@ -106,7 +106,7 @@ public class LeaveAndBootstrapTest
         assertTrue(tmd.isLeaving(hosts.get(LEAVING_NODE)));
 
         Thread.sleep(100); // because there is a tight race between submit and blockUntilFinished
-        PendingRangeCalculatorService.instance.blockUntilFinished();
+        databaseDescriptor.getPendingRangeCalculatorService().blockUntilFinished();
 
         AbstractReplicationStrategy strategy;
         for (String keyspaceName : databaseDescriptor.getSchema().getNonSystemKeyspaces())
@@ -233,7 +233,7 @@ public class LeaveAndBootstrapTest
         expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("85", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.10", "127.0.0.1", "127.0.0.2", "127.0.0.3"));
         expectedEndpoints.get(KEYSPACE4).putAll(new BigIntegerToken("95", databaseDescriptor.getLocatorConfig().getPartitioner()), makeAddrs("127.0.0.1", "127.0.0.2", "127.0.0.3"));
 
-        PendingRangeCalculatorService.instance.blockUntilFinished();
+        databaseDescriptor.getPendingRangeCalculatorService().blockUntilFinished();
 
         for (Map.Entry<String, AbstractReplicationStrategy> keyspaceStrategy : keyspaceStrategyMap.entrySet())
         {
@@ -355,7 +355,7 @@ public class LeaveAndBootstrapTest
         expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("75", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
         expectedEndpoints.get(KEYSPACE4).get(new BigIntegerToken("85", databaseDescriptor.getLocatorConfig().getPartitioner())).removeAll(makeAddrs("127.0.0.10"));
 
-        PendingRangeCalculatorService.instance.blockUntilFinished();
+        databaseDescriptor.getPendingRangeCalculatorService().blockUntilFinished();
 
         for (Map.Entry<String, AbstractReplicationStrategy> keyspaceStrategy : keyspaceStrategyMap.entrySet())
         {

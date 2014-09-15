@@ -188,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final PendingRangeCalculatorService pendingRangeCalculatorService;
     protected final LocatorConfig locatorConfig;
     protected final DBConfig dbConfig;
     protected final CommitLog commitLog;
@@ -243,6 +244,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        pendingRangeCalculatorService = createPendingRangeCalculatorService();
         locatorConfig = createLocatorConfig();
         dbConfig = createDBConfig();
         commitLog = createCommitLog();
@@ -2009,9 +2011,14 @@ public class DatabaseDescriptor
         return batchlogManager;
     }
 
+    public PendingRangeCalculatorService createPendingRangeCalculatorService()
+    {
+        return new PendingRangeCalculatorService(this, getTracing());
+    }
+
     public PendingRangeCalculatorService getPendingRangeCalculatorService()
     {
-        return PendingRangeCalculatorService.instance;
+        return pendingRangeCalculatorService;
     }
 
     public PaxosManager createPaxosManager()
