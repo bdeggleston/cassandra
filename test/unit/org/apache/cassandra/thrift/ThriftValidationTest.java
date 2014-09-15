@@ -164,7 +164,7 @@ public class ThriftValidationTest
 
         try
         {
-            KSMetaDataFactory.instance.fromThrift(ks_def).validate();
+            databaseDescriptor.getKSMetaDataFactory().fromThrift(ks_def).validate();
         }
         catch (ConfigurationException e)
         {
@@ -179,7 +179,7 @@ public class ThriftValidationTest
 
         try
         {
-            KSMetaDataFactory.instance.fromThrift(ks_def).validate();
+            databaseDescriptor.getKSMetaDataFactory().fromThrift(ks_def).validate();
         }
         catch (ConfigurationException e)
         {
@@ -194,7 +194,7 @@ public class ThriftValidationTest
 
         try
         {
-            KSMetaDataFactory.instance.fromThrift(ks_def).validate();
+            databaseDescriptor.getKSMetaDataFactory().fromThrift(ks_def).validate();
         }
         catch (ConfigurationException e)
         {

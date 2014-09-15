@@ -16,9 +16,6 @@ import java.util.*;
 
 public class KSMetaDataFactory
 {
-
-    public static final KSMetaDataFactory instance = new KSMetaDataFactory(DatabaseDescriptor.instance);
-
     private final DatabaseDescriptor databaseDescriptor;
 
     public KSMetaDataFactory(DatabaseDescriptor databaseDescriptor)

@@ -392,7 +392,7 @@ public class CassandraDaemon
                                         MessagingService.instance, DatabaseDescriptor.instance.getKeyspaceManager(),
                                         DatabaseDescriptor.instance.getMutationFactory(), DatabaseDescriptor.instance.getCounterMutationFactory(),
                                         StorageService.instance, DatabaseDescriptor.instance.getCFMetaDataFactory(),
-                                        DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
+                                        DatabaseDescriptor.instance.getMigrationManager(), DatabaseDescriptor.instance.getKSMetaDataFactory(),
                                         DatabaseDescriptor.instance.getQueryHandler(), LocatorConfig.instance,
                                         DBConfig.instance,
                                         new ThriftSessionManager(DatabaseDescriptor.instance),

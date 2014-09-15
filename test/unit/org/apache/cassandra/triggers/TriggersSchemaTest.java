@@ -52,7 +52,7 @@ public class TriggersSchemaTest
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass, databaseDescriptor.getCFMetaDataFactory());
         CFMetaData cfm1 = databaseDescriptor.getCFMetaDataFactory().compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName);
         cfm1.addTriggerDefinition(td);
-        KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(ksName,
+        KSMetaData ksm = databaseDescriptor.getKSMetaDataFactory().newKeyspace(ksName,
                                                 SimpleStrategy.class,
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
@@ -68,7 +68,7 @@ public class TriggersSchemaTest
     @Test
     public void addNewCfWithTriggerToKs() throws Exception
     {
-        KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(ksName,
+        KSMetaData ksm = databaseDescriptor.getKSMetaDataFactory().newKeyspace(ksName,
                                                 SimpleStrategy.class,
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
@@ -91,7 +91,7 @@ public class TriggersSchemaTest
     public void addTriggerToCf() throws Exception
     {
         CFMetaData cfm1 = databaseDescriptor.getCFMetaDataFactory().compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName);
-        KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(ksName,
+        KSMetaData ksm = databaseDescriptor.getKSMetaDataFactory().newKeyspace(ksName,
                                                 SimpleStrategy.class,
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
@@ -115,7 +115,7 @@ public class TriggersSchemaTest
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass, databaseDescriptor.getCFMetaDataFactory());
         CFMetaData cfm1 = databaseDescriptor.getCFMetaDataFactory().compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName);
         cfm1.addTriggerDefinition(td);
-        KSMetaData ksm = KSMetaDataFactory.instance.newKeyspace(ksName,
+        KSMetaData ksm = databaseDescriptor.getKSMetaDataFactory().newKeyspace(ksName,
                                                 SimpleStrategy.class,
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,

@@ -128,7 +128,7 @@ public class SchemaLoader
         leveledOptions.put("sstable_size_in_mb", "1");
 
         // Keyspace 1
-        schema.add(KSMetaDataFactory.instance.testMetadata(ks1,
+        schema.add(databaseDescriptor.getKSMetaDataFactory().testMetadata(ks1,
                                            simple,
                                            opts_rf1,
 
@@ -179,7 +179,7 @@ public class SchemaLoader
         ));
 
         // Keyspace 2
-        schema.add(KSMetaDataFactory.instance.testMetadata(ks2,
+        schema.add(databaseDescriptor.getKSMetaDataFactory().testMetadata(ks2,
                                            simple,
                                            opts_rf1,
 
@@ -193,7 +193,7 @@ public class SchemaLoader
                                            compositeIndexCFMD(ks2, "Indexed3", true).gcGraceSeconds(0)));
 
         // Keyspace 3
-        schema.add(KSMetaDataFactory.instance.testMetadata(ks3,
+        schema.add(databaseDescriptor.getKSMetaDataFactory().testMetadata(ks3,
                                            simple,
                                            opts_rf5,
 
@@ -202,7 +202,7 @@ public class SchemaLoader
                                            indexCFMD(ks3, "Indexed1", true)));
 
         // Keyspace 4
-        schema.add(KSMetaDataFactory.instance.testMetadata(ks4,
+        schema.add(databaseDescriptor.getKSMetaDataFactory().testMetadata(ks4,
                                            simple,
                                            opts_rf3,
 
@@ -214,7 +214,7 @@ public class SchemaLoader
                                            databaseDescriptor.getCFMetaDataFactory().denseCFMetaData(ks4, "Super5", TimeUUIDType.instance, bytes)));
 
         // Keyspace 5
-        schema.add(KSMetaDataFactory.instance.testMetadata(ks5,
+        schema.add(databaseDescriptor.getKSMetaDataFactory().testMetadata(ks5,
                                            simple,
                                            opts_rf2,
                                            standardCFMD(ks5, "Standard1"),
@@ -222,13 +222,13 @@ public class SchemaLoader
                                                    .defaultValidator(CounterColumnType.instance)));
 
         // Keyspace 6
-        schema.add(KSMetaDataFactory.instance.testMetadata(ks6,
+        schema.add(databaseDescriptor.getKSMetaDataFactory().testMetadata(ks6,
                                            simple,
                                            opts_rf1,
                                            indexCFMD(ks6, "Indexed1", true)));
 
         // KeyCacheSpace
-        schema.add(KSMetaDataFactory.instance.testMetadata(ks_kcs,
+        schema.add(databaseDescriptor.getKSMetaDataFactory().testMetadata(ks_kcs,
                                            simple,
                                            opts_rf1,
                                            standardCFMD(ks_kcs, "Standard1"),
@@ -236,7 +236,7 @@ public class SchemaLoader
                                            standardCFMD(ks_kcs, "Standard3")));
 
         // RowCacheSpace
-        schema.add(KSMetaDataFactory.instance.testMetadata(ks_rcs,
+        schema.add(databaseDescriptor.getKSMetaDataFactory().testMetadata(ks_rcs,
                                            simple,
                                            opts_rf1,
                                            standardCFMD(ks_rcs, "CFWithoutCache").caching(CachingOptions.NONE),
@@ -247,25 +247,25 @@ public class SchemaLoader
                                                                                   new CachingOptions.RowCache(CachingOptions.RowCache.Type.HEAD, 100)))));
 
         // CounterCacheSpace
-        schema.add(KSMetaDataFactory.instance.testMetadata(ks_ccs,
+        schema.add(databaseDescriptor.getKSMetaDataFactory().testMetadata(ks_ccs,
                                            simple,
                                            opts_rf1,
                                            standardCFMD(ks_ccs, "Counter1").defaultValidator(CounterColumnType.instance),
                                            standardCFMD(ks_ccs, "Counter2").defaultValidator(CounterColumnType.instance)));
 
-        schema.add(KSMetaDataFactory.instance.testMetadataNotDurable(ks_nocommit,
+        schema.add(databaseDescriptor.getKSMetaDataFactory().testMetadataNotDurable(ks_nocommit,
                                                      simple,
                                                      opts_rf1,
                                                      standardCFMD(ks_nocommit, "Standard1")));
 
         // PerRowSecondaryIndexTest
-        schema.add(KSMetaDataFactory.instance.testMetadata(ks_prsi,
+        schema.add(databaseDescriptor.getKSMetaDataFactory().testMetadata(ks_prsi,
                                            simple,
                                            opts_rf1,
                                            perRowIndexedCFMD(ks_prsi, "Indexed1")));
 
         // CQLKeyspace
-        schema.add(KSMetaDataFactory.instance.testMetadata(ks_cql,
+        schema.add(databaseDescriptor.getKSMetaDataFactory().testMetadata(ks_cql,
                                            simple,
                                            opts_rf1,
 
@@ -322,8 +322,8 @@ public class SchemaLoader
                                       Map<String, String> options,
                                       CFMetaData... cfmetas) throws ConfigurationException
     {
-        KSMetaData ksm = durable ? KSMetaDataFactory.instance.testMetadata(keyspaceName, strategy, options, cfmetas)
-                                 : KSMetaDataFactory.instance.testMetadataNotDurable(keyspaceName, strategy, options, cfmetas);
+        KSMetaData ksm = durable ? databaseDescriptor.getKSMetaDataFactory().testMetadata(keyspaceName, strategy, options, cfmetas)
+                                 : databaseDescriptor.getKSMetaDataFactory().testMetadataNotDurable(keyspaceName, strategy, options, cfmetas);
         DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(ksm, announceLocally);
     }
 

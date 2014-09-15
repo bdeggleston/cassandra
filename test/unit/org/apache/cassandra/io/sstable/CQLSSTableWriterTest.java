@@ -71,7 +71,7 @@ public class CQLSSTableWriterTest
                       + "  v2 int"
                       + ")";
         String insert = "INSERT INTO cql_keyspace.table1 (k, v1, v2) VALUES (?, ?, ?)";
-        CQLSSTableWriter writer = CQLSSTableWriter.builder(databaseDescriptor.getSchema(), databaseDescriptor.getQueryProcessor(), databaseDescriptor.getAuth(), KSMetaDataFactory.instance, DBConfig.instance)
+        CQLSSTableWriter writer = CQLSSTableWriter.builder(databaseDescriptor.getSchema(), databaseDescriptor.getQueryProcessor(), databaseDescriptor.getAuth(), databaseDescriptor.getKSMetaDataFactory(), DBConfig.instance)
                                                   .inDirectory(dataDir)
                                                   .forTable(schema)
                                                   .withPartitioner(LocatorConfig.instance.getPartitioner())

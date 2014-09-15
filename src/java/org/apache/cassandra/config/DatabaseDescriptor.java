@@ -133,7 +133,7 @@ public class DatabaseDescriptor
 
         instance = databaseDescriptor;
 //        assert CFMetaDataFactory.instance != null;
-        assert KSMetaDataFactory.instance != null;
+//        assert KSMetaDataFactory.instance != null;
 //        assert FailureDetector.instance != null;
         assert Gossiper.instance != null;
 //        assert Tracing.instance != null;
@@ -152,7 +152,7 @@ public class DatabaseDescriptor
         assert StorageService.instance != null;
 
 //        CFMetaDataFactory.instance.init();
-        KSMetaDataFactory.instance.init();
+//        KSMetaDataFactory.instance.init();
 
     }
 
@@ -189,6 +189,7 @@ public class DatabaseDescriptor
     }
 
     protected final CFMetaDataFactory cfMetaDataFactory;
+    protected final KSMetaDataFactory ksMetaDataFactory;
     protected final QueryHandler queryHandler;
     protected final MutationFactory mutationFactory;
     protected final CounterMutationFactory counterMutationFactory;
@@ -236,6 +237,7 @@ public class DatabaseDescriptor
         }
 
         cfMetaDataFactory = createCFMetaDataFactory();
+        ksMetaDataFactory = createKSMetaDataFactory();
         queryHandler = createQueryHandler();
         mutationFactory = createMutationFactory();
         counterMutationFactory = createCounterMutationFactory();
@@ -264,6 +266,7 @@ public class DatabaseDescriptor
         statusLogger = createStatusLogger();
 
         cfMetaDataFactory.init();
+        ksMetaDataFactory.init();
     }
 
     public Config getConfig()
@@ -1645,9 +1648,14 @@ public class DatabaseDescriptor
         return auth;
     }
 
+    public KSMetaDataFactory createKSMetaDataFactory()
+    {
+        return new KSMetaDataFactory(this);
+    }
+
     public KSMetaDataFactory getKSMetaDataFactory()
     {
-        return KSMetaDataFactory.instance;
+        return ksMetaDataFactory;
     }
 
     public CFMetaDataFactory createCFMetaDataFactory()

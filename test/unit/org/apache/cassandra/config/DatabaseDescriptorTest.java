@@ -69,7 +69,7 @@ public class DatabaseDescriptorTest
             if (ksm.name.equals(Keyspace.SYSTEM_KS))
                 continue;
             // Not testing round-trip on the KsDef via serDe() because maps
-            KSMetaData ksmDupe = KSMetaDataFactory.instance.fromThrift(ksm.toThrift());
+            KSMetaData ksmDupe = databaseDescriptor.getKSMetaDataFactory().fromThrift(ksm.toThrift());
             assertNotNull(ksmDupe);
             assertEquals(ksm, ksmDupe);
         }
@@ -89,8 +89,8 @@ public class DatabaseDescriptorTest
         try
         {
             // add a few.
-            DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(KSMetaDataFactory.instance.testMetadata("ks0", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
-            DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(KSMetaDataFactory.instance.testMetadata("ks1", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
+            DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(databaseDescriptor.getKSMetaDataFactory().testMetadata("ks0", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
+            DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(databaseDescriptor.getKSMetaDataFactory().testMetadata("ks1", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
 
             assertNotNull(databaseDescriptor.getSchema().getKSMetaData("ks0"));
             assertNotNull(databaseDescriptor.getSchema().getKSMetaData("ks1"));

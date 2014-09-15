@@ -277,7 +277,7 @@ public class DefsTest
         DecoratedKey dk = Util.dk("key0");
         CFMetaData newCf = addTestCF("NewKeyspace1", "AddedStandard1", "A new cf for a new ks");
 
-        KSMetaData newKs = KSMetaDataFactory.instance.testMetadata(newCf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(5), newCf);
+        KSMetaData newKs = databaseDescriptor.getKSMetaDataFactory().testMetadata(newCf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(5), newCf);
 
         DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(newKs);
 
@@ -376,7 +376,7 @@ public class DefsTest
     {
         Assert.assertNull(databaseDescriptor.getSchema().getKSMetaData(EMPTYKEYSPACE));
 
-        KSMetaData newKs = KSMetaDataFactory.instance.testMetadata(EMPTYKEYSPACE, SimpleStrategy.class, KSMetaData.optsWithRF(5));
+        KSMetaData newKs = databaseDescriptor.getKSMetaDataFactory().testMetadata(EMPTYKEYSPACE, SimpleStrategy.class, KSMetaData.optsWithRF(5));
 
         DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(newKs);
         Assert.assertNotNull(databaseDescriptor.getSchema().getKSMetaData(EMPTYKEYSPACE));
@@ -413,7 +413,7 @@ public class DefsTest
     {
         // create a keyspace to serve as existing.
         CFMetaData cf = addTestCF("UpdatedKeyspace", "AddedStandard1", "A new cf for a new ks");
-        KSMetaData oldKs = KSMetaDataFactory.instance.testMetadata(cf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(5), cf);
+        KSMetaData oldKs = databaseDescriptor.getKSMetaDataFactory().testMetadata(cf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(5), cf);
 
         DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(oldKs);
 
@@ -421,7 +421,7 @@ public class DefsTest
         Assert.assertEquals(databaseDescriptor.getSchema().getKSMetaData(cf.ksName), oldKs);
 
         // names should match.
-        KSMetaData newBadKs2 = KSMetaDataFactory.instance.testMetadata(cf.ksName + "trash", SimpleStrategy.class, KSMetaData.optsWithRF(4));
+        KSMetaData newBadKs2 = databaseDescriptor.getKSMetaDataFactory().testMetadata(cf.ksName + "trash", SimpleStrategy.class, KSMetaData.optsWithRF(4));
         try
         {
             DatabaseDescriptor.instance.getMigrationManager().announceKeyspaceUpdate(newBadKs2);
@@ -432,7 +432,7 @@ public class DefsTest
             // expected.
         }
 
-        KSMetaData newKs = KSMetaDataFactory.instance.testMetadata(cf.ksName, OldNetworkTopologyStrategy.class, KSMetaData.optsWithRF(1));
+        KSMetaData newKs = databaseDescriptor.getKSMetaDataFactory().testMetadata(cf.ksName, OldNetworkTopologyStrategy.class, KSMetaData.optsWithRF(1));
         DatabaseDescriptor.instance.getMigrationManager().announceKeyspaceUpdate(newKs);
 
         KSMetaData newFetchedKs = databaseDescriptor.getSchema().getKSMetaData(newKs.name);
@@ -445,7 +445,7 @@ public class DefsTest
     {
         // create a keyspace with a cf to update.
         CFMetaData cf = addTestCF("UpdatedCfKs", "Standard1added", "A new cf that will be updated");
-        KSMetaData ksm = KSMetaDataFactory.instance.testMetadata(cf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(1), cf);
+        KSMetaData ksm = databaseDescriptor.getKSMetaDataFactory().testMetadata(cf.ksName, SimpleStrategy.class, KSMetaData.optsWithRF(1), cf);
         DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(ksm);
 
         Assert.assertNotNull(databaseDescriptor.getSchema().getKSMetaData(cf.ksName));

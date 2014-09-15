@@ -68,7 +68,7 @@ public class MultiSliceTest
                                      MessagingService.instance, databaseDescriptor.getKeyspaceManager(),
                                      databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
                                      StorageService.instance, databaseDescriptor.getCFMetaDataFactory(),
-                                     DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
+                                     DatabaseDescriptor.instance.getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
                                      databaseDescriptor.getQueryHandler(), LocatorConfig.instance,
                                      DBConfig.instance, thriftSessionManager,
                                      ClientMetrics.instance);
