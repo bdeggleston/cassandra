@@ -178,7 +178,7 @@ public class LeveledCompactionStrategyTest
         Range<Token> range = new Range<>(Util.token(""), Util.token(""), LocatorConfig.instance.getPartitioner());
         int gcBefore = keyspace.getColumnFamilyStore(CF_STANDARDDLEVELED).gcBefore(System.currentTimeMillis());
         UUID parentRepSession = UUID.randomUUID();
-        ActiveRepairService.instance.registerParentRepairSession(parentRepSession, Arrays.asList(cfs), Arrays.asList(range));
+        databaseDescriptor.getActiveRepairService().registerParentRepairSession(parentRepSession, Arrays.asList(cfs), Arrays.asList(range));
         RepairJobDesc desc = new RepairJobDesc(parentRepSession, UUID.randomUUID(), KEYSPACE1, CF_STANDARDDLEVELED, range);
         Validator validator = new Validator(desc, DatabaseDescriptor.instance.getBroadcastAddress(), gcBefore, DatabaseDescriptor.instance, databaseDescriptor.getStageManager(), MessagingService.instance);
         databaseDescriptor.getCompactionManager().submitValidation(cfs, validator).get();

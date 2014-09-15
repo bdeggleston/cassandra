@@ -146,7 +146,7 @@ public class DatabaseDescriptor
 //        assert SystemKeyspace.instance != null;
 //        assert StageManager.instance != null;
 //        assert Schema.instance != null;
-        assert ActiveRepairService.instance != null;
+//        assert ActiveRepairService.instance != null;
 //        assert CompactionManager.instance != null;
 //        assert DefsTables.instance != null;
         assert StorageService.instance != null;
@@ -188,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final ActiveRepairService activeRepairService;
     protected final StorageProxy storageProxy;
     protected final Gossiper gossiper;
     protected final CFMetaDataFactory cfMetaDataFactory;
@@ -238,6 +239,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        activeRepairService = createActiveRepairService();
         storageProxy = createStorageProxy();
         gossiper = createGossiper();
         cfMetaDataFactory = createCFMetaDataFactory();
@@ -1904,9 +1906,14 @@ public class DatabaseDescriptor
         return gossiper;
     }
 
+    public ActiveRepairService createActiveRepairService()
+    {
+        return new ActiveRepairService(this, getTracing());
+    }
+
     public ActiveRepairService getActiveRepairService()
     {
-        return ActiveRepairService.instance;
+        return activeRepairService;
     }
 
     public FileCacheService createFileCacheService()

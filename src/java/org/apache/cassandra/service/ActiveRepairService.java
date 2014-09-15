@@ -70,8 +70,6 @@ import org.apache.cassandra.utils.UUIDGen;
 public class ActiveRepairService
 {
     private static final Logger logger = LoggerFactory.getLogger(ActiveRepairService.class);
-    // singleton enforcement
-    public static final ActiveRepairService instance = new ActiveRepairService(DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing());
 
     public static final long UNREPAIRED_SSTABLE = 0;
 
@@ -93,7 +91,7 @@ public class ActiveRepairService
     /**
      * Protected constructor. Use ActiveRepairService.instance.
      */
-    protected ActiveRepairService(DatabaseDescriptor databaseDescriptor, Tracing tracing)
+    public ActiveRepairService(DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
         assert tracing != null;
 

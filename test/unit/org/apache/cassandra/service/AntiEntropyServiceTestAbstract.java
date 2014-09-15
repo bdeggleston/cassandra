@@ -112,7 +112,7 @@ public abstract class AntiEntropyServiceTestAbstract
             assert store != null : "CF not found: " + cfname;
         }
 
-        aes = ActiveRepairService.instance;
+        aes = databaseDescriptor.getActiveRepairService();
         TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         tmd.clearUnsafe();
         StorageService.instance.setTokens(Collections.singleton(LocatorConfig.instance.getPartitioner().getRandomToken()));
@@ -126,7 +126,7 @@ public abstract class AntiEntropyServiceTestAbstract
 
         desc = new RepairJobDesc(UUID.randomUUID(), UUID.randomUUID(), keyspaceName, cfname, local_range);
         // Set a fake session corresponding to this fake request
-        ActiveRepairService.instance.submitArtificialRepairSession(desc);
+        databaseDescriptor.getActiveRepairService().submitArtificialRepairSession(desc);
     }
 
     @After
@@ -145,7 +145,7 @@ public abstract class AntiEntropyServiceTestAbstract
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
-            neighbors.addAll(ActiveRepairService.instance.getNeighbors(keyspaceName, range, null, null));
+            neighbors.addAll(databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, range, null, null));
         }
         assertEquals(expected, neighbors);
     }
@@ -168,7 +168,7 @@ public abstract class AntiEntropyServiceTestAbstract
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
-            neighbors.addAll(ActiveRepairService.instance.getNeighbors(keyspaceName, range, null, null));
+            neighbors.addAll(databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, range, null, null));
         }
         assertEquals(expected, neighbors);
     }
@@ -190,7 +190,7 @@ public abstract class AntiEntropyServiceTestAbstract
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
-            neighbors.addAll(ActiveRepairService.instance.getNeighbors(keyspaceName, range, Arrays.asList(DatabaseDescriptor.instance.getLocalDataCenter()), null));
+            neighbors.addAll(databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, range, Arrays.asList(DatabaseDescriptor.instance.getLocalDataCenter()), null));
         }
         assertEquals(expected, neighbors);
     }
@@ -218,7 +218,7 @@ public abstract class AntiEntropyServiceTestAbstract
         Set<InetAddress> neighbors = new HashSet<InetAddress>();
         for (Range<Token> range : ranges)
         {
-            neighbors.addAll(ActiveRepairService.instance.getNeighbors(keyspaceName, range, Arrays.asList(DatabaseDescriptor.instance.getLocalDataCenter()), null));
+            neighbors.addAll(databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, range, Arrays.asList(DatabaseDescriptor.instance.getLocalDataCenter()), null));
         }
         assertEquals(expected, neighbors);
     }
@@ -240,7 +240,7 @@ public abstract class AntiEntropyServiceTestAbstract
         expected.remove(DatabaseDescriptor.instance.getBroadcastAddress());
         Collection<String> hosts = Arrays.asList(DatabaseDescriptor.instance.getBroadcastAddress().getCanonicalHostName(),expected.get(0).getCanonicalHostName());
 
-       assertEquals(expected.get(0), ActiveRepairService.instance.getNeighbors(keyspaceName, LocatorConfig.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts).iterator().next());
+       assertEquals(expected.get(0), databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, LocatorConfig.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts).iterator().next());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -249,7 +249,7 @@ public abstract class AntiEntropyServiceTestAbstract
         addTokens(2 * databaseDescriptor.getKeyspaceManager().open(keyspaceName).getReplicationStrategy().getReplicationFactor());
         //Dont give local endpoint
         Collection<String> hosts = Arrays.asList("127.0.0.3");
-        ActiveRepairService.instance.getNeighbors(keyspaceName, LocatorConfig.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts);
+        databaseDescriptor.getActiveRepairService().getNeighbors(keyspaceName, LocatorConfig.instance.getLocalRanges(keyspaceName).iterator().next(), null, hosts);
     }
 
     Set<InetAddress> addTokens(int max) throws Throwable
