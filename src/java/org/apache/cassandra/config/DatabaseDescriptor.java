@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final BatchlogManager batchlogManager;
     protected final ColumnFamilyStoreManager columnFamilyStoreManager;
     protected final DefsTables defsTables;
     protected final SystemKeyspace systemKeyspace;
@@ -220,6 +221,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        batchlogManager = createBatchlogManager();
         columnFamilyStoreManager = createColumnFamilyStoreManager();
         defsTables = createDefsTables();
         systemKeyspace = createSystemKeyspace();
@@ -1834,9 +1836,14 @@ public class DatabaseDescriptor
         return LoadBroadcaster.instance;
     }
 
+    public BatchlogManager createBatchlogManager()
+    {
+        return new BatchlogManager(this);
+    }
+
     public BatchlogManager getBatchlogManager()
     {
-        return BatchlogManager.instance;
+        return batchlogManager;
     }
 
     public PendingRangeCalculatorService getPendingRangeCalculatorService()

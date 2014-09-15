@@ -66,8 +66,6 @@ public class BatchlogManager implements BatchlogManagerMBean
 
     private static final int PAGE_SIZE = 128; // same as HHOM, for now, w/out using any heuristics. TODO: set based on avg batch size.
 
-    public static final BatchlogManager instance = new BatchlogManager(DatabaseDescriptor.instance);
-
     private final AtomicLong totalBatchesReplayed = new AtomicLong();
     private final AtomicBoolean isReplaying = new AtomicBoolean();
 

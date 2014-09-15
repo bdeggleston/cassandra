@@ -82,8 +82,8 @@ public class BatchlogManagerTest
     @Test
     public void testReplay() throws Exception
     {
-        long initialAllBatches = BatchlogManager.instance.countAllBatches();
-        long initialReplayedBatches = BatchlogManager.instance.getTotalBatchesReplayed();
+        long initialAllBatches = databaseDescriptor.getBatchlogManager().countAllBatches();
+        long initialReplayedBatches = databaseDescriptor.getBatchlogManager().getTotalBatchesReplayed();
 
         // Generate 1000 mutations and put them all into the batchlog.
         // Half (500) ready to be replayed, half not.
@@ -110,15 +110,15 @@ public class BatchlogManagerTest
         // Flush the batchlog to disk (see CASSANDRA-6822).
         KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF).forceBlockingFlush();
 
-        assertEquals(1000, BatchlogManager.instance.countAllBatches() - initialAllBatches);
-        assertEquals(0, BatchlogManager.instance.getTotalBatchesReplayed() - initialReplayedBatches);
+        assertEquals(1000, databaseDescriptor.getBatchlogManager().countAllBatches() - initialAllBatches);
+        assertEquals(0, databaseDescriptor.getBatchlogManager().getTotalBatchesReplayed() - initialReplayedBatches);
 
         // Force batchlog replay.
-        BatchlogManager.instance.replayAllFailedBatches();
+        databaseDescriptor.getBatchlogManager().replayAllFailedBatches();
 
         // Ensure that the first half, and only the first half, got replayed.
-        assertEquals(500, BatchlogManager.instance.countAllBatches() - initialAllBatches);
-        assertEquals(500, BatchlogManager.instance.getTotalBatchesReplayed() - initialReplayedBatches);
+        assertEquals(500, databaseDescriptor.getBatchlogManager().countAllBatches() - initialAllBatches);
+        assertEquals(500, databaseDescriptor.getBatchlogManager().getTotalBatchesReplayed() - initialReplayedBatches);
 
         for (int i = 0; i < 1000; i++)
         {
@@ -184,7 +184,7 @@ public class BatchlogManagerTest
         KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF).forceFlush();
 
         // Force batchlog replay.
-        BatchlogManager.instance.replayAllFailedBatches();
+        databaseDescriptor.getBatchlogManager().replayAllFailedBatches();
 
         // We should see half of Standard2-targeted mutations written after the replay and all of Standard3 mutations applied.
         for (int i = 0; i < 1000; i++)
