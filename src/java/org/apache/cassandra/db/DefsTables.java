@@ -107,8 +107,6 @@ public class DefsTables
 {
     private static final Logger logger = LoggerFactory.getLogger(DefsTables.class);
 
-    public static final DefsTables instance = new DefsTables(DatabaseDescriptor.instance);
-
     private final DatabaseDescriptor databaseDescriptor;
 
     public DefsTables(DatabaseDescriptor databaseDescriptor)

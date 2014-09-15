@@ -147,7 +147,7 @@ public class DatabaseDescriptor
         assert Schema.instance != null;
         assert ActiveRepairService.instance != null;
         assert CompactionManager.instance != null;
-        assert DefsTables.instance != null;
+//        assert DefsTables.instance != null;
         assert StorageService.instance != null;
 
         CFMetaDataFactory.instance.init();
@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final DefsTables defsTables;
     protected final SystemKeyspace systemKeyspace;
     protected final IFailureDetector failureDetector;
     protected final IndexSummaryManager indexSummaryManager;
@@ -218,6 +219,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        defsTables = createDefsTables();
         systemKeyspace = createSystemKeyspace();
         failureDetector = createFailureDetector();
         indexSummaryManager = createIndexSummaryManager();
@@ -681,7 +683,7 @@ public class DatabaseDescriptor
         }
         else
         {
-            Schema.instance.load(DefsTables.instance.loadFromKeyspace());
+            Schema.instance.load(getDefsTables().loadFromKeyspace());
         }
 
         Schema.instance.updateVersion();
@@ -1805,9 +1807,14 @@ public class DatabaseDescriptor
         return StreamManager.instance;
     }
 
+    public DefsTables createDefsTables()
+    {
+        return new DefsTables(this);
+    }
+
     public DefsTables getDefsTables()
     {
-        return DefsTables.instance;
+        return defsTables;
     }
 
     public HintedHandOffManager getHintedHandOffManager()
