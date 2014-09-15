@@ -174,7 +174,7 @@ public class StreamingTransferTest
         for (int i = 1; i <= 3; i++)
             mutator.mutate("key" + i, "col" + i, timestamp);
         cfs.forceBlockingFlush();
-        Util.compactAll(cfs, Integer.MAX_VALUE).get();
+        Util.compactAll(cfs, Integer.MAX_VALUE, databaseDescriptor).get();
         assertEquals(1, cfs.getSSTables().size());
 
         // transfer the first and last key
@@ -505,7 +505,7 @@ public class StreamingTransferTest
         for (int i = 1; i <= 6000; i++)
             mutator.mutate("key" + i, "col" + i, System.currentTimeMillis());
         cfs.forceBlockingFlush();
-        Util.compactAll(cfs, Integer.MAX_VALUE).get();
+        Util.compactAll(cfs, Integer.MAX_VALUE, databaseDescriptor).get();
         SSTableReader sstable = cfs.getSSTables().iterator().next();
         cfs.clearUnsafe();
 

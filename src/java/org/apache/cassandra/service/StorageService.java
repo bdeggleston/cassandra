@@ -108,7 +108,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                                          DatabaseDescriptor.instance.getSystemKeyspace(),
                                                          DatabaseDescriptor.instance.getDefsTables(),
                                                          MessagingService.instance,
-                                                         CompactionManager.instance,
+                                                         DatabaseDescriptor.instance.getCompactionManager(),
                                                          MutationFactory.instance,
                                                          DatabaseDescriptor.instance.getColumnFamilyStoreManager(),
                                                          KeyspaceManager.instance,

@@ -69,6 +69,8 @@ public class RangeTombstoneTest
     private static final String KSNAME = "RangeTombstoneTest";
     private static final String CFNAME = "StandardInteger1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -142,7 +144,7 @@ public class RangeTombstoneTest
     @Test
     public void rangeTombstoneFilteringTest() throws Exception
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
         Keyspace keyspace = KeyspaceManager.instance.open(KSNAME);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CFNAME);
 
@@ -337,7 +339,7 @@ public class RangeTombstoneTest
     @Test
     public void overlappingRangeTest() throws Exception
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
         Keyspace keyspace = KeyspaceManager.instance.open(KSNAME);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CFNAME);
 
@@ -380,7 +382,7 @@ public class RangeTombstoneTest
             assertTrue("Cell " + i + " shouldn't be live", !isLive(cf, cf.getColumn(b(i))));
 
         // Compact everything and re-test
-        CompactionManager.instance.performMaximal(cfs);
+        databaseDescriptor.getCompactionManager().performMaximal(cfs);
         cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(key), CFNAME, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
 
         for (int i = 0; i < 5; i++)
@@ -458,7 +460,7 @@ public class RangeTombstoneTest
         assertEquals(2, cfs.getSSTables().size());
 
         // compact down to single sstable
-        CompactionManager.instance.performMaximal(cfs);
+        databaseDescriptor.getCompactionManager().performMaximal(cfs);
         assertEquals(1, cfs.getSSTables().size());
 
         // test the physical structure of the sstable i.e. rt & columns on disk
@@ -558,7 +560,7 @@ public class RangeTombstoneTest
         // We should have indexed 1 column
         assertEquals(1, index.inserts.size());
 
-        CompactionManager.instance.performMaximal(cfs);
+        databaseDescriptor.getCompactionManager().performMaximal(cfs);
 
         // compacted down to single sstable
         assertEquals(1, cfs.getSSTables().size());

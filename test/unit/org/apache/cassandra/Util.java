@@ -278,12 +278,12 @@ public class Util
             assertTrue(LocatorConfig.instance.getTokenMetadata().isMember(hosts.get(i)));
     }
 
-    public static Future<?> compactAll(ColumnFamilyStore cfs, int gcBefore)
+    public static Future<?> compactAll(ColumnFamilyStore cfs, int gcBefore, DatabaseDescriptor databaseDescriptor)
     {
         List<Descriptor> descriptors = new ArrayList<>();
         for (SSTableReader sstable : cfs.getSSTables())
             descriptors.add(sstable.descriptor);
-        return CompactionManager.instance.submitUserDefined(cfs, descriptors, gcBefore);
+        return databaseDescriptor.getCompactionManager().submitUserDefined(cfs, descriptors, gcBefore);
     }
 
     public static void compact(ColumnFamilyStore cfs, Collection<SSTableReader> sstables)

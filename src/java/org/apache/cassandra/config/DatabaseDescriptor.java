@@ -146,7 +146,7 @@ public class DatabaseDescriptor
         assert StageManager.instance != null;
 //        assert Schema.instance != null;
         assert ActiveRepairService.instance != null;
-        assert CompactionManager.instance != null;
+//        assert CompactionManager.instance != null;
 //        assert DefsTables.instance != null;
         assert StorageService.instance != null;
 
@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final CompactionManager compactionManager;
     protected final Auth auth;
     protected final Schema schema;
     protected final QueryProcessor queryProcessor;
@@ -224,6 +225,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        compactionManager = createCompactionManager();
         auth = createAuth();
         schema = createSchema();
         queryProcessor = createQueryProcessor();
@@ -1737,9 +1739,14 @@ public class DatabaseDescriptor
         return triggerExecutor;
     }
 
+    public CompactionManager createCompactionManager()
+    {
+        return CompactionManager.create(this, getTracing(), getSchema(), getKeyspaceManager());
+    }
+
     public CompactionManager getCompactionManager()
     {
-        return CompactionManager.instance;
+        return compactionManager;
     }
 
     public IFailureDetector createFailureDetector()

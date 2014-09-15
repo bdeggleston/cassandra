@@ -74,7 +74,7 @@ public class KeyCacheTest
     @Test
     public void testKeyCacheLoad() throws Exception
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         ColumnFamilyStore store = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(COLUMN_FAMILY2);
 
@@ -124,7 +124,7 @@ public class KeyCacheTest
     @Test
     public void testKeyCache() throws ExecutionException, InterruptedException
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(COLUMN_FAMILY1);
@@ -179,7 +179,7 @@ public class KeyCacheTest
         for (SSTableReader reader : readers)
             reader.acquireReference();
 
-        Util.compactAll(cfs, Integer.MAX_VALUE).get();
+        Util.compactAll(cfs, Integer.MAX_VALUE, databaseDescriptor).get();
         // after compaction cache should have entries for new SSTables,
         // but since we have kept a reference to the old sstables,
         // if we had 2 keys in cache previously it should become 4

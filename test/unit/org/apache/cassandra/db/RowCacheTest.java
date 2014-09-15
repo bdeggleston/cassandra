@@ -79,7 +79,7 @@ public class RowCacheTest
     @Test
     public void testRowCache() throws Exception
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE_CACHED);
         ColumnFamilyStore cachedStore  = keyspace.getColumnFamilyStore(CF_CACHED);
@@ -186,7 +186,7 @@ public class RowCacheTest
     @Test
     public void testRowCacheRange()
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE_CACHED);
         String cf = "CachedIntCF";
@@ -274,7 +274,7 @@ public class RowCacheTest
 
     public void rowCacheLoad(int totalKeys, int keysToSave, int offset) throws Exception
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         ColumnFamilyStore store = KeyspaceManager.instance.open(KEYSPACE_CACHED).getColumnFamilyStore(CF_CACHED);
 

@@ -94,7 +94,7 @@ public class HintedHandOffTest
 
         // submit compaction
         FBUtilities.waitOnFuture(HintedHandOffManager.instance.compact());
-        while (CompactionManager.instance.getPendingTasks() > 0 || CompactionManager.instance.getActiveCompactions() > 0)
+        while (databaseDescriptor.getCompactionManager().getPendingTasks() > 0 || databaseDescriptor.getCompactionManager().getActiveCompactions() > 0)
             TimeUnit.SECONDS.sleep(1);
 
         // single row should not be removed because of gc_grace_seconds

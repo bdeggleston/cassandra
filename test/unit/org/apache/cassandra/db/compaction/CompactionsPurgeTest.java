@@ -95,7 +95,7 @@ public class CompactionsPurgeTest
     @Test
     public void testMajorCompactionPurge() throws ExecutionException, InterruptedException
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         String cfName = "Standard1";
@@ -129,7 +129,7 @@ public class CompactionsPurgeTest
         cfs.forceBlockingFlush();
 
         // major compact and test that all columns but the resurrected one is completely gone
-        CompactionManager.instance.submitMaximal(cfs, Integer.MAX_VALUE).get();
+        databaseDescriptor.getCompactionManager().submitMaximal(cfs, Integer.MAX_VALUE).get();
         cfs.invalidateCachedRow(key);
         ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
         assertColumns(cf, "5");
@@ -139,7 +139,7 @@ public class CompactionsPurgeTest
     @Test
     public void testMinorCompactionPurge()
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE2);
         String cfName = "Standard1";
@@ -198,7 +198,7 @@ public class CompactionsPurgeTest
     @Test
     public void testMinTimestampPurge()
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE2);
         String cfName = "Standard1";
@@ -238,7 +238,7 @@ public class CompactionsPurgeTest
     @Test
     public void testCompactionPurgeOneFile() throws ExecutionException, InterruptedException
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         String cfName = "Standard2";
@@ -266,7 +266,7 @@ public class CompactionsPurgeTest
         assertEquals(String.valueOf(cfs.getSSTables()), 1, cfs.getSSTables().size()); // inserts & deletes were in the same memtable -> only deletes in sstable
 
         // compact and test that the row is completely gone
-        Util.compactAll(cfs, Integer.MAX_VALUE).get();
+        Util.compactAll(cfs, Integer.MAX_VALUE, databaseDescriptor).get();
         assertTrue(cfs.getSSTables().isEmpty());
         ColumnFamily cf = keyspace.getColumnFamilyStore(cfName).getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
         assertNull(String.valueOf(cf), cf);
@@ -275,7 +275,7 @@ public class CompactionsPurgeTest
     @Test
     public void testCompactionPurgeCachedRow() throws ExecutionException, InterruptedException
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         String keyspaceName = KEYSPACE_CACHED;
         String cfName = CF_CACHED;
@@ -303,7 +303,7 @@ public class CompactionsPurgeTest
 
         // flush and major compact
         cfs.forceBlockingFlush();
-        Util.compactAll(cfs, Integer.MAX_VALUE).get();
+        Util.compactAll(cfs, Integer.MAX_VALUE, databaseDescriptor).get();
 
         // re-inserts with timestamp lower than delete
         rm = MutationFactory.instance.create(keyspaceName, key.getKey());
@@ -323,7 +323,7 @@ public class CompactionsPurgeTest
     @Test
     public void testCompactionPurgeTombstonedRow() throws ExecutionException, InterruptedException
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         String keyspaceName = KEYSPACE1;
         String cfName = "Standard1";
@@ -348,7 +348,7 @@ public class CompactionsPurgeTest
 
         // flush and major compact (with tombstone purging)
         cfs.forceBlockingFlush();
-        Util.compactAll(cfs, Integer.MAX_VALUE).get();
+        Util.compactAll(cfs, Integer.MAX_VALUE, databaseDescriptor).get();
         assertFalse(cfs.getColumnFamily(filter).isMarkedForDelete());
 
         // re-inserts with timestamp lower than delete
@@ -390,7 +390,7 @@ public class CompactionsPurgeTest
         assertEquals(0, result.size());
 
         // compact the two sstables with a gcBefore that does *not* allow the row tombstone to be purged
-        Future<?> future = CompactionManager.instance.submitMaximal(cfs, (int) (System.currentTimeMillis() / 1000) - 10000);
+        Future<?> future = databaseDescriptor.getCompactionManager().submitMaximal(cfs, (int) (System.currentTimeMillis() / 1000) - 10000);
         future.get();
 
         // the data should be gone, but the tombstone should still exist
@@ -411,7 +411,7 @@ public class CompactionsPurgeTest
         cfs.forceBlockingFlush();
 
         // compact the two sstables with a gcBefore that *does* allow the row tombstone to be purged
-        future = CompactionManager.instance.submitMaximal(cfs, (int) (System.currentTimeMillis() / 1000) + 10000);
+        future = databaseDescriptor.getCompactionManager().submitMaximal(cfs, (int) (System.currentTimeMillis() / 1000) + 10000);
         future.get();
 
         // both the data and the tombstone should be gone this time

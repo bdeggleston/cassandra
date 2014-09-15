@@ -107,7 +107,7 @@ public class SSTableReaderTest
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard2");
 
         // insert data and compact to a single sstable
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
         for (int j = 0; j < 10; j++)
         {
             ByteBuffer key = ByteBufferUtil.bytes(String.valueOf(j));
@@ -116,7 +116,7 @@ public class SSTableReaderTest
             rm.applyUnsafe();
         }
         store.forceBlockingFlush();
-        CompactionManager.instance.performMaximal(store);
+        databaseDescriptor.getCompactionManager().performMaximal(store);
 
         List<Range<Token>> ranges = new ArrayList<Range<Token>>();
         // 1 key
@@ -148,7 +148,7 @@ public class SSTableReaderTest
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard1");
 
         // insert a bunch of data and compact to a single sstable
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
         for (int j = 0; j < 100; j += 2)
         {
             ByteBuffer key = ByteBufferUtil.bytes(String.valueOf(j));
@@ -157,7 +157,7 @@ public class SSTableReaderTest
             rm.applyUnsafe();
         }
         store.forceBlockingFlush();
-        CompactionManager.instance.performMaximal(store);
+        databaseDescriptor.getCompactionManager().performMaximal(store);
 
         // check that all our keys are found correctly
         SSTableReader sstable = store.getSSTables().iterator().next();
@@ -211,7 +211,7 @@ public class SSTableReaderTest
         databaseDescriptor.getCacheService().keyCache.setCapacity(100);
 
         // insert data and compact to a single sstable
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
         for (int j = 0; j < 10; j++)
         {
             ByteBuffer key = ByteBufferUtil.bytes(String.valueOf(j));
@@ -220,7 +220,7 @@ public class SSTableReaderTest
             rm.applyUnsafe();
         }
         store.forceBlockingFlush();
-        CompactionManager.instance.performMaximal(store);
+        databaseDescriptor.getCompactionManager().performMaximal(store);
 
         SSTableReader sstable = store.getSSTables().iterator().next();
         long p2 = sstable.getPosition(k(2), SSTableReader.Operator.EQ).position;
@@ -350,7 +350,7 @@ public class SSTableReaderTest
         // insert data and compact to a single sstable. The
         // number of keys inserted is greater than index_interval
         // to ensure multiple segments in the index file
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
         for (int j = 0; j < 130; j++)
         {
             ByteBuffer key = ByteBufferUtil.bytes(String.valueOf(j));
@@ -359,7 +359,7 @@ public class SSTableReaderTest
             rm.applyUnsafe();
         }
         store.forceBlockingFlush();
-        CompactionManager.instance.performMaximal(store);
+        databaseDescriptor.getCompactionManager().performMaximal(store);
 
         // construct a range which is present in the sstable, but whose
         // keys are not found in the first segment of the index.
@@ -382,7 +382,7 @@ public class SSTableReaderTest
     {
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         final ColumnFamilyStore store = keyspace.getColumnFamilyStore("StandardLowIndexInterval"); // index interval of 8, no key caching
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         final int NUM_ROWS = 512;
         for (int j = 0; j < NUM_ROWS; j++)
@@ -393,7 +393,7 @@ public class SSTableReaderTest
             rm.applyUnsafe();
         }
         store.forceBlockingFlush();
-        CompactionManager.instance.performMaximal(store);
+        databaseDescriptor.getCompactionManager().performMaximal(store);
 
         Collection<SSTableReader> sstables = store.getSSTables();
         assert sstables.size() == 1;

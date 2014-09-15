@@ -58,6 +58,9 @@ public class CleanupTest
     public static final String CF2 = "Standard1";
     public static final ByteBuffer COLUMN = ByteBufferUtil.bytes("birthdate");
     public static final ByteBuffer VALUE = ByteBuffer.allocate(8);
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     static
     {
         VALUE.putLong(20101229);
@@ -95,7 +98,7 @@ public class CleanupTest
         assertEquals(LOOPS, rows.size());
 
         // with one token in the ring, owned by the local node, cleanup should be a no-op
-        CompactionManager.instance.performCleanup(cfs);
+        databaseDescriptor.getCompactionManager().performCleanup(cfs);
 
         // ensure max timestamp of the sstables are retained post-cleanup
         assert expectedMaxTimestamps.equals(getMaxTimestampList(cfs));
@@ -140,7 +143,7 @@ public class CleanupTest
         tmd.updateNormalToken(new BytesToken(tk1, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.1"));
         tmd.updateNormalToken(new BytesToken(tk2, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.2"));
 
-        CompactionManager.instance.performCleanup(cfs);
+        databaseDescriptor.getCompactionManager().performCleanup(cfs);
 
         // row data should be gone
         rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance);
@@ -177,7 +180,7 @@ public class CleanupTest
         tk2[0] = 1;
         tmd.updateNormalToken(new BytesToken(tk1, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.1"));
         tmd.updateNormalToken(new BytesToken(tk2, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.2"));
-        CompactionManager.instance.performCleanup(cfs);
+        databaseDescriptor.getCompactionManager().performCleanup(cfs);
 
         rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance);
         assertEquals(0, rows.size());
@@ -185,7 +188,7 @@ public class CleanupTest
 
     protected void fillCF(ColumnFamilyStore cfs, int rowsPerSSTable)
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         for (int i = 0; i < rowsPerSSTable; i++)
         {

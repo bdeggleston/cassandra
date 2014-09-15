@@ -67,7 +67,7 @@ public class RecoveryManager2Test
         // Flush everything that may be in the commit log now to start fresh
         FBUtilities.waitOnFutures(KeyspaceManager.instance.open(Keyspace.SYSTEM_KS).flush());
 
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         // add a row to another CF so we test skipping mutations within a not-entirely-flushed CF
         insertRow("Standard2", "key");

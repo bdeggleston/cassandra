@@ -63,6 +63,8 @@ public class LeveledCompactionStrategyTest
     private Keyspace keyspace;
     private ColumnFamilyStore cfs;
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -179,7 +181,7 @@ public class LeveledCompactionStrategyTest
         ActiveRepairService.instance.registerParentRepairSession(parentRepSession, Arrays.asList(cfs), Arrays.asList(range));
         RepairJobDesc desc = new RepairJobDesc(parentRepSession, UUID.randomUUID(), KEYSPACE1, CF_STANDARDDLEVELED, range);
         Validator validator = new Validator(desc, DatabaseDescriptor.instance.getBroadcastAddress(), gcBefore, DatabaseDescriptor.instance, StageManager.instance, MessagingService.instance);
-        CompactionManager.instance.submitValidation(cfs, validator).get();
+        databaseDescriptor.getCompactionManager().submitValidation(cfs, validator).get();
     }
 
     /**
@@ -255,7 +257,7 @@ public class LeveledCompactionStrategyTest
         LeveledCompactionStrategy strategy = (LeveledCompactionStrategy) cfs.getCompactionStrategy();
         cfs.disableAutoCompaction();
 
-        while(CompactionManager.instance.isCompacting(Arrays.asList(cfs)))
+        while(databaseDescriptor.getCompactionManager().isCompacting(Arrays.asList(cfs)))
             Thread.sleep(100);
 
         for (SSTableReader s : cfs.getSSTables())
@@ -299,7 +301,7 @@ public class LeveledCompactionStrategyTest
         waitForLeveling(cfs);
         cfs.disableAutoCompaction();
 
-        while(CompactionManager.instance.isCompacting(Arrays.asList(cfs)))
+        while(databaseDescriptor.getCompactionManager().isCompacting(Arrays.asList(cfs)))
             Thread.sleep(100);
 
         LeveledCompactionStrategy strategy = (LeveledCompactionStrategy) cfs.getCompactionStrategy();

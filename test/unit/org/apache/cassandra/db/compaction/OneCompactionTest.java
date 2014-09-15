@@ -48,6 +48,8 @@ public class OneCompactionTest
     private static final String CF_STANDARD1 = "Standard1";
     private static final String CF_STANDARD2 = "Standard2";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -63,7 +65,7 @@ public class OneCompactionTest
 
     private void testCompaction(String columnFamilyName, int insertsPerTable) throws ExecutionException, InterruptedException
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(columnFamilyName);
@@ -78,7 +80,7 @@ public class OneCompactionTest
             store.forceBlockingFlush();
             assertEquals(inserted.size(), Util.getRangeSlice(store, DatabaseDescriptor.instance, Tracing.instance).size());
         }
-        CompactionManager.instance.performMaximal(store);
+        databaseDescriptor.getCompactionManager().performMaximal(store);
         assertEquals(1, store.getSSTables().size());
     }
 

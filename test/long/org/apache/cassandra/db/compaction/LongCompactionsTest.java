@@ -92,7 +92,7 @@ public class LongCompactionsTest
 
     protected void testCompaction(int sstableCount, int rowsPerSSTable, int colsPerRow) throws Exception
     {
-        CompactionManager.instance.disableAutoCompaction();
+        databaseDescriptor.getCompactionManager().disableAutoCompaction();
 
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard1");
@@ -183,15 +183,15 @@ public class LongCompactionsTest
         {
             ArrayList<Future<?>> compactions = new ArrayList<Future<?>>();
             for (int i = 0; i < 10; i++)
-                compactions.addAll(CompactionManager.instance.submitBackground(cfs));
+                compactions.addAll(databaseDescriptor.getCompactionManager().submitBackground(cfs));
             // another compaction attempt will be launched in the background by
             // each completing compaction: not much we can do to control them here
             FBUtilities.waitOnFutures(compactions);
-        } while (CompactionManager.instance.getPendingTasks() > 0 || CompactionManager.instance.getActiveCompactions() > 0);
+        } while (databaseDescriptor.getCompactionManager().getPendingTasks() > 0 || databaseDescriptor.getCompactionManager().getActiveCompactions() > 0);
 
         if (cfs.getSSTables().size() > 1)
         {
-            CompactionManager.instance.performMaximal(cfs);
+            databaseDescriptor.getCompactionManager().performMaximal(cfs);
         }
     }
 }

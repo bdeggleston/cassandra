@@ -115,8 +115,8 @@ public class CompactionsTest
 
         // enable compaction, submit background and wait for it to complete
         store.enableAutoCompaction();
-        FBUtilities.waitOnFutures(CompactionManager.instance.submitBackground(store));
-        while (CompactionManager.instance.getPendingTasks() > 0 || CompactionManager.instance.getActiveCompactions() > 0)
+        FBUtilities.waitOnFutures(databaseDescriptor.getCompactionManager().submitBackground(store));
+        while (databaseDescriptor.getCompactionManager().getPendingTasks() > 0 || databaseDescriptor.getCompactionManager().getActiveCompactions() > 0)
             TimeUnit.SECONDS.sleep(1);
 
         // and sstable with ttl should be compacted
@@ -188,7 +188,7 @@ public class CompactionsTest
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        CompactionManager.instance.performMaximal(cfs);
+        databaseDescriptor.getCompactionManager().performMaximal(cfs);
         assertEquals(1, cfs.getSSTables().size());
 
         // check that the shadowed column is gone
@@ -235,8 +235,8 @@ public class CompactionsTest
 
         // enable compaction, submit background and wait for it to complete
         store.enableAutoCompaction();
-        FBUtilities.waitOnFutures(CompactionManager.instance.submitBackground(store));
-        while (CompactionManager.instance.getPendingTasks() > 0 || CompactionManager.instance.getActiveCompactions() > 0)
+        FBUtilities.waitOnFutures(databaseDescriptor.getCompactionManager().submitBackground(store));
+        while (databaseDescriptor.getCompactionManager().getPendingTasks() > 0 || databaseDescriptor.getCompactionManager().getActiveCompactions() > 0)
             TimeUnit.SECONDS.sleep(1);
 
         // even though both sstables were candidate for tombstone compaction
@@ -255,8 +255,8 @@ public class CompactionsTest
         store.reload();
 
         //submit background task again and wait for it to complete
-        FBUtilities.waitOnFutures(CompactionManager.instance.submitBackground(store));
-        while (CompactionManager.instance.getPendingTasks() > 0 || CompactionManager.instance.getActiveCompactions() > 0)
+        FBUtilities.waitOnFutures(databaseDescriptor.getCompactionManager().submitBackground(store));
+        while (databaseDescriptor.getCompactionManager().getPendingTasks() > 0 || databaseDescriptor.getCompactionManager().getActiveCompactions() > 0)
             TimeUnit.SECONDS.sleep(1);
 
         //we still have 2 sstables, since they were not compacted against each other
@@ -370,12 +370,12 @@ public class CompactionsTest
         int prevGeneration = sstable.descriptor.generation;
         String file = new File(sstable.descriptor.filenameFor(Component.DATA)).getAbsolutePath();
         // submit user defined compaction on flushed sstable
-        CompactionManager.instance.forceUserDefinedCompaction(file);
+        databaseDescriptor.getCompactionManager().forceUserDefinedCompaction(file);
         // wait until user defined compaction finishes
         do
         {
             Thread.sleep(100);
-        } while (CompactionManager.instance.getPendingTasks() > 0 || CompactionManager.instance.getActiveCompactions() > 0);
+        } while (databaseDescriptor.getCompactionManager().getPendingTasks() > 0 || databaseDescriptor.getCompactionManager().getActiveCompactions() > 0);
         // CF should have only one sstable with generation number advanced
         sstables = cfs.getSSTables();
         assertEquals(1, sstables.size());

@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.exceptions.ConfigurationException;
@@ -52,6 +53,7 @@ public class AntiCompactionTest
     private static final String KEYSPACE1 = "AntiCompactionTest";
     private static final String CF = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -97,7 +99,7 @@ public class AntiCompactionTest
 
         SSTableReader.acquireReferences(sstables);
         long repairedAt = 1000;
-        CompactionManager.instance.performAnticompaction(store, ranges, sstables, repairedAt);
+        databaseDescriptor.getCompactionManager().performAnticompaction(store, ranges, sstables, repairedAt);
 
         assertEquals(2, store.getSSTables().size());
         int repairedKeys = 0;
@@ -171,7 +173,7 @@ public class AntiCompactionTest
 
         SSTableReader.acquireReferences(sstables);
         long repairedAt = 1000;
-        CompactionManager.instance.performAnticompaction(store, ranges, sstables, repairedAt);
+        databaseDescriptor.getCompactionManager().performAnticompaction(store, ranges, sstables, repairedAt);
         /*
         Anticompaction will be anti-compacting 10 SSTables but will be doing this two at a time
         so there will be no net change in the number of sstables

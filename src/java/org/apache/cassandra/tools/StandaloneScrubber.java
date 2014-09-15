@@ -109,7 +109,7 @@ public class StandaloneScrubber
                 {
                     try
                     {
-                        Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, options.skipCorrupted, handler, true, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
+                        Scrubber scrubber = new Scrubber(cfs, sstable, DatabaseDescriptor.instance.getCompactionManager(), options.skipCorrupted, handler, true, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
                         try
                         {
                             scrubber.scrub();
