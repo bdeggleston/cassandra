@@ -55,8 +55,6 @@ public class QueryProcessor implements QueryHandler
     public static final SemanticVersion CQL_VERSION = new SemanticVersion("3.2.0");
     private static final long MAX_CACHE_PREPARED_MEMORY = Runtime.getRuntime().maxMemory() / 256;
 
-    public static final QueryProcessor instance = new QueryProcessor(DatabaseDescriptor.instance);
-
     private final MemoryMeter meter = new MemoryMeter().withGuessing(MemoryMeter.Guess.FALLBACK_BEST);
 
     private EntryWeigher<MD5Digest, ParsedStatement.Prepared> cqlMemoryUsageWeigher = new EntryWeigher<MD5Digest, ParsedStatement.Prepared>()
@@ -111,7 +109,7 @@ public class QueryProcessor implements QueryHandler
 
     private final DatabaseDescriptor databaseDescriptor;
 
-    private QueryProcessor(DatabaseDescriptor databaseDescriptor)
+    public QueryProcessor(DatabaseDescriptor databaseDescriptor)
     {
         this.databaseDescriptor = databaseDescriptor;
         preparedStatements = new ConcurrentLinkedHashMap.Builder<MD5Digest, ParsedStatement.Prepared>()

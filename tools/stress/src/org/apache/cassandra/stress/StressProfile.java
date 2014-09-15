@@ -26,6 +26,7 @@ import com.datastax.driver.core.exceptions.AlreadyExistsException;
 
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.statements.CreateKeyspaceStatement;
 import org.apache.cassandra.exceptions.RequestValidationException;
@@ -121,7 +122,7 @@ public class StressProfile implements Serializable
 
         if (keyspaceCql != null && keyspaceCql.length() > 0)
         {
-            String name = ((CreateKeyspaceStatement) QueryProcessor.instance.parseStatement(keyspaceCql)).keyspace();
+            String name = ((CreateKeyspaceStatement) DatabaseDescriptor.instance.getQueryProcessor().parseStatement(keyspaceCql)).keyspace();
             assert name.equalsIgnoreCase(keyspaceName) : "Name in keyspace_definition doesn't match keyspace property: '" + name + "' != '" + keyspaceName + "'";
         }
         else

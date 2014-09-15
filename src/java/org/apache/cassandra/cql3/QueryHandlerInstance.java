@@ -1,5 +1,6 @@
 package org.apache.cassandra.cql3;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +13,7 @@ public class QueryHandlerInstance
 
     static
     {
-        QueryHandler handler = QueryProcessor.instance;
+        QueryHandler handler = DatabaseDescriptor.instance.getQueryProcessor();
         String customHandlerClass = System.getProperty("cassandra.custom_query_handler_class");
         if (customHandlerClass != null)
         {

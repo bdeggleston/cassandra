@@ -122,7 +122,7 @@ public class BatchlogManagerTest
 
         for (int i = 0; i < 1000; i++)
         {
-            UntypedResultSet result = QueryProcessor.instance.executeInternal(String.format("SELECT * FROM \"%s\".\"%s\" WHERE key = intAsBlob(%d)", KEYSPACE1, CF_STANDARD1, i));
+            UntypedResultSet result = databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT * FROM \"%s\".\"%s\" WHERE key = intAsBlob(%d)", KEYSPACE1, CF_STANDARD1, i));
             if (i < 500)
             {
                 assertEquals(bytes(i), result.one().getBytes("key"));
@@ -136,7 +136,7 @@ public class BatchlogManagerTest
         }
 
         // Ensure that no stray mutations got somehow applied.
-        UntypedResultSet result = QueryProcessor.instance.executeInternal(String.format("SELECT count(*) FROM \"%s\".\"%s\"", KEYSPACE1, CF_STANDARD1));
+        UntypedResultSet result = databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT count(*) FROM \"%s\".\"%s\"", KEYSPACE1, CF_STANDARD1));
         assertEquals(500, result.one().getLong("count"));
     }
 
@@ -189,7 +189,7 @@ public class BatchlogManagerTest
         // We should see half of Standard2-targeted mutations written after the replay and all of Standard3 mutations applied.
         for (int i = 0; i < 1000; i++)
         {
-            UntypedResultSet result = QueryProcessor.instance.executeInternal(String.format("SELECT * FROM \"%s\".\"%s\" WHERE key = intAsBlob(%d)", KEYSPACE1, CF_STANDARD2,i));
+            UntypedResultSet result = databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT * FROM \"%s\".\"%s\" WHERE key = intAsBlob(%d)", KEYSPACE1, CF_STANDARD2,i));
             if (i >= 500)
             {
                 assertEquals(bytes(i), result.one().getBytes("key"));
@@ -204,7 +204,7 @@ public class BatchlogManagerTest
 
         for (int i = 0; i < 1000; i++)
         {
-            UntypedResultSet result = QueryProcessor.instance.executeInternal(String.format("SELECT * FROM \"%s\".\"%s\" WHERE key = intAsBlob(%d)", KEYSPACE1, CF_STANDARD3, i));
+            UntypedResultSet result = databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT * FROM \"%s\".\"%s\" WHERE key = intAsBlob(%d)", KEYSPACE1, CF_STANDARD3, i));
             assertEquals(bytes(i), result.one().getBytes("key"));
             assertEquals(bytes(i), result.one().getBytes("column1"));
             assertEquals(bytes(i), result.one().getBytes("value"));

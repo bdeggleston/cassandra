@@ -297,7 +297,7 @@ public class CFMetaDataFactory
     {
         try
         {
-            CFStatement parsed = (CFStatement) QueryProcessor.instance.parseStatement(cql);
+            CFStatement parsed = (CFStatement) databaseDescriptor.getQueryProcessor().parseStatement(cql);
             parsed.prepareKeyspace(keyspace);
             CreateTableStatement statement = (CreateTableStatement) parsed.prepare().statement;
             CFMetaData cfm = newSystemMetadata(keyspace, statement.columnFamily(), "", statement.comparator);
@@ -528,17 +528,17 @@ public class CFMetaDataFactory
         String cfName = result.getString("columnfamily_name");
 
         Row serializedColumns = databaseDescriptor.getSystemKeyspace().readSchemaRow(SystemKeyspace.SCHEMA_COLUMNS_CF, ksName, cfName);
-        CFMetaData cfm = fromSchemaNoTriggers(result, ColumnDefinition.resultify(serializedColumns, QueryProcessor.instance));
+        CFMetaData cfm = fromSchemaNoTriggers(result, ColumnDefinition.resultify(serializedColumns, databaseDescriptor.getQueryProcessor()));
 
         Row serializedTriggers = databaseDescriptor.getSystemKeyspace().readSchemaRow(SystemKeyspace.SCHEMA_TRIGGERS_CF, ksName, cfName);
-        addTriggerDefinitionsFromSchema(cfm, serializedTriggers, QueryProcessor.instance);
+        addTriggerDefinitionsFromSchema(cfm, serializedTriggers, databaseDescriptor.getQueryProcessor());
 
         return cfm;
     }
 
     public CFMetaData fromSchema(Row row)
     {
-        UntypedResultSet.Row result = QueryProcessor.instance.resultify("SELECT * FROM system.schema_columnfamilies", row).one();
+        UntypedResultSet.Row result = databaseDescriptor.getQueryProcessor().resultify("SELECT * FROM system.schema_columnfamilies", row).one();
         return fromSchema(result);
     }
 

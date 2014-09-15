@@ -58,7 +58,7 @@ public class KSMetaDataTest
                                             options,
                                             true,
                                             Collections.<CFMetaData>emptyList(),
-                                            QueryProcessor.instance,
+                                            databaseDescriptor.getQueryProcessor(),
                                             LocatorConfig.instance,
                                             databaseDescriptor.getSystemKeyspace(),
                                             CFMetaDataFactory.instance,

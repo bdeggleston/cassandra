@@ -75,6 +75,8 @@ public class ScrubTest
     public static final String COUNTER_CF = "Counter1";
     public static final String CF_UUID = "UUIDKeys";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -307,12 +309,12 @@ public class ScrubTest
     @Test
     public void testScrubColumnValidation() throws InterruptedException, RequestExecutionException, ExecutionException
     {
-        QueryProcessor.instance.process(String.format("CREATE TABLE \"%s\".test_compact_static_columns (a bigint, b timeuuid, c boolean static, d text, PRIMARY KEY (a, b))", KEYSPACE), ConsistencyLevel.ONE);
+        databaseDescriptor.getQueryProcessor().process(String.format("CREATE TABLE \"%s\".test_compact_static_columns (a bigint, b timeuuid, c boolean static, d text, PRIMARY KEY (a, b))", KEYSPACE), ConsistencyLevel.ONE);
 
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("test_compact_static_columns");
 
-        QueryProcessor.instance.executeInternal(String.format("INSERT INTO \"%s\".test_compact_static_columns (a, b, c, d) VALUES (123, c3db07e8-b602-11e3-bc6b-e0b9a54a6d93, true, 'foobar')", KEYSPACE));
+        databaseDescriptor.getQueryProcessor().executeInternal(String.format("INSERT INTO \"%s\".test_compact_static_columns (a, b, c, d) VALUES (123, c3db07e8-b602-11e3-bc6b-e0b9a54a6d93, true, 'foobar')", KEYSPACE));
         cfs.forceBlockingFlush();
         CompactionManager.instance.performScrub(cfs, false);
     }
@@ -343,19 +345,19 @@ public class ScrubTest
     @Test
     public void testValidationCompactStorage() throws Exception
     {
-        QueryProcessor.instance.process(String.format("CREATE TABLE \"%s\".test_compact_dynamic_columns (a int, b text, c text, PRIMARY KEY (a, b)) WITH COMPACT STORAGE", KEYSPACE), ConsistencyLevel.ONE);
+        databaseDescriptor.getQueryProcessor().process(String.format("CREATE TABLE \"%s\".test_compact_dynamic_columns (a int, b text, c text, PRIMARY KEY (a, b)) WITH COMPACT STORAGE", KEYSPACE), ConsistencyLevel.ONE);
 
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("test_compact_dynamic_columns");
 
-        QueryProcessor.instance.executeInternal(String.format("INSERT INTO \"%s\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'a', 'foo')", KEYSPACE));
-        QueryProcessor.instance.executeInternal(String.format("INSERT INTO \"%s\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'b', 'bar')", KEYSPACE));
-        QueryProcessor.instance.executeInternal(String.format("INSERT INTO \"%s\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'c', 'boo')", KEYSPACE));
+        databaseDescriptor.getQueryProcessor().executeInternal(String.format("INSERT INTO \"%s\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'a', 'foo')", KEYSPACE));
+        databaseDescriptor.getQueryProcessor().executeInternal(String.format("INSERT INTO \"%s\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'b', 'bar')", KEYSPACE));
+        databaseDescriptor.getQueryProcessor().executeInternal(String.format("INSERT INTO \"%s\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'c', 'boo')", KEYSPACE));
         cfs.forceBlockingFlush();
         CompactionManager.instance.performScrub(cfs, true);
 
         // Scrub is silent, but it will remove broken records. So reading everything back to make sure nothing to "scrubbed away"
-        UntypedResultSet rs = QueryProcessor.instance.executeInternal(String.format("SELECT * FROM \"%s\".test_compact_dynamic_columns", KEYSPACE));
+        UntypedResultSet rs = databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT * FROM \"%s\".test_compact_dynamic_columns", KEYSPACE));
         assertEquals(3, rs.size());
 
         Iterator<UntypedResultSet.Row> iter = rs.iterator();

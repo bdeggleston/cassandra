@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final QueryProcessor queryProcessor;
     protected final BatchlogManager batchlogManager;
     protected final ColumnFamilyStoreManager columnFamilyStoreManager;
     protected final DefsTables defsTables;
@@ -221,6 +222,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        queryProcessor = createQueryProcessor();
         batchlogManager = createBatchlogManager();
         columnFamilyStoreManager = createColumnFamilyStoreManager();
         defsTables = createDefsTables();
@@ -1631,9 +1633,14 @@ public class DatabaseDescriptor
         return migrationManager;
     }
 
+    public QueryProcessor createQueryProcessor()
+    {
+        return new QueryProcessor(this);
+    }
+
     public QueryProcessor getQueryProcessor()
     {
-        return QueryProcessor.instance;
+        return queryProcessor;
     }
 
     public Schema getSchema()

@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -52,6 +53,8 @@ public class HintedHandOffTest
     public static final String KEYSPACE4 = "HintedHandOffTest4";
     public static final String STANDARD1_CF = "Standard1";
     public static final String COLUMN1 = "column1";
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -106,7 +109,7 @@ public class HintedHandOffTest
             HintedHandOffManager.instance.metrics.incrPastWindow(InetAddress.getLocalHost());
         HintedHandOffManager.instance.metrics.log();
 
-        UntypedResultSet rows = QueryProcessor.instance.executeInternal("SELECT hints_dropped FROM system." + SystemKeyspace.PEER_EVENTS_CF);
+        UntypedResultSet rows = databaseDescriptor.getQueryProcessor().executeInternal("SELECT hints_dropped FROM system." + SystemKeyspace.PEER_EVENTS_CF);
         Map<UUID, Integer> returned = rows.one().getMap("hints_dropped", UUIDType.instance, Int32Type.instance);
         assertEquals(Iterators.getLast(returned.values().iterator()).intValue(), 99);
     }
@@ -143,7 +146,7 @@ public class HintedHandOffTest
     private int getNoOfHints()
     {
         String req = "SELECT * FROM system.%s";
-        UntypedResultSet resultSet = QueryProcessor.instance.executeInternal(String.format(req, SystemKeyspace.HINTS_CF));
+        UntypedResultSet resultSet = databaseDescriptor.getQueryProcessor().executeInternal(String.format(req, SystemKeyspace.HINTS_CF));
         return resultSet.size();
     }
 }

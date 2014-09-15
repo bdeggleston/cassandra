@@ -33,6 +33,8 @@ import static org.junit.Assert.*;
 public class CqlParserTest
 {
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void setUpClass()
     {
@@ -49,7 +51,7 @@ public class CqlParserTest
         CqlLexer lexer = new CqlLexer(stream);
 
         TokenStream tokenStream = new CommonTokenStream(lexer);
-        CqlParser parser = QueryProcessor.instance.createParser(tokenStream);
+        CqlParser parser = databaseDescriptor.getQueryProcessor().createParser(tokenStream);
         parser.addErrorListener(firstCounter);
         parser.addErrorListener(secondCounter);
 
@@ -69,7 +71,7 @@ public class CqlParserTest
         CqlLexer lexer = new CqlLexer(stream);
 
         TokenStream tokenStream = new CommonTokenStream(lexer);
-        CqlParser parser = QueryProcessor.instance.createParser(tokenStream);
+        CqlParser parser = databaseDescriptor.getQueryProcessor().createParser(tokenStream);
         parser.addErrorListener(firstCounter);
         parser.addErrorListener(secondCounter);
         parser.removeErrorListener(secondCounter);

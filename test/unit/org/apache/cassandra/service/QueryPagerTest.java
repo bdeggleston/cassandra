@@ -59,6 +59,8 @@ public class QueryPagerTest
     public static final String KEYSPACE_CQL = "cql_keyspace";
     public static final String CF_CQL = "table2";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -375,7 +377,7 @@ public class QueryPagerTest
 
         // Insert rows but with a tombstone as last cell
         for (int i = 0; i < 5; i++)
-            QueryProcessor.instance.executeInternal(String.format("INSERT INTO %s.%s (k, c, v) VALUES ('k%d', 'c%d', null)", keyspace, table, 0, i));
+            databaseDescriptor.getQueryProcessor().executeInternal(String.format("INSERT INTO %s.%s (k, c, v) VALUES ('k%d', 'c%d', null)", keyspace, table, 0, i));
 
         SliceQueryFilter filter = new SliceQueryFilter(ColumnSlice.ALL_COLUMNS_ARRAY, false, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
         QueryPager pager = QueryPagers.localPager(new SliceFromReadCommand(keyspace, bytes("k0"), table, 0, filter, DatabaseDescriptor.instance, Schema.instance, LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer),

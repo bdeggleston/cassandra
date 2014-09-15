@@ -237,7 +237,7 @@ public class SSTableImportTest
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
         KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(CQL_TABLE).addSSTable(reader);
 
-        UntypedResultSet result = QueryProcessor.instance.executeOnceInternal(String.format("SELECT * FROM \"%s\".%s", KEYSPACE1, CQL_TABLE));
+        UntypedResultSet result = databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("SELECT * FROM \"%s\".%s", KEYSPACE1, CQL_TABLE));
         assertThat(result.size(), is(2));
         assertThat(result, hasItem(withElements(1, "NY", 1980)));
         assertThat(result, hasItem(withElements(2, "CA", 2014)));

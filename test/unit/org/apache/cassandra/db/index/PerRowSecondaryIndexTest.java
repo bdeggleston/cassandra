@@ -66,6 +66,8 @@ public class PerRowSecondaryIndexTest
     private static final String KEYSPACE1 = "PerRowSecondaryIndexTest";
     private static final String CF_INDEXED = "Indexed1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -150,13 +152,13 @@ public class PerRowSecondaryIndexTest
         rm.apply();
         
         // test we can search:
-        UntypedResultSet result = QueryProcessor.instance.executeInternal(String.format("SELECT * FROM \"%s\".\"Indexed1\" WHERE indexed = 'foo'", KEYSPACE1));
+        UntypedResultSet result = databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT * FROM \"%s\".\"Indexed1\" WHERE indexed = 'foo'", KEYSPACE1));
         assertEquals(1, result.size());
 
         // test we can't search if the searcher doesn't validate the expression:
         try
         {
-            QueryProcessor.instance.executeInternal(String.format("SELECT * FROM \"%s\".\"Indexed1\" WHERE indexed = 'invalid'", KEYSPACE1));
+            databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT * FROM \"%s\".\"Indexed1\" WHERE indexed = 'invalid'", KEYSPACE1));
             fail("Query should have been invalid!");
         }
         catch (Exception e)

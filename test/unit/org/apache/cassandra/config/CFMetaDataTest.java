@@ -48,6 +48,8 @@ public class CFMetaDataTest
     private static final String KEYSPACE1 = "CFMetaDataTest1";
     private static final String CF_STANDARD1 = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     private static List<ColumnDef> columnDefs = new ArrayList<ColumnDef>();
 
     static
@@ -142,8 +144,8 @@ public class CFMetaDataTest
         Mutation rm = cfm.toSchema(System.currentTimeMillis());
         ColumnFamily serializedCf = rm.getColumnFamily(Schema.instance.getId(Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF));
         ColumnFamily serializedCD = rm.getColumnFamily(Schema.instance.getId(Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_COLUMNS_CF));
-        UntypedResultSet.Row result = QueryProcessor.instance.resultify("SELECT * FROM system.schema_columnfamilies", new Row(k, serializedCf)).one();
-        CFMetaData newCfm = CFMetaDataFactory.instance.fromSchemaNoTriggers(result, ColumnDefinition.resultify(new Row(k, serializedCD), QueryProcessor.instance));
+        UntypedResultSet.Row result = databaseDescriptor.getQueryProcessor().resultify("SELECT * FROM system.schema_columnfamilies", new Row(k, serializedCf)).one();
+        CFMetaData newCfm = CFMetaDataFactory.instance.fromSchemaNoTriggers(result, ColumnDefinition.resultify(new Row(k, serializedCD), databaseDescriptor.getQueryProcessor()));
         assert cfm.equals(newCfm) : String.format("%n%s%n!=%n%s", cfm, newCfm);
     }
 }

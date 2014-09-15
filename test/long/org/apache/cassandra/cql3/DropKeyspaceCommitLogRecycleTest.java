@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.cql3;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.After;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -31,6 +32,8 @@ public class DropKeyspaceCommitLogRecycleTest
 {
     protected static final Logger logger = LoggerFactory.getLogger(DropKeyspaceCommitLogRecycleTest.class);
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     private static final String KEYSPACE = "cql_test_keyspace";
     private static final String KEYSPACE2 = "cql_test_keyspace2";
 
@@ -42,32 +45,32 @@ public class DropKeyspaceCommitLogRecycleTest
 
     private void create(boolean both)
     {
-        QueryProcessor.instance.executeOnceInternal(String.format("CREATE KEYSPACE %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}", KEYSPACE));
-        QueryProcessor.instance.executeOnceInternal(String.format("CREATE TABLE %s.test (k1 int, k2 int, v int, PRIMARY KEY (k1, k2))", KEYSPACE));
+        databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("CREATE KEYSPACE %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}", KEYSPACE));
+        databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("CREATE TABLE %s.test (k1 int, k2 int, v int, PRIMARY KEY (k1, k2))", KEYSPACE));
 
         if (both)
         {
-            QueryProcessor.instance.executeOnceInternal(String.format("CREATE KEYSPACE %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}", KEYSPACE2));
-            QueryProcessor.instance.executeOnceInternal(String.format("CREATE TABLE %s.test (k1 int, k2 int, v int, PRIMARY KEY (k1, k2))", KEYSPACE2));
+            databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("CREATE KEYSPACE %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}", KEYSPACE2));
+            databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("CREATE TABLE %s.test (k1 int, k2 int, v int, PRIMARY KEY (k1, k2))", KEYSPACE2));
         }
     }
 
     private void insert()
     {
-        QueryProcessor.instance.executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (0, 0, 0)", KEYSPACE));
-        QueryProcessor.instance.executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (1, 1, 1)", KEYSPACE));
-        QueryProcessor.instance.executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (2, 2, 2)", KEYSPACE));
+        databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (0, 0, 0)", KEYSPACE));
+        databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (1, 1, 1)", KEYSPACE));
+        databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (2, 2, 2)", KEYSPACE));
 
-        QueryProcessor.instance.executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (0, 0, 0)", KEYSPACE2));
-        QueryProcessor.instance.executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (1, 1, 1)", KEYSPACE2));
-        QueryProcessor.instance.executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (2, 2, 2)", KEYSPACE2));
+        databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (0, 0, 0)", KEYSPACE2));
+        databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (1, 1, 1)", KEYSPACE2));
+        databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("INSERT INTO %s.test (k1, k2, v) VALUES (2, 2, 2)", KEYSPACE2));
     }
 
     private void drop(boolean both)
     {
-        QueryProcessor.instance.executeOnceInternal(String.format("DROP KEYSPACE IF EXISTS %s", KEYSPACE));
+        databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("DROP KEYSPACE IF EXISTS %s", KEYSPACE));
         if (both)
-            QueryProcessor.instance.executeOnceInternal(String.format("DROP KEYSPACE IF EXISTS %s", KEYSPACE2));
+            databaseDescriptor.getQueryProcessor().executeOnceInternal(String.format("DROP KEYSPACE IF EXISTS %s", KEYSPACE2));
     }
 
     @Test

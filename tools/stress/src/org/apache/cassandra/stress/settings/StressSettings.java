@@ -160,7 +160,7 @@ public class StressSettings implements Serializable
                                                                                                           Schema.instance,
                                                                                                           Auth.instance.getAuthenticator(),
                                                                                                           QueryHandlerInstance.instance,
-                                                                                                          QueryProcessor.instance,
+                                                                                                          DatabaseDescriptor.instance.getQueryProcessor(),
                                                                                                           KeyspaceManager.instance,
                                                                                                           StorageProxy.instance,
                                                                                                           MutationFactory.instance,

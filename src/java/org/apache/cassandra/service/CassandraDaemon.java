@@ -249,7 +249,7 @@ public class CassandraDaemon
 
         // load keyspace && function descriptions.
         DatabaseDescriptor.instance.loadSchemas();
-        Functions.loadUDFFromSchema(QueryProcessor.instance, MutationFactory.instance, CFMetaDataFactory.instance);
+        Functions.loadUDFFromSchema(DatabaseDescriptor.instance.getQueryProcessor(), MutationFactory.instance, CFMetaDataFactory.instance);
 
         // clean up compaction leftovers
         Map<Pair<String, String>, Map<Integer, UUID>> unfinishedCompactions = DatabaseDescriptor.instance.getSystemKeyspace().getUnfinishedCompactions();
@@ -409,7 +409,7 @@ public class CassandraDaemon
                                                                            Schema.instance,
                                                                            Auth.instance.getAuthenticator(),
                                                                            QueryHandlerInstance.instance,
-                                                                           QueryProcessor.instance,
+                                                                           DatabaseDescriptor.instance.getQueryProcessor(),
                                                                            KeyspaceManager.instance,
                                                                            StorageProxy.instance,
                                                                            MutationFactory.instance,

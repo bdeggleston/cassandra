@@ -37,6 +37,8 @@ import java.io.IOException;
 
 public class DeleteTest extends SchemaLoader
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     private static EmbeddedCassandraService cassandra;
 
     private static Cluster cluster;
@@ -117,7 +119,7 @@ public class DeleteTest extends SchemaLoader
 
         for (int i = 0; i < 500; i++)
         {
-            QueryProcessor.instance.process("insert into junit.tpc_inherit_b ( id, cid, inh_b, val) values (1, 1, 'inhB', 'valB')", ConsistencyLevel.ONE);
+            databaseDescriptor.getQueryProcessor().process("insert into junit.tpc_inherit_b ( id, cid, inh_b, val) values (1, 1, 'inhB', 'valB')", ConsistencyLevel.ONE);
             session.execute(pstmtI.bind(1, 1, "inhB", "valB"));
 
             ResultSetFuture[] futures = load();

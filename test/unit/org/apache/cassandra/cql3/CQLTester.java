@@ -224,7 +224,7 @@ public abstract class CQLTester
         try
         {
             // executeOnceInternal don't work for schema changes
-            QueryProcessor.instance.executeOnceInternal(query);
+            databaseDescriptor.getQueryProcessor().executeOnceInternal(query);
         }
         catch (Exception e)
         {
@@ -247,13 +247,13 @@ public abstract class CQLTester
             if (usePrepared)
             {
                 logger.info("Executing: {} with values {}", query, formatAllValues(values));
-                rs = QueryProcessor.instance.executeOnceInternal(query, transformValues(values));
+                rs = databaseDescriptor.getQueryProcessor().executeOnceInternal(query, transformValues(values));
             }
             else
             {
                 query = replaceValues(query, values);
                 logger.info("Executing: {}", query);
-                rs = QueryProcessor.instance.executeOnceInternal(query);
+                rs = databaseDescriptor.getQueryProcessor().executeOnceInternal(query);
             }
             if (rs != null)
                 logger.info("Got {} rows", rs.size());

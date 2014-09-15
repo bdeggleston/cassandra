@@ -63,6 +63,8 @@ public class CompactionsPurgeTest
     private static final String KEYSPACE_CQL = "cql_keyspace";
     private static final String CF_CQL = "table1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -371,20 +373,20 @@ public class CompactionsPurgeTest
         cfs.disableAutoCompaction();
 
         // write a row out to one sstable
-        QueryProcessor.instance.executeInternal(String.format("INSERT INTO %s.%s (k, v1, v2) VALUES (%d, '%s', %d)",
+        databaseDescriptor.getQueryProcessor().executeInternal(String.format("INSERT INTO %s.%s (k, v1, v2) VALUES (%d, '%s', %d)",
                                                               keyspace, table, 1, "foo", 1));
         cfs.forceBlockingFlush();
 
-        UntypedResultSet result = QueryProcessor.instance.executeInternal(String.format("SELECT * FROM %s.%s WHERE k = %d", keyspace, table, 1));
+        UntypedResultSet result = databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT * FROM %s.%s WHERE k = %d", keyspace, table, 1));
         assertEquals(1, result.size());
 
         // write a row tombstone out to a second sstable
-        QueryProcessor.instance.executeInternal(String.format("DELETE FROM %s.%s WHERE k = %d", keyspace, table, 1));
+        databaseDescriptor.getQueryProcessor().executeInternal(String.format("DELETE FROM %s.%s WHERE k = %d", keyspace, table, 1));
         cfs.forceBlockingFlush();
 
         // basic check that the row is considered deleted
         assertEquals(2, cfs.getSSTables().size());
-        result = QueryProcessor.instance.executeInternal(String.format("SELECT * FROM %s.%s WHERE k = %d", keyspace, table, 1));
+        result = databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT * FROM %s.%s WHERE k = %d", keyspace, table, 1));
         assertEquals(0, result.size());
 
         // compact the two sstables with a gcBefore that does *not* allow the row tombstone to be purged
@@ -393,19 +395,19 @@ public class CompactionsPurgeTest
 
         // the data should be gone, but the tombstone should still exist
         assertEquals(1, cfs.getSSTables().size());
-        result = QueryProcessor.instance.executeInternal(String.format("SELECT * FROM %s.%s WHERE k = %d", keyspace, table, 1));
+        result = databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT * FROM %s.%s WHERE k = %d", keyspace, table, 1));
         assertEquals(0, result.size());
 
         // write a row out to one sstable
-        QueryProcessor.instance.executeInternal(String.format("INSERT INTO %s.%s (k, v1, v2) VALUES (%d, '%s', %d)",
+        databaseDescriptor.getQueryProcessor().executeInternal(String.format("INSERT INTO %s.%s (k, v1, v2) VALUES (%d, '%s', %d)",
                                       keyspace, table, 1, "foo", 1));
         cfs.forceBlockingFlush();
         assertEquals(2, cfs.getSSTables().size());
-        result = QueryProcessor.instance.executeInternal(String.format("SELECT * FROM %s.%s WHERE k = %d", keyspace, table, 1));
+        result = databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT * FROM %s.%s WHERE k = %d", keyspace, table, 1));
         assertEquals(1, result.size());
 
         // write a row tombstone out to a different sstable
-        QueryProcessor.instance.executeInternal(String.format("DELETE FROM %s.%s WHERE k = %d", keyspace, table, 1));
+        databaseDescriptor.getQueryProcessor().executeInternal(String.format("DELETE FROM %s.%s WHERE k = %d", keyspace, table, 1));
         cfs.forceBlockingFlush();
 
         // compact the two sstables with a gcBefore that *does* allow the row tombstone to be purged
@@ -414,7 +416,7 @@ public class CompactionsPurgeTest
 
         // both the data and the tombstone should be gone this time
         assertEquals(0, cfs.getSSTables().size());
-        result = QueryProcessor.instance.executeInternal(String.format("SELECT * FROM %s.%s WHERE k = %d", keyspace, table, 1));
+        result = databaseDescriptor.getQueryProcessor().executeInternal(String.format("SELECT * FROM %s.%s WHERE k = %d", keyspace, table, 1));
         assertEquals(0, result.size());
     }
 }
