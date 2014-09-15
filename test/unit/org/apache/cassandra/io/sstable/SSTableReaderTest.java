@@ -211,7 +211,7 @@ public class SSTableReaderTest
     {
         Keyspace keyspace = KeyspaceManager.instance.open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard2");
-        CacheService.instance.keyCache.setCapacity(100);
+        databaseDescriptor.getCacheService().keyCache.setCapacity(100);
 
         // insert data and compact to a single sstable
         CompactionManager.instance.disableAutoCompaction();

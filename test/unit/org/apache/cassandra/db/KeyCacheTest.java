@@ -52,6 +52,8 @@ public class KeyCacheTest
     private static final String COLUMN_FAMILY1 = "Standard1";
     private static final String COLUMN_FAMILY2 = "Standard2";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -77,7 +79,7 @@ public class KeyCacheTest
         ColumnFamilyStore store = KeyspaceManager.instance.open(KEYSPACE1).getColumnFamilyStore(COLUMN_FAMILY2);
 
         // empty the cache
-        CacheService.instance.invalidateKeyCache();
+        databaseDescriptor.getCacheService().invalidateKeyCache();
         assertKeyCacheSize(0, KEYSPACE1, COLUMN_FAMILY2);
 
         // insert data and force to disk
@@ -90,26 +92,26 @@ public class KeyCacheTest
 
         // really? our caches don't implement the map interface? (hence no .addAll)
         Map<KeyCacheKey, RowIndexEntry> savedMap = new HashMap<KeyCacheKey, RowIndexEntry>();
-        for (KeyCacheKey k : CacheService.instance.keyCache.getKeySet())
+        for (KeyCacheKey k : databaseDescriptor.getCacheService().keyCache.getKeySet())
         {
             if (k.desc.ksname.equals(KEYSPACE1) && k.desc.cfname.equals(COLUMN_FAMILY2))
-                savedMap.put(k, CacheService.instance.keyCache.get(k));
+                savedMap.put(k, databaseDescriptor.getCacheService().keyCache.get(k));
         }
 
         // force the cache to disk
-        CacheService.instance.keyCache.submitWrite(Integer.MAX_VALUE).get();
+        databaseDescriptor.getCacheService().keyCache.submitWrite(Integer.MAX_VALUE).get();
 
-        CacheService.instance.invalidateKeyCache();
+        databaseDescriptor.getCacheService().invalidateKeyCache();
         assertKeyCacheSize(0, KEYSPACE1, COLUMN_FAMILY2);
 
-        CacheService.instance.keyCache.loadSaved(store);
+        databaseDescriptor.getCacheService().keyCache.loadSaved(store);
         assertKeyCacheSize(savedMap.size(), KEYSPACE1, COLUMN_FAMILY2);
 
         // probably it's better to add equals/hashCode to RowIndexEntry...
         for (Map.Entry<KeyCacheKey, RowIndexEntry> entry : savedMap.entrySet())
         {
             RowIndexEntry expected = entry.getValue();
-            RowIndexEntry actual = CacheService.instance.keyCache.get(entry.getKey());
+            RowIndexEntry actual = databaseDescriptor.getCacheService().keyCache.get(entry.getKey());
             assertEquals(expected.position, actual.position);
             assertEquals(expected.columnsIndex(), actual.columnsIndex());
             if (expected.isIndexed())
@@ -128,7 +130,7 @@ public class KeyCacheTest
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(COLUMN_FAMILY1);
 
         // just to make sure that everything is clean
-        CacheService.instance.invalidateKeyCache();
+        databaseDescriptor.getCacheService().invalidateKeyCache();
 
         // KeyCache should start at size 0 if we're caching X% of zero data.
         assertKeyCacheSize(0, KEYSPACE1, COLUMN_FAMILY1);
@@ -221,7 +223,7 @@ public class KeyCacheTest
     private void assertKeyCacheSize(int expected, String keyspace, String columnFamily)
     {
         int size = 0;
-        for (KeyCacheKey k : CacheService.instance.keyCache.getKeySet())
+        for (KeyCacheKey k : databaseDescriptor.getCacheService().keyCache.getKeySet())
         {
             if (k.desc.ksname.equals(keyspace) && k.desc.cfname.equals(columnFamily))
                 size++;

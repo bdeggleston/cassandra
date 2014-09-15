@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.db;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.junit.Test;
 
 import org.apache.cassandra.cql3.CQLTester;
@@ -26,10 +27,12 @@ import static org.junit.Assert.assertEquals;
 
 public class RowCacheCQLTest extends CQLTester
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @Test
     public void test7636() throws Throwable
     {
-        CacheService.instance.setRowCacheCapacityInMB(1);
+        databaseDescriptor.getCacheService().setRowCacheCapacityInMB(1);
         createTable("CREATE TABLE %s (p1 bigint, c1 int, PRIMARY KEY (p1, c1)) WITH caching = '{\"keys\":\"NONE\", \"rows_per_partition\":\"ALL\"}'");
         execute("INSERT INTO %s (p1, c1) VALUES (123, 10)");
         assertEmpty(execute("SELECT * FROM %s WHERE p1=123 and c1 > 1000"));

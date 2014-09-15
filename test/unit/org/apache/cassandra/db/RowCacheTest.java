@@ -54,6 +54,8 @@ public class RowCacheTest
     private static final String CF_CACHED = "CachedCF";
     private static final String CF_CACHEDINT = "CachedIntCF";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -83,10 +85,10 @@ public class RowCacheTest
         ColumnFamilyStore cachedStore  = keyspace.getColumnFamilyStore(CF_CACHED);
 
         // empty the row cache
-        CacheService.instance.invalidateRowCache();
+        databaseDescriptor.getCacheService().invalidateRowCache();
 
         // set global row cache size to 1 MB
-        CacheService.instance.setRowCacheCapacityInMB(1);
+        databaseDescriptor.getCacheService().setRowCacheCapacityInMB(1);
 
         // inserting 100 rows into both column families
         SchemaLoader.insertData(KEYSPACE_CACHED, CF_CACHED, 0, 100);
@@ -97,7 +99,7 @@ public class RowCacheTest
             DecoratedKey key = Util.dk("key" + i);
 
             cachedStore.getColumnFamily(key, Composites.EMPTY, Composites.EMPTY, false, 1, System.currentTimeMillis());
-            assert CacheService.instance.rowCache.size() == i + 1;
+            assert databaseDescriptor.getCacheService().rowCache.size() == i + 1;
             assert cachedStore.containsCachedRow(key); // current key should be stored in the cache
 
             // checking if cell is read correctly after cache
@@ -137,32 +139,32 @@ public class RowCacheTest
         for (int i = 109; i >= 10; i--)
         {
             cachedStore.invalidateCachedRow(Util.dk("key" + i));
-            assert CacheService.instance.rowCache.size() == keysLeft;
+            assert databaseDescriptor.getCacheService().rowCache.size() == keysLeft;
             keysLeft--;
         }
 
-        CacheService.instance.setRowCacheCapacityInMB(0);
+        databaseDescriptor.getCacheService().setRowCacheCapacityInMB(0);
     }
 
     @Test
     public void testRowCacheLoad() throws Exception
     {
-        CacheService.instance.setRowCacheCapacityInMB(1);
+        databaseDescriptor.getCacheService().setRowCacheCapacityInMB(1);
         rowCacheLoad(100, Integer.MAX_VALUE, 0);
-        CacheService.instance.setRowCacheCapacityInMB(0);
+        databaseDescriptor.getCacheService().setRowCacheCapacityInMB(0);
     }
 
     @Test
     public void testRowCacheCleanup() throws Exception
     {
         StorageService.instance.initServer(0);
-        CacheService.instance.setRowCacheCapacityInMB(1);
+        databaseDescriptor.getCacheService().setRowCacheCapacityInMB(1);
         rowCacheLoad(100, Integer.MAX_VALUE, 1000);
 
         ColumnFamilyStore store = KeyspaceManager.instance.open(KEYSPACE_CACHED).getColumnFamilyStore(CF_CACHED);
-        assertEquals(CacheService.instance.rowCache.getKeySet().size(), 100);
+        assertEquals(databaseDescriptor.getCacheService().rowCache.getKeySet().size(), 100);
         store.cleanupCache();
-        assertEquals(CacheService.instance.rowCache.getKeySet().size(), 100);
+        assertEquals(databaseDescriptor.getCacheService().rowCache.getKeySet().size(), 100);
         TokenMetadata tmd = LocatorConfig.instance.getTokenMetadata();
         byte[] tk1, tk2;
         tk1 = "key1000".getBytes();
@@ -170,16 +172,16 @@ public class RowCacheTest
         tmd.updateNormalToken(new BytesToken(tk1, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.1"));
         tmd.updateNormalToken(new BytesToken(tk2, LocatorConfig.instance.getPartitioner()), InetAddress.getByName("127.0.0.2"));
         store.cleanupCache();
-        assertEquals(CacheService.instance.rowCache.getKeySet().size(), 50);
-        CacheService.instance.setRowCacheCapacityInMB(0);
+        assertEquals(databaseDescriptor.getCacheService().rowCache.getKeySet().size(), 50);
+        databaseDescriptor.getCacheService().setRowCacheCapacityInMB(0);
     }
 
     @Test
     public void testRowCachePartialLoad() throws Exception
     {
-        CacheService.instance.setRowCacheCapacityInMB(1);
+        databaseDescriptor.getCacheService().setRowCacheCapacityInMB(1);
         rowCacheLoad(100, 50, 0);
-        CacheService.instance.setRowCacheCapacityInMB(0);
+        databaseDescriptor.getCacheService().setRowCacheCapacityInMB(0);
     }
     @Test
     public void testRowCacheRange()
@@ -192,10 +194,10 @@ public class RowCacheTest
         long startRowCacheHits = cachedStore.metric.rowCacheHit.count();
         long startRowCacheOutOfRange = cachedStore.metric.rowCacheHitOutOfRange.count();
         // empty the row cache
-        CacheService.instance.invalidateRowCache();
+        databaseDescriptor.getCacheService().invalidateRowCache();
 
         // set global row cache size to 1 MB
-        CacheService.instance.setRowCacheCapacityInMB(1);
+        databaseDescriptor.getCacheService().setRowCacheCapacityInMB(1);
 
         ByteBuffer key = ByteBufferUtil.bytes("rowcachekey");
         DecoratedKey dk = cachedStore.partitioner.decorateKey(key);
@@ -249,7 +251,7 @@ public class RowCacheTest
         assertEquals(++startRowCacheOutOfRange, cachedStore.metric.rowCacheHitOutOfRange.count());
 
 
-        CacheService.instance.invalidateRowCache();
+        databaseDescriptor.getCacheService().invalidateRowCache();
 
         // try to populate row cache with a limit > rows to cache, we should still populate row cache;
         cachedStore.getColumnFamily(QueryFilter.getSliceFilter(dk, cf,
@@ -261,7 +263,7 @@ public class RowCacheTest
                                                                 DBConfig.instance));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
         // validate the stuff in cache;
-        ColumnFamily cachedCf = (ColumnFamily)CacheService.instance.rowCache.get(rck);
+        ColumnFamily cachedCf = (ColumnFamily)databaseDescriptor.getCacheService().rowCache.get(rck);
         assertEquals(cachedCf.getColumnCount(), 100);
         int i = 0;
         for(Cell c : cachedCf)
@@ -277,20 +279,20 @@ public class RowCacheTest
         ColumnFamilyStore store = KeyspaceManager.instance.open(KEYSPACE_CACHED).getColumnFamilyStore(CF_CACHED);
 
         // empty the cache
-        CacheService.instance.invalidateRowCache();
-        assert CacheService.instance.rowCache.size() == 0;
+        databaseDescriptor.getCacheService().invalidateRowCache();
+        assert databaseDescriptor.getCacheService().rowCache.size() == 0;
 
         // insert data and fill the cache
         SchemaLoader.insertData(KEYSPACE_CACHED, CF_CACHED, offset, totalKeys);
         SchemaLoader.readData(KEYSPACE_CACHED, CF_CACHED, offset, totalKeys);
-        assert CacheService.instance.rowCache.size() == totalKeys;
+        assert databaseDescriptor.getCacheService().rowCache.size() == totalKeys;
 
         // force the cache to disk
-        CacheService.instance.rowCache.submitWrite(keysToSave).get();
+        databaseDescriptor.getCacheService().rowCache.submitWrite(keysToSave).get();
 
         // empty the cache again to make sure values came from disk
-        CacheService.instance.invalidateRowCache();
-        assert CacheService.instance.rowCache.size() == 0;
-        assert CacheService.instance.rowCache.loadSaved(store) == (keysToSave == Integer.MAX_VALUE ? totalKeys : keysToSave);
+        databaseDescriptor.getCacheService().invalidateRowCache();
+        assert databaseDescriptor.getCacheService().rowCache.size() == 0;
+        assert databaseDescriptor.getCacheService().rowCache.loadSaved(store) == (keysToSave == Integer.MAX_VALUE ? totalKeys : keysToSave);
     }
 }

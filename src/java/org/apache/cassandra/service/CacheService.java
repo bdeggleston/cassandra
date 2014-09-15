@@ -79,8 +79,6 @@ public class CacheService implements CacheServiceMBean
         }
     }
 
-    public final static CacheService instance = create(DatabaseDescriptor.instance);
-
     public final AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache;
     public final AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache;
     public final AutoSavingCache<CounterCacheKey, ClockAndCount> counterCache;

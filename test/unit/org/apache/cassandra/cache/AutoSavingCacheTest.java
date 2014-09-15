@@ -37,6 +37,8 @@ public class AutoSavingCacheTest
     private static final String KEYSPACE1 = "AutoSavingCacheTest1";
     private static final String CF_STANDARD1 = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -65,7 +67,7 @@ public class AutoSavingCacheTest
         for (SSTableReader sstable : cfs.getSSTables())
             sstable.getPosition(Util.dk("key1"), SSTableReader.Operator.EQ);
 
-        AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = CacheService.instance.keyCache;
+        AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = databaseDescriptor.getCacheService().keyCache;
 
         // serialize to file
         keyCache.submitWrite(keyCache.size()).get();

@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final CacheService cacheService;
     protected final FileCacheService fileCacheService;
     protected final PaxosManager paxosManager;
     protected final MigrationManager migrationManager;
@@ -212,6 +213,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        cacheService = createCacheService();
         fileCacheService = createFileCacheService();
         paxosManager = createPaxosManager();
         migrationManager = createMigrationManager();
@@ -1703,9 +1705,14 @@ public class DatabaseDescriptor
         return CommitLog.instance;
     }
 
+    public CacheService createCacheService()
+    {
+        return CacheService.create(this);
+    }
+
     public CacheService getCacheService()
     {
-        return CacheService.instance;
+        return cacheService;
     }
 
     public StageManager getStageManager()

@@ -1,4 +1,5 @@
 /*
+
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -221,7 +222,7 @@ public class CassandraDaemon
             }
         }
 
-        if (CacheService.instance == null) // should never happen
+        if (DatabaseDescriptor.instance.getCacheService() == null) // should never happen
             throw new RuntimeException("Failed to initialize Cache Service.");
 
         // check the system keyspace to keep user from shooting self in foot by changing partitioner, cluster name, etc.
@@ -282,11 +283,11 @@ public class CassandraDaemon
             }
         }
 
-        if (CacheService.instance.keyCache.size() > 0)
-            logger.info("completed pre-loading ({} keys) key cache.", CacheService.instance.keyCache.size());
+        if (DatabaseDescriptor.instance.getCacheService().keyCache.size() > 0)
+            logger.info("completed pre-loading ({} keys) key cache.", DatabaseDescriptor.instance.getCacheService().keyCache.size());
 
-        if (CacheService.instance.rowCache.size() > 0)
-            logger.info("completed pre-loading ({} keys) row cache.", CacheService.instance.rowCache.size());
+        if (DatabaseDescriptor.instance.getCacheService().rowCache.size() > 0)
+            logger.info("completed pre-loading ({} keys) row cache.", DatabaseDescriptor.instance.getCacheService().rowCache.size());
 
         try
         {
