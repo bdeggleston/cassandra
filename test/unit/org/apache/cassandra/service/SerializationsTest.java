@@ -45,6 +45,9 @@ import org.apache.cassandra.utils.MerkleTree;
 
 public class SerializationsTest extends AbstractSerializationsTester
 {
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     static
     {
         System.setProperty("cassandra.partitioner", "RandomPartitioner");
@@ -98,14 +101,14 @@ public class SerializationsTest extends AbstractSerializationsTester
         IPartitioner p = new RandomPartitioner(LocatorConfig.instance);
         // empty validation
         MerkleTree mt = new MerkleTree(p, FULL_RANGE, MerkleTree.RECOMMENDED_DEPTH, (int) Math.pow(2, 15));
-        Validator v0 = new Validator(DESC, DatabaseDescriptor.instance.getBroadcastAddress(),  -1, DatabaseDescriptor.instance, StageManager.instance, MessagingService.instance);
+        Validator v0 = new Validator(DESC, DatabaseDescriptor.instance.getBroadcastAddress(),  -1, DatabaseDescriptor.instance, databaseDescriptor.getStageManager(), MessagingService.instance);
         ValidationComplete c0 = new ValidationComplete(DESC, mt, MessagingService.instance.repairMessageSerializer);
 
         // validation with a tree
         mt = new MerkleTree(p, FULL_RANGE, MerkleTree.RECOMMENDED_DEPTH, Integer.MAX_VALUE);
         for (int i = 0; i < 10; i++)
             mt.split(p.getRandomToken());
-        Validator v1 = new Validator(DESC, DatabaseDescriptor.instance.getBroadcastAddress(), -1, DatabaseDescriptor.instance, StageManager.instance, MessagingService.instance);
+        Validator v1 = new Validator(DESC, DatabaseDescriptor.instance.getBroadcastAddress(), -1, DatabaseDescriptor.instance, databaseDescriptor.getStageManager(), MessagingService.instance);
         ValidationComplete c1 = new ValidationComplete(DESC, mt, MessagingService.instance.repairMessageSerializer);
 
         // validation failed

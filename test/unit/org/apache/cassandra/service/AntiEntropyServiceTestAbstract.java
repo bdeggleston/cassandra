@@ -74,6 +74,8 @@ public abstract class AntiEntropyServiceTestAbstract
     public static final String CF_STANDRAD1 = "Standard1";
     public static final String CF_COUNTER = "Counter1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -265,7 +267,7 @@ public abstract class AntiEntropyServiceTestAbstract
 
     void flushAES() throws Exception
     {
-        final ExecutorService stage = StageManager.instance.getStage(Stage.ANTI_ENTROPY);
+        final ExecutorService stage = databaseDescriptor.getStageManager().getStage(Stage.ANTI_ENTROPY);
         final Callable noop = new Callable<Object>()
         {
             public Boolean call()

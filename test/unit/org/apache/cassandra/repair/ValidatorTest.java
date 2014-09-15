@@ -57,6 +57,8 @@ public class ValidatorTest
 {
     private static final String keyspace = "ValidatorTest";
     private static final String columnFamily = "Standard1";
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
     private final IPartitioner partitioner = LocatorConfig.instance.getPartitioner();
 
     @BeforeClass
@@ -115,7 +117,7 @@ public class ValidatorTest
 
         ColumnFamilyStore cfs = KeyspaceManager.instance.open(keyspace).getColumnFamilyStore(columnFamily);
 
-        Validator validator = new Validator(desc, remote, 0, DatabaseDescriptor.instance, StageManager.instance, MessagingService.instance);
+        Validator validator = new Validator(desc, remote, 0, DatabaseDescriptor.instance, databaseDescriptor.getStageManager(), MessagingService.instance);
         MerkleTree tree = new MerkleTree(cfs.partitioner, validator.desc.range, MerkleTree.RECOMMENDED_DEPTH, (int) Math.pow(2, 15));
         validator.prepare(cfs, tree);
 
@@ -195,7 +197,7 @@ public class ValidatorTest
 
         InetAddress remote = InetAddress.getByName("127.0.0.2");
 
-        Validator validator = new Validator(desc, remote, 0, DatabaseDescriptor.instance, StageManager.instance, MessagingService.instance);
+        Validator validator = new Validator(desc, remote, 0, DatabaseDescriptor.instance, databaseDescriptor.getStageManager(), MessagingService.instance);
         validator.fail();
 
         if (!lock.isSignaled())

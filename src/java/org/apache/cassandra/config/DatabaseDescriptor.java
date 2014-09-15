@@ -143,7 +143,7 @@ public class DatabaseDescriptor
         assert MessagingService.instance != null;
 //        assert DatabaseDescriptor.instance != null;
 //        assert SystemKeyspace.instance != null;
-        assert StageManager.instance != null;
+//        assert StageManager.instance != null;
 //        assert Schema.instance != null;
         assert ActiveRepairService.instance != null;
 //        assert CompactionManager.instance != null;
@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final StageManager stageManager;
     protected final HintedHandOffManager hintedHandOffManager;
     protected final CompactionManager compactionManager;
     protected final Auth auth;
@@ -226,6 +227,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        stageManager = createStageManager();
         hintedHandOffManager = createHintedHandOffManager();
         compactionManager = createCompactionManager();
         auth = createAuth();
@@ -1776,9 +1778,14 @@ public class DatabaseDescriptor
         return cacheService;
     }
 
+    public StageManager createStageManager()
+    {
+        return new StageManager(this, getTracing());
+    }
+
     public StageManager getStageManager()
     {
-        return StageManager.instance;
+        return stageManager;
     }
 
     public LocatorConfig getLocatorConfig()

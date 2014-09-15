@@ -270,7 +270,7 @@ public final class MessagingService implements MessagingServiceMBean
 
     public static final MessagingService instance = create(DatabaseDescriptor.instance,
                                                            DatabaseDescriptor.instance.getSchema(),
-                                                           StageManager.instance,
+                                                           DatabaseDescriptor.instance.getStageManager(),
                                                            StorageServiceExecutors.instance,
                                                            StorageProxy.instance,
                                                            KeyspaceManager.instance,

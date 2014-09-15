@@ -42,13 +42,11 @@ public class StageManager
 
     public static final long KEEPALIVE = 60; // seconds to keep "extra" threads alive for when idle
 
-    public static final StageManager instance = new StageManager(DatabaseDescriptor.instance, Tracing.instance);
-
     private final EnumMap<Stage, TracingAwareExecutorService> stages = new EnumMap<Stage, TracingAwareExecutorService>(Stage.class);
 
     private final DatabaseDescriptor databaseDescriptor;
 
-    private StageManager(DatabaseDescriptor databaseDescriptor, Tracing tracing)
+    public StageManager(DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
         assert databaseDescriptor != null;
         assert tracing != null;

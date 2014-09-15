@@ -104,7 +104,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public static final StorageService instance = create(DatabaseDescriptor.instance,
                                                          Tracing.instance,
                                                          DatabaseDescriptor.instance.getSchema(),
-                                                         StageManager.instance,
+                                                         DatabaseDescriptor.instance.getStageManager(),
                                                          DatabaseDescriptor.instance.getSystemKeyspace(),
                                                          DatabaseDescriptor.instance.getDefsTables(),
                                                          MessagingService.instance,
