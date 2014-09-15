@@ -303,7 +303,7 @@ public class SchemaLoader
         // if you're messing with low-level sstable stuff, it can be useful to inject the schema directly
         // Schema.instance.load(schemaDefinition());
         for (KSMetaData ksm : schema)
-            MigrationManager.instance.announceNewKeyspace(ksm, false);
+            DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(ksm, false);
     }
 
     public static void createKeyspace(String keyspaceName,
@@ -323,7 +323,7 @@ public class SchemaLoader
     {
         KSMetaData ksm = durable ? KSMetaDataFactory.instance.testMetadata(keyspaceName, strategy, options, cfmetas)
                                  : KSMetaDataFactory.instance.testMetadataNotDurable(keyspaceName, strategy, options, cfmetas);
-        MigrationManager.instance.announceNewKeyspace(ksm, announceLocally);
+        DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(ksm, announceLocally);
     }
 
     private static ColumnDefinition integerColumn(String ksName, String cfName)

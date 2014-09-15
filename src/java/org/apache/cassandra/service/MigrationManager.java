@@ -48,8 +48,6 @@ public class MigrationManager
 {
     private static final Logger logger = LoggerFactory.getLogger(MigrationManager.class);
 
-    public static final MigrationManager instance = new MigrationManager(DatabaseDescriptor.instance);
-
     private static final RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
 
     public static final int MIGRATION_DELAY_IN_MS = 60000;

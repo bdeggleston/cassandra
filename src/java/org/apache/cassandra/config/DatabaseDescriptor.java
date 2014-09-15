@@ -186,6 +186,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final MigrationManager migrationManager;
     protected final TriggerExecutor triggerExecutor;
     protected final StatusLogger statusLogger;
 
@@ -208,6 +209,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        migrationManager = createMigrationManager();
         triggerExecutor = createTriggerExecutor();
         statusLogger = createStatusLogger();
     }
@@ -1596,9 +1598,14 @@ public class DatabaseDescriptor
         return CFMetaDataFactory.instance;
     }
 
+    public MigrationManager createMigrationManager()
+    {
+        return new MigrationManager(this);
+    }
+
     public MigrationManager getMigrationManager()
     {
-        return MigrationManager.instance;
+        return migrationManager;
     }
 
     public QueryProcessor getQueryProcessor()

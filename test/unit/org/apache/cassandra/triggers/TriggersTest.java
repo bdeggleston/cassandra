@@ -89,7 +89,7 @@ public class TriggersTest
                                             MessagingService.instance, KeyspaceManager.instance,
                                             MutationFactory.instance, CounterMutationFactory.instance,
                                             StorageService.instance, CFMetaDataFactory.instance,
-                                            MigrationManager.instance, KSMetaDataFactory.instance,
+                                            DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
                                             QueryHandlerInstance.instance, LocatorConfig.instance,
                                             DBConfig.instance, new ThriftSessionManager(DatabaseDescriptor.instance),
                                             ClientMetrics.instance);

@@ -382,7 +382,7 @@ public class CassandraDaemon
                                         MessagingService.instance, KeyspaceManager.instance,
                                         MutationFactory.instance, CounterMutationFactory.instance,
                                         StorageService.instance, CFMetaDataFactory.instance,
-                                        MigrationManager.instance, KSMetaDataFactory.instance,
+                                        DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
                                         QueryHandlerInstance.instance, LocatorConfig.instance,
                                         DBConfig.instance,
                                         new ThriftSessionManager(DatabaseDescriptor.instance),
@@ -405,7 +405,8 @@ public class CassandraDaemon
                                                                            DBConfig.instance,
                                                                            LocatorConfig.instance);
         nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort, codecs, DatabaseDescriptor.instance, Tracing.instance,
-                                                                 Auth.instance, ClientMetrics.instance, StorageService.instance, MigrationManager.instance);
+                                                                 Auth.instance, ClientMetrics.instance, StorageService.instance,
+                                                                 DatabaseDescriptor.instance.getMigrationManager());
     }
 
     /**

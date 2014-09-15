@@ -29,7 +29,6 @@ import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.locator.SimpleStrategy;
-import org.apache.cassandra.service.MigrationManager;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -88,8 +87,8 @@ public class DatabaseDescriptorTest
         try
         {
             // add a few.
-            MigrationManager.instance.announceNewKeyspace(KSMetaDataFactory.instance.testMetadata("ks0", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
-            MigrationManager.instance.announceNewKeyspace(KSMetaDataFactory.instance.testMetadata("ks1", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
+            DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(KSMetaDataFactory.instance.testMetadata("ks0", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
+            DatabaseDescriptor.instance.getMigrationManager().announceNewKeyspace(KSMetaDataFactory.instance.testMetadata("ks1", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
 
             assertNotNull(Schema.instance.getKSMetaData("ks0"));
             assertNotNull(Schema.instance.getKSMetaData("ks1"));
