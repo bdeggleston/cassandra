@@ -93,7 +93,7 @@ public class DefsTest
                                         databaseDescriptor.getSchema(),
                                         databaseDescriptor.getColumnFamilyStoreManager(),
                                         databaseDescriptor.getKeyspaceManager(),
-                                        CFMetaDataFactory.instance,
+                                        databaseDescriptor.getCFMetaDataFactory(),
                                         databaseDescriptor.getMutationFactory(),
                                         DBConfig.instance);
 
@@ -496,7 +496,7 @@ public class DefsTest
                                 databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 databaseDescriptor.getKeyspaceManager(),
-                                CFMetaDataFactory.instance,
+                                databaseDescriptor.getCFMetaDataFactory(),
                                 databaseDescriptor.getMutationFactory(),
                                 DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
@@ -518,7 +518,7 @@ public class DefsTest
                                 databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 databaseDescriptor.getKeyspaceManager(),
-                                CFMetaDataFactory.instance,
+                                databaseDescriptor.getCFMetaDataFactory(),
                                 databaseDescriptor.getMutationFactory(),
                                 DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
@@ -540,7 +540,7 @@ public class DefsTest
                                 databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 databaseDescriptor.getKeyspaceManager(),
-                                CFMetaDataFactory.instance,
+                                databaseDescriptor.getCFMetaDataFactory(),
                                 databaseDescriptor.getMutationFactory(),
                                 DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
@@ -562,7 +562,7 @@ public class DefsTest
                                 databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 databaseDescriptor.getKeyspaceManager(),
-                                CFMetaDataFactory.instance,
+                                databaseDescriptor.getCFMetaDataFactory(),
                                 databaseDescriptor.getMutationFactory(),
                                 DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
@@ -584,7 +584,7 @@ public class DefsTest
                                 databaseDescriptor.getSchema(),
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 databaseDescriptor.getKeyspaceManager(),
-                                CFMetaDataFactory.instance,
+                                databaseDescriptor.getCFMetaDataFactory(),
                                 databaseDescriptor.getMutationFactory(),
                                 DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
@@ -637,7 +637,7 @@ public class DefsTest
                                             databaseDescriptor.getSchema(),
                                             databaseDescriptor.getColumnFamilyStoreManager(),
                                             databaseDescriptor.getKeyspaceManager(),
-                                            CFMetaDataFactory.instance,
+                                            databaseDescriptor.getCFMetaDataFactory(),
                                             databaseDescriptor.getMutationFactory(),
                                             DBConfig.instance);
         newCFMD.comment(comment)

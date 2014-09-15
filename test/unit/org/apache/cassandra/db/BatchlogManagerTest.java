@@ -101,7 +101,7 @@ public class BatchlogManagerTest
                                                    UUIDGen.getTimeUUID(),
                                                    MessagingService.current_version,
                                                    timestamp,
-                                                   CFMetaDataFactory.instance,
+                                                   databaseDescriptor.getCFMetaDataFactory(),
                                                    databaseDescriptor.getMutationFactory(),
                                                    DBConfig.instance)
                            .applyUnsafe();
@@ -174,7 +174,7 @@ public class BatchlogManagerTest
                                                    UUIDGen.getTimeUUID(),
                                                    MessagingService.current_version,
                                                    timestamp * 1000,
-                                                   CFMetaDataFactory.instance,
+                                                   databaseDescriptor.getCFMetaDataFactory(),
                                                    databaseDescriptor.getMutationFactory(),
                                                    DBConfig.instance)
                            .applyUnsafe();

@@ -71,7 +71,7 @@ public class ColumnFamilyTest
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD1),
-                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_COUNTER1, BytesType.instance)
+                                    databaseDescriptor.getCFMetaDataFactory().denseCFMetaData(KEYSPACE1, CF_COUNTER1, BytesType.instance)
                                               .defaultValidator(CounterColumnType.instance));
     }
 

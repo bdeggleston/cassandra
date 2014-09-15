@@ -92,8 +92,8 @@ public class StreamingTransferTest
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD),
-                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_COUNTER, BytesType.instance).defaultValidator(CounterColumnType.instance),
-                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_STANDARDINT, IntegerType.instance),
+                                    databaseDescriptor.getCFMetaDataFactory().denseCFMetaData(KEYSPACE1, CF_COUNTER, BytesType.instance).defaultValidator(CounterColumnType.instance),
+                                    databaseDescriptor.getCFMetaDataFactory().denseCFMetaData(KEYSPACE1, CF_STANDARDINT, IntegerType.instance),
                                     SchemaLoader.indexCFMD(KEYSPACE1, CF_INDEX, true));
         SchemaLoader.createKeyspace(KEYSPACE2,
                                     SimpleStrategy.class,

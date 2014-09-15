@@ -230,7 +230,7 @@ public class CassandraDaemon
             ColumnFamilyStore.scrubDataDirectories(cfm,
                                                    DatabaseDescriptor.instance,
                                                    DatabaseDescriptor.instance.getTracing(),
-                                                   CFMetaDataFactory.instance,
+                                                   DatabaseDescriptor.instance.getCFMetaDataFactory(),
                                                    DatabaseDescriptor.instance.getKeyspaceManager(),
                                                    DBConfig.instance,
                                                    DatabaseDescriptor.instance.getColumnFamilyStoreManager().dataDirectories);
@@ -246,7 +246,7 @@ public class CassandraDaemon
 
         // load keyspace && function descriptions.
         DatabaseDescriptor.instance.loadSchemas();
-        Functions.loadUDFFromSchema(DatabaseDescriptor.instance.getQueryProcessor(), DatabaseDescriptor.instance.getMutationFactory(), CFMetaDataFactory.instance);
+        Functions.loadUDFFromSchema(DatabaseDescriptor.instance.getQueryProcessor(), DatabaseDescriptor.instance.getMutationFactory(), DatabaseDescriptor.instance.getCFMetaDataFactory());
 
         // clean up compaction leftovers
         Map<Pair<String, String>, Map<Integer, UUID>> unfinishedCompactions = DatabaseDescriptor.instance.getSystemKeyspace().getUnfinishedCompactions();
@@ -270,7 +270,7 @@ public class CassandraDaemon
                 ColumnFamilyStore.scrubDataDirectories(cfm,
                                                        DatabaseDescriptor.instance,
                                                        DatabaseDescriptor.instance.getTracing(),
-                                                       CFMetaDataFactory.instance,
+                                                       DatabaseDescriptor.instance.getCFMetaDataFactory(),
                                                        DatabaseDescriptor.instance.getKeyspaceManager(),
                                                        DBConfig.instance,
                                                        DatabaseDescriptor.instance.getColumnFamilyStoreManager().dataDirectories);
@@ -391,7 +391,7 @@ public class CassandraDaemon
                                         DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getAuth(), StorageProxy.instance,
                                         MessagingService.instance, DatabaseDescriptor.instance.getKeyspaceManager(),
                                         DatabaseDescriptor.instance.getMutationFactory(), DatabaseDescriptor.instance.getCounterMutationFactory(),
-                                        StorageService.instance, CFMetaDataFactory.instance,
+                                        StorageService.instance, DatabaseDescriptor.instance.getCFMetaDataFactory(),
                                         DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
                                         DatabaseDescriptor.instance.getQueryHandler(), LocatorConfig.instance,
                                         DBConfig.instance,

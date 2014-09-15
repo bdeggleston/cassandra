@@ -132,7 +132,7 @@ public class DatabaseDescriptor
         }
 
         instance = databaseDescriptor;
-        assert CFMetaDataFactory.instance != null;
+//        assert CFMetaDataFactory.instance != null;
         assert KSMetaDataFactory.instance != null;
 //        assert FailureDetector.instance != null;
         assert Gossiper.instance != null;
@@ -151,7 +151,7 @@ public class DatabaseDescriptor
 //        assert DefsTables.instance != null;
         assert StorageService.instance != null;
 
-        CFMetaDataFactory.instance.init();
+//        CFMetaDataFactory.instance.init();
         KSMetaDataFactory.instance.init();
 
     }
@@ -188,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final CFMetaDataFactory cfMetaDataFactory;
     protected final QueryHandler queryHandler;
     protected final MutationFactory mutationFactory;
     protected final CounterMutationFactory counterMutationFactory;
@@ -234,6 +235,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        cfMetaDataFactory = createCFMetaDataFactory();
         queryHandler = createQueryHandler();
         mutationFactory = createMutationFactory();
         counterMutationFactory = createCounterMutationFactory();
@@ -260,6 +262,8 @@ public class DatabaseDescriptor
         migrationManager = createMigrationManager();
         triggerExecutor = createTriggerExecutor();
         statusLogger = createStatusLogger();
+
+        cfMetaDataFactory.init();
     }
 
     public Config getConfig()
@@ -1646,9 +1650,14 @@ public class DatabaseDescriptor
         return KSMetaDataFactory.instance;
     }
 
+    public CFMetaDataFactory createCFMetaDataFactory()
+    {
+        return new CFMetaDataFactory(this);
+    }
+
     public CFMetaDataFactory getCFMetaDataFactory()
     {
-        return CFMetaDataFactory.instance;
+        return cfMetaDataFactory;
     }
 
     public MigrationManager createMigrationManager()

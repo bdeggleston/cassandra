@@ -54,7 +54,7 @@ public class DatabaseDescriptorTest
         {
             for (CFMetaData cfm : databaseDescriptor.getSchema().getKeyspaceMetaData(keyspaceName).values())
             {
-                CFMetaData cfmDupe = CFMetaDataFactory.instance.fromThrift(cfm.toThrift());
+                CFMetaData cfmDupe = databaseDescriptor.getCFMetaDataFactory().fromThrift(cfm.toThrift());
                 assertNotNull(cfmDupe);
                 assertEquals(cfm, cfmDupe);
             }

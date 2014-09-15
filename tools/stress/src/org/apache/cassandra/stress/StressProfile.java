@@ -132,7 +132,7 @@ public class StressProfile implements Serializable
 
         if (tableCql != null && tableCql.length() > 0)
         {
-            String name = CFMetaDataFactory.instance.compile(tableCql, keyspaceName).cfName;
+            String name = DatabaseDescriptor.instance.getCFMetaDataFactory().compile(tableCql, keyspaceName).cfName;
             assert name.equalsIgnoreCase(tableName) : "Name in table_definition doesn't match table property: '" + name + "' != '" + tableName + "'";
         }
         else

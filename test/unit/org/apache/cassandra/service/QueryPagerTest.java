@@ -72,7 +72,7 @@ public class QueryPagerTest
         SchemaLoader.createKeyspace(KEYSPACE_CQL,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
-                                    CFMetaDataFactory.instance.compile("CREATE TABLE " + CF_CQL + " ("
+                                    databaseDescriptor.getCFMetaDataFactory().compile("CREATE TABLE " + CF_CQL + " ("
                                                                       + "k text,"
                                                                       + "c text,"
                                                                       + "v text,"

@@ -61,7 +61,7 @@ public class KSMetaDataTest
                                             databaseDescriptor.getQueryProcessor(),
                                             LocatorConfig.instance,
                                             databaseDescriptor.getSystemKeyspace(),
-                                            CFMetaDataFactory.instance,
+                                            databaseDescriptor.getCFMetaDataFactory(),
                                             databaseDescriptor.getMutationFactory());
 
         assertTrue(ksMeta.toString().contains(options.toString()));

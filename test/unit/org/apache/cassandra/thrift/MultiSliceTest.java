@@ -67,7 +67,7 @@ public class MultiSliceTest
                                      databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), StorageProxy.instance,
                                      MessagingService.instance, databaseDescriptor.getKeyspaceManager(),
                                      databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
-                                     StorageService.instance, CFMetaDataFactory.instance,
+                                     StorageService.instance, databaseDescriptor.getCFMetaDataFactory(),
                                      DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
                                      databaseDescriptor.getQueryHandler(), LocatorConfig.instance,
                                      DBConfig.instance, thriftSessionManager,

@@ -77,7 +77,7 @@ public class DirectoriesTest
                                    databaseDescriptor.getSchema(),
                                    databaseDescriptor.getColumnFamilyStoreManager(),
                                    databaseDescriptor.getKeyspaceManager(),
-                                   CFMetaDataFactory.instance,
+                                   databaseDescriptor.getCFMetaDataFactory(),
                                    databaseDescriptor.getMutationFactory(),
                                    DBConfig.instance));
         }
@@ -227,7 +227,7 @@ public class DirectoriesTest
                                             databaseDescriptor.getSchema(),
                                             databaseDescriptor.getColumnFamilyStoreManager(),
                                             databaseDescriptor.getKeyspaceManager(),
-                                            CFMetaDataFactory.instance,
+                                            databaseDescriptor.getCFMetaDataFactory(),
                                             databaseDescriptor.getMutationFactory(),
                                             DBConfig.instance);
             Directories dir = new Directories(cfm, DatabaseDescriptor.instance, StorageService.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);

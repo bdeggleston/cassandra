@@ -83,7 +83,7 @@ public class CFMetaDataTest
                                  .setName(CF_STANDARD1);
 
         // convert Thrift to CFMetaData
-        CFMetaData cfMetaData = CFMetaDataFactory.instance.fromThrift(cfDef);
+        CFMetaData cfMetaData = databaseDescriptor.getCFMetaDataFactory().fromThrift(cfDef);
 
         CfDef thriftCfDef = new CfDef();
         thriftCfDef.keyspace = KEYSPACE1;
@@ -137,7 +137,7 @@ public class CFMetaDataTest
 
         // Test thrift conversion
         CFMetaData before = cfm;
-        CFMetaData after = CFMetaDataFactory.instance.fromThriftForUpdate(before.toThrift(), before);
+        CFMetaData after = databaseDescriptor.getCFMetaDataFactory().fromThriftForUpdate(before.toThrift(), before);
         assert before.equals(after) : String.format("%n%s%n!=%n%s", before, after);
 
         // Test schema conversion
@@ -145,7 +145,7 @@ public class CFMetaDataTest
         ColumnFamily serializedCf = rm.getColumnFamily(databaseDescriptor.getSchema().getId(Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF));
         ColumnFamily serializedCD = rm.getColumnFamily(databaseDescriptor.getSchema().getId(Keyspace.SYSTEM_KS, SystemKeyspace.SCHEMA_COLUMNS_CF));
         UntypedResultSet.Row result = databaseDescriptor.getQueryProcessor().resultify("SELECT * FROM system.schema_columnfamilies", new Row(k, serializedCf)).one();
-        CFMetaData newCfm = CFMetaDataFactory.instance.fromSchemaNoTriggers(result, ColumnDefinition.resultify(new Row(k, serializedCD), databaseDescriptor.getQueryProcessor()));
+        CFMetaData newCfm = databaseDescriptor.getCFMetaDataFactory().fromSchemaNoTriggers(result, ColumnDefinition.resultify(new Row(k, serializedCD), databaseDescriptor.getQueryProcessor()));
         assert cfm.equals(newCfm) : String.format("%n%s%n!=%n%s", cfm, newCfm);
     }
 }

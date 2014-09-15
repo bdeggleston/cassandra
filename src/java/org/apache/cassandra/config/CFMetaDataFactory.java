@@ -34,8 +34,6 @@ public class CFMetaDataFactory
 {
     private static final Logger logger = LoggerFactory.getLogger(CFMetaData.class);
 
-    public static final CFMetaDataFactory instance = new CFMetaDataFactory(DatabaseDescriptor.instance);
-
     public CFMetaData IndexCf;
     public CFMetaData SchemaKeyspacesCf;
     public CFMetaData SchemaColumnFamiliesCf;

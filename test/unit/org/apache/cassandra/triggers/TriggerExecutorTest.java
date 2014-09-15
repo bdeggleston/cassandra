@@ -47,7 +47,7 @@ public class TriggerExecutorTest
     @Test
     public void sameKeySameCfColumnFamilies() throws ConfigurationException, InvalidRequestException
     {
-        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeySameCfTrigger.class.getName(), CFMetaDataFactory.instance));
+        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeySameCfTrigger.class.getName(), databaseDescriptor.getCFMetaDataFactory()));
         ColumnFamily mutated = DatabaseDescriptor.instance.getTriggerExecutor().execute(bytes("k1"), makeCf(metadata, "v1", null));
         assertEquals(bytes("v1"), mutated.getColumn(getColumnName(metadata, "c1")).value());
         assertEquals(bytes("trigger"), mutated.getColumn(getColumnName(metadata, "c2")).value());
@@ -56,21 +56,21 @@ public class TriggerExecutorTest
     @Test(expected = InvalidRequestException.class)
     public void sameKeyDifferentCfColumnFamilies() throws ConfigurationException, InvalidRequestException
     {
-        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeyDifferentCfTrigger.class.getName(), CFMetaDataFactory.instance));
+        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeyDifferentCfTrigger.class.getName(), databaseDescriptor.getCFMetaDataFactory()));
         DatabaseDescriptor.instance.getTriggerExecutor().execute(bytes("k1"), makeCf(metadata, "v1", null));
     }
 
     @Test(expected = InvalidRequestException.class)
     public void differentKeyColumnFamilies() throws ConfigurationException, InvalidRequestException
     {
-        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", DifferentKeyTrigger.class.getName(), CFMetaDataFactory.instance));
+        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", DifferentKeyTrigger.class.getName(), databaseDescriptor.getCFMetaDataFactory()));
         DatabaseDescriptor.instance.getTriggerExecutor().execute(bytes("k1"), makeCf(metadata, "v1", null));
     }
 
     @Test
     public void noTriggerMutations() throws ConfigurationException, InvalidRequestException
     {
-        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", NoOpTrigger.class.getName(), CFMetaDataFactory.instance));
+        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", NoOpTrigger.class.getName(), databaseDescriptor.getCFMetaDataFactory()));
         Mutation rm = databaseDescriptor.getMutationFactory().create(bytes("k1"), makeCf(metadata, "v1", null));
         assertNull(DatabaseDescriptor.instance.getTriggerExecutor().execute(Collections.singletonList(rm)));
     }
@@ -78,7 +78,7 @@ public class TriggerExecutorTest
     @Test
     public void sameKeySameCfRowMutations() throws ConfigurationException, InvalidRequestException
     {
-        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeySameCfTrigger.class.getName(), CFMetaDataFactory.instance));
+        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeySameCfTrigger.class.getName(), databaseDescriptor.getCFMetaDataFactory()));
         ColumnFamily cf1 = makeCf(metadata, "k1v1", null);
         ColumnFamily cf2 = makeCf(metadata, "k2v1", null);
         Mutation rm1 = databaseDescriptor.getMutationFactory().create(bytes("k1"), cf1);
@@ -102,7 +102,7 @@ public class TriggerExecutorTest
     @Test
     public void sameKeySameCfPartialRowMutations() throws ConfigurationException, InvalidRequestException
     {
-        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeySameCfPartialTrigger.class.getName(), CFMetaDataFactory.instance));
+        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeySameCfPartialTrigger.class.getName(), databaseDescriptor.getCFMetaDataFactory()));
         ColumnFamily cf1 = makeCf(metadata, "k1v1", null);
         ColumnFamily cf2 = makeCf(metadata, "k2v1", null);
         Mutation rm1 = databaseDescriptor.getMutationFactory().create(bytes("k1"), cf1);
@@ -126,7 +126,7 @@ public class TriggerExecutorTest
     @Test
     public void sameKeyDifferentCfRowMutations() throws ConfigurationException, InvalidRequestException
     {
-        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeyDifferentCfTrigger.class.getName(), CFMetaDataFactory.instance));
+        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeyDifferentCfTrigger.class.getName(), databaseDescriptor.getCFMetaDataFactory()));
         ColumnFamily cf1 = makeCf(metadata, "k1v1", null);
         ColumnFamily cf2 = makeCf(metadata, "k2v1", null);
         Mutation rm1 = databaseDescriptor.getMutationFactory().create(bytes("k1"), cf1);
@@ -158,7 +158,7 @@ public class TriggerExecutorTest
     @Test
     public void sameKeyDifferentKsRowMutations() throws ConfigurationException, InvalidRequestException
     {
-        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeyDifferentKsTrigger.class.getName(), CFMetaDataFactory.instance));
+        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", SameKeyDifferentKsTrigger.class.getName(), databaseDescriptor.getCFMetaDataFactory()));
         ColumnFamily cf1 = makeCf(metadata, "k1v1", null);
         ColumnFamily cf2 = makeCf(metadata, "k2v1", null);
         Mutation rm1 = databaseDescriptor.getMutationFactory().create(bytes("k1"), cf1);
@@ -192,7 +192,7 @@ public class TriggerExecutorTest
     @Test
     public void differentKeyRowMutations() throws ConfigurationException, InvalidRequestException
     {
-        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", DifferentKeyTrigger.class.getName(), CFMetaDataFactory.instance));
+        CFMetaData metadata = makeCfMetaData("ks1", "cf1", TriggerDefinition.create("test", DifferentKeyTrigger.class.getName(), databaseDescriptor.getCFMetaDataFactory()));
         ColumnFamily cf = makeCf(metadata, "v1", null);
         Mutation rm = databaseDescriptor.getMutationFactory().create(UTF8Type.instance.fromString("k1"), cf);
 
@@ -217,7 +217,7 @@ public class TriggerExecutorTest
     private static CFMetaData makeCfMetaData(String ks, String cf, TriggerDefinition trigger)
     {
 
-        CFMetaData metadata = CFMetaDataFactory.instance.sparseCFMetaData(ks, cf, CompositeType.getInstance(UTF8Type.instance));
+        CFMetaData metadata = databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(ks, cf, CompositeType.getInstance(UTF8Type.instance));
 
         metadata.keyValidator(UTF8Type.instance);
         metadata.addOrReplaceColumnDefinition(ColumnDefinition.partitionKeyDef(metadata,

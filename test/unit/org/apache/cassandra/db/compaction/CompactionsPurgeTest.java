@@ -85,7 +85,7 @@ public class CompactionsPurgeTest
         SchemaLoader.createKeyspace(KEYSPACE_CQL,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
-                                    CFMetaDataFactory.instance.compile("CREATE TABLE " + CF_CQL + " ("
+                                    databaseDescriptor.getCFMetaDataFactory().compile("CREATE TABLE " + CF_CQL + " ("
                                                                       + "k int PRIMARY KEY,"
                                                                       + "v1 text,"
                                                                       + "v2 int"

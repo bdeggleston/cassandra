@@ -74,7 +74,7 @@ public class CompositeTypeTest
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
-                                    CFMetaDataFactory.instance.denseCFMetaData(KEYSPACE1, CF_STANDARDCOMPOSITE, composite));
+                                    databaseDescriptor.getCFMetaDataFactory().denseCFMetaData(KEYSPACE1, CF_STANDARDCOMPOSITE, composite));
     }
 
     @Test
