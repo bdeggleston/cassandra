@@ -188,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final SinkManager sinkManager;
     protected final StorageService storageService;
     protected final MessagingService messagingService;
     protected final PendingRangeCalculatorService pendingRangeCalculatorService;
@@ -246,6 +247,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        sinkManager = createSinkManager();
         storageService = createStorageService();
         messagingService = createMessagingService();
         pendingRangeCalculatorService = createPendingRangeCalculatorService();
@@ -1985,9 +1987,14 @@ public class DatabaseDescriptor
         return fileCacheService;
     }
 
+    public SinkManager createSinkManager()
+    {
+        return new SinkManager();
+    }
+
     public SinkManager getSinkManager()
     {
-        return SinkManager.instance;
+        return sinkManager;
     }
 
     public StatusLogger createStatusLogger()

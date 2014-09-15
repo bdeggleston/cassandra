@@ -89,7 +89,7 @@ public class RemoveTest
     @After
     public void tearDown()
     {
-        SinkManager.instance.clear();
+        databaseDescriptor.getSinkManager().clear();
         databaseDescriptor.getMessagingService().clearCallbacksUnsafe();
         databaseDescriptor.getMessagingService().shutdown();
     }

@@ -74,7 +74,7 @@ public class ValidatorTest
     @After
     public void tearDown()
     {
-        SinkManager.instance.clear();
+        databaseDescriptor.getSinkManager().clear();
     }
 
     @Test
@@ -84,7 +84,7 @@ public class ValidatorTest
         final RepairJobDesc desc = new RepairJobDesc(UUID.randomUUID(), UUID.randomUUID(), keyspace, columnFamily, range);
 
         final SimpleCondition lock = new SimpleCondition();
-        SinkManager.instance.add(new IMessageSink()
+        databaseDescriptor.getSinkManager().add(new IMessageSink()
         {
             @SuppressWarnings("unchecked")
             public MessageOut handleMessage(MessageOut message, int id, InetAddress to)
@@ -166,7 +166,7 @@ public class ValidatorTest
         final RepairJobDesc desc = new RepairJobDesc(UUID.randomUUID(), UUID.randomUUID(), keyspace, columnFamily, range);
 
         final SimpleCondition lock = new SimpleCondition();
-        SinkManager.instance.add(new IMessageSink()
+        databaseDescriptor.getSinkManager().add(new IMessageSink()
         {
             @SuppressWarnings("unchecked")
             public MessageOut handleMessage(MessageOut message, int id, InetAddress to)

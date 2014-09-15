@@ -81,7 +81,7 @@ public class DifferencerTest
     @After
     public void tearDown()
     {
-        SinkManager.instance.clear();
+        databaseDescriptor.getSinkManager().clear();
     }
 
     /**
@@ -93,7 +93,7 @@ public class DifferencerTest
         final InetAddress ep1 = InetAddress.getByName("127.0.0.1");
         final InetAddress ep2 = InetAddress.getByName("127.0.0.1");
 
-        SinkManager.instance.add(new IMessageSink()
+        databaseDescriptor.getSinkManager().add(new IMessageSink()
         {
             @SuppressWarnings("unchecked")
             public MessageOut handleMessage(MessageOut message, int id, InetAddress to)

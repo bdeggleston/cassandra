@@ -27,8 +27,6 @@ import org.apache.cassandra.net.MessageOut;
 
 public class SinkManager
 {
-    public static final SinkManager instance = new SinkManager();
-
     private final Set<IMessageSink> messageSinks = new CopyOnWriteArraySet<>();
     private final Set<IRequestSink> requestSinks = new CopyOnWriteArraySet<>();
 
