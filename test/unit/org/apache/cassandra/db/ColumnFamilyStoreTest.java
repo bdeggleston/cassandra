@@ -122,6 +122,8 @@ public class ColumnFamilyStoreTest
     public static final String CF_INDEX2 = "Indexed2";
     public static final String CF_INDEX3 = "Indexed3";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     static
     {
         Random random = new Random();
@@ -1793,7 +1795,7 @@ public class ColumnFamilyStoreTest
         assertEquals(1, sstables.size());
 
         Map.Entry<Descriptor, Set<Component>> sstableToOpen = sstables.entrySet().iterator().next();
-        final SSTableReader sstable1 = SSTableReaderFactory.instance.open(sstableToOpen.getKey());
+        final SSTableReader sstable1 = databaseDescriptor.getSSTableReaderFactory().open(sstableToOpen.getKey());
 
         // simulate incomplete compaction
         writer = new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),
@@ -1821,7 +1823,7 @@ public class ColumnFamilyStoreTest
 
         UUID compactionTaskID = SystemKeyspace.instance.startCompaction(
                 KeyspaceManager.instance.open(ks).getColumnFamilyStore(cf),
-                Collections.singleton(SSTableReaderFactory.instance.open(sstable1.descriptor)));
+                Collections.singleton(databaseDescriptor.getSSTableReaderFactory().open(sstable1.descriptor)));
 
         Map<Integer, UUID> unfinishedCompaction = new HashMap<>();
         unfinishedCompaction.put(sstable1.descriptor.generation, compactionTaskID);
@@ -1876,7 +1878,7 @@ public class ColumnFamilyStoreTest
         assert sstables.size() == 1;
 
         Map.Entry<Descriptor, Set<Component>> sstableToOpen = sstables.entrySet().iterator().next();
-        final SSTableReader sstable1 = SSTableReaderFactory.instance.open(sstableToOpen.getKey());
+        final SSTableReader sstable1 = databaseDescriptor.getSSTableReaderFactory().open(sstableToOpen.getKey());
 
         // simulate we don't have generation in compaction_history
         Map<Integer, UUID> unfinishedCompactions = new HashMap<>();

@@ -27,7 +27,6 @@ import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -64,6 +63,8 @@ public class SSTableExportTest
     public static final String CF_COUNTER = "Counter1";
     public static final String CF_UUID = "UUIDKeys";
     public static final String CF_VALSWITHQUOTES = "ValuesWithQuotes";
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException, IOException, TException
@@ -206,7 +207,7 @@ public class SSTableExportTest
         File tempSS2 = tempSSTableFile(KEYSPACE1, "Standard1");
         new SSTableImport().importJson(tempJson.getPath(), KEYSPACE1, "Standard1", tempSS2.getPath());
 
-        reader = SSTableReaderFactory.instance.open(Descriptor.fromFilename(tempSS2.getPath()));
+        reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS2.getPath()));
         QueryFilter qf = Util.namesQueryFilter(cfs, Util.dk("rowA"), "name");
         ColumnFamily cf = qf.getSSTableColumnIterator(reader).getColumnFamily();
         qf.collateOnDiskAtom(cf, qf.getSSTableColumnIterator(reader), Integer.MIN_VALUE);

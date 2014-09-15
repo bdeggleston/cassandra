@@ -236,7 +236,7 @@ public class ScrubTest
 
         try
         {
-            SSTableReaderFactory.instance.open(desc, metadata);
+            DatabaseDescriptor.instance.getSSTableReaderFactory().open(desc, metadata);
             fail("SSTR validation should have caught the out-of-order rows");
         }
         catch (IllegalStateException ise) { /* this is expected */ }
@@ -250,7 +250,7 @@ public class ScrubTest
         components.add(Component.STATS);
         components.add(Component.SUMMARY);
         components.add(Component.TOC);
-        SSTableReader sstable = SSTableReaderFactory.instance.openNoValidation(desc, components, metadata);
+        SSTableReader sstable = DatabaseDescriptor.instance.getSSTableReaderFactory().openNoValidation(desc, components, metadata);
 
         Scrubber scrubber = new Scrubber(cfs, sstable, CompactionManager.instance, false, true, DatabaseDescriptor.instance, DBConfig.instance, StorageService.instance);
         scrubber.scrub();

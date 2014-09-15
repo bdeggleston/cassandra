@@ -27,8 +27,6 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaDataFactory;
 import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.KeyspaceManager;
-import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -47,6 +45,8 @@ import static org.junit.Assert.assertFalse;
 
 public class CQLSSTableWriterTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void setup() throws Exception
     {
@@ -96,7 +96,7 @@ public class CQLSSTableWriterTest
             {
                 return Schema.instance.getCFMetaData(keyspace, cfName);
             }
-        }, new OutputHandler.SystemOutput(false, false), DatabaseDescriptor.instance, SSTableReaderFactory.instance);
+        }, new OutputHandler.SystemOutput(false, false), DatabaseDescriptor.instance, databaseDescriptor.getSSTableReaderFactory());
 
         loader.stream().get();
 

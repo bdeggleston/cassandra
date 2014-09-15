@@ -79,7 +79,7 @@ public class StandaloneScrubber
 
                 try
                 {
-                    SSTableReader sstable = SSTableReaderFactory.instance.openNoValidation(entry.getKey(), components, cfs.metadata);
+                    SSTableReader sstable = DatabaseDescriptor.instance.getSSTableReaderFactory().openNoValidation(entry.getKey(), components, cfs.metadata);
                     sstables.add(sstable);
 
                     File snapshotDirectory = Directories.getSnapshotDirectory(sstable.descriptor, snapshotName);

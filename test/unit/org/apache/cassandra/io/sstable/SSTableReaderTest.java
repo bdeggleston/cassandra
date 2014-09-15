@@ -39,7 +39,6 @@ import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.locator.SimpleStrategy;
-import org.apache.cassandra.service.FileCacheService;
 import org.apache.cassandra.tracing.Tracing;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -61,8 +60,6 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.FileDataInput;
 import org.apache.cassandra.io.util.MmappedSegmentedFile;
 import org.apache.cassandra.io.util.SegmentedFile;
-import org.apache.cassandra.service.CacheService;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
 
@@ -290,7 +287,7 @@ public class SSTableReaderTest
         Descriptor desc = sstable.descriptor;
 
         // test to see if sstable can be opened as expected
-        SSTableReader target = SSTableReaderFactory.instance.open(desc);
+        SSTableReader target = databaseDescriptor.getSSTableReaderFactory().open(desc);
         Assert.assertEquals(target.getIndexSummarySize(), 1);
         Assert.assertArrayEquals(ByteBufferUtil.getArray(firstKey.getKey()), target.getIndexSummaryKey(0));
         assert target.first.equals(firstKey);
@@ -319,7 +316,7 @@ public class SSTableReaderTest
                                           : SegmentedFile.getBuilder(DatabaseDescriptor.instance.getDiskAccessMode(), databaseDescriptor.getFileCacheService(), DatabaseDescriptor.instance.getDiskAccessMode());
         sstable.saveSummary(ibuilder, dbuilder);
 
-        SSTableReader reopened = SSTableReaderFactory.instance.open(sstable.descriptor);
+        SSTableReader reopened = databaseDescriptor.getSSTableReaderFactory().open(sstable.descriptor);
         assert reopened.first.getToken() instanceof LocalToken;
     }
 
@@ -375,7 +372,7 @@ public class SSTableReaderTest
 
         // re-open the same sstable as it would be during bulk loading
         Set<Component> components = Sets.newHashSet(Component.DATA, Component.PRIMARY_INDEX);
-        SSTableReader bulkLoaded = SSTableReaderFactory.instance.openForBatch(sstable.descriptor, components, store.metadata, sstable.partitioner);
+        SSTableReader bulkLoaded = databaseDescriptor.getSSTableReaderFactory().openForBatch(sstable.descriptor, components, store.metadata, sstable.partitioner);
         sections = bulkLoaded.getPositionsForRanges(ranges);
         assert sections.size() == 1 : "Expected to find range in sstable opened for bulk loading";
     }

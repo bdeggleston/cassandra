@@ -31,7 +31,6 @@ import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.streaming.StreamManager;
-import org.apache.cassandra.tracing.Tracing;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -62,6 +61,8 @@ public class LegacySSTableTest
 
     public static Set<String> TEST_DATA;
     public static File LEGACY_SSTABLE_ROOT;
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -126,7 +127,7 @@ public class LegacySSTableTest
 
     private void testStreaming(String version) throws Exception
     {
-        SSTableReader sstable = SSTableReaderFactory.instance.open(getDescriptor(version));
+        SSTableReader sstable = databaseDescriptor.getSSTableReaderFactory().open(getDescriptor(version));
         IPartitioner p = LocatorConfig.instance.getPartitioner();
         List<Range<Token>> ranges = new ArrayList<>();
         ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("100")), LocatorConfig.instance.getPartitioner()));
@@ -176,7 +177,7 @@ public class LegacySSTableTest
     {
         try
         {
-            SSTableReader reader = SSTableReaderFactory.instance.open(getDescriptor(version));
+            SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(getDescriptor(version));
             CellNameType type = reader.metadata.comparator;
             for (String keystring : TEST_DATA)
             {

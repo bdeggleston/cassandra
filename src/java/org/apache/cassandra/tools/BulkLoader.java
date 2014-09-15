@@ -93,7 +93,7 @@ public class BulkLoader
                 handler,
                 options.connectionsPerHost,
                 DatabaseDescriptor.instance,
-                SSTableReaderFactory.instance);
+                DatabaseDescriptor.instance.getSSTableReaderFactory());
         DatabaseDescriptor.instance.setStreamThroughputOutboundMegabitsPerSec(options.throttle);
         StreamResultFuture future = null;
 

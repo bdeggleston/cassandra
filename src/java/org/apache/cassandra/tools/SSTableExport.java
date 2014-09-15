@@ -23,7 +23,6 @@ import java.io.PrintStream;
 import java.util.*;
 
 import org.apache.cassandra.locator.LocatorConfig;
-import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.CFMetaData;
@@ -53,6 +52,8 @@ public class SSTableExport
 
     private static final Options options = new Options();
     private static CommandLine cmd;
+
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     static
     {
@@ -262,7 +263,7 @@ public class SSTableExport
      */
     public static void export(Descriptor desc, PrintStream outs, Collection<String> toExport, String[] excludes, CFMetaData metadata) throws IOException
     {
-        SSTableReader sstable = SSTableReaderFactory.instance.open(desc);
+        SSTableReader sstable = databaseDescriptor.getSSTableReaderFactory().open(desc);
         RandomAccessReader dfile = sstable.openDataReader();
         try
         {
@@ -368,7 +369,7 @@ public class SSTableExport
      */
     public static void export(Descriptor desc, PrintStream outs, String[] excludes, CFMetaData metadata) throws IOException
     {
-        export(SSTableReaderFactory.instance.open(desc), outs, excludes, metadata);
+        export(databaseDescriptor.getSSTableReaderFactory().open(desc), outs, excludes, metadata);
     }
 
     /**

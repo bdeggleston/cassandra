@@ -50,6 +50,8 @@ public class SSTableLoaderTest
     public static final String KEYSPACE1 = "SSTableLoaderTest";
     public static final String CF_STANDARD = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     @BeforeClass
     public static void defineSchema() throws Exception
     {
@@ -95,7 +97,7 @@ public class SSTableLoaderTest
             {
                 return Schema.instance.getCFMetaData(keyspace, cfName);
             }
-        }, new OutputHandler.SystemOutput(false, false), DatabaseDescriptor.instance, SSTableReaderFactory.instance);
+        }, new OutputHandler.SystemOutput(false, false), DatabaseDescriptor.instance, databaseDescriptor.getSSTableReaderFactory());
 
         loader.stream().get();
 

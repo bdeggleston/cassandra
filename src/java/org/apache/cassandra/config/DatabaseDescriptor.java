@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final SSTableReaderFactory ssTableReaderFactory;
     protected final CacheService cacheService;
     protected final FileCacheService fileCacheService;
     protected final PaxosManager paxosManager;
@@ -213,6 +214,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        ssTableReaderFactory = createSSTableReaderFactory();
         cacheService = createCacheService();
         fileCacheService = createFileCacheService();
         paxosManager = createPaxosManager();
@@ -1725,9 +1727,14 @@ public class DatabaseDescriptor
         return LocatorConfig.instance;
     }
 
+    public SSTableReaderFactory createSSTableReaderFactory()
+    {
+        return new SSTableReaderFactory(this);
+    }
+
     public SSTableReaderFactory getSSTableReaderFactory()
     {
-        return SSTableReaderFactory.instance;
+        return ssTableReaderFactory;
     }
 
     public SSTableWriterFactory getSSTableWriterFactory()

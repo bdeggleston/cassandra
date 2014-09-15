@@ -34,8 +34,6 @@ public class SSTableReaderFactory
 {
     private static final Logger logger = LoggerFactory.getLogger(SSTableReaderFactory.class);
 
-    public static final SSTableReaderFactory instance = new SSTableReaderFactory(DatabaseDescriptor.instance);
-
     private final DatabaseDescriptor databaseDescriptor;
 
     public SSTableReaderFactory(DatabaseDescriptor databaseDescriptor)

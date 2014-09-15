@@ -72,7 +72,7 @@ public class StandaloneUpgrader
 
                 try
                 {
-                    SSTableReader sstable = SSTableReaderFactory.instance.openNoValidation(entry.getKey(), components, cfs.metadata);
+                    SSTableReader sstable = DatabaseDescriptor.instance.getSSTableReaderFactory().openNoValidation(entry.getKey(), components, cfs.metadata);
                     if (sstable.descriptor.version.equals(Descriptor.Version.CURRENT))
                         continue;
                     readers.add(sstable);
