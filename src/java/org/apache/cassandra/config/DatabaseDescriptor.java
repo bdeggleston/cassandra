@@ -188,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final LoadBroadcaster loadBroadcaster;
     protected final ActiveRepairService activeRepairService;
     protected final StorageProxy storageProxy;
     protected final Gossiper gossiper;
@@ -239,6 +240,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        loadBroadcaster = createLoadBroadcaster();
         activeRepairService = createActiveRepairService();
         storageProxy = createStorageProxy();
         gossiper = createGossiper();
@@ -1971,9 +1973,14 @@ public class DatabaseDescriptor
         return hintedHandOffManager;
     }
 
+    public LoadBroadcaster createLoadBroadcaster()
+    {
+        return new LoadBroadcaster(this, getGossiper());
+    }
+
     public LoadBroadcaster getLoadBroadcaster()
     {
-        return LoadBroadcaster.instance;
+        return loadBroadcaster;
     }
 
     public BatchlogManager createBatchlogManager()
