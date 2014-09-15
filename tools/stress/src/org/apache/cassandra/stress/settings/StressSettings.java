@@ -158,7 +158,7 @@ public class StressSettings implements Serializable
             SimpleClient client = new SimpleClient(currentNode, port.nativePort, Message.Type.getCodecMap(DatabaseDescriptor.instance,
                                                                                                           Tracing.instance,
                                                                                                           DatabaseDescriptor.instance.getSchema(),
-                                                                                                          Auth.instance.getAuthenticator(),
+                                                                                                          DatabaseDescriptor.instance.getAuth().getAuthenticator(),
                                                                                                           QueryHandlerInstance.instance,
                                                                                                           DatabaseDescriptor.instance.getQueryProcessor(),
                                                                                                           KeyspaceManager.instance,
@@ -170,7 +170,7 @@ public class StressSettings implements Serializable
                                                                                                           LocatorConfig.instance),
                                                    DatabaseDescriptor.instance,
                                                    Tracing.instance,
-                                                   Auth.instance,
+                                                   DatabaseDescriptor.instance.getAuth(),
                                                    QueryHandlerInstance.instance);
             client.connect(false);
             client.execute("USE \"" + schema.keyspace + "\";", org.apache.cassandra.db.ConsistencyLevel.ONE);

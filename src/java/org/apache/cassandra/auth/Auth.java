@@ -57,31 +57,6 @@ public class Auth
 {
     private static final Logger logger = LoggerFactory.getLogger(Auth.class);
 
-    public static final Auth instance;
-    static
-    {
-        Auth auth = null;
-
-        try
-        {
-            auth = new Auth(DatabaseDescriptor.instance.getConfig(), DatabaseDescriptor.instance);
-        }
-        catch (ConfigurationException e)
-        {
-            logger.error("Fatal configuration error", e);
-            System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
-            System.exit(1);
-        }
-        catch (Exception e)
-        {
-            logger.error("Fatal error during configuration loading", e);
-            System.err.println(e.getMessage() + "\nFatal error during configuration loading; unable to start. See log for stacktrace.");
-            System.exit(1);
-        }
-
-        instance = auth;
-    }
-
     public static final String DEFAULT_SUPERUSER_NAME = "cassandra";
 
     private static final long SUPERUSER_SETUP_DELAY = Long.getLong("cassandra.superuser_setup_delay_ms", 10000);

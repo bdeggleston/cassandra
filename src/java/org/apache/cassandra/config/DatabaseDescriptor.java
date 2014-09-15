@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final Auth auth;
     protected final Schema schema;
     protected final QueryProcessor queryProcessor;
     protected final BatchlogManager batchlogManager;
@@ -223,6 +224,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        auth = createAuth();
         schema = createSchema();
         queryProcessor = createQueryProcessor();
         batchlogManager = createBatchlogManager();
@@ -1610,9 +1612,14 @@ public class DatabaseDescriptor
 
     // singleton getters
 
+    public Auth createAuth() throws ConfigurationException
+    {
+        return new Auth(conf, this);
+    }
+
     public Auth getAuth()
     {
-        return Auth.instance;
+        return auth;
     }
 
     public KSMetaDataFactory getKSMetaDataFactory()

@@ -391,7 +391,7 @@ public class CassandraDaemon
         int listenBacklog = DatabaseDescriptor.instance.getRpcListenBacklog();
         thriftServer = new ThriftServer(rpcAddr, rpcPort, listenBacklog,
                                         DatabaseDescriptor.instance, Tracing.instance,
-                                        DatabaseDescriptor.instance.getSchema(), Auth.instance, StorageProxy.instance,
+                                        DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getAuth(), StorageProxy.instance,
                                         MessagingService.instance, KeyspaceManager.instance,
                                         MutationFactory.instance, CounterMutationFactory.instance,
                                         StorageService.instance, CFMetaDataFactory.instance,
@@ -407,7 +407,7 @@ public class CassandraDaemon
         Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
                                                                            Tracing.instance,
                                                                            DatabaseDescriptor.instance.getSchema(),
-                                                                           Auth.instance.getAuthenticator(),
+                                                                           DatabaseDescriptor.instance.getAuth().getAuthenticator(),
                                                                            QueryHandlerInstance.instance,
                                                                            DatabaseDescriptor.instance.getQueryProcessor(),
                                                                            KeyspaceManager.instance,
@@ -418,7 +418,7 @@ public class CassandraDaemon
                                                                            DBConfig.instance,
                                                                            LocatorConfig.instance);
         nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort, codecs, DatabaseDescriptor.instance, Tracing.instance,
-                                                                 Auth.instance, ClientMetrics.instance, StorageService.instance,
+                                                                 DatabaseDescriptor.instance.getAuth(), ClientMetrics.instance, StorageService.instance,
                                                                  DatabaseDescriptor.instance.getMigrationManager());
     }
 

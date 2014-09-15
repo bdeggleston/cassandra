@@ -258,7 +258,7 @@ public class Client extends SimpleClient
         Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
                                                                            Tracing.instance,
                                                                            DatabaseDescriptor.instance.getSchema(),
-                                                                           Auth.instance.getAuthenticator(),
+                                                                           DatabaseDescriptor.instance.getAuth().getAuthenticator(),
                                                                            QueryHandlerInstance.instance,
                                                                            DatabaseDescriptor.instance.getQueryProcessor(),
                                                                            KeyspaceManager.instance,
@@ -268,7 +268,7 @@ public class Client extends SimpleClient
                                                                            MessagingService.instance,
                                                                            DBConfig.instance,
                                                                            LocatorConfig.instance);
-        new Client(host, port, encryptionOptions, codecs, DatabaseDescriptor.instance, Tracing.instance, Auth.instance, QueryHandlerInstance.instance).run();
+        new Client(host, port, encryptionOptions, codecs, DatabaseDescriptor.instance, Tracing.instance, DatabaseDescriptor.instance.getAuth(), QueryHandlerInstance.instance).run();
         System.exit(0);
     }
 }
