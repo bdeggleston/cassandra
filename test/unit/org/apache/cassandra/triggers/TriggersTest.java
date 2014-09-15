@@ -81,7 +81,7 @@ public class TriggersTest
             thriftServer = new ThriftServer(InetAddress.getLocalHost(), 9170, 50,
                                             DatabaseDescriptor.instance, databaseDescriptor.getTracing(),
                                             databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), databaseDescriptor.getStorageProxy(),
-                                            MessagingService.instance, databaseDescriptor.getKeyspaceManager(),
+                                            databaseDescriptor.getMessagingService(), databaseDescriptor.getKeyspaceManager(),
                                             databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
                                             StorageService.instance, databaseDescriptor.getCFMetaDataFactory(),
                                             DatabaseDescriptor.instance.getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),

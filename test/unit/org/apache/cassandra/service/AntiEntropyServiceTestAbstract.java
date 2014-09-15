@@ -119,7 +119,7 @@ public abstract class AntiEntropyServiceTestAbstract
         tmd.updateNormalToken(databaseDescriptor.getLocatorConfig().getPartitioner().getMinimumToken(), REMOTE);
         assert tmd.isMember(REMOTE);
 
-        MessagingService.instance.setVersion(REMOTE, MessagingService.current_version);
+        databaseDescriptor.getMessagingService().setVersion(REMOTE, MessagingService.current_version);
         databaseDescriptor.getGossiper().initializeNodeUnsafe(REMOTE, UUID.randomUUID(), 1);
 
         local_range = databaseDescriptor.getLocatorConfig().getPrimaryRangesForEndpoint(keyspaceName, LOCAL).iterator().next();

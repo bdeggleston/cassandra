@@ -108,13 +108,13 @@ public class EC2SnitchTest
         InetAddress me = InetAddress.getByName("127.0.0.2");
         InetAddress com_ip = InetAddress.getByName("127.0.0.3");
 
-        OutboundTcpConnectionPool pool = MessagingService.instance.getConnectionPool(me);
+        OutboundTcpConnectionPool pool = databaseDescriptor.getMessagingService().getConnectionPool(me);
         Assert.assertEquals(me, pool.endPoint());
         pool.reset(com_ip);
         Assert.assertEquals(com_ip, pool.endPoint());
 
-        MessagingService.instance.destroyConnectionPool(me);
-        pool = MessagingService.instance.getConnectionPool(me);
+        databaseDescriptor.getMessagingService().destroyConnectionPool(me);
+        pool = databaseDescriptor.getMessagingService().getConnectionPool(me);
         Assert.assertEquals(com_ip, pool.endPoint());
     }
 

@@ -268,15 +268,6 @@ public final class MessagingService implements MessagingServiceMBean
     // protocol versions of the other nodes in the cluster
     private final ConcurrentMap<InetAddress, Integer> versions = new NonBlockingHashMap<InetAddress, Integer>();
 
-    public static final MessagingService instance = create(DatabaseDescriptor.instance,
-                                                           DatabaseDescriptor.instance.getSchema(),
-                                                           DatabaseDescriptor.instance.getStageManager(),
-                                                           StorageServiceExecutors.instance,
-                                                           DatabaseDescriptor.instance.getStorageProxy(),
-                                                           DatabaseDescriptor.instance.getKeyspaceManager(),
-                                                           DatabaseDescriptor.instance.getMutationFactory(),
-                                                           DatabaseDescriptor.instance.getLocatorConfig(),
-                                                           DatabaseDescriptor.instance.getDBConfig());
     private final MessageOut closeSentinel;
 
     private final DatabaseDescriptor databaseDescriptor;

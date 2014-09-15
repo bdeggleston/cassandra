@@ -68,8 +68,8 @@ public class SerializationsTest extends AbstractSerializationsTester
     public SliceQueryFilter emptyRangePred = new SliceQueryFilter(emptyCol, emptyCol, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
     public SliceQueryFilter nonEmptyRangePred = new SliceQueryFilter(CellNames.simpleDense(startCol), CellNames.simpleDense(stopCol), true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
     public SliceQueryFilter nonEmptyRangeSCPred = new SliceQueryFilter(CellNames.compositeDense(statics.SC, startCol), CellNames.compositeDense(statics.SC, stopCol), true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
-    public SliceByNamesReadCommand.Serializer slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getLocatorConfig().getPartitioner(), MessagingService.instance.readCommandSerializer);
-    public SliceFromReadCommand.Serializer slicefromReadSerializer = new SliceFromReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getLocatorConfig().getPartitioner(), MessagingService.instance.readCommandSerializer);
+    public SliceByNamesReadCommand.Serializer slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getLocatorConfig().getPartitioner(), databaseDescriptor.getMessagingService().readCommandSerializer);
+    public SliceFromReadCommand.Serializer slicefromReadSerializer = new SliceFromReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), databaseDescriptor.getLocatorConfig().getPartitioner(), databaseDescriptor.getMessagingService().readCommandSerializer);
 
     public static void defineSchema() throws ConfigurationException
     {
@@ -92,20 +92,20 @@ public class SerializationsTest extends AbstractSerializationsTester
         IPartitioner part = databaseDescriptor.getLocatorConfig().getPartitioner();
         AbstractBounds<RowPosition> bounds = new Range<Token>(part.getRandomToken(), part.getRandomToken(), databaseDescriptor.getLocatorConfig().getPartitioner()).toRowBounds();
 
-        RangeSliceCommand.Serializer serializer = MessagingService.instance.rangeSliceCommandSerializer;
+        RangeSliceCommand.Serializer serializer = databaseDescriptor.getMessagingService().rangeSliceCommandSerializer;
 
         RangeSliceCommand namesCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, namesPred, bounds, 100, DatabaseDescriptor.instance, databaseDescriptor.getKeyspaceManager(), serializer);
-        MessageOut<RangeSliceCommand> namesCmdMsg = namesCmd.createMessage(MessagingService.instance);
+        MessageOut<RangeSliceCommand> namesCmdMsg = namesCmd.createMessage(databaseDescriptor.getMessagingService());
         RangeSliceCommand emptyRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, emptyRangePred, bounds, 100, DatabaseDescriptor.instance, databaseDescriptor.getKeyspaceManager(), serializer);
-        MessageOut<RangeSliceCommand> emptyRangeCmdMsg = emptyRangeCmd.createMessage(MessagingService.instance);
+        MessageOut<RangeSliceCommand> emptyRangeCmdMsg = emptyRangeCmd.createMessage(databaseDescriptor.getMessagingService());
         RangeSliceCommand regRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, nonEmptyRangePred, bounds, 100, DatabaseDescriptor.instance, databaseDescriptor.getKeyspaceManager(), serializer);
-        MessageOut<RangeSliceCommand> regRangeCmdMsg = regRangeCmd.createMessage(MessagingService.instance);
+        MessageOut<RangeSliceCommand> regRangeCmdMsg = regRangeCmd.createMessage(databaseDescriptor.getMessagingService());
         RangeSliceCommand namesCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, namesSCPred, bounds, 100, DatabaseDescriptor.instance, databaseDescriptor.getKeyspaceManager(), serializer);
-        MessageOut<RangeSliceCommand> namesCmdSupMsg = namesCmdSup.createMessage(MessagingService.instance);
+        MessageOut<RangeSliceCommand> namesCmdSupMsg = namesCmdSup.createMessage(databaseDescriptor.getMessagingService());
         RangeSliceCommand emptyRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, emptyRangePred, bounds, 100, DatabaseDescriptor.instance, databaseDescriptor.getKeyspaceManager(), serializer);
-        MessageOut<RangeSliceCommand> emptyRangeCmdSupMsg = emptyRangeCmdSup.createMessage(MessagingService.instance);
+        MessageOut<RangeSliceCommand> emptyRangeCmdSupMsg = emptyRangeCmdSup.createMessage(databaseDescriptor.getMessagingService());
         RangeSliceCommand regRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, nonEmptyRangeSCPred, bounds, 100, DatabaseDescriptor.instance, databaseDescriptor.getKeyspaceManager(), serializer);
-        MessageOut<RangeSliceCommand> regRangeCmdSupMsg = regRangeCmdSup.createMessage(MessagingService.instance);
+        MessageOut<RangeSliceCommand> regRangeCmdSupMsg = regRangeCmdSup.createMessage(databaseDescriptor.getMessagingService());
 
         DataOutputStreamAndChannel out = getOutput("db.RangeSliceCommand.bin");
         namesCmdMsg.serialize(out, getVersion());
@@ -133,7 +133,7 @@ public class SerializationsTest extends AbstractSerializationsTester
 
         DataInputStream in = getInput("db.RangeSliceCommand.bin");
         for (int i = 0; i < 6; i++)
-            MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance);
+            MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, databaseDescriptor.getMessagingService());
         in.close();
     }
 
@@ -146,7 +146,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                           namesPred, DatabaseDescriptor.instance,
                                                                           databaseDescriptor.getSchema(),
                                                                           databaseDescriptor.getLocatorConfig().getPartitioner(),
-                                                                          MessagingService.instance.readCommandSerializer);
+                                                                          databaseDescriptor.getMessagingService().readCommandSerializer);
         SliceByNamesReadCommand superCmd = new SliceByNamesReadCommand(statics.KS,
                                                                        statics.Key,
                                                                        statics.SuperCF,
@@ -154,15 +154,15 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                        namesSCPred, DatabaseDescriptor.instance,
                                                                        databaseDescriptor.getSchema(),
                                                                        databaseDescriptor.getLocatorConfig().getPartitioner(),
-                                                                       MessagingService.instance.readCommandSerializer);
+                                                                       databaseDescriptor.getMessagingService().readCommandSerializer);
 
         DataOutputStreamAndChannel out = getOutput("db.SliceByNamesReadCommand.bin");
         slicesByNamesSerializer.serialize(standardCmd, out, getVersion());
         slicesByNamesSerializer.serialize(superCmd, out, getVersion());
-        MessagingService.instance.readCommandSerializer.serialize(standardCmd, out, getVersion());
-        MessagingService.instance.readCommandSerializer.serialize(superCmd, out, getVersion());
-        standardCmd.createMessage(MessagingService.instance).serialize(out, getVersion());
-        superCmd.createMessage(MessagingService.instance).serialize(out, getVersion());
+        databaseDescriptor.getMessagingService().readCommandSerializer.serialize(standardCmd, out, getVersion());
+        databaseDescriptor.getMessagingService().readCommandSerializer.serialize(superCmd, out, getVersion());
+        standardCmd.createMessage(databaseDescriptor.getMessagingService()).serialize(out, getVersion());
+        superCmd.createMessage(databaseDescriptor.getMessagingService()).serialize(out, getVersion());
         out.close();
 
         // test serializedSize
@@ -179,10 +179,10 @@ public class SerializationsTest extends AbstractSerializationsTester
         DataInputStream in = getInput("db.SliceByNamesReadCommand.bin");
         assert slicesByNamesSerializer.deserialize(in, getVersion()) != null;
         assert slicesByNamesSerializer.deserialize(in, getVersion()) != null;
-        assert MessagingService.instance.readCommandSerializer.deserialize(in, getVersion()) != null;
-        assert MessagingService.instance.readCommandSerializer.deserialize(in, getVersion()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
+        assert databaseDescriptor.getMessagingService().readCommandSerializer.deserialize(in, getVersion()) != null;
+        assert databaseDescriptor.getMessagingService().readCommandSerializer.deserialize(in, getVersion()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, databaseDescriptor.getMessagingService()) != null;
         in.close();
     }
 
@@ -195,7 +195,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                     nonEmptyRangePred, DatabaseDescriptor.instance,
                                                                     databaseDescriptor.getSchema(),
                                                                     databaseDescriptor.getLocatorConfig().getPartitioner(),
-                                                                    MessagingService.instance.readCommandSerializer);
+                                                                    databaseDescriptor.getMessagingService().readCommandSerializer);
         SliceFromReadCommand superCmd = new SliceFromReadCommand(statics.KS,
                                                                  statics.Key,
                                                                  statics.SuperCF,
@@ -203,15 +203,15 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                  nonEmptyRangeSCPred, DatabaseDescriptor.instance,
                                                                  databaseDescriptor.getSchema(),
                                                                  databaseDescriptor.getLocatorConfig().getPartitioner(),
-                                                                 MessagingService.instance.readCommandSerializer);
+                                                                 databaseDescriptor.getMessagingService().readCommandSerializer);
 
         DataOutputStreamAndChannel out = getOutput("db.SliceFromReadCommand.bin");
         slicefromReadSerializer.serialize(standardCmd, out, getVersion());
         slicefromReadSerializer.serialize(superCmd, out, getVersion());
-        MessagingService.instance.readCommandSerializer.serialize(standardCmd, out, getVersion());
-        MessagingService.instance.readCommandSerializer.serialize(superCmd, out, getVersion());
-        standardCmd.createMessage(MessagingService.instance).serialize(out, getVersion());
-        superCmd.createMessage(MessagingService.instance).serialize(out, getVersion());
+        databaseDescriptor.getMessagingService().readCommandSerializer.serialize(standardCmd, out, getVersion());
+        databaseDescriptor.getMessagingService().readCommandSerializer.serialize(superCmd, out, getVersion());
+        standardCmd.createMessage(databaseDescriptor.getMessagingService()).serialize(out, getVersion());
+        superCmd.createMessage(databaseDescriptor.getMessagingService()).serialize(out, getVersion());
 
         out.close();
 
@@ -229,10 +229,10 @@ public class SerializationsTest extends AbstractSerializationsTester
         DataInputStream in = getInput("db.SliceFromReadCommand.bin");
         assert slicefromReadSerializer.deserialize(in, getVersion()) != null;
         assert slicefromReadSerializer.deserialize(in, getVersion()) != null;
-        assert MessagingService.instance.readCommandSerializer.deserialize(in, getVersion()) != null;
-        assert MessagingService.instance.readCommandSerializer.deserialize(in, getVersion()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
+        assert databaseDescriptor.getMessagingService().readCommandSerializer.deserialize(in, getVersion()) != null;
+        assert databaseDescriptor.getMessagingService().readCommandSerializer.deserialize(in, getVersion()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, databaseDescriptor.getMessagingService()) != null;
         in.close();
     }
 
@@ -282,11 +282,11 @@ public class SerializationsTest extends AbstractSerializationsTester
         databaseDescriptor.getMutationFactory().serializer.serialize(superRm, out, getVersion());
         databaseDescriptor.getMutationFactory().serializer.serialize(mixedRm, out, getVersion());
 
-        standardRowRm.createMessage(MessagingService.instance).serialize(out, getVersion());
-        superRowRm.createMessage(MessagingService.instance).serialize(out, getVersion());
-        standardRm.createMessage(MessagingService.instance).serialize(out, getVersion());
-        superRm.createMessage(MessagingService.instance).serialize(out, getVersion());
-        mixedRm.createMessage(MessagingService.instance).serialize(out, getVersion());
+        standardRowRm.createMessage(databaseDescriptor.getMessagingService()).serialize(out, getVersion());
+        superRowRm.createMessage(databaseDescriptor.getMessagingService()).serialize(out, getVersion());
+        standardRm.createMessage(databaseDescriptor.getMessagingService()).serialize(out, getVersion());
+        superRm.createMessage(databaseDescriptor.getMessagingService()).serialize(out, getVersion());
+        mixedRm.createMessage(databaseDescriptor.getMessagingService()).serialize(out, getVersion());
 
         out.close();
 
@@ -311,11 +311,11 @@ public class SerializationsTest extends AbstractSerializationsTester
         assert databaseDescriptor.getMutationFactory().serializer.deserialize(in, getVersion()) != null;
         assert databaseDescriptor.getMutationFactory().serializer.deserialize(in, getVersion()) != null;
         assert databaseDescriptor.getMutationFactory().serializer.deserialize(in, getVersion()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, databaseDescriptor.getMessagingService()) != null;
         in.close();
     }
 
@@ -329,9 +329,9 @@ public class SerializationsTest extends AbstractSerializationsTester
         TruncateResponse.serializer.serialize(aff, out, getVersion());
         TruncateResponse.serializer.serialize(neg, out, getVersion());
 
-        tr.createMessage(MessagingService.instance).serialize(out, getVersion());
-        aff.createMessage(MessagingService.instance).serialize(out, getVersion());
-        neg.createMessage(MessagingService.instance).serialize(out, getVersion());
+        tr.createMessage(databaseDescriptor.getMessagingService()).serialize(out, getVersion());
+        aff.createMessage(databaseDescriptor.getMessagingService()).serialize(out, getVersion());
+        neg.createMessage(databaseDescriptor.getMessagingService()).serialize(out, getVersion());
         // todo: notice how CF names weren't validated.
         out.close();
 
@@ -351,14 +351,14 @@ public class SerializationsTest extends AbstractSerializationsTester
         assert Truncation.serializer.deserialize(in, getVersion()) != null;
         assert TruncateResponse.serializer.deserialize(in, getVersion()) != null;
         assert TruncateResponse.serializer.deserialize(in, getVersion()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, databaseDescriptor.getMessagingService()) != null;
 
         // set up some fake callbacks so deserialization knows that what it's deserializing is a TruncateResponse
-        MessagingService.instance.setCallbackForTests(1, new CallbackInfo(null, null, TruncateResponse.serializer));
-        MessagingService.instance.setCallbackForTests(2, new CallbackInfo(null, null, TruncateResponse.serializer));
+        databaseDescriptor.getMessagingService().setCallbackForTests(1, new CallbackInfo(null, null, TruncateResponse.serializer));
+        databaseDescriptor.getMessagingService().setCallbackForTests(2, new CallbackInfo(null, null, TruncateResponse.serializer));
 
-        assert MessageIn.read(in, getVersion(), 1, DatabaseDescriptor.instance, MessagingService.instance) != null;
-        assert MessageIn.read(in, getVersion(), 2, DatabaseDescriptor.instance, MessagingService.instance) != null;
+        assert MessageIn.read(in, getVersion(), 1, DatabaseDescriptor.instance, databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), 2, DatabaseDescriptor.instance, databaseDescriptor.getMessagingService()) != null;
         in.close();
     }
 

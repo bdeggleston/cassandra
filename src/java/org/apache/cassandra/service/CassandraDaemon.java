@@ -389,7 +389,7 @@ public class CassandraDaemon
         thriftServer = new ThriftServer(rpcAddr, rpcPort, listenBacklog,
                                         DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(),
                                         DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getAuth(), DatabaseDescriptor.instance.getStorageProxy(),
-                                        MessagingService.instance, DatabaseDescriptor.instance.getKeyspaceManager(),
+                                        DatabaseDescriptor.instance.getMessagingService(), DatabaseDescriptor.instance.getKeyspaceManager(),
                                         DatabaseDescriptor.instance.getMutationFactory(), DatabaseDescriptor.instance.getCounterMutationFactory(),
                                         StorageService.instance, DatabaseDescriptor.instance.getCFMetaDataFactory(),
                                         DatabaseDescriptor.instance.getMigrationManager(), DatabaseDescriptor.instance.getKSMetaDataFactory(),
@@ -411,7 +411,7 @@ public class CassandraDaemon
                                                                            DatabaseDescriptor.instance.getStorageProxy(),
                                                                            DatabaseDescriptor.instance.getMutationFactory(),
                                                                            DatabaseDescriptor.instance.getCounterMutationFactory(),
-                                                                           MessagingService.instance,
+                                                                           DatabaseDescriptor.instance.getMessagingService(),
                                                                            DatabaseDescriptor.instance.getDBConfig(),
                                                                            DatabaseDescriptor.instance.getLocatorConfig());
         nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort, codecs, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(),

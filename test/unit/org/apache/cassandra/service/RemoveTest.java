@@ -78,7 +78,7 @@ public class RemoveTest
         // create a ring of 5 nodes
         Util.createInitialRing(ss, databaseDescriptor.getLocatorConfig().getPartitioner(), endpointTokens, keyTokens, hosts, hostIds, 6, databaseDescriptor);
 
-        MessagingService.instance.listen(DatabaseDescriptor.instance.getBroadcastAddress());
+        databaseDescriptor.getMessagingService().listen(DatabaseDescriptor.instance.getBroadcastAddress());
         databaseDescriptor.getGossiper().start(1);
         removalhost = hosts.get(5);
         hosts.remove(removalhost);
@@ -90,8 +90,8 @@ public class RemoveTest
     public void tearDown()
     {
         SinkManager.instance.clear();
-        MessagingService.instance.clearCallbacksUnsafe();
-        MessagingService.instance.shutdown();
+        databaseDescriptor.getMessagingService().clearCallbacksUnsafe();
+        databaseDescriptor.getMessagingService().shutdown();
     }
 
     @Test(expected = UnsupportedOperationException.class)
@@ -139,8 +139,8 @@ public class RemoveTest
 
         for (InetAddress host : hosts)
         {
-            MessageOut msg = new MessageOut(MessagingService.instance, host, MessagingService.Verb.REPLICATION_FINISHED, null, null, Collections.<String, byte[]>emptyMap());
-            MessagingService.instance.sendRR(msg, DatabaseDescriptor.instance.getBroadcastAddress());
+            MessageOut msg = new MessageOut(databaseDescriptor.getMessagingService(), host, MessagingService.Verb.REPLICATION_FINISHED, null, null, Collections.<String, byte[]>emptyMap());
+            databaseDescriptor.getMessagingService().sendRR(msg, DatabaseDescriptor.instance.getBroadcastAddress());
         }
 
         remover.join();

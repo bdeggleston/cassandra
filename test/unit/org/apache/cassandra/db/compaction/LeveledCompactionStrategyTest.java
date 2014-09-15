@@ -180,7 +180,7 @@ public class LeveledCompactionStrategyTest
         UUID parentRepSession = UUID.randomUUID();
         databaseDescriptor.getActiveRepairService().registerParentRepairSession(parentRepSession, Arrays.asList(cfs), Arrays.asList(range));
         RepairJobDesc desc = new RepairJobDesc(parentRepSession, UUID.randomUUID(), KEYSPACE1, CF_STANDARDDLEVELED, range);
-        Validator validator = new Validator(desc, DatabaseDescriptor.instance.getBroadcastAddress(), gcBefore, DatabaseDescriptor.instance, databaseDescriptor.getStageManager(), MessagingService.instance);
+        Validator validator = new Validator(desc, DatabaseDescriptor.instance.getBroadcastAddress(), gcBefore, DatabaseDescriptor.instance, databaseDescriptor.getStageManager(), databaseDescriptor.getMessagingService());
         databaseDescriptor.getCompactionManager().submitValidation(cfs, validator).get();
     }
 

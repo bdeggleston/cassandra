@@ -90,7 +90,7 @@ public class ReadMessageTest
                                          new NamesQueryFilter(colList, databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                          databaseDescriptor.getSchema(),
                                          databaseDescriptor.getLocatorConfig().getPartitioner(),
-                                         MessagingService.instance.readCommandSerializer);
+                                         databaseDescriptor.getMessagingService().readCommandSerializer);
         rm2 = serializeAndDeserializeReadMessage(rm);
         assert rm2.toString().equals(rm.toString());
 
@@ -101,7 +101,7 @@ public class ReadMessageTest
                                       new SliceQueryFilter(Composites.EMPTY, Composites.EMPTY, true, 2, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                       databaseDescriptor.getSchema(),
                                       databaseDescriptor.getLocatorConfig().getPartitioner(),
-                                      MessagingService.instance.readCommandSerializer);
+                                      databaseDescriptor.getMessagingService().readCommandSerializer);
         rm2 = serializeAndDeserializeReadMessage(rm);
         assert rm2.toString().equals(rm.toString());
 
@@ -112,14 +112,14 @@ public class ReadMessageTest
                                       new SliceQueryFilter(Util.cellname("a"), Util.cellname("z"), true, 5, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                       databaseDescriptor.getSchema(),
                                       databaseDescriptor.getLocatorConfig().getPartitioner(),
-                                      MessagingService.instance.readCommandSerializer);
+                                      databaseDescriptor.getMessagingService().readCommandSerializer);
         rm2 = serializeAndDeserializeReadMessage(rm);
         assert rm2.toString().equals(rm.toString());
     }
 
     private ReadCommand serializeAndDeserializeReadMessage(ReadCommand rm) throws IOException
     {
-        ReadCommand.Serializer rms = MessagingService.instance.readCommandSerializer;
+        ReadCommand.Serializer rms = databaseDescriptor.getMessagingService().readCommandSerializer;
         DataOutputBuffer out = new DataOutputBuffer();
         ByteArrayInputStream bis;
 
@@ -148,7 +148,7 @@ public class ReadMessageTest
                                                           new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                                           databaseDescriptor.getSchema(),
                                                           databaseDescriptor.getLocatorConfig().getPartitioner(),
-                                                          MessagingService.instance.readCommandSerializer);
+                                                          databaseDescriptor.getMessagingService().readCommandSerializer);
         Row row = command.getRow(keyspace);
         Cell col = row.cf.getColumn(Util.cellname("Column1"));
         assertEquals(col.value(), ByteBuffer.wrap("abcd".getBytes()));

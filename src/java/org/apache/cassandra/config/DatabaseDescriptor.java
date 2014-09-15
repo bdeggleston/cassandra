@@ -141,7 +141,7 @@ public class DatabaseDescriptor
 //        assert DBConfig.instance != null;
 //        assert KeyspaceManager.instance != null;
 //        assert MutationFactory.instance != null;
-        assert MessagingService.instance != null;
+//        assert MessagingService.instance != null;
 //        assert DatabaseDescriptor.instance != null;
 //        assert SystemKeyspace.instance != null;
 //        assert StageManager.instance != null;
@@ -188,6 +188,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final MessagingService messagingService;
     protected final PendingRangeCalculatorService pendingRangeCalculatorService;
     protected final LocatorConfig locatorConfig;
     protected final DBConfig dbConfig;
@@ -244,6 +245,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        messagingService = createMessagingService();
         pendingRangeCalculatorService = createPendingRangeCalculatorService();
         locatorConfig = createLocatorConfig();
         dbConfig = createDBConfig();
@@ -1734,9 +1736,21 @@ public class DatabaseDescriptor
         return tracing;
     }
 
+    public MessagingService createMessagingService()
+    {
+        return MessagingService.create(this, getSchema(),
+                                       getStageManager(),
+                                       getStorageServiceExecutors(),
+                                       getStorageProxy(),
+                                       getKeyspaceManager(),
+                                       getMutationFactory(),
+                                       getLocatorConfig(),
+                                       getDBConfig());
+    }
+
     public MessagingService getMessagingService()
     {
-        return MessagingService.instance;
+        return messagingService;
     }
 
     public KeyspaceManager createKeyspaceManager()

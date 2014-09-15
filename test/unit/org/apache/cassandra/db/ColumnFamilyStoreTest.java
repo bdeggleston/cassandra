@@ -845,7 +845,7 @@ public class ColumnFamilyStoreTest
             new NamesQueryFilter(FBUtilities.singleton(column1, cfs.getComparator()), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
             databaseDescriptor.getSchema(),
             databaseDescriptor.getLocatorConfig().getPartitioner(),
-            MessagingService.instance.readCommandSerializer);
+            databaseDescriptor.getMessagingService().readCommandSerializer);
 
         ColumnFamily cf = cmd.getRow(keyspace).cf;
         assertEquals(1, cf.getColumnCount());
@@ -859,7 +859,7 @@ public class ColumnFamilyStoreTest
             new NamesQueryFilter(FBUtilities.singleton(column2, cfs.getComparator()), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
             databaseDescriptor.getSchema(),
             databaseDescriptor.getLocatorConfig().getPartitioner(),
-            MessagingService.instance.readCommandSerializer);
+            databaseDescriptor.getMessagingService().readCommandSerializer);
 
         cf = cmd.getRow(keyspace).cf;
         assertEquals(1, cf.getColumnCount());
@@ -1099,7 +1099,7 @@ public class ColumnFamilyStoreTest
                                                                   new NamesQueryFilter(sliceColNames, databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                                                   databaseDescriptor.getSchema(),
                                                                   databaseDescriptor.getLocatorConfig().getPartitioner(),
-                                                                  MessagingService.instance.readCommandSerializer);
+                                                                  databaseDescriptor.getMessagingService().readCommandSerializer);
         ColumnFamily cfSliced = cmd.getRow(keyspace).cf;
 
         // Make sure the slice returns the same as the straight get
@@ -1142,7 +1142,7 @@ public class ColumnFamilyStoreTest
                                                                   new NamesQueryFilter(FBUtilities.singleton(cname, cfs.getComparator()), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                                                   databaseDescriptor.getSchema(),
                                                                   databaseDescriptor.getLocatorConfig().getPartitioner(),
-                                                                  MessagingService.instance.readCommandSerializer);
+                                                                  databaseDescriptor.getMessagingService().readCommandSerializer);
         ColumnFamily cf = cmd.getRow(keyspace).cf;
         Cell cell = cf.getColumn(cname);
         assert cell.value().equals(ByteBufferUtil.bytes("a")) : "expecting a, got " + ByteBufferUtil.string(cell.value());

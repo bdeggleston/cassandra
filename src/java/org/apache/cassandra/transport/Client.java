@@ -262,7 +262,7 @@ public class Client extends SimpleClient
                                                                            DatabaseDescriptor.instance.getStorageProxy(),
                                                                            DatabaseDescriptor.instance.getMutationFactory(),
                                                                            DatabaseDescriptor.instance.getCounterMutationFactory(),
-                                                                           MessagingService.instance,
+                                                                           DatabaseDescriptor.instance.getMessagingService(),
                                                                            DatabaseDescriptor.instance.getDBConfig(),
                                                                            DatabaseDescriptor.instance.getLocatorConfig());
         new Client(host, port, encryptionOptions, codecs, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(), DatabaseDescriptor.instance.getAuth(), DatabaseDescriptor.instance.getQueryHandler()).run();

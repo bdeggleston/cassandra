@@ -387,7 +387,7 @@ public class CommitLogTest
                                                           new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), databaseDescriptor.getDBConfig()), DatabaseDescriptor.instance,
                                                           databaseDescriptor.getSchema(),
                                                           databaseDescriptor.getLocatorConfig().getPartitioner(),
-                                                          MessagingService.instance.readCommandSerializer);
+                                                          databaseDescriptor.getMessagingService().readCommandSerializer);
         Row row = command.getRow(notDurableKs);
         Cell col = row.cf.getColumn(Util.cellname("Column1"));
         Assert.assertEquals(col.value(), ByteBuffer.wrap("abcd".getBytes()));
