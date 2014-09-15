@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 public class DBConfig
 {
-    public static final DBConfig instance = new DBConfig(DatabaseDescriptor.instance, Tracing.instance, DatabaseDescriptor.instance.getSchema(), LocatorConfig.instance);
+    public static final DBConfig instance = new DBConfig(DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(), DatabaseDescriptor.instance.getSchema(), LocatorConfig.instance);
 
     public final IAllocator offHeapAllocator;
     private final MemtablePool memtablePool;

@@ -103,13 +103,13 @@ public class ScrubTest
 
         // insert data and verify we get it back w/ range query
         fillCF(cfs, 1);
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
         assertEquals(1, rows.size());
 
         databaseDescriptor.getCompactionManager().performScrub(cfs, false);
 
         // check data is still there
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
         assertEquals(1, rows.size());
     }
 
@@ -123,7 +123,7 @@ public class ScrubTest
 
         fillCounterCF(cfs, 2);
 
-        List<Row> rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
+        List<Row> rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
         assertEquals(2, rows.size());
 
         SSTableReader sstable = cfs.getSSTables().iterator().next();
@@ -155,7 +155,7 @@ public class ScrubTest
         assertEquals(1, cfs.getSSTables().size());
 
         // verify that we can read all of the rows, and there is now one less row
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
         assertEquals(1, rows.size());
     }
 
@@ -189,13 +189,13 @@ public class ScrubTest
 
         // insert data and verify we get it back w/ range query
         fillCF(cfs, 10);
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
         assertEquals(10, rows.size());
 
         databaseDescriptor.getCompactionManager().performScrub(cfs, false);
 
         // check data is still there
-        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
+        rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
         assertEquals(10, rows.size());
     }
 
@@ -258,7 +258,7 @@ public class ScrubTest
         scrubber.scrub();
 
         cfs.loadNewSSTables();
-        List<Row> rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance), 1000);
+        List<Row> rows = cfs.getRangeSlice(Util.range("", ""), null, new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance), 1000);
         assert isRowOrdered(rows) : "Scrub failed: " + rows;
         assert rows.size() == 6 : "Got " + rows.size();
     }

@@ -116,7 +116,7 @@ public class BlacklistingCompactionsTest
             }
             cfs.forceBlockingFlush();
             CompactionsTest.assertMaxTimestamp(cfs, maxTimestampExpected);
-            assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance).size());
+            assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing()).size());
         }
 
         Collection<SSTableReader> sstables = cfs.getSSTables();

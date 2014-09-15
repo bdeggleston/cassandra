@@ -78,7 +78,7 @@ public class MultitableTest
         keyspace1.getColumnFamilyStore("Standard1").forceBlockingFlush();
         keyspace2.getColumnFamilyStore("Standard1").forceBlockingFlush();
 
-        assertColumns(Util.getColumnFamily(keyspace1, dk, "Standard1"), "col1");
-        assertColumns(Util.getColumnFamily(keyspace2, dk, "Standard1"), "col2");
+        assertColumns(Util.getColumnFamily(keyspace1, dk, "Standard1", databaseDescriptor), "col1");
+        assertColumns(Util.getColumnFamily(keyspace2, dk, "Standard1", databaseDescriptor), "col2");
     }
 }

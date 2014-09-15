@@ -168,7 +168,7 @@ public class CassandraDaemon
             {
                 StorageMetrics.exceptions.inc();
                 logger.error("Exception in thread {}", t, e);
-                Tracing.instance.trace("Exception in thread {}", t, e);
+                DatabaseDescriptor.instance.getTracing().trace("Exception in thread {}", t, e);
                 for (Throwable e2 = e; e2 != null; e2 = e2.getCause())
                 {
                     // some code, like FileChannel.map, will wrap an OutOfMemoryError in another exception
@@ -235,7 +235,7 @@ public class CassandraDaemon
         for (CFMetaData cfm : DatabaseDescriptor.instance.getSchema().getKeyspaceMetaData(Keyspace.SYSTEM_KS).values())
             ColumnFamilyStore.scrubDataDirectories(cfm,
                                                    DatabaseDescriptor.instance,
-                                                   Tracing.instance,
+                                                   DatabaseDescriptor.instance.getTracing(),
                                                    CFMetaDataFactory.instance,
                                                    DatabaseDescriptor.instance.getKeyspaceManager(),
                                                    DBConfig.instance,
@@ -275,7 +275,7 @@ public class CassandraDaemon
             for (CFMetaData cfm : DatabaseDescriptor.instance.getSchema().getKeyspaceMetaData(keyspaceName).values())
                 ColumnFamilyStore.scrubDataDirectories(cfm,
                                                        DatabaseDescriptor.instance,
-                                                       Tracing.instance,
+                                                       DatabaseDescriptor.instance.getTracing(),
                                                        CFMetaDataFactory.instance,
                                                        DatabaseDescriptor.instance.getKeyspaceManager(),
                                                        DBConfig.instance,
@@ -393,7 +393,7 @@ public class CassandraDaemon
         int rpcPort = DatabaseDescriptor.instance.getRpcPort();
         int listenBacklog = DatabaseDescriptor.instance.getRpcListenBacklog();
         thriftServer = new ThriftServer(rpcAddr, rpcPort, listenBacklog,
-                                        DatabaseDescriptor.instance, Tracing.instance,
+                                        DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(),
                                         DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getAuth(), StorageProxy.instance,
                                         MessagingService.instance, DatabaseDescriptor.instance.getKeyspaceManager(),
                                         MutationFactory.instance, CounterMutationFactory.instance,
@@ -408,7 +408,7 @@ public class CassandraDaemon
         InetAddress nativeAddr = DatabaseDescriptor.instance.getRpcAddress();
         int nativePort = DatabaseDescriptor.instance.getNativeTransportPort();
         Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
-                                                                           Tracing.instance,
+                                                                           DatabaseDescriptor.instance.getTracing(),
                                                                            DatabaseDescriptor.instance.getSchema(),
                                                                            DatabaseDescriptor.instance.getAuth().getAuthenticator(),
                                                                            QueryHandlerInstance.instance,
@@ -420,7 +420,7 @@ public class CassandraDaemon
                                                                            MessagingService.instance,
                                                                            DBConfig.instance,
                                                                            LocatorConfig.instance);
-        nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort, codecs, DatabaseDescriptor.instance, Tracing.instance,
+        nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort, codecs, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(),
                                                                  DatabaseDescriptor.instance.getAuth(), ClientMetrics.instance, StorageService.instance,
                                                                  DatabaseDescriptor.instance.getMigrationManager());
     }

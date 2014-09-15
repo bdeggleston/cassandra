@@ -213,7 +213,7 @@ public class RowCacheTest
                                                                 Composites.EMPTY,
                                                                 false, 10, System.currentTimeMillis(),
                                                                 DatabaseDescriptor.instance,
-                                                                Tracing.instance,
+                                                                databaseDescriptor.getTracing(),
                                                                 DBConfig.instance));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
 
@@ -223,7 +223,7 @@ public class RowCacheTest
                                                                 Composites.EMPTY,
                                                                 false, 20, System.currentTimeMillis(),
                                                                 DatabaseDescriptor.instance,
-                                                                Tracing.instance,
+                                                                databaseDescriptor.getTracing(),
                                                                 DBConfig.instance));
         assertEquals(++startRowCacheHits, cachedStore.metric.rowCacheHit.count());
         assertEquals(startRowCacheOutOfRange, cachedStore.metric.rowCacheHitOutOfRange.count());
@@ -234,7 +234,7 @@ public class RowCacheTest
                                                                CellNames.simpleDense(ByteBufferUtil.bytes(105)),
                                                                false, 10, System.currentTimeMillis(),
                                                                 DatabaseDescriptor.instance,
-                                                                Tracing.instance,
+                                                                databaseDescriptor.getTracing(),
                                                                 DBConfig.instance));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
         assertEquals(++startRowCacheOutOfRange, cachedStore.metric.rowCacheHitOutOfRange.count());
@@ -245,7 +245,7 @@ public class RowCacheTest
                                                                Composites.EMPTY,
                                                                false, 101, System.currentTimeMillis(),
                                                                 DatabaseDescriptor.instance,
-                                                                Tracing.instance,
+                                                                databaseDescriptor.getTracing(),
                                                                 DBConfig.instance));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
         assertEquals(++startRowCacheOutOfRange, cachedStore.metric.rowCacheHitOutOfRange.count());
@@ -259,7 +259,7 @@ public class RowCacheTest
                                                                 Composites.EMPTY,
                                                                 false, 105, System.currentTimeMillis(),
                                                                 DatabaseDescriptor.instance,
-                                                                Tracing.instance,
+                                                                databaseDescriptor.getTracing(),
                                                                 DBConfig.instance));
         assertEquals(startRowCacheHits, cachedStore.metric.rowCacheHit.count());
         // validate the stuff in cache;

@@ -97,7 +97,7 @@ public class RecoveryManager3Test
         CommitLog.instance.resetUnsafe(); // disassociate segments from live CL
         CommitLog.instance.recover();
 
-        assertColumns(Util.getColumnFamily(keyspace1, dk, "Standard1"), "col1");
-        assertColumns(Util.getColumnFamily(keyspace2, dk, "Standard3"), "col2");
+        assertColumns(Util.getColumnFamily(keyspace1, dk, "Standard1", databaseDescriptor), "col1");
+        assertColumns(Util.getColumnFamily(keyspace2, dk, "Standard3", databaseDescriptor), "col2");
     }
 }

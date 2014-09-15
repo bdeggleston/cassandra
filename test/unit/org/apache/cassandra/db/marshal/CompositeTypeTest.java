@@ -200,7 +200,7 @@ public class CompositeTypeTest
         addColumn(rm, cname3);
         rm.applyUnsafe();
 
-        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("k"), CF_STANDARDCOMPOSITE, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("k"), CF_STANDARDCOMPOSITE, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
 
         Iterator<Cell> iter = cf.getSortedColumns().iterator();
 

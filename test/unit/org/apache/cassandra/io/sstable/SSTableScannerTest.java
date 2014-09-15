@@ -99,7 +99,7 @@ public class SSTableScannerTest
 
     private static void assertScanMatches(SSTableReader sstable, int scanStart, int scanEnd, int expectedStart, int expectedEnd)
     {
-        SSTableScanner scanner = sstable.getScanner(new DataRange(boundsFor(scanStart, scanEnd), new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)));
+        SSTableScanner scanner = sstable.getScanner(new DataRange(boundsFor(scanStart, scanEnd), new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance)));
         for (int i = expectedStart; i <= expectedEnd; i++)
             assertEquals(toKey(i), new String(scanner.next().getKey().getKey().array()));
         assertFalse(scanner.hasNext());
@@ -107,7 +107,7 @@ public class SSTableScannerTest
 
     private static void assertScanEmpty(SSTableReader sstable, int scanStart, int scanEnd)
     {
-        SSTableScanner scanner = sstable.getScanner(new DataRange(boundsFor(scanStart, scanEnd), new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)));
+        SSTableScanner scanner = sstable.getScanner(new DataRange(boundsFor(scanStart, scanEnd), new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance)));
         assertFalse(String.format("scan of (%03d, %03d] should be empty", scanStart, scanEnd), scanner.hasNext());
     }
 

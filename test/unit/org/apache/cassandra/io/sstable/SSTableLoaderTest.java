@@ -101,7 +101,7 @@ public class SSTableLoaderTest
 
         loader.stream().get();
 
-        List<Row> rows = Util.getRangeSlice(databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD), DatabaseDescriptor.instance, Tracing.instance);
+        List<Row> rows = Util.getRangeSlice(databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD), DatabaseDescriptor.instance, databaseDescriptor.getTracing());
         assertEquals(1, rows.size());
         assertEquals(key, rows.get(0).key);
         assertEquals(ByteBufferUtil.bytes(100), rows.get(0).cf.getColumn(Util.cellname("col1")).value());

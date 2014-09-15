@@ -29,7 +29,6 @@ import org.junit.Test;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.KSMetaData;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.IntegerType;
 import org.apache.cassandra.dht.IPartitioner;
@@ -111,7 +110,7 @@ public class SSTableSimpleWriterTest
         cfs.loadNewSSTables();
 
         // Check we get expected results
-        ColumnFamily cf = Util.getColumnFamily(t, Util.dk("Key10"), cfname);
+        ColumnFamily cf = Util.getColumnFamily(t, Util.dk("Key10"), cfname, databaseDescriptor);
         assert cf.getColumnCount() == INC * NBCOL : "expecting " + (INC * NBCOL) + " columns, got " + cf.getColumnCount();
         int i = 0;
         for (Cell c : cf)
@@ -122,7 +121,7 @@ public class SSTableSimpleWriterTest
             ++i;
         }
 
-        cf = Util.getColumnFamily(t, Util.dk("Key19"), cfname);
+        cf = Util.getColumnFamily(t, Util.dk("Key19"), cfname, databaseDescriptor);
         assert cf.getColumnCount() == 3 : "expecting 3 columns, got " + cf.getColumnCount();
     }
 }

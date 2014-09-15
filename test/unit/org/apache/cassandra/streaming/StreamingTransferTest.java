@@ -199,13 +199,13 @@ public class StreamingTransferTest
         assertEquals(1, cfs.getSSTables().size());
 
         // and that the index and filter were properly recovered
-        List<Row> rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance);
+        List<Row> rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing());
         assertEquals(offs.length, rows.size());
         for (int i = 0; i < offs.length; i++)
         {
             String key = "key" + offs[i];
             String col = "col" + offs[i];
-            assert cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk(key), cfs.name, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)) != null;
+            assert cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk(key), cfs.name, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance)) != null;
             assert rows.get(i).key.getKey().equals(ByteBufferUtil.bytes(key));
             assert rows.get(i).cf.getColumn(cellname(col)) != null;
         }
@@ -285,7 +285,7 @@ public class StreamingTransferTest
                                                        IndexExpression.Operator.EQ,
                                                        ByteBufferUtil.bytes(val));
             List<IndexExpression> clause = Arrays.asList(expr);
-            IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+            IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
             Range<RowPosition> range = Util.range("", "");
             List<Row> rows = cfs.search(range, clause, filter, 100);
             assertEquals(1, rows.size());
@@ -323,7 +323,7 @@ public class StreamingTransferTest
         // confirm that a single SSTable was transferred and registered
         assertEquals(1, cfs.getSSTables().size());
 
-        List<Row> rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance);
+        List<Row> rows = Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing());
         assertEquals(1, rows.size());
     }
 
@@ -421,7 +421,7 @@ public class StreamingTransferTest
 
         // confirm that the sstables were transferred and registered and that 2 keys arrived
         ColumnFamilyStore cfstore = databaseDescriptor.getKeyspaceManager().open(keyspaceName).getColumnFamilyStore(cfname);
-        List<Row> rows = Util.getRangeSlice(cfstore, DatabaseDescriptor.instance, Tracing.instance);
+        List<Row> rows = Util.getRangeSlice(cfstore, DatabaseDescriptor.instance, databaseDescriptor.getTracing());
         assertEquals(2, rows.size());
         assert rows.get(0).key.getKey().equals(ByteBufferUtil.bytes("test"));
         assert rows.get(1).key.getKey().equals(ByteBufferUtil.bytes("transfer3"));
@@ -429,10 +429,10 @@ public class StreamingTransferTest
         assert rows.get(1).cf.getColumnCount() == 1;
 
         // these keys fall outside of the ranges and should not be transferred
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer1"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)) == null;
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer2"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)) == null;
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test2"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)) == null;
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test3"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance)) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer1"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance)) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer2"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance)) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test2"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance)) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test3"), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance)) == null;
     }
 
     @Test
@@ -478,7 +478,7 @@ public class StreamingTransferTest
         for (Map.Entry<DecoratedKey,String> entry : Arrays.asList(first, last))
         {
             ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(keyspace).getColumnFamilyStore(entry.getValue());
-            List<Row> rows = Util.getRangeSlice(store, DatabaseDescriptor.instance, Tracing.instance);
+            List<Row> rows = Util.getRangeSlice(store, DatabaseDescriptor.instance, databaseDescriptor.getTracing());
             assertEquals(rows.toString(), 1, rows.size());
             assertEquals(entry.getKey(), rows.get(0).key);
         }
@@ -516,7 +516,7 @@ public class StreamingTransferTest
         ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key9")), p.getToken(ByteBufferUtil.bytes("key900")), LocatorConfig.instance.getPartitioner()));
         transfer(sstable, ranges);
         assertEquals(1, cfs.getSSTables().size());
-        assertEquals(7, Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance).size());
+        assertEquals(7, Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing()).size());
     }
 
     public interface Mutator

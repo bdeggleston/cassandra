@@ -78,7 +78,7 @@ public class OneCompactionTest
             rm.applyUnsafe();
             inserted.add(key);
             store.forceBlockingFlush();
-            assertEquals(inserted.size(), Util.getRangeSlice(store, DatabaseDescriptor.instance, Tracing.instance).size());
+            assertEquals(inserted.size(), Util.getRangeSlice(store, DatabaseDescriptor.instance, databaseDescriptor.getTracing()).size());
         }
         databaseDescriptor.getCompactionManager().performMaximal(store);
         assertEquals(1, store.getSSTables().size());

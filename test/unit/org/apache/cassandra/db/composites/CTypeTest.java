@@ -29,6 +29,8 @@ import java.util.List;
 
 public class CTypeTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
+
     static final List<AbstractType<?>> types = Lists.newArrayList();
     static
     {
@@ -37,9 +39,9 @@ public class CTypeTest
         types.add(Int32Type.instance);
     }
 
-    static final CellNameType cdtype = new CompoundDenseCellNameType(types, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
-    static final CellNameType stype1 = new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
-    static final CellNameType stype2 = new SimpleDenseCellNameType(UUIDType.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+    static final CellNameType cdtype = new CompoundDenseCellNameType(types, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+    static final CellNameType stype1 = new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+    static final CellNameType stype2 = new SimpleDenseCellNameType(UUIDType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
 
     @Test
     public void testCompoundType()

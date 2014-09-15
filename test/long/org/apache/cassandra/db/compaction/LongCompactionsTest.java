@@ -161,12 +161,12 @@ public class LongCompactionsTest
             }
             cfs.forceBlockingFlush();
             CompactionsTest.assertMaxTimestamp(cfs, maxTimestampExpected);
-            assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance).size());
+            assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing()).size());
         }
 
         forceCompactions(cfs);
 
-        assertEquals(inserted.size(), Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance).size());
+        assertEquals(inserted.size(), Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing()).size());
 
         // make sure max timestamp of compacted sstables is recorded properly after compaction.
         CompactionsTest.assertMaxTimestamp(cfs, maxTimestampExpected);

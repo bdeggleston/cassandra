@@ -29,12 +29,14 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.LockSupport;
 
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.commons.math3.distribution.WeibullDistribution;
 import org.junit.Test;
 
 public class LongSharedExecutorPoolTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     private static final class WaitTask implements Runnable
     {
@@ -119,7 +121,7 @@ public class LongSharedExecutorPoolTest
         final ExecutorService[] executors = new ExecutorService[executorCount];
         for (int i = 0 ; i < executors.length ; i++)
         {
-            executors[i] = JMXEnabledSharedExecutorPool.SHARED.newExecutor(threadCount, maxQueued, "test" + i, "test" + i, Tracing.instance);
+            executors[i] = JMXEnabledSharedExecutorPool.SHARED.newExecutor(threadCount, maxQueued, "test" + i, "test" + i, databaseDescriptor.getTracing());
             threadCounts[i] = threadCount;
             workCount[i] = new WeibullDistribution(2, maxQueued);
             threadCount *= 2;

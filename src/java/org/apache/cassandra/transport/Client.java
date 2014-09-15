@@ -256,7 +256,7 @@ public class Client extends SimpleClient
         System.out.println("CQL binary protocol console " + host + "@" + port);
 
         Map<Message.Type, Message.Codec> codecs = Message.Type.getCodecMap(DatabaseDescriptor.instance,
-                                                                           Tracing.instance,
+                                                                           DatabaseDescriptor.instance.getTracing(),
                                                                            DatabaseDescriptor.instance.getSchema(),
                                                                            DatabaseDescriptor.instance.getAuth().getAuthenticator(),
                                                                            QueryHandlerInstance.instance,
@@ -268,7 +268,7 @@ public class Client extends SimpleClient
                                                                            MessagingService.instance,
                                                                            DBConfig.instance,
                                                                            LocatorConfig.instance);
-        new Client(host, port, encryptionOptions, codecs, DatabaseDescriptor.instance, Tracing.instance, DatabaseDescriptor.instance.getAuth(), QueryHandlerInstance.instance).run();
+        new Client(host, port, encryptionOptions, codecs, DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(), DatabaseDescriptor.instance.getAuth(), QueryHandlerInstance.instance).run();
         System.exit(0);
     }
 }

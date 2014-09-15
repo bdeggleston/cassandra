@@ -80,7 +80,7 @@ public class RemoveSubCellTest
         rm.delete("Super1", cname, 1);
         rm.applyUnsafe();
 
-        ColumnFamily retrieved = store.getColumnFamily(QueryFilter.getIdentityFilter(dk, "Super1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+        ColumnFamily retrieved = store.getColumnFamily(QueryFilter.getIdentityFilter(dk, "Super1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertFalse(retrieved.getColumn(cname).isLive());
         assertNull(Util.cloneAndRemoveDeleted(retrieved, Integer.MAX_VALUE));
     }
@@ -108,7 +108,7 @@ public class RemoveSubCellTest
 
         // Mark current time and make sure the next insert happens at least
         // one second after the previous one (since gc resolution is the second)
-        QueryFilter filter = QueryFilter.getIdentityFilter(dk, "Super1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        QueryFilter filter = QueryFilter.getIdentityFilter(dk, "Super1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
         Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
 
         // remove the column itself

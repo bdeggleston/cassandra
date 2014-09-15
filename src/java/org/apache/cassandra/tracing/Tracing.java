@@ -71,8 +71,6 @@ public class Tracing
     /* the probability for tracing any particular request, 0 disables tracing and 1 enables for all */
     private volatile double tracingProbability = 0.0;
 
-    public static final Tracing instance = new Tracing(DatabaseDescriptor.instance, LocatorConfig.instance);
-
     private final DatabaseDescriptor databaseDescriptor;
 
     public Tracing(DatabaseDescriptor databaseDescriptor, LocatorConfig locatorConfig)

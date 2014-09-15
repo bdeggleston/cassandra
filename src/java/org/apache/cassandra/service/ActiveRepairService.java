@@ -71,7 +71,7 @@ public class ActiveRepairService
 {
     private static final Logger logger = LoggerFactory.getLogger(ActiveRepairService.class);
     // singleton enforcement
-    public static final ActiveRepairService instance = new ActiveRepairService(DatabaseDescriptor.instance, Tracing.instance);
+    public static final ActiveRepairService instance = new ActiveRepairService(DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing());
 
     public static final long UNREPAIRED_SSTABLE = 0;
 

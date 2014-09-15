@@ -71,7 +71,7 @@ public class RemoveColumnFamilyWithFlush1Test
         rm.delete("Standard1", 1);
         rm.applyUnsafe();
 
-        ColumnFamily retrieved = store.getColumnFamily(QueryFilter.getIdentityFilter(dk, "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+        ColumnFamily retrieved = store.getColumnFamily(QueryFilter.getIdentityFilter(dk, "Standard1", System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assert retrieved.isMarkedForDelete();
         assertNull(retrieved.getColumn(Util.cellname("Column1")));
         assertNull(Util.cloneAndRemoveDeleted(retrieved, Integer.MAX_VALUE));

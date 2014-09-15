@@ -69,7 +69,7 @@ public class MultiSliceTest
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD));
-        server = new CassandraServer(DatabaseDescriptor.instance, Tracing.instance,
+        server = new CassandraServer(DatabaseDescriptor.instance, databaseDescriptor.getTracing(),
                                      databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), StorageProxy.instance,
                                      MessagingService.instance, databaseDescriptor.getKeyspaceManager(),
                                      MutationFactory.instance, CounterMutationFactory.instance,

@@ -72,7 +72,7 @@ public class ArrayBackedSortedColumnsTest
 
     private void testAddInternal(boolean reversed)
     {
-        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
         ColumnFamily map = ArrayBackedSortedColumns.factory.create(metadata(), DBConfig.instance, reversed);
         int[] values = new int[]{ 1, 2, 2, 3 };
 
@@ -94,7 +94,7 @@ public class ArrayBackedSortedColumnsTest
 
     private void testAddOutOfOrder(boolean reversed)
     {
-        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
         ColumnFamily cells = ArrayBackedSortedColumns.factory.create(metadata(), DBConfig.instance, reversed);
 
         int[] values = new int[]{ 1, 2, 1, 3, 4, 4, 5, 5, 1, 2, 6, 6, 6, 1, 2, 3 };
@@ -143,7 +143,7 @@ public class ArrayBackedSortedColumnsTest
 
     private void testGetColumnInternal(boolean reversed)
     {
-        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
         ColumnFamily cells = ArrayBackedSortedColumns.factory.create(metadata(), DBConfig.instance, reversed);
 
         int[] values = new int[]{ -1, 20, 44, 55, 27, 27, 17, 1, 9, 89, 33, 44, 0, 9 };
@@ -163,7 +163,7 @@ public class ArrayBackedSortedColumnsTest
 
     private void testAddAllInternal(boolean reversed)
     {
-        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
         ColumnFamily map = ArrayBackedSortedColumns.factory.create(metadata(), DBConfig.instance, reversed);
         ColumnFamily map2 = ArrayBackedSortedColumns.factory.create(metadata(), DBConfig.instance, reversed);
 
@@ -196,7 +196,7 @@ public class ArrayBackedSortedColumnsTest
 
     private void testGetCollectionInternal(boolean reversed)
     {
-        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
         ColumnFamily map = ArrayBackedSortedColumns.factory.create(metadata(), DBConfig.instance, reversed);
         int[] values = new int[]{ 1, 2, 3, 5, 9 };
 
@@ -222,7 +222,7 @@ public class ArrayBackedSortedColumnsTest
 
     private void testIteratorInternal(boolean reversed)
     {
-        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
         ColumnFamily map = ArrayBackedSortedColumns.factory.create(metadata(), DBConfig.instance, reversed);
 
         int[] values = new int[]{ 1, 2, 3, 5, 9 };
@@ -239,7 +239,7 @@ public class ArrayBackedSortedColumnsTest
     @Test
     public void testSearchIterator()
     {
-        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
         ColumnFamily map = ArrayBackedSortedColumns.factory.create(metadata(), DBConfig.instance, false);
 
         int[] values = new int[]{ 1, 2, 3, 5, 9, 15, 21, 22 };
@@ -310,7 +310,7 @@ public class ArrayBackedSortedColumnsTest
 
     private void testRemoveInternal(boolean reversed)
     {
-        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        CellNameType type = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
         ColumnFamily map = ArrayBackedSortedColumns.factory.create(metadata(), DBConfig.instance, reversed);
 
         int[] values = new int[]{ 1, 2, 2, 3 };

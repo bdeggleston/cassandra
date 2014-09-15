@@ -86,7 +86,7 @@ public class TriggersTest
         if (thriftServer == null || ! thriftServer.isRunning())
         {
             thriftServer = new ThriftServer(InetAddress.getLocalHost(), 9170, 50,
-                                            DatabaseDescriptor.instance, Tracing.instance,
+                                            DatabaseDescriptor.instance, databaseDescriptor.getTracing(),
                                             databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), StorageProxy.instance,
                                             MessagingService.instance, databaseDescriptor.getKeyspaceManager(),
                                             MutationFactory.instance, CounterMutationFactory.instance,

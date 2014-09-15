@@ -102,7 +102,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public volatile VersionedValue.VersionedValueFactory valueFactory;
 
     public static final StorageService instance = create(DatabaseDescriptor.instance,
-                                                         Tracing.instance,
+                                                         DatabaseDescriptor.instance.getTracing(),
                                                          DatabaseDescriptor.instance.getSchema(),
                                                          DatabaseDescriptor.instance.getStageManager(),
                                                          DatabaseDescriptor.instance.getSystemKeyspace(),

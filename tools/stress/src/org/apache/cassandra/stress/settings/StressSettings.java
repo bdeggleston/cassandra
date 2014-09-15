@@ -156,7 +156,7 @@ public class StressSettings implements Serializable
         {
             String currentNode = node.randomNode();
             SimpleClient client = new SimpleClient(currentNode, port.nativePort, Message.Type.getCodecMap(DatabaseDescriptor.instance,
-                                                                                                          Tracing.instance,
+                                                                                                          DatabaseDescriptor.instance.getTracing(),
                                                                                                           DatabaseDescriptor.instance.getSchema(),
                                                                                                           DatabaseDescriptor.instance.getAuth().getAuthenticator(),
                                                                                                           QueryHandlerInstance.instance,
@@ -169,7 +169,7 @@ public class StressSettings implements Serializable
                                                                                                           DBConfig.instance,
                                                                                                           LocatorConfig.instance),
                                                    DatabaseDescriptor.instance,
-                                                   Tracing.instance,
+                                                   DatabaseDescriptor.instance.getTracing(),
                                                    DatabaseDescriptor.instance.getAuth(),
                                                    QueryHandlerInstance.instance);
             client.connect(false);

@@ -206,11 +206,11 @@ public class Util
         return store;
     }
 
-    public static ColumnFamily getColumnFamily(Keyspace keyspace, DecoratedKey key, String cfName)
+    public static ColumnFamily getColumnFamily(Keyspace keyspace, DecoratedKey key, String cfName, DatabaseDescriptor databaseDescriptor)
     {
         ColumnFamilyStore cfStore = keyspace.getColumnFamilyStore(cfName);
         assert cfStore != null : "Table " + cfName + " has not been defined";
-        return cfStore.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+        return cfStore.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
     }
 
     public static byte[] concatByteArrays(byte[] first, byte[]... remaining)

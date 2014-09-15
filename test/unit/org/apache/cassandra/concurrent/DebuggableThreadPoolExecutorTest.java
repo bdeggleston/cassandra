@@ -33,6 +33,7 @@ import org.apache.cassandra.utils.WrappedRunnable;
 
 public class DebuggableThreadPoolExecutorTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.instance;
 
     @BeforeClass
     public static void setUpClass()
@@ -49,7 +50,7 @@ public class DebuggableThreadPoolExecutorTest
                                                                                  TimeUnit.MILLISECONDS,
                                                                                  q,
                                                                                  new NamedThreadFactory("TEST"),
-                                                                                 Tracing.instance);
+                                                                                 databaseDescriptor.getTracing());
         WrappedRunnable runnable = new WrappedRunnable()
         {
             public void runMayThrow() throws InterruptedException

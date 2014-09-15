@@ -135,7 +135,7 @@ public class DatabaseDescriptor
         assert KSMetaDataFactory.instance != null;
 //        assert FailureDetector.instance != null;
         assert Gossiper.instance != null;
-        assert Tracing.instance != null;
+//        assert Tracing.instance != null;
         assert LocatorConfig.instance != null;
         assert DBConfig.instance != null;
 //        assert KeyspaceManager.instance != null;
@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final Tracing tracing;
     protected final KeyspaceManager keyspaceManager;
     protected final StreamManager streamManager;
     protected final StageManager stageManager;
@@ -229,6 +230,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        tracing = createTracing();
         keyspaceManager = createKeyspaceManager();
         streamManager = createStreamManager();
         stageManager = createStageManager();
@@ -1682,9 +1684,14 @@ public class DatabaseDescriptor
         return StorageServiceExecutors.instance;
     }
 
+    public Tracing createTracing()
+    {
+        return new Tracing(this, getLocatorConfig());
+    }
+
     public Tracing getTracing()
     {
-        return Tracing.instance;
+        return tracing;
     }
 
     public MessagingService getMessagingService()

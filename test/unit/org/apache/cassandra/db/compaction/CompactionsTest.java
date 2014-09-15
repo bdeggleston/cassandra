@@ -194,7 +194,7 @@ public class CompactionsTest
         // check that the shadowed column is gone
         SSTableReader sstable = cfs.getSSTables().iterator().next();
         Range keyRange = new Range<RowPosition>(key, sstable.partitioner.getMinimumToken().maxKeyBound(), sstable.partitioner);
-        SSTableScanner scanner = sstable.getScanner(DataRange.forKeyRange(keyRange, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+        SSTableScanner scanner = sstable.getScanner(DataRange.forKeyRange(keyRange, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         OnDiskAtomIterator iter = scanner.next();
         assertEquals(key, iter.getKey());
         assertTrue(iter.next() instanceof RangeTombstone);
@@ -330,7 +330,7 @@ public class CompactionsTest
         assertEquals(1, cfs.getSSTables().size());
 
         // Now assert we do have the 4 keys
-        assertEquals(4, Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance).size());
+        assertEquals(4, Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing()).size());
     }
 
     @Test
@@ -441,10 +441,10 @@ public class CompactionsTest
         assertEquals(1, cfs.getSSTables().size());
 
         // Now assert we do have the 4 keys
-        assertEquals(4, Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance).size());
+        assertEquals(4, Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing()).size());
 
         ArrayList<DecoratedKey> k = new ArrayList<DecoratedKey>();
-        for (Row r : Util.getRangeSlice(cfs, DatabaseDescriptor.instance, Tracing.instance))
+        for (Row r : Util.getRangeSlice(cfs, DatabaseDescriptor.instance, databaseDescriptor.getTracing()))
         {
             k.add(r.key);
             assertEquals(ByteBufferUtil.bytes("a"),r.cf.getColumn(Util.cellname("a")).value());
@@ -511,7 +511,7 @@ public class CompactionsTest
 
         Collection<SSTableReader> sstablesBefore = cfs.getSSTables();
 
-        QueryFilter filter = QueryFilter.getIdentityFilter(key, cfname, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        QueryFilter filter = QueryFilter.getIdentityFilter(key, cfname, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
         assertTrue(cfs.getColumnFamily(filter).hasColumns());
 
         // Remove key

@@ -121,7 +121,7 @@ public class NameSortTest
             DecoratedKey key = Util.dk(Integer.toString(i));
             ColumnFamily cf;
 
-            cf = Util.getColumnFamily(keyspace, key, "Standard1");
+            cf = Util.getColumnFamily(keyspace, key, "Standard1", databaseDescriptor);
             Collection<Cell> cells = cf.getSortedColumns();
             for (Cell cell : cells)
             {

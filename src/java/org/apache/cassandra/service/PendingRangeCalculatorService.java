@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PendingRangeCalculatorService
 {
-    public static final PendingRangeCalculatorService instance = new PendingRangeCalculatorService(DatabaseDescriptor.instance, Tracing.instance);
+    public static final PendingRangeCalculatorService instance = new PendingRangeCalculatorService(DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing());
 
     private static Logger logger = LoggerFactory.getLogger(PendingRangeCalculatorService.class);
     private final JMXEnabledThreadPoolExecutor executor;

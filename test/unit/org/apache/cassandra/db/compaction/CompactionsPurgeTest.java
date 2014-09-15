@@ -131,7 +131,7 @@ public class CompactionsPurgeTest
         // major compact and test that all columns but the resurrected one is completely gone
         databaseDescriptor.getCompactionManager().submitMaximal(cfs, Integer.MAX_VALUE).get();
         cfs.invalidateCachedRow(key);
-        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertColumns(cf, "5");
         assertNotNull(cf.getColumn(cellname(String.valueOf(5))));
     }
@@ -183,12 +183,12 @@ public class CompactionsPurgeTest
 
         // verify that minor compaction does GC when key is provably not
         // present in a non-compacted sstable
-        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key2, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key2, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertNull(cf);
 
         // verify that minor compaction still GC when key is present
         // in a non-compacted sstable but the timestamp ensures we won't miss anything
-        cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key1, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+        cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key1, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertEquals(1, cf.getColumnCount());
     }
 
@@ -230,7 +230,7 @@ public class CompactionsPurgeTest
 
         // We should have both the c1 and c2 tombstones still. Since the min timestamp in the c2 tombstone
         // sstable is older than the c1 tombstone, it is invalid to throw out the c1 tombstone.
-        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key3, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key3, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertFalse(cf.getColumn(cellname("c2")).isLive());
         assertEquals(2, cf.getColumnCount());
     }
@@ -268,7 +268,7 @@ public class CompactionsPurgeTest
         // compact and test that the row is completely gone
         Util.compactAll(cfs, Integer.MAX_VALUE, databaseDescriptor).get();
         assertTrue(cfs.getSSTables().isEmpty());
-        ColumnFamily cf = keyspace.getColumnFamilyStore(cfName).getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+        ColumnFamily cf = keyspace.getColumnFamilyStore(cfName).getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertNull(String.valueOf(cf), cf);
     }
 
@@ -294,7 +294,7 @@ public class CompactionsPurgeTest
         rm.applyUnsafe();
 
         // move the key up in row cache
-        cfs.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+        cfs.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
 
         // deletes row
         rm = MutationFactory.instance.create(keyspaceName, key.getKey());
@@ -314,7 +314,7 @@ public class CompactionsPurgeTest
         rm.applyUnsafe();
 
         // Check that the second insert did went in
-        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance));
+        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertEquals(10, cf.getColumnCount());
         for (Cell c : cf)
             assertTrue(c.isLive());
@@ -331,7 +331,7 @@ public class CompactionsPurgeTest
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
         DecoratedKey key = Util.dk("key3");
         Mutation rm;
-        QueryFilter filter = QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+        QueryFilter filter = QueryFilter.getIdentityFilter(key, cfName, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
 
         // inserts
         rm = MutationFactory.instance.create(keyspaceName, key.getKey());

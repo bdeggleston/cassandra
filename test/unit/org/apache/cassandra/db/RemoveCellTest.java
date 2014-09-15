@@ -77,7 +77,7 @@ public class RemoveCellTest
                                                                                                   "Standard1",
                                                                                                   System.currentTimeMillis(),
                                                                                                   DatabaseDescriptor.instance,
-                                                                                                  Tracing.instance,
+                                                                                                  databaseDescriptor.getTracing(),
                                                                                                   DBConfig.instance)),
                                               Integer.MAX_VALUE));
     }

@@ -65,9 +65,9 @@ public class SerializationsTest extends AbstractSerializationsTester
     private Composite emptyCol = Composites.EMPTY;
     public NamesQueryFilter namesPred = new NamesQueryFilter(statics.NamedCols, DBConfig.instance);
     public NamesQueryFilter namesSCPred = new NamesQueryFilter(statics.NamedSCCols, DBConfig.instance);
-    public SliceQueryFilter emptyRangePred = new SliceQueryFilter(emptyCol, emptyCol, false, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
-    public SliceQueryFilter nonEmptyRangePred = new SliceQueryFilter(CellNames.simpleDense(startCol), CellNames.simpleDense(stopCol), true, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
-    public SliceQueryFilter nonEmptyRangeSCPred = new SliceQueryFilter(CellNames.compositeDense(statics.SC, startCol), CellNames.compositeDense(statics.SC, stopCol), true, 100, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance);
+    public SliceQueryFilter emptyRangePred = new SliceQueryFilter(emptyCol, emptyCol, false, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+    public SliceQueryFilter nonEmptyRangePred = new SliceQueryFilter(CellNames.simpleDense(startCol), CellNames.simpleDense(stopCol), true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
+    public SliceQueryFilter nonEmptyRangeSCPred = new SliceQueryFilter(CellNames.compositeDense(statics.SC, startCol), CellNames.compositeDense(statics.SC, stopCol), true, 100, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
     public SliceByNamesReadCommand.Serializer slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
     public SliceFromReadCommand.Serializer slicefromReadSerializer = new SliceFromReadCommand.Serializer(DatabaseDescriptor.instance, databaseDescriptor.getSchema(), LocatorConfig.instance.getPartitioner(), MessagingService.instance.readCommandSerializer);
 
@@ -402,14 +402,14 @@ public class SerializationsTest extends AbstractSerializationsTester
     {
         private final String KS = KEYSPACE1;
         private final ByteBuffer Key = ByteBufferUtil.bytes("Key01");
-        private final SortedSet<CellName> NamedCols = new TreeSet<CellName>(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance))
+        private final SortedSet<CellName> NamedCols = new TreeSet<CellName>(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance))
         {{
             add(CellNames.simpleDense(ByteBufferUtil.bytes("AAA")));
             add(CellNames.simpleDense(ByteBufferUtil.bytes("BBB")));
             add(CellNames.simpleDense(ByteBufferUtil.bytes("CCC")));
         }};
         private final ByteBuffer SC = ByteBufferUtil.bytes("SCName");
-        private final SortedSet<CellName> NamedSCCols = new TreeSet<CellName>(new CompoundDenseCellNameType(Arrays.<AbstractType<?>>asList(BytesType.instance, BytesType.instance), DatabaseDescriptor.instance, Tracing.instance, DBConfig.instance))
+        private final SortedSet<CellName> NamedSCCols = new TreeSet<CellName>(new CompoundDenseCellNameType(Arrays.<AbstractType<?>>asList(BytesType.instance, BytesType.instance), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance))
         {{
             add(CellNames.compositeDense(SC, ByteBufferUtil.bytes("AAA")));
             add(CellNames.compositeDense(SC, ByteBufferUtil.bytes("BBB")));
