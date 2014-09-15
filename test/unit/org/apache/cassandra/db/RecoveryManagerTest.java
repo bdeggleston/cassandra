@@ -90,12 +90,12 @@ public class RecoveryManagerTest
 
         cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
         cf.addColumn(column("col1", "val1", 1L));
-        rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey(), cf);
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey(), cf);
         rm.apply();
 
         cf = ArrayBackedSortedColumns.factory.create(KEYSPACE2, "Standard3", databaseDescriptor.getSchema(), DBConfig.instance);
         cf.addColumn(column("col2", "val2", 1L));
-        rm = MutationFactory.instance.create(KEYSPACE2, dk.getKey(), cf);
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE2, dk.getKey(), cf);
         rm.apply();
 
         keyspace1.getColumnFamilyStore("Standard1").clearUnsafe();
@@ -121,7 +121,7 @@ public class RecoveryManagerTest
         {
             cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Counter1", databaseDescriptor.getSchema(), DBConfig.instance);
             cf.addColumn(BufferCounterCell.createLocal(cellname("col"), 1L, 1L, Long.MIN_VALUE, databaseDescriptor.getSystemKeyspace().getLocalHostId()));
-            rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey(), cf);
+            rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey(), cf);
             rm.apply();
         }
 
@@ -152,7 +152,7 @@ public class RecoveryManagerTest
             long ts = TimeUnit.MILLISECONDS.toMicros(timeMS + (i * 1000));
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
             cf.addColumn(column("name-" + i, "value", ts));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey(), cf);
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey(), cf);
             rm.apply();
         }
         keyspace1.getColumnFamilyStore("Standard1").clearUnsafe();
@@ -184,7 +184,7 @@ public class RecoveryManagerTest
 
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
             cf.addColumn(column("name-" + i, "value", ts));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey(), cf);
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey(), cf);
             rm.apply();
         }
 

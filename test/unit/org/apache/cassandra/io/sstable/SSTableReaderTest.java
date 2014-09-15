@@ -111,7 +111,7 @@ public class SSTableReaderTest
         for (int j = 0; j < 10; j++)
         {
             ByteBuffer key = ByteBufferUtil.bytes(String.valueOf(j));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key);
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key);
             rm.add("Standard2", cellname("0"), ByteBufferUtil.EMPTY_BYTE_BUFFER, j);
             rm.applyUnsafe();
         }
@@ -152,7 +152,7 @@ public class SSTableReaderTest
         for (int j = 0; j < 100; j += 2)
         {
             ByteBuffer key = ByteBufferUtil.bytes(String.valueOf(j));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key);
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key);
             rm.add("Standard1", cellname("0"), ByteBufferUtil.EMPTY_BYTE_BUFFER, j);
             rm.applyUnsafe();
         }
@@ -187,7 +187,7 @@ public class SSTableReaderTest
         for (int j = 0; j < 100; j += 2)
         {
             ByteBuffer key = ByteBufferUtil.bytes(String.valueOf(j));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key);
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key);
             rm.add("Standard1", cellname("0"), ByteBufferUtil.EMPTY_BYTE_BUFFER, j);
             rm.applyUnsafe();
         }
@@ -215,7 +215,7 @@ public class SSTableReaderTest
         for (int j = 0; j < 10; j++)
         {
             ByteBuffer key = ByteBufferUtil.bytes(String.valueOf(j));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key);
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key);
             rm.add("Standard2", cellname("0"), ByteBufferUtil.EMPTY_BYTE_BUFFER, j);
             rm.applyUnsafe();
         }
@@ -244,7 +244,7 @@ public class SSTableReaderTest
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Indexed1");
         ByteBuffer key = ByteBufferUtil.bytes(String.valueOf("k1"));
-        Mutation rm = MutationFactory.instance.create(KEYSPACE1, key);
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key);
         rm.add("Indexed1", cellname("birthdate"), ByteBufferUtil.bytes(1L), System.currentTimeMillis());
         rm.applyUnsafe();
         store.forceBlockingFlush();
@@ -276,7 +276,7 @@ public class SSTableReaderTest
                 lastKey = key;
             if (store.metadata.getKeyValidator().compare(lastKey.getKey(), key.getKey()) < 0)
                 lastKey = key;
-            Mutation rm = MutationFactory.instance.create(ks, key.getKey());
+            Mutation rm = databaseDescriptor.getMutationFactory().create(ks, key.getKey());
             rm.add(cf, cellname("col"),
                    ByteBufferUtil.EMPTY_BYTE_BUFFER, timestamp);
             rm.applyUnsafe();
@@ -300,7 +300,7 @@ public class SSTableReaderTest
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Indexed1");
         ByteBuffer key = ByteBufferUtil.bytes(String.valueOf("k1"));
-        Mutation rm = MutationFactory.instance.create(KEYSPACE1, key);
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key);
         rm.add("Indexed1", cellname("birthdate"), ByteBufferUtil.bytes(1L), System.currentTimeMillis());
         rm.applyUnsafe();
         store.forceBlockingFlush();
@@ -327,7 +327,7 @@ public class SSTableReaderTest
         Keyspace keyspace = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard1");
         ByteBuffer key = ByteBufferUtil.bytes(String.valueOf("k1"));
-        Mutation rm = MutationFactory.instance.create(KEYSPACE1, key);
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key);
         rm.add("Standard1", cellname("xyz"), ByteBufferUtil.bytes("abc"), 0);
         rm.applyUnsafe();
         store.forceBlockingFlush();
@@ -354,7 +354,7 @@ public class SSTableReaderTest
         for (int j = 0; j < 130; j++)
         {
             ByteBuffer key = ByteBufferUtil.bytes(String.valueOf(j));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key);
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key);
             rm.add("Standard2", cellname("0"), ByteBufferUtil.EMPTY_BYTE_BUFFER, j);
             rm.applyUnsafe();
         }
@@ -388,7 +388,7 @@ public class SSTableReaderTest
         for (int j = 0; j < NUM_ROWS; j++)
         {
             ByteBuffer key = ByteBufferUtil.bytes(String.format("%3d", j));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key);
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key);
             rm.add("StandardLowIndexInterval", Util.cellname("0"), ByteBufferUtil.bytes(String.format("%3d", j)), j);
             rm.applyUnsafe();
         }

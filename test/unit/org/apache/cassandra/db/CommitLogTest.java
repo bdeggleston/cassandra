@@ -143,7 +143,7 @@ public class CommitLogTest
     {
         CommitLog.instance.resetUnsafe();
         // Roughly 32 MB mutation
-        Mutation rm = MutationFactory.instance.create(KEYSPACE1, bytes("k"));
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate(DatabaseDescriptor.instance.getCommitLogSegmentSize()/4), 0);
 
         // Adding it 5 times
@@ -154,7 +154,7 @@ public class CommitLogTest
         CommitLog.instance.add(rm);
 
         // Adding new mutation on another CF
-        Mutation rm2 = MutationFactory.instance.create(KEYSPACE1, bytes("k"));
+        Mutation rm2 = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm2.add(CF2, Util.cellname("c1"), ByteBuffer.allocate(4), 0);
         CommitLog.instance.add(rm2);
 
@@ -173,7 +173,7 @@ public class CommitLogTest
         DatabaseDescriptor.instance.getCommitLogSegmentSize();
         CommitLog.instance.resetUnsafe();
         // Roughly 32 MB mutation
-        Mutation rm = MutationFactory.instance.create(KEYSPACE1, bytes("k"));
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate((DatabaseDescriptor.instance.getCommitLogSegmentSize()/4) - 1), 0);
 
         // Adding it twice (won't change segment)
@@ -190,7 +190,7 @@ public class CommitLogTest
         assert CommitLog.instance.activeSegments() == 1 : "Expecting 1 segment, got " + CommitLog.instance.activeSegments();
 
         // Adding new mutation on another CF, large enough (including CL entry overhead) that a new segment is created
-        Mutation rm2 = MutationFactory.instance.create(KEYSPACE1, bytes("k"));
+        Mutation rm2 = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm2.add(CF2, Util.cellname("c1"), ByteBuffer.allocate((DatabaseDescriptor.instance.getCommitLogSegmentSize()/2) - 100), 0);
         CommitLog.instance.add(rm2);
         // also forces a new segment, since each entry-with-overhead is just under half the CL size
@@ -212,12 +212,12 @@ public class CommitLogTest
 
     private static int getMaxRecordDataSize(String keyspace, ByteBuffer key, String table, CellName column)
     {
-        Mutation rm = MutationFactory.instance.create(KEYSPACE1, bytes("k"));
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm.add("Standard1", Util.cellname("c1"), ByteBuffer.allocate(0), 0);
 
         int max = (DatabaseDescriptor.instance.getCommitLogSegmentSize() / 2);
         max -= CommitLogSegment.ENTRY_OVERHEAD_SIZE; // log entry overhead
-        return max - (int) MutationFactory.instance.serializer.serializedSize(rm, MessagingService.current_version);
+        return max - (int) databaseDescriptor.getMutationFactory().serializer.serializedSize(rm, MessagingService.current_version);
     }
 
     private static int getMaxRecordDataSize()
@@ -231,7 +231,7 @@ public class CommitLogTest
     {
         CommitLog.instance.resetUnsafe();
 
-        Mutation rm = MutationFactory.instance.create(KEYSPACE1, bytes("k"));
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate(getMaxRecordDataSize()), 0);
         CommitLog.instance.add(rm);
     }
@@ -242,7 +242,7 @@ public class CommitLogTest
         CommitLog.instance.resetUnsafe();
         try
         {
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, bytes("k"));
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
             rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate(1 + getMaxRecordDataSize()), 0);
             CommitLog.instance.add(rm);
             throw new AssertionError("mutation larger than limit was accepted");
@@ -316,7 +316,7 @@ public class CommitLogTest
 
             DatabaseDescriptor.instance.setCommitFailurePolicy(Config.CommitFailurePolicy.stop);
             commitDir.setWritable(false);
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, bytes("k"));
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
             rm.add("Standard1", Util.cellname("c1"), ByteBuffer.allocate(100), 0);
 
             // Adding it twice (won't change segment)
@@ -342,12 +342,12 @@ public class CommitLogTest
         ColumnFamilyStore cfs1 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard1");
         ColumnFamilyStore cfs2 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard2");
 
-        final Mutation rm1 = MutationFactory.instance.create(KEYSPACE1, bytes("k"));
+        final Mutation rm1 = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm1.add("Standard1", Util.cellname("c1"), ByteBuffer.allocate(100), 0);
         rm1.apply();
         cfs1.truncateBlocking();
         DatabaseDescriptor.instance.setAutoSnapshot(prev);
-        final Mutation rm2 = MutationFactory.instance.create(KEYSPACE1, bytes("k"));
+        final Mutation rm2 = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm2.add("Standard2", Util.cellname("c1"), ByteBuffer.allocate(DatabaseDescriptor.instance.getCommitLogSegmentSize() / 4), 0);
 
         for (int i = 0 ; i < 5 ; i++)
@@ -376,7 +376,7 @@ public class CommitLogTest
         DecoratedKey dk = Util.dk("key1");
 
         // add data
-        rm = MutationFactory.instance.create(KEYSPACE2, dk.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE2, dk.getKey());
         rm.add("Standard1", Util.cellname("Column1"), ByteBufferUtil.bytes("abcd"), 0);
         rm.apply();
 

@@ -149,7 +149,7 @@ public class AbstractQueryPagerTest
                               databaseDescriptor.getColumnFamilyStoreManager(),
                               databaseDescriptor.getKeyspaceManager(),
                               CFMetaDataFactory.instance,
-                              MutationFactory.instance,
+                              databaseDescriptor.getMutationFactory(),
                               DBConfig.instance);
     }
 

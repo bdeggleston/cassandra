@@ -169,7 +169,7 @@ public class ScrubTest
 
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF2, databaseDescriptor.getSchema(), DBConfig.instance);
         cf.delete(new DeletionInfo(0, 1)); // expired tombstone
-        Mutation rm = MutationFactory.instance.create(KEYSPACE, ByteBufferUtil.bytes(1), cf);
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE, ByteBufferUtil.bytes(1), cf);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
@@ -284,7 +284,7 @@ public class ScrubTest
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF, databaseDescriptor.getSchema(), DBConfig.instance);
             cf.addColumn(column("c1", "1", 1L));
             cf.addColumn(column("c2", "2", 1L));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE, ByteBufferUtil.bytes(key), cf);
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE, ByteBufferUtil.bytes(key), cf);
             rm.applyUnsafe();
         }
 
@@ -297,7 +297,7 @@ public class ScrubTest
         {
             String key = String.valueOf(i);
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, COUNTER_CF, databaseDescriptor.getSchema(), DBConfig.instance);
-            Mutation rm = MutationFactory.instance.create(KEYSPACE, ByteBufferUtil.bytes(key), cf);
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE, ByteBufferUtil.bytes(key), cf);
             rm.addCounter(COUNTER_CF, cellname("Column1"), 100);
             CounterMutation cm = databaseDescriptor.getCounterMutationFactory().create(rm, ConsistencyLevel.ONE);
             cm.apply();
@@ -330,7 +330,7 @@ public class ScrubTest
 
         ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE, CF_UUID, databaseDescriptor.getSchema(), DBConfig.instance);
         cf.addColumn(column(CFMetaData.DEFAULT_KEY_ALIAS, "not a uuid", 1L));
-        Mutation mutation = MutationFactory.instance.create(KEYSPACE, ByteBufferUtil.bytes(UUIDGen.getTimeUUID()), cf);
+        Mutation mutation = databaseDescriptor.getMutationFactory().create(KEYSPACE, ByteBufferUtil.bytes(UUIDGen.getTimeUUID()), cf);
         mutation.applyUnsafe();
         cfs.forceBlockingFlush();
         databaseDescriptor.getCompactionManager().performScrub(cfs, false);

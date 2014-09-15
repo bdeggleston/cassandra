@@ -64,12 +64,12 @@ public class TimeSortTest
         Mutation rm;
         DecoratedKey key = Util.dk("key0");
 
-        rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
         rm.add(CF_STANDARD1, cellname(100), ByteBufferUtil.bytes("a"), 100);
         rm.applyUnsafe();
         cfStore.forceBlockingFlush();
 
-        rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
         rm.add(CF_STANDARD1, cellname(0), ByteBufferUtil.bytes("b"), 0);
         rm.applyUnsafe();
 
@@ -86,7 +86,7 @@ public class TimeSortTest
 
         for (int i = 900; i < 1000; ++i)
         {
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes(Integer.toString(i)));
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, ByteBufferUtil.bytes(Integer.toString(i)));
             for (int j = 0; j < 8; ++j)
             {
                 rm.add(CF_STANDARD1, cellname(j * 2), ByteBufferUtil.bytes("a"), j * 2);
@@ -101,14 +101,14 @@ public class TimeSortTest
 
         // interleave some new data to test memtable + sstable
         DecoratedKey key = Util.dk("900");
-        Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
         for (int j = 0; j < 4; ++j)
         {
             rm.add(CF_STANDARD1, cellname(j * 2 + 1), ByteBufferUtil.bytes("b"), j * 2 + 1);
         }
         rm.applyUnsafe();
         // and some overwrites
-        rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
         rm.add(CF_STANDARD1, cellname(0), ByteBufferUtil.bytes("c"), 100);
         rm.add(CF_STANDARD1, cellname(10), ByteBufferUtil.bytes("c"), 100);
         rm.applyUnsafe();

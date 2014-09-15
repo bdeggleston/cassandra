@@ -60,12 +60,12 @@ public class RemoveColumnFamilyTest
         DecoratedKey dk = Util.dk("key1");
 
         // add data
-        rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey());
         rm.add("Standard1", Util.cellname("Column1"), ByteBufferUtil.bytes("asdf"), 0);
         rm.applyUnsafe();
 
         // remove
-        rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey());
         rm.delete("Standard1", 1);
         rm.applyUnsafe();
 

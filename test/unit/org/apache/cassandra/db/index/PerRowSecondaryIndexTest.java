@@ -89,7 +89,7 @@ public class PerRowSecondaryIndexTest
     {
         // create a row then test that the configured index instance was able to read the row
         Mutation rm;
-        rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("k1"));
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, ByteBufferUtil.bytes("k1"));
         rm.add("Indexed1", Util.cellname("indexed"), ByteBufferUtil.bytes("foo"), 1);
         rm.applyUnsafe();
 
@@ -98,7 +98,7 @@ public class PerRowSecondaryIndexTest
         assertEquals(ByteBufferUtil.bytes("foo"), indexedRow.getColumn(Util.cellname("indexed")).value());
 
         // update the row and verify what was indexed
-        rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("k1"));
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, ByteBufferUtil.bytes("k1"));
         rm.add("Indexed1", Util.cellname("indexed"), ByteBufferUtil.bytes("bar"), 2);
         rm.applyUnsafe();
 
@@ -113,7 +113,7 @@ public class PerRowSecondaryIndexTest
     {
         // issue a column delete and test that the configured index instance was notified to update
         Mutation rm;
-        rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("k2"));
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, ByteBufferUtil.bytes("k2"));
         rm.delete("Indexed1", Util.cellname("indexed"), 1);
         rm.applyUnsafe();
 
@@ -131,7 +131,7 @@ public class PerRowSecondaryIndexTest
     {
         // issue a row level delete and test that the configured index instance was notified to update
         Mutation rm;
-        rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("k3"));
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, ByteBufferUtil.bytes("k3"));
         rm.delete("Indexed1", 1);
         rm.applyUnsafe();
 
@@ -147,7 +147,7 @@ public class PerRowSecondaryIndexTest
     public void testInvalidSearch() throws IOException
     {
         Mutation rm;
-        rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes("k4"));
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, ByteBufferUtil.bytes("k4"));
         rm.add("Indexed1", Util.cellname("indexed"), ByteBufferUtil.bytes("foo"), 1);
         rm.apply();
         

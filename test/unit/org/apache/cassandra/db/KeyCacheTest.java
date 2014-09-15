@@ -140,10 +140,10 @@ public class KeyCacheTest
         Mutation rm;
 
         // inserts
-        rm = MutationFactory.instance.create(KEYSPACE1, key1.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key1.getKey());
         rm.add(COLUMN_FAMILY1, Util.cellname("1"), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
         rm.applyUnsafe();
-        rm = MutationFactory.instance.create(KEYSPACE1, key2.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key2.getKey());
         rm.add(COLUMN_FAMILY1, Util.cellname("2"), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
         rm.applyUnsafe();
 

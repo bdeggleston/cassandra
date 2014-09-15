@@ -77,7 +77,7 @@ public class LongLeveledCompactionStrategyTest
         for (int r = 0; r < rows; r++)
         {
             DecoratedKey key = Util.dk(String.valueOf(r));
-            Mutation rm = MutationFactory.instance.create(ksname, key.getKey());
+            Mutation rm = databaseDescriptor.getMutationFactory().create(ksname, key.getKey());
             for (int c = 0; c < columns; c++)
             {
                 rm.add(cfname, Util.cellname("column" + c), value, 0);

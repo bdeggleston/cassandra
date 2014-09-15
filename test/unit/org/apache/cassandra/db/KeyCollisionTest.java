@@ -105,7 +105,7 @@ public class KeyCollisionTest
     private void insert(String key)
     {
         Mutation rm;
-        rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, ByteBufferUtil.bytes(key));
         rm.add(CF, Util.cellname("column"), ByteBufferUtil.bytes("asdf"), 0);
         rm.applyUnsafe();
     }

@@ -94,7 +94,7 @@ public class DefsTest
                                         databaseDescriptor.getColumnFamilyStoreManager(),
                                         databaseDescriptor.getKeyspaceManager(),
                                         CFMetaDataFactory.instance,
-                                        MutationFactory.instance,
+                                        databaseDescriptor.getMutationFactory(),
                                         DBConfig.instance);
 
         for (int i = 0; i < 5; i++)
@@ -212,7 +212,7 @@ public class DefsTest
         // now read and write to it.
         CellName col0 = cellname("col0");
         DecoratedKey dk = Util.dk("key0");
-        Mutation rm = MutationFactory.instance.create(ks, dk.getKey());
+        Mutation rm = databaseDescriptor.getMutationFactory().create(ks, dk.getKey());
         rm.add(cf, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();
         ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(ks).getColumnFamilyStore(cf);
@@ -236,7 +236,7 @@ public class DefsTest
         Assert.assertNotNull(cfm);
 
         // write some data, force a flush, then verify that files exist on disk.
-        Mutation rm = MutationFactory.instance.create(ks.name, dk.getKey());
+        Mutation rm = databaseDescriptor.getMutationFactory().create(ks.name, dk.getKey());
         for (int i = 0; i < 100; i++)
             rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.applyUnsafe();
@@ -250,7 +250,7 @@ public class DefsTest
         Assert.assertFalse(databaseDescriptor.getSchema().getKSMetaData(ks.name).cfMetaData().containsKey(cfm.cfName));
 
         // any write should fail.
-        rm = MutationFactory.instance.create(ks.name, dk.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(ks.name, dk.getKey());
         boolean success = true;
         try
         {
@@ -286,7 +286,7 @@ public class DefsTest
 
         // test reads and writes.
         CellName col0 = cellname("col0");
-        Mutation rm = MutationFactory.instance.create(newCf.ksName, dk.getKey());
+        Mutation rm = databaseDescriptor.getMutationFactory().create(newCf.ksName, dk.getKey());
         rm.add(newCf.cfName, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();
         ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(newCf.ksName).getColumnFamilyStore(newCf.cfName);
@@ -310,7 +310,7 @@ public class DefsTest
         Assert.assertNotNull(cfm);
 
         // write some data, force a flush, then verify that files exist on disk.
-        Mutation rm = MutationFactory.instance.create(ks.name, dk.getKey());
+        Mutation rm = databaseDescriptor.getMutationFactory().create(ks.name, dk.getKey());
         for (int i = 0; i < 100; i++)
             rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.applyUnsafe();
@@ -324,7 +324,7 @@ public class DefsTest
         Assert.assertNull(databaseDescriptor.getSchema().getKSMetaData(ks.name));
 
         // write should fail.
-        rm = MutationFactory.instance.create(ks.name, dk.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(ks.name, dk.getKey());
         boolean success = true;
         try
         {
@@ -361,7 +361,7 @@ public class DefsTest
         Assert.assertNotNull(cfm);
 
         // write some data
-        Mutation rm = MutationFactory.instance.create(ks.name, dk.getKey());
+        Mutation rm = databaseDescriptor.getMutationFactory().create(ks.name, dk.getKey());
         for (int i = 0; i < 100; i++)
             rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.applyUnsafe();
@@ -395,7 +395,7 @@ public class DefsTest
         // now read and write to it.
         CellName col0 = cellname("col0");
         DecoratedKey dk = Util.dk("key0");
-        Mutation rm = MutationFactory.instance.create(newKs.name, dk.getKey());
+        Mutation rm = databaseDescriptor.getMutationFactory().create(newKs.name, dk.getKey());
         rm.add(newCf.cfName, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.applyUnsafe();
         ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(newKs.name).getColumnFamilyStore(newCf.cfName);
@@ -497,7 +497,7 @@ public class DefsTest
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 databaseDescriptor.getKeyspaceManager(),
                                 CFMetaDataFactory.instance,
-                                MutationFactory.instance,
+                                databaseDescriptor.getMutationFactory(),
                                 DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
@@ -519,7 +519,7 @@ public class DefsTest
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 databaseDescriptor.getKeyspaceManager(),
                                 CFMetaDataFactory.instance,
-                                MutationFactory.instance,
+                                databaseDescriptor.getMutationFactory(),
                                 DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
@@ -541,7 +541,7 @@ public class DefsTest
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 databaseDescriptor.getKeyspaceManager(),
                                 CFMetaDataFactory.instance,
-                                MutationFactory.instance,
+                                databaseDescriptor.getMutationFactory(),
                                 DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
@@ -563,7 +563,7 @@ public class DefsTest
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 databaseDescriptor.getKeyspaceManager(),
                                 CFMetaDataFactory.instance,
-                                MutationFactory.instance,
+                                databaseDescriptor.getMutationFactory(),
                                 DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
@@ -585,7 +585,7 @@ public class DefsTest
                                 databaseDescriptor.getColumnFamilyStoreManager(),
                                 databaseDescriptor.getKeyspaceManager(),
                                 CFMetaDataFactory.instance,
-                                MutationFactory.instance,
+                                databaseDescriptor.getMutationFactory(),
                                 DBConfig.instance);
         CFMetaData.copyOpts(newCfm, cf);
         try
@@ -604,7 +604,7 @@ public class DefsTest
         ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE6).getColumnFamilyStore("Indexed1");
 
         // insert some data.  save the sstable descriptor so we can make sure it's marked for delete after the drop
-        Mutation rm = MutationFactory.instance.create(KEYSPACE6, ByteBufferUtil.bytes("k1"));
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE6, ByteBufferUtil.bytes("k1"));
         rm.add("Indexed1", cellname("notbirthdate"), ByteBufferUtil.bytes(1L), 0);
         rm.add("Indexed1", cellname("birthdate"), ByteBufferUtil.bytes(1L), 0);
         rm.applyUnsafe();
@@ -638,7 +638,7 @@ public class DefsTest
                                             databaseDescriptor.getColumnFamilyStoreManager(),
                                             databaseDescriptor.getKeyspaceManager(),
                                             CFMetaDataFactory.instance,
-                                            MutationFactory.instance,
+                                            databaseDescriptor.getMutationFactory(),
                                             DBConfig.instance);
         newCFMD.comment(comment)
                .readRepairChance(0.0);

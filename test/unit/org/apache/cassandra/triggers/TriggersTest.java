@@ -89,7 +89,7 @@ public class TriggersTest
                                             DatabaseDescriptor.instance, databaseDescriptor.getTracing(),
                                             databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), StorageProxy.instance,
                                             MessagingService.instance, databaseDescriptor.getKeyspaceManager(),
-                                            MutationFactory.instance, databaseDescriptor.getCounterMutationFactory(),
+                                            databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
                                             StorageService.instance, CFMetaDataFactory.instance,
                                             DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
                                             QueryHandlerInstance.instance, LocatorConfig.instance,
@@ -350,7 +350,7 @@ public class TriggersTest
         {
             ColumnFamily extraUpdate = update.cloneMeShallow(ArrayBackedSortedColumns.factory, false);
             extraUpdate.addColumn(new BufferCell(update.metadata().comparator.makeCellName(bytes("v2")), bytes(999)));
-            return Collections.singletonList(MutationFactory.instance.create(ksName, key, extraUpdate));
+            return Collections.singletonList(databaseDescriptor.getMutationFactory().create(ksName, key, extraUpdate));
         }
     }
 
@@ -362,7 +362,7 @@ public class TriggersTest
             extraUpdate.addColumn(new BufferCell(update.metadata().comparator.makeCellName(bytes("v2")), bytes(999)));
 
             int newKey = toInt(key) + 1000;
-            return Collections.singletonList(MutationFactory.instance.create(ksName, bytes(newKey), extraUpdate));
+            return Collections.singletonList(databaseDescriptor.getMutationFactory().create(ksName, bytes(newKey), extraUpdate));
         }
     }
 
@@ -372,7 +372,7 @@ public class TriggersTest
         {
             ColumnFamily extraUpdate = ArrayBackedSortedColumns.factory.create(ksName, otherCf, databaseDescriptor.getSchema(), DBConfig.instance);
             extraUpdate.addColumn(new BufferCell(extraUpdate.metadata().comparator.makeCellName(bytes("v2")), bytes(999)));
-            return Collections.singletonList(MutationFactory.instance.create(ksName, key, extraUpdate));
+            return Collections.singletonList(databaseDescriptor.getMutationFactory().create(ksName, key, extraUpdate));
         }
     }
 }

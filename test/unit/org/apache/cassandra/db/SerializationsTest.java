@@ -266,21 +266,21 @@ public class SerializationsTest extends AbstractSerializationsTester
 
     private void testMutationWrite() throws IOException
     {
-        Mutation standardRowRm = MutationFactory.instance.create(statics.KS, statics.StandardRow);
-        Mutation superRowRm = MutationFactory.instance.create(statics.KS, statics.SuperRow);
-        Mutation standardRm = MutationFactory.instance.create(statics.KS, statics.Key, statics.StandardCf);
-        Mutation superRm = MutationFactory.instance.create(statics.KS, statics.Key, statics.SuperCf);
+        Mutation standardRowRm = databaseDescriptor.getMutationFactory().create(statics.KS, statics.StandardRow);
+        Mutation superRowRm = databaseDescriptor.getMutationFactory().create(statics.KS, statics.SuperRow);
+        Mutation standardRm = databaseDescriptor.getMutationFactory().create(statics.KS, statics.Key, statics.StandardCf);
+        Mutation superRm = databaseDescriptor.getMutationFactory().create(statics.KS, statics.Key, statics.SuperCf);
         Map<UUID, ColumnFamily> mods = new HashMap<UUID, ColumnFamily>();
         mods.put(statics.StandardCf.metadata().cfId, statics.StandardCf);
         mods.put(statics.SuperCf.metadata().cfId, statics.SuperCf);
-        Mutation mixedRm = MutationFactory.instance.create(statics.KS, statics.Key, mods);
+        Mutation mixedRm = databaseDescriptor.getMutationFactory().create(statics.KS, statics.Key, mods);
 
         DataOutputStreamAndChannel out = getOutput("db.RowMutation.bin");
-        MutationFactory.instance.serializer.serialize(standardRowRm, out, getVersion());
-        MutationFactory.instance.serializer.serialize(superRowRm, out, getVersion());
-        MutationFactory.instance.serializer.serialize(standardRm, out, getVersion());
-        MutationFactory.instance.serializer.serialize(superRm, out, getVersion());
-        MutationFactory.instance.serializer.serialize(mixedRm, out, getVersion());
+        databaseDescriptor.getMutationFactory().serializer.serialize(standardRowRm, out, getVersion());
+        databaseDescriptor.getMutationFactory().serializer.serialize(superRowRm, out, getVersion());
+        databaseDescriptor.getMutationFactory().serializer.serialize(standardRm, out, getVersion());
+        databaseDescriptor.getMutationFactory().serializer.serialize(superRm, out, getVersion());
+        databaseDescriptor.getMutationFactory().serializer.serialize(mixedRm, out, getVersion());
 
         standardRowRm.createMessage(MessagingService.instance).serialize(out, getVersion());
         superRowRm.createMessage(MessagingService.instance).serialize(out, getVersion());
@@ -291,11 +291,11 @@ public class SerializationsTest extends AbstractSerializationsTester
         out.close();
 
         // test serializedSize
-        testSerializedSize(standardRowRm, MutationFactory.instance.serializer);
-        testSerializedSize(superRowRm, MutationFactory.instance.serializer);
-        testSerializedSize(standardRm, MutationFactory.instance.serializer);
-        testSerializedSize(superRm, MutationFactory.instance.serializer);
-        testSerializedSize(mixedRm, MutationFactory.instance.serializer);
+        testSerializedSize(standardRowRm, databaseDescriptor.getMutationFactory().serializer);
+        testSerializedSize(superRowRm, databaseDescriptor.getMutationFactory().serializer);
+        testSerializedSize(standardRm, databaseDescriptor.getMutationFactory().serializer);
+        testSerializedSize(superRm, databaseDescriptor.getMutationFactory().serializer);
+        testSerializedSize(mixedRm, databaseDescriptor.getMutationFactory().serializer);
     }
 
     @Test
@@ -306,11 +306,11 @@ public class SerializationsTest extends AbstractSerializationsTester
         testMutationWrite();
 
         DataInputStream in = getInput("db.RowMutation.bin");
-        assert MutationFactory.instance.serializer.deserialize(in, getVersion()) != null;
-        assert MutationFactory.instance.serializer.deserialize(in, getVersion()) != null;
-        assert MutationFactory.instance.serializer.deserialize(in, getVersion()) != null;
-        assert MutationFactory.instance.serializer.deserialize(in, getVersion()) != null;
-        assert MutationFactory.instance.serializer.deserialize(in, getVersion()) != null;
+        assert databaseDescriptor.getMutationFactory().serializer.deserialize(in, getVersion()) != null;
+        assert databaseDescriptor.getMutationFactory().serializer.deserialize(in, getVersion()) != null;
+        assert databaseDescriptor.getMutationFactory().serializer.deserialize(in, getVersion()) != null;
+        assert databaseDescriptor.getMutationFactory().serializer.deserialize(in, getVersion()) != null;
+        assert databaseDescriptor.getMutationFactory().serializer.deserialize(in, getVersion()) != null;
         assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
         assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;
         assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.instance, MessagingService.instance) != null;

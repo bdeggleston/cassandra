@@ -461,7 +461,7 @@ public class SchemaLoader
         for (int i = offset; i < offset + numberOfRows; i++)
         {
             ByteBuffer key = ByteBufferUtil.bytes("key" + i);
-            Mutation mutation = MutationFactory.instance.create(keyspace, key);
+            Mutation mutation = databaseDescriptor.getMutationFactory().create(keyspace, key);
             mutation.add(columnFamily, Util.cellname("col" + i), ByteBufferUtil.bytes("val" + i), System.currentTimeMillis());
             mutation.applyUnsafe();
         }

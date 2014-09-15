@@ -139,7 +139,7 @@ public class DatabaseDescriptor
         assert LocatorConfig.instance != null;
         assert DBConfig.instance != null;
 //        assert KeyspaceManager.instance != null;
-        assert MutationFactory.instance != null;
+//        assert MutationFactory.instance != null;
         assert MessagingService.instance != null;
 //        assert DatabaseDescriptor.instance != null;
 //        assert SystemKeyspace.instance != null;
@@ -187,6 +187,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    protected final MutationFactory mutationFactory;
     protected final CounterMutationFactory counterMutationFactory;
     protected final Tracing tracing;
     protected final KeyspaceManager keyspaceManager;
@@ -231,6 +232,7 @@ public class DatabaseDescriptor
             applyConfig();
         }
 
+        mutationFactory = createMutationFactory();
         counterMutationFactory = createCounterMutationFactory();
         tracing = createTracing();
         keyspaceManager = createKeyspaceManager();
@@ -1721,9 +1723,14 @@ public class DatabaseDescriptor
         return columnFamilyStoreManager;
     }
 
+    public MutationFactory createMutationFactory()
+    {
+        return new MutationFactory(this, getSchema(), getKeyspaceManager(), getDBConfig());
+    }
+
     public MutationFactory getMutationFactory()
     {
-        return MutationFactory.instance;
+        return mutationFactory;
     }
 
     public StorageProxy getStorageProxy()

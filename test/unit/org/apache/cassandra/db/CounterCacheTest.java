@@ -94,8 +94,8 @@ public class CounterCacheTest
         ColumnFamily cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addColumn(new BufferCounterUpdateCell(cellname(1), 1L, FBUtilities.timestampMicros()));
         cells.addColumn(new BufferCounterUpdateCell(cellname(2), 2L, FBUtilities.timestampMicros()));
-        databaseDescriptor.getCounterMutationFactory().create(MutationFactory.instance.create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
-        databaseDescriptor.getCounterMutationFactory().create(MutationFactory.instance.create(KEYSPACE1, bytes(2), cells), ConsistencyLevel.ONE).apply();
+        databaseDescriptor.getCounterMutationFactory().create(databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
+        databaseDescriptor.getCounterMutationFactory().create(databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(2), cells), ConsistencyLevel.ONE).apply();
 
         // flush the counter cache and invalidate
         databaseDescriptor.getCacheService().counterCache.submitWrite(Integer.MAX_VALUE).get();

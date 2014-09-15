@@ -100,7 +100,7 @@ public class NativeCellTest
                                                               databaseDescriptor.getColumnFamilyStoreManager(),
                                                               databaseDescriptor.getKeyspaceManager(),
                                                               CFMetaDataFactory.instance,
-                                                              MutationFactory.instance,
+                                                              databaseDescriptor.getMutationFactory(),
                                                               DBConfig.instance);
     static
     {

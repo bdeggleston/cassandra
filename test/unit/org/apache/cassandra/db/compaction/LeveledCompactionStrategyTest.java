@@ -111,7 +111,7 @@ public class LeveledCompactionStrategyTest
         for (int r = 0; r < rows; r++)
         {
             DecoratedKey key = Util.dk(String.valueOf(r));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int c = 0; c < columns; c++)
             {
                 rm.add(CF_STANDARDDLEVELED, Util.cellname("column" + c), value, 0);
@@ -160,7 +160,7 @@ public class LeveledCompactionStrategyTest
         for (int r = 0; r < rows; r++)
         {
             DecoratedKey key = Util.dk(String.valueOf(r));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int c = 0; c < columns; c++)
             {
                 rm.add(CF_STANDARDDLEVELED, Util.cellname("column" + c), value, 0);
@@ -205,7 +205,7 @@ public class LeveledCompactionStrategyTest
         for (int r = 0; r < rows; r++)
         {
             DecoratedKey key = Util.dk(String.valueOf(r));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int c = 0; c < columns; c++)
             {
                 rm.add(CF_STANDARDDLEVELED, Util.cellname("column" + c), value, 0);
@@ -244,7 +244,7 @@ public class LeveledCompactionStrategyTest
         for (int r = 0; r < rows; r++)
         {
             DecoratedKey key = Util.dk(String.valueOf(r));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int c = 0; c < columns; c++)
             {
                 rm.add(CF_STANDARDDLEVELED, Util.cellname("column" + c), value, 0);
@@ -290,7 +290,7 @@ public class LeveledCompactionStrategyTest
         for (int r = 0; r < rows; r++)
         {
             DecoratedKey key = Util.dk(String.valueOf(r));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int c = 0; c < columns; c++)
             {
                 rm.add(CF_STANDARDDLEVELED, Util.cellname("column" + c), value, 0);

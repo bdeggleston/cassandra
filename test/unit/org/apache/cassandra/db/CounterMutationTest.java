@@ -69,21 +69,21 @@ public class CounterMutationTest
         // Do the initial update (+1)
         ColumnFamily cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addCounter(cellname(1), 1L);
-        databaseDescriptor.getCounterMutationFactory().create(MutationFactory.instance.create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
+        databaseDescriptor.getCounterMutationFactory().create(databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         ColumnFamily current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertEquals(1L, CounterContext.total(current.getColumn(cellname(1)).value()));
 
         // Make another increment (+2)
         cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addCounter(cellname(1), 2L);
-        databaseDescriptor.getCounterMutationFactory().create(MutationFactory.instance.create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
+        databaseDescriptor.getCounterMutationFactory().create(databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertEquals(3L, CounterContext.total(current.getColumn(cellname(1)).value()));
 
         // Decrement to 0 (-3)
         cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addCounter(cellname(1), -3L);
-        databaseDescriptor.getCounterMutationFactory().create(MutationFactory.instance.create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
+        databaseDescriptor.getCounterMutationFactory().create(databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertEquals(0L, CounterContext.total(current.getColumn(cellname(1)).value()));
         assertEquals(ClockAndCount.create(3L, 0L), cfs.getCachedCounter(bytes(1), cellname(1)));
@@ -99,7 +99,7 @@ public class CounterMutationTest
         ColumnFamily cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addCounter(cellname(1), 1L);
         cells.addCounter(cellname(2), -1L);
-        databaseDescriptor.getCounterMutationFactory().create(MutationFactory.instance.create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
+        databaseDescriptor.getCounterMutationFactory().create(databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         ColumnFamily current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertEquals(1L, CounterContext.total(current.getColumn(cellname(1)).value()));
         assertEquals(-1L, CounterContext.total(current.getColumn(cellname(2)).value()));
@@ -108,7 +108,7 @@ public class CounterMutationTest
         cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addCounter(cellname(1), 2L);
         cells.addCounter(cellname(2), -2L);
-        databaseDescriptor.getCounterMutationFactory().create(MutationFactory.instance.create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
+        databaseDescriptor.getCounterMutationFactory().create(databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertEquals(3L, CounterContext.total(current.getColumn(cellname(1)).value()));
 
@@ -116,7 +116,7 @@ public class CounterMutationTest
         cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addCounter(cellname(1), -3L);
         cells.addCounter(cellname(2), 3L);
-        databaseDescriptor.getCounterMutationFactory().create(MutationFactory.instance.create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
+        databaseDescriptor.getCounterMutationFactory().create(databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertEquals(0L, CounterContext.total(current.getColumn(cellname(1)).value()));
         assertEquals(0L, CounterContext.total(current.getColumn(cellname(2)).value()));
@@ -144,7 +144,7 @@ public class CounterMutationTest
         cells2.addCounter(cellname(1), 2L);
         cells2.addCounter(cellname(2), -2L);
 
-        Mutation mutation = MutationFactory.instance.create(KEYSPACE1, bytes(1));
+        Mutation mutation = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1));
         mutation.add(cells1);
         mutation.add(cells2);
 
@@ -176,7 +176,7 @@ public class CounterMutationTest
         ColumnFamily cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addCounter(cellname(1), 1L);
         cells.addCounter(cellname(2), 1L);
-        databaseDescriptor.getCounterMutationFactory().create(MutationFactory.instance.create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
+        databaseDescriptor.getCounterMutationFactory().create(databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         ColumnFamily current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertEquals(1L, CounterContext.total(current.getColumn(cellname(1)).value()));
         assertEquals(1L, CounterContext.total(current.getColumn(cellname(2)).value()));
@@ -185,7 +185,7 @@ public class CounterMutationTest
         cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addTombstone(cellname(1), (int) System.currentTimeMillis() / 1000, FBUtilities.timestampMicros());
         cells.addCounter(cellname(2), 1L);
-        databaseDescriptor.getCounterMutationFactory().create(MutationFactory.instance.create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
+        databaseDescriptor.getCounterMutationFactory().create(databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertNull(current.getColumn(cellname(1)));
         assertEquals(2L, CounterContext.total(current.getColumn(cellname(2)).value()));
@@ -193,12 +193,12 @@ public class CounterMutationTest
         // Increment the first counter, make sure it's still shadowed by the tombstone
         cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addCounter(cellname(1), 1L);
-        databaseDescriptor.getCounterMutationFactory().create(MutationFactory.instance.create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
+        databaseDescriptor.getCounterMutationFactory().create(databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertNull(current.getColumn(cellname(1)));
 
         // Get rid of the complete partition
-        Mutation mutation = MutationFactory.instance.create(KEYSPACE1, bytes(1));
+        Mutation mutation = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1));
         mutation.delete(CF1, FBUtilities.timestampMicros());
         databaseDescriptor.getCounterMutationFactory().create(mutation, ConsistencyLevel.ONE).apply();
         current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
@@ -209,7 +209,7 @@ public class CounterMutationTest
         cells = ArrayBackedSortedColumns.factory.create(cfs.metadata, DBConfig.instance);
         cells.addCounter(cellname(1), 1L);
         cells.addCounter(cellname(2), 1L);
-        databaseDescriptor.getCounterMutationFactory().create(MutationFactory.instance.create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
+        databaseDescriptor.getCounterMutationFactory().create(databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
         current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         assertNull(current.getColumn(cellname(1)));
         assertNull(current.getColumn(cellname(2)));
@@ -226,7 +226,7 @@ public class CounterMutationTest
         cells.addCounter(cellname(1), 2L);
         cells.addCounter(cellname(1), 3L);
         cells.addCounter(cellname(1), 4L);
-        databaseDescriptor.getCounterMutationFactory().create(MutationFactory.instance.create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
+        databaseDescriptor.getCounterMutationFactory().create(databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes(1), cells), ConsistencyLevel.ONE).apply();
 
         ColumnFamily current = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)), CF1, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance));
         ByteBuffer context = current.getColumn(cellname(1)).value();

@@ -60,14 +60,14 @@ public class RemoveColumnFamilyWithFlush1Test
         DecoratedKey dk = Util.dk("key1");
 
         // add data
-        rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey());
         rm.add("Standard1", Util.cellname("Column1"), ByteBufferUtil.bytes("asdf"), 0);
         rm.add("Standard1", Util.cellname("Column2"), ByteBufferUtil.bytes("asdf"), 0);
         rm.applyUnsafe();
         store.forceBlockingFlush();
 
         // remove
-        rm = MutationFactory.instance.create(KEYSPACE1, dk.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, dk.getKey());
         rm.delete("Standard1", 1);
         rm.applyUnsafe();
 

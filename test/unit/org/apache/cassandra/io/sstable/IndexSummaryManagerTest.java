@@ -161,7 +161,7 @@ public class IndexSummaryManagerTest
             for (int row = 0; row < numRows; row++)
             {
                 DecoratedKey key = Util.dk(String.format("%3d", row));
-                Mutation rm = MutationFactory.instance.create(ksname, key.getKey());
+                Mutation rm = databaseDescriptor.getMutationFactory().create(ksname, key.getKey());
                 rm.add(cfname, Util.cellname("column"), value, 0);
                 rm.applyUnsafe();
             }
@@ -434,7 +434,7 @@ public class IndexSummaryManagerTest
         for (int row = 0; row < numRows; row++)
         {
             DecoratedKey key = Util.dk(String.valueOf(row));
-            Mutation rm = MutationFactory.instance.create(ksname, key.getKey());
+            Mutation rm = databaseDescriptor.getMutationFactory().create(ksname, key.getKey());
             rm.add(cfname, Util.cellname("column"), value, 0);
             rm.applyUnsafe();
         }
@@ -494,7 +494,7 @@ public class IndexSummaryManagerTest
             for (int row = 0; row < numRows; row++)
             {
                 DecoratedKey key = Util.dk(String.valueOf(row));
-                Mutation rm = MutationFactory.instance.create(ksname, key.getKey());
+                Mutation rm = databaseDescriptor.getMutationFactory().create(ksname, key.getKey());
                 rm.add(cfname, Util.cellname("column"), value, 0);
                 rm.applyUnsafe();
             }

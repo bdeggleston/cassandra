@@ -63,26 +63,26 @@ public class CollationControllerTest
         DecoratedKey dk = Util.dk("key1");
         
         // add data
-        rm = MutationFactory.instance.create(keyspace.getName(), dk.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(keyspace.getName(), dk.getKey());
         rm.add(cfs.name, Util.cellname("Column1"), ByteBufferUtil.bytes("asdf"), 0);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
         
         // remove
-        rm = MutationFactory.instance.create(keyspace.getName(), dk.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(keyspace.getName(), dk.getKey());
         rm.delete(cfs.name, 10);
         rm.applyUnsafe();
         
         // add another mutation because sstable maxtimestamp isn't set
         // correctly during flush if the most recent mutation is a row delete
-        rm = MutationFactory.instance.create(keyspace.getName(), Util.dk("key2").getKey());
+        rm = databaseDescriptor.getMutationFactory().create(keyspace.getName(), Util.dk("key2").getKey());
         rm.add(cfs.name, Util.cellname("Column1"), ByteBufferUtil.bytes("zxcv"), 20);
         rm.applyUnsafe();
         
         cfs.forceBlockingFlush();
 
         // add yet one more mutation
-        rm = MutationFactory.instance.create(keyspace.getName(), dk.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(keyspace.getName(), dk.getKey());
         rm.add(cfs.name, Util.cellname("Column1"), ByteBufferUtil.bytes("foobar"), 30);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
@@ -90,7 +90,7 @@ public class CollationControllerTest
         // A NamesQueryFilter goes down one code path (through collectTimeOrderedData())
         // It should only iterate the last flushed sstable, since it probably contains the most recent value for Column1
         QueryFilter filter = Util.namesQueryFilter(cfs, dk, "Column1");
-        CollationController controller = new CollationController(cfs, filter, Integer.MIN_VALUE, DBConfig.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), MutationFactory.instance);
+        CollationController controller = new CollationController(cfs, filter, Integer.MIN_VALUE, DBConfig.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
         controller.getTopLevelColumns(true);
         assertEquals(1, controller.getSstablesIterated());
 
@@ -98,7 +98,7 @@ public class CollationControllerTest
         // We will read "only" the last sstable in that case, but because the 2nd sstable has a tombstone that is more
         // recent than the maxTimestamp of the very first sstable we flushed, we should only read the 2 first sstables.
         filter = QueryFilter.getIdentityFilter(dk, cfs.name, System.currentTimeMillis(), DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        controller = new CollationController(cfs, filter, Integer.MIN_VALUE, DBConfig.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), MutationFactory.instance);
+        controller = new CollationController(cfs, filter, Integer.MIN_VALUE, DBConfig.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
         controller.getTopLevelColumns(true);
         assertEquals(2, controller.getSstablesIterated());
     }
@@ -115,13 +115,13 @@ public class CollationControllerTest
         CellName cellName = Util.cellname("Column1");
 
         // add data
-        rm = MutationFactory.instance.create(keyspace.getName(), dk.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(keyspace.getName(), dk.getKey());
         rm.add(cfs.name, cellName, ByteBufferUtil.bytes("asdf"), 0);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
         // remove
-        rm = MutationFactory.instance.create(keyspace.getName(), dk.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(keyspace.getName(), dk.getKey());
         rm.delete(cfs.name, cellName, 0);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
@@ -132,11 +132,11 @@ public class CollationControllerTest
         int gcBefore = cfs.gcBefore(queryAt);
 
         filter = QueryFilter.getNamesFilter(dk, cfs.name, FBUtilities.singleton(cellName, cfs.getComparator()), queryAt, DBConfig.instance);
-        CollationController controller = new CollationController(cfs, filter, gcBefore, DBConfig.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), MutationFactory.instance);
+        CollationController controller = new CollationController(cfs, filter, gcBefore, DBConfig.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
         assert ColumnFamilyStore.removeDeleted(controller.getTopLevelColumns(true), gcBefore) == null;
 
         filter = QueryFilter.getIdentityFilter(dk, cfs.name, queryAt, DatabaseDescriptor.instance, databaseDescriptor.getTracing(), DBConfig.instance);
-        controller = new CollationController(cfs, filter, gcBefore, DBConfig.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), MutationFactory.instance);
+        controller = new CollationController(cfs, filter, gcBefore, DBConfig.instance, databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
         assert ColumnFamilyStore.removeDeleted(controller.getTopLevelColumns(true), gcBefore) == null;
     }
 }

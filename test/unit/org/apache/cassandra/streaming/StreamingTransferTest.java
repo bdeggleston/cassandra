@@ -271,7 +271,7 @@ public class StreamingTransferTest
                 ColumnFamily cf = ArrayBackedSortedColumns.factory.create(keyspace.getName(), cfs.name, databaseDescriptor.getSchema(), DBConfig.instance);
                 cf.addColumn(column(col, "v", timestamp));
                 cf.addColumn(new BufferCell(cellname("birthdate"), ByteBufferUtil.bytes(val), timestamp));
-                Mutation rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes(key), cf);
+                Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, ByteBufferUtil.bytes(key), cf);
                 logger.debug("Applying row to transfer {}", rm);
                 rm.applyUnsafe();
             }
@@ -305,7 +305,7 @@ public class StreamingTransferTest
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
 
         String key = "key1";
-        Mutation rm = MutationFactory.instance.create(ks, ByteBufferUtil.bytes(key));
+        Mutation rm = databaseDescriptor.getMutationFactory().create(ks, ByteBufferUtil.bytes(key));
         // add columns of size slightly less than column_index_size to force insert column index
         rm.add(cfname, cellname(1), ByteBuffer.wrap(new byte[DatabaseDescriptor.instance.getColumnIndexSize() - 64]), 2);
         rm.add(cfname, cellname(6), ByteBuffer.wrap(new byte[DatabaseDescriptor.instance.getColumnIndexSize()]), 2);
@@ -496,7 +496,7 @@ public class StreamingTransferTest
                 ColumnFamily cf = ArrayBackedSortedColumns.factory.create(keyspace.getName(), cfs.name, databaseDescriptor.getSchema(), DBConfig.instance);
                 cf.addColumn(column(colName, "value", timestamp));
                 cf.addColumn(new BufferCell(cellname("birthdate"), ByteBufferUtil.bytes(new Date(timestamp).toString()), timestamp));
-                Mutation rm = MutationFactory.instance.create(KEYSPACE1, ByteBufferUtil.bytes(key), cf);
+                Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, ByteBufferUtil.bytes(key), cf);
                 logger.debug("Applying row to transfer {}", rm);
                 rm.applyUnsafe();
             }

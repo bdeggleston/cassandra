@@ -83,7 +83,7 @@ public class AntiCompactionTest
         for (int i = 0; i < 10; i++)
         {
             DecoratedKey key = Util.dk(Integer.toString(i));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int j = 0; j < 10; j++)
                 rm.add(CF, Util.cellname(Integer.toString(j)),
                        ByteBufferUtil.EMPTY_BYTE_BUFFER,
@@ -133,7 +133,7 @@ public class AntiCompactionTest
     for (int i = 0; i < 10; i++)
         {
             DecoratedKey key = Util.dk(Integer.toString(i) + "-" + Suffix);
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             for (int j = 0; j < 10; j++)
                 rm.add("Standard1", Util.cellname(Integer.toString(j)),
                         ByteBufferUtil.EMPTY_BYTE_BUFFER,

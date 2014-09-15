@@ -92,25 +92,25 @@ public class RangeTombstoneTest
         Mutation rm;
         ColumnFamily cf;
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         for (int i = 0; i < 40; i += 2)
             add(rm, i, 0);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         cf = rm.addOrGet(CFNAME);
         delete(cf, 10, 22, 1);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         for (int i = 1; i < 40; i += 2)
             add(rm, i, 2);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         cf = rm.addOrGet(CFNAME);
         delete(cf, 19, 27, 3);
         rm.applyUnsafe();
@@ -153,17 +153,17 @@ public class RangeTombstoneTest
         Mutation rm;
         ColumnFamily cf;
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         for (int i = 0; i < 40; i += 2)
             add(rm, i, 0);
         rm.applyUnsafe();
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         cf = rm.addOrGet(CFNAME);
         delete(cf, 5, 10, 1);
         rm.applyUnsafe();
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         cf = rm.addOrGet(CFNAME);
         delete(cf, 15, 20, 2);
         rm.applyUnsafe();
@@ -267,13 +267,13 @@ public class RangeTombstoneTest
 
         String key = "7810";
         Mutation rm;
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         for (int i = 10; i < 20; i++)
             add(rm, i, 0);
         rm.apply();
         cfs.forceBlockingFlush();
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         ColumnFamily cf = rm.addOrGet(CFNAME);
         cf.delete(new DeletionInfo(b(10),b(11), cfs.getComparator(), 1, 1));
         rm.apply();
@@ -292,12 +292,12 @@ public class RangeTombstoneTest
 
         String key = "7808_1";
         Mutation rm;
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         for (int i = 0; i < 40; i += 2)
             add(rm, i, 0);
         rm.apply();
         cfs.forceBlockingFlush();
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         ColumnFamily cf = rm.addOrGet(CFNAME);
         cf.delete(new DeletionInfo(1, 1));
         rm.apply();
@@ -315,18 +315,18 @@ public class RangeTombstoneTest
 
         String key = "7808_2";
         Mutation rm;
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         for (int i = 10; i < 20; i++)
             add(rm, i, 0);
         rm.apply();
         cfs.forceBlockingFlush();
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         ColumnFamily cf = rm.addOrGet(CFNAME);
         cf.delete(new DeletionInfo(0,0));
         rm.apply();
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         add(rm, 5, 1);
         rm.apply();
 
@@ -348,25 +348,25 @@ public class RangeTombstoneTest
         Mutation rm;
         ColumnFamily cf;
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         for (int i = 0; i < 20; i++)
             add(rm, i, 0);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         cf = rm.addOrGet(CFNAME);
         delete(cf, 5, 15, 1);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         cf = rm.addOrGet(CFNAME);
         delete(cf, 5, 10, 1);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         cf = rm.addOrGet(CFNAME);
         delete(cf, 5, 8, 2);
         rm.applyUnsafe();
@@ -404,12 +404,12 @@ public class RangeTombstoneTest
         Mutation rm;
         ColumnFamily cf;
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         add(rm, 2, 0);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        rm = MutationFactory.instance.create(KSNAME, ByteBufferUtil.bytes(key));
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, ByteBufferUtil.bytes(key));
         // Deletes everything but without being a row tombstone
         delete(rm.addOrGet(CFNAME), 0, 10, 1);
         add(rm, 1, 2);
@@ -443,13 +443,13 @@ public class RangeTombstoneTest
         cfs.disableAutoCompaction();
         cfs.setCompactionStrategyClass(SizeTieredCompactionStrategy.class.getCanonicalName());
 
-        Mutation rm = MutationFactory.instance.create(KSNAME, key);
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KSNAME, key);
         for (int i = 0; i < 10; i += 2)
             add(rm, i, 0);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        rm = MutationFactory.instance.create(KSNAME, key);
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, key);
         ColumnFamily cf = rm.addOrGet(CFNAME);
         for (int i = 0; i < 10; i += 2)
             delete(cf, 0, 7, 0);
@@ -501,18 +501,18 @@ public class RangeTombstoneTest
         TestIndex index = ((TestIndex)cfs.indexManager.getIndexForColumn(indexedColumnName));
         index.resetCounts();
 
-        Mutation rm = MutationFactory.instance.create(KSNAME, key);
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KSNAME, key);
         add(rm, 1, 0);
         rm.applyUnsafe();
 
         // add a RT which hides the column we just inserted
-        rm = MutationFactory.instance.create(KSNAME, key);
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, key);
         ColumnFamily cf = rm.addOrGet(CFNAME);
         delete(cf, 0, 1, 1);
         rm.applyUnsafe();
 
         // now re-insert that column
-        rm = MutationFactory.instance.create(KSNAME, key);
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, key);
         add(rm, 1, 2);
         rm.applyUnsafe();
 
@@ -544,13 +544,13 @@ public class RangeTombstoneTest
         TestIndex index = ((TestIndex)cfs.indexManager.getIndexForColumn(indexedColumnName));
         index.resetCounts();
 
-        Mutation rm = MutationFactory.instance.create(KSNAME, key);
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KSNAME, key);
         for (int i = 0; i < 10; i++)
             add(rm, i, 0);
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        rm = MutationFactory.instance.create(KSNAME, key);
+        rm = databaseDescriptor.getMutationFactory().create(KSNAME, key);
         ColumnFamily cf = rm.addOrGet(CFNAME);
         for (int i = 0; i < 10; i += 2)
             delete(cf, 0, 7, 0);

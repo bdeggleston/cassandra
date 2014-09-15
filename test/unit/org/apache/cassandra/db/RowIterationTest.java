@@ -69,7 +69,7 @@ public class RowIterationTest
         Set<DecoratedKey> inserted = new HashSet<DecoratedKey>();
         for (int i = 0; i < ROWS_PER_SSTABLE; i++) {
             DecoratedKey key = Util.dk(String.valueOf(i));
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
             rm.add("Super3", CellNames.compositeDense(ByteBufferUtil.bytes("sc"), ByteBufferUtil.bytes(String.valueOf(i))), ByteBuffer.wrap(new byte[ROWS_PER_SSTABLE * 10 - i * 2]), i);
             rm.applyUnsafe();
             inserted.add(key);
@@ -87,14 +87,14 @@ public class RowIterationTest
         DecoratedKey key = Util.dk("key");
 
         // Delete row in first sstable
-        Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
         rm.delete(CF_NAME, 0);
         rm.add(CF_NAME, Util.cellname("c"), ByteBufferUtil.bytes("values"), 0L);
         rm.applyUnsafe();
         store.forceBlockingFlush();
 
         // Delete row in second sstable with higher timestamp
-        rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+        rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
         rm.delete(CF_NAME, 1);
         rm.add(CF_NAME, Util.cellname("c"), ByteBufferUtil.bytes("values"), 1L);
         DeletionInfo delInfo2 = rm.getColumnFamilies().iterator().next().deletionInfo();
@@ -115,7 +115,7 @@ public class RowIterationTest
         DecoratedKey key = Util.dk("key");
 
         // Delete a row in first sstable
-        Mutation rm = MutationFactory.instance.create(KEYSPACE1, key.getKey());
+        Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, key.getKey());
         rm.delete(CF_NAME, 0);
         rm.applyUnsafe();
         store.forceBlockingFlush();

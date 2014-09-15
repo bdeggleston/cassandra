@@ -57,7 +57,7 @@ public class LongKeyspaceTest
 
         for (int i = 1; i < 5000; i += 100)
         {
-            Mutation rm = MutationFactory.instance.create(KEYSPACE1, Util.dk("key" + i).getKey());
+            Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, Util.dk("key" + i).getKey());
             ColumnFamily cf = ArrayBackedSortedColumns.factory.create(KEYSPACE1, "Standard1", databaseDescriptor.getSchema(), DBConfig.instance);
             for (int j = 0; j < i; j++)
                 cf.addColumn(column("c" + j, "v" + j, 1L));

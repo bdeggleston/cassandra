@@ -252,7 +252,7 @@ public class CassandraDaemon
 
         // load keyspace && function descriptions.
         DatabaseDescriptor.instance.loadSchemas();
-        Functions.loadUDFFromSchema(DatabaseDescriptor.instance.getQueryProcessor(), MutationFactory.instance, CFMetaDataFactory.instance);
+        Functions.loadUDFFromSchema(DatabaseDescriptor.instance.getQueryProcessor(), DatabaseDescriptor.instance.getMutationFactory(), CFMetaDataFactory.instance);
 
         // clean up compaction leftovers
         Map<Pair<String, String>, Map<Integer, UUID>> unfinishedCompactions = DatabaseDescriptor.instance.getSystemKeyspace().getUnfinishedCompactions();
@@ -396,7 +396,7 @@ public class CassandraDaemon
                                         DatabaseDescriptor.instance, DatabaseDescriptor.instance.getTracing(),
                                         DatabaseDescriptor.instance.getSchema(), DatabaseDescriptor.instance.getAuth(), StorageProxy.instance,
                                         MessagingService.instance, DatabaseDescriptor.instance.getKeyspaceManager(),
-                                        MutationFactory.instance, DatabaseDescriptor.instance.getCounterMutationFactory(),
+                                        DatabaseDescriptor.instance.getMutationFactory(), DatabaseDescriptor.instance.getCounterMutationFactory(),
                                         StorageService.instance, CFMetaDataFactory.instance,
                                         DatabaseDescriptor.instance.getMigrationManager(), KSMetaDataFactory.instance,
                                         QueryHandlerInstance.instance, LocatorConfig.instance,
@@ -415,7 +415,7 @@ public class CassandraDaemon
                                                                            DatabaseDescriptor.instance.getQueryProcessor(),
                                                                            DatabaseDescriptor.instance.getKeyspaceManager(),
                                                                            StorageProxy.instance,
-                                                                           MutationFactory.instance,
+                                                                           DatabaseDescriptor.instance.getMutationFactory(),
                                                                            DatabaseDescriptor.instance.getCounterMutationFactory(),
                                                                            MessagingService.instance,
                                                                            DBConfig.instance,

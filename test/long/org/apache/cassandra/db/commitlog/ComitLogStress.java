@@ -89,7 +89,7 @@ public class ComitLogStress
         public void run() {
             String ks = "Keyspace1";
             ByteBuffer key = ByteBufferUtil.bytes(keyString);
-            Mutation mutation = MutationFactory.instance.create(ks, key);
+            Mutation mutation = DatabaseDescriptor.instance.getMutationFactory().create(ks, key);
             mutation.add("Standard1", Util.cellname("name"), ByteBufferUtil.bytes("value"),
                     System.currentTimeMillis());
             CommitLog.instance.add(mutation);
