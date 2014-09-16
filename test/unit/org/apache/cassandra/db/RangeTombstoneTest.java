@@ -69,7 +69,7 @@ public class RangeTombstoneTest
     private static final String KSNAME = "RangeTombstoneTest";
     private static final String CFNAME = "StandardInteger1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

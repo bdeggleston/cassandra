@@ -59,7 +59,7 @@ public class CleanupTest
     public static final ByteBuffer COLUMN = ByteBufferUtil.bytes("birthdate");
     public static final ByteBuffer VALUE = ByteBuffer.allocate(8);
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     static
     {

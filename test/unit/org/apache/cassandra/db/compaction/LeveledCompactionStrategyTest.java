@@ -63,7 +63,7 @@ public class LeveledCompactionStrategyTest
     private Keyspace keyspace;
     private ColumnFamilyStore cfs;
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

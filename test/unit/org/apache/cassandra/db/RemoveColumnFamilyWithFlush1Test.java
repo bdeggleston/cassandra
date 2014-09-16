@@ -39,7 +39,7 @@ public class RemoveColumnFamilyWithFlush1Test
     private static final String KEYSPACE1 = "RemoveColumnFamilyWithFlush1Test";
     private static final String CF_STANDARD1 = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

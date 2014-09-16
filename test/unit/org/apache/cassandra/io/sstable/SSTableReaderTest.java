@@ -77,7 +77,7 @@ public class SSTableReaderTest
     public static final String CF_INDEXED = "Indexed1";
     public static final String CF_STANDARDLOWINDEXINTERVAL = "StandardLowIndexInterval";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     static Token t(int i)
     {

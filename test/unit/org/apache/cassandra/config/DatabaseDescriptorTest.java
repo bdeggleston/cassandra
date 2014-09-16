@@ -38,9 +38,8 @@ import static org.junit.Assert.assertNull;
 public class DatabaseDescriptorTest
 {
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
-    @Test
     public void testCFMetaDataSerialization() throws Exception
     {
         // test serialization of all defined test CFs.

@@ -38,7 +38,7 @@ public class TriggersSchemaTest
     String triggerName = "trigger_" + System.nanoTime();
     String triggerClass = "org.apache.cassandra.triggers.NoSuchTrigger.class";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     @BeforeClass
     public static void beforeTest() throws ConfigurationException

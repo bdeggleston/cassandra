@@ -302,7 +302,7 @@ public class SchemaLoader
         // if you're messing with low-level sstable stuff, it can be useful to inject the schema directly
         // databaseDescriptor.getSchema().load(schemaDefinition());
         for (KSMetaData ksm : schema)
-            DatabaseDescriptor.createMain(false, false).getMigrationManager().announceNewKeyspace(ksm, false);
+            databaseDescriptor.getMigrationManager().announceNewKeyspace(ksm, false);
     }
 
     public static void createKeyspace(String keyspaceName,
@@ -322,7 +322,7 @@ public class SchemaLoader
     {
         KSMetaData ksm = durable ? databaseDescriptor.getKSMetaDataFactory().testMetadata(keyspaceName, strategy, options, cfmetas)
                                  : databaseDescriptor.getKSMetaDataFactory().testMetadataNotDurable(keyspaceName, strategy, options, cfmetas);
-        DatabaseDescriptor.createMain(false, false).getMigrationManager().announceNewKeyspace(ksm, announceLocally);
+        databaseDescriptor.getMigrationManager().announceNewKeyspace(ksm, announceLocally);
     }
 
     private static ColumnDefinition integerColumn(String ksName, String cfName)
@@ -428,7 +428,7 @@ public class SchemaLoader
     public static void cleanup()
     {
         // clean up commitlog
-        String[] directoryNames = { DatabaseDescriptor.createMain(false, false).getCommitLogLocation(), };
+        String[] directoryNames = { databaseDescriptor.getCommitLogLocation(), };
         for (String dirName : directoryNames)
         {
             File dir = new File(dirName);
@@ -440,7 +440,7 @@ public class SchemaLoader
         cleanupSavedCaches();
 
         // clean up data directory which are stored as data directory/keyspace/data files
-        for (String dirName : DatabaseDescriptor.createMain(false, false).getAllDataFileLocations())
+        for (String dirName : databaseDescriptor.getAllDataFileLocations())
         {
             File dir = new File(dirName);
             if (!dir.exists())
@@ -451,7 +451,7 @@ public class SchemaLoader
 
     public static void mkdirs()
     {
-        DatabaseDescriptor.createMain(false, false).createAllDirectories();
+        databaseDescriptor.createAllDirectories();
     }
 
     public static void insertData(String keyspace, String columnFamily, int offset, int numberOfRows)
@@ -478,7 +478,7 @@ public class SchemaLoader
 
     public static void cleanupSavedCaches()
     {
-        File cachesDir = new File(DatabaseDescriptor.createMain(false, false).getSavedCachesLocation());
+        File cachesDir = new File(databaseDescriptor.getSavedCachesLocation());
 
         if (!cachesDir.exists() || !cachesDir.isDirectory())
             return;

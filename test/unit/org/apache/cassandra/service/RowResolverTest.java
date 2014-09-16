@@ -47,7 +47,7 @@ public class RowResolverTest
     public static final String KEYSPACE1 = "Keyspace1";
     public static final String CF_STANDARD = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

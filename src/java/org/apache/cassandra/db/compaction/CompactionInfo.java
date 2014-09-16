@@ -128,6 +128,7 @@ public final class CompactionInfo implements Serializable
 
         protected Holder(StorageService storageService)
         {
+            assert storageService != null;
             this.storageService = storageService;
             load = this.storageService.getLoad();
         }

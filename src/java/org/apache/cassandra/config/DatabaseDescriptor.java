@@ -300,7 +300,6 @@ public class DatabaseDescriptor
         indexSummaryManager = createIndexSummaryManager();
         ssTableWriterFactory = createSSTableWriterFactory();
         ssTableReaderFactory = createSSTableReaderFactory();
-        cacheService = createCacheService();
         fileCacheService = createFileCacheService();
         paxosManager = createPaxosManager();
         migrationManager = createMigrationManager();
@@ -309,6 +308,8 @@ public class DatabaseDescriptor
 
         columnFamilyStoreManager = createColumnFamilyStoreManager();
         storageService = createStorageService();
+
+        cacheService = createCacheService();
 
         cfMetaDataFactory.init();
         ksMetaDataFactory.init();

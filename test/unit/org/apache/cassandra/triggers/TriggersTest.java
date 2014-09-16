@@ -22,16 +22,10 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Collections;
 
-import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.KSMetaDataFactory;
-import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Mutation;
-import org.apache.cassandra.locator.LocatorConfig;
 import org.apache.cassandra.metrics.ClientMetrics;
-import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.service.StorageProxy;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -44,7 +38,6 @@ import org.apache.cassandra.db.BufferCell;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.RequestExecutionException;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.thrift.*;
 import org.apache.thrift.protocol.TBinaryProtocol;
 
@@ -63,7 +56,7 @@ public class TriggersTest
     private static String cfName = "test_table";
     private static String otherCf = "other_table";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     @BeforeClass
     public static void beforeTest() throws ConfigurationException

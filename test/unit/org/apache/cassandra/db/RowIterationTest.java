@@ -44,9 +44,10 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 public class RowIterationTest
 {
     public static final String KEYSPACE1 = "RowIterationTest";
-    public static final InetAddress LOCAL = DatabaseDescriptor.createMain(false, false).getBroadcastAddress();
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+
+    public static final InetAddress LOCAL = databaseDescriptor.getLocatorConfig().getBroadcastAddress();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

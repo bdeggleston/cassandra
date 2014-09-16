@@ -66,7 +66,7 @@ public class StreamingTransferTest
 {
     private static final Logger logger = LoggerFactory.getLogger(StreamingTransferTest.class);
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     public static final InetAddress LOCAL = databaseDescriptor.getLocatorConfig().getBroadcastAddress();
     public static final String KEYSPACE1 = "StreamingTransferTest1";

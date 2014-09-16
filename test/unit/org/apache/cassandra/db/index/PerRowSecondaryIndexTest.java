@@ -66,7 +66,7 @@ public class PerRowSecondaryIndexTest
     private static final String KEYSPACE1 = "PerRowSecondaryIndexTest";
     private static final String CF_INDEXED = "Indexed1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

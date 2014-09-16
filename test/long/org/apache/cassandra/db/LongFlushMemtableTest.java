@@ -39,7 +39,7 @@ public class LongFlushMemtableTest
 {
     public static final String KEYSPACE1 = "LongFlushMemtableTest";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

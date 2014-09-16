@@ -63,7 +63,7 @@ public class CompactionsPurgeTest
     private static final String KEYSPACE_CQL = "cql_keyspace";
     private static final String CF_CQL = "table1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

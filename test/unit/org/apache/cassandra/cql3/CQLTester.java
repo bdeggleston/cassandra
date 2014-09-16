@@ -29,7 +29,6 @@ import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.service.StorageServiceExecutors;
 import org.junit.AfterClass;
 import org.junit.After;
 import org.junit.Assert;
@@ -39,13 +38,10 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.serializers.TypeSerializer;
-import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.utils.ByteBufferUtil;
 
 /**
  * Base class for CQL tests.
@@ -54,7 +50,7 @@ public abstract class CQLTester
 {
     protected static final Logger logger = LoggerFactory.getLogger(CQLTester.class);
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     private static final String KEYSPACE = "cql_test_keyspace";
     private static final boolean USE_PREPARED_VALUES = Boolean.valueOf(System.getProperty("cassandra.test.use_prepared", "true"));

@@ -43,7 +43,7 @@ public class CliTest
     private static final String KEYSPACE1 = "CliTest";
     private static final String CF_STANDARD1 = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     // please add new statements here so they could be auto-runned by this test.
     private String[] statements = {

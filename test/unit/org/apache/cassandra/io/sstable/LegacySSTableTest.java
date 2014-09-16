@@ -62,7 +62,7 @@ public class LegacySSTableTest
     public static Set<String> TEST_DATA;
     public static File LEGACY_SSTABLE_ROOT;
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

@@ -55,7 +55,7 @@ import java.util.*;
 public class SerializationsTest extends AbstractSerializationsTester
 {
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     Statics statics = new Statics();
 

@@ -47,7 +47,7 @@ public class CounterMutationTest
     private static final String CF1 = "Counter1";
     private static final String CF2 = "Counter2";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

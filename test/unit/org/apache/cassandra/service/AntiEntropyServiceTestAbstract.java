@@ -74,7 +74,7 @@ public abstract class AntiEntropyServiceTestAbstract
     public static final String CF_STANDRAD1 = "Standard1";
     public static final String CF_COUNTER = "Counter1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

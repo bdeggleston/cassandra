@@ -26,13 +26,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 import org.apache.cassandra.SchemaLoader;
-import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.DBConfig;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.CounterColumnType;
@@ -53,7 +50,7 @@ public class EncodedStreamsTest
     private static final String CF_COUNTER = "Counter1";
     private int version = MessagingService.current_version;
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

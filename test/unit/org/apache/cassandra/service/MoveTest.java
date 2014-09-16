@@ -53,7 +53,7 @@ public class MoveTest
     private static final String KEYSPACE3 = "MoveTestKeyspace3";
     private static final String KEYSPACE4 = "MoveTestKeyspace4";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     /*
      * NOTE: the tests above uses RandomPartitioner, which is not the default

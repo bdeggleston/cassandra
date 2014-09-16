@@ -58,7 +58,7 @@ public class ValidatorTest
     private static final String keyspace = "ValidatorTest";
     private static final String columnFamily = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
     private final IPartitioner partitioner = databaseDescriptor.getLocatorConfig().getPartitioner();
 
     @BeforeClass

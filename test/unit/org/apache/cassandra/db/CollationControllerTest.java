@@ -19,8 +19,6 @@
 package org.apache.cassandra.db;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.tracing.Tracing;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
@@ -41,9 +39,8 @@ public class CollationControllerTest
     private static final String CF = "Standard1";
     private static final String CFGCGRACE = "StandardGCGS0";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
-    @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
         SchemaLoader.prepareServer();

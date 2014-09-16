@@ -48,7 +48,7 @@ public class DynamicCompositeTypeTest
     private static final String CF_STANDARDDYNCOMPOSITE = "StandardDynamicComposite";
     private static Map<Byte, AbstractType<?>> aliases = new HashMap<>();
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
     private static final DynamicCompositeType comparator;
     static
