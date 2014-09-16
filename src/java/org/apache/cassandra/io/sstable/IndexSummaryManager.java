@@ -80,13 +80,16 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
         IndexSummaryManager indexSummaryManager = new IndexSummaryManager(databaseDescriptor);
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 
-        try
+        if (databaseDescriptor.shouldInitializeJMX())
         {
-            mbs.registerMBean(indexSummaryManager, new ObjectName(MBEAN_NAME));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
+            try
+            {
+                mbs.registerMBean(indexSummaryManager, new ObjectName(MBEAN_NAME));
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
         }
         return indexSummaryManager;
     }

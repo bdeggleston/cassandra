@@ -77,7 +77,7 @@ public class SSTableReaderTest
     public static final String CF_INDEXED = "Indexed1";
     public static final String CF_STANDARDLOWINDEXINTERVAL = "StandardLowIndexInterval";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     static Token t(int i)
     {
@@ -310,10 +310,10 @@ public class SSTableReaderTest
         SSTableReader sstable = indexCfs.getSSTables().iterator().next();
         assert sstable.first.getToken() instanceof LocalToken;
 
-        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.createMain(false).getIndexAccessMode(), databaseDescriptor.getFileCacheService(), DatabaseDescriptor.createMain(false).getDiskAccessMode());
+        SegmentedFile.Builder ibuilder = SegmentedFile.getBuilder(DatabaseDescriptor.createMain(false, false).getIndexAccessMode(), databaseDescriptor.getFileCacheService(), DatabaseDescriptor.createMain(false, false).getDiskAccessMode());
         SegmentedFile.Builder dbuilder = sstable.compression
-                                          ? SegmentedFile.getCompressedBuilder(databaseDescriptor.getFileCacheService(), DatabaseDescriptor.createMain(false).getDiskAccessMode(), databaseDescriptor.getDBConfig().offHeapAllocator)
-                                          : SegmentedFile.getBuilder(DatabaseDescriptor.createMain(false).getDiskAccessMode(), databaseDescriptor.getFileCacheService(), DatabaseDescriptor.createMain(false).getDiskAccessMode());
+                                          ? SegmentedFile.getCompressedBuilder(databaseDescriptor.getFileCacheService(), DatabaseDescriptor.createMain(false, false).getDiskAccessMode(), databaseDescriptor.getDBConfig().offHeapAllocator)
+                                          : SegmentedFile.getBuilder(DatabaseDescriptor.createMain(false, false).getDiskAccessMode(), databaseDescriptor.getFileCacheService(), DatabaseDescriptor.createMain(false, false).getDiskAccessMode());
         sstable.saveSummary(ibuilder, dbuilder);
 
         SSTableReader reopened = databaseDescriptor.getSSTableReaderFactory().open(sstable.descriptor);
@@ -447,7 +447,7 @@ public class SSTableReaderTest
         IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr);
         Range<RowPosition> range = Util.range("", "", databaseDescriptor);
-        List<Row> rows = indexedCFS.search(range, clause, new IdentityQueryFilter(DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100);
+        List<Row> rows = indexedCFS.search(range, clause, new IdentityQueryFilter(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 100);
         assert rows.size() == 1;
     }
 

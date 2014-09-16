@@ -26,17 +26,21 @@ import javax.management.ObjectName;
 
 public class EndpointSnitchInfo implements EndpointSnitchInfoMBean
 {
-    public static EndpointSnitchInfo create(IEndpointSnitch endpointSnitch)
+    public static EndpointSnitchInfo create(IEndpointSnitch endpointSnitch, boolean shouldInitializeJMX)
     {
         EndpointSnitchInfo endpointSnitchInfo = new EndpointSnitchInfo(endpointSnitch);
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        try
+
+        if (shouldInitializeJMX)
         {
-            mbs.registerMBean(endpointSnitchInfo, new ObjectName("org.apache.cassandra.db:type=EndpointSnitchInfo"));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            try
+            {
+                mbs.registerMBean(endpointSnitchInfo, new ObjectName("org.apache.cassandra.db:type=EndpointSnitchInfo"));
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
         }
 
         return endpointSnitchInfo;

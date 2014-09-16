@@ -36,7 +36,7 @@ import org.junit.Test;
 
 public class LongSharedExecutorPoolTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     private static final class WaitTask implements Runnable
     {
@@ -121,7 +121,12 @@ public class LongSharedExecutorPoolTest
         final ExecutorService[] executors = new ExecutorService[executorCount];
         for (int i = 0 ; i < executors.length ; i++)
         {
-            executors[i] = JMXEnabledSharedExecutorPool.SHARED.newExecutor(threadCount, maxQueued, "test" + i, "test" + i, databaseDescriptor.getTracing());
+            executors[i] = JMXEnabledSharedExecutorPool.SHARED.newExecutor(threadCount,
+                                                                           maxQueued,
+                                                                           "test" + i,
+                                                                           "test" + i,
+                                                                           databaseDescriptor,
+                                                                           databaseDescriptor.getTracing());
             threadCounts[i] = threadCount;
             workCount[i] = new WeibullDistribution(2, maxQueued);
             threadCount *= 2;

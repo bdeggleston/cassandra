@@ -21,6 +21,7 @@ import java.lang.management.ManagementFactory;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.metrics.SEPMetrics;
 import org.apache.cassandra.tracing.Tracing;
 
@@ -44,34 +45,42 @@ public class JMXEnabledSharedExecutorPool extends SharedExecutorPool
 
         private final SEPMetrics metrics;
         private final String mbeanName;
+        private boolean initializeJMX;
 
-        public JMXEnabledSEPExecutor(int poolSize, int maxQueuedLength, String name, String jmxPath, Tracing tracing)
+        public JMXEnabledSEPExecutor(int poolSize, int maxQueuedLength, String name, String jmxPath, Tracing tracing, boolean shouldInitializeJMX)
         {
             super(JMXEnabledSharedExecutorPool.this, poolSize, maxQueuedLength, tracing);
             metrics = new SEPMetrics(this, jmxPath, name);
 
-            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            this.initializeJMX = shouldInitializeJMX;
             mbeanName = "org.apache.cassandra." + jmxPath + ":type=" + name;
+            if (shouldInitializeJMX)
+            {
+                MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 
-            try
-            {
-                mbs.registerMBean(this, new ObjectName(mbeanName));
-            }
-            catch (Exception e)
-            {
-                throw new RuntimeException(e);
+                try
+                {
+                    mbs.registerMBean(this, new ObjectName(mbeanName));
+                }
+                catch (Exception e)
+                {
+                    throw new RuntimeException(e);
+                }
             }
         }
 
         private void unregisterMBean()
         {
-            try
+            if (initializeJMX)
             {
-                ManagementFactory.getPlatformMBeanServer().unregisterMBean(new ObjectName(mbeanName));
-            }
-            catch (Exception e)
-            {
-                throw new RuntimeException(e);
+                try
+                {
+                    ManagementFactory.getPlatformMBeanServer().unregisterMBean(new ObjectName(mbeanName));
+                }
+                catch (Exception e)
+                {
+                    throw new RuntimeException(e);
+                }
             }
 
             // release metrics
@@ -106,9 +115,9 @@ public class JMXEnabledSharedExecutorPool extends SharedExecutorPool
         }
     }
 
-    public TracingAwareExecutorService newExecutor(int maxConcurrency, int maxQueuedTasks, String name, String jmxPath, Tracing tracing)
+    public TracingAwareExecutorService newExecutor(int maxConcurrency, int maxQueuedTasks, String name, String jmxPath, DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
-        JMXEnabledSEPExecutor executor = new JMXEnabledSEPExecutor(maxConcurrency, maxQueuedTasks, name, jmxPath, tracing);
+        JMXEnabledSEPExecutor executor = new JMXEnabledSEPExecutor(maxConcurrency, maxQueuedTasks, name, jmxPath, tracing, databaseDescriptor.shouldInitializeJMX());
         executors.add(executor);
         return executor;
     }

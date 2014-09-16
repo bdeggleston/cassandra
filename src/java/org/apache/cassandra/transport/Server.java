@@ -199,7 +199,7 @@ public class Server implements CassandraDaemon.Server
         }
 
         // Configure the server.
-        eventExecutorGroup = new RequestThreadPoolExecutor(databaseDescriptor.getNativeTransportMaxThreads(), tracing);
+        eventExecutorGroup = new RequestThreadPoolExecutor(databaseDescriptor.getNativeTransportMaxThreads(), databaseDescriptor, tracing);
         workerGroup = new NioEventLoopGroup();
 
         ServerBootstrap bootstrap = new ServerBootstrap()

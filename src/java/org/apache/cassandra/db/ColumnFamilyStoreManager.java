@@ -244,20 +244,23 @@ public class ColumnFamilyStoreManager
                                                              new LinkedBlockingQueue<Runnable>(),
                                                              new NamedThreadFactory("MemtableFlushWriter"),
                                                              "internal",
-                                                             tracing);
+                                                             tracing,
+                                                             databaseDescriptor.shouldInitializeJMX());
             postFlushExecutor = new JMXEnabledThreadPoolExecutor(1,
                                                                  StageManager.KEEPALIVE,
                                                                  TimeUnit.SECONDS,
                                                                  new LinkedBlockingQueue<Runnable>(),
                                                                  new NamedThreadFactory("MemtablePostFlush"),
                                                                  "internal",
-                                                                 tracing);
+                                                                 tracing,
+                                                                 databaseDescriptor.shouldInitializeJMX());
             reclaimExecutor = new JMXEnabledThreadPoolExecutor(1, StageManager.KEEPALIVE,
                                                                TimeUnit.SECONDS,
                                                                new LinkedBlockingQueue<Runnable>(),
                                                                new NamedThreadFactory("MemtableReclaimMemory"),
                                                                "internal",
-                                                               tracing);
+                                                               tracing,
+                                                               databaseDescriptor.shouldInitializeJMX());
         }
     }
 

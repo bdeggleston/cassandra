@@ -486,7 +486,7 @@ public class StressProfile implements Serializable
 
             StressYaml profileYaml = yaml.loadAs(new ByteArrayInputStream(profileBytes), StressYaml.class);
 
-            StressProfile profile = new StressProfile(DatabaseDescriptor.createMain(false));
+            StressProfile profile = new StressProfile(DatabaseDescriptor.createMain(false, true));
             profile.init(profileYaml);
 
             return profile;

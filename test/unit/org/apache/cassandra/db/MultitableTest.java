@@ -39,7 +39,7 @@ public class MultitableTest
     private static final String KEYSPACE2 = "MultitableTest2";
     private static final String CF1 = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

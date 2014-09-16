@@ -106,7 +106,8 @@ public class ActiveRepairService
                                                          new LinkedBlockingQueue<Runnable>(),
                                                          new NamedThreadFactory("AntiEntropySessions"),
                                                          "internal",
-                                                         tracing);
+                                                         tracing,
+                                                         databaseDescriptor.shouldInitializeJMX());
     }
 
     /**

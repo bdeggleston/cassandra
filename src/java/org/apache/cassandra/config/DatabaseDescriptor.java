@@ -156,26 +156,26 @@ public class DatabaseDescriptor
 
     public static DatabaseDescriptor create() throws ConfigurationException
     {
-        return create(Config.isClientMode());
+        return create(Config.isClientMode(), true);
     }
 
-    public static DatabaseDescriptor create(boolean clientMode) throws ConfigurationException
+    public static DatabaseDescriptor create(boolean clientMode, boolean initializeJMX) throws ConfigurationException
     {
 
-        return create(clientMode, loadConfig());
+        return create(clientMode, loadConfig(), initializeJMX);
     }
 
-    public static DatabaseDescriptor create(boolean clientMode, Config conf) throws ConfigurationException
+    public static DatabaseDescriptor create(boolean clientMode, Config conf, boolean initializeJMX) throws ConfigurationException
     {
-        return new DatabaseDescriptor(clientMode, conf);
+        return new DatabaseDescriptor(clientMode, conf, initializeJMX);
     }
 
-    public static DatabaseDescriptor createMain(boolean clientMode)
+    public static DatabaseDescriptor createMain(boolean clientMode, boolean initializeJMX)
     {
         DatabaseDescriptor databaseDescriptor = null;
         try
         {
-            databaseDescriptor = DatabaseDescriptor.create(clientMode);
+            databaseDescriptor = DatabaseDescriptor.create(clientMode, initializeJMX);
         }
         catch (ConfigurationException e)
         {
@@ -244,7 +244,9 @@ public class DatabaseDescriptor
     protected final TriggerExecutor triggerExecutor;
     protected final StatusLogger statusLogger;
 
-    private DatabaseDescriptor(boolean clientMode, Config conf) throws ConfigurationException
+    protected final boolean initializeJMX;
+
+    private DatabaseDescriptor(boolean clientMode, Config conf, boolean initializeJMX) throws ConfigurationException
     {
         // In client mode, we use a default configuration. Note that the fields of this class will be
         // left unconfigured however (the partitioner or localDC will be null for instance) so this
@@ -262,6 +264,8 @@ public class DatabaseDescriptor
             this.conf = conf;
             applyConfig();
         }
+
+        this.initializeJMX = initializeJMX;
 
         schema = createSchema();
         storageServiceExecutors = createStorageServiceExecutors();
@@ -310,6 +314,11 @@ public class DatabaseDescriptor
         ksMetaDataFactory.init();
 
         hintedHandOffManager = createHintedHandOffManager();
+    }
+
+    public boolean shouldInitializeJMX()
+    {
+        return initializeJMX;
     }
 
     public Config getConfig()

@@ -284,14 +284,17 @@ public final class MessagingService implements MessagingServiceMBean
     {
         MessagingService messagingService = new MessagingService(databaseDescriptor, schema, stageManager, storageServiceExecutors, storageProxy, keyspaceManager, mutationFactory, locatorConfig, dbConfig);
 
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        try
+        if (databaseDescriptor.shouldInitializeJMX())
         {
-            mbs.registerMBean(messagingService, new ObjectName(MBEAN_NAME));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            try
+            {
+                mbs.registerMBean(messagingService, new ObjectName(MBEAN_NAME));
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
         }
 
         return messagingService;

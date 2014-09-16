@@ -35,12 +35,13 @@ public class RequestThreadPoolExecutor extends AbstractEventExecutor
     private final static String THREAD_FACTORY_ID = "Native-Transport-Requests";
     private final TracingAwareExecutorService wrapped;
 
-    public RequestThreadPoolExecutor(int maxThreads, Tracing tracing)
+    public RequestThreadPoolExecutor(int maxThreads, DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
         wrapped = SHARED.newExecutor(maxThreads,
                                      MAX_QUEUED_REQUESTS,
                                      THREAD_FACTORY_ID,
                                      "transport",
+                                     databaseDescriptor,
                                      tracing);
     }
 

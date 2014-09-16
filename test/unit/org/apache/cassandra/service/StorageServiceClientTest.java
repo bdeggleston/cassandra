@@ -29,7 +29,7 @@ import java.io.File;
 
 public class StorageServiceClientTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @Test
     public void testClientOnlyMode() throws ConfigurationException
@@ -39,7 +39,7 @@ public class StorageServiceClientTest
         databaseDescriptor.getStorageService().initClient(0);
 
         // verify that no storage directories were created.
-        for (String path : DatabaseDescriptor.createMain(false).getAllDataFileLocations())
+        for (String path : DatabaseDescriptor.createMain(false, false).getAllDataFileLocations())
         {
             assertFalse(new File(path).exists());
         }

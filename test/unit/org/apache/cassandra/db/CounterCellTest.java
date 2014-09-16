@@ -51,7 +51,7 @@ public class CounterCellTest
 
     private static final int stepLength;
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     static
     {
@@ -274,7 +274,7 @@ public class CounterCellTest
         state.writeRemote(CounterId.fromInt(3), 4L, 4L);
         state.writeLocal(CounterId.fromInt(4), 4L, 4L);
 
-        CellNameType type = new SimpleDenseCellNameType(UTF8Type.instance, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        CellNameType type = new SimpleDenseCellNameType(UTF8Type.instance, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         CounterCell original = new BufferCounterCell(cellname("x"), state.context, 1L);
         byte[] serialized;
         try (DataOutputBuffer bufOut = new DataOutputBuffer())

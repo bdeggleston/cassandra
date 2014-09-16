@@ -37,7 +37,7 @@ import java.io.IOException;
 
 public class DeleteTest extends SchemaLoader
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     private static EmbeddedCassandraService cassandra;
 
@@ -60,7 +60,7 @@ public class DeleteTest extends SchemaLoader
         cassandra = new EmbeddedCassandraService();
         cassandra.start();
 
-        cluster = Cluster.builder().addContactPoint("127.0.0.1").withPort(DatabaseDescriptor.createMain(false).getNativeTransportPort()).build();
+        cluster = Cluster.builder().addContactPoint("127.0.0.1").withPort(DatabaseDescriptor.createMain(false, false).getNativeTransportPort()).build();
         session = cluster.connect();
 
         session.execute("drop keyspace if exists junit;");

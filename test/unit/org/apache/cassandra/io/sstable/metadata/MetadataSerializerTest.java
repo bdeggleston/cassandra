@@ -44,7 +44,7 @@ import static org.junit.Assert.assertEquals;
 
 public class MetadataSerializerTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @Test
     public void testSerialization() throws IOException
@@ -57,7 +57,7 @@ public class MetadataSerializerTest
         long minTimestamp = 2162517136L;
         long maxTimestamp = 4162517136L;
 
-        MetadataCollector collector = new MetadataCollector(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()))
+        MetadataCollector collector = new MetadataCollector(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()))
                                                       .estimatedRowSize(rowSizes)
                                                       .estimatedColumnCount(columnCounts)
                                                       .replayPosition(rp);

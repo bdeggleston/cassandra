@@ -42,7 +42,7 @@ public class ReplicationStrategyEndpointCacheTest
     private AbstractReplicationStrategy strategy;
     public static final String KEYSPACE = "ReplicationStrategyEndpointCacheTest";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws Exception

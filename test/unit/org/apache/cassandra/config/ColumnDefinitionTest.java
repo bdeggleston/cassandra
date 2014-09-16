@@ -30,7 +30,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class ColumnDefinitionTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @Test
     public void testSerializeDeserialize() throws Exception

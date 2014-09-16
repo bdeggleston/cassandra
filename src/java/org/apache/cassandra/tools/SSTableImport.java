@@ -502,7 +502,7 @@ public class SSTableImport
             isSorted = true;
         }
 
-        DatabaseDescriptor dd = DatabaseDescriptor.createMain(true);
+        DatabaseDescriptor dd = DatabaseDescriptor.createMain(true, true);
 
         dd.loadSchemas();
         if (dd.getSchema().getNonSystemKeyspaces().size() < 1)

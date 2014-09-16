@@ -59,10 +59,10 @@ public class StageManager
         stages.put(Stage.REQUEST_RESPONSE, multiThreadedLowSignalStage(Stage.REQUEST_RESPONSE, FBUtilities.getAvailableProcessors()));
         stages.put(Stage.INTERNAL_RESPONSE, multiThreadedStage(Stage.INTERNAL_RESPONSE, FBUtilities.getAvailableProcessors(), tracing));
         // the rest are all single-threaded
-        stages.put(Stage.GOSSIP, new JMXEnabledThreadPoolExecutor(Stage.GOSSIP, tracing));
-        stages.put(Stage.ANTI_ENTROPY, new JMXEnabledThreadPoolExecutor(Stage.ANTI_ENTROPY, tracing));
-        stages.put(Stage.MIGRATION, new JMXEnabledThreadPoolExecutor(Stage.MIGRATION, tracing));
-        stages.put(Stage.MISC, new JMXEnabledThreadPoolExecutor(Stage.MISC, tracing));
+        stages.put(Stage.GOSSIP, new JMXEnabledThreadPoolExecutor(Stage.GOSSIP, tracing, databaseDescriptor.shouldInitializeJMX()));
+        stages.put(Stage.ANTI_ENTROPY, new JMXEnabledThreadPoolExecutor(Stage.ANTI_ENTROPY, tracing, databaseDescriptor.shouldInitializeJMX()));
+        stages.put(Stage.MIGRATION, new JMXEnabledThreadPoolExecutor(Stage.MIGRATION, tracing, databaseDescriptor.shouldInitializeJMX()));
+        stages.put(Stage.MISC, new JMXEnabledThreadPoolExecutor(Stage.MISC, tracing, databaseDescriptor.shouldInitializeJMX()));
         stages.put(Stage.READ_REPAIR, multiThreadedStage(Stage.READ_REPAIR, FBUtilities.getAvailableProcessors(), tracing));
         stages.put(Stage.TRACING, tracingExecutor());
     }
@@ -93,12 +93,18 @@ public class StageManager
                                                 new LinkedBlockingQueue<Runnable>(),
                                                 new NamedThreadFactory(stage.getJmxName()),
                                                 stage.getJmxType(),
-                                                tracing);
+                                                tracing,
+                                                databaseDescriptor.shouldInitializeJMX());
     }
 
     private TracingAwareExecutorService multiThreadedLowSignalStage(Stage stage, int numThreads)
     {
-        return JMXEnabledSharedExecutorPool.SHARED.newExecutor(numThreads, Integer.MAX_VALUE, stage.getJmxName(), stage.getJmxType(), databaseDescriptor.getTracing());
+        return JMXEnabledSharedExecutorPool.SHARED.newExecutor(numThreads,
+                                                               Integer.MAX_VALUE,
+                                                               stage.getJmxName(),
+                                                               stage.getJmxType(),
+                                                               databaseDescriptor,
+                                                               databaseDescriptor.getTracing());
     }
 
     /**

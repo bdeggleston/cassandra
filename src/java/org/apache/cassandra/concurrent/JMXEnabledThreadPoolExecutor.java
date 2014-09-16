@@ -39,19 +39,21 @@ public class JMXEnabledThreadPoolExecutor extends DebuggableThreadPoolExecutor i
     private final String mbeanName;
     private final ThreadPoolMetrics metrics;
 
-    public JMXEnabledThreadPoolExecutor(String threadPoolName, Tracing tracing)
+    private final boolean initializeJMX;
+
+    public JMXEnabledThreadPoolExecutor(String threadPoolName, Tracing tracing, boolean initializeJMX)
     {
-        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName), "internal", tracing);
+        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName), "internal", tracing, initializeJMX);
     }
 
-    public JMXEnabledThreadPoolExecutor(String threadPoolName, String jmxPath, Tracing tracing)
+    public JMXEnabledThreadPoolExecutor(String threadPoolName, String jmxPath, Tracing tracing, boolean initializeJMX)
     {
-        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName), jmxPath, tracing);
+        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName), jmxPath, tracing, initializeJMX);
     }
 
-    public JMXEnabledThreadPoolExecutor(String threadPoolName, int priority, Tracing tracing)
+    public JMXEnabledThreadPoolExecutor(String threadPoolName, int priority, Tracing tracing, boolean initializeJMX)
     {
-        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName, priority), "internal", tracing);
+        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName, priority), "internal", tracing, initializeJMX);
     }
 
     public JMXEnabledThreadPoolExecutor(int corePoolSize,
@@ -60,9 +62,10 @@ public class JMXEnabledThreadPoolExecutor extends DebuggableThreadPoolExecutor i
             BlockingQueue<Runnable> workQueue,
             NamedThreadFactory threadFactory,
             String jmxPath,
-            Tracing tracing)
+            Tracing tracing,
+            boolean initializeJMX)
     {
-        this(corePoolSize, corePoolSize, keepAliveTime, unit, workQueue, threadFactory, jmxPath, tracing);
+        this(corePoolSize, corePoolSize, keepAliveTime, unit, workQueue, threadFactory, jmxPath, tracing, initializeJMX);
     }
 
     public JMXEnabledThreadPoolExecutor(int corePoolSize,
@@ -72,40 +75,48 @@ public class JMXEnabledThreadPoolExecutor extends DebuggableThreadPoolExecutor i
                                         BlockingQueue<Runnable> workQueue,
                                         NamedThreadFactory threadFactory,
                                         String jmxPath,
-                                        Tracing tracing)
+                                        Tracing tracing,
+                                        boolean initializeJMX)
     {
         super(corePoolSize, maxPoolSize, keepAliveTime, unit, workQueue, threadFactory, tracing);
         super.prestartAllCoreThreads();
 
         metrics = new ThreadPoolMetrics(this, jmxPath, threadFactory.id);
 
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         mbeanName = "org.apache.cassandra." + jmxPath + ":type=" + threadFactory.id;
+        this.initializeJMX = initializeJMX;
 
-        try
+        if (initializeJMX)
         {
-            mbs.registerMBean(this, new ObjectName(mbeanName));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            try
+            {
+                mbs.registerMBean(this, new ObjectName(mbeanName));
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
         }
     }
 
-    public JMXEnabledThreadPoolExecutor(Stage stage, Tracing tracing)
+    public JMXEnabledThreadPoolExecutor(Stage stage, Tracing tracing, boolean initializeJMX)
     {
-        this(stage.getJmxName(), stage.getJmxType(), tracing);
+        this(stage.getJmxName(), stage.getJmxType(), tracing, initializeJMX);
     }
 
     private void unregisterMBean()
     {
-        try
+        if (initializeJMX)
         {
-            ManagementFactory.getPlatformMBeanServer().unregisterMBean(new ObjectName(mbeanName));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
+            try
+            {
+                ManagementFactory.getPlatformMBeanServer().unregisterMBean(new ObjectName(mbeanName));
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
         }
 
         // release metrics

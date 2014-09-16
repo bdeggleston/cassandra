@@ -70,7 +70,7 @@ public class PigTestBase extends SchemaLoader
                                                "&native_read_timeout=10000000&send_buff_size=4096&receive_buff_size=4096&solinger=3" +
                                                "&tcp_nodelay=true&reuse_address=true&keep_alive=true&native_port=9052";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     static
     {

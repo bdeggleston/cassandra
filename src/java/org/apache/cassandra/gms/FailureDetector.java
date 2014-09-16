@@ -61,15 +61,18 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean
     {
         FailureDetector fd = new FailureDetector(databaseDescriptor);
 
-        // Register this instance with JMX
-        try
+        if (databaseDescriptor.shouldInitializeJMX())
         {
-            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            mbs.registerMBean(fd, new ObjectName(MBEAN_NAME));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
+            // Register this instance with JMX
+            try
+            {
+                MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+                mbs.registerMBean(fd, new ObjectName(MBEAN_NAME));
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
         }
         return fd;
     }

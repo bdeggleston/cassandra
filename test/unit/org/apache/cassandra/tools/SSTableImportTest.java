@@ -73,7 +73,7 @@ public class SSTableImportTest
     public static final String CF_COUNTER = "Counter1";
     public static final String CQL_TABLE = "table1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException, IOException, TException
@@ -98,7 +98,7 @@ public class SSTableImportTest
 
         // Verify results
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
-        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter = qf.getSSTableColumnIterator(reader);
         ColumnFamily cf = cloneForAdditions(iter);
         while (iter.hasNext()) cf.addAtom(iter.next());
@@ -131,7 +131,7 @@ public class SSTableImportTest
         new SSTableImport(databaseDescriptor).importJson(jsonUrl, KEYSPACE1, "Standard1", tempSS.getPath());
 
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
-        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter = qf.getSSTableColumnIterator(reader);
         ColumnFamily cf = cloneForAdditions(iter);
         while (iter.hasNext())
@@ -154,7 +154,7 @@ public class SSTableImportTest
 
         // Verify results
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
-        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter = qf.getSSTableColumnIterator(reader);
         ColumnFamily cf = cloneForAdditions(iter);
         assertEquals(cf.deletionInfo(), new DeletionInfo(0, 0));
@@ -178,7 +178,7 @@ public class SSTableImportTest
 
         // Verify results
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
-        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Counter1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "Counter1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter = qf.getSSTableColumnIterator(reader);
         ColumnFamily cf = cloneForAdditions(iter);
         while (iter.hasNext()) cf.addAtom(iter.next());
@@ -198,10 +198,10 @@ public class SSTableImportTest
         // Verify results
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
         // check that keys are treated as ascii
-        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("726f7741", AsciiType.instance, databaseDescriptor), "AsciiKeys", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("726f7741", AsciiType.instance, databaseDescriptor), "AsciiKeys", System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter = qf.getSSTableColumnIterator(reader);
         assert iter.hasNext(); // "ascii" key exists
-        QueryFilter qf2 = QueryFilter.getIdentityFilter(Util.dk("726f7741", BytesType.instance, databaseDescriptor), "AsciiKeys", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf2 = QueryFilter.getIdentityFilter(Util.dk("726f7741", BytesType.instance, databaseDescriptor), "AsciiKeys", System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter2 = qf2.getSSTableColumnIterator(reader);
         assert !iter2.hasNext(); // "bytes" key does not exist
     }
@@ -219,7 +219,7 @@ public class SSTableImportTest
         // Verify results
         SSTableReader reader = databaseDescriptor.getSSTableReaderFactory().open(Descriptor.fromFilename(tempSS.getPath()));
         // check that keys are treated as bytes
-        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "AsciiKeys", System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        QueryFilter qf = QueryFilter.getIdentityFilter(Util.dk("rowA", databaseDescriptor), "AsciiKeys", System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         OnDiskAtomIterator iter = qf.getSSTableColumnIterator(reader);
         assert iter.hasNext(); // "bytes" key exists
     }

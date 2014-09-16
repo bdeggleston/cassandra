@@ -264,7 +264,7 @@ public class StressSettings implements Serializable
             }
             System.exit(1);
         }
-        return new StressSettings(command, rate, keys, columns, log, mode, node, schema, transport, port, sendToDaemon, DatabaseDescriptor.createMain(false));
+        return new StressSettings(command, rate, keys, columns, log, mode, node, schema, transport, port, sendToDaemon, DatabaseDescriptor.createMain(false, true));
     }
 
     private static Map<String, String[]> parseMap(String[] args)

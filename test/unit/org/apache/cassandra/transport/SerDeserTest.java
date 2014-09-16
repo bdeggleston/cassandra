@@ -100,12 +100,12 @@ public class SerDeserTest
     {
         List<Event> events = new ArrayList<>();
 
-        events.add(TopologyChange.newNode(DatabaseDescriptor.createMain(false).getBroadcastAddress(), 42));
-        events.add(TopologyChange.removedNode(DatabaseDescriptor.createMain(false).getBroadcastAddress(), 42));
-        events.add(TopologyChange.movedNode(DatabaseDescriptor.createMain(false).getBroadcastAddress(), 42));
+        events.add(TopologyChange.newNode(DatabaseDescriptor.createMain(false, false).getBroadcastAddress(), 42));
+        events.add(TopologyChange.removedNode(DatabaseDescriptor.createMain(false, false).getBroadcastAddress(), 42));
+        events.add(TopologyChange.movedNode(DatabaseDescriptor.createMain(false, false).getBroadcastAddress(), 42));
 
-        events.add(StatusChange.nodeUp(DatabaseDescriptor.createMain(false).getBroadcastAddress(), 42));
-        events.add(StatusChange.nodeDown(DatabaseDescriptor.createMain(false).getBroadcastAddress(), 42));
+        events.add(StatusChange.nodeUp(DatabaseDescriptor.createMain(false, false).getBroadcastAddress(), 42));
+        events.add(StatusChange.nodeDown(DatabaseDescriptor.createMain(false, false).getBroadcastAddress(), 42));
 
         events.add(new SchemaChange(SchemaChange.Change.CREATED, "ks"));
         events.add(new SchemaChange(SchemaChange.Change.UPDATED, "ks"));

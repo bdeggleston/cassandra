@@ -89,15 +89,17 @@ public class CacheService implements CacheServiceMBean
     {
         CacheService cacheService = new CacheService(databaseDescriptor);
 
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-
-        try
+        if (databaseDescriptor.shouldInitializeJMX())
         {
-            mbs.registerMBean(cacheService, new ObjectName(MBEAN_NAME));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            try
+            {
+                mbs.registerMBean(cacheService, new ObjectName(MBEAN_NAME));
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
         }
 
         return cacheService;

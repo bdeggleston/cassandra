@@ -397,7 +397,7 @@ public class SSTableExport
     {
         String usage = String.format("Usage: %s <sstable> [-k key [-k key [...]] -x key [-x key [...]]]%n", SSTableExport.class.getName());
 
-        DatabaseDescriptor dd = DatabaseDescriptor.createMain(true);
+        DatabaseDescriptor dd = DatabaseDescriptor.createMain(true, true);
 
         CommandLineParser parser = new PosixParser();
         try

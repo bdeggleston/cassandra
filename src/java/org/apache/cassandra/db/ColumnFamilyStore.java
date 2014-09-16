@@ -345,16 +345,21 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         // register the mbean
         String type = this.partitioner instanceof LocalPartitioner ? "IndexColumnFamilies" : "ColumnFamilies";
         mbeanName = "org.apache.cassandra.db:type=" + type + ",keyspace=" + this.keyspace.getName() + ",columnfamily=" + name;
-        try
+
+        if (databaseDescriptor.shouldInitializeJMX())
         {
-            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            ObjectName nameObj = new ObjectName(mbeanName);
-            mbs.registerMBean(this, nameObj);
+            try
+            {
+                MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+                ObjectName nameObj = new ObjectName(mbeanName);
+                mbs.registerMBean(this, nameObj);
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
         }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
-        }
+
         logger.debug("retryPolicy for {} is {}", name, this.metadata.getSpeculativeRetry());
         storageServiceExecutors.optionalTasks.scheduleWithFixedDelay(new Runnable()
         {

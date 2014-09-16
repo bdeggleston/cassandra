@@ -68,14 +68,17 @@ public class CommitLog implements CommitLogMBean
     {
         CommitLog commitLog = new CommitLog(databaseDescriptor, tracing, schema, keyspaceManager);
 
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        try
+        if (databaseDescriptor.shouldInitializeJMX())
         {
-            mbs.registerMBean(commitLog, new ObjectName("org.apache.cassandra.db:type=Commitlog"));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            try
+            {
+                mbs.registerMBean(commitLog, new ObjectName("org.apache.cassandra.db:type=Commitlog"));
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
         }
 
         return commitLog;
@@ -106,7 +109,7 @@ public class CommitLog implements CommitLogMBean
                  ? new BatchCommitLogService(this, databaseDescriptor)
                  : new PeriodicCommitLogService(this, databaseDescriptor);
 
-        archiver = new CommitLogArchiver(databaseDescriptor.getCommitLogLocation(), tracing);
+        archiver = new CommitLogArchiver(databaseDescriptor.getCommitLogLocation(), databaseDescriptor, tracing);
 
         // register metrics
         metrics = new CommitLogMetrics(executor, allocator);

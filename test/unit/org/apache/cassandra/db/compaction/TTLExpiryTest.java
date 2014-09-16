@@ -46,7 +46,7 @@ public class TTLExpiryTest
     public static final String KEYSPACE1 = "TTLExpiryTest";
     private static final String CF_STANDARD1 = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -152,7 +152,7 @@ public class TTLExpiryTest
         cfs.enableAutoCompaction(true);
         assertEquals(1, cfs.getSSTables().size());
         SSTableReader sstable = cfs.getSSTables().iterator().next();
-        SSTableScanner scanner = sstable.getScanner(DataRange.allData(sstable.partitioner, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+        SSTableScanner scanner = sstable.getScanner(DataRange.allData(sstable.partitioner, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         assertTrue(scanner.hasNext());
         while(scanner.hasNext())
         {

@@ -31,6 +31,7 @@ import java.util.TimeZone;
 import java.util.concurrent.*;
 
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
@@ -60,10 +61,10 @@ public class CommitLogArchiver
 
     private final String commitLogLocation;
 
-    public CommitLogArchiver(String commitLogLocation, Tracing tracing)
+    public CommitLogArchiver(String commitLogLocation, DatabaseDescriptor databaseDescriptor, Tracing tracing)
     {
         this.commitLogLocation = commitLogLocation;
-        executor = new JMXEnabledThreadPoolExecutor("CommitLogArchiver", tracing);
+        executor = new JMXEnabledThreadPoolExecutor("CommitLogArchiver", tracing, databaseDescriptor.shouldInitializeJMX());
 
         Properties commitlog_commands = new Properties();
         InputStream stream = null;

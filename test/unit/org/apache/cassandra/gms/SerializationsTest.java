@@ -37,7 +37,7 @@ import java.util.Map;
 
 public class SerializationsTest extends AbstractSerializationsTester
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     private void testEndpointStateWrite() throws IOException
     {
@@ -124,7 +124,7 @@ public class SerializationsTest extends AbstractSerializationsTester
             EndpointSt.addApplicationState(ApplicationState.LOAD, vv0);
             EndpointSt.addApplicationState(ApplicationState.STATUS, vv1);
             for (int i = 0; i < 100; i++)
-                Digests.add(new GossipDigest(DatabaseDescriptor.createMain(false).getBroadcastAddress(), 100 + i, 1000 + 2 * i));
+                Digests.add(new GossipDigest(DatabaseDescriptor.createMain(false, false).getBroadcastAddress(), 100 + i, 1000 + 2 * i));
         }
     }
 }

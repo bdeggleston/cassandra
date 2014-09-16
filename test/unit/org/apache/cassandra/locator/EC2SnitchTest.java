@@ -47,7 +47,7 @@ import static org.junit.Assert.assertEquals;
 public class EC2SnitchTest
 {
     private static String az;
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void setup() throws Exception

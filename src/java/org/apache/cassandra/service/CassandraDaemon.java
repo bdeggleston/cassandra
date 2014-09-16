@@ -586,7 +586,7 @@ public class CassandraDaemon
 
     public static void main(String[] args)
     {
-        CassandraDaemon daemon = new CassandraDaemon(DatabaseDescriptor.createMain(false));
+        CassandraDaemon daemon = new CassandraDaemon(DatabaseDescriptor.createMain(false, true));
         daemon.activate();
     }
     

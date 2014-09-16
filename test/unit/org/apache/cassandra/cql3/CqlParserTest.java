@@ -33,7 +33,7 @@ import static org.junit.Assert.*;
 public class CqlParserTest
 {
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @Test
     public void testAddErrorListener() throws Exception

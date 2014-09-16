@@ -121,12 +121,13 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
         metrics = new HintedHandoffMetrics(systemKeyspace);
         queuedDeliveries = new NonBlockingHashSet<InetAddress>();
         executor = new JMXEnabledThreadPoolExecutor(databaseDescriptor.getMaxHintsThread(),
-                                                                                     Integer.MAX_VALUE,
-                                                                                     TimeUnit.SECONDS,
-                                                                                     new LinkedBlockingQueue<Runnable>(),
-                                                                                     new NamedThreadFactory("HintedHandoff", Thread.MIN_PRIORITY),
-                                                                                     "internal",
-                                                                                     tracing);
+                                                    Integer.MAX_VALUE,
+                                                    TimeUnit.SECONDS,
+                                                    new LinkedBlockingQueue<Runnable>(),
+                                                    new NamedThreadFactory("HintedHandoff", Thread.MIN_PRIORITY),
+                                                    "internal",
+                                                    tracing,
+                                                    databaseDescriptor.shouldInitializeJMX());
         hintStore = keyspaceManager.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF);
     }
 

@@ -48,7 +48,7 @@ import org.junit.Test;
 
 public class ThriftColumnFamilyTest extends PigTestBase
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     private static String[] statements = {
             "create keyspace thriftKs with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy' and" +

@@ -44,9 +44,9 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 public class RowIterationTest
 {
     public static final String KEYSPACE1 = "RowIterationTest";
-    public static final InetAddress LOCAL = DatabaseDescriptor.createMain(false).getBroadcastAddress();
+    public static final InetAddress LOCAL = DatabaseDescriptor.createMain(false, false).getBroadcastAddress();
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -75,7 +75,7 @@ public class RowIterationTest
             inserted.add(key);
         }
         store.forceBlockingFlush();
-        assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(store, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing()).size());
+        assertEquals(inserted.toString(), inserted.size(), Util.getRangeSlice(store, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing()).size());
     }
 
     @Test
@@ -102,7 +102,7 @@ public class RowIterationTest
         rm.applyUnsafe();
         store.forceBlockingFlush();
 
-        ColumnFamily cf = Util.getRangeSlice(store, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing()).get(0).cf;
+        ColumnFamily cf = Util.getRangeSlice(store, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing()).get(0).cf;
         assert cf.deletionInfo().equals(delInfo2);
     }
 
@@ -120,7 +120,7 @@ public class RowIterationTest
         rm.applyUnsafe();
         store.forceBlockingFlush();
 
-        ColumnFamily cf = Util.getRangeSlice(store, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing()).get(0).cf;
+        ColumnFamily cf = Util.getRangeSlice(store, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing()).get(0).cf;
         assert cf != null;
     }
 }

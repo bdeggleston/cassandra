@@ -230,7 +230,7 @@ public class CliMain
         CliOptions cliOptions = new CliOptions();
         cliOptions.processArgs(sessionState, args);
 
-        DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true);
+        DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true, true);
 
         // connect to cassandra server if host argument specified.
         if (sessionState.hostName != null)

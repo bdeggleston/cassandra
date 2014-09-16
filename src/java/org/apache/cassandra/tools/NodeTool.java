@@ -155,7 +155,7 @@ public class NodeTool
         int status = 0;
         try
         {
-            DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true);
+            DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true, true);
             NodeToolCmd parse = (NodeToolCmd) parser.parse(args);
             parse.setDatabaseDescriptor(databaseDescriptor);
             printHistory(args);

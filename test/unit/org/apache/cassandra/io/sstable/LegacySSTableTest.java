@@ -62,7 +62,7 @@ public class LegacySSTableTest
     public static Set<String> TEST_DATA;
     public static File LEGACY_SSTABLE_ROOT;
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -136,8 +136,8 @@ public class LegacySSTableTest
         details.add(new StreamSession.SSTableStreamingSections(sstable,
                                                                sstable.getPositionsForRanges(ranges),
                                                                sstable.estimatedKeysForRanges(ranges), sstable.getSSTableMetadata().repairedAt));
-        new StreamPlan("LegacyStreamingTest", DatabaseDescriptor.createMain(false), databaseDescriptor.getSchema(),
-                       databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig()).transferFiles(DatabaseDescriptor.createMain(false).getBroadcastAddress(), details)
+        new StreamPlan("LegacyStreamingTest", DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSchema(),
+                       databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig()).transferFiles(DatabaseDescriptor.createMain(false, false).getBroadcastAddress(), details)
                                              .execute().get();
 
         ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(KSNAME).getColumnFamilyStore(CFNAME);

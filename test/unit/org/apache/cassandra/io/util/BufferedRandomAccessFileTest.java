@@ -46,7 +46,7 @@ import org.junit.Test;
 
 public class BufferedRandomAccessFileTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @Test
     public void testReadAndWrite() throws Exception
@@ -140,7 +140,7 @@ public class BufferedRandomAccessFileTest
     public void testReadAndWriteOnCapacity() throws IOException
     {
         File tmpFile = File.createTempFile("readtest", "bin");
-        SequentialWriter w = SequentialWriter.open(tmpFile, DatabaseDescriptor.createMain(false));
+        SequentialWriter w = SequentialWriter.open(tmpFile, DatabaseDescriptor.createMain(false, false));
 
         // Fully write the file and sync..
         byte[] in = generateByteArray(RandomAccessReader.DEFAULT_BUFFER_SIZE);
@@ -164,7 +164,7 @@ public class BufferedRandomAccessFileTest
     public void testLength() throws IOException
     {
         File tmpFile = File.createTempFile("lengthtest", "bin");
-        SequentialWriter w = SequentialWriter.open(tmpFile, DatabaseDescriptor.createMain(false));
+        SequentialWriter w = SequentialWriter.open(tmpFile, DatabaseDescriptor.createMain(false, false));
         assertEquals(0, w.length());
 
         // write a chunk smaller then our buffer, so will not be flushed
@@ -659,7 +659,7 @@ public class BufferedRandomAccessFileTest
     public void testSetNegativeLength() throws IOException, IllegalArgumentException
     {
         File tmpFile = File.createTempFile("set_negative_length", "bin");
-        try (SequentialWriter file = SequentialWriter.open(tmpFile, DatabaseDescriptor.createMain(false)))
+        try (SequentialWriter file = SequentialWriter.open(tmpFile, DatabaseDescriptor.createMain(false, false)))
         {
             file.truncate(-8L);
         }
@@ -670,7 +670,7 @@ public class BufferedRandomAccessFileTest
         File tempFile = File.createTempFile(name, null);
         tempFile.deleteOnExit();
 
-        return SequentialWriter.open(tempFile, DatabaseDescriptor.createMain(false));
+        return SequentialWriter.open(tempFile, DatabaseDescriptor.createMain(false, false));
     }
 
     private File writeTemporaryFile(byte[] data) throws IOException

@@ -92,14 +92,18 @@ public class StorageProxy implements StorageProxyMBean
     public static StorageProxy create(DatabaseDescriptor databaseDescriptor, StageManager stageManager, IFailureDetector failureDetector)
     {
         StorageProxy sp = new StorageProxy(databaseDescriptor, stageManager, failureDetector);
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        try
+
+        if (databaseDescriptor.shouldInitializeJMX())
         {
-            mbs.registerMBean(sp, new ObjectName(MBEAN_NAME));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            try
+            {
+                mbs.registerMBean(sp, new ObjectName(MBEAN_NAME));
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
         }
         return sp;
     }

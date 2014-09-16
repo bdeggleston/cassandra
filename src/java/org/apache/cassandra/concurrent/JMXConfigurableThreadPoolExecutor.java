@@ -31,9 +31,10 @@ public class JMXConfigurableThreadPoolExecutor extends JMXEnabledThreadPoolExecu
                                              BlockingQueue<Runnable> workQueue,
                                              NamedThreadFactory threadFactory,
                                              String jmxPath,
-                                             Tracing tracing)
+                                             Tracing tracing,
+                                             boolean initializeJMX)
     {
-        super(corePoolSize, keepAliveTime, unit, workQueue, threadFactory, jmxPath, tracing);
+        super(corePoolSize, keepAliveTime, unit, workQueue, threadFactory, jmxPath, tracing, initializeJMX);
     }
 
 }

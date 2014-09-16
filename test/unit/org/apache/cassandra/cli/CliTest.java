@@ -43,7 +43,7 @@ public class CliTest
     private static final String KEYSPACE1 = "CliTest";
     private static final String CF_STANDARD1 = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     // please add new statements here so they could be auto-runned by this test.
     private String[] statements = {
@@ -247,7 +247,7 @@ public class CliTest
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
 
         // checking if we can connect to the running cassandra node on localhost
-        CliMain.connect("127.0.0.1", DatabaseDescriptor.createMain(false).getRpcPort(), databaseDescriptor);
+        CliMain.connect("127.0.0.1", DatabaseDescriptor.createMain(false, false).getRpcPort(), databaseDescriptor);
 
         // setting new output stream
         CliMain.sessionState.setOut(new PrintStream(outStream));

@@ -48,7 +48,7 @@ public class OneCompactionTest
     private static final String CF_STANDARD1 = "Standard1";
     private static final String CF_STANDARD2 = "Standard2";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -78,7 +78,7 @@ public class OneCompactionTest
             rm.applyUnsafe();
             inserted.add(key);
             store.forceBlockingFlush();
-            assertEquals(inserted.size(), Util.getRangeSlice(store, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing()).size());
+            assertEquals(inserted.size(), Util.getRangeSlice(store, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing()).size());
         }
         databaseDescriptor.getCompactionManager().performMaximal(store);
         assertEquals(1, store.getSSTables().size());

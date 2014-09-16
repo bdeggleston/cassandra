@@ -65,7 +65,7 @@ public class IndexSummaryManagerTest
     // index interval of 8, no key caching
     private static final String CF_STANDARDLOWiINTERVAL = "StandardLowIndexInterval";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -130,7 +130,7 @@ public class IndexSummaryManagerTest
         for (int i = 0; i < numRows; i++)
         {
             DecoratedKey key = Util.dk(String.format("%3d", i), databaseDescriptor);
-            QueryFilter filter = QueryFilter.getIdentityFilter(key, cfs.getColumnFamilyName(), System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+            QueryFilter filter = QueryFilter.getIdentityFilter(key, cfs.getColumnFamilyName(), System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
             ColumnFamily row = cfs.getColumnFamily(filter);
             assertNotNull(row);
             Cell cell = row.getColumn(Util.cellname("column"));

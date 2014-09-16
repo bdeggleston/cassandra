@@ -46,7 +46,7 @@ import org.apache.cassandra.utils.MerkleTree;
 public class SerializationsTest extends AbstractSerializationsTester
 {
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     static
     {
@@ -91,7 +91,7 @@ public class SerializationsTest extends AbstractSerializationsTester
             assert DESC.equals(message.desc);
             assert ((ValidationRequest) message).gcBefore == 1234;
 
-            assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
+            assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
         }
     }
 
@@ -100,14 +100,14 @@ public class SerializationsTest extends AbstractSerializationsTester
         IPartitioner p = new RandomPartitioner(databaseDescriptor.getLocatorConfig());
         // empty validation
         MerkleTree mt = new MerkleTree(p, FULL_RANGE, MerkleTree.RECOMMENDED_DEPTH, (int) Math.pow(2, 15));
-        Validator v0 = new Validator(DESC, DatabaseDescriptor.createMain(false).getBroadcastAddress(),  -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getStageManager(), databaseDescriptor.getMessagingService());
+        Validator v0 = new Validator(DESC, DatabaseDescriptor.createMain(false, false).getBroadcastAddress(),  -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getStageManager(), databaseDescriptor.getMessagingService());
         ValidationComplete c0 = new ValidationComplete(DESC, mt, databaseDescriptor.getMessagingService().repairMessageSerializer);
 
         // validation with a tree
         mt = new MerkleTree(p, FULL_RANGE, MerkleTree.RECOMMENDED_DEPTH, Integer.MAX_VALUE);
         for (int i = 0; i < 10; i++)
             mt.split(p.getRandomToken());
-        Validator v1 = new Validator(DESC, DatabaseDescriptor.createMain(false).getBroadcastAddress(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getStageManager(), databaseDescriptor.getMessagingService());
+        Validator v1 = new Validator(DESC, DatabaseDescriptor.createMain(false, false).getBroadcastAddress(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getStageManager(), databaseDescriptor.getMessagingService());
         ValidationComplete c1 = new ValidationComplete(DESC, mt, databaseDescriptor.getMessagingService().repairMessageSerializer);
 
         // validation failed
@@ -150,7 +150,7 @@ public class SerializationsTest extends AbstractSerializationsTester
 
             // MessageOuts
             for (int i = 0; i < 3; i++)
-                assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
+                assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
         }
     }
 
@@ -184,7 +184,7 @@ public class SerializationsTest extends AbstractSerializationsTester
             assert dest.equals(((SyncRequest) message).dst);
             assert ((SyncRequest) message).ranges.size() == 1 && ((SyncRequest) message).ranges.contains(FULL_RANGE);
 
-            assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
+            assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
         }
     }
 
@@ -230,7 +230,7 @@ public class SerializationsTest extends AbstractSerializationsTester
 
             // MessageOuts
             for (int i = 0; i < 2; i++)
-                assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
+                assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
         }
     }
 }

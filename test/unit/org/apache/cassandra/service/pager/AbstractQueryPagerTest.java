@@ -35,7 +35,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class AbstractQueryPagerTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @Test
     public void discardFirstTest()
@@ -135,8 +135,8 @@ public class AbstractQueryPagerTest
         return new CFMetaData("ks",
                               "cf",
                               ColumnFamilyType.Standard,
-                              CellNames.fromAbstractType(Int32Type.instance, false, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
-                              DatabaseDescriptor.createMain(false),
+                              CellNames.fromAbstractType(Int32Type.instance, false, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()),
+                              DatabaseDescriptor.createMain(false, false),
                               databaseDescriptor.getTracing(),
                               databaseDescriptor.getSystemKeyspace(),
                               databaseDescriptor.getSchema(),

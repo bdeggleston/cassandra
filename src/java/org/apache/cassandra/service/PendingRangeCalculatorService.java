@@ -48,7 +48,11 @@ public class PendingRangeCalculatorService
         this.databaseDescriptor = databaseDescriptor;
 
         executor = new JMXEnabledThreadPoolExecutor(1, Integer.MAX_VALUE, TimeUnit.SECONDS,
-                new LinkedBlockingQueue<Runnable>(1), new NamedThreadFactory("PendingRangeCalculator"), "internal", tracing);
+                                                    new LinkedBlockingQueue<Runnable>(1),
+                                                    new NamedThreadFactory("PendingRangeCalculator"),
+                                                    "internal",
+                                                    tracing,
+                                                    databaseDescriptor.shouldInitializeJMX());
         executor.setRejectedExecutionHandler(new RejectedExecutionHandler()
         {
             public void rejectedExecution(Runnable r, ThreadPoolExecutor e)

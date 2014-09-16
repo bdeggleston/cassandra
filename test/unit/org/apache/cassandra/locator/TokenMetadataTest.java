@@ -42,7 +42,7 @@ public class TokenMetadataTest
     public final static String SIX = "6";
 
     static TokenMetadata tmd;
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void beforeClass() throws Throwable

@@ -56,7 +56,7 @@ public class BatchlogManagerTest
     private static final String CF_STANDARD2 = "Standard2";
     private static final String CF_STANDARD3 = "Standard3";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -94,7 +94,7 @@ public class BatchlogManagerTest
             mutation.add("Standard1", comparator.makeCellName(bytes(i)), bytes(i), System.currentTimeMillis());
 
             long timestamp = i < 500
-                           ? (System.currentTimeMillis() - DatabaseDescriptor.createMain(false).getWriteRpcTimeout() * 2) * 1000
+                           ? (System.currentTimeMillis() - DatabaseDescriptor.createMain(false, false).getWriteRpcTimeout() * 2) * 1000
                            : Long.MAX_VALUE;
 
             BatchlogManager.getBatchlogMutationFor(Collections.singleton(mutation),
@@ -157,7 +157,7 @@ public class BatchlogManagerTest
             List<Mutation> mutations = Lists.newArrayList(mutation1, mutation2);
 
             // Make sure it's ready to be replayed, so adjust the timestamp.
-            long timestamp = System.currentTimeMillis() - DatabaseDescriptor.createMain(false).getWriteRpcTimeout() * 2;
+            long timestamp = System.currentTimeMillis() - DatabaseDescriptor.createMain(false, false).getWriteRpcTimeout() * 2;
 
             if (i == 500)
                 databaseDescriptor.getSystemKeyspace().saveTruncationRecord(databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard2"),

@@ -43,7 +43,7 @@ import static org.junit.Assert.*;
 
 public class MerkleTreeTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
     static
     {
         System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());

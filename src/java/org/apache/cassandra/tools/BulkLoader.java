@@ -75,7 +75,7 @@ public class BulkLoader
 
     public static void main(String args[])
     {
-        DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true);
+        DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true, true);
         LoaderOptions options = LoaderOptions.parseArgs(args);
         OutputHandler handler = new OutputHandler.SystemOutput(options.verbose, options.debug);
         SSTableLoader loader = new SSTableLoader(

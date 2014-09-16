@@ -39,7 +39,7 @@ public class RemoveCellTest
     private static final String KEYSPACE1 = "RemoveCellTest";
     private static final String CF_STANDARD1 = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -76,7 +76,7 @@ public class RemoveCellTest
         assertNull(Util.cloneAndRemoveDeleted(store.getColumnFamily(QueryFilter.getIdentityFilter(dk,
                                                                                                   "Standard1",
                                                                                                   System.currentTimeMillis(),
-                                                                                                  DatabaseDescriptor.createMain(false),
+                                                                                                  DatabaseDescriptor.createMain(false, false),
                                                                                                   databaseDescriptor.getTracing(),
                                                                                                   databaseDescriptor.getDBConfig())),
                                               Integer.MAX_VALUE));

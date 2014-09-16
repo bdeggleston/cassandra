@@ -42,7 +42,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class StorageProxyTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     private static Range<RowPosition> range(RowPosition left, RowPosition right)
     {

@@ -37,7 +37,7 @@ import static org.junit.Assert.assertTrue;
 
 public class KSMetaDataTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @Test
     public void testToStringHasStrategyOptions() throws Exception

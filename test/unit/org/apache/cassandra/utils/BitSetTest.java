@@ -41,7 +41,7 @@ import static org.junit.Assert.assertEquals;
 
 public class BitSetTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     /**
      * Test bitsets in a "real-world" environment, i.e., bloom filters
@@ -75,7 +75,7 @@ public class BitSetTest
     @Test
     public void testOffHeapSerialization() throws IOException
     {
-        OffHeapBitSet bs = new OffHeapBitSet(100000, DatabaseDescriptor.createMain(false).getoffHeapMemoryAllocator());
+        OffHeapBitSet bs = new OffHeapBitSet(100000, DatabaseDescriptor.createMain(false, false).getoffHeapMemoryAllocator());
         populateAndReserialize(bs);
     }
 
@@ -95,7 +95,7 @@ public class BitSetTest
         DataOutputBuffer out = new DataOutputBuffer();
         bs.serialize(out);
         DataInputStream in = new DataInputStream(new ByteArrayInputStream(out.getData()));
-        OffHeapBitSet newbs = OffHeapBitSet.deserialize(in, DatabaseDescriptor.createMain(false).getoffHeapMemoryAllocator());
+        OffHeapBitSet newbs = OffHeapBitSet.deserialize(in, DatabaseDescriptor.createMain(false, false).getoffHeapMemoryAllocator());
         compare(bs, newbs);
     }
 
@@ -110,7 +110,7 @@ public class BitSetTest
     public void testBitClear() throws IOException
     {
         int size = Integer.MAX_VALUE / 4000;
-        OffHeapBitSet bitset = new OffHeapBitSet(size, DatabaseDescriptor.createMain(false).getoffHeapMemoryAllocator());
+        OffHeapBitSet bitset = new OffHeapBitSet(size, DatabaseDescriptor.createMain(false, false).getoffHeapMemoryAllocator());
         List<Integer> randomBits = Lists.newArrayList();
         for (int i = 0; i < 10; i++)
             randomBits.add(random.nextInt(size));

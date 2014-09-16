@@ -33,7 +33,7 @@ import java.io.IOException;
 
 public class SerializationsTest extends AbstractSerializationsTester
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     private void testBloomFilterWrite(boolean offheap) throws IOException
     {

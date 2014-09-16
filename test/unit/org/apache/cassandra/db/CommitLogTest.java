@@ -62,7 +62,7 @@ public class CommitLogTest
     private static final String CF1 = "Standard1";
     private static final String CF2 = "Standard2";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -144,7 +144,7 @@ public class CommitLogTest
         databaseDescriptor.getCommitLog().resetUnsafe();
         // Roughly 32 MB mutation
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
-        rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate(DatabaseDescriptor.createMain(false).getCommitLogSegmentSize()/4), 0);
+        rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate(DatabaseDescriptor.createMain(false, false).getCommitLogSegmentSize()/4), 0);
 
         // Adding it 5 times
         databaseDescriptor.getCommitLog().add(rm);
@@ -170,11 +170,11 @@ public class CommitLogTest
     @Test
     public void testDeleteIfNotDirty() throws Exception
     {
-        DatabaseDescriptor.createMain(false).getCommitLogSegmentSize();
+        DatabaseDescriptor.createMain(false, false).getCommitLogSegmentSize();
         databaseDescriptor.getCommitLog().resetUnsafe();
         // Roughly 32 MB mutation
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
-        rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate((DatabaseDescriptor.createMain(false).getCommitLogSegmentSize()/4) - 1), 0);
+        rm.add(CF1, Util.cellname("c1"), ByteBuffer.allocate((DatabaseDescriptor.createMain(false, false).getCommitLogSegmentSize()/4) - 1), 0);
 
         // Adding it twice (won't change segment)
         databaseDescriptor.getCommitLog().add(rm);
@@ -191,7 +191,7 @@ public class CommitLogTest
 
         // Adding new mutation on another CF, large enough (including CL entry overhead) that a new segment is created
         Mutation rm2 = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
-        rm2.add(CF2, Util.cellname("c1"), ByteBuffer.allocate((DatabaseDescriptor.createMain(false).getCommitLogSegmentSize()/2) - 100), 0);
+        rm2.add(CF2, Util.cellname("c1"), ByteBuffer.allocate((DatabaseDescriptor.createMain(false, false).getCommitLogSegmentSize()/2) - 100), 0);
         databaseDescriptor.getCommitLog().add(rm2);
         // also forces a new segment, since each entry-with-overhead is just under half the CL size
         databaseDescriptor.getCommitLog().add(rm2);
@@ -215,7 +215,7 @@ public class CommitLogTest
         Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
         rm.add("Standard1", Util.cellname("c1"), ByteBuffer.allocate(0), 0);
 
-        int max = (DatabaseDescriptor.createMain(false).getCommitLogSegmentSize() / 2);
+        int max = (DatabaseDescriptor.createMain(false, false).getCommitLogSegmentSize() / 2);
         max -= CommitLogSegment.ENTRY_OVERHEAD_SIZE; // log entry overhead
         return max - (int) databaseDescriptor.getMutationFactory().serializer.serializedSize(rm, MessagingService.current_version);
     }
@@ -309,19 +309,19 @@ public class CommitLogTest
     @Test
     public void testCommitFailurePolicy_stop()
     {
-        File commitDir = new File(DatabaseDescriptor.createMain(false).getCommitLogLocation());
+        File commitDir = new File(DatabaseDescriptor.createMain(false, false).getCommitLogLocation());
 
         try
         {
 
-            DatabaseDescriptor.createMain(false).setCommitFailurePolicy(Config.CommitFailurePolicy.stop);
+            DatabaseDescriptor.createMain(false, false).setCommitFailurePolicy(Config.CommitFailurePolicy.stop);
             commitDir.setWritable(false);
             Mutation rm = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
             rm.add("Standard1", Util.cellname("c1"), ByteBuffer.allocate(100), 0);
 
             // Adding it twice (won't change segment)
             databaseDescriptor.getCommitLog().add(rm);
-            Uninterruptibles.sleepUninterruptibly((int) DatabaseDescriptor.createMain(false).getCommitLogSyncBatchWindow(), TimeUnit.MILLISECONDS);
+            Uninterruptibles.sleepUninterruptibly((int) DatabaseDescriptor.createMain(false, false).getCommitLogSyncBatchWindow(), TimeUnit.MILLISECONDS);
             Assert.assertFalse(databaseDescriptor.getStorageService().isRPCServerRunning());
             Assert.assertFalse(databaseDescriptor.getStorageService().isNativeTransportRunning());
             Assert.assertFalse(databaseDescriptor.getStorageService().isInitialized());
@@ -337,8 +337,8 @@ public class CommitLogTest
     public void testTruncateWithoutSnapshot()  throws ExecutionException, InterruptedException
     {
         databaseDescriptor.getCommitLog().resetUnsafe();
-        boolean prev = DatabaseDescriptor.createMain(false).isAutoSnapshot();
-        DatabaseDescriptor.createMain(false).setAutoSnapshot(false);
+        boolean prev = DatabaseDescriptor.createMain(false, false).isAutoSnapshot();
+        DatabaseDescriptor.createMain(false, false).setAutoSnapshot(false);
         ColumnFamilyStore cfs1 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard1");
         ColumnFamilyStore cfs2 = databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard2");
 
@@ -346,9 +346,9 @@ public class CommitLogTest
         rm1.add("Standard1", Util.cellname("c1"), ByteBuffer.allocate(100), 0);
         rm1.apply();
         cfs1.truncateBlocking();
-        DatabaseDescriptor.createMain(false).setAutoSnapshot(prev);
+        DatabaseDescriptor.createMain(false, false).setAutoSnapshot(prev);
         final Mutation rm2 = databaseDescriptor.getMutationFactory().create(KEYSPACE1, bytes("k"));
-        rm2.add("Standard2", Util.cellname("c1"), ByteBuffer.allocate(DatabaseDescriptor.createMain(false).getCommitLogSegmentSize() / 4), 0);
+        rm2.add("Standard2", Util.cellname("c1"), ByteBuffer.allocate(DatabaseDescriptor.createMain(false, false).getCommitLogSegmentSize() / 4), 0);
 
         for (int i = 0 ; i < 5 ; i++)
             databaseDescriptor.getCommitLog().add(rm2);
@@ -366,8 +366,8 @@ public class CommitLogTest
     public void testTruncateWithoutSnapshotNonDurable()  throws ExecutionException, InterruptedException
     {
         databaseDescriptor.getCommitLog().resetUnsafe();
-        boolean prevAutoSnapshot = DatabaseDescriptor.createMain(false).isAutoSnapshot();
-        DatabaseDescriptor.createMain(false).setAutoSnapshot(false);
+        boolean prevAutoSnapshot = DatabaseDescriptor.createMain(false, false).isAutoSnapshot();
+        DatabaseDescriptor.createMain(false, false).setAutoSnapshot(false);
         Keyspace notDurableKs = databaseDescriptor.getKeyspaceManager().open(KEYSPACE2);
         Assert.assertFalse(notDurableKs.metadata.durableWrites);
         ColumnFamilyStore cfs = notDurableKs.getColumnFamilyStore("Standard1");
@@ -384,7 +384,7 @@ public class CommitLogTest
                                                           dk.getKey(),
                                                           "Standard1",
                                                           System.currentTimeMillis(),
-                                                          new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), databaseDescriptor.getDBConfig()), DatabaseDescriptor.createMain(false),
+                                                          new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"), type), databaseDescriptor.getDBConfig()), DatabaseDescriptor.createMain(false, false),
                                                           databaseDescriptor.getSchema(),
                                                           databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                           databaseDescriptor.getMessagingService().readCommandSerializer);
@@ -392,7 +392,7 @@ public class CommitLogTest
         Cell col = row.cf.getColumn(Util.cellname("Column1"));
         Assert.assertEquals(col.value(), ByteBuffer.wrap("abcd".getBytes()));
         cfs.truncateBlocking();
-        DatabaseDescriptor.createMain(false).setAutoSnapshot(prevAutoSnapshot);
+        DatabaseDescriptor.createMain(false, false).setAutoSnapshot(prevAutoSnapshot);
         row = command.getRow(notDurableKs);
         Assert.assertEquals(null, row.cf);
     }

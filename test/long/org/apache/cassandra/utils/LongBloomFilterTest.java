@@ -30,7 +30,7 @@ public class LongBloomFilterTest
 {
     private static final Logger logger = LoggerFactory.getLogger(LongBloomFilterTest.class);
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     /**
      * NB: needs to run with -mx1G

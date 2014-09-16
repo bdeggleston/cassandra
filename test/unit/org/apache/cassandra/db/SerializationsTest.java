@@ -55,7 +55,7 @@ import java.util.*;
 public class SerializationsTest extends AbstractSerializationsTester
 {
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     Statics statics = new Statics();
 
@@ -65,11 +65,11 @@ public class SerializationsTest extends AbstractSerializationsTester
     private Composite emptyCol = Composites.EMPTY;
     public NamesQueryFilter namesPred = new NamesQueryFilter(statics.NamedCols, databaseDescriptor.getDBConfig());
     public NamesQueryFilter namesSCPred = new NamesQueryFilter(statics.NamedSCCols, databaseDescriptor.getDBConfig());
-    public SliceQueryFilter emptyRangePred = new SliceQueryFilter(emptyCol, emptyCol, false, 100, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
-    public SliceQueryFilter nonEmptyRangePred = new SliceQueryFilter(CellNames.simpleDense(startCol), CellNames.simpleDense(stopCol), true, 100, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
-    public SliceQueryFilter nonEmptyRangeSCPred = new SliceQueryFilter(CellNames.compositeDense(statics.SC, startCol), CellNames.compositeDense(statics.SC, stopCol), true, 100, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
-    public SliceByNamesReadCommand.Serializer slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(DatabaseDescriptor.createMain(false), databaseDescriptor.getSchema(), databaseDescriptor.getLocatorConfig().getPartitioner(), databaseDescriptor.getMessagingService().readCommandSerializer);
-    public SliceFromReadCommand.Serializer slicefromReadSerializer = new SliceFromReadCommand.Serializer(DatabaseDescriptor.createMain(false), databaseDescriptor.getSchema(), databaseDescriptor.getLocatorConfig().getPartitioner(), databaseDescriptor.getMessagingService().readCommandSerializer);
+    public SliceQueryFilter emptyRangePred = new SliceQueryFilter(emptyCol, emptyCol, false, 100, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+    public SliceQueryFilter nonEmptyRangePred = new SliceQueryFilter(CellNames.simpleDense(startCol), CellNames.simpleDense(stopCol), true, 100, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+    public SliceQueryFilter nonEmptyRangeSCPred = new SliceQueryFilter(CellNames.compositeDense(statics.SC, startCol), CellNames.compositeDense(statics.SC, stopCol), true, 100, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+    public SliceByNamesReadCommand.Serializer slicesByNamesSerializer = new SliceByNamesReadCommand.Serializer(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSchema(), databaseDescriptor.getLocatorConfig().getPartitioner(), databaseDescriptor.getMessagingService().readCommandSerializer);
+    public SliceFromReadCommand.Serializer slicefromReadSerializer = new SliceFromReadCommand.Serializer(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSchema(), databaseDescriptor.getLocatorConfig().getPartitioner(), databaseDescriptor.getMessagingService().readCommandSerializer);
 
     public static void defineSchema() throws ConfigurationException
     {
@@ -94,17 +94,17 @@ public class SerializationsTest extends AbstractSerializationsTester
 
         RangeSliceCommand.Serializer serializer = databaseDescriptor.getMessagingService().rangeSliceCommandSerializer;
 
-        RangeSliceCommand namesCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, namesPred, bounds, 100, DatabaseDescriptor.createMain(false), databaseDescriptor.getKeyspaceManager(), serializer);
+        RangeSliceCommand namesCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, namesPred, bounds, 100, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getKeyspaceManager(), serializer);
         MessageOut<RangeSliceCommand> namesCmdMsg = namesCmd.createMessage(databaseDescriptor.getMessagingService());
-        RangeSliceCommand emptyRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, emptyRangePred, bounds, 100, DatabaseDescriptor.createMain(false), databaseDescriptor.getKeyspaceManager(), serializer);
+        RangeSliceCommand emptyRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, emptyRangePred, bounds, 100, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getKeyspaceManager(), serializer);
         MessageOut<RangeSliceCommand> emptyRangeCmdMsg = emptyRangeCmd.createMessage(databaseDescriptor.getMessagingService());
-        RangeSliceCommand regRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, nonEmptyRangePred, bounds, 100, DatabaseDescriptor.createMain(false), databaseDescriptor.getKeyspaceManager(), serializer);
+        RangeSliceCommand regRangeCmd = new RangeSliceCommand(statics.KS, "Standard1", statics.readTs, nonEmptyRangePred, bounds, 100, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getKeyspaceManager(), serializer);
         MessageOut<RangeSliceCommand> regRangeCmdMsg = regRangeCmd.createMessage(databaseDescriptor.getMessagingService());
-        RangeSliceCommand namesCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, namesSCPred, bounds, 100, DatabaseDescriptor.createMain(false), databaseDescriptor.getKeyspaceManager(), serializer);
+        RangeSliceCommand namesCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, namesSCPred, bounds, 100, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getKeyspaceManager(), serializer);
         MessageOut<RangeSliceCommand> namesCmdSupMsg = namesCmdSup.createMessage(databaseDescriptor.getMessagingService());
-        RangeSliceCommand emptyRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, emptyRangePred, bounds, 100, DatabaseDescriptor.createMain(false), databaseDescriptor.getKeyspaceManager(), serializer);
+        RangeSliceCommand emptyRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, emptyRangePred, bounds, 100, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getKeyspaceManager(), serializer);
         MessageOut<RangeSliceCommand> emptyRangeCmdSupMsg = emptyRangeCmdSup.createMessage(databaseDescriptor.getMessagingService());
-        RangeSliceCommand regRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, nonEmptyRangeSCPred, bounds, 100, DatabaseDescriptor.createMain(false), databaseDescriptor.getKeyspaceManager(), serializer);
+        RangeSliceCommand regRangeCmdSup = new RangeSliceCommand(statics.KS, "Super1", statics.readTs, nonEmptyRangeSCPred, bounds, 100, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getKeyspaceManager(), serializer);
         MessageOut<RangeSliceCommand> regRangeCmdSupMsg = regRangeCmdSup.createMessage(databaseDescriptor.getMessagingService());
 
         DataOutputStreamAndChannel out = getOutput("db.RangeSliceCommand.bin");
@@ -133,7 +133,7 @@ public class SerializationsTest extends AbstractSerializationsTester
 
         DataInputStream in = getInput("db.RangeSliceCommand.bin");
         for (int i = 0; i < 6; i++)
-            MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService());
+            MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService());
         in.close();
     }
 
@@ -143,7 +143,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                           statics.Key,
                                                                           statics.StandardCF,
                                                                           statics.readTs,
-                                                                          namesPred, DatabaseDescriptor.createMain(false),
+                                                                          namesPred, DatabaseDescriptor.createMain(false, false),
                                                                           databaseDescriptor.getSchema(),
                                                                           databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                                           databaseDescriptor.getMessagingService().readCommandSerializer);
@@ -151,7 +151,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                        statics.Key,
                                                                        statics.SuperCF,
                                                                        statics.readTs,
-                                                                       namesSCPred, DatabaseDescriptor.createMain(false),
+                                                                       namesSCPred, DatabaseDescriptor.createMain(false, false),
                                                                        databaseDescriptor.getSchema(),
                                                                        databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                                        databaseDescriptor.getMessagingService().readCommandSerializer);
@@ -181,8 +181,8 @@ public class SerializationsTest extends AbstractSerializationsTester
         assert slicesByNamesSerializer.deserialize(in, getVersion()) != null;
         assert databaseDescriptor.getMessagingService().readCommandSerializer.deserialize(in, getVersion()) != null;
         assert databaseDescriptor.getMessagingService().readCommandSerializer.deserialize(in, getVersion()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
         in.close();
     }
 
@@ -192,7 +192,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                     statics.Key,
                                                                     statics.StandardCF,
                                                                     statics.readTs,
-                                                                    nonEmptyRangePred, DatabaseDescriptor.createMain(false),
+                                                                    nonEmptyRangePred, DatabaseDescriptor.createMain(false, false),
                                                                     databaseDescriptor.getSchema(),
                                                                     databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                                     databaseDescriptor.getMessagingService().readCommandSerializer);
@@ -200,7 +200,7 @@ public class SerializationsTest extends AbstractSerializationsTester
                                                                  statics.Key,
                                                                  statics.SuperCF,
                                                                  statics.readTs,
-                                                                 nonEmptyRangeSCPred, DatabaseDescriptor.createMain(false),
+                                                                 nonEmptyRangeSCPred, DatabaseDescriptor.createMain(false, false),
                                                                  databaseDescriptor.getSchema(),
                                                                  databaseDescriptor.getLocatorConfig().getPartitioner(),
                                                                  databaseDescriptor.getMessagingService().readCommandSerializer);
@@ -231,8 +231,8 @@ public class SerializationsTest extends AbstractSerializationsTester
         assert slicefromReadSerializer.deserialize(in, getVersion()) != null;
         assert databaseDescriptor.getMessagingService().readCommandSerializer.deserialize(in, getVersion()) != null;
         assert databaseDescriptor.getMessagingService().readCommandSerializer.deserialize(in, getVersion()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
         in.close();
     }
 
@@ -311,11 +311,11 @@ public class SerializationsTest extends AbstractSerializationsTester
         assert databaseDescriptor.getMutationFactory().serializer.deserialize(in, getVersion()) != null;
         assert databaseDescriptor.getMutationFactory().serializer.deserialize(in, getVersion()) != null;
         assert databaseDescriptor.getMutationFactory().serializer.deserialize(in, getVersion()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
         in.close();
     }
 
@@ -351,14 +351,14 @@ public class SerializationsTest extends AbstractSerializationsTester
         assert Truncation.serializer.deserialize(in, getVersion()) != null;
         assert TruncateResponse.serializer.deserialize(in, getVersion()) != null;
         assert TruncateResponse.serializer.deserialize(in, getVersion()) != null;
-        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), -1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
 
         // set up some fake callbacks so deserialization knows that what it's deserializing is a TruncateResponse
         databaseDescriptor.getMessagingService().setCallbackForTests(1, new CallbackInfo(null, null, TruncateResponse.serializer));
         databaseDescriptor.getMessagingService().setCallbackForTests(2, new CallbackInfo(null, null, TruncateResponse.serializer));
 
-        assert MessageIn.read(in, getVersion(), 1, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
-        assert MessageIn.read(in, getVersion(), 2, DatabaseDescriptor.createMain(false), databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), 1, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
+        assert MessageIn.read(in, getVersion(), 2, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getMessagingService()) != null;
         in.close();
     }
 
@@ -402,14 +402,14 @@ public class SerializationsTest extends AbstractSerializationsTester
     {
         private final String KS = KEYSPACE1;
         private final ByteBuffer Key = ByteBufferUtil.bytes("Key01");
-        private final SortedSet<CellName> NamedCols = new TreeSet<CellName>(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()))
+        private final SortedSet<CellName> NamedCols = new TreeSet<CellName>(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()))
         {{
             add(CellNames.simpleDense(ByteBufferUtil.bytes("AAA")));
             add(CellNames.simpleDense(ByteBufferUtil.bytes("BBB")));
             add(CellNames.simpleDense(ByteBufferUtil.bytes("CCC")));
         }};
         private final ByteBuffer SC = ByteBufferUtil.bytes("SCName");
-        private final SortedSet<CellName> NamedSCCols = new TreeSet<CellName>(new CompoundDenseCellNameType(Arrays.<AbstractType<?>>asList(BytesType.instance, BytesType.instance), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()))
+        private final SortedSet<CellName> NamedSCCols = new TreeSet<CellName>(new CompoundDenseCellNameType(Arrays.<AbstractType<?>>asList(BytesType.instance, BytesType.instance), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()))
         {{
             add(CellNames.compositeDense(SC, ByteBufferUtil.bytes("AAA")));
             add(CellNames.compositeDense(SC, ByteBufferUtil.bytes("BBB")));

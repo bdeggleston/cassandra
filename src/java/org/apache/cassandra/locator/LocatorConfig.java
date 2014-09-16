@@ -54,7 +54,7 @@ public class LocatorConfig
 
         snitch = createEndpointSnitch();
         tokenMetadata = new TokenMetadata(databaseDescriptor.getFailureDetector(), this);
-        endpointSnitchInfo = EndpointSnitchInfo.create(snitch);
+        endpointSnitchInfo = EndpointSnitchInfo.create(snitch, databaseDescriptor.shouldInitializeJMX());
 
         localDC = snitch.getDatacenter(getBroadcastAddress());
         localComparator = new Comparator<InetAddress>()

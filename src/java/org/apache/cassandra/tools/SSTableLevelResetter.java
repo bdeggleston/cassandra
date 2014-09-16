@@ -61,7 +61,7 @@ public class SSTableLevelResetter
         // So we have to explicitly call System.exit.
         try
         {
-            DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true);
+            DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true, true);
             // load keyspace descriptions.
             databaseDescriptor.loadSchemas();
 

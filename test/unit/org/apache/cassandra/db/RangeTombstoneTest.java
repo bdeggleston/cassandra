@@ -69,7 +69,7 @@ public class RangeTombstoneTest
     private static final String KSNAME = "RangeTombstoneTest";
     private static final String CFNAME = "StandardInteger1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -133,7 +133,7 @@ public class RangeTombstoneTest
 
         // Queries by slices
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(7), b(30), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
 
         for (int i : new int[]{ 7, 8, 9, 11, 13, 15, 17, 28, 29, 30 })
             assertTrue("Cell " + i + " should be live", isLive(cf, cf.getColumn(b(i))));
@@ -169,82 +169,82 @@ public class RangeTombstoneTest
         rm.applyUnsafe();
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(11), b(14), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         Collection<RangeTombstone> rt = rangeTombstones(cf);
         assertEquals(0, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(11), b(15), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(1, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(20), b(25), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(1, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(12), b(25), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(1, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(25), b(35), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(0, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(1), b(40), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(2, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(7), b(17), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(2, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(5), b(20), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(2, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(5), b(15), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(2, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(1), b(2), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(0, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(1), b(5), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(1, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(1), b(10), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(1, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(5), b(6), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(1, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(17), b(20), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(1, rt.size());
 
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, b(17), b(18), false, Integer.MAX_VALUE,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         rt = rangeTombstones(cf);
         assertEquals(1, rt.size());
 
         ColumnSlice[] slices = new ColumnSlice[]{new ColumnSlice( b(1), b(10)), new ColumnSlice( b(16), b(20))};
-        IDiskAtomFilter sqf = new SliceQueryFilter(slices, false, Integer.MAX_VALUE, DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        IDiskAtomFilter sqf = new SliceQueryFilter(slices, false, Integer.MAX_VALUE, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         cf = cfs.getColumnFamily( new QueryFilter(dk(key, databaseDescriptor), CFNAME, sqf, System.currentTimeMillis()) );
         rt = rangeTombstones(cf);
         assertEquals(2, rt.size());
@@ -372,7 +372,7 @@ public class RangeTombstoneTest
         rm.applyUnsafe();
         cfs.forceBlockingFlush();
 
-        cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(key, databaseDescriptor), CFNAME, System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+        cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(key, databaseDescriptor), CFNAME, System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
 
         for (int i = 0; i < 5; i++)
             assertTrue("Cell " + i + " should be live", isLive(cf, cf.getColumn(b(i))));
@@ -383,7 +383,7 @@ public class RangeTombstoneTest
 
         // Compact everything and re-test
         databaseDescriptor.getCompactionManager().performMaximal(cfs);
-        cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(key, databaseDescriptor), CFNAME, System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+        cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(key, databaseDescriptor), CFNAME, System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
 
         for (int i = 0; i < 5; i++)
             assertTrue("Cell " + i + " should be live", isLive(cf, cf.getColumn(b(i))));
@@ -418,7 +418,7 @@ public class RangeTombstoneTest
 
         // Get the last value of the row
         cf = cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key, databaseDescriptor), CFNAME, Composites.EMPTY, Composites.EMPTY, true, 1,
-                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                                                            System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
 
         assertFalse(cf.isEmpty());
         int last = i(cf.getSortedColumns().iterator().next().name());

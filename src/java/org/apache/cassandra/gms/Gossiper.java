@@ -172,15 +172,18 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     {
         Gossiper gossiper = new Gossiper(databaseDescriptor, failureDetector);
 
-        // Register this instance with JMX
-        try
+        if (databaseDescriptor.shouldInitializeJMX())
         {
-            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            mbs.registerMBean(gossiper, new ObjectName(MBEAN_NAME));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
+            // Register this instance with JMX
+            try
+            {
+                MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+                mbs.registerMBean(gossiper, new ObjectName(MBEAN_NAME));
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
         }
 
         return gossiper;

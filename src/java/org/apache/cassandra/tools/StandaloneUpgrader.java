@@ -43,7 +43,7 @@ public class StandaloneUpgrader
         Options options = Options.parseArgs(args);
         try
         {
-            DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true);
+            DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true, true);
             // load keyspace descriptions.
             databaseDescriptor.loadSchemas();
 

@@ -31,7 +31,7 @@ import org.junit.Test;
  */
 public class GossipingPropertyFileSnitchTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @Test
     public void testAutoReloadConfig() throws Exception
@@ -39,7 +39,7 @@ public class GossipingPropertyFileSnitchTest
         String confFile = FBUtilities.resourceToFile(SnitchProperties.RACKDC_PROPERTY_FILENAME);
         
         final GossipingPropertyFileSnitch snitch = new GossipingPropertyFileSnitch(databaseDescriptor.getLocatorConfig(), /*refreshPeriodInSeconds*/1);
-        YamlFileNetworkTopologySnitchTest.checkEndpoint(snitch, DatabaseDescriptor.createMain(false).getBroadcastAddress().getHostAddress(), "DC1", "RAC1");
+        YamlFileNetworkTopologySnitchTest.checkEndpoint(snitch, DatabaseDescriptor.createMain(false, false).getBroadcastAddress().getHostAddress(), "DC1", "RAC1");
 
         final Path effectiveFile = Paths.get(confFile);
         final Path backupFile = Paths.get(confFile + ".bak");
@@ -52,7 +52,7 @@ public class GossipingPropertyFileSnitchTest
             
             Thread.sleep(1500);
             
-            YamlFileNetworkTopologySnitchTest.checkEndpoint(snitch, DatabaseDescriptor.createMain(false).getBroadcastAddress().getHostAddress(), "DC2", "RAC2");
+            YamlFileNetworkTopologySnitchTest.checkEndpoint(snitch, DatabaseDescriptor.createMain(false, false).getBroadcastAddress().getHostAddress(), "DC2", "RAC2");
         }
         finally
         {

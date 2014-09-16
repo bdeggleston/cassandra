@@ -205,15 +205,18 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                                            dbConfig,
                                                            jmxObjectName);
 
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        try
+        if (databaseDescriptor.shouldInitializeJMX())
         {
-            mbs.registerMBean(storageService, jmxObjectName);
-            mbs.registerMBean(streamManager, new ObjectName(StreamManager.OBJECT_NAME));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            try
+            {
+                mbs.registerMBean(storageService, jmxObjectName);
+                mbs.registerMBean(streamManager, new ObjectName(StreamManager.OBJECT_NAME));
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
         }
 
         return storageService;

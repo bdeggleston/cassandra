@@ -101,14 +101,18 @@ public class CompactionManager implements CompactionManagerMBean
     public static CompactionManager create(DatabaseDescriptor databaseDescriptor, Tracing tracing, Schema schema, KeyspaceManager keyspaceManager)
     {
         CompactionManager cm = new CompactionManager(databaseDescriptor, tracing, schema, keyspaceManager);
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        try
+
+        if (databaseDescriptor.shouldInitializeJMX())
         {
-            mbs.registerMBean(cm, new ObjectName(MBEAN_OBJECT_NAME));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            try
+            {
+                mbs.registerMBean(cm, new ObjectName(MBEAN_OBJECT_NAME));
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
         }
 
         return cm;
@@ -144,8 +148,8 @@ public class CompactionManager implements CompactionManagerMBean
         this.databaseDescriptor = databaseDescriptor;
 
         executor = new CompactionExecutor(databaseDescriptor, tracing);
-        validationExecutor = new ValidationExecutor(tracing);
-        cacheCleanupExecutor = new CacheCleanupExecutor(tracing);
+        validationExecutor = new ValidationExecutor(databaseDescriptor, tracing);
+        cacheCleanupExecutor = new CacheCleanupExecutor(databaseDescriptor, tracing);
         metrics = new CompactionMetrics(schema, keyspaceManager, executor, validationExecutor);
         compactingCF = ConcurrentHashMultiset.create();
         compactionRateLimiter = RateLimiter.create(Double.MAX_VALUE);
@@ -1240,19 +1244,19 @@ public class CompactionManager implements CompactionManagerMBean
 
     private static class CompactionExecutor extends JMXEnabledThreadPoolExecutor
     {
-        protected CompactionExecutor(int minThreads, int maxThreads, String name, BlockingQueue<Runnable> queue, Tracing tracing)
+        protected CompactionExecutor(int minThreads, int maxThreads, String name, BlockingQueue<Runnable> queue, Tracing tracing, boolean initializeJMX)
         {
-            super(minThreads, maxThreads, 60, TimeUnit.SECONDS, queue, new NamedThreadFactory(name, Thread.MIN_PRIORITY), "internal", tracing);
+            super(minThreads, maxThreads, 60, TimeUnit.SECONDS, queue, new NamedThreadFactory(name, Thread.MIN_PRIORITY), "internal", tracing, initializeJMX);
         }
 
-        private CompactionExecutor(int threadCount, String name, Tracing tracing)
+        private CompactionExecutor(int threadCount, String name, Tracing tracing, boolean initializeJMX)
         {
-            this(threadCount, threadCount, name, new LinkedBlockingQueue<Runnable>(), tracing);
+            this(threadCount, threadCount, name, new LinkedBlockingQueue<Runnable>(), tracing, initializeJMX);
         }
 
         public CompactionExecutor(DatabaseDescriptor databaseDescriptor, Tracing tracing)
         {
-            this(Math.max(1, databaseDescriptor.getConcurrentCompactors()), "CompactionExecutor", tracing);
+            this(Math.max(1, databaseDescriptor.getConcurrentCompactors()), "CompactionExecutor", tracing, databaseDescriptor.shouldInitializeJMX());
         }
 
         protected void beforeExecute(Thread t, Runnable r)
@@ -1288,17 +1292,17 @@ public class CompactionManager implements CompactionManagerMBean
 
     private static class ValidationExecutor extends CompactionExecutor
     {
-        public ValidationExecutor(Tracing tracing)
+        public ValidationExecutor(DatabaseDescriptor databaseDescriptor, Tracing tracing)
         {
-            super(1, Integer.MAX_VALUE, "ValidationExecutor", new SynchronousQueue<Runnable>(), tracing);
+            super(1, Integer.MAX_VALUE, "ValidationExecutor", new SynchronousQueue<Runnable>(), tracing, databaseDescriptor.shouldInitializeJMX());
         }
     }
 
     private static class CacheCleanupExecutor extends CompactionExecutor
     {
-        public CacheCleanupExecutor(Tracing tracing)
+        public CacheCleanupExecutor(DatabaseDescriptor databaseDescriptor, Tracing tracing)
         {
-            super(1, "CacheCleanupExecutor", tracing);
+            super(1, "CacheCleanupExecutor", tracing, databaseDescriptor.shouldInitializeJMX());
         }
     }
 

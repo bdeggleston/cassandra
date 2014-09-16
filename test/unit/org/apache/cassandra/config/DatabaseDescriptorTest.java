@@ -38,7 +38,7 @@ import static org.junit.Assert.assertNull;
 public class DatabaseDescriptorTest
 {
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @Test
     public void testCFMetaDataSerialization() throws Exception
@@ -74,7 +74,7 @@ public class DatabaseDescriptorTest
     public void testTransKsMigration() throws ConfigurationException
     {
         SchemaLoader.cleanupAndLeaveDirs();
-        DatabaseDescriptor.createMain(false).loadSchemas();
+        DatabaseDescriptor.createMain(false, false).loadSchemas();
         assertEquals(0, databaseDescriptor.getSchema().getNonSystemKeyspaces().size());
 
         databaseDescriptor.getGossiper().start((int)(System.currentTimeMillis() / 1000));
@@ -83,8 +83,8 @@ public class DatabaseDescriptorTest
         try
         {
             // add a few.
-            DatabaseDescriptor.createMain(false).getMigrationManager().announceNewKeyspace(databaseDescriptor.getKSMetaDataFactory().testMetadata("ks0", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
-            DatabaseDescriptor.createMain(false).getMigrationManager().announceNewKeyspace(databaseDescriptor.getKSMetaDataFactory().testMetadata("ks1", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
+            DatabaseDescriptor.createMain(false, false).getMigrationManager().announceNewKeyspace(databaseDescriptor.getKSMetaDataFactory().testMetadata("ks0", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
+            DatabaseDescriptor.createMain(false, false).getMigrationManager().announceNewKeyspace(databaseDescriptor.getKSMetaDataFactory().testMetadata("ks1", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
 
             assertNotNull(databaseDescriptor.getSchema().getKSMetaData("ks0"));
             assertNotNull(databaseDescriptor.getSchema().getKSMetaData("ks1"));
@@ -95,7 +95,7 @@ public class DatabaseDescriptorTest
             assertNull(databaseDescriptor.getSchema().getKSMetaData("ks0"));
             assertNull(databaseDescriptor.getSchema().getKSMetaData("ks1"));
 
-            DatabaseDescriptor.createMain(false).loadSchemas();
+            DatabaseDescriptor.createMain(false, false).loadSchemas();
 
             assertNotNull(databaseDescriptor.getSchema().getKSMetaData("ks0"));
             assertNotNull(databaseDescriptor.getSchema().getKSMetaData("ks1"));

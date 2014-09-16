@@ -56,7 +56,7 @@ public class RecoveryManagerTest
     private static final String KEYSPACE2 = "RecoveryManagerTest2";
     private static final String CF_STANDARD3 = "Standard3";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

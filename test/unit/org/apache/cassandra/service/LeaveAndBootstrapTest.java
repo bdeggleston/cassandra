@@ -49,7 +49,7 @@ public class LeaveAndBootstrapTest
     private static final String KEYSPACE3 = "LeaveAndBootstrapTestKeyspace3";
     private static final String KEYSPACE4 = "LeaveAndBootstrapTestKeyspace4";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws Exception

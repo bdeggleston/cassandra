@@ -61,7 +61,7 @@ public class CliSessionState
         in = System.in;
         out = System.out;
         err = System.err;
-        databaseDescriptor = DatabaseDescriptor.createMain(true);
+        databaseDescriptor = DatabaseDescriptor.createMain(true, true);
     }
 
     public void setOut(PrintStream newOut)

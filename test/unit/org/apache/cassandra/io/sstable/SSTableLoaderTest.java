@@ -50,7 +50,7 @@ public class SSTableLoaderTest
     public static final String KEYSPACE1 = "SSTableLoaderTest";
     public static final String CF_STANDARD = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws Exception
@@ -84,12 +84,12 @@ public class SSTableLoaderTest
         writer.addColumn(ByteBufferUtil.bytes("col1"), ByteBufferUtil.bytes(100), 1);
         writer.close();
 
-        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client(DatabaseDescriptor.createMain(false), databaseDescriptor.getDBConfig())
+        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getDBConfig())
         {
             public void init(String keyspace)
             {
                 for (Range<Token> range : databaseDescriptor.getLocatorConfig().getLocalRanges(KEYSPACE1))
-                    addRangeForEndpoint(range, DatabaseDescriptor.createMain(false).getBroadcastAddress());
+                    addRangeForEndpoint(range, DatabaseDescriptor.createMain(false, false).getBroadcastAddress());
                 setPartitioner(databaseDescriptor.getLocatorConfig().getPartitioner());
             }
 
@@ -97,11 +97,11 @@ public class SSTableLoaderTest
             {
                 return databaseDescriptor.getSchema().getCFMetaData(keyspace, cfName);
             }
-        }, new OutputHandler.SystemOutput(false, false), DatabaseDescriptor.createMain(false), databaseDescriptor.getSSTableReaderFactory());
+        }, new OutputHandler.SystemOutput(false, false), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSSTableReaderFactory());
 
         loader.stream().get();
 
-        List<Row> rows = Util.getRangeSlice(databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD), DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing());
+        List<Row> rows = Util.getRangeSlice(databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing());
         assertEquals(1, rows.size());
         assertEquals(key, rows.get(0).key);
         assertEquals(ByteBufferUtil.bytes(100), rows.get(0).cf.getColumn(Util.cellname("col1")).value());

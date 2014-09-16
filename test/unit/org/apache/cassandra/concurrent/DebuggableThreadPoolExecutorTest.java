@@ -33,7 +33,7 @@ import org.apache.cassandra.utils.WrappedRunnable;
 
 public class DebuggableThreadPoolExecutorTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @Test
     public void testSerialization()

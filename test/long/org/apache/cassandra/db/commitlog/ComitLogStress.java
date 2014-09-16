@@ -51,7 +51,10 @@ public class ComitLogStress
             System.out.println("Setting num threads to: " + NUM_THREADS);
         }
         ExecutorService executor = new JMXEnabledThreadPoolExecutor(NUM_THREADS, NUM_THREADS, 60,
-                TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(10 * NUM_THREADS), new NamedThreadFactory(""), "", DatabaseDescriptor.createMain(false).getTracing());
+                                                                   TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(10 * NUM_THREADS),
+                                                                   new NamedThreadFactory(""), "",
+                                                                   DatabaseDescriptor.createMain(false, false).getTracing(),
+                                                                   true);
         ScheduledExecutorService scheduled = Executors.newScheduledThreadPool(1);
 
         org.apache.cassandra.SchemaLoader.loadSchema();
@@ -89,10 +92,10 @@ public class ComitLogStress
         public void run() {
             String ks = "Keyspace1";
             ByteBuffer key = ByteBufferUtil.bytes(keyString);
-            Mutation mutation = DatabaseDescriptor.createMain(false).getMutationFactory().create(ks, key);
+            Mutation mutation = DatabaseDescriptor.createMain(false, false).getMutationFactory().create(ks, key);
             mutation.add("Standard1", Util.cellname("name"), ByteBufferUtil.bytes("value"),
                     System.currentTimeMillis());
-            DatabaseDescriptor.createMain(false).getCommitLog().add(mutation);
+            DatabaseDescriptor.createMain(false, false).getCommitLog().add(mutation);
         }
     }
 }

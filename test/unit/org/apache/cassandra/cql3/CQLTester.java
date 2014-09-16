@@ -54,7 +54,7 @@ public abstract class CQLTester
 {
     protected static final Logger logger = LoggerFactory.getLogger(CQLTester.class);
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     private static final String KEYSPACE = "cql_test_keyspace";
     private static final boolean USE_PREPARED_VALUES = Boolean.valueOf(System.getProperty("cassandra.test.use_prepared", "true"));
@@ -99,7 +99,7 @@ public abstract class CQLTester
         currentTypes.clear();
 
         // We want to clean up after the test, but dropping a table is rather long so just do that asynchronously
-        DatabaseDescriptor.createMain(false).getStorageServiceExecutors().optionalTasks.execute(new Runnable()
+        DatabaseDescriptor.createMain(false, false).getStorageServiceExecutors().optionalTasks.execute(new Runnable()
         {
             public void run()
             {
@@ -116,7 +116,7 @@ public abstract class CQLTester
                     // mono-threaded, just push a task on the queue to find when it's empty. No perfect but good enough.
 
                     final CountDownLatch latch = new CountDownLatch(1);
-                    DatabaseDescriptor.createMain(false).getStorageServiceExecutors().tasks.execute(new Runnable()
+                    DatabaseDescriptor.createMain(false, false).getStorageServiceExecutors().tasks.execute(new Runnable()
                     {
                             public void run()
                             {

@@ -54,7 +54,7 @@ public class KeyCollisionTest
     private static final String KEYSPACE1 = "KeyCollisionTest1";
     private static final String CF = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false);
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -88,7 +88,7 @@ public class KeyCollisionTest
         insert("key1", "key2", "key3"); // token = 4
         insert("longKey1", "longKey2"); // token = 8
 
-        List<Row> rows = cfs.getRangeSlice(new Bounds<RowPosition>(dk("k2", databaseDescriptor), dk("key2", databaseDescriptor), databaseDescriptor.getLocatorConfig().getPartitioner()), null, new IdentityQueryFilter(DatabaseDescriptor.createMain(false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 10000);
+        List<Row> rows = cfs.getRangeSlice(new Bounds<RowPosition>(dk("k2", databaseDescriptor), dk("key2", databaseDescriptor), databaseDescriptor.getLocatorConfig().getPartitioner()), null, new IdentityQueryFilter(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 10000);
         assert rows.size() == 4 : "Expecting 4 keys, got " + rows.size();
         assert rows.get(0).key.getKey().equals(ByteBufferUtil.bytes("k2"));
         assert rows.get(1).key.getKey().equals(ByteBufferUtil.bytes("k3"));
