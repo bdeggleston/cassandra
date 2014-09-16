@@ -122,7 +122,7 @@ public class DifferencerTest
         // note: we reuse the same endpoint which is bogus in theory but fine here
         TreeResponse r1 = new TreeResponse(ep1, tree1);
         TreeResponse r2 = new TreeResponse(ep2, tree2);
-        Differencer diff = new Differencer(desc, r1, r2, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getActiveRepairService(), databaseDescriptor.getStreamManager(), databaseDescriptor.getMessagingService(), databaseDescriptor.getDBConfig());
+        Differencer diff = new Differencer(desc, r1, r2, databaseDescriptor, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getActiveRepairService(), databaseDescriptor.getStreamManager(), databaseDescriptor.getMessagingService(), databaseDescriptor.getDBConfig());
         diff.run();
 
         assertTrue(diff.differences.isEmpty());
@@ -156,7 +156,7 @@ public class DifferencerTest
         // note: we reuse the same endpoint which is bogus in theory but fine here
         TreeResponse r1 = new TreeResponse(InetAddress.getByName("127.0.0.1"), tree1);
         TreeResponse r2 = new TreeResponse(InetAddress.getByName("127.0.0.2"), tree2);
-        Differencer diff = new Differencer(desc, r1, r2, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getActiveRepairService(), databaseDescriptor.getStreamManager(), databaseDescriptor.getMessagingService(), databaseDescriptor.getDBConfig());
+        Differencer diff = new Differencer(desc, r1, r2, databaseDescriptor, databaseDescriptor.getSchema(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getActiveRepairService(), databaseDescriptor.getStreamManager(), databaseDescriptor.getMessagingService(), databaseDescriptor.getDBConfig());
         diff.run();
 
         // ensure that the changed range was recorded

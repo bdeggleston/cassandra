@@ -77,7 +77,7 @@ public class RemoveTest
         // create a ring of 5 nodes
         Util.createInitialRing(ss, databaseDescriptor.getLocatorConfig().getPartitioner(), endpointTokens, keyTokens, hosts, hostIds, 6, databaseDescriptor);
 
-        databaseDescriptor.getMessagingService().listen(DatabaseDescriptor.createMain(false, false).getBroadcastAddress());
+        databaseDescriptor.getMessagingService().listen(databaseDescriptor.getBroadcastAddress());
         databaseDescriptor.getGossiper().start(1);
         removalhost = hosts.get(5);
         hosts.remove(removalhost);
@@ -139,7 +139,7 @@ public class RemoveTest
         for (InetAddress host : hosts)
         {
             MessageOut msg = new MessageOut(databaseDescriptor.getMessagingService(), host, MessagingService.Verb.REPLICATION_FINISHED, null, null, Collections.<String, byte[]>emptyMap());
-            databaseDescriptor.getMessagingService().sendRR(msg, DatabaseDescriptor.createMain(false, false).getBroadcastAddress());
+            databaseDescriptor.getMessagingService().sendRR(msg, databaseDescriptor.getBroadcastAddress());
         }
 
         remover.join();

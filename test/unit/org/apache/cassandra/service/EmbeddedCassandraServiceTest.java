@@ -55,6 +55,8 @@ public class EmbeddedCassandraServiceTest
     private static final String KEYSPACE1 = "EmbeddedCassandraServiceTest";
     private static final String CF_STANDARD = "Standard1";
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+
     @BeforeClass
     public static void defineSchema() throws Exception
     {
@@ -76,7 +78,7 @@ public class EmbeddedCassandraServiceTest
     public static void setup() throws TTransportException, IOException, InterruptedException
     {
         // unique ks / cfs mean no need to clear the schema
-        cassandra = new EmbeddedCassandraService();
+        cassandra = new EmbeddedCassandraService(databaseDescriptor);
         cassandra.start();
     }
 
@@ -116,7 +118,7 @@ public class EmbeddedCassandraServiceTest
      */
     private Cassandra.Client getClient() throws TTransportException
     {
-        TTransport tr = new TFramedTransport(new TSocket("localhost", DatabaseDescriptor.createMain(false, false).getRpcPort()));
+        TTransport tr = new TFramedTransport(new TSocket("localhost", databaseDescriptor.getRpcPort()));
         TProtocol proto = new TBinaryProtocol(tr);
         Cassandra.Client client = new Cassandra.Client(proto);
         tr.open();

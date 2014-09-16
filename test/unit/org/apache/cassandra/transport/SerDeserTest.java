@@ -42,6 +42,8 @@ import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
  */
 public class SerDeserTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+
     @Test
     public void collectionSerDeserTest() throws Exception
     {
@@ -100,12 +102,12 @@ public class SerDeserTest
     {
         List<Event> events = new ArrayList<>();
 
-        events.add(TopologyChange.newNode(DatabaseDescriptor.createMain(false, false).getBroadcastAddress(), 42));
-        events.add(TopologyChange.removedNode(DatabaseDescriptor.createMain(false, false).getBroadcastAddress(), 42));
-        events.add(TopologyChange.movedNode(DatabaseDescriptor.createMain(false, false).getBroadcastAddress(), 42));
+        events.add(TopologyChange.newNode(databaseDescriptor.getBroadcastAddress(), 42));
+        events.add(TopologyChange.removedNode(databaseDescriptor.getBroadcastAddress(), 42));
+        events.add(TopologyChange.movedNode(databaseDescriptor.getBroadcastAddress(), 42));
 
-        events.add(StatusChange.nodeUp(DatabaseDescriptor.createMain(false, false).getBroadcastAddress(), 42));
-        events.add(StatusChange.nodeDown(DatabaseDescriptor.createMain(false, false).getBroadcastAddress(), 42));
+        events.add(StatusChange.nodeUp(databaseDescriptor.getBroadcastAddress(), 42));
+        events.add(StatusChange.nodeDown(databaseDescriptor.getBroadcastAddress(), 42));
 
         events.add(new SchemaChange(SchemaChange.Change.CREATED, "ks"));
         events.add(new SchemaChange(SchemaChange.Change.UPDATED, "ks"));

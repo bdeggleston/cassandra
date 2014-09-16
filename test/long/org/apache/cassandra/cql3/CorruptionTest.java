@@ -60,12 +60,12 @@ public class CorruptionTest extends SchemaLoader
     {
         databaseDescriptor.getSchema().clear();
 
-        cassandra = new EmbeddedCassandraService();
+        cassandra = new EmbeddedCassandraService(databaseDescriptor);
         cassandra.start();
 
         cluster = Cluster.builder().addContactPoint("127.0.0.1")
                          .withRetryPolicy(new LoggingRetryPolicy(Policies.defaultRetryPolicy()))
-                         .withPort(DatabaseDescriptor.createMain(false, false).getNativeTransportPort()).build();
+                         .withPort(databaseDescriptor.getNativeTransportPort()).build();
         session = cluster.connect();
 
         session.execute("CREATE KEYSPACE IF NOT EXISTS " + KEYSPACE +" WITH replication " +

@@ -103,13 +103,13 @@ public class ScrubTest
 
         // insert data and verify we get it back w/ range query
         fillCF(cfs, 1);
-        rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
+        rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assertEquals(1, rows.size());
 
         databaseDescriptor.getCompactionManager().performScrub(cfs, false);
 
         // check data is still there
-        rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
+        rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assertEquals(1, rows.size());
     }
 
@@ -123,7 +123,7 @@ public class ScrubTest
 
         fillCounterCF(cfs, 2);
 
-        List<Row> rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
+        List<Row> rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assertEquals(2, rows.size());
 
         SSTableReader sstable = cfs.getSSTables().iterator().next();
@@ -140,7 +140,7 @@ public class ScrubTest
         file.close();
 
         // with skipCorrupted == false, the scrub is expected to fail
-        Scrubber scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), false, false, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
+        Scrubber scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), false, false, databaseDescriptor, databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
         try
         {
             scrubber.scrub();
@@ -149,13 +149,13 @@ public class ScrubTest
         catch (IOError err) {}
 
         // with skipCorrupted == true, the corrupt row will be skipped
-        scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), true, false, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
+        scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), true, false, databaseDescriptor, databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
         scrubber.scrub();
         scrubber.close();
         assertEquals(1, cfs.getSSTables().size());
 
         // verify that we can read all of the rows, and there is now one less row
-        rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
+        rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assertEquals(1, rows.size());
     }
 
@@ -189,13 +189,13 @@ public class ScrubTest
 
         // insert data and verify we get it back w/ range query
         fillCF(cfs, 10);
-        rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
+        rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assertEquals(10, rows.size());
 
         databaseDescriptor.getCompactionManager().performScrub(cfs, false);
 
         // check data is still there
-        rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
+        rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assertEquals(10, rows.size());
     }
 
@@ -238,7 +238,7 @@ public class ScrubTest
 
         try
         {
-            DatabaseDescriptor.createMain(false, false).getSSTableReaderFactory().open(desc, metadata);
+            databaseDescriptor.getSSTableReaderFactory().open(desc, metadata);
             fail("SSTR validation should have caught the out-of-order rows");
         }
         catch (IllegalStateException ise) { /* this is expected */ }
@@ -252,13 +252,13 @@ public class ScrubTest
         components.add(Component.STATS);
         components.add(Component.SUMMARY);
         components.add(Component.TOC);
-        SSTableReader sstable = DatabaseDescriptor.createMain(false, false).getSSTableReaderFactory().openNoValidation(desc, components, metadata);
+        SSTableReader sstable = databaseDescriptor.getSSTableReaderFactory().openNoValidation(desc, components, metadata);
 
-        Scrubber scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), false, true, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
+        Scrubber scrubber = new Scrubber(cfs, sstable, databaseDescriptor.getCompactionManager(), false, true, databaseDescriptor, databaseDescriptor.getDBConfig(), databaseDescriptor.getStorageService());
         scrubber.scrub();
 
         cfs.loadNewSSTables();
-        List<Row> rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
+        List<Row> rows = cfs.getRangeSlice(Util.range("", "", databaseDescriptor), null, new IdentityQueryFilter(databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()), 1000);
         assert isRowOrdered(rows) : "Scrub failed: " + rows;
         assert rows.size() == 6 : "Got " + rows.size();
     }

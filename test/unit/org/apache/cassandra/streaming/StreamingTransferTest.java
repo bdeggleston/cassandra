@@ -108,7 +108,7 @@ public class StreamingTransferTest
     @Test
     public void testEmptyStreamPlan() throws Exception
     {
-        StreamResultFuture futureResult = new StreamPlan("StreamingTransferTest", DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSchema(),
+        StreamResultFuture futureResult = new StreamPlan("StreamingTransferTest", databaseDescriptor, databaseDescriptor.getSchema(),
                                                          databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig()).execute();
         final UUID planId = futureResult.planId;
         Futures.addCallback(futureResult, new FutureCallback<StreamState>()
@@ -138,7 +138,7 @@ public class StreamingTransferTest
         ranges.add(new Range<>(p.getMinimumToken(), p.getToken(ByteBufferUtil.bytes("key1")), databaseDescriptor.getLocatorConfig().getPartitioner()));
         ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key2")), p.getMinimumToken(), databaseDescriptor.getLocatorConfig().getPartitioner()));
 
-        StreamResultFuture futureResult = new StreamPlan("StreamingTransferTest", DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSchema(),
+        StreamResultFuture futureResult = new StreamPlan("StreamingTransferTest", databaseDescriptor, databaseDescriptor.getSchema(),
                                                          databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig())
                                                   .requestRanges(LOCAL, KEYSPACE2, ranges)
                                                   .execute();
@@ -195,13 +195,13 @@ public class StreamingTransferTest
         assertEquals(1, cfs.getSSTables().size());
 
         // and that the index and filter were properly recovered
-        List<Row> rows = Util.getRangeSlice(cfs, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing());
+        List<Row> rows = Util.getRangeSlice(cfs, databaseDescriptor, databaseDescriptor.getTracing());
         assertEquals(offs.length, rows.size());
         for (int i = 0; i < offs.length; i++)
         {
             String key = "key" + offs[i];
             String col = "col" + offs[i];
-            assert cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk(key, databaseDescriptor), cfs.name, System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) != null;
+            assert cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk(key, databaseDescriptor), cfs.name, System.currentTimeMillis(), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) != null;
             assert rows.get(i).key.getKey().equals(ByteBufferUtil.bytes(key));
             assert rows.get(i).cf.getColumn(cellname(col)) != null;
         }
@@ -232,13 +232,13 @@ public class StreamingTransferTest
         List<Range<Token>> ranges = new ArrayList<>();
         // wrapped range
         ranges.add(new Range<Token>(p.getToken(ByteBufferUtil.bytes("key1")), p.getToken(ByteBufferUtil.bytes("key0")), databaseDescriptor.getLocatorConfig().getPartitioner()));
-        new StreamPlan("StreamingTransferTest", DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSchema(),
+        new StreamPlan("StreamingTransferTest", databaseDescriptor, databaseDescriptor.getSchema(),
                        databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig()).transferRanges(LOCAL, cfs.keyspace.getName(), ranges, cfs.getColumnFamilyName()).execute().get();
     }
 
     private void transfer(SSTableReader sstable, List<Range<Token>> ranges) throws Exception
     {
-        new StreamPlan("StreamingTransferTest", DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSchema(),
+        new StreamPlan("StreamingTransferTest", databaseDescriptor, databaseDescriptor.getSchema(),
                        databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig()).transferFiles(LOCAL, makeStreamingDetails(ranges, Arrays.asList(sstable))).execute().get();
     }
 
@@ -281,7 +281,7 @@ public class StreamingTransferTest
                                                        IndexExpression.Operator.EQ,
                                                        ByteBufferUtil.bytes(val));
             List<IndexExpression> clause = Arrays.asList(expr);
-            IDiskAtomFilter filter = new IdentityQueryFilter(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+            IDiskAtomFilter filter = new IdentityQueryFilter(databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
             Range<RowPosition> range = Util.range("", "", databaseDescriptor);
             List<Row> rows = cfs.search(range, clause, filter, 100);
             assertEquals(1, rows.size());
@@ -303,8 +303,8 @@ public class StreamingTransferTest
         String key = "key1";
         Mutation rm = databaseDescriptor.getMutationFactory().create(ks, ByteBufferUtil.bytes(key));
         // add columns of size slightly less than column_index_size to force insert column index
-        rm.add(cfname, cellname(1), ByteBuffer.wrap(new byte[DatabaseDescriptor.createMain(false, false).getColumnIndexSize() - 64]), 2);
-        rm.add(cfname, cellname(6), ByteBuffer.wrap(new byte[DatabaseDescriptor.createMain(false, false).getColumnIndexSize()]), 2);
+        rm.add(cfname, cellname(1), ByteBuffer.wrap(new byte[databaseDescriptor.getColumnIndexSize() - 64]), 2);
+        rm.add(cfname, cellname(6), ByteBuffer.wrap(new byte[databaseDescriptor.getColumnIndexSize()]), 2);
         ColumnFamily cf = rm.addOrGet(cfname);
         // add RangeTombstones
         cf.delete(new DeletionInfo(cellname(2), cellname(3), cf.getComparator(), 1, (int) (System.currentTimeMillis() / 1000)));
@@ -319,7 +319,7 @@ public class StreamingTransferTest
         // confirm that a single SSTable was transferred and registered
         assertEquals(1, cfs.getSSTables().size());
 
-        List<Row> rows = Util.getRangeSlice(cfs, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing());
+        List<Row> rows = Util.getRangeSlice(cfs, databaseDescriptor, databaseDescriptor.getTracing());
         assertEquals(1, rows.size());
     }
 
@@ -412,12 +412,12 @@ public class StreamingTransferTest
         // Acquiring references, transferSSTables needs it
         sstable.acquireReference();
         sstable2.acquireReference();
-        new StreamPlan("StreamingTransferTest", DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSchema(),
+        new StreamPlan("StreamingTransferTest", databaseDescriptor, databaseDescriptor.getSchema(),
                        databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig()).transferFiles(LOCAL, makeStreamingDetails(ranges, Arrays.asList(sstable, sstable2))).execute().get();
 
         // confirm that the sstables were transferred and registered and that 2 keys arrived
         ColumnFamilyStore cfstore = databaseDescriptor.getKeyspaceManager().open(keyspaceName).getColumnFamilyStore(cfname);
-        List<Row> rows = Util.getRangeSlice(cfstore, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing());
+        List<Row> rows = Util.getRangeSlice(cfstore, databaseDescriptor, databaseDescriptor.getTracing());
         assertEquals(2, rows.size());
         assert rows.get(0).key.getKey().equals(ByteBufferUtil.bytes("test"));
         assert rows.get(1).key.getKey().equals(ByteBufferUtil.bytes("transfer3"));
@@ -425,10 +425,10 @@ public class StreamingTransferTest
         assert rows.get(1).cf.getColumnCount() == 1;
 
         // these keys fall outside of the ranges and should not be transferred
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer1", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer2", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test2", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
-        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test3", databaseDescriptor), "Standard1", System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer1", databaseDescriptor), "Standard1", System.currentTimeMillis(), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("transfer2", databaseDescriptor), "Standard1", System.currentTimeMillis(), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test2", databaseDescriptor), "Standard1", System.currentTimeMillis(), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
+        assert cfstore.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("test3", databaseDescriptor), "Standard1", System.currentTimeMillis(), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())) == null;
     }
 
     @Test
@@ -467,14 +467,14 @@ public class StreamingTransferTest
         if (!SSTableReader.acquireReferences(ssTableReaders))
             throw new AssertionError();
 
-        new StreamPlan("StreamingTransferTest", DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSchema(),
+        new StreamPlan("StreamingTransferTest", databaseDescriptor, databaseDescriptor.getSchema(),
                        databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getStreamManager(), databaseDescriptor.getDBConfig()).transferFiles(LOCAL, makeStreamingDetails(ranges, ssTableReaders)).execute().get();
 
         // check that only two keys were transferred
         for (Map.Entry<DecoratedKey,String> entry : Arrays.asList(first, last))
         {
             ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(keyspace).getColumnFamilyStore(entry.getValue());
-            List<Row> rows = Util.getRangeSlice(store, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing());
+            List<Row> rows = Util.getRangeSlice(store, databaseDescriptor, databaseDescriptor.getTracing());
             assertEquals(rows.toString(), 1, rows.size());
             assertEquals(entry.getKey(), rows.get(0).key);
         }
@@ -512,7 +512,7 @@ public class StreamingTransferTest
         ranges.add(new Range<>(p.getToken(ByteBufferUtil.bytes("key9")), p.getToken(ByteBufferUtil.bytes("key900")), databaseDescriptor.getLocatorConfig().getPartitioner()));
         transfer(sstable, ranges);
         assertEquals(1, cfs.getSSTables().size());
-        assertEquals(7, Util.getRangeSlice(cfs, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing()).size());
+        assertEquals(7, Util.getRangeSlice(cfs, databaseDescriptor, databaseDescriptor.getTracing()).size());
     }
 
     public interface Mutator

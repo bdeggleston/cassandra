@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.stress.Operation;
 import org.apache.cassandra.stress.StressProfile;
 import org.apache.cassandra.stress.generate.DistributionFactory;
@@ -45,13 +46,16 @@ public class SettingsCommandUser extends SettingsCommand
     private final DistributionFactory clustering;
     public final StressProfile profile;
 
-    public SettingsCommandUser(Options options)
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public SettingsCommandUser(Options options, DatabaseDescriptor databaseDescriptor)
     {
         super(Command.USER, options.parent);
+        this.databaseDescriptor = databaseDescriptor;
 
         clustering = options.clustering.get();
         ratios = options.ops.ratios();
-        profile = StressProfile.load(new File(options.profile.value()));
+        profile = StressProfile.load(new File(options.profile.value()), databaseDescriptor);
 
         if (ratios.size() == 0)
             throw new IllegalArgumentException("Must specify at least one command with a non-zero ratio");
@@ -105,7 +109,7 @@ public class SettingsCommandUser extends SettingsCommand
 
     // CLI utility methods
 
-    public static SettingsCommandUser build(String[] params)
+    public static SettingsCommandUser build(String[] params, DatabaseDescriptor databaseDescriptor)
     {
         GroupedOptions options = GroupedOptions.select(params,
                 new Options(new Uncertainty()),
@@ -116,7 +120,7 @@ public class SettingsCommandUser extends SettingsCommand
             System.out.println("Invalid USER options provided, see output for valid options");
             System.exit(1);
         }
-        return new SettingsCommandUser((Options) options);
+        return new SettingsCommandUser((Options) options, databaseDescriptor);
     }
 
     public static void printHelp()

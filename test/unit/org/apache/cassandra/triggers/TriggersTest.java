@@ -71,14 +71,14 @@ public class TriggersTest
         if (thriftServer == null || ! thriftServer.isRunning())
         {
             thriftServer = new ThriftServer(InetAddress.getLocalHost(), 9170, 50,
-                                            DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(),
+                                            databaseDescriptor, databaseDescriptor.getTracing(),
                                             databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), databaseDescriptor.getStorageProxy(),
                                             databaseDescriptor.getMessagingService(), databaseDescriptor.getKeyspaceManager(),
                                             databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
                                             databaseDescriptor.getStorageService(), databaseDescriptor.getCFMetaDataFactory(),
-                                            DatabaseDescriptor.createMain(false, false).getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
-                                            DatabaseDescriptor.createMain(false, false).getQueryHandler(), databaseDescriptor.getLocatorConfig(),
-                                            databaseDescriptor.getDBConfig(), new ThriftSessionManager(DatabaseDescriptor.createMain(false, false)),
+                                            databaseDescriptor.getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
+                                            databaseDescriptor.getQueryHandler(), databaseDescriptor.getLocatorConfig(),
+                                            databaseDescriptor.getDBConfig(), new ThriftSessionManager(databaseDescriptor),
                                             ClientMetrics.instance);
             thriftServer.start();
         }

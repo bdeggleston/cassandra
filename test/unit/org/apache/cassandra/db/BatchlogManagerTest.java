@@ -93,7 +93,7 @@ public class BatchlogManagerTest
             mutation.add("Standard1", comparator.makeCellName(bytes(i)), bytes(i), System.currentTimeMillis());
 
             long timestamp = i < 500
-                           ? (System.currentTimeMillis() - DatabaseDescriptor.createMain(false, false).getWriteRpcTimeout() * 2) * 1000
+                           ? (System.currentTimeMillis() - databaseDescriptor.getWriteRpcTimeout() * 2) * 1000
                            : Long.MAX_VALUE;
 
             BatchlogManager.getBatchlogMutationFor(Collections.singleton(mutation),
@@ -156,7 +156,7 @@ public class BatchlogManagerTest
             List<Mutation> mutations = Lists.newArrayList(mutation1, mutation2);
 
             // Make sure it's ready to be replayed, so adjust the timestamp.
-            long timestamp = System.currentTimeMillis() - DatabaseDescriptor.createMain(false, false).getWriteRpcTimeout() * 2;
+            long timestamp = System.currentTimeMillis() - databaseDescriptor.getWriteRpcTimeout() * 2;
 
             if (i == 500)
                 databaseDescriptor.getSystemKeyspace().saveTruncationRecord(databaseDescriptor.getKeyspaceManager().open(KEYSPACE1).getColumnFamilyStore("Standard2"),

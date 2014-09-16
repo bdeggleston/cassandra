@@ -54,7 +54,7 @@ public class DynamicEndpointSnitchTest
         SimpleSnitch ss = new SimpleSnitch(databaseDescriptor.getLocatorConfig());
         DynamicEndpointSnitch dsnitch = new DynamicEndpointSnitch(ss, databaseDescriptor.getLocatorConfig(), String.valueOf(ss.hashCode()));
         dsnitch.gossiperStarting();
-        InetAddress self = DatabaseDescriptor.createMain(false, false).getBroadcastAddress();
+        InetAddress self = databaseDescriptor.getBroadcastAddress();
         InetAddress host1 = InetAddress.getByName("127.0.0.2");
         InetAddress host2 = InetAddress.getByName("127.0.0.3");
         InetAddress host3 = InetAddress.getByName("127.0.0.4");

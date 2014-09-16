@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.stress.operations.OpDistributionFactory;
 import org.apache.cassandra.thrift.ConsistencyLevel;
 
@@ -151,7 +152,7 @@ public abstract class SettingsCommand implements Serializable
 
     // CLI Utility Methods
 
-    static SettingsCommand get(Map<String, String[]> clArgs)
+    static SettingsCommand get(Map<String, String[]> clArgs, DatabaseDescriptor databaseDescriptor)
     {
         for (Command cmd : Command.values())
         {
@@ -171,7 +172,7 @@ public abstract class SettingsCommand implements Serializable
                     case MIXED:
                         return SettingsCommandPreDefinedMixed.build(params);
                     case USER:
-                        return SettingsCommandUser.build(params);
+                        return SettingsCommandUser.build(params, databaseDescriptor);
                 }
             }
         }

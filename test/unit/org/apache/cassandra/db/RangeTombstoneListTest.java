@@ -34,7 +34,7 @@ public class RangeTombstoneListTest
 {
     public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
-    private static final Comparator<Composite> cmp = new SimpleDenseCellNameType(IntegerType.instance, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+    private static final Comparator<Composite> cmp = new SimpleDenseCellNameType(IntegerType.instance, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
     private static final Random rand = new Random();
 
     @Test

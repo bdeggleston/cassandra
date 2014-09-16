@@ -152,7 +152,7 @@ public class TTLExpiryTest
         cfs.enableAutoCompaction(true);
         assertEquals(1, cfs.getSSTables().size());
         SSTableReader sstable = cfs.getSSTables().iterator().next();
-        SSTableScanner scanner = sstable.getScanner(DataRange.allData(sstable.partitioner, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+        SSTableScanner scanner = sstable.getScanner(DataRange.allData(sstable.partitioner, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         assertTrue(scanner.hasNext());
         while(scanner.hasNext())
         {

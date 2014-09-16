@@ -72,9 +72,9 @@ public class CompressedInputStreamTest
         // write compressed data file of longs
         File tmp = new File(File.createTempFile("cassandra", "unittest").getParent(), "ks-cf-ib-1-Data.db");
         Descriptor desc = Descriptor.fromFilename(tmp.getAbsolutePath());
-        MetadataCollector collector = new MetadataCollector(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+        MetadataCollector collector = new MetadataCollector(new SimpleDenseCellNameType(BytesType.instance, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
         CompressionParameters param = new CompressionParameters(SnappyCompressor.instance, 32, Collections.EMPTY_MAP);
-        CompressedSequentialWriter writer = new CompressedSequentialWriter(tmp, desc.filenameFor(Component.COMPRESSION_INFO), param, collector, DatabaseDescriptor.createMain(false, false));
+        CompressedSequentialWriter writer = new CompressedSequentialWriter(tmp, desc.filenameFor(Component.COMPRESSION_INFO), param, collector, databaseDescriptor);
         Map<Long, Long> index = new HashMap<Long, Long>();
         for (long l = 0L; l < 1000; l++)
         {
@@ -83,7 +83,7 @@ public class CompressedInputStreamTest
         }
         writer.close();
 
-        CompressionMetadata comp = CompressionMetadata.create(tmp.getAbsolutePath(), DatabaseDescriptor.createMain(false, false).getoffHeapMemoryAllocator());
+        CompressionMetadata comp = CompressionMetadata.create(tmp.getAbsolutePath(), databaseDescriptor.getoffHeapMemoryAllocator());
         List<Pair<Long, Long>> sections = new ArrayList<Pair<Long, Long>>();
         for (long l : valuesToCheck)
         {

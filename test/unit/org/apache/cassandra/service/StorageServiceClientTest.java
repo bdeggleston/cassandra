@@ -39,7 +39,7 @@ public class StorageServiceClientTest
         databaseDescriptor.getStorageService().initClient(0);
 
         // verify that no storage directories were created.
-        for (String path : DatabaseDescriptor.createMain(false, false).getAllDataFileLocations())
+        for (String path : databaseDescriptor.getAllDataFileLocations())
         {
             assertFalse(new File(path).exists());
         }

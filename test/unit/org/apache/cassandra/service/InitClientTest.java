@@ -27,10 +27,11 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 
 public class InitClientTest // extends CleanupHelper
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @Test
     public void testInitClientStartup() throws ConfigurationException
     {
-        DatabaseDescriptor.createMain(false, false).getStorageService().initClient(0);
+        databaseDescriptor.getStorageService().initClient(0);
     }
 }

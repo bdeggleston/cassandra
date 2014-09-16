@@ -68,8 +68,8 @@ public class CompressedRandomAccessReaderTest
         try
         {
 
-            MetadataCollector sstableMetadataCollector = new MetadataCollector(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
-            CompressedSequentialWriter writer = new CompressedSequentialWriter(f, filename + ".metadata", new CompressionParameters(SnappyCompressor.instance, 32, Collections.<String, String>emptyMap()), sstableMetadataCollector, DatabaseDescriptor.createMain(false, false));
+            MetadataCollector sstableMetadataCollector = new MetadataCollector(new SimpleDenseCellNameType(BytesType.instance, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+            CompressedSequentialWriter writer = new CompressedSequentialWriter(f, filename + ".metadata", new CompressionParameters(SnappyCompressor.instance, 32, Collections.<String, String>emptyMap()), sstableMetadataCollector, databaseDescriptor);
 
             for (int i = 0; i < 20; i++)
                 writer.write("x".getBytes());
@@ -85,7 +85,7 @@ public class CompressedRandomAccessReaderTest
                 writer.write("x".getBytes());
             writer.close();
 
-            CompressedRandomAccessReader reader = CompressedRandomAccessReader.open(filename, new CompressionMetadata(filename + ".metadata", f.length(), true, DatabaseDescriptor.createMain(false, false).getoffHeapMemoryAllocator()));
+            CompressedRandomAccessReader reader = CompressedRandomAccessReader.open(filename, new CompressionMetadata(filename + ".metadata", f.length(), true, databaseDescriptor.getoffHeapMemoryAllocator()));
             String res = reader.readLine();
             assertEquals(res, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
             assertEquals(40, res.length());
@@ -107,10 +107,10 @@ public class CompressedRandomAccessReaderTest
 
         try
         {
-            MetadataCollector sstableMetadataCollector = new MetadataCollector(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())).replayPosition(null);
+            MetadataCollector sstableMetadataCollector = new MetadataCollector(new SimpleDenseCellNameType(BytesType.instance, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())).replayPosition(null);
             SequentialWriter writer = compressed
-                ? new CompressedSequentialWriter(f, filename + ".metadata", new CompressionParameters(SnappyCompressor.instance), sstableMetadataCollector, DatabaseDescriptor.createMain(false, false))
-                : new SequentialWriter(f, CompressionParameters.DEFAULT_CHUNK_LENGTH, DatabaseDescriptor.createMain(false, false));
+                ? new CompressedSequentialWriter(f, filename + ".metadata", new CompressionParameters(SnappyCompressor.instance), sstableMetadataCollector, databaseDescriptor)
+                : new SequentialWriter(f, CompressionParameters.DEFAULT_CHUNK_LENGTH, databaseDescriptor);
 
             writer.write("The quick ".getBytes());
             FileMark mark = writer.mark();
@@ -128,7 +128,7 @@ public class CompressedRandomAccessReaderTest
 
             assert f.exists();
             RandomAccessReader reader = compressed
-                                      ? CompressedRandomAccessReader.open(filename, new CompressionMetadata(filename + ".metadata", f.length(), true, DatabaseDescriptor.createMain(false, false).getoffHeapMemoryAllocator()))
+                                      ? CompressedRandomAccessReader.open(filename, new CompressionMetadata(filename + ".metadata", f.length(), true, databaseDescriptor.getoffHeapMemoryAllocator()))
                                       : RandomAccessReader.open(f);
             String expected = "The quick brown fox jumps over the lazy dog";
             assertEquals(expected.length(), reader.length());
@@ -158,14 +158,14 @@ public class CompressedRandomAccessReaderTest
         File metadata = new File(file.getPath() + ".meta");
         metadata.deleteOnExit();
 
-        MetadataCollector sstableMetadataCollector = new MetadataCollector(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())).replayPosition(null);
-        SequentialWriter writer = new CompressedSequentialWriter(file, metadata.getPath(), new CompressionParameters(SnappyCompressor.instance), sstableMetadataCollector, DatabaseDescriptor.createMain(false, false));
+        MetadataCollector sstableMetadataCollector = new MetadataCollector(new SimpleDenseCellNameType(BytesType.instance, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())).replayPosition(null);
+        SequentialWriter writer = new CompressedSequentialWriter(file, metadata.getPath(), new CompressionParameters(SnappyCompressor.instance), sstableMetadataCollector, databaseDescriptor);
 
         writer.write(CONTENT.getBytes());
         writer.close();
 
         // open compression metadata and get chunk information
-        CompressionMetadata meta = new CompressionMetadata(metadata.getPath(), file.length(), true, DatabaseDescriptor.createMain(false, false).getoffHeapMemoryAllocator());
+        CompressionMetadata meta = new CompressionMetadata(metadata.getPath(), file.length(), true, databaseDescriptor.getoffHeapMemoryAllocator());
         CompressionMetadata.Chunk chunk = meta.chunkFor(0);
 
         RandomAccessReader reader = CompressedRandomAccessReader.open(file.getPath(), meta);

@@ -70,7 +70,7 @@ public class DirectoriesTest
                                    cf,
                                    ColumnFamilyType.Standard,
                                    null,
-                                   DatabaseDescriptor.createMain(false, false),
+                                   databaseDescriptor,
                                    databaseDescriptor.getTracing(),
                                    databaseDescriptor.getSystemKeyspace(),
                                    databaseDescriptor.getSchema(),
@@ -93,7 +93,7 @@ public class DirectoriesTest
     @AfterClass
     public static void afterClass()
     {
-        Directories.resetDataDirectoriesAfterTest(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
+        Directories.resetDataDirectoriesAfterTest(databaseDescriptor, databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
         FileUtils.deleteRecursive(tempDataDir);
     }
 
@@ -141,7 +141,7 @@ public class DirectoriesTest
     {
         for (CFMetaData cfm : CFM)
         {
-            Directories directories = new Directories(cfm, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getStorageService(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
+            Directories directories = new Directories(cfm, databaseDescriptor, databaseDescriptor.getStorageService(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
             assertEquals(cfDir(cfm), directories.getDirectoryForNewSSTables());
 
             Descriptor desc = new Descriptor(cfDir(cfm), KS, cfm.cfName, 1, Descriptor.Type.FINAL);
@@ -158,7 +158,7 @@ public class DirectoriesTest
     {
         for (CFMetaData cfm : CFM)
         {
-            Directories directories = new Directories(cfm, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getStorageService(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
+            Directories directories = new Directories(cfm, databaseDescriptor, databaseDescriptor.getStorageService(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
             Directories.SSTableLister lister;
             Set<File> listed;
 
@@ -203,11 +203,11 @@ public class DirectoriesTest
     @Test
     public void testDiskFailurePolicy_best_effort()
     {
-        DiskFailurePolicy origPolicy = DatabaseDescriptor.createMain(false, false).getDiskFailurePolicy();
+        DiskFailurePolicy origPolicy = databaseDescriptor.getDiskFailurePolicy();
         
         try 
         {
-            DatabaseDescriptor.createMain(false, false).setDiskFailurePolicy(DiskFailurePolicy.best_effort);
+            databaseDescriptor.setDiskFailurePolicy(DiskFailurePolicy.best_effort);
             
             for (DataDirectory dd : databaseDescriptor.getColumnFamilyStoreManager().dataDirectories)
             {
@@ -220,7 +220,7 @@ public class DirectoriesTest
                                             "badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbad",
                                             ColumnFamilyType.Standard,
                                             null,
-                                            DatabaseDescriptor.createMain(false, false),
+                                            databaseDescriptor,
                                             databaseDescriptor.getTracing(),
                                             databaseDescriptor.getSystemKeyspace(),
                                             databaseDescriptor.getSchema(),
@@ -229,7 +229,7 @@ public class DirectoriesTest
                                             databaseDescriptor.getCFMetaDataFactory(),
                                             databaseDescriptor.getMutationFactory(),
                                             databaseDescriptor.getDBConfig());
-            Directories dir = new Directories(cfm, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getStorageService(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
+            Directories dir = new Directories(cfm, databaseDescriptor, databaseDescriptor.getStorageService(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
 
             for (File file : dir.getCFDirectories())
             {
@@ -244,7 +244,7 @@ public class DirectoriesTest
                 dd.location.setWritable(true);
             }
             
-            DatabaseDescriptor.createMain(false, false).setDiskFailurePolicy(origPolicy);
+            databaseDescriptor.setDiskFailurePolicy(origPolicy);
         }
     }
 
@@ -253,7 +253,7 @@ public class DirectoriesTest
     {
         for (final CFMetaData cfm : CFM)
         {
-            final Directories directories = new Directories(cfm, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getStorageService(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
+            final Directories directories = new Directories(cfm, databaseDescriptor, databaseDescriptor.getStorageService(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getColumnFamilyStoreManager().dataDirectories);
             assertEquals(cfDir(cfm), directories.getDirectoryForNewSSTables());
             final String n = Long.toString(System.nanoTime());
             Callable<File> directoryGetter = new Callable<File>() {

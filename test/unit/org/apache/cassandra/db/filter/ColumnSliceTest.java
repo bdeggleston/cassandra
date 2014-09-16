@@ -38,7 +38,7 @@ public class ColumnSliceTest
 {
     public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
-    private static final CellNameType simpleIntType = new SimpleDenseCellNameType(Int32Type.instance, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+    private static final CellNameType simpleIntType = new SimpleDenseCellNameType(Int32Type.instance, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
     @Test
     public void testIntersectsSingleSlice()
@@ -47,7 +47,7 @@ public class ColumnSliceTest
         types.add(Int32Type.instance);
         types.add(Int32Type.instance);
         types.add(Int32Type.instance);
-        CompoundDenseCellNameType nameType = new CompoundDenseCellNameType(types, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        CompoundDenseCellNameType nameType = new CompoundDenseCellNameType(types, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         // filter falls entirely before sstable
         ColumnSlice slice = new ColumnSlice(composite(0, 0, 0), composite(1, 0, 0));
@@ -318,7 +318,7 @@ public class ColumnSliceTest
         types.add(Int32Type.instance);
         types.add(Int32Type.instance);
         types.add(Int32Type.instance);
-        CompoundDenseCellNameType nameType = new CompoundDenseCellNameType(types, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        CompoundDenseCellNameType nameType = new CompoundDenseCellNameType(types, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
 
         // slice does intersect
         ColumnSlice slice = new ColumnSlice(composite(), composite());
@@ -415,7 +415,7 @@ public class ColumnSliceTest
         types.add(Int32Type.instance);
         types.add(Int32Type.instance);
         types.add(Int32Type.instance);
-        CompoundDenseCellNameType nameType = new CompoundDenseCellNameType(types, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        CompoundDenseCellNameType nameType = new CompoundDenseCellNameType(types, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         return nameType.make((Object[]) components);
     }
 

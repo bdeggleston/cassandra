@@ -68,11 +68,11 @@ public class StreamTransferTaskTest
         String ks = KEYSPACE1;
         String cf = "Standard1";
 
-        StreamSession session = new StreamSession(DatabaseDescriptor.createMain(false, false).getBroadcastAddress(),
+        StreamSession session = new StreamSession(databaseDescriptor.getBroadcastAddress(),
                                                   null,
                                                   0,
-                                                  DatabaseDescriptor.createMain(false, false).getBroadcastAddress(),
-                                                  DatabaseDescriptor.createMain(false, false).getMaxStreamingRetries(),
+                                                  databaseDescriptor.getBroadcastAddress(),
+                                                  databaseDescriptor.getMaxStreamingRetries(),
                                                   databaseDescriptor.getSchema(),
                                                   databaseDescriptor.getKeyspaceManager(),
                                                   databaseDescriptor.getStreamManager(),

@@ -428,7 +428,7 @@ public class CliClient
     private void executeCount(Tree statement)
             throws TException, InvalidRequestException, UnavailableException, TimedOutException
     {
-        if (!CliMain.isConnected() || !hasKeySpace())
+        if (!CliMain.isConnected(sessionState) || !hasKeySpace())
             return;
 
         Tree columnFamilySpec = statement.getChild(0);
@@ -464,7 +464,7 @@ public class CliClient
     private void executeDelete(Tree statement)
             throws TException, InvalidRequestException, UnavailableException, TimedOutException
     {
-        if (!CliMain.isConnected() || !hasKeySpace())
+        if (!CliMain.isConnected(sessionState) || !hasKeySpace())
             return;
 
         Tree columnFamilySpec = statement.getChild(0);
@@ -647,7 +647,7 @@ public class CliClient
     private void executeGet(Tree statement)
             throws TException, NotFoundException, InvalidRequestException, UnavailableException, TimedOutException
     {
-        if (!CliMain.isConnected() || !hasKeySpace())
+        if (!CliMain.isConnected(sessionState) || !hasKeySpace())
             return;
         long startTime = System.nanoTime();
         Tree columnFamilySpec = statement.getChild(0);
@@ -815,7 +815,7 @@ public class CliClient
      */
     private void executeGetWithConditions(Tree statement)
     {
-        if (!CliMain.isConnected() || !hasKeySpace())
+        if (!CliMain.isConnected(sessionState) || !hasKeySpace())
             return;
 
         long startTime = System.nanoTime();
@@ -909,7 +909,7 @@ public class CliClient
     private void executeSet(Tree statement)
         throws TException, InvalidRequestException, UnavailableException, TimedOutException
     {
-        if (!CliMain.isConnected() || !hasKeySpace())
+        if (!CliMain.isConnected(sessionState) || !hasKeySpace())
             return;
 
         long startTime = System.nanoTime();
@@ -999,7 +999,7 @@ public class CliClient
     private void executeIncr(Tree statement, long multiplier)
             throws TException, NotFoundException, InvalidRequestException, UnavailableException, TimedOutException
     {
-        if (!CliMain.isConnected() || !hasKeySpace())
+        if (!CliMain.isConnected(sessionState) || !hasKeySpace())
             return;
 
         Tree columnFamilySpec = statement.getChild(0);
@@ -1064,7 +1064,7 @@ public class CliClient
 
     private void executeShowClusterName() throws TException
     {
-        if (!CliMain.isConnected())
+        if (!CliMain.isConnected(sessionState))
             return;
 
         sessionState.out.println(thriftClient.describe_cluster_name());
@@ -1077,7 +1077,7 @@ public class CliClient
     private void executeAddKeySpace(Tree statement)
     {
 
-        if (!CliMain.isConnected())
+        if (!CliMain.isConnected(sessionState))
             return;
 
         // first value is the keyspace name, after that it is all key=value
@@ -1108,7 +1108,7 @@ public class CliClient
      */
     private void executeAddColumnFamily(Tree statement)
     {
-        if (!CliMain.isConnected() || !hasKeySpace())
+        if (!CliMain.isConnected(sessionState) || !hasKeySpace())
             return;
 
         // first value is the column family name, after that it is all key=value
@@ -1136,7 +1136,7 @@ public class CliClient
      */
     private void executeUpdateKeySpace(Tree statement)
     {
-        if (!CliMain.isConnected())
+        if (!CliMain.isConnected(sessionState))
             return;
 
         try
@@ -1167,7 +1167,7 @@ public class CliClient
      */
     private void executeUpdateColumnFamily(Tree statement)
     {
-        if (!CliMain.isConnected() || !hasKeySpace())
+        if (!CliMain.isConnected(sessionState) || !hasKeySpace())
             return;
 
         String cfName = CliCompiler.getColumnFamily(statement, currentCfDefs());
@@ -1391,7 +1391,7 @@ public class CliClient
     private void executeDelKeySpace(Tree statement)
             throws TException, InvalidRequestException, NotFoundException, SchemaDisagreementException
     {
-        if (!CliMain.isConnected())
+        if (!CliMain.isConnected(sessionState))
             return;
 
         String keyspaceName = CliCompiler.getKeySpace(statement, thriftClient.describe_keyspaces());
@@ -1413,7 +1413,7 @@ public class CliClient
     private void executeDelColumnFamily(Tree statement)
             throws TException, InvalidRequestException, NotFoundException, SchemaDisagreementException
     {
-        if (!CliMain.isConnected() || !hasKeySpace())
+        if (!CliMain.isConnected(sessionState) || !hasKeySpace())
             return;
 
         String cfName = CliCompiler.getColumnFamily(statement, currentCfDefs());
@@ -1424,7 +1424,7 @@ public class CliClient
     private void executeList(Tree statement)
             throws TException, InvalidRequestException, NotFoundException, IllegalAccessException, InstantiationException, NoSuchFieldException, UnavailableException, TimedOutException, CharacterCodingException
     {
-        if (!CliMain.isConnected() || !hasKeySpace())
+        if (!CliMain.isConnected(sessionState) || !hasKeySpace())
             return;
 
         long startTime = System.nanoTime();
@@ -1534,7 +1534,7 @@ public class CliClient
     // DROP INDEX ON <CF>.<COLUMN>
     private void executeDropIndex(Tree statement) throws TException, SchemaDisagreementException, InvalidRequestException, NotFoundException
     {
-        if (!CliMain.isConnected() || !hasKeySpace())
+        if (!CliMain.isConnected(sessionState) || !hasKeySpace())
             return;
 
         // getColumnFamily will check if CF exists for us
@@ -1574,7 +1574,7 @@ public class CliClient
     // TRUNCATE <columnFamily>
     private void executeTruncate(String columnFamily) throws TException, InvalidRequestException, UnavailableException, TimedOutException
     {
-        if (!CliMain.isConnected() || !hasKeySpace())
+        if (!CliMain.isConnected(sessionState) || !hasKeySpace())
             return;
 
         // getting CfDef, it will fail if there is no such column family in current keySpace.
@@ -1591,7 +1591,7 @@ public class CliClient
      */
     private void executeConsistencyLevelStatement(Tree statement)
     {
-        if (!CliMain.isConnected())
+        if (!CliMain.isConnected(sessionState))
             return;
 
         String userSuppliedLevel = statement.getChild(0).getText().toUpperCase();
@@ -1617,7 +1617,7 @@ public class CliClient
      */
     private void executeAssumeStatement(Tree statement)
     {
-        if (!CliMain.isConnected() || !hasKeySpace())
+        if (!CliMain.isConnected(sessionState) || !hasKeySpace())
             return;
 
         String cfName = CliCompiler.getColumnFamily(statement, currentCfDefs());
@@ -1703,7 +1703,7 @@ public class CliClient
     // SHOW API VERSION
     private void executeShowVersion() throws TException
     {
-        if (!CliMain.isConnected())
+        if (!CliMain.isConnected(sessionState))
             return;
 
         sessionState.out.println(thriftClient.describe_version());
@@ -1712,7 +1712,7 @@ public class CliClient
     // SHOW KEYSPACES
     private void executeShowKeySpaces() throws TException, InvalidRequestException
     {
-        if (!CliMain.isConnected())
+        if (!CliMain.isConnected(sessionState))
             return;
 
         printCQL3TablesWarning("show keyspaces");
@@ -1729,7 +1729,7 @@ public class CliClient
     // SHOW SCHEMA
     private void executeShowSchema(Tree statement) throws TException, InvalidRequestException
     {
-        if (!CliMain.isConnected())
+        if (!CliMain.isConnected(sessionState))
             return;
 
         printCQL3TablesWarning("show schema");
@@ -2028,7 +2028,7 @@ public class CliClient
     // USE <keyspace_name>
     private void executeUseKeySpace(Tree statement)
     {
-        if (!CliMain.isConnected())
+        if (!CliMain.isConnected(sessionState))
             return;
 
         int childCount = statement.getChildCount();
@@ -2103,7 +2103,7 @@ public class CliClient
 
     private void executeTraceNextQuery() throws TException
     {
-        if (!CliMain.isConnected())
+        if (!CliMain.isConnected(sessionState))
             return;
 
         UUID sessionId = TimeUUIDType.instance.compose(thriftClient.trace_next_query());
@@ -2263,7 +2263,7 @@ public class CliClient
     // DESCRIBE KEYSPACE (<keyspace> | <column_family>)?
     private void executeDescribe(Tree statement) throws TException, InvalidRequestException, NotFoundException
     {
-        if (!CliMain.isConnected())
+        if (!CliMain.isConnected(sessionState))
             return;
 
         printCQL3TablesWarning("describe");
@@ -2342,7 +2342,7 @@ public class CliClient
     // ^(NODE_DESCRIBE_CLUSTER) or describe: schema_versions, partitioner, snitch
     private void executeDescribeCluster()
     {
-        if (!CliMain.isConnected())
+        if (!CliMain.isConnected(sessionState))
             return;
 
         sessionState.out.println("Cluster Information:");
@@ -2395,7 +2395,7 @@ public class CliClient
             sessionState.password = CliUtils.unescapeSQLString(statement.getChild(3).getText());
         }
 
-        CliMain.connect(sessionState.hostName, sessionState.thriftPort, databaseDescriptor);
+        CliMain.connect(sessionState.hostName, sessionState.thriftPort, databaseDescriptor, sessionState);
     }
 
     /**
@@ -3109,7 +3109,7 @@ public class CliClient
 
         public void replayAssumptions(String keyspace)
         {
-            if (!CliMain.isConnected() || !hasKeySpace(false))
+            if (!CliMain.isConnected(sessionState) || !hasKeySpace(false))
                 return;
 
             Map<String, Map<String, String>> cfAssumes = assumptions.get(keyspace);

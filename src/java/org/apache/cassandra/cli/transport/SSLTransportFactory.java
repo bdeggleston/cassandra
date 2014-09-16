@@ -19,6 +19,7 @@ package org.apache.cassandra.cli.transport;
 
 import org.apache.cassandra.cli.CliMain;
 import org.apache.cassandra.cli.CliSessionState;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TSSLTransportFactory.TSSLTransportParameters;
 import org.apache.thrift.transport.TTransport;
@@ -29,9 +30,16 @@ public class SSLTransportFactory extends TTransportFactory
 {
     private static final int SOCKET_TIMEOUT = 0;
 
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public SSLTransportFactory(DatabaseDescriptor databaseDescriptor)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+    }
+
     public TTransport getTransport(TTransport trans)
     {
-        final CliSessionState sessionState = CliMain.sessionState;
+        final CliSessionState sessionState = new CliSessionState(databaseDescriptor);
         try
         {
             TSSLTransportParameters params = new TSSLTransportParameters(sessionState.encOptions.protocol, sessionState.encOptions.cipher_suites);

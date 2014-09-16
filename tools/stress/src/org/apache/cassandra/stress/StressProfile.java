@@ -25,9 +25,7 @@ import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.AlreadyExistsException;
 
 import com.google.common.util.concurrent.Uninterruptibles;
-import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.statements.CreateKeyspaceStatement;
 import org.apache.cassandra.exceptions.RequestValidationException;
 
@@ -474,7 +472,7 @@ public class StressProfile implements Serializable
         }
     }
 
-    public static StressProfile load(File file) throws IOError
+    public static StressProfile load(File file, DatabaseDescriptor databaseDescriptor) throws IOError
     {
         try
         {
@@ -486,7 +484,7 @@ public class StressProfile implements Serializable
 
             StressYaml profileYaml = yaml.loadAs(new ByteArrayInputStream(profileBytes), StressYaml.class);
 
-            StressProfile profile = new StressProfile(DatabaseDescriptor.createMain(false, true));
+            StressProfile profile = new StressProfile(databaseDescriptor);
             profile.init(profileYaml);
 
             return profile;

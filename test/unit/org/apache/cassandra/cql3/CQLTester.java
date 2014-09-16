@@ -95,7 +95,7 @@ public abstract class CQLTester
         currentTypes.clear();
 
         // We want to clean up after the test, but dropping a table is rather long so just do that asynchronously
-        DatabaseDescriptor.createMain(false, false).getStorageServiceExecutors().optionalTasks.execute(new Runnable()
+        databaseDescriptor.getStorageServiceExecutors().optionalTasks.execute(new Runnable()
         {
             public void run()
             {
@@ -112,7 +112,7 @@ public abstract class CQLTester
                     // mono-threaded, just push a task on the queue to find when it's empty. No perfect but good enough.
 
                     final CountDownLatch latch = new CountDownLatch(1);
-                    DatabaseDescriptor.createMain(false, false).getStorageServiceExecutors().tasks.execute(new Runnable()
+                    databaseDescriptor.getStorageServiceExecutors().tasks.execute(new Runnable()
                     {
                             public void run()
                             {

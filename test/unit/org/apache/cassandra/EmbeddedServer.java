@@ -55,7 +55,7 @@ public class EmbeddedServer extends SchemaLoader
                 {
                     case Thrift:
                     default:
-                        daemon = new org.apache.cassandra.service.CassandraDaemon(DatabaseDescriptor.createMain(false, false));
+                        daemon = new org.apache.cassandra.service.CassandraDaemon(databaseDescriptor);
                 }
                 daemon.activate();
             }

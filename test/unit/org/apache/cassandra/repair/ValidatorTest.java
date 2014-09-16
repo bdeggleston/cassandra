@@ -117,7 +117,7 @@ public class ValidatorTest
 
         ColumnFamilyStore cfs = databaseDescriptor.getKeyspaceManager().open(keyspace).getColumnFamilyStore(columnFamily);
 
-        Validator validator = new Validator(desc, remote, 0, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getStageManager(), databaseDescriptor.getMessagingService());
+        Validator validator = new Validator(desc, remote, 0, databaseDescriptor, databaseDescriptor.getStageManager(), databaseDescriptor.getMessagingService());
         MerkleTree tree = new MerkleTree(cfs.partitioner, validator.desc.range, MerkleTree.RECOMMENDED_DEPTH, (int) Math.pow(2, 15));
         validator.prepare(cfs, tree);
 
@@ -197,7 +197,7 @@ public class ValidatorTest
 
         InetAddress remote = InetAddress.getByName("127.0.0.2");
 
-        Validator validator = new Validator(desc, remote, 0, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getStageManager(), databaseDescriptor.getMessagingService());
+        Validator validator = new Validator(desc, remote, 0, databaseDescriptor, databaseDescriptor.getStageManager(), databaseDescriptor.getMessagingService());
         validator.fail();
 
         if (!lock.isSignaled())

@@ -88,7 +88,7 @@ public class RecoveryManager3Test
         keyspace2.getColumnFamilyStore("Standard3").clearUnsafe();
 
         // nuke the header
-        for (File file : new File(DatabaseDescriptor.createMain(false, false).getCommitLogLocation()).listFiles())
+        for (File file : new File(databaseDescriptor.getCommitLogLocation()).listFiles())
         {
             if (file.getName().endsWith(".header"))
                 FileUtils.deleteWithConfirm(file);

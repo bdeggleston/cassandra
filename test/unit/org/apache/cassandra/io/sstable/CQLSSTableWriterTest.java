@@ -82,12 +82,12 @@ public class CQLSSTableWriterTest
         writer.addRow(ImmutableMap.<String, Object>of("k", 3, "v2", 12));
         writer.close();
 
-        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getDBConfig())
+        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client(databaseDescriptor, databaseDescriptor.getDBConfig())
         {
             public void init(String keyspace)
             {
                 for (Range<Token> range : databaseDescriptor.getLocatorConfig().getLocalRanges("cql_keyspace"))
-                    addRangeForEndpoint(range, DatabaseDescriptor.createMain(false, false).getBroadcastAddress());
+                    addRangeForEndpoint(range, databaseDescriptor.getBroadcastAddress());
                 setPartitioner(databaseDescriptor.getLocatorConfig().getPartitioner());
             }
 
@@ -95,7 +95,7 @@ public class CQLSSTableWriterTest
             {
                 return databaseDescriptor.getSchema().getCFMetaData(keyspace, cfName);
             }
-        }, new OutputHandler.SystemOutput(false, false), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSSTableReaderFactory());
+        }, new OutputHandler.SystemOutput(false, false), databaseDescriptor, databaseDescriptor.getSSTableReaderFactory());
 
         loader.stream().get();
 

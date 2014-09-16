@@ -189,7 +189,7 @@ public class PerRowSecondaryIndexTest
         {
             QueryFilter filter = QueryFilter.getIdentityFilter(databaseDescriptor.getLocatorConfig().getPartitioner().decorateKey(rowKey),
                                                                baseCfs.getColumnFamilyName(),
-                                                               System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+                                                               System.currentTimeMillis(), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
             LAST_INDEXED_ROW = cf;
             LAST_INDEXED_KEY = rowKey;
         }
@@ -223,7 +223,7 @@ public class PerRowSecondaryIndexTest
         @Override
         protected SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns)
         {
-            return new SecondaryIndexSearcher(baseCfs.indexManager, columns, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())
+            return new SecondaryIndexSearcher(baseCfs.indexManager, columns, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())
             {
                 
                 @Override

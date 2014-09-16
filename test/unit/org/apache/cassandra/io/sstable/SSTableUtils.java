@@ -52,7 +52,7 @@ public class SSTableUtils
 
     public static ColumnFamily createCF(String ksname, String cfname, long mfda, int ldt, DatabaseDescriptor databaseDescriptor, Cell... cols)
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(ksname, cfname, DatabaseDescriptor.createMain(false, false).getSchema(), databaseDescriptor.getDBConfig());
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(ksname, cfname, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
         cf.delete(new DeletionInfo(mfda, ldt));
         for (Cell col : cols)
             cf.addColumn(col);
@@ -182,7 +182,7 @@ public class SSTableUtils
             Map<String, ColumnFamily> map = new HashMap<String, ColumnFamily>();
             for (String key : keys)
             {
-                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(ksname, cfname, DatabaseDescriptor.createMain(false, false).getSchema(), databaseDescriptor.getDBConfig());
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(ksname, cfname, databaseDescriptor.getSchema(), databaseDescriptor.getDBConfig());
                 cf.addColumn(new BufferCell(Util.cellname(key), ByteBufferUtil.bytes(key), 0));
                 map.put(key, cf);
             }

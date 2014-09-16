@@ -130,7 +130,7 @@ public class IndexSummaryManagerTest
         for (int i = 0; i < numRows; i++)
         {
             DecoratedKey key = Util.dk(String.format("%3d", i), databaseDescriptor);
-            QueryFilter filter = QueryFilter.getIdentityFilter(key, cfs.getColumnFamilyName(), System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+            QueryFilter filter = QueryFilter.getIdentityFilter(key, cfs.getColumnFamilyName(), System.currentTimeMillis(), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
             ColumnFamily row = cfs.getColumnFamily(filter);
             assertNotNull(row);
             Cell cell = row.getColumn(Util.cellname("column"));

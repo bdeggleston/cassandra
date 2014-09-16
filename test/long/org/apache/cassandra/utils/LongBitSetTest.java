@@ -34,6 +34,8 @@ public class LongBitSetTest
     private static final Logger logger = LoggerFactory.getLogger(LongBitSetTest.class);
     private static final Random random = new Random();
 
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+
     public void populateRandom(OffHeapBitSet offbs, OpenBitSet obs, long index)
     {
         if (random.nextBoolean())
@@ -55,7 +57,7 @@ public class LongBitSetTest
     {
         long size_to_test = Integer.MAX_VALUE / 40;
         long size_and_excess = size_to_test + 20;
-        OffHeapBitSet offbs = new OffHeapBitSet(size_and_excess, DatabaseDescriptor.createMain(false, false).getoffHeapMemoryAllocator());
+        OffHeapBitSet offbs = new OffHeapBitSet(size_and_excess, databaseDescriptor.getoffHeapMemoryAllocator());
         OpenBitSet obs = new OpenBitSet(size_and_excess);
         for (long i = 0; i < size_to_test; i++)
             populateRandom(offbs, obs, i);
@@ -71,7 +73,7 @@ public class LongBitSetTest
         long size_and_excess = size_to_test + 20;
 
         OpenBitSet obs = new OpenBitSet(size_and_excess);
-        OffHeapBitSet offbs = new OffHeapBitSet(size_and_excess, DatabaseDescriptor.createMain(false, false).getoffHeapMemoryAllocator());
+        OffHeapBitSet offbs = new OffHeapBitSet(size_and_excess, databaseDescriptor.getoffHeapMemoryAllocator());
         logger.info("||Open BS set's|Open BS get's|Open BS clear's|Offheap BS set's|Offheap BS get's|Offheap BS clear's|");
         // System.out.println("||Open BS set's|Open BS get's|Open BS clear's|Offheap BS set's|Offheap BS get's|Offheap BS clear's|");
         loopOnce(obs, offbs, size_to_test);
@@ -127,7 +129,7 @@ public class LongBitSetTest
         long size_and_excess = size_to_test + 20;
 
         OpenBitSet obs = new OpenBitSet(size_and_excess);
-        OffHeapBitSet offbs = new OffHeapBitSet(size_and_excess, DatabaseDescriptor.createMain(false, false).getoffHeapMemoryAllocator());
+        OffHeapBitSet offbs = new OffHeapBitSet(size_and_excess, databaseDescriptor.getoffHeapMemoryAllocator());
         for (int i = 0; i < 10; i++)
             // 10 times to do approx 2B keys each.
             loopOnce(obs, offbs, size_to_test);

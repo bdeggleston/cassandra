@@ -25,6 +25,7 @@ import java.nio.charset.CharacterCodingException;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.cli.CliMain;
+import org.apache.cassandra.cli.CliSessionState;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -70,6 +71,7 @@ public class PigTestBase extends SchemaLoader
                                                "&native_read_timeout=10000000&send_buff_size=4096&receive_buff_size=4096&solinger=3" +
                                                "&tcp_nodelay=true&reuse_address=true&keep_alive=true&native_port=9052";
 
+    public static CliSessionState sessionState = new CliSessionState(databaseDescriptor);
     static
     {
         System.setProperty("logback.configurationFile", "logback-test.xml");
@@ -103,7 +105,7 @@ public class PigTestBase extends SchemaLoader
     protected static void startCassandra() throws IOException
     {
         databaseDescriptor.getSchema().clear(); // Schema are now written on disk and will be reloaded
-        cassandra = new EmbeddedCassandraService();
+        cassandra = new EmbeddedCassandraService(databaseDescriptor);
         cassandra.start();
     }
 
@@ -136,11 +138,11 @@ public class PigTestBase extends SchemaLoader
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
 
         // checking if we can connect to the running cassandra node on localhost
-        CliMain.connect("127.0.0.1", 9170, databaseDescriptor);
+        CliMain.connect("127.0.0.1", 9170, databaseDescriptor, sessionState);
 
         // setting new output stream
-        CliMain.sessionState.setOut(new PrintStream(outStream));
-        CliMain.sessionState.setErr(new PrintStream(errStream));
+        sessionState.setOut(new PrintStream(outStream));
+        sessionState.setErr(new PrintStream(errStream));
 
         // re-creating keyspace for tests
         try

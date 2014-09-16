@@ -57,7 +57,7 @@ public class MetadataSerializerTest
         long minTimestamp = 2162517136L;
         long maxTimestamp = 4162517136L;
 
-        MetadataCollector collector = new MetadataCollector(new SimpleDenseCellNameType(BytesType.instance, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()))
+        MetadataCollector collector = new MetadataCollector(new SimpleDenseCellNameType(BytesType.instance, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()))
                                                       .estimatedRowSize(rowSizes)
                                                       .estimatedColumnCount(columnCounts)
                                                       .replayPosition(rp);

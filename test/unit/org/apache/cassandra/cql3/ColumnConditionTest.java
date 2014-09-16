@@ -56,7 +56,7 @@ public class ColumnConditionTest
         Cell cell = null;
         if (columnValue != null)
         {
-            CompoundSparseCellNameType nameType = new CompoundSparseCellNameType(Collections.EMPTY_LIST, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+            CompoundSparseCellNameType nameType = new CompoundSparseCellNameType(Collections.EMPTY_LIST, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
             ColumnDefinition definition = new ColumnDefinition("ks", "cf", new ColumnIdentifier("c", true), Int32Type.instance, null, null, null, null, null);
             cell = new BufferCell(nameType.create(Composites.EMPTY, definition), columnValue);
         }
@@ -162,7 +162,7 @@ public class ColumnConditionTest
         CFMetaData cfm = databaseDescriptor.getCFMetaDataFactory().compile("create table foo(a int PRIMARY KEY, b int, c list<int>)", "ks");
         Map<ByteBuffer, CollectionType> typeMap = new HashMap<>();
         typeMap.put(ByteBufferUtil.bytes("c"), ListType.getInstance(Int32Type.instance));
-        CompoundSparseCellNameType.WithCollection nameType = new CompoundSparseCellNameType.WithCollection(Collections.EMPTY_LIST, ColumnToCollectionType.getInstance(typeMap), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        CompoundSparseCellNameType.WithCollection nameType = new CompoundSparseCellNameType.WithCollection(Collections.EMPTY_LIST, ColumnToCollectionType.getInstance(typeMap), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         ColumnDefinition definition = new ColumnDefinition(cfm, ByteBufferUtil.bytes("c"), ListType.getInstance(Int32Type.instance), 0, ColumnDefinition.Kind.REGULAR);
 
         List<Cell> cells = new ArrayList<>(columnValues.size());
@@ -294,7 +294,7 @@ public class ColumnConditionTest
         CFMetaData cfm = databaseDescriptor.getCFMetaDataFactory().compile("create table foo(a int PRIMARY KEY, b int, c set<int>)", "ks");
         Map<ByteBuffer, CollectionType> typeMap = new HashMap<>();
         typeMap.put(ByteBufferUtil.bytes("c"), SetType.getInstance(Int32Type.instance));
-        CompoundSparseCellNameType.WithCollection nameType = new CompoundSparseCellNameType.WithCollection(Collections.EMPTY_LIST, ColumnToCollectionType.getInstance(typeMap), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        CompoundSparseCellNameType.WithCollection nameType = new CompoundSparseCellNameType.WithCollection(Collections.EMPTY_LIST, ColumnToCollectionType.getInstance(typeMap), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         ColumnDefinition definition = new ColumnDefinition(cfm, ByteBufferUtil.bytes("c"), SetType.getInstance(Int32Type.instance), 0, ColumnDefinition.Kind.REGULAR);
 
         List<Cell> cells = new ArrayList<>(columnValues.size());
@@ -427,7 +427,7 @@ public class ColumnConditionTest
         CFMetaData cfm = databaseDescriptor.getCFMetaDataFactory().compile("create table foo(a int PRIMARY KEY, b map<int, int>)", "ks");
         Map<ByteBuffer, CollectionType> typeMap = new HashMap<>();
         typeMap.put(ByteBufferUtil.bytes("b"), MapType.getInstance(Int32Type.instance, Int32Type.instance));
-        CompoundSparseCellNameType.WithCollection nameType = new CompoundSparseCellNameType.WithCollection(Collections.EMPTY_LIST, ColumnToCollectionType.getInstance(typeMap), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        CompoundSparseCellNameType.WithCollection nameType = new CompoundSparseCellNameType.WithCollection(Collections.EMPTY_LIST, ColumnToCollectionType.getInstance(typeMap), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         ColumnDefinition definition = new ColumnDefinition(cfm, ByteBufferUtil.bytes("b"), MapType.getInstance(Int32Type.instance, Int32Type.instance), 0, ColumnDefinition.Kind.REGULAR);
 
         List<Cell> cells = new ArrayList<>(columnValues.size());

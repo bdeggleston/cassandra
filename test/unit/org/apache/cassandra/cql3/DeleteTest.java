@@ -53,10 +53,10 @@ public class DeleteTest extends SchemaLoader
     {
         databaseDescriptor.getSchema().clear();
 
-        cassandra = new EmbeddedCassandraService();
+        cassandra = new EmbeddedCassandraService(databaseDescriptor);
         cassandra.start();
 
-        cluster = Cluster.builder().addContactPoint("127.0.0.1").withPort(DatabaseDescriptor.createMain(false, false).getNativeTransportPort()).build();
+        cluster = Cluster.builder().addContactPoint("127.0.0.1").withPort(databaseDescriptor.getNativeTransportPort()).build();
         session = cluster.connect();
 
         session.execute("drop keyspace if exists junit;");

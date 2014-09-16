@@ -28,6 +28,8 @@ import org.junit.Test;
 
 public class SessionInfoTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+
     /**
      * Test if total numbers are collect
      */
@@ -35,7 +37,7 @@ public class SessionInfoTest
     public void testTotals()
     {
         UUID cfId = UUID.randomUUID();
-        InetAddress local = DatabaseDescriptor.createMain(false, false).getLocalAddress();
+        InetAddress local = databaseDescriptor.getLocalAddress();
 
         Collection<StreamSummary> summaries = new ArrayList<>();
         for (int i = 0; i < 10; i++)

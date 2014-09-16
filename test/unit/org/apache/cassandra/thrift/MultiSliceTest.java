@@ -56,19 +56,19 @@ public class MultiSliceTest
     public static void defineSchema() throws ConfigurationException, IOException, TException
     {
         SchemaLoader.prepareServer();
-        new EmbeddedCassandraService().start();
-        thriftSessionManager = new ThriftSessionManager(DatabaseDescriptor.createMain(false, false));
+        new EmbeddedCassandraService(databaseDescriptor).start();
+        thriftSessionManager = new ThriftSessionManager(databaseDescriptor);
         thriftSessionManager.setCurrentSocket(new InetSocketAddress(9160));
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     SimpleStrategy.class,
                                     KSMetaData.optsWithRF(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD));
-        server = new CassandraServer(DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(),
+        server = new CassandraServer(databaseDescriptor, databaseDescriptor.getTracing(),
                                      databaseDescriptor.getSchema(), databaseDescriptor.getAuth(), databaseDescriptor.getStorageProxy(),
                                      databaseDescriptor.getMessagingService(), databaseDescriptor.getKeyspaceManager(),
                                      databaseDescriptor.getMutationFactory(), databaseDescriptor.getCounterMutationFactory(),
                                      databaseDescriptor.getStorageService(), databaseDescriptor.getCFMetaDataFactory(),
-                                     DatabaseDescriptor.createMain(false, false).getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
+                                     databaseDescriptor.getMigrationManager(), databaseDescriptor.getKSMetaDataFactory(),
                                      databaseDescriptor.getQueryHandler(), databaseDescriptor.getLocatorConfig(),
                                      databaseDescriptor.getDBConfig(), thriftSessionManager,
                                      ClientMetrics.instance);

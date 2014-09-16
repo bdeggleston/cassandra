@@ -76,7 +76,7 @@ public class RemoveCellTest
         assertNull(Util.cloneAndRemoveDeleted(store.getColumnFamily(QueryFilter.getIdentityFilter(dk,
                                                                                                   "Standard1",
                                                                                                   System.currentTimeMillis(),
-                                                                                                  DatabaseDescriptor.createMain(false, false),
+                                                                                                  databaseDescriptor,
                                                                                                   databaseDescriptor.getTracing(),
                                                                                                   databaseDescriptor.getDBConfig())),
                                               Integer.MAX_VALUE));

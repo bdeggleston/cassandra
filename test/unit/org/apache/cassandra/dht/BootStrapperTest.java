@@ -80,7 +80,7 @@ public class BootStrapperTest
 
         TokenMetadata tmd = databaseDescriptor.getLocatorConfig().getTokenMetadata();
         assertEquals(numOldNodes, tmd.sortedTokens().size());
-        RangeStreamer s = new RangeStreamer(tmd, myEndpoint, "Bootstrap", DatabaseDescriptor.createMain(false, false), databaseDescriptor.getSchema(), databaseDescriptor.getGossiper(), databaseDescriptor.getStreamManager(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getDBConfig());
+        RangeStreamer s = new RangeStreamer(tmd, myEndpoint, "Bootstrap", databaseDescriptor, databaseDescriptor.getSchema(), databaseDescriptor.getGossiper(), databaseDescriptor.getStreamManager(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getDBConfig());
         IFailureDetector mockFailureDetector = new IFailureDetector()
         {
             public boolean isAlive(InetAddress ep)

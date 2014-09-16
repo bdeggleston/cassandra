@@ -45,7 +45,7 @@ public class CliMain
 
     private static TTransport transport = null;
     private static Cassandra.Client thriftClient = null;
-    public  static final CliSessionState sessionState = new CliSessionState();
+//    public static final CliSessionState sessionState = new CliSessionState();
     private static CliClient cliClient;
     private static final CliCompleter completer = new CliCompleter();
     private static int lineNumber = 1;
@@ -56,7 +56,7 @@ public class CliMain
      * @param server - hostname or IP of the server
      * @param port   - Thrift port number
      */
-    public static void connect(String server, int port, DatabaseDescriptor databaseDescriptor)
+    public static void connect(String server, int port, DatabaseDescriptor databaseDescriptor, CliSessionState sessionState)
     {
         if (transport != null)
             transport.close();
@@ -166,7 +166,7 @@ public class CliMain
      * Checks whether the thrift client is connected.
      * @return boolean - true when connected, false otherwise
      */
-    public static boolean isConnected()
+    public static boolean isConnected(CliSessionState sessionState)
     {
         if (thriftClient == null)
         {
@@ -195,7 +195,7 @@ public class CliMain
         cliClient.executeCLIStatement(query);
     }
 
-    public static void processStatementInteractive(String query)
+    public static void processStatementInteractive(String query, CliSessionState sessionState)
     {
         try
         {
@@ -226,18 +226,19 @@ public class CliMain
 
     public static void main(String args[]) throws IOException
     {
+        DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true, true);
+        CliSessionState sessionState = new CliSessionState(databaseDescriptor);
         // process command line arguments
         CliOptions cliOptions = new CliOptions();
         cliOptions.processArgs(sessionState, args);
 
-        DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true, true);
 
         // connect to cassandra server if host argument specified.
         if (sessionState.hostName != null)
         {
             try
             {
-                connect(sessionState.hostName, sessionState.thriftPort, databaseDescriptor);
+                connect(sessionState.hostName, sessionState.thriftPort, databaseDescriptor, sessionState);
             }
             catch (RuntimeException e)
             {
@@ -260,7 +261,7 @@ public class CliMain
             try
             {
                 reader = new BufferedReader(new FileReader(sessionState.filename));
-                evaluateFileStatements(reader);
+                evaluateFileStatements(reader, sessionState);
             }
             catch (IOException e)
             {
@@ -331,7 +332,7 @@ public class CliMain
 
             if (line.endsWith(";") || line.equals("?"))
             {
-                processStatementInteractive(currentStatement);
+                processStatementInteractive(currentStatement, sessionState);
                 currentStatement = "";
                 inCompoundStatement = false;
             }
@@ -354,7 +355,7 @@ public class CliMain
         return historyFile;
     }
 
-    private static void evaluateFileStatements(BufferedReader reader) throws IOException
+    private static void evaluateFileStatements(BufferedReader reader, CliSessionState sessionState) throws IOException
     {
         String line;
         String currentStatement = "";
@@ -385,7 +386,7 @@ public class CliMain
 
             if (line.endsWith(";"))
             {
-                processStatementInteractive(currentStatement);
+                processStatementInteractive(currentStatement, sessionState);
                 currentStatement = "";
             }
             else

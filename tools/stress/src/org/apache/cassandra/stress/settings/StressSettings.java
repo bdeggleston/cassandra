@@ -214,16 +214,16 @@ public class StressSettings implements Serializable
 
     }
 
-    public static StressSettings parse(String[] args)
+    public static StressSettings parse(String[] args, DatabaseDescriptor databaseDescriptor)
     {
         try
         {
             final Map<String, String[]> clArgs = parseMap(args);
             if (clArgs.containsKey("legacy"))
-                return Legacy.build(Arrays.copyOfRange(args, 1, args.length));
+                return Legacy.build(Arrays.copyOfRange(args, 1, args.length), databaseDescriptor);
             if (SettingsMisc.maybeDoSpecial(clArgs))
                 System.exit(1);
-            return get(clArgs);
+            return get(clArgs, databaseDescriptor);
         }
         catch (IllegalArgumentException e)
         {
@@ -233,9 +233,9 @@ public class StressSettings implements Serializable
         }
     }
 
-    public static StressSettings get(Map<String, String[]> clArgs)
+    public static StressSettings get(Map<String, String[]> clArgs, DatabaseDescriptor databaseDescriptor)
     {
-        SettingsCommand command = SettingsCommand.get(clArgs);
+        SettingsCommand command = SettingsCommand.get(clArgs, databaseDescriptor);
         if (command == null)
             throw new IllegalArgumentException("No command specified");
         String sendToDaemon = SettingsMisc.getSendToDaemon(clArgs);
@@ -264,7 +264,7 @@ public class StressSettings implements Serializable
             }
             System.exit(1);
         }
-        return new StressSettings(command, rate, keys, columns, log, mode, node, schema, transport, port, sendToDaemon, DatabaseDescriptor.createMain(false, true));
+        return new StressSettings(command, rate, keys, columns, log, mode, node, schema, transport, port, sendToDaemon, databaseDescriptor);
     }
 
     private static Map<String, String[]> parseMap(String[] args)

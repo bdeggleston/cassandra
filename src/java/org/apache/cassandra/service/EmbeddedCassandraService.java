@@ -47,9 +47,16 @@ public class EmbeddedCassandraService
 
     CassandraDaemon cassandraDaemon;
 
+    private final DatabaseDescriptor databaseDescriptor;
+
+    public EmbeddedCassandraService(DatabaseDescriptor databaseDescriptor)
+    {
+        this.databaseDescriptor = databaseDescriptor;
+    }
+
     public void start() throws IOException
     {
-        cassandraDaemon = new CassandraDaemon(DatabaseDescriptor.createMain(false, true));
+        cassandraDaemon = new CassandraDaemon(databaseDescriptor);
         cassandraDaemon.init(null);
         cassandraDaemon.start();
     }

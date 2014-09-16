@@ -202,7 +202,7 @@ public class DynamicCompositeTypeTest
         addColumn(rm, cname3);
         rm.applyUnsafe();
 
-        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("k", databaseDescriptor), CF_STANDARDDYNCOMPOSITE, System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+        ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("k", databaseDescriptor), CF_STANDARDDYNCOMPOSITE, System.currentTimeMillis(), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
 
         Iterator<Cell> iter = cf.getSortedColumns().iterator();
 

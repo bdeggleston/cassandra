@@ -21,6 +21,7 @@ import java.io.*;
 import java.net.Socket;
 import java.net.SocketException;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.stress.settings.StressSettings;
 
 public final class Stress
@@ -52,10 +53,12 @@ public final class Stress
 
     public static void main(String[] arguments) throws Exception
     {
+        DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true, false);
+
         final StressSettings settings;
         try
         {
-            settings = StressSettings.parse(arguments);
+            settings = StressSettings.parse(arguments, databaseDescriptor);
         }
         catch (IllegalArgumentException e)
         {

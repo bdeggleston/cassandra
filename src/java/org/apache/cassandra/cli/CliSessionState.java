@@ -56,12 +56,12 @@ public class CliSessionState
     public PrintStream err;
     private final DatabaseDescriptor databaseDescriptor;
 
-    public CliSessionState()
+    public CliSessionState(DatabaseDescriptor databaseDescriptor)
     {
         in = System.in;
         out = System.out;
         err = System.err;
-        databaseDescriptor = DatabaseDescriptor.createMain(true, true);
+        this.databaseDescriptor = databaseDescriptor;
     }
 
     public void setOut(PrintStream newOut)

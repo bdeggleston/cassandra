@@ -42,6 +42,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class DataOutputTest
 {
+    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
 
     @Test
     public void testDataOutputStreamPlus() throws IOException
@@ -135,7 +136,7 @@ public class DataOutputTest
     public void testSequentialWriter() throws IOException
     {
         File file = FileUtils.createTempFile("dataoutput", "test");
-        final SequentialWriter writer = new SequentialWriter(file, 32, DatabaseDescriptor.createMain(false, false));
+        final SequentialWriter writer = new SequentialWriter(file, 32, databaseDescriptor);
         DataOutputStreamAndChannel write = new DataOutputStreamAndChannel(writer, writer);
         DataInput canon = testWrite(write);
         write.flush();

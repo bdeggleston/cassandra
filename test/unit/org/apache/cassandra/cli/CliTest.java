@@ -21,7 +21,6 @@ package org.apache.cassandra.cli;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.service.EmbeddedCassandraService;
@@ -44,6 +43,7 @@ public class CliTest
     private static final String CF_STANDARD1 = "Standard1";
 
     public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final CliSessionState sessionState = new CliSessionState(databaseDescriptor);
 
     // please add new statements here so they could be auto-runned by this test.
     private String[] statements = {
@@ -240,18 +240,18 @@ public class CliTest
     public void testCli() throws IOException, TException, TimedOutException, NotFoundException, SchemaDisagreementException, NoSuchFieldException, InvalidRequestException, UnavailableException, InstantiationException, IllegalAccessException
     {
         databaseDescriptor.getSchema().clear(); // Schema are now written on disk and will be reloaded
-        new EmbeddedCassandraService().start();
+        new EmbeddedCassandraService(databaseDescriptor).start();
 
         // new error/output streams for CliSessionState
         ByteArrayOutputStream errStream = new ByteArrayOutputStream();
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
 
         // checking if we can connect to the running cassandra node on localhost
-        CliMain.connect("127.0.0.1", DatabaseDescriptor.createMain(false, false).getRpcPort(), databaseDescriptor);
+        CliMain.connect("127.0.0.1", databaseDescriptor.getRpcPort(), databaseDescriptor, sessionState);
 
         // setting new output stream
-        CliMain.sessionState.setOut(new PrintStream(outStream));
-        CliMain.sessionState.setErr(new PrintStream(errStream));
+        sessionState.setOut(new PrintStream(outStream));
+        sessionState.setErr(new PrintStream(errStream));
 
         // re-creating keyspace for tests
         try

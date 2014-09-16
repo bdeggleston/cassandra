@@ -82,18 +82,18 @@ public class NativeCellTest
 
     final static Name[] TESTS = new Name[]
                           {
-                              new Name(simpleDense(bytes("a")), new SimpleDenseCellNameType(UTF8Type.instance, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())),
-                              new Name(simpleSparse(new ColumnIdentifier("a", true)), new SimpleSparseCellNameType(UTF8Type.instance, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())),
-                              new Name(compositeDense(bytes("a"), bytes("b")), new CompoundDenseCellNameType(Arrays.<AbstractType<?>>asList(UTF8Type.instance, UTF8Type.instance), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())),
-                              new Name(compositeSparse(bytess("b", "c"), new ColumnIdentifier("a", true), false), new CompoundSparseCellNameType(Arrays.<AbstractType<?>>asList(UTF8Type.instance, UTF8Type.instance), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())),
-                              new Name(compositeSparse(bytess("b", "c"), new ColumnIdentifier("a", true), true), new CompoundSparseCellNameType(Arrays.<AbstractType<?>>asList(UTF8Type.instance, UTF8Type.instance), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()))
+                              new Name(simpleDense(bytes("a")), new SimpleDenseCellNameType(UTF8Type.instance, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())),
+                              new Name(simpleSparse(new ColumnIdentifier("a", true)), new SimpleSparseCellNameType(UTF8Type.instance, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())),
+                              new Name(compositeDense(bytes("a"), bytes("b")), new CompoundDenseCellNameType(Arrays.<AbstractType<?>>asList(UTF8Type.instance, UTF8Type.instance), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())),
+                              new Name(compositeSparse(bytess("b", "c"), new ColumnIdentifier("a", true), false), new CompoundSparseCellNameType(Arrays.<AbstractType<?>>asList(UTF8Type.instance, UTF8Type.instance), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig())),
+                              new Name(compositeSparse(bytess("b", "c"), new ColumnIdentifier("a", true), true), new CompoundSparseCellNameType(Arrays.<AbstractType<?>>asList(UTF8Type.instance, UTF8Type.instance), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()))
                           };
 
     private static final CFMetaData metadata = new CFMetaData("",
                                                               "",
                                                               ColumnFamilyType.Standard,
                                                               null,
-                                                              DatabaseDescriptor.createMain(false, false),
+                                                              databaseDescriptor,
                                                               databaseDescriptor.getTracing(),
                                                               databaseDescriptor.getSystemKeyspace(),
                                                               databaseDescriptor.getSchema(),

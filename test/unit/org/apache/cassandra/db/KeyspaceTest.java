@@ -118,7 +118,7 @@ public class KeyspaceTest
                 cf = cfStore.getColumnFamily(Util.namesQueryFilter(cfStore, TEST_KEY, databaseDescriptor));
                 assertColumns(cf);
 
-                cf = cfStore.getColumnFamily(QueryFilter.getSliceFilter(TEST_KEY, "Standard3", Composites.EMPTY, Composites.EMPTY, false, 0, System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
+                cf = cfStore.getColumnFamily(QueryFilter.getSliceFilter(TEST_KEY, "Standard3", Composites.EMPTY, Composites.EMPTY, false, 0, System.currentTimeMillis(), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig()));
                 assertColumns(cf);
 
                 cf = cfStore.getColumnFamily(Util.namesQueryFilter(cfStore, TEST_KEY, databaseDescriptor, "col99"));
@@ -224,7 +224,7 @@ public class KeyspaceTest
                 ColumnFamily cf;
 
                 // blocks are partitioned like this: 000-097, 098-193, 194-289, 290-299, assuming a 4k column index size.
-                assert DatabaseDescriptor.createMain(false, false).getColumnIndexSize() == 4096 : "Unexpected column index size, block boundaries won't be where tests expect them.";
+                assert databaseDescriptor.getColumnIndexSize() == 4096 : "Unexpected column index size, block boundaries won't be where tests expect them.";
 
                 // test forward, spanning a segment.
                 cf = cfStore.getColumnFamily(ROW, cellname("col096"), cellname("col099"), false, 4, System.currentTimeMillis());

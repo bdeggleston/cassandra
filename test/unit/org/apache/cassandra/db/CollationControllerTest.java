@@ -94,7 +94,7 @@ public class CollationControllerTest
         // SliceQueryFilter goes down another path (through collectAllData())
         // We will read "only" the last sstable in that case, but because the 2nd sstable has a tombstone that is more
         // recent than the maxTimestamp of the very first sstable we flushed, we should only read the 2 first sstables.
-        filter = QueryFilter.getIdentityFilter(dk, cfs.name, System.currentTimeMillis(), DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        filter = QueryFilter.getIdentityFilter(dk, cfs.name, System.currentTimeMillis(), databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         controller = new CollationController(cfs, filter, Integer.MIN_VALUE, databaseDescriptor.getDBConfig(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
         controller.getTopLevelColumns(true);
         assertEquals(2, controller.getSstablesIterated());
@@ -132,7 +132,7 @@ public class CollationControllerTest
         CollationController controller = new CollationController(cfs, filter, gcBefore, databaseDescriptor.getDBConfig(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
         assert ColumnFamilyStore.removeDeleted(controller.getTopLevelColumns(true), gcBefore) == null;
 
-        filter = QueryFilter.getIdentityFilter(dk, cfs.name, queryAt, DatabaseDescriptor.createMain(false, false), databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
+        filter = QueryFilter.getIdentityFilter(dk, cfs.name, queryAt, databaseDescriptor, databaseDescriptor.getTracing(), databaseDescriptor.getDBConfig());
         controller = new CollationController(cfs, filter, gcBefore, databaseDescriptor.getDBConfig(), databaseDescriptor.getKeyspaceManager(), databaseDescriptor.getTracing(), databaseDescriptor.getMutationFactory());
         assert ColumnFamilyStore.removeDeleted(controller.getTopLevelColumns(true), gcBefore) == null;
     }

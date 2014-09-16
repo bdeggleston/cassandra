@@ -158,7 +158,7 @@ public class KeyCacheTest
                                                        false,
                                                        10,
                                                        System.currentTimeMillis(),
-                                                       DatabaseDescriptor.createMain(false, false),
+                                                       databaseDescriptor,
                                                        databaseDescriptor.getTracing(),
                                                        databaseDescriptor.getDBConfig()));
 
@@ -169,7 +169,7 @@ public class KeyCacheTest
                                                        false,
                                                        10,
                                                        System.currentTimeMillis(),
-                                                       DatabaseDescriptor.createMain(false, false),
+                                                       databaseDescriptor,
                                                        databaseDescriptor.getTracing(),
                                                        databaseDescriptor.getDBConfig()));
 
@@ -202,7 +202,7 @@ public class KeyCacheTest
                                                        false,
                                                        10,
                                                        System.currentTimeMillis(),
-                                                       DatabaseDescriptor.createMain(false, false),
+                                                       databaseDescriptor,
                                                        databaseDescriptor.getTracing(),
                                                        databaseDescriptor.getDBConfig()));
 
@@ -213,7 +213,7 @@ public class KeyCacheTest
                                                        false,
                                                        10,
                                                        System.currentTimeMillis(),
-                                                       DatabaseDescriptor.createMain(false, false),
+                                                       databaseDescriptor,
                                                        databaseDescriptor.getTracing(),
                                                        databaseDescriptor.getDBConfig()));
 

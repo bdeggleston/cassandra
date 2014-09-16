@@ -57,7 +57,7 @@ public class TriggersSchemaTest
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
                                                 Collections.singletonList(cfm1));
-        DatabaseDescriptor.createMain(false, false).getMigrationManager().announceNewKeyspace(ksm);
+        databaseDescriptor.getMigrationManager().announceNewKeyspace(ksm);
 
         CFMetaData cfm2 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName);
         assertFalse(cfm2.getTriggers().isEmpty());
@@ -73,13 +73,13 @@ public class TriggersSchemaTest
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
                                                 Collections.EMPTY_LIST);
-        DatabaseDescriptor.createMain(false, false).getMigrationManager().announceNewKeyspace(ksm);
+        databaseDescriptor.getMigrationManager().announceNewKeyspace(ksm);
 
         CFMetaData cfm1 = databaseDescriptor.getCFMetaDataFactory().compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)", cfName), ksName);
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass, databaseDescriptor.getCFMetaDataFactory());
         cfm1.addTriggerDefinition(td);
 
-        DatabaseDescriptor.createMain(false, false).getMigrationManager().announceNewColumnFamily(cfm1);
+        databaseDescriptor.getMigrationManager().announceNewColumnFamily(cfm1);
 
         CFMetaData cfm2 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName);
         assertFalse(cfm2.getTriggers().isEmpty());
@@ -96,12 +96,12 @@ public class TriggersSchemaTest
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
                                                 Collections.singletonList(cfm1));
-        DatabaseDescriptor.createMain(false, false).getMigrationManager().announceNewKeyspace(ksm);
+        databaseDescriptor.getMigrationManager().announceNewKeyspace(ksm);
 
         CFMetaData cfm2 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName).copy();
         TriggerDefinition td = TriggerDefinition.create(triggerName, triggerClass, databaseDescriptor.getCFMetaDataFactory());
         cfm2.addTriggerDefinition(td);
-        DatabaseDescriptor.createMain(false, false).getMigrationManager().announceColumnFamilyUpdate(cfm2, false);
+        databaseDescriptor.getMigrationManager().announceColumnFamilyUpdate(cfm2, false);
 
         CFMetaData cfm3 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName);
         assertFalse(cfm3.getTriggers().isEmpty());
@@ -120,11 +120,11 @@ public class TriggersSchemaTest
                                                 Collections.singletonMap("replication_factor", "1"),
                                                 true,
                                                 Collections.singletonList(cfm1));
-        DatabaseDescriptor.createMain(false, false).getMigrationManager().announceNewKeyspace(ksm);
+        databaseDescriptor.getMigrationManager().announceNewKeyspace(ksm);
 
         CFMetaData cfm2 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName).copy();
         cfm2.removeTrigger(triggerName);
-        DatabaseDescriptor.createMain(false, false).getMigrationManager().announceColumnFamilyUpdate(cfm2, false);
+        databaseDescriptor.getMigrationManager().announceColumnFamilyUpdate(cfm2, false);
 
         CFMetaData cfm3 = databaseDescriptor.getSchema().getCFMetaData(ksName, cfName).copy();
         assertTrue(cfm3.getTriggers().isEmpty());

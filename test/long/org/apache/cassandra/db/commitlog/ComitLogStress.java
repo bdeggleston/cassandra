@@ -45,6 +45,7 @@ public class ComitLogStress
     public static final String format = "%s,%s,%s,%s,%s,%s";
 
     public static void main(String[] args) throws Exception {
+        DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(true, true);
         int NUM_THREADS = Runtime.getRuntime().availableProcessors();
         if (args.length >= 1) {
             NUM_THREADS = Integer.parseInt(args[0]);
@@ -53,7 +54,7 @@ public class ComitLogStress
         ExecutorService executor = new JMXEnabledThreadPoolExecutor(NUM_THREADS, NUM_THREADS, 60,
                                                                    TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(10 * NUM_THREADS),
                                                                    new NamedThreadFactory(""), "",
-                                                                   DatabaseDescriptor.createMain(false, false).getTracing(),
+                                                                   databaseDescriptor.getTracing(),
                                                                    true);
         ScheduledExecutorService scheduled = Executors.newScheduledThreadPool(1);
 
@@ -78,7 +79,7 @@ public class ComitLogStress
         }, 1, 1, TimeUnit.SECONDS);
 
         while (true) {
-            executor.execute(new CommitlogExecutor());
+            executor.execute(new CommitlogExecutor(databaseDescriptor));
             count.incrementAndGet();
         }
     }
@@ -89,13 +90,20 @@ public class ComitLogStress
 
     static final String keyString = UUIDGen.getTimeUUID().toString();
     public static class CommitlogExecutor implements Runnable {
+        private final DatabaseDescriptor databaseDescriptor;
+
+        public CommitlogExecutor(DatabaseDescriptor databaseDescriptor)
+        {
+            this.databaseDescriptor = databaseDescriptor;
+        }
+
         public void run() {
             String ks = "Keyspace1";
             ByteBuffer key = ByteBufferUtil.bytes(keyString);
-            Mutation mutation = DatabaseDescriptor.createMain(false, false).getMutationFactory().create(ks, key);
+            Mutation mutation = databaseDescriptor.getMutationFactory().create(ks, key);
             mutation.add("Standard1", Util.cellname("name"), ByteBufferUtil.bytes("value"),
                     System.currentTimeMillis());
-            DatabaseDescriptor.createMain(false, false).getCommitLog().add(mutation);
+            databaseDescriptor.getCommitLog().add(mutation);
         }
     }
 }

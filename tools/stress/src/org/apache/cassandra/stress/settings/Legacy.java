@@ -20,6 +20,7 @@ package org.apache.cassandra.stress.settings;
 import java.io.Serializable;
 import java.util.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Option;
 
@@ -84,11 +85,11 @@ public class Legacy implements Serializable
         availableOptions.addOption("th",  "throttle",            true,   "Throttle the total number of operations per second to a maximum amount.");
     }
 
-    public static StressSettings build(String[] arguments)
+    public static StressSettings build(String[] arguments, DatabaseDescriptor databaseDescriptor)
     {
         CommandLineParser parser = new PosixParser();
 
-        final Converter r = new Converter();
+        final Converter r = new Converter(databaseDescriptor);
         try
         {
             CommandLine cmd = parser.parse(availableOptions, arguments);
@@ -291,6 +292,14 @@ public class Legacy implements Serializable
     {
         private Map<String, List<String>> opts = new LinkedHashMap<>();
         List<String> command;
+
+        private final DatabaseDescriptor databaseDescriptor;
+
+        private Converter(DatabaseDescriptor databaseDescriptor)
+        {
+            this.databaseDescriptor = databaseDescriptor;
+        }
+
         public void add(String option, String suboption)
         {
             if (option.equals("command"))
@@ -307,7 +316,7 @@ public class Legacy implements Serializable
             Map<String, String[]> clArgs = new HashMap<>();
             for (Map.Entry<String, List<String>> e : opts.entrySet())
                 clArgs .put(e.getKey(), e.getValue().toArray(new String[0]));
-            return StressSettings.get(clArgs);
+            return StressSettings.get(clArgs, databaseDescriptor);
         }
         void setCommand(String command)
         {
