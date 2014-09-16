@@ -39,6 +39,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import static org.apache.cassandra.Util.cellname;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -56,6 +57,7 @@ public class DefsTest
 
     public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
+    @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
         SchemaLoader.prepareServer();

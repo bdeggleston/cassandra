@@ -47,6 +47,7 @@ public class CloudstackSnitchTest
     {
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();
+        databaseDescriptor.init();
         databaseDescriptor.getKeyspaceManager().setInitialized();
         databaseDescriptor.getStorageService().initServer(0);
     }

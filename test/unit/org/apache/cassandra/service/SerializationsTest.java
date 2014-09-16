@@ -25,7 +25,9 @@ import java.util.Collections;
 import java.util.UUID;
 
 import org.apache.cassandra.concurrent.StageManager;
+import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.Test;
 
@@ -46,11 +48,34 @@ import org.apache.cassandra.utils.MerkleTree;
 public class SerializationsTest extends AbstractSerializationsTester
 {
 
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
+    public static final DatabaseDescriptor databaseDescriptor;
 
     static
     {
-        System.setProperty("cassandra.partitioner", "RandomPartitioner");
+        Config config;
+        try
+        {
+            config = DatabaseDescriptor.loadConfig();
+        }
+        catch (ConfigurationException e)
+        {
+            throw new RuntimeException(e);
+        }
+
+        config.partitioner = RandomPartitioner.class.getSimpleName();
+
+        DatabaseDescriptor dd = null;
+        try
+        {
+            dd = DatabaseDescriptor.create(false, config, false);
+        }
+        catch (ConfigurationException e)
+        {
+            e.printStackTrace();
+        }
+
+        databaseDescriptor = dd;
+        databaseDescriptor.init();
     }
 
     private static final UUID RANDOM_UUID = UUID.fromString("b5c3d033-75aa-4c2f-a819-947aac7a0c54");

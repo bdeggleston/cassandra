@@ -73,6 +73,7 @@ public class DatabaseDescriptorTest
     public void testTransKsMigration() throws ConfigurationException
     {
         SchemaLoader.cleanupAndLeaveDirs();
+        databaseDescriptor.init();
         databaseDescriptor.loadSchemas();
         assertEquals(0, databaseDescriptor.getSchema().getNonSystemKeyspaces().size());
 

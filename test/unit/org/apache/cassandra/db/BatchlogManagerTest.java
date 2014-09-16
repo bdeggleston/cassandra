@@ -58,6 +58,7 @@ public class BatchlogManagerTest
 
     public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
+    @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
         SchemaLoader.prepareServer();

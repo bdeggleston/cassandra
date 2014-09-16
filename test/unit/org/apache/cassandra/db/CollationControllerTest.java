@@ -19,6 +19,7 @@
 package org.apache.cassandra.db;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
@@ -41,6 +42,7 @@ public class CollationControllerTest
 
     public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
 
+    @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
         SchemaLoader.prepareServer();

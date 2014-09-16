@@ -254,10 +254,10 @@ public class DatabaseDescriptor
         pendingRangeCalculatorService = createPendingRangeCalculatorService();
         commitLog = createCommitLog();
         loadBroadcaster = createLoadBroadcaster();
-        queryHandler = createQueryHandler();
         streamManager = createStreamManager();
         auth = createAuth();
         queryProcessor = createQueryProcessor();
+        queryHandler = createQueryHandler();
         batchlogManager = createBatchlogManager();
         indexSummaryManager = createIndexSummaryManager();
         ssTableWriterFactory = createSSTableWriterFactory();
