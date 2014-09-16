@@ -106,15 +106,14 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
 
     private final ThreadPoolExecutor executor;
 
-    private final ColumnFamilyStore hintStore;
+    private volatile ColumnFamilyStore hintStore;
 
     private final DatabaseDescriptor databaseDescriptor;
 
-    public HintedHandOffManager(DatabaseDescriptor databaseDescriptor, Tracing tracing, SystemKeyspace systemKeyspace, KeyspaceManager keyspaceManager)
+    public HintedHandOffManager(DatabaseDescriptor databaseDescriptor, Tracing tracing, SystemKeyspace systemKeyspace)
     {
         assert tracing != null;
         assert systemKeyspace != null;
-        assert keyspaceManager != null;
 
         this.databaseDescriptor = databaseDescriptor;
 
@@ -128,7 +127,12 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
                                                     "internal",
                                                     tracing,
                                                     databaseDescriptor.shouldInitializeJMX());
-        hintStore = keyspaceManager.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF);
+    }
+
+    public synchronized void init()
+    {
+        assert hintStore == null;
+        hintStore = databaseDescriptor.getKeyspaceManager().open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF);
     }
 
     /**

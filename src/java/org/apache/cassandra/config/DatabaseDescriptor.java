@@ -109,51 +109,6 @@ public class DatabaseDescriptor
     // delay after which we assume ring has stablized
     private int ringDelay;
 
-    static
-    {
-//        DatabaseDescriptor databaseDescriptor = null;
-//        try
-//        {
-//            databaseDescriptor = create();
-//        }
-//        catch (ConfigurationException e)
-//        {
-//            logger.error("Fatal configuration error", e);
-//            System.err.println(e.getMessage() + "\nFatal configuration error; unable to start. See log for stacktrace.");
-//            System.exit(1);
-//        }
-//        catch (Exception e)
-//        {
-//            logger.error("Fatal error during configuration loading", e);
-//            System.err.println(e.getMessage() + "\nFatal error during configuration loading; unable to start. See log for stacktrace.");
-//            System.exit(1);
-//        }
-
-//        instance = databaseDescriptor;
-//        assert CFMetaDataFactory.instance != null;
-//        assert KSMetaDataFactory.instance != null;
-//        assert FailureDetector.instance != null;
-//        assert Gossiper.instance != null;
-//        assert Tracing.instance != null;
-//        assert LocatorConfig.instance != null;
-//        assert DBConfig.instance != null;
-//        assert KeyspaceManager.instance != null;
-//        assert MutationFactory.instance != null;
-//        assert MessagingService.instance != null;
-//        assert databaseDescriptor != null;
-//        assert SystemKeyspace.instance != null;
-//        assert StageManager.instance != null;
-//        assert Schema.instance != null;
-//        assert ActiveRepairService.instance != null;
-//        assert CompactionManager.instance != null;
-//        assert DefsTables.instance != null;
-//        assert StorageService.instance != null;
-
-//        CFMetaDataFactory.instance.init();
-//        KSMetaDataFactory.instance.init();
-
-    }
-
     public static DatabaseDescriptor create() throws ConfigurationException
     {
         return create(Config.isClientMode(), true);
@@ -172,6 +127,11 @@ public class DatabaseDescriptor
 
     public static DatabaseDescriptor createMain(boolean clientMode, boolean initializeJMX)
     {
+        return createMain(clientMode, initializeJMX, true);
+    }
+
+    public static DatabaseDescriptor createMain(boolean clientMode, boolean initializeJMX, boolean initialize)
+    {
         DatabaseDescriptor databaseDescriptor = null;
         try
         {
@@ -189,6 +149,8 @@ public class DatabaseDescriptor
             System.err.println(e.getMessage() + "\nFatal error during configuration loading; unable to start. See log for stacktrace.");
             System.exit(1);
         }
+        if (initialize)
+            databaseDescriptor.init();
         return databaseDescriptor;
     }
 
@@ -310,11 +272,14 @@ public class DatabaseDescriptor
         storageService = createStorageService();
 
         cacheService = createCacheService();
+        hintedHandOffManager = createHintedHandOffManager();
+    }
 
+    public void init()
+    {
         cfMetaDataFactory.init();
         ksMetaDataFactory.init();
-
-        hintedHandOffManager = createHintedHandOffManager();
+        hintedHandOffManager.init();
     }
 
     public boolean shouldInitializeJMX()
@@ -2065,7 +2030,7 @@ public class DatabaseDescriptor
 
     public HintedHandOffManager createHintedHandOffManager()
     {
-        return new HintedHandOffManager(this, getTracing(), getSystemKeyspace(), getKeyspaceManager());
+        return new HintedHandOffManager(this, getTracing(), getSystemKeyspace());
     }
 
     public HintedHandOffManager getHintedHandOffManager()
