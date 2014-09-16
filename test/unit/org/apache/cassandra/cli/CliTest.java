@@ -42,7 +42,7 @@ public class CliTest
     private static final String KEYSPACE1 = "CliTest";
     private static final String CF_STANDARD1 = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
     public static final CliSessionState sessionState = new CliSessionState(databaseDescriptor);
 
     // please add new statements here so they could be auto-runned by this test.

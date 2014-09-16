@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.*;
@@ -56,13 +57,15 @@ public class RemoveTest
     InetAddress removalhost;
     UUID removalId;
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static DatabaseDescriptor databaseDescriptor;
 
     @BeforeClass
     public static void setupClass() throws ConfigurationException
     {
         System.setProperty("cassandra.ring_delay_ms", "2000");
-        System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
+        Config conf = DatabaseDescriptor.loadConfig();
+        conf.partitioner = RandomPartitioner.class.getSimpleName();
+        databaseDescriptor = SchemaLoader.setDatabaseDescriptor(conf);
         SchemaLoader.loadSchema();
         assert databaseDescriptor.getLocatorConfig().getPartitioner() instanceof RandomPartitioner;
     }

@@ -21,8 +21,6 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import org.apache.cassandra.cql3.QueryProcessor;
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +44,31 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 public class SchemaLoader
 {
     private static Logger logger = LoggerFactory.getLogger(SchemaLoader.class);
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false, false);
+    public static volatile DatabaseDescriptor databaseDescriptor = null;
+
+    public static DatabaseDescriptor getDatabaseDescriptor()
+    {
+        maybeSetDatabaseDescriptor();
+        return databaseDescriptor;
+    }
+
+    public static DatabaseDescriptor setDatabaseDescriptor(Config conf) throws ConfigurationException
+    {
+        return SchemaLoader.setDatabaseDescriptor(DatabaseDescriptor.create(false, conf, false));
+    }
+
+    public synchronized static DatabaseDescriptor setDatabaseDescriptor(DatabaseDescriptor databaseDescriptor)
+    {
+        assert SchemaLoader.databaseDescriptor == null;
+        SchemaLoader.databaseDescriptor = databaseDescriptor;
+        return databaseDescriptor;
+    }
+
+    protected synchronized static void maybeSetDatabaseDescriptor()
+    {
+        if (SchemaLoader.databaseDescriptor == null)
+            SchemaLoader.databaseDescriptor = DatabaseDescriptor.createMain(false, false, false);
+    }
 
     @BeforeClass
     public static void loadSchema() throws ConfigurationException
@@ -60,6 +82,8 @@ public class SchemaLoader
 
     public static void prepareServer()
     {
+        maybeSetDatabaseDescriptor();
+
         // Cleanup first
         cleanupAndLeaveDirs();
 
@@ -80,12 +104,14 @@ public class SchemaLoader
 
     public static void startGossiper()
     {
+        maybeSetDatabaseDescriptor();
         if (!databaseDescriptor.getGossiper().isEnabled())
             databaseDescriptor.getGossiper().start((int) (System.currentTimeMillis() / 1000));
     }
 
     public static void schemaDefinition(String testName) throws ConfigurationException
     {
+        maybeSetDatabaseDescriptor();
         List<KSMetaData> schema = new ArrayList<KSMetaData>();
 
         // A whole bucket of shorthand
@@ -319,6 +345,7 @@ public class SchemaLoader
                                       Map<String, String> options,
                                       CFMetaData... cfmetas) throws ConfigurationException
     {
+        maybeSetDatabaseDescriptor();
         KSMetaData ksm = durable ? databaseDescriptor.getKSMetaDataFactory().testMetadata(keyspaceName, strategy, options, cfmetas)
                                  : databaseDescriptor.getKSMetaDataFactory().testMetadataNotDurable(keyspaceName, strategy, options, cfmetas);
         databaseDescriptor.getMigrationManager().announceNewKeyspace(ksm, announceLocally);
@@ -352,6 +379,7 @@ public class SchemaLoader
 
     public static CFMetaData perRowIndexedCFMD(String ksName, String cfName)
     {
+        maybeSetDatabaseDescriptor();
         final Map<String, String> indexOptions = Collections.singletonMap(
                                                       SecondaryIndex.CUSTOM_INDEX_OPTION_NAME,
                                                       PerRowSecondaryIndexTest.TestIndex.class.getName());
@@ -376,18 +404,22 @@ public class SchemaLoader
 
     public static CFMetaData standardCFMD(String ksName, String cfName)
     {
+        maybeSetDatabaseDescriptor();
         return databaseDescriptor.getCFMetaDataFactory().denseCFMetaData(ksName, cfName, BytesType.instance);
     }
     public static CFMetaData superCFMD(String ksName, String cfName, AbstractType subcc)
     {
+        maybeSetDatabaseDescriptor();
         return superCFMD(ksName, cfName, BytesType.instance, subcc);
     }
     public static CFMetaData superCFMD(String ksName, String cfName, AbstractType cc, AbstractType subcc)
     {
+        maybeSetDatabaseDescriptor();
         return databaseDescriptor.getCFMetaDataFactory().denseCFMetaData(ksName, cfName, cc, subcc);
     }
     public static CFMetaData indexCFMD(String ksName, String cfName, final Boolean withIdxType) throws ConfigurationException
     {
+        maybeSetDatabaseDescriptor();
         CFMetaData cfm = databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(ksName, cfName, BytesType.instance).keyValidator(AsciiType.instance);
 
         ByteBuffer cName = ByteBufferUtil.bytes("birthdate");
@@ -397,7 +429,8 @@ public class SchemaLoader
     }
     public static CFMetaData compositeIndexCFMD(String ksName, String cfName, final Boolean withIdxType) throws ConfigurationException
     {
-        final CompositeType composite = CompositeType.getInstance(Arrays.asList(new AbstractType<?>[]{UTF8Type.instance, UTF8Type.instance})); 
+        maybeSetDatabaseDescriptor();
+        final CompositeType composite = CompositeType.getInstance(Arrays.asList(new AbstractType<?>[]{UTF8Type.instance, UTF8Type.instance}));
         CFMetaData cfm = databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(ksName, cfName, composite);
 
         ByteBuffer cName = ByteBufferUtil.bytes("col1");
@@ -408,16 +441,19 @@ public class SchemaLoader
     
     private static CFMetaData jdbcCFMD(String ksName, String cfName, AbstractType comp)
     {
+        maybeSetDatabaseDescriptor();
         return databaseDescriptor.getCFMetaDataFactory().denseCFMetaData(ksName, cfName, comp).defaultValidator(comp);
     }
 
     private static CFMetaData jdbcSparseCFMD(String ksName, String cfName, AbstractType comp)
     {
+        maybeSetDatabaseDescriptor();
         return databaseDescriptor.getCFMetaDataFactory().sparseCFMetaData(ksName, cfName, comp).defaultValidator(comp);
     }
 
     public static void cleanupAndLeaveDirs()
     {
+        maybeSetDatabaseDescriptor();
         mkdirs();
         cleanup();
         mkdirs();
@@ -426,6 +462,7 @@ public class SchemaLoader
 
     public static void cleanup()
     {
+        maybeSetDatabaseDescriptor();
         // clean up commitlog
         String[] directoryNames = { databaseDescriptor.getCommitLogLocation(), };
         for (String dirName : directoryNames)
@@ -450,11 +487,13 @@ public class SchemaLoader
 
     public static void mkdirs()
     {
+        maybeSetDatabaseDescriptor();
         databaseDescriptor.createAllDirectories();
     }
 
     public static void insertData(String keyspace, String columnFamily, int offset, int numberOfRows)
     {
+        maybeSetDatabaseDescriptor();
         for (int i = offset; i < offset + numberOfRows; i++)
         {
             ByteBuffer key = ByteBufferUtil.bytes("key" + i);
@@ -467,6 +506,7 @@ public class SchemaLoader
     /* usually used to populate the cache */
     public static void readData(String keyspace, String columnFamily, int offset, int numberOfRows)
     {
+        maybeSetDatabaseDescriptor();
         ColumnFamilyStore store = databaseDescriptor.getKeyspaceManager().open(keyspace).getColumnFamilyStore(columnFamily);
         for (int i = offset; i < offset + numberOfRows; i++)
         {
@@ -477,6 +517,7 @@ public class SchemaLoader
 
     public static void cleanupSavedCaches()
     {
+        maybeSetDatabaseDescriptor();
         File cachesDir = new File(databaseDescriptor.getSavedCachesLocation());
 
         if (!cachesDir.exists() || !cachesDir.isDirectory())

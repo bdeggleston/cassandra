@@ -73,7 +73,7 @@ public class CompactionsTest
     private static final String CF_SUPER5 = "Super5";
     private static final String CF_SUPERGC = "SuperDirectGC";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

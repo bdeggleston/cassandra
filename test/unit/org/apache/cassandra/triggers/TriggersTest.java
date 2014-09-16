@@ -56,7 +56,7 @@ public class TriggersTest
     private static String cfName = "test_table";
     private static String otherCf = "other_table";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void beforeTest() throws ConfigurationException

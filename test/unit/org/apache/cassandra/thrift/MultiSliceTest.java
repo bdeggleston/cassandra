@@ -49,7 +49,7 @@ public class MultiSliceTest
     public static final String KEYSPACE1 = "MultiSliceTest";
     public static final String CF_STANDARD = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
     public static ThriftSessionManager thriftSessionManager;
 
     @BeforeClass

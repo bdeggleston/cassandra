@@ -50,7 +50,7 @@ public class EncodedStreamsTest
     private static final String CF_COUNTER = "Counter1";
     private int version = MessagingService.current_version;
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

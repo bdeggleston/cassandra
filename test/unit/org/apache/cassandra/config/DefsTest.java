@@ -55,7 +55,7 @@ public class DefsTest
     private static final String CF_STANDARD2 = "Standard2";
     private static final String CF_INDEXED = "Indexed1";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

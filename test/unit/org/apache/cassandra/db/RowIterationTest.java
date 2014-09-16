@@ -45,7 +45,7 @@ public class RowIterationTest
 {
     public static final String KEYSPACE1 = "RowIterationTest";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     public static final InetAddress LOCAL = databaseDescriptor.getLocatorConfig().getBroadcastAddress();
 

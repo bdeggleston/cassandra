@@ -48,7 +48,7 @@ import static org.junit.Assert.*;
 @RunWith(OrderedJUnit4ClassRunner.class)
 public class BootStrapperTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void setup() throws ConfigurationException

@@ -27,6 +27,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import static org.junit.Assert.*;
 
+import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.locator.LocatorConfig;
@@ -53,7 +54,7 @@ public class MoveTest
     private static final String KEYSPACE3 = "MoveTestKeyspace3";
     private static final String KEYSPACE4 = "MoveTestKeyspace4";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static DatabaseDescriptor databaseDescriptor;
 
     /*
      * NOTE: the tests above uses RandomPartitioner, which is not the default
@@ -64,7 +65,9 @@ public class MoveTest
     @BeforeClass
     public static void setup() throws ConfigurationException
     {
-        System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
+        Config conf = DatabaseDescriptor.loadConfig();
+        conf.partitioner = RandomPartitioner.class.getSimpleName();
+        databaseDescriptor = SchemaLoader.setDatabaseDescriptor(conf);
         SchemaLoader.loadSchema();
         SchemaLoader.schemaDefinition("MoveTest");
     }

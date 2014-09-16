@@ -43,7 +43,7 @@ public class BatchTests
     private static PreparedStatement counter;
     private static PreparedStatement noncounter;
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     public static void setup() throws ConfigurationException, IOException
     {

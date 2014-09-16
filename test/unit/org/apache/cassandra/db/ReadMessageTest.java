@@ -52,7 +52,7 @@ public class ReadMessageTest
     private static final String KEYSPACENOCOMMIT = "ReadMessageTest_NoCommit";
     private static final String CF = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

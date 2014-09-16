@@ -64,7 +64,7 @@ public class SSTableExportTest
     public static final String CF_UUID = "UUIDKeys";
     public static final String CF_VALSWITHQUOTES = "ValuesWithQuotes";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException, IOException, TException

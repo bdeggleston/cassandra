@@ -122,7 +122,7 @@ public class ColumnFamilyStoreTest
     public static final String CF_INDEX2 = "Indexed2";
     public static final String CF_INDEX3 = "Indexed3";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     static
     {

@@ -27,7 +27,7 @@ import org.apache.cassandra.SchemaLoader;
 
 public class OrderPreservingPartitionerTest extends PartitionerTestCase<StringToken>
 {
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void cleanStatesFromPreviousTest()

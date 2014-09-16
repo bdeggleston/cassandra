@@ -29,7 +29,7 @@ import java.io.File;
 
 public class StorageServiceClientTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @Test
     public void testClientOnlyMode() throws ConfigurationException

@@ -48,7 +48,7 @@ public class CFMetaDataTest
     private static final String KEYSPACE1 = "CFMetaDataTest1";
     private static final String CF_STANDARD1 = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     private static List<ColumnDef> columnDefs = new ArrayList<ColumnDef>();
 

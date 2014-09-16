@@ -54,7 +54,7 @@ public class HintedHandOffTest
     public static final String STANDARD1_CF = "Standard1";
     public static final String COLUMN1 = "column1";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

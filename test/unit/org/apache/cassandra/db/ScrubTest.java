@@ -75,7 +75,7 @@ public class ScrubTest
     public static final String COUNTER_CF = "Counter1";
     public static final String CF_UUID = "UUIDKeys";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

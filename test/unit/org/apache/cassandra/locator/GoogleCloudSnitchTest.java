@@ -41,7 +41,7 @@ public class GoogleCloudSnitchTest
 {
     private static String az;
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void setup() throws Exception

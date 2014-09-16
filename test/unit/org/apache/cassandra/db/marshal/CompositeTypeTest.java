@@ -47,7 +47,7 @@ public class CompositeTypeTest
     private static final String CF_STANDARDCOMPOSITE = "StandardComposite";
     private static final CompositeType comparator;
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     static
     {

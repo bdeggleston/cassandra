@@ -58,7 +58,7 @@ public class CommitLogTest
     private static final String CF1 = "Standard1";
     private static final String CF2 = "Standard2";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

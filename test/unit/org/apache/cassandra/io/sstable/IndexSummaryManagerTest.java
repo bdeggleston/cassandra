@@ -65,7 +65,7 @@ public class IndexSummaryManagerTest
     // index interval of 8, no key caching
     private static final String CF_STANDARDLOWiINTERVAL = "StandardLowIndexInterval";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

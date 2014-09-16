@@ -38,7 +38,7 @@ import static org.junit.Assert.assertNull;
 public class DatabaseDescriptorTest
 {
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     public void testCFMetaDataSerialization() throws Exception
     {

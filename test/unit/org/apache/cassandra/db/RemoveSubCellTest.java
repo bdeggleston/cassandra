@@ -48,7 +48,7 @@ public class RemoveSubCellTest
     private static final String KEYSPACE1 = "RemoveSubCellTest";
     private static final String CF_SUPER1 = "Super1";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

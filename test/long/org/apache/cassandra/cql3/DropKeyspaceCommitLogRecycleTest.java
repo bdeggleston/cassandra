@@ -32,7 +32,7 @@ public class DropKeyspaceCommitLogRecycleTest
 {
     protected static final Logger logger = LoggerFactory.getLogger(DropKeyspaceCommitLogRecycleTest.class);
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     private static final String KEYSPACE = "cql_test_keyspace";
     private static final String KEYSPACE2 = "cql_test_keyspace2";

@@ -48,7 +48,7 @@ public class SSTableScannerTest
     public static final String KEYSPACE = "SSTableScannerTest";
     public static final String TABLE = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void defineSchema() throws Exception

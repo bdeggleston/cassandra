@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.DBConfig;
@@ -62,12 +63,14 @@ public class DifferencerTest
     public static final String KEYSPACE1 = "DifferencerTest";
     public static final String CF_STANDARD = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static DatabaseDescriptor databaseDescriptor;
 
     @BeforeClass
     public static void defineSchema() throws Exception
     {
-        System.setProperty("cassandra.partitioner", Murmur3Partitioner.class.getName());
+        Config conf = DatabaseDescriptor.loadConfig();
+        conf.partitioner = Murmur3Partitioner.class.getSimpleName();
+        databaseDescriptor = SchemaLoader.setDatabaseDescriptor(conf);
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     SimpleStrategy.class,

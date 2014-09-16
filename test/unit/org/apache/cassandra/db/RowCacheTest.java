@@ -54,7 +54,7 @@ public class RowCacheTest
     private static final String CF_CACHED = "CachedCF";
     private static final String CF_CACHEDINT = "CachedIntCF";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

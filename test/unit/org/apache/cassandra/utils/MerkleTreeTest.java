@@ -25,9 +25,12 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteStreams;
 
+import org.apache.cassandra.config.Config;
 import org.apache.cassandra.db.DBConfig;
+import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.locator.LocatorConfig;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.*;
@@ -43,10 +46,14 @@ import static org.junit.Assert.*;
 
 public class MerkleTreeTest
 {
-    public static final DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.createMain(false, false);
-    static
+    public static DatabaseDescriptor databaseDescriptor;
+
+    @BeforeClass
+    public static void setup() throws ConfigurationException
     {
-        System.setProperty("cassandra.partitioner", RandomPartitioner.class.getName());
+        Config conf = DatabaseDescriptor.loadConfig();
+        conf.partitioner = RandomPartitioner.class.getSimpleName();
+        databaseDescriptor = DatabaseDescriptor.create(false, conf, false);
         assert databaseDescriptor.getLocatorConfig().getPartitioner() instanceof RandomPartitioner;
     }
 

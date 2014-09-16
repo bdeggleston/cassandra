@@ -54,7 +54,7 @@ public class KeyCollisionTest
     private static final String KEYSPACE1 = "KeyCollisionTest1";
     private static final String CF = "Standard1";
 
-    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.databaseDescriptor;
+    public static final DatabaseDescriptor databaseDescriptor = SchemaLoader.getDatabaseDescriptor();
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException

@@ -58,6 +58,7 @@ public class CorruptionTest extends SchemaLoader
     @BeforeClass()
     public static void setup() throws ConfigurationException, IOException
     {
+        maybeSetDatabaseDescriptor();
         databaseDescriptor.getSchema().clear();
 
         cassandra = new EmbeddedCassandraService(databaseDescriptor);
