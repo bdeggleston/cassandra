@@ -17,8 +17,12 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import java.io.DataInput;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
@@ -28,7 +32,11 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.exceptions.SyntaxException;
+import org.apache.cassandra.io.IVersionedSerializer;
+import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.service.CASRequest;
+import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.utils.Pair;
 
 /**
@@ -48,6 +56,8 @@ public class CQL3CasRequest implements CASRequest
 
     private final List<RowUpdate> updates = new ArrayList<>();
 
+    public static final IVersionedSerializer<CASRequest> serializer = new Serializer();
+
     public CQL3CasRequest(CFMetaData cfm, ByteBuffer key, boolean isBatch)
     {
         this.cfm = cfm;
@@ -57,6 +67,17 @@ public class CQL3CasRequest implements CASRequest
         this.key = key;
         this.conditions = new TreeMap<>(cfm.comparator);
         this.isBatch = isBatch;
+    }
+
+    public ByteBuffer getKey()
+    {
+        return key;
+    }
+
+    @Override
+    public Type getType()
+    {
+        return Type.CQL;
     }
 
     public void addRowUpdate(Composite prefix, ModificationStatement stmt, QueryOptions options, long timestamp)
@@ -260,6 +281,100 @@ public class CQL3CasRequest implements CASRequest
                 if (!condition.appliesTo(rowPrefix, current, now))
                     return false;
             return true;
+        }
+    }
+
+    /**
+     * this is pretty ghetto
+     * ... and totally busted for batch statements. Look at BatchStatement.executeWithConditions
+     */
+    private static class Serializer implements IVersionedSerializer<CASRequest>
+    {
+
+        private final ConcurrentMap<String, ParsedStatement.Prepared> modificationStmts = new ConcurrentHashMap<>();
+
+        @Override
+        public void serialize(CASRequest request, DataOutputPlus out, int version) throws IOException
+        {
+            assert request instanceof CQL3CasRequest;
+            CQL3CasRequest req = (CQL3CasRequest) request;
+
+            assert req.updates.size() == 1;
+            RowUpdate update = req.updates.get(0);
+            ModificationStatement statement = update.stmt;
+            String query = statement.getQueryString();
+            String keyspace = statement.keyspace();
+            long ts = update.timestamp;
+            QueryOptions options = update.options;
+
+            out.writeUTF(query);
+            out.writeUTF(keyspace);
+            out.writeLong(ts);
+            QueryOptions.serializer.serialize(options, out, version);
+        }
+
+        @Override
+        public CASRequest deserialize(DataInput in, int version) throws IOException
+        {
+            ModificationStatement.Parsed parsed = null;
+            ParsedStatement.Prepared prepared = null;
+            try
+            {
+                String query = in.readUTF();
+                String keyspace = in.readUTF();
+                String cacheKey = keyspace + "::" + query;
+                prepared = modificationStmts.get(cacheKey);
+                if (prepared == null)
+                {
+                    parsed = (ModificationStatement.Parsed) QueryProcessor.parseStatement(query);
+                    parsed.prepareKeyspace(keyspace);
+                    parsed.setQueryString(query);
+                    prepared = parsed.prepare();
+
+                    ParsedStatement.Prepared previous = modificationStmts.putIfAbsent(cacheKey, prepared);
+                    prepared = previous == null ? prepared : previous;
+                }
+
+                final long ts = in.readLong();
+                QueryOptions options = QueryOptions.serializer.deserialize(in, version);
+                QueryState queryState = new QueryState(null) {
+                    @Override
+                    public long getTimestamp()
+                    {
+                        return ts;
+                    }
+                };
+
+                options.prepare(prepared.boundNames);
+                ModificationStatement statement = (ModificationStatement) prepared.statement;
+
+                return statement.createCasRequest(queryState, options);
+            }
+            catch (SyntaxException | InvalidRequestException e)
+            {
+                throw new IOException(e);
+            }
+        }
+
+        @Override
+        public long serializedSize(CASRequest request, int version)
+        {
+            assert request instanceof CQL3CasRequest;
+            CQL3CasRequest req = (CQL3CasRequest) request;
+
+            assert req.updates.size() == 1;
+            RowUpdate update = req.updates.get(0);
+            ModificationStatement statement = update.stmt;
+            String query = statement.getQueryString();
+            String keyspace = statement.keyspace();
+            QueryOptions options = update.options;
+
+            long size = 0;
+            size += TypeSizes.NATIVE.sizeof(query); //out.writeUTF(query);
+            size += TypeSizes.NATIVE.sizeof(keyspace); //out.writeUTF(keyspace);
+            size += 8; //out.writeLong(ts);
+            size += QueryOptions.serializer.serializedSize(options, version);
+            return size;
         }
     }
 }

@@ -17,11 +17,16 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import java.io.DataInput;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
+import org.apache.cassandra.io.IVersionedSerializer;
+import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.service.CASRequest;
 import org.github.jamm.MemoryMeter;
 
 import org.apache.cassandra.auth.Permission;
@@ -498,8 +503,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         return null;
     }
 
-    public ResultMessage executeWithCondition(QueryState queryState, QueryOptions options)
-    throws RequestExecutionException, RequestValidationException
+    public CQL3CasRequest createCasRequest(QueryState queryState, QueryOptions options) throws InvalidRequestException
     {
         List<ByteBuffer> keys = buildPartitionKeyNames(options);
         // We don't support IN for CAS operation so far
@@ -514,13 +518,21 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         addConditions(prefix, request, options);
         request.addRowUpdate(prefix, this, options, now);
 
+        return request;
+    }
+
+    public ResultMessage executeWithCondition(QueryState queryState, QueryOptions options)
+    throws RequestExecutionException, RequestValidationException
+    {
+        CQL3CasRequest request = createCasRequest(queryState, options);
+
         ColumnFamily result = StorageProxy.cas(keyspace(),
                                                columnFamily(),
-                                               key,
+                                               request.getKey(),
                                                request,
                                                options.getSerialConsistency(),
                                                options.getConsistency());
-        return new ResultMessage.Rows(buildCasResultSet(key, result, options));
+        return new ResultMessage.Rows(buildCasResultSet(request.getKey(), result, options));
     }
 
     public void addConditions(Composite clusteringPrefix, CQL3CasRequest request, QueryOptions options) throws InvalidRequestException
@@ -693,10 +705,18 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
             this.ifExists = ifExists;
         }
 
+        private volatile String queryString = null;
+
+        public void setQueryString(String queryString)
+        {
+            this.queryString = queryString;
+        }
+
         public ParsedStatement.Prepared prepare() throws InvalidRequestException
         {
             VariableSpecifications boundNames = getBoundVariables();
             ModificationStatement statement = prepare(boundNames);
+            statement.setQueryString(queryString);
             return new ParsedStatement.Prepared(statement, boundNames);
         }
 
@@ -758,5 +778,17 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         }
 
         protected abstract ModificationStatement prepareInternal(CFMetaData cfm, VariableSpecifications boundNames, Attributes attrs) throws InvalidRequestException;
+    }
+
+    private volatile String queryString = null;
+
+    public void setQueryString(String queryString)
+    {
+        this.queryString = queryString;
+    }
+
+    public String getQueryString()
+    {
+        return queryString;
     }
 }

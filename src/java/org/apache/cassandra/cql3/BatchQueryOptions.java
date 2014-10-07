@@ -99,6 +99,12 @@ public abstract class BatchQueryOptions
                     {
                         return vars;
                     }
+
+                    @Override
+                    public Type getType()
+                    {
+                        return Type.OTHER;
+                    }
                 });
             }
         }

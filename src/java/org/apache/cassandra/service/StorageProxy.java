@@ -31,7 +31,9 @@ import com.google.common.base.Predicate;
 import com.google.common.cache.CacheLoader;
 import com.google.common.collect.*;
 import com.google.common.util.concurrent.Uninterruptibles;
-import net.nicoulaj.compilecommand.annotations.Inline;
+import org.apache.cassandra.service.epaxos.*;
+import org.apache.cassandra.service.epaxos.SerializedRequest;
+import org.apache.cassandra.service.paxos.PrepareCallback;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -209,6 +211,20 @@ public class StorageProxy implements StorageProxyMBean
         consistencyForCommit.validateForCasCommit(keyspaceName);
 
         CFMetaData metadata = Schema.instance.getCFMetaData(keyspaceName, cfName);
+
+        if (Boolean.getBoolean("cassandra.use_epaxos"))
+        {
+            SerializedRequest.Builder builder = SerializedRequest.builder();
+            builder.keyspaceName(keyspaceName);
+            builder.cfName(cfName);
+            builder.key(key);
+            builder.casRequest(request);
+            builder.consistencyLevel(consistencyForPaxos);
+
+            SerializedRequest serializedRequest = builder.build();
+            // TODO: don't do this in this thread
+            return EpaxosState.instance.query(serializedRequest);
+        }
 
         long start = System.nanoTime();
         long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
