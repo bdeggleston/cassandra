@@ -132,6 +132,19 @@ public final class MessagingService implements MessagingServiceMBean
         UNUSED_1,
         UNUSED_2,
         UNUSED_3,
+
+        // EPaxos Messages
+        PREACCEPT_REQUEST,
+        PREACCEPT_RESPONSE,
+        ACCEPT_REQUEST,
+        ACCEPT_RESPONSE,
+        COMMIT_REQUEST,
+        COMMIT_RESPONSE,
+        PREPARE_REQUEST,
+        PREPARE_RESPONSE,
+        TRYPREACCEPT_REQUEST,
+        TRYPREACCEPT_RESPONSE,
+        EPAXOS_BALLOT_REJECT_RESPONSE,
         ;
     }
 

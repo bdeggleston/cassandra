@@ -20,6 +20,7 @@ package org.apache.cassandra.service;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.io.IVersionedSerializer;
 
 /**
  * Abstract the conditions and updates for a CAS operation.
