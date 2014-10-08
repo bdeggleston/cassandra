@@ -37,7 +37,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.cache.*;
-import org.apache.cassandra.cache.AutoSavingCache.CacheSerializer;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.CFMetaData;
@@ -116,7 +115,7 @@ public class CacheService implements CacheServiceMBean
         // where 48 = 40 bytes (average size of the key) + 8 bytes (size of value)
         ICache<KeyCacheKey, RowIndexEntry> kc;
         kc = ConcurrentLinkedHashCache.create(keyCacheInMemoryCapacity);
-        AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = new AutoSavingCache<>(kc, CacheType.KEY_CACHE, new KeyCacheSerializer());
+        AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = new AutoSavingCache<>(kc, CacheType.KEY_CACHE, DatabaseDescriptor.getKeyCacheSerializer());
 
         int keyCacheKeysToSave = DatabaseDescriptor.getKeyCacheKeysToSave();
 
@@ -136,7 +135,7 @@ public class CacheService implements CacheServiceMBean
 
         // cache object
         ICache<RowCacheKey, IRowCacheEntry> rc = new SerializingCacheProvider().create(rowCacheInMemoryCapacity);
-        AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache = new AutoSavingCache<>(rc, CacheType.ROW_CACHE, new RowCacheSerializer());
+        AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache = new AutoSavingCache<>(rc, CacheType.ROW_CACHE, DatabaseDescriptor.getRowCacheSerializer());
 
         int rowCacheKeysToSave = DatabaseDescriptor.getRowCacheKeysToSave();
 
@@ -154,7 +153,7 @@ public class CacheService implements CacheServiceMBean
         AutoSavingCache<CounterCacheKey, ClockAndCount> cache =
             new AutoSavingCache<>(ConcurrentLinkedHashCache.<CounterCacheKey, ClockAndCount>create(capacity),
                                   CacheType.COUNTER_CACHE,
-                                  new CounterCacheSerializer());
+                                  DatabaseDescriptor.getCounterCacheSerializer());
 
         int keysToSave = DatabaseDescriptor.getCounterCacheKeysToSave();
 
@@ -403,7 +402,7 @@ public class CacheService implements CacheServiceMBean
         logger.debug("cache saves completed");
     }
 
-    public static class CounterCacheSerializer implements CacheSerializer<CounterCacheKey, ClockAndCount>
+    public static class CounterCacheSerializer implements ICounterCacheSerializer
     {
         public void serialize(CounterCacheKey key, DataOutputPlus out) throws IOException
         {
@@ -437,7 +436,7 @@ public class CacheService implements CacheServiceMBean
         }
     }
 
-    public static class RowCacheSerializer implements CacheSerializer<RowCacheKey, IRowCacheEntry>
+    public static class RowCacheSerializer implements IRowCacheSerializer
     {
         public void serialize(RowCacheKey key, DataOutputPlus out) throws IOException
         {
@@ -460,7 +459,7 @@ public class CacheService implements CacheServiceMBean
         }
     }
 
-    public static class KeyCacheSerializer implements CacheSerializer<KeyCacheKey, RowIndexEntry>
+    public static class KeyCacheSerializer implements IKeyCacheSerializer
     {
         public void serialize(KeyCacheKey key, DataOutputPlus out) throws IOException
         {

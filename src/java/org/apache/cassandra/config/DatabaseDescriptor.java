@@ -35,6 +35,9 @@ import java.util.UUID;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Longs;
+import org.apache.cassandra.cache.ICounterCacheSerializer;
+import org.apache.cassandra.cache.IKeyCacheSerializer;
+import org.apache.cassandra.cache.IRowCacheSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,6 +114,10 @@ public class DatabaseDescriptor
     private static String localDC;
     private static Comparator<InetAddress> localComparator;
 
+    private static IKeyCacheSerializer keyCacheSerializer;
+    private static ICounterCacheSerializer counterCacheSerializer;
+    private static IRowCacheSerializer rowCacheSerializer;
+
     static
     {
         // In client mode, we use a default configuration. Note that the fields of this class will be
@@ -156,6 +163,8 @@ public class DatabaseDescriptor
     private static void applyConfig(Config config) throws ConfigurationException
     {
         conf = config;
+
+        setupCacheSerializers();
 
         if (conf.commitlog_sync == null)
         {
@@ -580,6 +589,41 @@ public class DatabaseDescriptor
         }
         if (seedProvider.getSeeds().size() == 0)
             throw new ConfigurationException("The seed provider lists no seeds.");
+    }
+
+    private static void setupCacheSerializers() throws ConfigurationException
+    {
+        String className;
+
+        className = System.getProperty("cassandra.counter_cache_serializer", CacheService.CounterCacheSerializer.class.getName());
+        if (!className.contains("."))
+            className = "org.apache.cassandra.cache." + className;
+        counterCacheSerializer = FBUtilities.construct(className, "CounterCacheSerializer");
+
+        className = System.getProperty("cassandra.row_cache_serializer", CacheService.RowCacheSerializer.class.getName());
+        if (!className.contains("."))
+            className = "org.apache.cassandra.cache." + className;
+        rowCacheSerializer = FBUtilities.construct(className, "RowCacheSerializer");
+
+        className = System.getProperty("cassandra.key_cache_serializer", CacheService.KeyCacheSerializer.class.getName());
+        if (!className.contains("."))
+            className = "org.apache.cassandra.cache." + className;
+        keyCacheSerializer = FBUtilities.construct(className, "KeyCacheSerializer");
+    }
+
+    public static IKeyCacheSerializer getKeyCacheSerializer()
+    {
+        return keyCacheSerializer;
+    }
+
+    public static ICounterCacheSerializer getCounterCacheSerializer()
+    {
+        return counterCacheSerializer;
+    }
+
+    public static IRowCacheSerializer getRowCacheSerializer()
+    {
+        return rowCacheSerializer;
     }
 
     private static IEndpointSnitch createEndpointSnitch(String snitchClassName) throws ConfigurationException

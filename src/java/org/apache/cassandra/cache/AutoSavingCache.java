@@ -36,7 +36,6 @@ import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.io.FSWriteError;
-import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.io.util.LengthAvailableInputStream;
 import org.apache.cassandra.io.util.SequentialWriter;
@@ -54,10 +53,10 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
     protected volatile ScheduledFuture<?> saveTask;
     protected final CacheService.CacheType cacheType;
 
-    private CacheSerializer<K, V> cacheLoader;
+    private ICacheSerializer<K, V> cacheLoader;
     private static final String CURRENT_VERSION = "b";
 
-    public AutoSavingCache(ICache<K, V> cache, CacheService.CacheType cacheType, CacheSerializer<K, V> cacheloader)
+    public AutoSavingCache(ICache<K, V> cache, CacheService.CacheType cacheType, ICacheSerializer<K, V> cacheloader)
     {
         super(cacheType.toString(), cache);
         this.cacheType = cacheType;
@@ -286,10 +285,4 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
         }
     }
 
-    public interface CacheSerializer<K extends CacheKey, V>
-    {
-        void serialize(K key, DataOutputPlus out) throws IOException;
-
-        Future<Pair<K, V>> deserialize(DataInputStream in, ColumnFamilyStore cfs) throws IOException;
-    }
 }
