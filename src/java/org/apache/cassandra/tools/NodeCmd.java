@@ -34,7 +34,6 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Maps;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.commons.cli.*;
 import org.yaml.snakeyaml.Yaml;
@@ -175,7 +174,6 @@ public class NodeCmd
         STATUSTHRIFT,
         STOP,
         STOPDAEMON,
-        TAKETOKEN,
         TPSTATS,
         TRUNCATEHINTS,
         UPGRADESSTABLES,
@@ -189,7 +187,8 @@ public class NodeCmd
         SETCACHEKEYSTOSAVE,
         RELOADTRIGGERS,
         SETLOGGINGLEVEL,
-        GETLOGGINGLEVELS
+        GETLOGGINGLEVELS,
+        SETHINTEDHANDOFFTHROTTLEKB
     }
 
 
@@ -254,8 +253,12 @@ public class NodeCmd
     {
         Map<String, String> tokensToEndpoints = probe.getTokenToEndpointMap();
         LinkedHashMultimap<String, String> endpointsToTokens = LinkedHashMultimap.create();
+        boolean haveVnodes = false;
         for (Map.Entry<String, String> entry : tokensToEndpoints.entrySet())
+        {
+            haveVnodes |= endpointsToTokens.containsKey(entry.getValue());
             endpointsToTokens.put(entry.getValue(), entry.getKey());
+        }
 
         int maxAddressLength = Collections.max(endpointsToTokens.keys(), new Comparator<String>() {
             @Override
@@ -293,7 +296,7 @@ public class NodeCmd
             throw new RuntimeException(e);
         }
 
-        if(DatabaseDescriptor.getNumTokens() > 1)
+        if(haveVnodes)
         {
             outs.println("  Warning: \"nodetool ring\" is used to output all the tokens of a node.");
             outs.println("  To view status related info of a node use \"nodetool status\" instead.\n");
@@ -1251,6 +1254,11 @@ public class NodeCmd
                 case ENABLEBACKUP    : probe.setIncrementalBackupsEnabled(true); break;
                 case DISABLEBACKUP   : probe.setIncrementalBackupsEnabled(false); break;
 
+                case SETHINTEDHANDOFFTHROTTLEKB:
+                    if (arguments.length != 1) { badUse("Missing argument for hinted handoff throttle."); }
+                    probe.setHintedHandoffThrottleInKB(Integer.parseInt(arguments[0]));
+                    break;
+
                 case TRUNCATEHINTS:
                     if (arguments.length > 1) badUse("Too many arguments.");
                     else if (arguments.length == 1) probe.truncateHints(arguments[0]);
@@ -1326,11 +1334,6 @@ public class NodeCmd
                 case SETTRACEPROBABILITY :
                     if (arguments.length != 1) { badUse("Missing value argument."); }
                     probe.setTraceProbability(Double.parseDouble(arguments[0]));
-                    break;
-
-                case TAKETOKEN:
-                    if (arguments.length < 1) { badUse("Must supply at least one token to take"); }
-                    probe.takeTokens(arguments);
                     break;
 
                 case REBUILD :

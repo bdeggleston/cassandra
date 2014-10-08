@@ -108,12 +108,13 @@ public final class CFMetaData
                                                                + "durable_writes boolean,"
                                                                + "strategy_class text,"
                                                                + "strategy_options text"
-                                                               + ") WITH COMPACT STORAGE AND COMMENT='keyspace definitions' AND gc_grace_seconds=8640");
+                                                               + ") WITH COMPACT STORAGE AND COMMENT='keyspace definitions' AND gc_grace_seconds=604800");
 
     public static final CFMetaData SchemaColumnFamiliesCf = compile("CREATE TABLE " + SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF + " ("
                                                                     + "keyspace_name text,"
                                                                     + "columnfamily_name text,"
                                                                     + "type text,"
+                                                                    + "is_dense boolean,"
                                                                     + "comparator text,"
                                                                     + "subcomparator text,"
                                                                     + "comment text,"
@@ -140,7 +141,7 @@ public final class CFMetaData
                                                                     + "index_interval int,"
                                                                     + "dropped_columns map<text, bigint>,"
                                                                     + "PRIMARY KEY (keyspace_name, columnfamily_name)"
-                                                                    + ") WITH COMMENT='ColumnFamily definitions' AND gc_grace_seconds=8640");
+                                                                    + ") WITH COMMENT='ColumnFamily definitions' AND gc_grace_seconds=604800");
 
     public static final CFMetaData SchemaColumnsCf = compile("CREATE TABLE " + SystemKeyspace.SCHEMA_COLUMNS_CF + " ("
                                                              + "keyspace_name text,"
@@ -153,7 +154,7 @@ public final class CFMetaData
                                                              + "component_index int,"
                                                              + "type text,"
                                                              + "PRIMARY KEY(keyspace_name, columnfamily_name, column_name)"
-                                                             + ") WITH COMMENT='ColumnFamily column attributes' AND gc_grace_seconds=8640");
+                                                             + ") WITH COMMENT='ColumnFamily column attributes' AND gc_grace_seconds=604800");
 
     public static final CFMetaData SchemaTriggersCf = compile("CREATE TABLE " + SystemKeyspace.SCHEMA_TRIGGERS_CF + " ("
                                                               + "keyspace_name text,"
@@ -161,7 +162,7 @@ public final class CFMetaData
                                                               + "trigger_name text,"
                                                               + "trigger_options map<text, text>,"
                                                               + "PRIMARY KEY (keyspace_name, columnfamily_name, trigger_name)"
-                                                              + ") WITH COMMENT='triggers metadata table'");
+                                                              + ") WITH COMMENT='triggers metadata table' AND gc_grace_seconds=604800");
 
     public static final CFMetaData HintsCf = compile("CREATE TABLE " + SystemKeyspace.HINTS_CF + " ("
                                                      + "target_id uuid,"
@@ -259,7 +260,8 @@ public final class CFMetaData
                                                      + "most_recent_commit_at timeuuid,"
                                                      + "most_recent_commit blob,"
                                                      + "PRIMARY KEY (row_key, cf_id)"
-                                                     + ") WITH COMMENT='in-progress paxos proposals'");
+                                                     + ") WITH COMMENT='in-progress paxos proposals' "
+                                                     + "AND COMPACTION={'class' : 'LeveledCompactionStrategy'}");
 
     public static final CFMetaData SSTableActivityCF = compile("CREATE TABLE " + SystemKeyspace.SSTABLE_ACTIVITY_CF + " ("
                                                                + "keyspace_name text,"
@@ -406,6 +408,11 @@ public final class CFMetaData
     public static final String DEFAULT_COLUMN_ALIAS = "column";
     public static final String DEFAULT_VALUE_ALIAS = "value";
 
+    // We call dense a CF for which each component of the comparator is a clustering column, i.e. no
+    // component is used to store a regular column names. In other words, non-composite static "thrift"
+    // and CQL3 CF are *not* dense.
+    private volatile Boolean isDense; // null means "we don't know and need to infer from other data"
+
     private volatile Map<ByteBuffer, ColumnDefinition> column_metadata = new HashMap<>();
     private volatile List<ColumnDefinition> partitionKeyColumns;  // Always of size keyValidator.componentsCount, null padded if necessary
     private volatile List<ColumnDefinition> clusteringKeyColumns; // Of size comparator.componentsCount or comparator.componentsCount -1, null padded if necessary
@@ -445,6 +452,7 @@ public final class CFMetaData
     public CFMetaData populateIoCacheOnFlush(boolean prop) {populateIoCacheOnFlush = prop; return this;}
     public CFMetaData droppedColumns(Map<ByteBuffer, Long> cols) {droppedColumns = cols; return this;}
     public CFMetaData triggers(Map<String, TriggerDefinition> prop) {triggers = prop; return this;}
+    public CFMetaData setDense(Boolean prop) {isDense = prop; return this;}
 
     public CFMetaData(String keyspace, String name, ColumnFamilyType type, AbstractType<?> comp, AbstractType<?> subcc)
     {
@@ -597,6 +605,7 @@ public final class CFMetaData
                       .populateIoCacheOnFlush(oldCFMD.populateIoCacheOnFlush)
                       .droppedColumns(new HashMap<>(oldCFMD.droppedColumns))
                       .triggers(new HashMap<>(oldCFMD.triggers))
+                      .setDense(oldCFMD.isDense)
                       .rebuild();
     }
 
@@ -817,6 +826,7 @@ public final class CFMetaData
             .append(populateIoCacheOnFlush, rhs.populateIoCacheOnFlush)
             .append(droppedColumns, rhs.droppedColumns)
             .append(triggers, rhs.triggers)
+            .append(isDense, rhs.isDense)
             .isEquals();
     }
 
@@ -850,6 +860,7 @@ public final class CFMetaData
             .append(populateIoCacheOnFlush)
             .append(droppedColumns)
             .append(triggers)
+            .append(isDense)
             .toHashCode();
     }
 
@@ -900,7 +911,14 @@ public final class CFMetaData
         if (cf_def.isSetKey_alias() && !(cfm.keyValidator instanceof CompositeType))
             cfm.column_metadata.put(cf_def.key_alias, ColumnDefinition.partitionKeyDef(cf_def.key_alias, cfm.keyValidator, null));
 
-        return cfm.rebuild();
+        try
+        {
+            return cfm.rebuild();
+        }
+        catch (MarshalException e)
+        {
+            throw new ConfigurationException(e.getMessage());
+        }
     }
 
     public static CFMetaData fromThriftForUpdate(org.apache.cassandra.thrift.CfDef cf_def, CFMetaData toUpdate) throws InvalidRequestException, ConfigurationException
@@ -927,7 +945,14 @@ public final class CFMetaData
             cfm.addOrReplaceColumnDefinition(def);
         }
 
-        return cfm.rebuild();
+        try
+        {
+            return cfm.rebuild();
+        }
+        catch (MarshalException e)
+        {
+            throw new ConfigurationException(e.getMessage());
+        }
     }
 
     // Do most of the work, but don't handle CQL metadata (i.e. skip key_alias and don't rebuild())
@@ -1091,6 +1116,8 @@ public final class CFMetaData
         compressionParameters = cfm.compressionParameters;
 
         triggers = cfm.triggers;
+
+        setDense(cfm.isDense);
 
         rebuild();
         logger.debug("application result is {}", this);
@@ -1626,6 +1653,9 @@ public final class CFMetaData
         for (Map.Entry<ByteBuffer, Long> entry : droppedColumns.entrySet())
             cf.addColumn(new Column(makeDroppedColumnName(entry.getKey()), LongType.instance.decompose(entry.getValue()), timestamp));
 
+        cf.addColumn(isDense == null ? DeletedColumn.create(ldt, timestamp, cfName, "is_dense")
+                                     : Column.create(isDense, timestamp, cfName, "is_dense"));
+
         // Save the CQL3 metadata "the old way" for compatibility sake
         cf.addColumn(Column.create(aliasesToJson(partitionKeyColumns), timestamp, cfName, "key_aliases"));
         cf.addColumn(Column.create(aliasesToJson(clusteringKeyColumns), timestamp, cfName, "column_aliases"));
@@ -1680,6 +1710,9 @@ public final class CFMetaData
             }
             if (result.has("populate_io_cache_on_flush"))
                 cfm.populateIoCacheOnFlush(result.getBoolean("populate_io_cache_on_flush"));
+
+            if (result.has("is_dense"))
+                cfm.setDense(result.getBoolean("is_dense"));
 
             /*
              * The info previously hold by key_aliases, column_aliases and value_alias is now stored in column_metadata (because 1) this
@@ -1930,7 +1963,8 @@ public final class CFMetaData
     private void rebuildCQL3Metadata()
     {
         List<ColumnDefinition> pkCols = nullInitializedList(keyValidator.componentsCount());
-        boolean isDense = isDense(comparator, column_metadata.values());
+        if (isDense == null)
+            setDense(isDense(comparator, column_metadata.values()));
         int nbCkCols = isDense
                      ? comparator.componentsCount()
                      : comparator.componentsCount() - (hasCollection() ? 2 : 1);
@@ -1969,7 +2003,7 @@ public final class CFMetaData
         clusteringKeyColumns = addDefaultColumnAliases(ckCols);
         regularColumns = regCols;
         staticColumns = statCols;
-        compactValueColumn = addDefaultValueAlias(compactCol, isDense);
+        compactValueColumn = addDefaultValueAlias(compactCol);
     }
 
     private List<ColumnDefinition> addDefaultKeyAliases(List<ColumnDefinition> pkCols)
@@ -2018,7 +2052,7 @@ public final class CFMetaData
         return ckCols;
     }
 
-    private ColumnDefinition addDefaultValueAlias(ColumnDefinition compactValueDef, boolean isDense)
+    private ColumnDefinition addDefaultValueAlias(ColumnDefinition compactValueDef)
     {
         if (isDense)
         {
@@ -2049,19 +2083,19 @@ public final class CFMetaData
      * We call dense a CF for which each component of the comparator is a clustering column, i.e. no
      * component is used to store a regular column names. In other words, non-composite static "thrift"
      * and CQL3 CF are *not* dense.
-     * Note that his method is only used by rebuildCQL3Metadata. Once said metadata are built, finding
-     * if a CF is dense amounts more simply to check if clusteringKeyColumns.size() == comparator.componentsCount().
+     * We save whether the table is dense or not during table creation through CQL, but we don't have this
+     * information for table just created through thrift, nor for table prior to CASSANDRA-7744, so this
+     * method does its best to infer whether the table is dense or not based on other elements.
      */
     private static boolean isDense(AbstractType<?> comparator, Collection<ColumnDefinition> defs)
     {
         /*
          * As said above, this method is only here because we need to deal with thrift upgrades.
          * Once a CF has been "upgraded", i.e. we've rebuilt and save its CQL3 metadata at least once,
-         * then checking for isDense amounts to looking whether the maximum componentIndex for the
-         * CLUSTERING_KEY ColumnDefinitions is equal to comparator.componentsCount() - 1 or not.
+         * then we'll have saved the "is_dense" value and will be good to go.
          *
-         * But non-upgraded thrift CF will have no such CLUSTERING_KEY column definitions, so we need
-         * to infer that information without relying on them in that case. And for the most part this is
+         * But non-upgraded thrift CF (and pre-7744 CF) will have no value for "is_dense", so we need
+         * to infer that information without relying on it in that case. And for the most part this is
          * easy, a CF that has at least one REGULAR definition is not dense. But the subtlety is that not
          * having a REGULAR definition may not mean dense because of CQL3 definitions that have only the
          * PRIMARY KEY defined.
@@ -2092,7 +2126,6 @@ public final class CFMetaData
         return maxClusteringIdx >= 0
              ? maxClusteringIdx == comparator.componentsCount() - 1
              : !hasRegular && !isCQL3OnlyPKComparator(comparator);
-
     }
 
     private static boolean isCQL3OnlyPKComparator(AbstractType<?> comparator)
@@ -2129,6 +2162,11 @@ public final class CFMetaData
             if (def.type == ColumnDefinition.Type.REGULAR && !def.isThriftCompatible())
                 return false;
         }
+
+        // The table might also have no REGULAR columns (be PK-only), but still be "thrift incompatible". See #7832.
+        if (isCQL3OnlyPKComparator(comparator) && !isDense)
+            return false;
+
         return true;
     }
 
@@ -2183,6 +2221,7 @@ public final class CFMetaData
             .append("populateIoCacheOnFlush", populateIoCacheOnFlush)
             .append("droppedColumns", droppedColumns)
             .append("triggers", triggers)
+            .append("isDense", isDense)
             .toString();
     }
 }

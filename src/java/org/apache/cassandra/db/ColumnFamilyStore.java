@@ -2002,7 +2002,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         // position in the System keyspace.
         logger.debug("truncating {}", name);
 
-        if (DatabaseDescriptor.isAutoSnapshot())
+        if (keyspace.metadata.durableWrites || DatabaseDescriptor.isAutoSnapshot())
         {
             // flush the CF being truncated before forcing the new segment
             forceBlockingFlush();
@@ -2011,21 +2011,21 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             // that was part of the flushed we forced; otherwise on a tie, it won't get deleted.
             Uninterruptibles.sleepUninterruptibly(1, TimeUnit.MILLISECONDS);
         }
-
-        // nuke the memtable data w/o writing to disk first
-        Keyspace.switchLock.writeLock().lock();
-        try
+        else
         {
-            for (ColumnFamilyStore cfs : concatWithIndexes())
+            Keyspace.switchLock.writeLock().lock();
+            try
             {
-                Memtable mt = cfs.getMemtableThreadSafe();
-                if (!mt.isClean())
-                    mt.cfs.data.renewMemtable();
+                for (ColumnFamilyStore cfs : concatWithIndexes())
+                {
+                    Memtable mt = cfs.getMemtableThreadSafe();
+                    if (!mt.isClean())
+                        mt.cfs.data.renewMemtable();
+                }
+            } finally
+            {
+                Keyspace.switchLock.writeLock().unlock();
             }
-        }
-        finally
-        {
-            Keyspace.switchLock.writeLock().unlock();
         }
 
         Runnable truncateRunnable = new Runnable()

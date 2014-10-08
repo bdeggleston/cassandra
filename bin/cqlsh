@@ -486,15 +486,9 @@ class Shell(cmd.Cmd):
             self.conn = use_conn
         else:
             transport = transport_factory(hostname, port, os.environ, CONFIG_FILE)
-            self.conn = cql.connect(hostname, port, user=username, password=password,
-                                    cql_version=cqlver, transport=transport)
+            self.conn = cql.connect(hostname, port, keyspace=keyspace, user=username, 
+                                    password=password, cql_version=cqlver, transport=transport)
         self.set_expanded_cql_version(cqlver)
-        # we could set the keyspace through cql.connect(), but as of 1.0.10,
-        # it doesn't quote the keyspace for USE :(
-        if keyspace is not None:
-            tempcurs = self.conn.cursor()
-            tempcurs.execute('USE %s;' % self.cql_protect_name(keyspace))
-            tempcurs.close()
         self.cursor = self.conn.cursor()
         self.get_connection_versions()
 
@@ -747,6 +741,7 @@ class Shell(cmd.Cmd):
                 if readline.__doc__ is not None and 'libedit' in readline.__doc__:
                     readline.parse_and_bind("bind -e")
                     readline.parse_and_bind("bind '" + self.completekey + "' rl_complete")
+                    readline.parse_and_bind("bind ^R em-inc-search-prev")
                 else:
                     readline.parse_and_bind(self.completekey + ": complete")
         try:
@@ -899,6 +894,9 @@ class Shell(cmd.Cmd):
         if ksname is not None:
             ksname = self.cql_unprotect_name(ksname)
         cfname = self.cql_unprotect_name(parsed.get_binding('cfname'))
+        tracing_was_enabled = self.tracing_enabled
+        stop_tracing = ksname == 'system_traces' or (ksname is None and self.current_keyspace == 'system_traces')
+        self.tracing_enabled = self.tracing_enabled and not stop_tracing
         statement = parsed.extract_orig()
         with_default_limit = parsed.get_binding('limit') is None
         if with_default_limit:
@@ -906,6 +904,7 @@ class Shell(cmd.Cmd):
         self.perform_statement(statement,
                                decoder=ErrorHandlingSchemaDecoder,
                                with_default_limit=with_default_limit)
+        self.tracing_enabled = tracing_was_enabled
 
     def perform_statement(self, statement, decoder=None, with_default_limit=False):
         if self.tracing_enabled:
@@ -913,7 +912,6 @@ class Shell(cmd.Cmd):
             result = self.perform_statement_untraced(statement,
                                                      decoder=decoder,
                                                      with_default_limit=with_default_limit)
-            time.sleep(0.5) # trace writes are async so we wait a little.
             print_trace_session(self, self.cursor, session_id)
             return result
         else:
@@ -941,6 +939,16 @@ class Shell(cmd.Cmd):
             except CQL_ERRORS, err:
                 self.printerr(str(err))
                 return False
+            except KeyboardInterrupt:
+                self.cursor.close()
+                self.conn.terminate_connection()
+                transport = self.transport_factory(self.hostname, self.port,
+                                                   os.environ, CONFIG_FILE)
+                self.conn = cql.connect(self.hostname, self.port, keyspace=self.keyspace,
+                                        user=self.username, password=self.password,
+                                        cql_version=self.cql_version, transport=transport)
+                self.cursor = self.conn.cursor()
+                return False                
             except Exception, err:
                 import traceback
                 self.printerr(traceback.format_exc())

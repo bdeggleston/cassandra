@@ -198,17 +198,15 @@ public class SecondaryIndexManager
         if (clause == null || clause.isEmpty())
             return false;
 
-        // It doesn't seem a clause can have multiple searchers, but since
-        // getIndexSearchersForQuery returns a list ...
         List<SecondaryIndexSearcher> searchers = getIndexSearchersForQuery(clause);
         if (searchers.isEmpty())
             return false;
 
         for (SecondaryIndexSearcher searcher : searchers)
-            if (!searcher.isIndexing(clause))
-                return false;
+            if (searcher.isIndexing(clause))
+                return true;
 
-        return true;
+        return false;
     }
 
     /**
@@ -456,22 +454,19 @@ public class SecondaryIndexManager
 
         for (Column column : indexedColumnsInRow)
         {
-            ColumnDefinition cDef = baseCfs.metadata.getColumnDefinitionFromColumnName(column.name());
-            SecondaryIndex index = indexesByColumn.get(cDef.name);
-            if (index == null)
-                continue;
-
-            if (index instanceof PerRowSecondaryIndex)
+            for (SecondaryIndex index : indexFor(column.name()))
             {
-                if (cleanedRowLevelIndexes == null)
-                    cleanedRowLevelIndexes = new HashSet<>();
-
-                if (cleanedRowLevelIndexes.add(index.getClass()))
-                    ((PerRowSecondaryIndex)index).delete(key);
-            }
-            else
-            {
-                ((PerColumnSecondaryIndex) index).delete(key.key, column);
+                if (index instanceof PerRowSecondaryIndex)
+                {
+                    if (cleanedRowLevelIndexes == null)
+                        cleanedRowLevelIndexes = new HashSet<>();
+                    if (cleanedRowLevelIndexes.add(index.getClass()))
+                        ((PerRowSecondaryIndex) index).delete(key);
+                }
+                else
+                {
+                    ((PerColumnSecondaryIndex) index).delete(key.key, column);
+                }
             }
         }
     }
@@ -515,12 +510,12 @@ public class SecondaryIndexManager
             if (index == null)
                 continue;
 
-            Set<ByteBuffer> columns = groupByIndexType.get(index.getClass().getCanonicalName());
+            Set<ByteBuffer> columns = groupByIndexType.get(index.indexTypeForGrouping());
 
             if (columns == null)
             {
                 columns = new HashSet<>();
-                groupByIndexType.put(index.getClass().getCanonicalName(), columns);
+                groupByIndexType.put(index.indexTypeForGrouping(), columns);
             }
 
             columns.add(ix.column_name);

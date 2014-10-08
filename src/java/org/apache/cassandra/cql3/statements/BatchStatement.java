@@ -125,6 +125,9 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
                 throw new InvalidRequestException("Timestamp must be set either on BATCH or individual statements");
 
             statement.validate(state);
+
+            if (hasConditions && statement.requiresRead())
+                throw new InvalidRequestException("Operations on lists requiring a read (setting by index and deletions by index or value) are not allowed with IF conditions");
         }
     }
 

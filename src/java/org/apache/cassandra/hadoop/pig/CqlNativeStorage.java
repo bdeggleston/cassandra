@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.cassandra.hadoop.pig;
 
 import java.io.IOException;
@@ -160,7 +177,13 @@ public class CqlNativeStorage extends CqlStorage
         setConnectionInformation();
 
         CqlConfigHelper.setInputCQLPageRowSize(conf, String.valueOf(pageSize));
-        CqlConfigHelper.setInputCql(conf, inputCql);
+        if (inputCql != null)
+            CqlConfigHelper.setInputCql(conf, inputCql);
+        if (columns != null)
+            CqlConfigHelper.setInputColumns(conf, columns);
+        if (whereClause != null)
+            CqlConfigHelper.setInputWhereClauses(conf, whereClause);
+
         if (System.getenv(PIG_INPUT_SPLIT_SIZE) != null)
         {
             try
@@ -253,6 +276,10 @@ public class CqlNativeStorage extends CqlStorage
                     nativeSSLCipherSuites = urlQuery.get("cipher_suites");
                 if (urlQuery.containsKey("input_cql"))
                     inputCql = urlQuery.get("input_cql");
+                if (urlQuery.containsKey("columns"))
+                    columns = urlQuery.get("columns");
+                if (urlQuery.containsKey("where_clause"))
+                    whereClause = urlQuery.get("where_clause");
                 if (urlQuery.containsKey("rpc_port"))
                     rpcPort = urlQuery.get("rpc_port");
             }
@@ -282,7 +309,8 @@ public class CqlNativeStorage extends CqlStorage
                     "[&send_buff_size=<send_buff_size>][&solinger=<solinger>][&tcp_nodelay=<tcp_nodelay>][&reuse_address=<reuse_address>]" +
                     "[&keep_alive=<keep_alive>][&auth_provider=<auth_provider>][&trust_store_path=<trust_store_path>]" +
                     "[&key_store_path=<key_store_path>][&trust_store_password=<trust_store_password>]" +
-                    "[&key_store_password=<key_store_password>][&cipher_suites=<cipher_suites>][&input_cql=<input_cql>]]': " + e.getMessage());
+                    "[&key_store_password=<key_store_password>][&cipher_suites=<cipher_suites>][&input_cql=<input_cql>]" +
+                    "[columns=<columns>][where_clause=<where_clause>]]': " + e.getMessage());
         }
     }
 

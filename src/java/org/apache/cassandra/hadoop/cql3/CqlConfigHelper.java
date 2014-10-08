@@ -60,7 +60,7 @@ import com.google.common.collect.Sets;
 
 public class CqlConfigHelper
 {
-    private static final String INPUT_CQL_COLUMNS_CONFIG = "cassandra.input.columnfamily.columns"; // separate by colon ,
+    private static final String INPUT_CQL_COLUMNS_CONFIG = "cassandra.input.columnfamily.columns";
     private static final String INPUT_CQL_PAGE_ROW_SIZE_CONFIG = "cassandra.input.page.row.size";
     private static final String INPUT_CQL_WHERE_CLAUSE_CONFIG = "cassandra.input.where.clause";
     private static final String INPUT_CQL = "cassandra.input.cql";
@@ -89,7 +89,7 @@ public class CqlConfigHelper
     private static final String INPUT_NATIVE_SSL_CIPHER_SUITES = "cassandra.input.native.ssl.cipher.suites";
 
     private static final String OUTPUT_CQL = "cassandra.output.cql";
-
+    
     /**
      * Set the CQL columns for the input of this job.
      *
@@ -288,16 +288,22 @@ public class CqlConfigHelper
 
     public static Cluster getInputCluster(String host, Configuration conf)
     {
+        // this method has been left for backward compatibility
+        return getInputCluster(new String[] {host}, conf);
+    }
+
+    public static Cluster getInputCluster(String[] hosts, Configuration conf)
+    {
         int port = getInputNativePort(conf);
         Optional<AuthProvider> authProvider = getAuthProvider(conf);
         Optional<SSLOptions> sslOptions = getSSLOptions(conf);
-        LoadBalancingPolicy loadBalancingPolicy = getReadLoadBalancingPolicy(conf, host);
+        LoadBalancingPolicy loadBalancingPolicy = getReadLoadBalancingPolicy(conf, hosts);
         SocketOptions socketOptions = getReadSocketOptions(conf);
         QueryOptions queryOptions = getReadQueryOptions(conf);
         PoolingOptions poolingOptions = getReadPoolingOptions(conf);
         
         Cluster.Builder builder = Cluster.builder()
-                                         .addContactPoint(host)
+                                         .addContactPoints(hosts)
                                          .withPort(port)
                                          .withCompression(ProtocolOptions.Compression.NONE);
 
@@ -422,15 +428,15 @@ public class CqlConfigHelper
             poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL, coreConnections.get());
         if (maxConnections.isPresent())
             poolingOptions.setMaxConnectionsPerHost(HostDistance.LOCAL, maxConnections.get());
-        if (maxSimultaneousRequests.isPresent())
-            poolingOptions.setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL, maxSimultaneousRequests.get());
         if (minSimultaneousRequests.isPresent())
             poolingOptions.setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL, minSimultaneousRequests.get());
+        if (maxSimultaneousRequests.isPresent())
+            poolingOptions.setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL, maxSimultaneousRequests.get());
 
         poolingOptions.setCoreConnectionsPerHost(HostDistance.REMOTE, 0)
                       .setMaxConnectionsPerHost(HostDistance.REMOTE, 0)
-                      .setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE, 0)
-                      .setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE, 0);
+                      .setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE, 0)
+                      .setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE, 0);
 
         return poolingOptions;
     }  
@@ -480,79 +486,9 @@ public class CqlConfigHelper
         return socketOptions;
     }
 
-    private static LoadBalancingPolicy getReadLoadBalancingPolicy(Configuration conf, final String stickHost)
+    private static LoadBalancingPolicy getReadLoadBalancingPolicy(Configuration conf, final String[] stickHosts)
     {
-        return new LoadBalancingPolicy()
-        {
-            private Host origHost;
-            private Set<Host> liveRemoteHosts = Sets.newHashSet();
-
-            @Override
-            public void onAdd(Host host)
-            {
-                if (host.getAddress().getHostName().equals(stickHost))
-                    origHost = host;
-            }
-
-            @Override
-            public void onDown(Host host)
-            {
-                if (host.getAddress().getHostName().equals(stickHost))
-                    origHost = null;
-                liveRemoteHosts.remove(host);
-            }
-
-            @Override
-            public void onRemove(Host host)
-            {
-                if (host.getAddress().getHostName().equals(stickHost))
-                    origHost = null;
-                liveRemoteHosts.remove(host);
-            }
-
-            @Override
-            public void onUp(Host host)
-            {
-                if (host.getAddress().getHostName().equals(stickHost))
-                    origHost = host;
-                liveRemoteHosts.add(host);
-            }
-
-            @Override
-            public HostDistance distance(Host host)
-            {
-                if (host.getAddress().getHostName().equals(stickHost))
-                    return HostDistance.LOCAL;
-                else
-                    return HostDistance.REMOTE;
-            }
-
-            @Override
-            public void init(Cluster cluster, Collection<Host> hosts)
-            {
-                for (Host host : hosts)
-                {
-                    if (host.getAddress().getHostName().equals(stickHost))
-                    {
-                        origHost = host;
-                        break;
-                    }
-                }
-            }
-
-            @Override
-            public Iterator<Host> newQueryPlan(String loggedKeyspace, Statement statement)
-            {
-                if (origHost != null)
-                {
-                    return Iterators.concat(Collections.singletonList(origHost).iterator(), liveRemoteHosts.iterator());
-                }
-                else
-                {
-                    return liveRemoteHosts.iterator();
-                }
-            }
-        };
+        return new LimitedLocalNodeFirstLocalBalancingPolicy(stickHosts);
     }
 
     private static Optional<AuthProvider> getAuthProvider(Configuration conf)

@@ -126,7 +126,7 @@ public class DatabaseDescriptor
     }
 
     @VisibleForTesting
-    static Config loadConfig() throws ConfigurationException
+    public static Config loadConfig() throws ConfigurationException
     {
         String loaderClass = System.getProperty("cassandra.config.loader");
         ConfigurationLoader loader = loaderClass == null
@@ -829,6 +829,9 @@ public class DatabaseDescriptor
                 return getTruncateRpcTimeout();
             case READ_REPAIR:
             case MUTATION:
+            case PAXOS_COMMIT:
+            case PAXOS_PREPARE:
+            case PAXOS_PROPOSE:
             case COUNTER_MUTATION:
                 return getWriteRpcTimeout();
             default:
@@ -1131,9 +1134,14 @@ public class DatabaseDescriptor
         return conf.auto_snapshot;
     }
 
+    @VisibleForTesting
+    public static void setAutoSnapshot(boolean autoSnapshot) {
+        conf.auto_snapshot = autoSnapshot;
+    }
+
     public static boolean isAutoBootstrap()
     {
-        return conf.auto_bootstrap;
+        return Boolean.parseBoolean(System.getProperty("cassandra.auto_bootstrap", conf.auto_bootstrap.toString()));
     }
 
     public static void setHintedHandoffEnabled(boolean hintedHandoffEnabled)
@@ -1243,6 +1251,11 @@ public class DatabaseDescriptor
     public static int getHintedHandoffThrottleInKB()
     {
         return conf.hinted_handoff_throttle_in_kb;
+    }
+
+    public static void setHintedHandoffThrottleInKB(Integer throttleInKB)
+    {
+        conf.hinted_handoff_throttle_in_kb = throttleInKB;
     }
 
     public static int getBatchlogReplayThrottleInKB()
