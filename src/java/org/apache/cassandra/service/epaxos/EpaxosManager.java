@@ -12,6 +12,7 @@ import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.UnavailableException;
+import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
@@ -88,7 +89,7 @@ public class EpaxosManager
         return new HashSet<>();
     }
 
-    public boolean preaccept(Instance instance) throws UnavailableException, InvalidInstanceStateChange
+    public boolean preaccept(Instance instance) throws UnavailableException, InvalidInstanceStateChange, WriteTimeoutException
     {
         ReadWriteLock lock = locks.get(instance.getId());
         lock.writeLock().lock();
@@ -105,12 +106,14 @@ public class EpaxosManager
 
         // don't hold a write lock while sending and receiving messages
         lock.readLock().lock();
+        PreacceptCallback callback;
         try
         {
             ParticipantInfo participantInfo = getParticipants(instance);
             MessageOut<Instance> message = new MessageOut<Instance>(MessagingService.Verb.PREACCEPT_REQUEST,
                                                                     instance,
                                                                     Instance.serializer);
+            callback = new PreacceptCallback(instance, participantInfo);
             for (InetAddress endpoint: participantInfo.liveEndpoints)
                 sendRR(message, endpoint, callback);
         }
@@ -118,6 +121,10 @@ public class EpaxosManager
         {
             lock.readLock().unlock();
         }
+
+        callback.await();
+
+
         return false;
     }
 
@@ -147,9 +154,15 @@ public class EpaxosManager
                         }
                         instance.preaccept(getCurrentDependencies(instance.getQuery()), remoteInstance.getDependencies());
 
-                        PreacceptResponse response = new PreacceptResponse(instance.getLeaderDepsMatch(),
-                                                                           instance.getDependencies(),
-                                                                           Lists.<Instance>newArrayList());  // TODO: return missing instances
+                        PreacceptResponse response;
+                        if (instance.getLeaderDepsMatch())
+                            response = PreacceptResponse.success(instance);
+                        else
+                            response = PreacceptResponse.failure(instance, new ArrayList<Instance>());  // TODO: return missing instances
+                        MessageOut<PreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.PREACCEPT_RESPONSE,
+                                                                                     response,
+                                                                                     PreacceptResponse.serializer);
+                        sendReply(reply, id, message.from);
                     }
                     catch (BallotException e)
                     {

@@ -5,29 +5,20 @@ import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.service.CASRequest;
+import org.apache.cassandra.service.ThriftCASRequest;
 
 import java.io.DataInput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public abstract class SerializedRequest
+public class SerializedRequest
 {
-    public static enum Type
-    {
-        CAS(1),
-        READ(2);
-
-        public final int number;
-
-        Type(int number)
-        {
-            this.number = number;
-        }
-    }
+    public static final IVersionedSerializer<SerializedRequest> serializer = new Serializer();
 
     private final String keyspaceName;
     private final String cfName;
+    private final ThriftCASRequest request;
     private final ByteBuffer key;
     private final ConsistencyLevel consistencyLevel;
 
@@ -35,6 +26,7 @@ public abstract class SerializedRequest
     {
         keyspaceName = builder.keyspaceName;
         cfName = builder.cfName;
+        request = builder.casRequest;
         key = builder.key;
         consistencyLevel = builder.consistencyLevel;
     }
@@ -49,7 +41,10 @@ public abstract class SerializedRequest
         return cfName;
     }
 
-    public abstract boolean isReadOnly();
+    public ThriftCASRequest getRequest()
+    {
+        return request;
+    }
 
     public ByteBuffer getKey()
     {
@@ -64,9 +59,13 @@ public abstract class SerializedRequest
     public static class Serializer implements IVersionedSerializer<SerializedRequest>
     {
         @Override
-        public void serialize(SerializedRequest serializedRequest, DataOutputPlus out, int version) throws IOException
+        public void serialize(SerializedRequest request, DataOutputPlus out, int version) throws IOException
         {
-
+            out.writeUTF(request.keyspaceName);
+            out.writeUTF(request.cfName);
+            out.write(request.key);
+            out.writeInt(request.consistencyLevel.code);
+            ThriftCASRequest.serializer.serialize(request.request, out, version);
         }
 
         @Override
@@ -76,68 +75,9 @@ public abstract class SerializedRequest
         }
 
         @Override
-        public long serializedSize(SerializedRequest serializedRequest, int version)
+        public long serializedSize(SerializedRequest request, int version)
         {
             return 0;
-        }
-    }
-
-    public static class SerializedRead extends SerializedRequest
-    {
-        private final List<ReadCommand> readCommands;
-
-        public SerializedRead(Builder builder)
-        {
-            super(builder);
-            assert builder.casRequest == null;
-            this.readCommands = builder.readCommands;
-        }
-
-        @Override
-        public boolean isReadOnly()
-        {
-            return true;
-        }
-
-        public List<ReadCommand> getReadCommands()
-        {
-            return readCommands;
-        }
-    }
-
-    public static class SerializedCAS extends SerializedRequest
-    {
-        public static enum Type
-        {
-            CQL(1),
-            THRIFT(2);
-
-            public final int number;
-
-            Type(int number)
-            {
-                this.number = number;
-            }
-        }
-
-        private final CASRequest casRequest;
-
-        public SerializedCAS(Builder builder)
-        {
-            super(builder);
-            assert builder.readCommands == null;
-            this.casRequest = builder.casRequest;
-        }
-
-        @Override
-        public boolean isReadOnly()
-        {
-            return false;
-        }
-
-        public CASRequest getCasRequest()
-        {
-            return casRequest;
         }
     }
 
@@ -148,7 +88,7 @@ public abstract class SerializedRequest
         private boolean isReadOnly;
         private ByteBuffer key;
         private ConsistencyLevel consistencyLevel;
-        private CASRequest casRequest;
+        private ThriftCASRequest casRequest;
         private List<ReadCommand> readCommands;
 
         public Builder setKeyspaceName(String keyspaceName)
@@ -175,7 +115,7 @@ public abstract class SerializedRequest
             return this;
         }
 
-        public Builder setCASRequest(CASRequest request)
+        public Builder setCASRequest(ThriftCASRequest request)
         {
             this.casRequest = request;
             return this;
@@ -189,22 +129,7 @@ public abstract class SerializedRequest
 
         public SerializedRequest build()
         {
-            if (casRequest != null && readCommands != null)
-            {
-                throw new IllegalStateException("SerializedQuery instances cannot have both CASRequest and ReadCommands");
-            }
-            if (casRequest != null)
-            {
-                return new SerializedCAS(this);
-            }
-            else if (readCommands != null)
-            {
-                return new SerializedRead(this);
-            }
-            else
-            {
-                throw new IllegalStateException("SerializedQuery instances must have either a CASRequest or ReadCommands");
-            }
+            return new SerializedRequest(this);
         }
     }
 

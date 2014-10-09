@@ -9,23 +9,26 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class PreacceptCallback extends AbstractPaxosCallback<PreacceptCallback>
+public class PreacceptCallback extends AbstractPaxosCallback<PreacceptResponse>
 {
-    private final Set<UUID> dependencies;
+    private final Instance instance;
     private final EpaxosManager.ParticipantInfo participantInfo;
-    private final Map<InetAddress, Set<UUID>> responses;
+    private final Map<InetAddress, PreacceptResponse> responses;
 
-    public PreacceptCallback(Set<UUID> dependencies, EpaxosManager.ParticipantInfo participantInfo)
+    public PreacceptCallback(Instance instance, EpaxosManager.ParticipantInfo participantInfo)
     {
         super(participantInfo.quorumSize, participantInfo.consistencyLevel);
-        this.dependencies = dependencies;
+        this.instance = instance;
         this.participantInfo = participantInfo;
         this.responses = Maps.newConcurrentMap();
     }
 
     @Override
-    public void response(MessageIn<PreacceptCallback> msg)
+    public void response(MessageIn<PreacceptResponse> msg)
     {
+        PreacceptResponse response = msg.payload;
+        responses.put(msg.from, response);
 
+        latch.countDown();
     }
 }

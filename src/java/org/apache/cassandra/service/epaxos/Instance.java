@@ -34,16 +34,24 @@ public class Instance
         COMMITTED(3),
         EXECUTED(4);
 
-        private final int number;
+        private final int code;
 
-        private State(int number)
+        private State(int code)
         {
-            this.number = number;
+            this.code = code;
         }
 
         public boolean isLegalPromotion(State state)
         {
-            return state.number > this.number;
+            return state.code > this.code;
+        }
+
+        public static State fromCode(int code)
+        {
+            for (State s: values())
+                if (code == s.code)
+                    return s;
+            throw new IllegalArgumentException(String.format("Unknown state: %s", code));
         }
     }
 
@@ -77,6 +85,15 @@ public class Instance
         this.id = id;
         this.dependencyFilter = new DependencyFilter();
         this.query = query;
+    }
+
+    private Instance(Instance i)
+    {
+        this(i.id, i.query);
+        state = i.state;
+        ballot = i.ballot;
+        dependencies = i.dependencies;
+        leaderDepsMatch = i.leaderDepsMatch;
     }
 
     public UUID getId()
@@ -191,13 +208,19 @@ public class Instance
         }
     }
 
+    public Instance copy()
+    {
+        return new Instance(this);
+    }
+
     public static class Serializer implements IVersionedSerializer<Instance>
     {
         @Override
         public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
         {
             UUIDSerializer.serializer.serialize(instance.id, out, version);
-            out.writeInt(instance.state.number);
+            SerializedRequest.serializer.serialize(instance.getQuery(), out, version);
+            out.writeInt(instance.state.code);
             out.writeInt(instance.ballot);
             Set<UUID> deps = instance.dependencies;
             out.writeInt(deps.size());
@@ -209,14 +232,45 @@ public class Instance
         @Override
         public Instance deserialize(DataInput in, int version) throws IOException
         {
+            Instance instance = new Instance(
+                    UUIDSerializer.serializer.deserialize(in, version),
+                    SerializedRequest.serializer.deserialize(in, version));
 
-            return null;
+            try
+            {
+                instance.state = State.fromCode(in.readInt());
+            }
+            catch (IllegalArgumentException e)
+            {
+                throw new IOException(e);
+            }
+
+            instance.ballot = in.readInt();
+
+            UUID[] deps = new UUID[in.readInt()];
+            for (int i=0; i<deps.length; i++)
+                deps[i] = UUIDSerializer.serializer.deserialize(in, version);
+            instance.dependencies = ImmutableSet.copyOf(deps);
+
+            instance.leaderDepsMatch = in.readBoolean();
+
+            return instance;
         }
 
         @Override
         public long serializedSize(Instance instance, int version)
         {
-            return 0;
+            int size = 0;
+
+            size += UUIDSerializer.serializer.serializedSize(instance.id, version);
+            size += SerializedRequest.serializer.serializedSize(instance.getQuery(), version);
+            size += 4;  //out.writeInt(instance.state.code);
+            size += 4;  //out.writeInt(instance.ballot);
+            size += 4;  //out.writeInt(deps.size());
+            for (UUID dep : instance.dependencies)
+                size += UUIDSerializer.serializer.serializedSize(dep, version);
+            size += 1;  //out.writeBoolean(instance.leaderDepsMatch);
+            return size;
         }
     }
 }
