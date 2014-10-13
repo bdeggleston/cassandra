@@ -55,7 +55,7 @@ public class EpaxosManager
             this.liveEndpoints = ImmutableList.copyOf(Iterables.filter(endpoints, livePredicate()));
             this.consistencyLevel = cl;
 
-            if (cl == ConsistencyLevel.SERIAL && remoteEndpoints != null)
+            if (cl == ConsistencyLevel.SERIAL && (remoteEndpoints != null && remoteEndpoints.size() > 0))
                 throw new AssertionError("SERIAL consistency must include all endpoints");
             this.remoteEndpoints = remoteEndpoints != null ? remoteEndpoints : NO_ENDPOINTS;
 
@@ -93,7 +93,7 @@ public class EpaxosManager
     {
         query.getConsistencyLevel().validateForCas();
 
-        Instance instance = new Instance(query);
+        Instance instance = createInstance(query);
 
         Set<UUID> acceptDeps = preaccept(instance);
 
@@ -113,7 +113,7 @@ public class EpaxosManager
 
     public Set<UUID> getCurrentDependencies(SerializedRequest query)
     {
-        return new HashSet<>();
+        return instances.keySet();
     }
 
     protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo)
@@ -148,7 +148,8 @@ public class EpaxosManager
                                                                     Instance.serializer);
             callback = getPreacceptCallback(instance, participantInfo);
             for (InetAddress endpoint : participantInfo.liveEndpoints)
-                sendRR(message, endpoint, callback);
+                if (!endpoint.equals(getEndpoint()))
+                    sendRR(message, endpoint, callback);
         }
         finally
         {
@@ -176,7 +177,7 @@ public class EpaxosManager
                 {
                     if (instance == null)
                     {
-                        instance = remoteInstance;
+                        instance = remoteInstance.copyRemote();
                     } else
                     {
                         instance.checkBallot(remoteInstance.getBallot());
@@ -251,7 +252,8 @@ public class EpaxosManager
                                                                     Instance.serializer);
             callback = getAcceptCallback(instance, participantInfo);
             for (InetAddress endpoint : participantInfo.liveEndpoints)
-                sendRR(message, endpoint, callback);
+                if (!endpoint.equals(getEndpoint()))
+                    sendRR(message, endpoint, callback);
         }
         finally
         {
@@ -275,7 +277,7 @@ public class EpaxosManager
                 Instance instance = loadInstance(remoteInstance.getId());
                 if (instance == null)
                 {
-                    instance = remoteInstance;
+                    instance = remoteInstance.copyRemote();
                 } else
                 {
                     instance.checkBallot(remoteInstance.getBallot());
@@ -337,7 +339,8 @@ public class EpaxosManager
                                                                     instance,
                                                                     Instance.serializer);
             for (InetAddress endpoint : participantInfo.liveEndpoints)
-                sendOneWay(message, endpoint);
+                if (!endpoint.equals(getEndpoint()))
+                    sendOneWay(message, endpoint);
         }
         finally
         {
@@ -359,7 +362,7 @@ public class EpaxosManager
                 instance = loadInstance(remoteInstance.getId());
                 if (instance == null)
                 {
-                    instance = remoteInstance;
+                    instance = remoteInstance.copyRemote();
                 } else
                 {
                     instance.commit(remoteInstance.getDependencies());
@@ -529,6 +532,9 @@ public class EpaxosManager
                         toExecute.setExecuted();
                         saveInstance(toExecute);
 
+                        if (toExecute.getId().equals(instance.getId()))
+                            return;
+
                     }
                     finally
                     {
@@ -579,6 +585,11 @@ public class EpaxosManager
         MessagingService.instance().sendOneWay(message, to);
     }
 
+    protected InetAddress getEndpoint()
+    {
+        return FBUtilities.getBroadcastAddress();
+    }
+
     protected ParticipantInfo getParticipants(Instance instance) throws UnavailableException
     {
         SerializedRequest query = instance.getQuery();
@@ -615,7 +626,7 @@ public class EpaxosManager
         };
     }
 
-    protected static Predicate<InetAddress> livePredicate()
+    protected Predicate<InetAddress> livePredicate()
     {
         return IAsyncCallback.isAlive;
     }

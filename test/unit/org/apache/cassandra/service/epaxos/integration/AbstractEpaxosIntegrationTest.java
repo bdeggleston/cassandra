@@ -1,4 +1,4 @@
-package org.apache.cassandra.service.epaxos;
+package org.apache.cassandra.service.epaxos.integration;
 
 import com.google.common.collect.Lists;
 import org.apache.cassandra.config.CFMetaData;
@@ -13,8 +13,7 @@ import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.ThriftCASRequest;
-import org.apache.cassandra.service.epaxos.integration.Messenger;
-import org.apache.cassandra.service.epaxos.integration.Node;
+import org.apache.cassandra.service.epaxos.SerializedRequest;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -26,7 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public abstract class EpaxosIntegrationTest
+public abstract class AbstractEpaxosIntegrationTest
 {
 
     private static KSMetaData ksm;
@@ -48,7 +47,7 @@ public abstract class EpaxosIntegrationTest
         Schema.instance.load(ksm);
     }
 
-    private ThriftCASRequest getCasRequest()
+    protected ThriftCASRequest getCasRequest()
     {
         ColumnFamily expected = ArrayBackedSortedColumns.factory.create("ks", "tbl");
         expected.addColumn(CellNames.simpleDense(ByteBufferUtil.bytes("v")), ByteBufferUtil.bytes(2), 3L);
@@ -59,7 +58,7 @@ public abstract class EpaxosIntegrationTest
         return new ThriftCASRequest(expected, updates);
     }
 
-    private SerializedRequest getSerializedRequest()
+    protected SerializedRequest getSerializedRequest()
     {
         ThriftCASRequest thriftRequest = getCasRequest();
         SerializedRequest.Builder builder = SerializedRequest.builder();
@@ -72,8 +71,10 @@ public abstract class EpaxosIntegrationTest
     }
 
     public abstract int getReplicationFactor();
-    private List<Node> nodes;
-    private Messenger messenger;
+    public abstract Node createNode(InetAddress endpoint, Messenger messenger);
+
+    public List<Node> nodes;
+    public Messenger messenger;
 
     @Before
     public void setUp()
@@ -85,7 +86,7 @@ public abstract class EpaxosIntegrationTest
             Node node;
             try
             {
-                node = new Node(InetAddress.getByAddress(new byte[]{127, 0, 0, (byte) i}), messenger);
+                node = createNode(InetAddress.getByAddress(new byte[]{127, 0, 0, (byte) i}), messenger);
             }
             catch (UnknownHostException e)
             {

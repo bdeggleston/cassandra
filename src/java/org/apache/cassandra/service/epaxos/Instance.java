@@ -187,7 +187,7 @@ public class Instance
 
     public void accept() throws InvalidInstanceStateChange
     {
-        accept(null);
+        accept(dependencies);
     }
 
     public void accept(Set<UUID> dependencies) throws InvalidInstanceStateChange
@@ -198,7 +198,7 @@ public class Instance
 
     public void commit() throws InvalidInstanceStateChange
     {
-        commit(null);
+        commit(dependencies);
     }
 
     public void commit(Set<UUID> dependencies) throws InvalidInstanceStateChange
@@ -222,6 +222,13 @@ public class Instance
     public Instance copy()
     {
         return new Instance(this);
+    }
+
+    public Instance copyRemote()
+    {
+        Instance instance = new Instance(this.id, this.query);
+        instance.ballot = ballot;
+        return instance;
     }
 
     public static class Serializer implements IVersionedSerializer<Instance>

@@ -1,5 +1,6 @@
 package org.apache.cassandra.service.epaxos.integration;
 
+import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import org.apache.cassandra.db.WriteType;
@@ -11,6 +12,7 @@ import org.apache.cassandra.service.epaxos.*;
 import java.net.InetAddress;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class Node extends EpaxosManager
 {
@@ -41,6 +43,7 @@ public class Node extends EpaxosManager
         return state;
     }
 
+    @Override
     public InetAddress getEndpoint()
     {
         return endpoint;
@@ -57,6 +60,11 @@ public class Node extends EpaxosManager
     public Instance getLastCreatedInstance()
     {
         return lastCreatedInstance;
+    }
+
+    public Instance getInstance(UUID iid)
+    {
+        return loadInstance(iid);
     }
 
     @Override
@@ -83,7 +91,20 @@ public class Node extends EpaxosManager
         messenger.sendReply(message, id, endpoint, to);
     }
 
-    public class SingleThreaded extends Node
+    @Override
+    protected Predicate<InetAddress> livePredicate()
+    {
+        return new Predicate<InetAddress>()
+        {
+            @Override
+            public boolean apply(InetAddress inetAddress)
+            {
+                return true;
+            }
+        };
+    }
+
+    public static class SingleThreaded extends Node
     {
         public SingleThreaded(InetAddress endpoint, Messenger messenger)
         {

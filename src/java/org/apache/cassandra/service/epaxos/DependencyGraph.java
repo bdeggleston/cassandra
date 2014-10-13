@@ -112,11 +112,13 @@ public class DependencyGraph
             // the current vertex, and add them to the new
             // strongly connected component
             List<UUID> component = new ArrayList<>(stack.size() - initialStackSize);
-            for (Vertex w=null; v!=w; w=stack.pop())
+            Vertex w;
+            do
             {
+                w = stack.pop();
                 w.stacked = false;
                 component.add(w.id);
-            }
+            } while (v != w);
             scc.add(component);
         }
     }
@@ -134,7 +136,8 @@ public class DependencyGraph
         used = true;
 
         for (Vertex v: vertices)
-            strongConnect(v);
+            if (!v.visited)
+                strongConnect(v);
 
         // sort the strongly connected components
         for (List<UUID> component: scc)
