@@ -79,4 +79,36 @@ public class EpaxosInstanceTest
         Assert.assertFalse(instance.getLeaderDepsMatch());
     }
 
+    @Test
+    public void acceptSuccess() throws Exception
+    {
+        Instance instance = new Instance(null);
+        Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
+
+        instance.accept(expectedDeps);
+
+        Assert.assertEquals(Instance.State.ACCEPTED, instance.getState());
+        Assert.assertEquals(expectedDeps, instance.getDependencies());
+    }
+
+    @Test
+    public void commitSuccess() throws Exception
+    {
+        Instance instance = new Instance(null);
+        Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
+
+        instance.commit(expectedDeps);
+
+        Assert.assertEquals(Instance.State.COMMITTED, instance.getState());
+        Assert.assertEquals(expectedDeps, instance.getDependencies());
+    }
+
+    @Test
+    public void setExecutedSuccess() throws Exception
+    {
+        Instance instance = new Instance(null);
+        instance.setExecuted();
+        Assert.assertEquals(Instance.State.EXECUTED, instance.getState());
+    }
+
 }

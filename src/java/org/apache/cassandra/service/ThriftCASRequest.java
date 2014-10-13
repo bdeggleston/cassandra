@@ -101,4 +101,36 @@ public class ThriftCASRequest implements CASRequest
                  + ColumnFamily.serializer.serializedSize(request.updates, version);
         }
     }
+
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ThriftCASRequest request = (ThriftCASRequest) o;
+
+        if (expected != null ? !expected.equals(request.expected) : request.expected != null) return false;
+        if (updates != null ? !updates.equals(request.updates) : request.updates != null) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+        int result = expected != null ? expected.hashCode() : 0;
+        result = 31 * result + (updates != null ? updates.hashCode() : 0);
+        return result;
+    }
+
+    public ColumnFamily getExpected()
+    {
+        return expected;
+    }
+
+    public ColumnFamily getUpdates()
+    {
+        return updates;
+    }
 }

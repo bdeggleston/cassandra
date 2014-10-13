@@ -61,6 +61,7 @@ public class Instance
     private volatile int ballot = 0;
     private volatile Set<UUID> dependencies = null;
     private volatile boolean leaderDepsMatch = false;
+    private volatile Set<UUID> stronglyConnected = null;
 
     private transient ColumnFamily result;
 
@@ -142,6 +143,16 @@ public class Instance
         if (ballot <= this.ballot)
             throw new BallotException(this, ballot);
         updateBallot(ballot);
+    }
+
+    public Set<UUID> getStronglyConnected()
+    {
+        return stronglyConnected;
+    }
+
+    public void setStronglyConnected(Set<UUID> stronglyConnected)
+    {
+        this.stronglyConnected = ImmutableSet.copyOf(stronglyConnected);
     }
 
     @VisibleForTesting
