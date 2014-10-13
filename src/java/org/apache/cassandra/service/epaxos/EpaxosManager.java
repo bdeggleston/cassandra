@@ -70,23 +70,33 @@ public class EpaxosManager
         }
     }
 
-    private class Accessor
+    public static interface IAccessor
     {
+        public Instance loadInstance(UUID iid);
+        public void saveInstance(Instance instance);
+        public ReadWriteLock getLock(Object key);
+    }
+
+    private final IAccessor accessor = new IAccessor()
+    {
+        @Override
         public Instance loadInstance(UUID iid)
         {
             return EpaxosManager.this.loadInstance(iid);
         }
 
+        @Override
         public void saveInstance(Instance instance)
         {
             EpaxosManager.this.saveInstance(instance);
         }
 
+        @Override
         public ReadWriteLock getLock(Object key)
         {
             return locks.get(key);
         }
-    }
+    };
 
     public ColumnFamily query(SerializedRequest query)
             throws InvalidRequestException, UnavailableException, InvalidInstanceStateChange, WriteTimeoutException, BallotException
@@ -95,10 +105,10 @@ public class EpaxosManager
 
         Instance instance = createInstance(query);
 
-        Set<UUID> acceptDeps = preaccept(instance);
+        AcceptDecision acceptDecision = preaccept(instance);
 
-        if (acceptDeps != null)
-            accept(instance, acceptDeps);
+        if (acceptDecision.acceptNeeded)
+            accept(instance, acceptDecision.acceptDeps);
 
         commit(instance);
 
@@ -121,7 +131,7 @@ public class EpaxosManager
         return new PreacceptCallback(instance, participantInfo);
     }
 
-    public Set<UUID> preaccept(Instance instance) throws UnavailableException, InvalidInstanceStateChange, WriteTimeoutException, BallotException
+    public AcceptDecision preaccept(Instance instance) throws UnavailableException, InvalidInstanceStateChange, WriteTimeoutException, BallotException
     {
         ReadWriteLock lock = locks.get(instance.getId());
         lock.writeLock().lock();
@@ -159,7 +169,7 @@ public class EpaxosManager
         callback.await();
 
 
-        return callback.getAcceptDeps();
+        return callback.getAcceptDecision();
     }
 
     protected class PreacceptVerbHandler implements IVerbHandler<Instance>
@@ -389,134 +399,21 @@ public class EpaxosManager
         return new CommitVerbHandler();
     }
 
-    private class ExecutionOrdering
-    {
-        private final DependencyGraph dependencyGraph = new DependencyGraph();
-        public final Set<UUID> uncommitted = new HashSet<>();
-        private final Set<UUID> requiredInstances = new HashSet<>();
-
-        private final Instance target;
-        private final Set<UUID> targetDeps;
-
-        private ExecutionOrdering(Instance target)
-        {
-            this.target = target;
-            targetDeps = target.getDependencies();
-        }
-
-        private void addInstance(Instance instance)
-        {
-            Set<UUID> deps;
-            Instance.State state;
-            Set<UUID> stronglyConnected;
-            ReadWriteLock lock = locks.get(instance);
-            lock.readLock().lock();
-            try
-            {
-                deps = instance.getDependencies();
-                state = instance.getState();
-                stronglyConnected = instance.getStronglyConnected();
-            }
-            finally
-            {
-                lock.readLock().lock();
-            }
-
-            // if the instance is already executed, and it's not a dependency
-            // of the target execution instance, only add it to the dep graph
-            // if it's connected to an uncommitted instance, since that will
-            // make it part of a strongly connected component of at least one
-            // unexecuted instance, and will therefore affect the execution
-            // ordering
-            if (state == Instance.State.EXECUTED)
-            {
-                if (!targetDeps.contains(instance.getId()))
-                {
-                    boolean connected = false;
-                    for (UUID dep: deps)
-                    {
-                        boolean notExecuted = loadInstance(dep).getState() != Instance.State.EXECUTED;
-                        boolean targetDep = targetDeps.contains(dep);
-                        boolean required = requiredInstances.contains(dep);
-                        connected |= notExecuted || targetDep || required;
-                    }
-                    if (!connected)
-                        return;
-                }
-
-            }
-            else if (state != Instance.State.COMMITTED)
-            {
-                uncommitted.add(instance.getId());
-            }
-
-            if (stronglyConnected != null)
-                requiredInstances.addAll(stronglyConnected);
-
-            dependencyGraph.addVertex(instance.getId(), deps);
-            for (UUID dep: deps)
-            {
-                if (dependencyGraph.contains(dep))
-                    continue;
-
-                Instance depInst = loadInstance(dep);
-                assert depInst != null;
-
-                addInstance(depInst);
-            }
-        }
-
-        public void buildGraph()
-        {
-            addInstance(target);
-        }
-
-        public List<UUID> getOrder()
-        {
-            List<List<UUID>> scc = dependencyGraph.getExecutionOrder();
-
-            // record the strongly connected components on the instances.
-            // As instances are executed, they will stop being added to the depGraph for sorting.
-            // However, if an instance that's not added to the dep graph is part of a strongly
-            // connected component, it will affect the execution order by breaking the component.
-            if (uncommitted.size() > 0)
-            {
-                for (List<UUID> component: scc)
-                {
-                    if (component.size() > 1)
-                    {
-                        // we're not using a lock, or persisting because:
-                        // 1) the strongly connected ids will always be the same, and will always be computed
-                        //    so writing the same value multiple times isn't a big deal.
-                        // 2) the instance will be persisted when it's marked as executed. If it doesn't make
-                        //    it that far, the strongly connected set will be computed again
-                        Set<UUID> componentSet = ImmutableSet.copyOf(component);
-                        for (UUID iid: component)
-                            loadInstance(iid).setStronglyConnected(componentSet);
-                    }
-
-                }
-            }
-
-            return Lists.newArrayList(Iterables.concat(scc));
-        }
-    }
-
     public void execute(Instance instance)
     {
         while (true)
         {
-            ExecutionOrdering executionOrdering = new ExecutionOrdering(instance);
-            executionOrdering.buildGraph();
+            ExecutionSorter executionSorter = new ExecutionSorter(instance, accessor);
+            executionSorter.buildGraph();
 
-            if (executionOrdering.uncommitted.size() > 0)
+            if (executionSorter.uncommitted.size() > 0)
             {
-                for (UUID iid: executionOrdering.uncommitted)
+                for (UUID iid: executionSorter.uncommitted)
                     prepare(loadInstance(iid));
             }
             else
             {
-                for (UUID iid: executionOrdering.getOrder())
+                for (UUID iid: executionSorter.getOrder())
                 {
                     ReadWriteLock lock = locks.get(iid);
                     lock.writeLock().lock();
@@ -524,7 +421,7 @@ public class EpaxosManager
                     try
                     {
                         if (toExecute.getState() == Instance.State.EXECUTED)
-                            return;
+                            continue;
 
                         assert toExecute.getState() == Instance.State.COMMITTED;
 
@@ -540,9 +437,7 @@ public class EpaxosManager
                     {
                         lock.writeLock().unlock();
                     }
-
                 }
-
             }
         }
     }

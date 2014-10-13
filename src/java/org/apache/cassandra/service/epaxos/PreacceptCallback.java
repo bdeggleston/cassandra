@@ -61,12 +61,10 @@ public class PreacceptCallback extends AbstractPaxosCallback<PreacceptResponse>
 
     // returns deps for an accept phase if all responses didn't agree with the leader,
     // or a fast quorum didn't respond. Otherwise, null is returned
-    public synchronized Set<UUID> getAcceptDeps() throws BallotException
+    public synchronized AcceptDecision getAcceptDecision() throws BallotException
     {
         checkBallotFailure();
-        if (!dependencies.equals(remoteDependencies) || responses.size() < participantInfo.fastQuorumSize)
-            return ImmutableSet.copyOf(Iterables.concat(dependencies, remoteDependencies));
-
-        return null;
+        boolean acceptNeeded = !dependencies.equals(remoteDependencies) || responses.size() < participantInfo.fastQuorumSize;
+        return new AcceptDecision(acceptNeeded, ImmutableSet.copyOf(Iterables.concat(dependencies, remoteDependencies)));
     }
 }

@@ -2,16 +2,21 @@ package org.apache.cassandra.service.epaxos.integration;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import org.apache.cassandra.db.WriteType;
 import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.epaxos.*;
+import org.apache.cassandra.service.epaxos.exceptions.BallotException;
+import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 
 import java.net.InetAddress;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class Node extends EpaxosManager
@@ -27,6 +32,13 @@ public class Node extends EpaxosManager
     private volatile Instance lastCreatedInstance = null;
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
 
+    public final List<UUID> executionOrder = Lists.newLinkedList();
+
+    public volatile Runnable postPreacceptHook = null;
+    public volatile Runnable postAcceptHook = null;
+    public volatile Runnable postCommitHook = null;
+    public final Set<UUID> accepted = Sets.newConcurrentHashSet();
+
     public Node(InetAddress endpoint, Messenger messenger)
     {
         this.endpoint = endpoint;
@@ -41,6 +53,11 @@ public class Node extends EpaxosManager
     public State getState()
     {
         return state;
+    }
+
+    public void setState(State state)
+    {
+        this.state = state;
     }
 
     @Override
@@ -65,6 +82,39 @@ public class Node extends EpaxosManager
     public Instance getInstance(UUID iid)
     {
         return loadInstance(iid);
+    }
+
+    @Override
+    public AcceptDecision preaccept(Instance instance) throws UnavailableException, InvalidInstanceStateChange, WriteTimeoutException, BallotException
+    {
+        AcceptDecision decision = super.preaccept(instance);
+        if (postPreacceptHook != null)
+            postAcceptHook.run();
+        return decision;
+    }
+
+    @Override
+    public void accept(Instance instance, Set<UUID> deps) throws InvalidInstanceStateChange, UnavailableException, WriteTimeoutException, BallotException
+    {
+        super.accept(instance, deps);
+        accepted.add(instance.getId());
+        if (postAcceptHook != null)
+            postAcceptHook.run();
+    }
+
+    @Override
+    public void commit(Instance instance) throws InvalidInstanceStateChange, UnavailableException
+    {
+        super.commit(instance);
+        if (postCommitHook != null)
+            postCommitHook.run();
+    }
+
+    @Override
+    protected void executeInstance(Instance instance)
+    {
+        super.executeInstance(instance);
+        executionOrder.add(instance.getId());
     }
 
     @Override
