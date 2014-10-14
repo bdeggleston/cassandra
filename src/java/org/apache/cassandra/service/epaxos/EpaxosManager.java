@@ -26,6 +26,8 @@ import java.util.concurrent.locks.ReadWriteLock;
 
 public class EpaxosManager
 {
+    public static final EpaxosManager instance = new EpaxosManager();
+
     private static final Logger logger = LoggerFactory.getLogger(EpaxosManager.class);
 
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
@@ -73,7 +75,9 @@ public class EpaxosManager
     public static interface IAccessor
     {
         public Instance loadInstance(UUID iid);
+
         public void saveInstance(Instance instance);
+
         public ReadWriteLock getLock(Object key);
     }
 
@@ -118,7 +122,7 @@ public class EpaxosManager
 
     protected Instance createInstance(SerializedRequest request)
     {
-        return new Instance(request);
+        return new Instance(request, getEndpoint());
     }
 
     public Set<UUID> getCurrentDependencies(SerializedRequest query)
@@ -131,13 +135,14 @@ public class EpaxosManager
         return new PreacceptCallback(instance, participantInfo);
     }
 
-    public AcceptDecision preaccept(Instance instance) throws UnavailableException, InvalidInstanceStateChange, WriteTimeoutException, BallotException
+    public AcceptDecision preaccept(Instance instance) throws UnavailableException, InvalidInstanceStateChange, BallotException, WriteTimeoutException
     {
         ReadWriteLock lock = locks.get(instance.getId());
         lock.writeLock().lock();
         try
         {
             instance.preaccept(getCurrentDependencies(instance.getQuery()));
+            // TODO: select successors
             instance.incrementBallot();
             saveInstance(instance);
         }
@@ -160,16 +165,44 @@ public class EpaxosManager
             for (InetAddress endpoint : participantInfo.liveEndpoints)
                 if (!endpoint.equals(getEndpoint()))
                     sendRR(message, endpoint, callback);
+                else
+                    callback.countLocal();
         }
         finally
         {
             lock.readLock().unlock();
         }
 
-        callback.await();
+        try
+        {
+            callback.await();
+        }
+        catch (WriteTimeoutException e)
+        {
+            setFastPathImpossible(instance);
+            throw e;
+        }
 
+        AcceptDecision decision = callback.getAcceptDecision();
+        if (decision.acceptNeeded)
+            setFastPathImpossible(instance);
 
-        return callback.getAcceptDecision();
+        return decision;
+    }
+
+    private void setFastPathImpossible(Instance instance)
+    {
+        ReadWriteLock lock = locks.get(instance.getId());
+        lock.writeLock().lock();
+        try
+        {
+            instance.setFastPathImpossible(true);
+            saveInstance(instance);
+        }
+        finally
+        {
+            lock.writeLock().unlock();
+        }
     }
 
     protected class PreacceptVerbHandler implements IVerbHandler<Instance>
@@ -264,6 +297,8 @@ public class EpaxosManager
             for (InetAddress endpoint : participantInfo.liveEndpoints)
                 if (!endpoint.equals(getEndpoint()))
                     sendRR(message, endpoint, callback);
+                else
+                    callback.countLocal();
         }
         finally
         {
@@ -390,7 +425,15 @@ public class EpaxosManager
                 lock.writeLock().unlock();
             }
 
-            execute(instance);
+            try
+            {
+                execute(instance);
+            }
+            catch (UnavailableException | WriteTimeoutException e)
+            {
+                // TODO: maybe do something besides just logging?
+                logger.error("Error executing instance", e);
+            }
         }
     }
 
@@ -399,7 +442,7 @@ public class EpaxosManager
         return new CommitVerbHandler();
     }
 
-    public void execute(Instance instance)
+    public void execute(Instance instance) throws UnavailableException, WriteTimeoutException
     {
         while (true)
         {
@@ -408,12 +451,11 @@ public class EpaxosManager
 
             if (executionSorter.uncommitted.size() > 0)
             {
-                for (UUID iid: executionSorter.uncommitted)
+                for (UUID iid : executionSorter.uncommitted)
                     prepare(loadInstance(iid));
-            }
-            else
+            } else
             {
-                for (UUID iid: executionSorter.getOrder())
+                for (UUID iid : executionSorter.getOrder())
                 {
                     ReadWriteLock lock = locks.get(iid);
                     lock.writeLock().lock();
@@ -447,9 +489,90 @@ public class EpaxosManager
         // TODO: databasey read/write stuff
     }
 
-    public void prepare(Instance instance)
+    protected PrepareCallback getPrepareCallback(Instance instance, ParticipantInfo participantInfo)
     {
+        return new PrepareCallback(instance, participantInfo);
+    }
 
+    public void prepare(Instance instance) throws UnavailableException, WriteTimeoutException
+    {
+        if (shouldPrepare(instance))
+        {
+            PrepareCallback callback;
+            ParticipantInfo participantInfo;
+
+            ReadWriteLock lock = locks.get(instance.getId());
+            lock.writeLock().lock();
+            try
+            {
+                instance.incrementBallot();
+                saveInstance(instance);
+
+                participantInfo = getParticipants(instance);
+                PrepareRequest request = new PrepareRequest(instance);
+                MessageOut<PrepareRequest> message = new MessageOut<>(MessagingService.Verb.PREACCEPT_REQUEST,
+                                                                      request,
+                                                                      PrepareRequest.serializer);
+                callback = getPrepareCallback(instance, participantInfo);
+                for (InetAddress endpoint : participantInfo.liveEndpoints)
+                    if (!endpoint.equals(getEndpoint()))
+                        sendRR(message, endpoint, callback);
+                    else
+                        callback.countLocal(getEndpoint(), instance);
+            }
+            finally
+            {
+                lock.writeLock().unlock();
+            }
+
+            callback.await();
+
+        }
+    }
+
+    protected boolean shouldPrepare(Instance instance)
+    {
+        // TODO: wait for successors and grace periods
+        return true;
+    }
+
+    protected class PrepareVerbHandler implements IVerbHandler<PrepareRequest>
+    {
+        @Override
+        public void doVerb(MessageIn<PrepareRequest> message, int id)
+        {
+            ReadWriteLock lock = locks.get(message.payload.iid);
+            lock.writeLock().lock();
+            try
+            {
+                Instance instance = loadInstance(message.payload.iid);
+                if (instance != null)
+                    try
+                    {
+                        instance.checkBallot(message.payload.ballot);
+                        saveInstance(instance);
+                    }
+                    catch (BallotException e)
+                    {
+                        // don't die if the message has an old ballot value, just don't
+                        // update the instance. This instance will still be useful to the requestor
+                    }
+
+                MessageOut<Instance> reply = new MessageOut<>(MessagingService.Verb.PREPARE_RESPONSE,
+                                                              instance,
+                                                              Instance.serializer);
+                sendReply(reply, id, message.from);
+            }
+            finally
+            {
+                lock.writeLock().unlock();
+            }
+        }
+    }
+
+    public IVerbHandler<PrepareRequest> getPrepareVerbHandler()
+    {
+        return new PrepareVerbHandler();
     }
 
     protected Instance loadInstance(UUID instanceId)

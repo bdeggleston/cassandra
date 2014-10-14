@@ -1,5 +1,5 @@
 package org.apache.cassandra.service.epaxos;
 
-public class CommitCallback
+public class PrepareCallbackTest
 {
 }

@@ -4,9 +4,9 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.net.CompactEndpointSerializationHelper;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.utils.UUIDGen;
@@ -15,6 +15,7 @@ import org.apache.cassandra.utils.UUIDSerializer;
 import javax.annotation.Nullable;
 import java.io.DataInput;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.Set;
 import java.util.UUID;
 
@@ -28,42 +29,34 @@ public class Instance
     public static final Serializer serializer = new Serializer();
     public static enum State
     {
+        // order matters
         INITIALIZED(0),
         PREACCEPTED(1),
         ACCEPTED(2),
         COMMITTED(3),
         EXECUTED(4);
 
-        private final int code;
-
-        private State(int code)
+        State(int expectedOrdinal)
         {
-            this.code = code;
+            assert ordinal() == expectedOrdinal;
         }
 
         public boolean isLegalPromotion(State state)
         {
-            return state.code > this.code;
-        }
-
-        public static State fromCode(int code)
-        {
-            for (State s: values())
-                if (code == s.code)
-                    return s;
-            throw new IllegalArgumentException(String.format("Unknown state: %s", code));
+            return state.ordinal() > this.ordinal();
         }
     }
 
     private final UUID id;
     private final SerializedRequest query;
+    private final InetAddress leader;
     private volatile State state = State.INITIALIZED;
     private volatile int ballot = 0;
+    private volatile boolean noop;
+    private volatile boolean fastPathImpossible;
     private volatile Set<UUID> dependencies = null;
     private volatile boolean leaderDepsMatch = false;
     private volatile Set<UUID> stronglyConnected = null;
-
-    private transient ColumnFamily result;
 
     private class DependencyFilter implements Predicate<UUID>
     {
@@ -76,21 +69,22 @@ public class Instance
 
     private final DependencyFilter dependencyFilter;
 
-    Instance(SerializedRequest query)
+    Instance(SerializedRequest query, InetAddress leader)
     {
-        this(UUIDGen.getTimeUUID(), query);
+        this(UUIDGen.getTimeUUID(), query, leader);
     }
 
-    Instance(UUID id, SerializedRequest query)
+    Instance(UUID id, SerializedRequest query, InetAddress leader)
     {
         this.id = id;
         this.dependencyFilter = new DependencyFilter();
         this.query = query;
+        this.leader = leader;
     }
 
     private Instance(Instance i)
     {
-        this(i.id, i.query);
+        this(i.id, i.query, i.leader);
         state = i.state;
         ballot = i.ballot;
         dependencies = i.dependencies;
@@ -143,6 +137,21 @@ public class Instance
         if (ballot <= this.ballot)
             throw new BallotException(this, ballot);
         updateBallot(ballot);
+    }
+
+    public InetAddress getLeader()
+    {
+        return leader;
+    }
+
+    public boolean isFastPathImpossible()
+    {
+        return fastPathImpossible;
+    }
+
+    public void setFastPathImpossible(boolean fastPathImpossible)
+    {
+        this.fastPathImpossible = fastPathImpossible;
     }
 
     public Set<UUID> getStronglyConnected()
@@ -226,7 +235,7 @@ public class Instance
 
     public Instance copyRemote()
     {
-        Instance instance = new Instance(this.id, this.query);
+        Instance instance = new Instance(this.id, this.query, this.leader);
         instance.ballot = ballot;
         return instance;
     }
@@ -236,27 +245,38 @@ public class Instance
         @Override
         public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
         {
-            UUIDSerializer.serializer.serialize(instance.id, out, version);
-            SerializedRequest.serializer.serialize(instance.getQuery(), out, version);
-            out.writeInt(instance.state.code);
-            out.writeInt(instance.ballot);
-            Set<UUID> deps = instance.dependencies;
-            out.writeInt(deps.size());
-            for (UUID dep : deps)
-                UUIDSerializer.serializer.serialize(dep, out, version);
-            out.writeBoolean(instance.leaderDepsMatch);
+            out.writeBoolean(instance != null);
+            if (instance != null)
+            {
+                UUIDSerializer.serializer.serialize(instance.id, out, version);
+                SerializedRequest.serializer.serialize(instance.getQuery(), out, version);
+                CompactEndpointSerializationHelper.serialize(instance.leader, out);
+                out.writeInt(instance.state.ordinal());
+                out.writeInt(instance.ballot);
+                out.writeBoolean(instance.noop);
+                out.writeBoolean(instance.fastPathImpossible);
+                Set<UUID> deps = instance.dependencies;
+                out.writeInt(deps.size());
+                for (UUID dep : deps)
+                    UUIDSerializer.serializer.serialize(dep, out, version);
+                out.writeBoolean(instance.leaderDepsMatch);
+            }
         }
 
         @Override
         public Instance deserialize(DataInput in, int version) throws IOException
         {
+            if (!in.readBoolean())
+                return null;
+
             Instance instance = new Instance(
                     UUIDSerializer.serializer.deserialize(in, version),
-                    SerializedRequest.serializer.deserialize(in, version));
+                    SerializedRequest.serializer.deserialize(in, version),
+                    CompactEndpointSerializationHelper.deserialize(in));
 
             try
             {
-                instance.state = State.fromCode(in.readInt());
+                instance.state = State.values()[in.readInt()];
             }
             catch (IllegalArgumentException e)
             {
@@ -264,6 +284,8 @@ public class Instance
             }
 
             instance.ballot = in.readInt();
+            instance.noop = in.readBoolean();
+            instance.fastPathImpossible = in.readBoolean();
 
             UUID[] deps = new UUID[in.readInt()];
             for (int i=0; i<deps.length; i++)
@@ -278,16 +300,22 @@ public class Instance
         @Override
         public long serializedSize(Instance instance, int version)
         {
-            int size = 0;
+            if (instance == null)
+                return 1;
 
+            int size = 0;
+            size += 1;  // null flag
             size += UUIDSerializer.serializer.serializedSize(instance.id, version);
             size += SerializedRequest.serializer.serializedSize(instance.getQuery(), version);
-            size += 4;  //out.writeInt(instance.state.code);
-            size += 4;  //out.writeInt(instance.ballot);
-            size += 4;  //out.writeInt(deps.size());
+            size += CompactEndpointSerializationHelper.serializedSize(instance.leader);
+            size += 4;  // instance.state.code
+            size += 4;  // instance.ballot
+            size += 1;  // instance.noop
+            size += 1;  // instance.fastPathImpossible
+            size += 4;  // deps.size
             for (UUID dep : instance.dependencies)
                 size += UUIDSerializer.serializer.serializedSize(dep, version);
-            size += 1;  //out.writeBoolean(instance.leaderDepsMatch);
+            size += 1;  // instance.leaderDepsMatch
             return size;
         }
     }

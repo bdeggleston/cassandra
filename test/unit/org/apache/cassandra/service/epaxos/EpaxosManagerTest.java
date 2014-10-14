@@ -15,4 +15,13 @@ public class EpaxosManagerTest
     {
 
     }
+
+    /**
+     * test that noop instances are recorded
+     */
+    @Test
+    public void checkNoopMessage()
+    {
+
+    }
 }

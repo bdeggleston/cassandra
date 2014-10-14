@@ -6,30 +6,28 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
-import org.apache.cassandra.service.paxos.AbstractPaxosCallback;
 
 import java.net.InetAddress;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class PreacceptCallback extends AbstractPaxosCallback<PreacceptResponse>
+public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
 {
     private final Instance instance;
     private final Set<UUID> dependencies;
     private final Set<UUID> remoteDependencies = Sets.newHashSet();
-    private final EpaxosManager.ParticipantInfo participantInfo;
     private final Map<InetAddress, PreacceptResponse> responses = Maps.newHashMap();
     private final Map<UUID, Instance> missingInstances = Maps.newHashMap();
 
     private int ballotFailure = 0;
+    private int localResponse = 0;
 
     public PreacceptCallback(Instance instance, EpaxosManager.ParticipantInfo participantInfo)
     {
-        super(participantInfo.quorumSize, participantInfo.consistencyLevel);
+        super(participantInfo);
         this.instance = instance;
         this.dependencies = instance.getDependencies();
-        this.participantInfo = participantInfo;
     }
 
     @Override
@@ -53,6 +51,13 @@ public class PreacceptCallback extends AbstractPaxosCallback<PreacceptResponse>
         latch.countDown();
     }
 
+    @Override
+    public void countLocal()
+    {
+        super.countLocal();
+        localResponse = 1;
+    }
+
     public synchronized void checkBallotFailure() throws BallotException
     {
         if (ballotFailure > 0)
@@ -64,7 +69,12 @@ public class PreacceptCallback extends AbstractPaxosCallback<PreacceptResponse>
     public synchronized AcceptDecision getAcceptDecision() throws BallotException
     {
         checkBallotFailure();
-        boolean acceptNeeded = !dependencies.equals(remoteDependencies) || responses.size() < participantInfo.fastQuorumSize;
-        return new AcceptDecision(acceptNeeded, ImmutableSet.copyOf(Iterables.concat(dependencies, remoteDependencies)));
+        boolean depsMatch = dependencies.equals(remoteDependencies);
+
+        // the fast path quorum may be larger than the simple quorum, so getResponseCount can't be used
+        boolean fpQuorum = (responses.size() + localResponse) >= participantInfo.fastQuorumSize;
+
+        return new AcceptDecision((!depsMatch || !fpQuorum),
+                                  ImmutableSet.copyOf(Iterables.concat(dependencies, remoteDependencies)));
     }
 }

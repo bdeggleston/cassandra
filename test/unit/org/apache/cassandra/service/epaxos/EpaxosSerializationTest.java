@@ -18,6 +18,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.net.InetAddress;
 import java.util.*;
 
 public class EpaxosSerializationTest
@@ -98,7 +99,7 @@ public class EpaxosSerializationTest
     @Test
     public void checkInstance() throws Exception
     {
-        Instance instance = new Instance(getSerializedRequest());
+        Instance instance = new Instance(getSerializedRequest(), InetAddress.getLocalHost());
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
         instance.updateBallot(5);
@@ -122,5 +123,20 @@ public class EpaxosSerializationTest
         // strongly connected components shouldn't be serialized
         Assert.assertNotNull(instance.getStronglyConnected());
         Assert.assertNull(deserialized.getStronglyConnected());
+    }
+
+    @Test
+    public void checkNullInstance() throws Exception
+    {
+        Instance instance = null;
+
+        DataOutputBuffer out = new DataOutputBuffer();
+        Instance.serializer.serialize(instance, out, 0);
+        int expectedSize = out.getLength();
+        Assert.assertEquals(expectedSize, Instance.serializer.serializedSize(instance, 0));
+
+        Instance deserialized = Instance.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
+
+        Assert.assertNull(deserialized);
     }
 }
