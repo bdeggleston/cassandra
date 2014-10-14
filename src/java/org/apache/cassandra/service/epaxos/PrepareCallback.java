@@ -92,7 +92,8 @@ public class PrepareCallback extends AbstractEpaxosCallback<Instance>
         // no other node knows about this instance, commit a noop
         if (Lists.newArrayList(Iterables.filter(responses.values(), notNullPredicate)).size() == 0)
             return new PrepareDecision(Instance.State.PREACCEPTED, null, null, true);
-        return null;
+
+        return new PrepareDecision(Instance.State.PREACCEPTED, null, getTryPreacceptAttempts(), false);
     }
 
     private List<TryPreacceptAttempt> getTryPreacceptAttempts()
@@ -102,29 +103,53 @@ public class PrepareCallback extends AbstractEpaxosCallback<Instance>
             if (instance.isFastPathImpossible())
                 return Collections.EMPTY_LIST;
 
+        //
+        Set<InetAddress> replyingReplicas = Sets.newHashSet();
         Map<Set<UUID>, Set<InetAddress>> depGroups = Maps.newHashMap();
+        final Map<Set<UUID>, Integer> scores = Maps.newHashMap();
         for (Map.Entry<InetAddress, Instance> entry: responses.entrySet())
         {
             Set<UUID> deps = entry.getValue().getDependencies();
             if (!depGroups.containsKey(deps))
+            {
                 depGroups.put(deps, Sets.<InetAddress>newHashSet());
+                scores.put(deps, 0);
+            }
             depGroups.get(deps).add(entry.getKey());
+            replyingReplicas.add(entry.getKey());
+
+            scores.put(deps, (scores.get(deps) + (instance.getLeaderDepsMatch() ? 2 : 1)));
         }
 
-        return null;
-    }
-
-    public static class TryPreacceptAttempt
-    {
-        public final Set<UUID> dependencies;
-        public final Set<InetAddress> toConvince;
-        public final Set<InetAddress> agreeingEndpoints;
-
-        public TryPreacceptAttempt(Set<UUID> dependencies, Set<InetAddress> toConvince, Set<InetAddress> agreeingEndpoints)
+        // min # of identical preaccepts
+        int minIdentical = (participantInfo.F + 1) / 2;
+        List<TryPreacceptAttempt> attempts = Lists.newArrayListWithCapacity(depGroups.size());
+        for (Map.Entry<Set<UUID>, Set<InetAddress>> entry: depGroups.entrySet())
         {
-            this.dependencies = dependencies;
-            this.toConvince = toConvince;
-            this.agreeingEndpoints = agreeingEndpoints;
+            Set<UUID> deps = entry.getKey();
+            Set<InetAddress> nodes = entry.getValue();
+
+            if (nodes.size() < minIdentical)
+                continue;
+
+            Set<InetAddress> toConvince = Sets.difference(replyingReplicas, nodes);
+            TryPreacceptAttempt attempt = new TryPreacceptAttempt(deps, toConvince, nodes);
+            attempts.add(attempt);
         }
+
+        // sort the attempts, attempts with instances that agreed
+        // with the leader should be tried first
+        Comparator<TryPreacceptAttempt> attemptComparator = new Comparator<TryPreacceptAttempt>()
+        {
+            @Override
+            public int compare(TryPreacceptAttempt o1, TryPreacceptAttempt o2)
+            {
+                return scores.get(o2.dependencies) - scores.get(o1.dependencies);
+            }
+        };
+        Collections.sort(attempts, attemptComparator);
+
+        return attempts;
     }
+
 }
