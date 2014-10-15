@@ -32,6 +32,8 @@ public class EpaxosManager
 
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
 
+    private static final int PREPARE_BALLOT_FAILURE_RETRIES = 5;
+
     private final ConcurrentMap<UUID, Instance> instances = Maps.newConcurrentMap();
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
 
@@ -429,7 +431,7 @@ public class EpaxosManager
             {
                 execute(instance);
             }
-            catch (UnavailableException | WriteTimeoutException e)
+            catch (UnavailableException | WriteTimeoutException | BallotException e)
             {
                 // TODO: maybe do something besides just logging?
                 logger.error("Error executing instance", e);
@@ -442,7 +444,7 @@ public class EpaxosManager
         return new CommitVerbHandler();
     }
 
-    public void execute(Instance instance) throws UnavailableException, WriteTimeoutException
+    public void execute(Instance instance) throws UnavailableException, WriteTimeoutException, BallotException
     {
         while (true)
         {
@@ -494,46 +496,123 @@ public class EpaxosManager
         return new PrepareCallback(instance, participantInfo);
     }
 
-    public void prepare(Instance instance) throws UnavailableException, WriteTimeoutException
+    // TODO: this might be better as a runnable we can throw into a thread pool
+    public void prepare(Instance instance) throws UnavailableException, WriteTimeoutException, BallotException
     {
-        if (shouldPrepare(instance))
+        for (int i=0; i<PREPARE_BALLOT_FAILURE_RETRIES; i++)
         {
-            PrepareCallback callback;
-            ParticipantInfo participantInfo;
-
-            ReadWriteLock lock = locks.get(instance.getId());
-            lock.writeLock().lock();
-            try
+            if (shouldPrepare(instance))
             {
-                instance.incrementBallot();
-                saveInstance(instance);
+                PrepareCallback callback;
+                ParticipantInfo participantInfo;
 
-                participantInfo = getParticipants(instance);
-                PrepareRequest request = new PrepareRequest(instance);
-                MessageOut<PrepareRequest> message = new MessageOut<>(MessagingService.Verb.PREACCEPT_REQUEST,
-                                                                      request,
-                                                                      PrepareRequest.serializer);
-                callback = getPrepareCallback(instance, participantInfo);
-                for (InetAddress endpoint : participantInfo.liveEndpoints)
-                    if (!endpoint.equals(getEndpoint()))
-                        sendRR(message, endpoint, callback);
+                ReadWriteLock lock = locks.get(instance.getId());
+                lock.writeLock().lock();
+                try
+                {
+                    instance.incrementBallot();
+                    saveInstance(instance);
+
+                    participantInfo = getParticipants(instance);
+                    PrepareRequest request = new PrepareRequest(instance);
+                    MessageOut<PrepareRequest> message = new MessageOut<>(MessagingService.Verb.PREACCEPT_REQUEST,
+                                                                          request,
+                                                                          PrepareRequest.serializer);
+                    callback = getPrepareCallback(instance, participantInfo);
+                    for (InetAddress endpoint : participantInfo.liveEndpoints)
+                        if (!endpoint.equals(getEndpoint()))
+                            sendRR(message, endpoint, callback);
+                        else
+                            callback.countLocal(getEndpoint(), instance);
+                }
+                finally
+                {
+                    lock.writeLock().unlock();
+                }
+
+                callback.await();
+
+
+                lock.writeLock().lock();
+                try
+                {
+                    PrepareDecision decision = callback.getDecision();
+                    Set<UUID> deps = decision.deps;
+                    switch (decision.state)
+                    {
+                        case PREACCEPTED:
+                            boolean fullPreaccept = true;
+                            for (TryPreacceptAttempt attempt: decision.tryPreacceptAttempts)
+                            {
+                                if (tryPreaccept(instance, attempt, participantInfo))
+                                {
+                                    fullPreaccept = false;
+                                    deps = attempt.dependencies;
+                                    break;
+                                }
+                            }
+                            if (fullPreaccept)
+                            {
+                                AcceptDecision acceptDecision = preaccept(instance);
+                                deps = acceptDecision.acceptDeps;
+                            }
+
+                        case ACCEPTED:
+                            assert deps != null;
+                            accept(instance, deps);
+                        case COMMITTED:
+                            assert deps != null;
+                            instance.setDependencies(deps);
+                            commit(instance);
+                            break;
+                        default:
+                            throw new AssertionError();
+                    }
+                }
+                catch (BallotException e)
+                {
+                    logger.debug("Prepare ballot failure " + instance.getId());
+                    if (i >= PREPARE_BALLOT_FAILURE_RETRIES)
+                    {
+                        throw e;
+                    }
                     else
-                        callback.countLocal(getEndpoint(), instance);
-            }
-            finally
-            {
-                lock.writeLock().unlock();
-            }
+                    {
+                        // TODO: sleep, sleep times should be slightly random and proportional to succession order
+                        continue;
+                    }
+                }
+                catch (InvalidInstanceStateChange e)
+                {
+                    throw new AssertionError(e);
+                }
+                finally
+                {
+                    lock.writeLock().unlock();
+                }
 
-            callback.await();
+                return;
+            }
 
         }
     }
 
     protected boolean shouldPrepare(Instance instance)
     {
-        // TODO: wait for successors and grace periods
-        return true;
+        ReadWriteLock lock = locks.get(instance.getId());
+        lock.readLock().lock();
+        try
+        {
+            if (instance.getState() == Instance.State.COMMITTED || instance.getState() == Instance.State.EXECUTED)
+                return false;
+
+            // TODO: wait for successors and grace periods
+            return true;
+        }
+        finally
+        {
+            lock.readLock().unlock();
+        }
     }
 
     protected class PrepareVerbHandler implements IVerbHandler<PrepareRequest>
@@ -573,6 +652,37 @@ public class EpaxosManager
     public IVerbHandler<PrepareRequest> getPrepareVerbHandler()
     {
         return new PrepareVerbHandler();
+    }
+
+    public boolean tryPreaccept(Instance instance, TryPreacceptAttempt attempt, ParticipantInfo participantInfo)
+    {
+        return false;
+    }
+
+    protected boolean handleTryPreaccept(Instance instance, Set<UUID> dependencies)
+    {
+        // TODO: reread the try preaccept stuff, our clever dependency management may break it if we're not careful
+        return false;
+    }
+
+    protected class TryPreacceptVerbHandler implements IVerbHandler<TryPreacceptRequest>
+    {
+        @Override
+        public void doVerb(MessageIn<TryPreacceptRequest> message, int id)
+        {
+            Instance instance = loadInstance(message.payload.iid);
+            boolean success = handleTryPreaccept(instance, message.payload.dependencies);
+            TryPreacceptResponse response = new TryPreacceptResponse(instance.getId(), success);
+            MessageOut<TryPreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.TRYPREACCEPT_RESPONSE,
+                                                                      response,
+                                                                      TryPreacceptResponse.serializer);
+            sendReply(reply, id, message.from);
+        }
+    }
+
+    public IVerbHandler<TryPreacceptRequest> getTryPreacceptVerbHandler()
+    {
+        return new TryPreacceptVerbHandler();
     }
 
     protected Instance loadInstance(UUID instanceId)

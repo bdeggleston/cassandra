@@ -72,7 +72,7 @@ public class PrepareCallback extends AbstractEpaxosCallback<Instance>
         }
     };
 
-    public synchronized PrepareDecision getDecision(Instance instance) throws BallotException
+    public synchronized PrepareDecision getDecision() throws BallotException
     {
         int maxBallot = 0;
         for (Instance inst: responses.values())
@@ -103,7 +103,7 @@ public class PrepareCallback extends AbstractEpaxosCallback<Instance>
             if (instance.isFastPathImpossible())
                 return Collections.EMPTY_LIST;
 
-        //
+        // group common responses
         Set<InetAddress> replyingReplicas = Sets.newHashSet();
         Map<Set<UUID>, Set<InetAddress>> depGroups = Maps.newHashMap();
         final Map<Set<UUID>, Integer> scores = Maps.newHashMap();
@@ -133,7 +133,8 @@ public class PrepareCallback extends AbstractEpaxosCallback<Instance>
                 continue;
 
             Set<InetAddress> toConvince = Sets.difference(replyingReplicas, nodes);
-            TryPreacceptAttempt attempt = new TryPreacceptAttempt(deps, toConvince, nodes);
+            int requiredConvinced = participantInfo.F + 1 - nodes.size();
+            TryPreacceptAttempt attempt = new TryPreacceptAttempt(deps, toConvince, requiredConvinced, nodes);
             attempts.add(attempt);
         }
 
