@@ -45,6 +45,11 @@ public class Instance
         {
             return state.ordinal() > this.ordinal();
         }
+
+        public boolean isCommitted()
+        {
+            return this == COMMITTED || this == EXECUTED;
+        }
     }
 
     private final UUID id;

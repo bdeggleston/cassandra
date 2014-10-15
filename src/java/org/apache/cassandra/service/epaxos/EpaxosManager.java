@@ -15,6 +15,7 @@ import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
+import org.apache.cassandra.service.epaxos.exceptions.PrepareAbortException;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -298,9 +299,13 @@ public class EpaxosManager
             callback = getAcceptCallback(instance, participantInfo);
             for (InetAddress endpoint : participantInfo.liveEndpoints)
                 if (!endpoint.equals(getEndpoint()))
+                {
                     sendRR(message, endpoint, callback);
+                }
                 else
+                {
                     callback.countLocal();
+                }
         }
         finally
         {
@@ -544,11 +549,21 @@ public class EpaxosManager
                             boolean fullPreaccept = true;
                             for (TryPreacceptAttempt attempt: decision.tryPreacceptAttempts)
                             {
-                                if (tryPreaccept(instance, attempt, participantInfo))
+                                try
                                 {
-                                    fullPreaccept = false;
-                                    deps = attempt.dependencies;
-                                    break;
+                                    if (tryPreaccept(instance, attempt, participantInfo))
+                                    {
+                                        fullPreaccept = false;
+                                        deps = attempt.dependencies;
+                                        break;
+                                    }
+                                }
+                                catch (PrepareAbortException e)
+                                {
+                                    // just return quietly, this instance will get
+                                    // picked up for repair after the others
+                                    logger.debug("Prepare aborted: " + e.getMessage());
+                                    return;
                                 }
                             }
                             if (fullPreaccept)
@@ -654,15 +669,81 @@ public class EpaxosManager
         return new PrepareVerbHandler();
     }
 
-    public boolean tryPreaccept(Instance instance, TryPreacceptAttempt attempt, ParticipantInfo participantInfo)
+    protected TryPreacceptCallback getTryPreacceptCallback(Instance instance, TryPreacceptAttempt attempt, ParticipantInfo participantInfo)
     {
-        return false;
+        return new TryPreacceptCallback(instance, attempt, participantInfo);
     }
 
-    protected boolean handleTryPreaccept(Instance instance, Set<UUID> dependencies)
+    public boolean tryPreaccept(Instance instance, TryPreacceptAttempt attempt, ParticipantInfo participantInfo) throws WriteTimeoutException, PrepareAbortException
+    {
+        TryPreacceptRequest request = new TryPreacceptRequest(instance.getId(), attempt.dependencies);
+        MessageOut<TryPreacceptRequest> message = new MessageOut<>(MessagingService.Verb.TRYPREACCEPT_REQUEST,
+                                                                   request,
+                                                                   TryPreacceptRequest.serializer);
+        TryPreacceptCallback callback = getTryPreacceptCallback(instance, attempt, participantInfo);
+        for (InetAddress endpoint: attempt.toConvince)
+        {
+            if (!endpoint.equals(getEndpoint()))
+            {
+                sendRR(message, endpoint, callback);
+            }
+            else
+            {
+                callback.recordDecision(handleTryPreaccept(instance, attempt.dependencies));
+            }
+        }
+
+        callback.await();
+        return callback.successful();
+    }
+
+    protected TryPreacceptDecision handleTryPreaccept(Instance instance, Set<UUID> dependencies)
     {
         // TODO: reread the try preaccept stuff, our clever dependency management may break it if we're not careful
-        return false;
+
+        // get the ids of instances the the message instance doesn't have in it's dependencies
+        Set<UUID> conflictIds = Sets.newHashSet(getCurrentDependencies(instance.getQuery()));
+        conflictIds.removeAll(dependencies);
+        conflictIds.remove(instance.getId());
+
+        // if this node hasn't seen some of the proposed dependencies, don't preaccept them
+        for (UUID dep: dependencies)
+        {
+            if (loadInstance(dep) == null)
+                return TryPreacceptDecision.REJECTED;
+        }
+
+        for (UUID id: conflictIds)
+        {
+            if (id.equals(instance.getId()))
+                continue;
+
+            Instance conflict = loadInstance(id);
+
+            if (!conflict.getState().isCommitted())
+            {
+                // requiring the potential conflict to be committed can cause
+                // an infinite prepare loop, so we just abort this prepare phase.
+                // This instance will get picked up again for explicit prepare after
+                // the other instances being prepared are successfully committed. Hopefully
+                // this conflicting instance will be committed as well.
+                return TryPreacceptDecision.CONTENDED;
+            }
+
+            // if the instance in question isn't a dependency of the potential
+            // conflict, then it couldn't have been committed on the fast path
+            if (!conflict.getDependencies().contains(instance.getId()))
+            {
+                return TryPreacceptDecision.REJECTED;
+            }
+        }
+
+        // set dependencies on this instance
+        assert instance.getState() == Instance.State.PREACCEPTED;
+        instance.setDependencies(dependencies);
+        saveInstance(instance);
+
+        return TryPreacceptDecision.ACCEPTED;
     }
 
     protected class TryPreacceptVerbHandler implements IVerbHandler<TryPreacceptRequest>
@@ -671,8 +752,8 @@ public class EpaxosManager
         public void doVerb(MessageIn<TryPreacceptRequest> message, int id)
         {
             Instance instance = loadInstance(message.payload.iid);
-            boolean success = handleTryPreaccept(instance, message.payload.dependencies);
-            TryPreacceptResponse response = new TryPreacceptResponse(instance.getId(), success);
+            TryPreacceptDecision decision = handleTryPreaccept(instance, message.payload.dependencies);
+            TryPreacceptResponse response = new TryPreacceptResponse(instance.getId(), decision);
             MessageOut<TryPreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.TRYPREACCEPT_RESPONSE,
                                                                       response,
                                                                       TryPreacceptResponse.serializer);
