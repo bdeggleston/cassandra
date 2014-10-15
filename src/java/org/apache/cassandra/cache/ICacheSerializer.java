@@ -21,16 +21,14 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.Pair;
 
+import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.concurrent.Future;
 
-/**
-* Created by beggleston on 10/8/14.
-*/
 public interface ICacheSerializer<K extends CacheKey, V>
 {
     void serialize(K key, DataOutputPlus out) throws IOException;
 
-    Future<Pair<K, V>> deserialize(DataInputStream in, ColumnFamilyStore cfs) throws IOException;
+    Future<Pair<K, V>> deserialize(DataInput in, ColumnFamilyStore cfs) throws IOException;
 }

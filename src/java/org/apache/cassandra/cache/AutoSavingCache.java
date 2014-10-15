@@ -19,6 +19,7 @@ package org.apache.cassandra.cache;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -53,14 +54,13 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
     protected volatile ScheduledFuture<?> saveTask;
     protected final CacheService.CacheType cacheType;
 
-    private ICacheSerializer<K, V> cacheLoader;
-    private static final String CURRENT_VERSION = "b";
+    protected final ICacheSaver<K, V> cacheSaver;
 
-    public AutoSavingCache(ICache<K, V> cache, CacheService.CacheType cacheType, ICacheSerializer<K, V> cacheloader)
+    public AutoSavingCache(ICache<K, V> cache, CacheService.CacheType cacheType, ICacheSaver<K, V> cacheSaver)
     {
         super(cacheType.toString(), cache);
         this.cacheType = cacheType;
-        this.cacheLoader = cacheloader;
+        this.cacheSaver = cacheSaver;
     }
 
     public File getCachePath(String ksName, String cfName, UUID cfId, String version)
@@ -101,48 +101,25 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
         int count = 0;
         long start = System.nanoTime();
 
-        // modern format, allows both key and value (so key cache load can be purely sequential)
-        File path = getCachePath(cfs.keyspace.getName(), cfs.name, cfs.metadata.cfId, CURRENT_VERSION);
-        // if path does not exist, try without cfId (assuming saved cache is created with current CF)
-        if (!path.exists())
-            path = getCachePath(cfs.keyspace.getName(), cfs.name, null, CURRENT_VERSION);
-        if (path.exists())
+        ICacheSaver.Reader<K, V> reader = cacheSaver.getReader(cfs);
+        Iterator<Future<Pair<K, V>>> keyIter = reader.read();
+        while (keyIter.hasNext())
         {
-            DataInputStream in = null;
             try
             {
-                logger.info(String.format("reading saved cache %s", path));
-                in = new DataInputStream(new LengthAvailableInputStream(new BufferedInputStream(new FileInputStream(path)), path.length()));
-                List<Future<Pair<K, V>>> futures = new ArrayList<Future<Pair<K, V>>>();
-                while (in.available() > 0)
-                {
-                    Future<Pair<K, V>> entry = cacheLoader.deserialize(in, cfs);
-                    // Key cache entry can return null, if the SSTable doesn't exist.
-                    if (entry == null)
-                        continue;
-                    futures.add(entry);
-                    count++;
-                }
-
-                for (Future<Pair<K, V>> future : futures)
-                {
-                    Pair<K, V> entry = future.get();
-                    if (entry != null)
-                        put(entry.left, entry.right);
-                }
+                Pair<K, V> entry = keyIter.next().get();
+                count++;
+                if (entry != null)
+                    put(entry.left, entry.right);
             }
-            catch (Exception e)
+            catch (InterruptedException | ExecutionException e)
             {
-                logger.debug(String.format("harmless error reading saved cache %s", path.getAbsolutePath()), e);
-            }
-            finally
-            {
-                FileUtils.closeQuietly(in);
+                logger.debug(String.format("harmless error reading saved cache %s", cfs), e);
             }
         }
         if (logger.isDebugEnabled())
             logger.debug("completed reading ({} ms; {} keys) saved cache {}",
-                    TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start), count, path);
+                    TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start), count, cfs);
         return count;
     }
 
@@ -194,94 +171,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
 
         public void saveCache()
         {
-            logger.debug("Deleting old {} files.", cacheType);
-            deleteOldCacheFiles();
-
-            if (keys.isEmpty())
-            {
-                logger.debug("Skipping {} save, cache is empty.", cacheType);
-                return;
-            }
-
-            long start = System.nanoTime();
-
-            HashMap<CacheKey.PathInfo, SequentialWriter> writers = new HashMap<>();
-
-            try
-            {
-                for (K key : keys)
-                {
-                    CacheKey.PathInfo path = key.getPathInfo();
-                    SequentialWriter writer = writers.get(path);
-                    if (writer == null)
-                    {
-                        writer = tempCacheFile(path);
-                        writers.put(path, writer);
-                    }
-
-                    try
-                    {
-                        cacheLoader.serialize(key, writer.stream);
-                    }
-                    catch (IOException e)
-                    {
-                        throw new FSWriteError(e, writer.getPath());
-                    }
-
-                    keysWritten++;
-                }
-            }
-            finally
-            {
-                for (SequentialWriter writer : writers.values())
-                    FileUtils.closeQuietly(writer);
-            }
-
-            for (Map.Entry<CacheKey.PathInfo, SequentialWriter> info : writers.entrySet())
-            {
-                CacheKey.PathInfo path = info.getKey();
-                SequentialWriter writer = info.getValue();
-
-                File tmpFile = new File(writer.getPath());
-                File cacheFile = getCachePath(path.keyspace, path.columnFamily, path.cfId, CURRENT_VERSION);
-
-                cacheFile.delete(); // ignore error if it didn't exist
-                if (!tmpFile.renameTo(cacheFile))
-                    logger.error("Unable to rename {} to {}", tmpFile, cacheFile);
-            }
-
-            logger.info("Saved {} ({} items) in {} ms", cacheType, keys.size(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
-        }
-
-        private SequentialWriter tempCacheFile(CacheKey.PathInfo pathInfo)
-        {
-            File path = getCachePath(pathInfo.keyspace, pathInfo.columnFamily, pathInfo.cfId, CURRENT_VERSION);
-            File tmpFile = FileUtils.createTempFile(path.getName(), null, path.getParentFile());
-            return SequentialWriter.open(tmpFile);
-        }
-
-        private void deleteOldCacheFiles()
-        {
-            File savedCachesDir = new File(DatabaseDescriptor.getSavedCachesLocation());
-            assert savedCachesDir.exists() && savedCachesDir.isDirectory();
-            File[] files = savedCachesDir.listFiles();
-            if (files != null)
-            {
-                for (File file : files)
-                {
-                    if (!file.isFile())
-                        continue; // someone's been messing with our directory.  naughty!
-
-                    if (file.getName().endsWith(cacheType.toString())
-                            || file.getName().endsWith(String.format("%s-%s.db", cacheType.toString(), CURRENT_VERSION)))
-                    {
-                        if (!file.delete())
-                            logger.warn("Failed to delete {}", file.getAbsolutePath());
-                    }
-                }
-            }
-            else
-                logger.warn("Could not list files in {}", savedCachesDir);
+            keysWritten = cacheSaver.getWriter().write(keys.iterator());
         }
     }
 

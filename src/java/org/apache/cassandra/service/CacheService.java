@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.service;
 
+import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -115,7 +116,7 @@ public class CacheService implements CacheServiceMBean
         // where 48 = 40 bytes (average size of the key) + 8 bytes (size of value)
         ICache<KeyCacheKey, RowIndexEntry> kc;
         kc = ConcurrentLinkedHashCache.create(keyCacheInMemoryCapacity);
-        AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = new AutoSavingCache<>(kc, CacheType.KEY_CACHE, DatabaseDescriptor.getKeyCacheSerializer());
+        AutoSavingCache<KeyCacheKey, RowIndexEntry> keyCache = new AutoSavingCache<>(kc, CacheType.KEY_CACHE, DatabaseDescriptor.getKeyCacheSaver());
 
         int keyCacheKeysToSave = DatabaseDescriptor.getKeyCacheKeysToSave();
 
@@ -135,7 +136,7 @@ public class CacheService implements CacheServiceMBean
 
         // cache object
         ICache<RowCacheKey, IRowCacheEntry> rc = new SerializingCacheProvider().create(rowCacheInMemoryCapacity);
-        AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache = new AutoSavingCache<>(rc, CacheType.ROW_CACHE, DatabaseDescriptor.getRowCacheSerializer());
+        AutoSavingCache<RowCacheKey, IRowCacheEntry> rowCache = new AutoSavingCache<>(rc, CacheType.ROW_CACHE, DatabaseDescriptor.getRowCacheSaver());
 
         int rowCacheKeysToSave = DatabaseDescriptor.getRowCacheKeysToSave();
 
@@ -153,7 +154,7 @@ public class CacheService implements CacheServiceMBean
         AutoSavingCache<CounterCacheKey, ClockAndCount> cache =
             new AutoSavingCache<>(ConcurrentLinkedHashCache.<CounterCacheKey, ClockAndCount>create(capacity),
                                   CacheType.COUNTER_CACHE,
-                                  DatabaseDescriptor.getCounterCacheSerializer());
+                                  DatabaseDescriptor.getCounterCacheSaver());
 
         int keysToSave = DatabaseDescriptor.getCounterCacheKeysToSave();
 
@@ -402,7 +403,7 @@ public class CacheService implements CacheServiceMBean
         logger.debug("cache saves completed");
     }
 
-    public static class CounterCacheSerializer implements ICounterCacheSerializer
+    public static class CounterCacheSerializer implements ICacheSerializer<CounterCacheKey, ClockAndCount>
     {
         public void serialize(CounterCacheKey key, DataOutputPlus out) throws IOException
         {
@@ -410,7 +411,7 @@ public class CacheService implements CacheServiceMBean
             ByteBufferUtil.writeWithLength(key.cellName, out);
         }
 
-        public Future<Pair<CounterCacheKey, ClockAndCount>> deserialize(DataInputStream in, final ColumnFamilyStore cfs) throws IOException
+        public Future<Pair<CounterCacheKey, ClockAndCount>> deserialize(DataInput in, final ColumnFamilyStore cfs) throws IOException
         {
             final ByteBuffer partitionKey = ByteBufferUtil.readWithLength(in);
             final CellName cellName = cfs.metadata.comparator.cellFromByteBuffer(ByteBufferUtil.readWithLength(in));
@@ -436,14 +437,22 @@ public class CacheService implements CacheServiceMBean
         }
     }
 
-    public static class RowCacheSerializer implements IRowCacheSerializer
+    public static class CounterCacheSaver extends CacheSaver<CounterCacheKey, ClockAndCount> implements ICounterCacheSaver
+    {
+        public CounterCacheSaver()
+        {
+            super(new CounterCacheSerializer(), CacheType.COUNTER_CACHE);
+        }
+    }
+
+    public static class RowCacheSerializer implements ICacheSerializer<RowCacheKey, IRowCacheEntry>
     {
         public void serialize(RowCacheKey key, DataOutputPlus out) throws IOException
         {
             ByteBufferUtil.writeWithLength(key.key, out);
         }
 
-        public Future<Pair<RowCacheKey, IRowCacheEntry>> deserialize(DataInputStream in, final ColumnFamilyStore cfs) throws IOException
+        public Future<Pair<RowCacheKey, IRowCacheEntry>> deserialize(DataInput in, final ColumnFamilyStore cfs) throws IOException
         {
             final ByteBuffer buffer = ByteBufferUtil.readWithLength(in);
             return StageManager.getStage(Stage.READ).submit(new Callable<Pair<RowCacheKey, IRowCacheEntry>>()
@@ -459,7 +468,15 @@ public class CacheService implements CacheServiceMBean
         }
     }
 
-    public static class KeyCacheSerializer implements IKeyCacheSerializer
+    public static class RowCacheSaver extends CacheSaver<RowCacheKey, IRowCacheEntry> implements IRowCacheSaver
+    {
+        public RowCacheSaver()
+        {
+            super(new RowCacheSerializer(), CacheType.ROW_CACHE);
+        }
+    }
+
+    public static class KeyCacheSerializer implements ICacheSerializer<KeyCacheKey, RowIndexEntry>
     {
         public void serialize(KeyCacheKey key, DataOutputPlus out) throws IOException
         {
@@ -474,7 +491,7 @@ public class CacheService implements CacheServiceMBean
             cfm.comparator.rowIndexEntrySerializer().serialize(entry, out);
         }
 
-        public Future<Pair<KeyCacheKey, RowIndexEntry>> deserialize(DataInputStream input, ColumnFamilyStore cfs) throws IOException
+        public Future<Pair<KeyCacheKey, RowIndexEntry>> deserialize(DataInput input, ColumnFamilyStore cfs) throws IOException
         {
             int keyLength = input.readInt();
             if (keyLength > FBUtilities.MAX_UNSIGNED_SHORT)
@@ -503,6 +520,14 @@ public class CacheService implements CacheServiceMBean
                     return sstable;
             }
             return null;
+        }
+    }
+
+    public static class KeyCacheSaver extends CacheSaver<KeyCacheKey, RowIndexEntry> implements IKeyCacheSaver
+    {
+        public KeyCacheSaver()
+        {
+            super(new KeyCacheSerializer(), CacheType.KEY_CACHE);
         }
     }
 }
