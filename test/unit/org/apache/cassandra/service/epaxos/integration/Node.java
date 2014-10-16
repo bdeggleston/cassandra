@@ -89,14 +89,14 @@ public class Node extends EpaxosManager
     {
         AcceptDecision decision = super.preaccept(instance);
         if (postPreacceptHook != null)
-            postAcceptHook.run();
+            postPreacceptHook.run();
         return decision;
     }
 
     @Override
-    public void accept(Instance instance, Set<UUID> deps) throws InvalidInstanceStateChange, UnavailableException, WriteTimeoutException, BallotException
+    public void accept(Instance instance, AcceptDecision decision) throws InvalidInstanceStateChange, UnavailableException, WriteTimeoutException, BallotException
     {
-        super.accept(instance, deps);
+        super.accept(instance, decision);
         accepted.add(instance.getId());
         if (postAcceptHook != null)
             postAcceptHook.run();
@@ -185,6 +185,37 @@ public class Node extends EpaxosManager
                 public void await() throws WriteTimeoutException
                 {
                     if (getResponseCount() < participantInfo.quorumSize)
+                        throw new WriteTimeoutException(WriteType.CAS, participantInfo.consistencyLevel, getResponseCount(), targets);
+                }
+
+            };
+        }
+
+        @Override
+        protected PrepareCallback getPrepareCallback(Instance instance, ParticipantInfo participantInfo)
+        {
+            return new PrepareCallback(instance, participantInfo){
+
+                @Override
+                public void await() throws WriteTimeoutException
+                {
+                    if (getResponseCount() < participantInfo.quorumSize)
+                        throw new WriteTimeoutException(WriteType.CAS, participantInfo.consistencyLevel, getResponseCount(), targets);
+                }
+
+            };
+        }
+
+        @Override
+        protected TryPreacceptCallback getTryPreacceptCallback(Instance instance, TryPreacceptAttempt attempt, final ParticipantInfo participantInfo)
+        {
+            return new TryPreacceptCallback(instance, attempt, participantInfo)
+            {
+
+                @Override
+                public void await() throws WriteTimeoutException
+                {
+                    if (getResponseCount() < targets)
                         throw new WriteTimeoutException(WriteType.CAS, participantInfo.consistencyLevel, getResponseCount(), targets);
                 }
 

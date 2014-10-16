@@ -6,8 +6,8 @@ import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 public class AcceptCallback extends AbstractEpaxosCallback<AcceptResponse>
 {
     private final Instance instance;
-    private boolean success;
-    private int ballot;
+    private boolean success = true;
+    private int ballot = 0;
 
     public AcceptCallback(Instance instance, EpaxosManager.ParticipantInfo participantInfo)
     {

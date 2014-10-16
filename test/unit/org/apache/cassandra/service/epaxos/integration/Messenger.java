@@ -29,6 +29,8 @@ public class Messenger
         handlers.put(MessagingService.Verb.PREACCEPT_REQUEST, node.getPreacceptVerbHandler());
         handlers.put(MessagingService.Verb.ACCEPT_REQUEST, node.getAcceptVerbHandler());
         handlers.put(MessagingService.Verb.COMMIT_REQUEST, node.getCommitVerbHandler());
+        handlers.put(MessagingService.Verb.PREPARE_REQUEST, node.getPrepareVerbHandler());
+        handlers.put(MessagingService.Verb.TRYPREACCEPT_REQUEST, node.getTryPreacceptVerbHandler());
 
         verbHandlers.put(node.getEndpoint(), handlers);
     }

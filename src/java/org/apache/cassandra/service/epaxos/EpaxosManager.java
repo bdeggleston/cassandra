@@ -115,7 +115,7 @@ public class EpaxosManager
         AcceptDecision acceptDecision = preaccept(instance);
 
         if (acceptDecision.acceptNeeded)
-            accept(instance, acceptDecision.acceptDeps);
+            accept(instance, acceptDecision);
 
         commit(instance);
 
@@ -190,6 +190,9 @@ public class EpaxosManager
         if (decision.acceptNeeded)
             setFastPathImpossible(instance);
 
+        for (Instance missingInstance: callback.getMissingInstances())
+            addMissingInstance(missingInstance);
+
         return decision;
     }
 
@@ -233,9 +236,15 @@ public class EpaxosManager
 
                     PreacceptResponse response;
                     if (instance.getLeaderDepsMatch())
+                    {
                         response = PreacceptResponse.success(instance);
+                    }
                     else
-                        response = PreacceptResponse.failure(instance, new ArrayList<Instance>());  // TODO: return missing instances
+                    {
+                        Set<UUID> missingInstanceIds = Sets.difference(instance.getDependencies(), remoteInstance.getDependencies());
+                        missingInstanceIds.remove(instance.getId());
+                        response = PreacceptResponse.failure(instance, getInstanceCopies(missingInstanceIds));
+                    }
                     MessageOut<PreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.PREACCEPT_RESPONSE,
                                                                            response,
                                                                            PreacceptResponse.serializer);
@@ -262,6 +271,33 @@ public class EpaxosManager
         }
     }
 
+    private List<Instance> getInstanceCopies(Set<UUID> iids)
+    {
+        if (iids == null || iids.size() == 0)
+            return Collections.EMPTY_LIST;
+
+        List<Instance> instances = Lists.newArrayListWithCapacity(iids.size());
+        for (UUID iid: iids)
+        {
+            ReadWriteLock missingLock = locks.get(iid);
+            missingLock.readLock().lock();
+            try
+            {
+                Instance missingInstance = loadInstance(iid);
+                if (missingInstance != null)
+                {
+                    instances.add(missingInstance.copy());
+                }
+            }
+            finally
+            {
+                missingLock.readLock().unlock();
+            }
+
+        }
+        return instances;
+    }
+
     public IVerbHandler<Instance> getPreacceptVerbHandler()
     {
         return new PreacceptVerbHandler();
@@ -272,13 +308,13 @@ public class EpaxosManager
         return new AcceptCallback(instance, participantInfo);
     }
 
-    public void accept(Instance instance, Set<UUID> deps) throws InvalidInstanceStateChange, UnavailableException, WriteTimeoutException, BallotException
+    public void accept(Instance instance, AcceptDecision decision) throws InvalidInstanceStateChange, UnavailableException, WriteTimeoutException, BallotException
     {
         ReadWriteLock lock = locks.get(instance.getId());
         lock.writeLock().lock();
         try
         {
-            instance.accept(deps);
+            instance.accept(decision.acceptDeps);
             instance.incrementBallot();
             saveInstance(instance);
         }
@@ -293,13 +329,16 @@ public class EpaxosManager
         try
         {
             ParticipantInfo participantInfo = getParticipants(instance);
-            MessageOut<Instance> message = new MessageOut<Instance>(MessagingService.Verb.ACCEPT_REQUEST,
-                                                                    instance,
-                                                                    Instance.serializer);
+
             callback = getAcceptCallback(instance, participantInfo);
             for (InetAddress endpoint : participantInfo.liveEndpoints)
                 if (!endpoint.equals(getEndpoint()))
                 {
+                    Set<UUID> missingIds = decision.missingInstances.get(endpoint);
+                    AcceptRequest request = new AcceptRequest(instance, getInstanceCopies(missingIds));
+                    MessageOut<AcceptRequest> message = new MessageOut<>(MessagingService.Verb.ACCEPT_REQUEST,
+                                                                         request,
+                                                                         AcceptRequest.serializer);
                     sendRR(message, endpoint, callback);
                 }
                 else
@@ -316,16 +355,16 @@ public class EpaxosManager
         callback.checkSuccess();
     }
 
-    protected class AcceptVerbHandler implements IVerbHandler<Instance>
+    protected class AcceptVerbHandler implements IVerbHandler<AcceptRequest>
     {
         @Override
-        public void doVerb(MessageIn<Instance> message, int id)
+        public void doVerb(MessageIn<AcceptRequest> message, int id)
         {
-            ReadWriteLock lock = locks.get(message.payload.getId());
+            Instance remoteInstance = message.payload.instance;
+            ReadWriteLock lock = locks.get(remoteInstance.getId());
             lock.writeLock().lock();
             try
             {
-                Instance remoteInstance = message.payload;
                 Instance instance = loadInstance(remoteInstance.getId());
                 if (instance == null)
                 {
@@ -336,6 +375,9 @@ public class EpaxosManager
                     instance.accept(remoteInstance.getDependencies());
                 }
                 saveInstance(instance);
+
+                for (Instance missing: message.payload.missingInstances)
+                    addMissingInstance(missing);
 
                 AcceptResponse response = new AcceptResponse(true, 0);
                 MessageOut<AcceptResponse> reply = new MessageOut<>(MessagingService.Verb.ACCEPT_RESPONSE,
@@ -363,7 +405,7 @@ public class EpaxosManager
         }
     }
 
-    public IVerbHandler<Instance> getAcceptVerbHandler()
+    public IVerbHandler<AcceptRequest> getAcceptVerbHandler()
     {
         return new AcceptVerbHandler();
     }
@@ -459,7 +501,18 @@ public class EpaxosManager
             if (executionSorter.uncommitted.size() > 0)
             {
                 for (UUID iid : executionSorter.uncommitted)
-                    prepare(loadInstance(iid));
+                {
+                    Instance toPrepare = loadInstance(iid);
+                    if (toPrepare == null)
+                    {
+                        // this is only a problem if there's only a single uncommitted instance
+                        if (executionSorter.uncommitted.size() > 1)
+                            continue;
+                        throw new AssertionError("Missing instance for prepare: " + iid.toString());
+                    }
+
+                    prepare(toPrepare);
+                }
             } else
             {
                 for (UUID iid : executionSorter.getOrder())
@@ -520,15 +573,20 @@ public class EpaxosManager
 
                     participantInfo = getParticipants(instance);
                     PrepareRequest request = new PrepareRequest(instance);
-                    MessageOut<PrepareRequest> message = new MessageOut<>(MessagingService.Verb.PREACCEPT_REQUEST,
+                    MessageOut<PrepareRequest> message = new MessageOut<>(MessagingService.Verb.PREPARE_REQUEST,
                                                                           request,
                                                                           PrepareRequest.serializer);
                     callback = getPrepareCallback(instance, participantInfo);
                     for (InetAddress endpoint : participantInfo.liveEndpoints)
                         if (!endpoint.equals(getEndpoint()))
+                        {
                             sendRR(message, endpoint, callback);
+                        }
                         else
-                            callback.countLocal(getEndpoint(), instance);
+                        {
+                            // only provide a response if this instance is not a placeholder
+                            callback.countLocal(getEndpoint(), (!instance.isPlaceholder() ? instance : null));
+                        }
                 }
                 finally
                 {
@@ -537,11 +595,11 @@ public class EpaxosManager
 
                 callback.await();
 
-
                 lock.writeLock().lock();
                 try
                 {
                     PrepareDecision decision = callback.getDecision();
+                    AcceptDecision acceptDecision = null;
                     Set<UUID> deps = decision.deps;
                     switch (decision.state)
                     {
@@ -568,13 +626,16 @@ public class EpaxosManager
                             }
                             if (fullPreaccept)
                             {
-                                AcceptDecision acceptDecision = preaccept(instance);
+                                // reassigning will transmit any missing dependencies
+                                acceptDecision = preaccept(instance);
                                 deps = acceptDecision.acceptDeps;
                             }
 
                         case ACCEPTED:
                             assert deps != null;
-                            accept(instance, deps);
+                            acceptDecision = acceptDecision != null ? acceptDecision
+                                                                    : new AcceptDecision(true, deps, Collections.EMPTY_MAP);
+                            accept(instance, acceptDecision);
                         case COMMITTED:
                             assert deps != null;
                             instance.setDependencies(deps);
@@ -640,7 +701,14 @@ public class EpaxosManager
             try
             {
                 Instance instance = loadInstance(message.payload.iid);
+
+                // we can't participate in the prepare phase if our
+                // local copy of the instance is a placeholder
+                if (instance != null && instance.isPlaceholder())
+                    instance = null;
+
                 if (instance != null)
+                {
                     try
                     {
                         instance.checkBallot(message.payload.ballot);
@@ -651,6 +719,7 @@ public class EpaxosManager
                         // don't die if the message has an old ballot value, just don't
                         // update the instance. This instance will still be useful to the requestor
                     }
+                }
 
                 MessageOut<Instance> reply = new MessageOut<>(MessagingService.Verb.PREPARE_RESPONSE,
                                                               instance,
@@ -699,7 +768,7 @@ public class EpaxosManager
 
     protected TryPreacceptDecision handleTryPreaccept(Instance instance, Set<UUID> dependencies)
     {
-        // TODO: reread the try preaccept stuff, our clever dependency management may break it if we're not careful
+        // TODO: reread the try preaccept stuff, dependency management may break it if we're not careful
 
         // get the ids of instances the the message instance doesn't have in it's dependencies
         Set<UUID> conflictIds = Sets.newHashSet(getCurrentDependencies(instance.getQuery()));
@@ -776,6 +845,46 @@ public class EpaxosManager
     {
         // actually write to table
         instances.put(instance.getId(), instance);
+    }
+
+    protected Instance addMissingInstance(Instance remoteInstance)
+    {
+        ReadWriteLock lock = locks.get(remoteInstance.getId());
+        lock.writeLock().lock();
+        try
+        {
+            Instance instance = loadInstance(remoteInstance.getId());
+            if (instance != null)
+                return instance;
+
+
+            // TODO: guard against re-adding expired instances once we start gc'ing them
+            instance = remoteInstance.copyRemote();
+            Instance previous = instances.putIfAbsent(instance.getId(), instance);
+            if (previous == null)
+            {
+                // be careful if the instance is only preaccepted
+                // if a preaccepted instance from another node is blindly added,
+                // it can cause problems during the prepare phase
+                if (!instance.getState().atLeast(Instance.State.ACCEPTED))
+                {
+                    instance.setDependencies(null);
+                    instance.setPlaceholder(true);  // TODO: exclude from prepare and trypreaccept
+                }
+                saveInstance(instance);
+            }
+            else
+            {
+                instance = previous;
+            }
+
+            return instance;
+
+        }
+        finally
+        {
+            lock.writeLock().unlock();
+        }
     }
 
     // wrapped for testing

@@ -16,6 +16,7 @@ import javax.annotation.Nullable;
 import java.io.DataInput;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -43,13 +44,19 @@ public class Instance
 
         public boolean isLegalPromotion(State state)
         {
-            return state.ordinal() > this.ordinal();
+            return state.ordinal() >= this.ordinal();
         }
 
         public boolean isCommitted()
         {
-            return this == COMMITTED || this == EXECUTED;
+            return atLeast(COMMITTED);
         }
+
+        public boolean atLeast(State state)
+        {
+            return ordinal() >= state.ordinal();
+        }
+
     }
 
     private final UUID id;
@@ -59,8 +66,10 @@ public class Instance
     private volatile int ballot = 0;
     private volatile boolean noop;
     private volatile boolean fastPathImpossible;
+    private volatile boolean placeholder = false;
     private volatile Set<UUID> dependencies = null;
     private volatile boolean leaderDepsMatch = false;
+    private volatile List<InetAddress> successors = null;
     private volatile Set<UUID> stronglyConnected = null;
 
     private class DependencyFilter implements Predicate<UUID>
@@ -92,7 +101,11 @@ public class Instance
         this(i.id, i.query, i.leader);
         state = i.state;
         ballot = i.ballot;
+        noop = i.noop;
+        fastPathImpossible = i.fastPathImpossible;
+        placeholder = i.placeholder;
         dependencies = i.dependencies;
+        successors = i.successors;
         leaderDepsMatch = i.leaderDepsMatch;
     }
 
@@ -159,6 +172,36 @@ public class Instance
         this.fastPathImpossible = fastPathImpossible;
     }
 
+    public void setNoop(boolean noop)
+    {
+        this.noop = noop;
+    }
+
+    public boolean isNoop()
+    {
+        return noop;
+    }
+
+    public void setPlaceholder(boolean placeholder)
+    {
+        this.placeholder = placeholder;
+    }
+
+    public boolean isPlaceholder()
+    {
+        return (!state.atLeast(State.ACCEPTED)) && placeholder;
+    }
+
+    public void setSuccessors(List<InetAddress> successors)
+    {
+        this.successors = successors;
+    }
+
+    public List<InetAddress> getSuccessors()
+    {
+        return successors;
+    }
+
     public Set<UUID> getStronglyConnected()
     {
         return stronglyConnected;
@@ -175,6 +218,9 @@ public class Instance
         if (!this.state.isLegalPromotion(state))
             throw new InvalidInstanceStateChange(this, state);
         this.state = state;
+
+        if (state.atLeast(State.ACCEPTED))
+            placeholder = false;
     }
 
     @VisibleForTesting

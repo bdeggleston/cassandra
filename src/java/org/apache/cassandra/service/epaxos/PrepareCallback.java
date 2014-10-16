@@ -76,7 +76,8 @@ public class PrepareCallback extends AbstractEpaxosCallback<Instance>
     {
         int maxBallot = 0;
         for (Instance inst: responses.values())
-            maxBallot = Math.max(maxBallot, inst.getBallot());
+            if (inst != null)
+                maxBallot = Math.max(maxBallot, inst.getBallot());
 
         if (maxBallot > ballot)
             throw new BallotException(instance, maxBallot);
@@ -100,7 +101,7 @@ public class PrepareCallback extends AbstractEpaxosCallback<Instance>
     {
         // check for fast path being impossible
         for (Instance instance: responses.values())
-            if (instance.isFastPathImpossible())
+            if (instance != null && instance.isFastPathImpossible())
                 return Collections.EMPTY_LIST;
 
         // group common responses
@@ -118,7 +119,7 @@ public class PrepareCallback extends AbstractEpaxosCallback<Instance>
             depGroups.get(deps).add(entry.getKey());
             replyingReplicas.add(entry.getKey());
 
-            scores.put(deps, (scores.get(deps) + (instance.getLeaderDepsMatch() ? 2 : 1)));
+            scores.put(deps, (scores.get(deps) + (entry.getValue().getLeaderDepsMatch() ? 2 : 1)));
         }
 
         // min # of identical preaccepts

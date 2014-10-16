@@ -15,4 +15,10 @@ public class EpaxosPreacceptTest
     {
 
     }
+
+    @Test
+    public void missingInstancesAreReturned() throws Exception
+    {
+
+    }
 }

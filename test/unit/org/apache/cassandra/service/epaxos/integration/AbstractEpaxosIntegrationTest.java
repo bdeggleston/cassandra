@@ -84,7 +84,7 @@ public abstract class AbstractEpaxosIntegrationTest
         return f + ((f + 1) / 2);
     }
 
-    public void setState(List<Node> nodes, Node.State state)
+    public static void setState(List<Node> nodes, Node.State state)
     {
         for (Node node: nodes)
             node.setState(state);
@@ -125,6 +125,16 @@ public abstract class AbstractEpaxosIntegrationTest
         {
             String msg = String.format("Order mismatch on %s", node.getEndpoint());
             Assert.assertEquals(msg, expectedOrder, node.executionOrder);
+        }
+    }
+
+    public static void assertInstanceLeaderDepsMatch(UUID iid, List<Node> nodes, boolean expected)
+    {
+        for (Node node: nodes)
+        {
+            Instance instance = node.getInstance(iid);
+            String msg = String.format("Unexpected leader deps match value on %s", node.getEndpoint());
+            Assert.assertEquals(msg, expected, instance.getLeaderDepsMatch());
         }
     }
 

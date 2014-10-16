@@ -47,6 +47,13 @@ public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
 
         remoteDependencies.addAll(response.dependencies);
 
+        for (Instance missingInstance: response.missingInstances)
+        {
+            Instance previous = missingInstances.get(missingInstance.getId());
+            if (previous != null && previous.getBallot() > missingInstance.getBallot())
+                continue;
+            missingInstances.put(missingInstance.getId(), missingInstance);
+        }
 
         latch.countDown();
     }
@@ -74,7 +81,24 @@ public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
         // the fast path quorum may be larger than the simple quorum, so getResponseCount can't be used
         boolean fpQuorum = (responses.size() + localResponse) >= participantInfo.fastQuorumSize;
 
-        return new AcceptDecision((!depsMatch || !fpQuorum),
-                                  ImmutableSet.copyOf(Iterables.concat(dependencies, remoteDependencies)));
+        Set<UUID> unifiedDeps = Sets.union(dependencies, remoteDependencies);
+
+        Map<InetAddress, Set<UUID>> missingIds = Maps.newHashMap();
+        for (Map.Entry<InetAddress, PreacceptResponse> entry: responses.entrySet())
+        {
+            Set<UUID> diff = Sets.difference(unifiedDeps, entry.getValue().dependencies);
+            if (diff.size() > 0)
+            {
+                diff.remove(instance.getId());
+                missingIds.put(entry.getKey(), diff);
+            }
+        }
+
+        return new AcceptDecision((!depsMatch || !fpQuorum), unifiedDeps, missingIds);
+    }
+
+    Iterable<Instance> getMissingInstances()
+    {
+        return missingInstances.values();
     }
 }

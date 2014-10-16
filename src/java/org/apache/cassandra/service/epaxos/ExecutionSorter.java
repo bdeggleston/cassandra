@@ -3,6 +3,8 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.List;
@@ -18,6 +20,8 @@ import java.util.concurrent.locks.ReadWriteLock;
  */
 class ExecutionSorter
 {
+    private static final Logger logger = LoggerFactory.getLogger(EpaxosManager.class);
+
     private final DependencyGraph dependencyGraph = new DependencyGraph();
     public final Set<UUID> uncommitted = new HashSet<>();
     private final Set<UUID> requiredInstances = new HashSet<>();
@@ -77,6 +81,15 @@ class ExecutionSorter
         else if (state != Instance.State.COMMITTED)
         {
             uncommitted.add(instance.getId());
+
+            // deps should only be null if this is an uncommitted
+            // placeholder instance. We can't proceed until it's
+            // been committed.
+            if (deps == null)
+            {
+                assert instance.isPlaceholder();
+                return;
+            }
         }
 
         if (stronglyConnected != null)
@@ -89,6 +102,12 @@ class ExecutionSorter
                 continue;
 
             Instance depInst = accessor.loadInstance(dep);
+            if (depInst == null)
+            {
+                logger.debug("Unknown dependency encountered, adding to uncommitted. " + dep.toString());
+                uncommitted.add(dep);
+                continue;
+            }
             assert depInst != null;
 
             addInstance(depInst);

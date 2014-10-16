@@ -34,10 +34,7 @@ import javax.management.ObjectName;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
-import org.apache.cassandra.service.epaxos.AcceptResponse;
-import org.apache.cassandra.service.epaxos.Instance;
-import org.apache.cassandra.service.epaxos.PreacceptResponse;
-import org.apache.cassandra.service.epaxos.PrepareRequest;
+import org.apache.cassandra.service.epaxos.*;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -235,11 +232,13 @@ public final class MessagingService implements MessagingServiceMBean
 
         put(Verb.PREACCEPT_REQUEST, Instance.serializer);
         put(Verb.PREACCEPT_RESPONSE, PreacceptResponse.serializer);
-        put(Verb.ACCEPT_REQUEST, Instance.serializer);
+        put(Verb.ACCEPT_REQUEST, AcceptRequest.serializer);
         put(Verb.ACCEPT_RESPONSE, AcceptResponse.serializer);
         put(Verb.COMMIT_REQUEST, Instance.serializer);
         put(Verb.PREPARE_REQUEST, PrepareRequest.serializer);
-        put(Verb.PREACCEPT_RESPONSE, Instance.serializer);
+        put(Verb.PREPARE_RESPONSE, Instance.serializer);
+        put(Verb.TRYPREACCEPT_REQUEST, TryPreacceptRequest.serializer);
+        put(Verb.TRYPREACCEPT_RESPONSE, TryPreacceptResponse.serializer);
     }};
 
     /**
