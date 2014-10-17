@@ -8,8 +8,10 @@ import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.composites.CellNames;
 import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.locator.LocalStrategy;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.ThriftCASRequest;
@@ -20,8 +22,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.*;
 
 public abstract class AbstractEpaxosIntegrationTest
@@ -70,7 +70,7 @@ public abstract class AbstractEpaxosIntegrationTest
     }
 
     public abstract int getReplicationFactor();
-    public abstract Node createNode(InetAddress endpoint, Messenger messenger);
+    public abstract Node createNode(int number, String ksName, Messenger messenger);
 
     public int quorumSize()
     {
@@ -142,22 +142,42 @@ public abstract class AbstractEpaxosIntegrationTest
     public List<Node> nodes;
     public Messenger messenger;
 
+    protected String createTestKeyspace()
+    {
+        String ksName = String.format("epaxos_%s", System.currentTimeMillis());
+        List<CFMetaData> cfDefs = Lists.newArrayListWithCapacity(getReplicationFactor() * 2);
+        for (int i=0; i<getReplicationFactor(); i++)
+        {
+            CFMetaData instanceTable = new CFMetaData(ksName,
+                                                      String.format("%s_%s", SystemKeyspace.EPAXOS_INSTANCE, i + 1),
+                                                      CFMetaData.EpaxosInstanceCf.cfType,
+                                                      CFMetaData.EpaxosInstanceCf.comparator);
+            instanceTable = CFMetaData.copyOpts(instanceTable, CFMetaData.EpaxosInstanceCf);
+            cfDefs.add(instanceTable);
+
+            CFMetaData dependencyTable = new CFMetaData(ksName,
+                                                        String.format("%s_%s", SystemKeyspace.EPAXOS_DEPENDENCIES, i + 1),
+                                                        CFMetaData.EpaxosDependenciesCF.cfType,
+                                                        CFMetaData.EpaxosDependenciesCF.comparator);
+            dependencyTable = CFMetaData.copyOpts(dependencyTable, CFMetaData.EpaxosDependenciesCF);
+
+            cfDefs.add(dependencyTable);
+        }
+
+        KSMetaData ks = KSMetaData.newKeyspace(ksName, LocalStrategy.class, Collections.EMPTY_MAP, true, cfDefs);
+        Schema.instance.load(ks);
+        return ksName;
+    }
+
     @Before
     public void setUp()
     {
+        String ksName = createTestKeyspace();
         messenger = new Messenger();
         nodes = Lists.newArrayListWithCapacity(getReplicationFactor());
         for (int i=0; i<getReplicationFactor(); i++)
         {
-            Node node;
-            try
-            {
-                node = createNode(InetAddress.getByAddress(new byte[]{127, 0, 0, (byte) (i + 1)}), messenger);
-            }
-            catch (UnknownHostException e)
-            {
-                throw new AssertionError(e);
-            }
+            Node node = createNode(i + 1, ksName, messenger);
             messenger.registerNode(node);
             nodes.add(node);
         }

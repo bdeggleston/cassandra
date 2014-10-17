@@ -12,8 +12,10 @@ import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.epaxos.*;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,9 +41,21 @@ public class Node extends EpaxosManager
     public volatile Runnable postCommitHook = null;
     public final Set<UUID> accepted = Sets.newConcurrentHashSet();
 
-    public Node(InetAddress endpoint, Messenger messenger)
+    public final int number;
+    public final String ksName;
+
+    public Node(int number, String ksName, Messenger messenger)
     {
-        this.endpoint = endpoint;
+        this.number = number;
+        try
+        {
+            endpoint = InetAddress.getByAddress(ByteBufferUtil.bytes(number).array());
+        }
+        catch (UnknownHostException e)
+        {
+            throw new AssertionError(e);
+        }
+        this.ksName = ksName;
         this.messenger = messenger;
         state = State.UP;
 
@@ -82,6 +96,24 @@ public class Node extends EpaxosManager
     public Instance getInstance(UUID iid)
     {
         return loadInstance(iid);
+    }
+
+    @Override
+    protected String keyspace()
+    {
+        return keyspace();
+    }
+
+    @Override
+    protected String instanceTable()
+    {
+        return String.format("%s_%s", super.instanceTable(), number);
+    }
+
+    @Override
+    protected String dependencyTable()
+    {
+        return String.format("%s_%s", super.dependencyTable(), number);
     }
 
     @Override
@@ -156,9 +188,9 @@ public class Node extends EpaxosManager
 
     public static class SingleThreaded extends Node
     {
-        public SingleThreaded(InetAddress endpoint, Messenger messenger)
+        public SingleThreaded(int number, String ksName, Messenger messenger)
         {
-            super(endpoint, messenger);
+            super(number, ksName, messenger);
         }
 
         @Override

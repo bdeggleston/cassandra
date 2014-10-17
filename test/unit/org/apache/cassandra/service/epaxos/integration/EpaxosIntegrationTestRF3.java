@@ -22,9 +22,9 @@ public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest
     }
 
     @Override
-    public Node createNode(InetAddress endpoint, Messenger messenger)
+    public Node createNode(int number, String ksName, Messenger messenger)
     {
-        return new Node.SingleThreaded(endpoint, messenger);
+        return new Node.SingleThreaded(number, ksName, messenger);
     }
 
     /**

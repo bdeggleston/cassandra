@@ -6,6 +6,8 @@ import com.google.common.util.concurrent.Striped;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.UnavailableException;
@@ -37,6 +39,17 @@ public class EpaxosManager
 
     private final ConcurrentMap<UUID, Instance> instances = Maps.newConcurrentMap();
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
+
+    private final Random random = new Random();
+
+    private final Predicate<InetAddress> nonLocalPredicate = new Predicate<InetAddress>()
+    {
+        @Override
+        public boolean apply(InetAddress inetAddress)
+        {
+            return !getEndpoint().equals(inetAddress);
+        }
+    };
 
     public class ParticipantInfo
     {
@@ -105,6 +118,26 @@ public class EpaxosManager
         }
     };
 
+    protected String keyspace()
+    {
+        return Keyspace.SYSTEM_KS;
+    }
+
+    protected String instanceTable()
+    {
+        return SystemKeyspace.EPAXOS_INSTANCE;
+    }
+
+    protected String dependencyTable()
+    {
+        return SystemKeyspace.EPAXOS_DEPENDENCIES;
+    }
+
+    protected Random getRandom()
+    {
+        return random;
+    }
+
     public ColumnFamily query(SerializedRequest query)
             throws InvalidRequestException, UnavailableException, InvalidInstanceStateChange, WriteTimeoutException, BallotException
     {
@@ -140,12 +173,15 @@ public class EpaxosManager
 
     public AcceptDecision preaccept(Instance instance) throws UnavailableException, InvalidInstanceStateChange, BallotException, WriteTimeoutException
     {
+        ParticipantInfo participantInfo = getParticipants(instance);
         ReadWriteLock lock = locks.get(instance.getId());
         lock.writeLock().lock();
         try
         {
             instance.preaccept(getCurrentDependencies(instance.getQuery()));
-            // TODO: select successors
+            List<InetAddress> successors = Lists.newArrayList(Iterables.filter(participantInfo.endpoints, nonLocalPredicate));
+            Collections.shuffle(successors, getRandom());
+            instance.setSuccessors(successors);
             instance.incrementBallot();
             saveInstance(instance);
         }
@@ -160,7 +196,6 @@ public class EpaxosManager
         lock.readLock().lock();
         try
         {
-            ParticipantInfo participantInfo = getParticipants(instance);
             MessageOut<Instance> message = new MessageOut<Instance>(MessagingService.Verb.PREACCEPT_REQUEST,
                                                                     instance,
                                                                     Instance.serializer);
@@ -513,7 +548,8 @@ public class EpaxosManager
 
                     prepare(toPrepare);
                 }
-            } else
+            }
+            else
             {
                 for (UUID iid : executionSorter.getOrder())
                 {

@@ -347,6 +347,22 @@ public final class CFMetaData
                                                                  + "PRIMARY KEY (id)"
                                                                  + ") WITH COMMENT='show all compaction history' AND DEFAULT_TIME_TO_LIVE=604800");
 
+    // TODO: make this a proper table
+    public static final CFMetaData EpaxosInstanceCf = compile("CREATE TABLE " + SystemKeyspace.EPAXOS_INSTANCE + " ("
+                                                              + "id timeuuid PRIMARY KEY,"
+                                                              + "data blob)");
+
+    public static final CFMetaData EpaxosDependenciesCF = compile("CREATE TABLE " + SystemKeyspace.EPAXOS_DEPENDENCIES + " ("
+                                                                  + "row_key blob,"
+                                                                  + "cf_id uuid,"
+                                                                  + "cluster_key blob,"
+                                                                  + "read_only boolean,"
+                                                                  + "id timeuuid,"
+                                                                  + "data blob,"
+                                                                  + "acknowledged boolean,"
+                                                                  + "executed boolean,"
+                                                                  + "PRIMARY KEY (row_key, cf_id, cluster_key, read_only, id))");
+
     public static class SpeculativeRetry
     {
         public enum RetryType
@@ -649,7 +665,8 @@ public final class CFMetaData
         return copyOpts(new CFMetaData(ksName, cfName, cfType, comparator, newCfId), this);
     }
 
-    static CFMetaData copyOpts(CFMetaData newCFMD, CFMetaData oldCFMD)
+    @VisibleForTesting
+    public static CFMetaData copyOpts(CFMetaData newCFMD, CFMetaData oldCFMD)
     {
         List<ColumnDefinition> clonedColumns = new ArrayList<>(oldCFMD.allColumns().size());
         for (ColumnDefinition cd : oldCFMD.allColumns())
