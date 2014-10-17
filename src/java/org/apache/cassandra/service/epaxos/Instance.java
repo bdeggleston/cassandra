@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.CompactEndpointSerializationHelper;
@@ -27,7 +28,9 @@ import java.util.UUID;
  */
 public class Instance
 {
-    public static final Serializer serializer = new Serializer();
+    public static final IVersionedSerializer<Instance> serializer = new ExternalSerializer();
+    static final IVersionedSerializer<Instance> internalSerializer = new InternalSerializer();
+
     public static enum State
     {
         // order matters
@@ -66,10 +69,12 @@ public class Instance
     private volatile int ballot = 0;
     private volatile boolean noop;
     private volatile boolean fastPathImpossible;
-    private volatile boolean placeholder = false;
     private volatile Set<UUID> dependencies = null;
     private volatile boolean leaderDepsMatch = false;
     private volatile List<InetAddress> successors = null;
+
+    // fields not transmitted to other nodes
+    private volatile boolean placeholder = false;
     private volatile Set<UUID> stronglyConnected = null;
 
     private class DependencyFilter implements Predicate<UUID>
@@ -243,6 +248,7 @@ public class Instance
 
         if (leaderDependencies != null)
             leaderDepsMatch = this.dependencies.equals(leaderDependencies);
+        placeholder = false;
     }
 
     public void accept() throws InvalidInstanceStateChange
@@ -254,6 +260,7 @@ public class Instance
     {
         setState(State.ACCEPTED);
         setDependencies(dependencies);
+        placeholder = false;
     }
 
     public void commit() throws InvalidInstanceStateChange
@@ -265,6 +272,7 @@ public class Instance
     {
         setState(State.COMMITTED);
         setDependencies(dependencies);
+        placeholder = false;
     }
 
     public void setExecuted()
@@ -288,38 +296,45 @@ public class Instance
     {
         Instance instance = new Instance(this.id, this.query, this.leader);
         instance.ballot = ballot;
+        instance.noop = noop;
+        instance.successors = successors;
         return instance;
     }
 
-    public static class Serializer implements IVersionedSerializer<Instance>
+    /**
+     * Serialization logic shared by internal and external serializers
+     */
+    public static abstract class Serializer implements IVersionedSerializer<Instance>
     {
         @Override
         public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
         {
-            out.writeBoolean(instance != null);
-            if (instance != null)
+            UUIDSerializer.serializer.serialize(instance.id, out, version);
+            SerializedRequest.serializer.serialize(instance.getQuery(), out, version);
+            CompactEndpointSerializationHelper.serialize(instance.leader, out);
+            out.writeInt(instance.state.ordinal());
+            out.writeInt(instance.ballot);
+            out.writeBoolean(instance.noop);
+            out.writeBoolean(instance.fastPathImpossible);
+            out.writeBoolean(instance.dependencies != null);
+            if (instance.dependencies != null)
             {
-                UUIDSerializer.serializer.serialize(instance.id, out, version);
-                SerializedRequest.serializer.serialize(instance.getQuery(), out, version);
-                CompactEndpointSerializationHelper.serialize(instance.leader, out);
-                out.writeInt(instance.state.ordinal());
-                out.writeInt(instance.ballot);
-                out.writeBoolean(instance.noop);
-                out.writeBoolean(instance.fastPathImpossible);
                 Set<UUID> deps = instance.dependencies;
                 out.writeInt(deps.size());
                 for (UUID dep : deps)
                     UUIDSerializer.serializer.serialize(dep, out, version);
-                out.writeBoolean(instance.leaderDepsMatch);
             }
+            out.writeBoolean(instance.leaderDepsMatch);
+
+            // there should never be a null successor list at this point
+            out.writeInt(instance.successors.size());
+            for (InetAddress endpoint: instance.successors)
+                CompactEndpointSerializationHelper.serialize(endpoint, out);
         }
 
         @Override
         public Instance deserialize(DataInput in, int version) throws IOException
         {
-            if (!in.readBoolean())
-                return null;
-
             Instance instance = new Instance(
                     UUIDSerializer.serializer.deserialize(in, version),
                     SerializedRequest.serializer.deserialize(in, version),
@@ -338,12 +353,24 @@ public class Instance
             instance.noop = in.readBoolean();
             instance.fastPathImpossible = in.readBoolean();
 
-            UUID[] deps = new UUID[in.readInt()];
-            for (int i=0; i<deps.length; i++)
-                deps[i] = UUIDSerializer.serializer.deserialize(in, version);
-            instance.dependencies = ImmutableSet.copyOf(deps);
+            if (in.readBoolean())
+            {
+                UUID[] deps = new UUID[in.readInt()];
+                for (int i=0; i<deps.length; i++)
+                    deps[i] = UUIDSerializer.serializer.deserialize(in, version);
+                instance.dependencies = ImmutableSet.copyOf(deps);
+            }
+            else
+            {
+                instance.dependencies = null;
+            }
 
             instance.leaderDepsMatch = in.readBoolean();
+
+            InetAddress[] successors = new InetAddress[in.readInt()];
+            for (int i=0; i<successors.length; i++)
+                successors[i] = CompactEndpointSerializationHelper.deserialize(in);
+            instance.successors = Lists.newArrayList(successors);
 
             return instance;
         }
@@ -351,9 +378,6 @@ public class Instance
         @Override
         public long serializedSize(Instance instance, int version)
         {
-            if (instance == null)
-                return 1;
-
             int size = 0;
             size += 1;  // null flag
             size += UUIDSerializer.serializer.serializedSize(instance.id, version);
@@ -363,10 +387,105 @@ public class Instance
             size += 4;  // instance.ballot
             size += 1;  // instance.noop
             size += 1;  // instance.fastPathImpossible
-            size += 4;  // deps.size
-            for (UUID dep : instance.dependencies)
-                size += UUIDSerializer.serializer.serializedSize(dep, version);
+            size += 1;  // instance.dependencies != null
+            if (instance.dependencies != null)
+            {
+                size += 4;  // deps.size
+                for (UUID dep : instance.dependencies)
+                    size += UUIDSerializer.serializer.serializedSize(dep, version);
+            }
             size += 1;  // instance.leaderDepsMatch
+
+            size += 4;  // instance.successors.size
+            for (InetAddress successor: instance.successors)
+                size += CompactEndpointSerializationHelper.serializedSize(successor);
+
+            return size;
+        }
+    }
+
+    /**
+     * Serialization used to communicate instances to other nodes
+     */
+    private static class ExternalSerializer extends Serializer
+    {
+        @Override
+        public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
+        {
+            out.writeBoolean(instance != null);
+            if (instance != null)
+            {
+                if (instance.dependencies == null || instance.isPlaceholder())
+                    throw new AssertionError("cannot transmit placeholder instances");
+                super.serialize(instance, out, version);
+            }
+        }
+
+        @Override
+        public Instance deserialize(DataInput in, int version) throws IOException
+        {
+            if (!in.readBoolean())
+                return null;
+            return super.deserialize(in, version);
+        }
+
+        @Override
+        public long serializedSize(Instance instance, int version)
+        {
+            if (instance == null)
+                return 1;
+            if (instance.dependencies == null || instance.isPlaceholder())
+                throw new AssertionError("cannot transmit placeholder instances");
+            return super.serializedSize(instance, version) + 1;
+        }
+    }
+
+    /**
+     * Serialization used for local instance persistence
+     */
+    private static class InternalSerializer extends Serializer
+    {
+        @Override
+        public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
+        {
+            super.serialize(instance, out, version);
+            out.writeBoolean(instance.placeholder);
+            out.writeBoolean(instance.stronglyConnected != null);
+            if (instance.stronglyConnected != null)
+            {
+                out.writeInt(instance.stronglyConnected.size());
+                for (UUID iid: instance.stronglyConnected)
+                    UUIDSerializer.serializer.serialize(iid, out, version);
+            }
+        }
+
+        @Override
+        public Instance deserialize(DataInput in, int version) throws IOException
+        {
+            Instance instance = super.deserialize(in, version);
+            instance.placeholder = in.readBoolean();
+            if (in.readBoolean())
+            {
+                UUID[] scc = new UUID[in.readInt()];
+                for (int i=0; i<scc.length; i++)
+                    scc[i] = UUIDSerializer.serializer.deserialize(in, version);
+                instance.stronglyConnected = ImmutableSet.copyOf(scc);
+            }
+            return instance;
+        }
+
+        @Override
+        public long serializedSize(Instance instance, int version)
+        {
+            long size = super.serializedSize(instance, version);
+            size += 1;  // instance.placeholder
+            size += 1;  // instance.stronglyConnected != null
+            if (instance.stronglyConnected != null)
+            {
+                size += 4;  // stronglyConnected.size
+                for (UUID iid : instance.stronglyConnected)
+                    size += UUIDSerializer.serializer.serializedSize(iid, version);
+            }
             return size;
         }
     }
