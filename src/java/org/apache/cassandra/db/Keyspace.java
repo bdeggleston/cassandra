@@ -95,7 +95,7 @@ public class Keyspace
 
     public static Keyspace open(String keyspaceName)
     {
-        assert initialized || keyspaceName.equals(SYSTEM_KS);
+        assert initialized;
         return open(keyspaceName, Schema.instance, true);
     }
 

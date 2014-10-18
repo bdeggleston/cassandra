@@ -134,15 +134,17 @@ class ExecutionSorter
             {
                 if (component.size() > 1)
                 {
-                    // we're not using a lock, or persisting because:
-                    // 1) the strongly connected ids will always be the same, and will always be computed
-                    //    so writing the same value multiple times isn't a big deal.
-                    // 2) the instance will be persisted when it's marked as executed. If it doesn't make
-                    //    it that far, the strongly connected set will be computed again
                     Set<UUID> componentSet = ImmutableSet.copyOf(component);
                     for (UUID iid: component)
                     {
-                        accessor.loadInstance(iid).setStronglyConnected(componentSet);
+                        if (loadedScc.containsKey(iid))
+                        {
+                            assert loadedScc.get(iid).equals(componentSet);
+                            continue;
+                        }
+                        Instance instance = accessor.loadInstance(iid);
+                        instance.setStronglyConnected(componentSet);
+                        accessor.saveInstance(instance);
                     }
                 }
 
