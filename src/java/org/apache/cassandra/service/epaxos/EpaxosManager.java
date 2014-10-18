@@ -375,6 +375,7 @@ public class EpaxosManager
 
             callback = getAcceptCallback(instance, participantInfo);
             for (InetAddress endpoint : participantInfo.liveEndpoints)
+            {
                 if (!endpoint.equals(getEndpoint()))
                 {
                     Set<UUID> missingIds = decision.missingInstances.get(endpoint);
@@ -388,6 +389,17 @@ public class EpaxosManager
                 {
                     callback.countLocal();
                 }
+            }
+
+            // send to remote datacenters for LOCAL_SERIAL queries
+            for (InetAddress endpoint: participantInfo.remoteEndpoints)
+            {
+                AcceptRequest request = new AcceptRequest(instance, Collections.EMPTY_LIST);
+                MessageOut<AcceptRequest> message = new MessageOut<>(MessagingService.Verb.ACCEPT_REQUEST,
+                                                                     request,
+                                                                     AcceptRequest.serializer);
+                sendOneWay(message, endpoint);
+            }
         }
         finally
         {
@@ -472,8 +484,16 @@ public class EpaxosManager
                                                                     instance,
                                                                     Instance.serializer);
             for (InetAddress endpoint : participantInfo.liveEndpoints)
+            {
                 if (!endpoint.equals(getEndpoint()))
                     sendOneWay(message, endpoint);
+            }
+
+            // send to remote datacenters for LOCAL_SERIAL queries
+            for (InetAddress endpoint: participantInfo.remoteEndpoints)
+            {
+                sendOneWay(message, endpoint);
+            }
         }
         finally
         {
