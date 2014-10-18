@@ -3,19 +3,15 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.base.Predicate;
 import com.google.common.collect.*;
 import com.google.common.io.ByteStreams;
+import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.Striped;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ConsistencyLevel;
-import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.dht.Token;
-import org.apache.cassandra.exceptions.InvalidRequestException;
-import org.apache.cassandra.exceptions.UnavailableException;
-import org.apache.cassandra.exceptions.WriteTimeoutException;
+import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
@@ -33,6 +29,9 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReadWriteLock;
 
 public class EpaxosManager
@@ -57,6 +56,8 @@ public class EpaxosManager
             return !getEndpoint().equals(inetAddress);
         }
     };
+
+    private final Map<UUID, SettableFuture> resultFutures = Maps.newConcurrentMap();
 
     public class ParticipantInfo
     {
@@ -145,21 +146,59 @@ public class EpaxosManager
         return random;
     }
 
-    public ColumnFamily query(SerializedRequest query)
-            throws InvalidRequestException, UnavailableException, InvalidInstanceStateChange, WriteTimeoutException, BallotException
+    protected long getTimeout(long start)
     {
+        return Math.max(1, DatabaseDescriptor.getRpcTimeout() - (System.currentTimeMillis() - start));
+    }
+
+    public <T> T query(SerializedRequest query)
+            throws UnavailableException, WriteTimeoutException, ReadTimeoutException, InvalidRequestException
+    {
+        long start = System.currentTimeMillis();
+
         query.getConsistencyLevel().validateForCas();
 
         Instance instance = createInstance(query);
-        AcceptDecision acceptDecision = preaccept(instance);
+        SettableFuture<T> resultFuture = SettableFuture.create();
+        resultFutures.put(instance.getId(), resultFuture);
+        try
+        {
+            AcceptDecision acceptDecision = preaccept(instance);
 
-        if (acceptDecision.acceptNeeded)
-            accept(instance.getId(), acceptDecision);
+            if (acceptDecision.acceptNeeded)
+                accept(instance.getId(), acceptDecision);
 
-        commit(instance.getId(), acceptDecision.acceptDeps);
+            commit(instance.getId(), acceptDecision.acceptDeps);
 
-        execute(instance.getId());
-        return null;
+            execute(instance.getId());
+
+            return resultFuture.get(getTimeout(start), TimeUnit.MILLISECONDS);
+        }
+        // TODO: figure out how C* handles interruption and maybe do something different
+        catch (RequestTimeoutException | InvalidInstanceStateChange | BallotException
+                | UnavailableException | InterruptedException | ExecutionException | TimeoutException e1)
+        {
+            try
+            {
+                // it's possible that another node will take control of this instance and commit it
+                // before the timeout is up, so we'll wait for it to be committed here before returning
+                return resultFuture.get(getTimeout(start), TimeUnit.MILLISECONDS);
+            }
+            catch (InterruptedException | TimeoutException | ExecutionException e2)
+            {
+                if (e1 instanceof ReadTimeoutException)
+                    throw (ReadTimeoutException) e1;
+                if (e1 instanceof WriteTimeoutException)
+                    throw (WriteTimeoutException) e1;
+
+//                throw new RuntimeException(e1);
+                throw new WriteTimeoutException(WriteType.CAS, query.getConsistencyLevel(), 0, 1);
+            }
+        }
+        finally
+        {
+            resultFutures.remove(instance.getId());
+        }
     }
 
     protected Instance createInstance(SerializedRequest request)
@@ -539,7 +578,7 @@ public class EpaxosManager
                 // TODO: send this to another thread
                 execute(message.payload.getId());
             }
-            catch (UnavailableException | WriteTimeoutException | BallotException e)
+            catch (UnavailableException | BallotException | RequestTimeoutException | InvalidRequestException e)
             {
                 // TODO: maybe do something besides just logging?
                 logger.error("Error executing instance", e);
@@ -552,7 +591,7 @@ public class EpaxosManager
         return new CommitVerbHandler();
     }
 
-    public void execute(UUID instanceId) throws UnavailableException, WriteTimeoutException, BallotException
+    public void execute(UUID instanceId) throws UnavailableException, BallotException, InvalidRequestException, RequestTimeoutException
     {
         ReadWriteLock lock = locks.get(instanceId);
 
@@ -619,9 +658,15 @@ public class EpaxosManager
         }
     }
 
-    protected void executeInstance(Instance instance)
+    protected void executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
     {
-        // TODO: databasey read/write stuff
+        ColumnFamily result = instance.execute();
+        SettableFuture resultFuture = resultFutures.get(instance.getId());
+        if (resultFuture != null)
+        {
+            resultFuture.set(result);
+            resultFutures.remove(instance.getId());
+        }
     }
 
     protected PrepareCallback getPrepareCallback(Instance instance, ParticipantInfo participantInfo)
@@ -959,6 +1004,7 @@ public class EpaxosManager
 
     protected Instance loadInstance(UUID instanceId)
     {
+        // TODO: put into the READ stage
         // read from table
         String query = "SELECT * FROM %s.%s WHERE id=?";
         UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace(), instanceTable()),
@@ -981,6 +1027,7 @@ public class EpaxosManager
 
     protected void saveInstance(Instance instance)
     {
+        // TODO: put into the WRITE stage
         // actually write to table
         DataOutputBuffer out = new DataOutputBuffer((int) Instance.internalSerializer.serializedSize(instance, 0));
         try

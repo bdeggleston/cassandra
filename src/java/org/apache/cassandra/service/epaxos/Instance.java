@@ -5,6 +5,11 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.exceptions.ReadTimeoutException;
+import org.apache.cassandra.exceptions.RequestTimeoutException;
+import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.CompactEndpointSerializationHelper;
@@ -296,6 +301,11 @@ public class Instance
         {
             throw new AssertionError();
         }
+    }
+
+    public ColumnFamily execute() throws ReadTimeoutException, WriteTimeoutException
+    {
+        return query.execute();
     }
 
     public Instance copy()

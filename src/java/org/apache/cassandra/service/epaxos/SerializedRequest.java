@@ -1,18 +1,26 @@
 package org.apache.cassandra.service.epaxos;
 
-import org.apache.cassandra.db.ConsistencyLevel;
-import org.apache.cassandra.db.ReadCommand;
-import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.concurrent.Stage;
+import org.apache.cassandra.concurrent.StageManager;
+import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.*;
+import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.exceptions.ReadTimeoutException;
+import org.apache.cassandra.exceptions.RequestTimeoutException;
+import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.service.CASRequest;
-import org.apache.cassandra.service.ThriftCASRequest;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.io.DataInput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.*;
 
 public class SerializedRequest
 {
@@ -20,7 +28,7 @@ public class SerializedRequest
 
     private final String keyspaceName;
     private final String cfName;
-    private final ThriftCASRequest request;
+    private final CASRequest request;
     private final ByteBuffer key;
     private final ConsistencyLevel consistencyLevel;
 
@@ -43,7 +51,7 @@ public class SerializedRequest
         return cfName;
     }
 
-    public ThriftCASRequest getRequest()
+    public CASRequest getRequest()
     {
         return request;
     }
@@ -58,6 +66,97 @@ public class SerializedRequest
         return consistencyLevel;
     }
 
+    private long getExecutionTimeoutMillis(long start)
+    {
+        long elapsed = System.currentTimeMillis() - start;
+        // TODO: use a different timeout value
+        return Math.max(1, DatabaseDescriptor.getCasContentionTimeout() - elapsed);
+
+    }
+
+    public ColumnFamily execute() throws ReadTimeoutException, WriteTimeoutException
+    {
+        Tracing.trace("Reading existing values for CAS precondition");
+        CFMetaData metadata = Schema.instance.getCFMetaData(keyspaceName, cfName);
+        long start = System.currentTimeMillis();
+
+        long timestamp = System.currentTimeMillis();  // TODO: why do we need a ts for a read?
+        final ReadCommand command = ReadCommand.create(keyspaceName, key, cfName, timestamp, request.readFilter());
+
+        FutureTask<Row> read = new FutureTask<Row>(new Callable<Row>()
+        {
+            @Override
+            public Row call() throws Exception
+            {
+                Keyspace keyspace = Keyspace.open(command.ksName);
+                return command.getRow(keyspace);
+            }
+        });
+
+        StageManager.getStage(Stage.READ).execute(read);
+
+        Row row;
+        try
+        {
+            row = read.get(getExecutionTimeoutMillis(start), TimeUnit.MILLISECONDS);
+        }
+        catch (InterruptedException | TimeoutException | ExecutionException e)
+        {
+            throw new ReadTimeoutException(consistencyLevel, 0, 1, false);
+        }
+
+        final ColumnFamily current = row.cf;
+
+        boolean applies;
+        try
+        {
+            applies = request.appliesTo(current);
+        }
+        catch (InvalidRequestException e)
+        {
+            throw new RuntimeException(e);
+        }
+
+        if (!applies)
+        {
+            Tracing.trace("CAS precondition does not match current values {}", current);
+            // We should not return null as this means success
+            return current == null ? ArrayBackedSortedColumns.factory.create(metadata) : current;
+        }
+        else
+        {
+            // TODO: see if the instance can be marked executed in the same commit log entry as this mutation
+            // TODO: may need to examine the ts of any cells we're going to overwrite
+            FutureTask<ColumnFamily> write = new FutureTask<ColumnFamily>(new Callable<ColumnFamily>()
+            {
+                @Override
+                public ColumnFamily call() throws Exception
+                {
+                    try
+                    {
+                        Mutation mutation = new Mutation(key, request.makeUpdates(current));
+                        Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
+                    }
+                    catch (InvalidRequestException e)
+                    {
+                        throw new RuntimeException(e);
+                    }
+                    return null;
+                }
+            });
+            StageManager.getStage(Stage.MUTATION).execute(write);
+
+            try
+            {
+                return write.get(getExecutionTimeoutMillis(start), TimeUnit.MILLISECONDS);
+            }
+            catch (InterruptedException | TimeoutException | ExecutionException e)
+            {
+                throw new WriteTimeoutException(WriteType.CAS, consistencyLevel, 0, 1);
+            }
+        }
+    }
+
     public static class Serializer implements IVersionedSerializer<SerializedRequest>
     {
         @Override
@@ -67,7 +166,7 @@ public class SerializedRequest
             out.writeUTF(request.cfName);
             ByteBufferUtil.writeWithShortLength(request.key, out);
             out.writeShort(request.consistencyLevel.code);
-            ThriftCASRequest.serializer.serialize(request.request, out, version);
+            CASRequest.serializer.serialize(request.request, out, version);
         }
 
         @Override
@@ -79,7 +178,8 @@ public class SerializedRequest
             builder.cfName(in.readUTF());
             builder.key(ByteBufferUtil.readWithShortLength(in));
             builder.consistencyLevel(ConsistencyLevel.fromCode(in.readShort()));
-            builder.casRequest(ThriftCASRequest.serializer.deserialize(in, version));
+            builder.casRequest(CASRequest.serializer.deserialize(in, version));
+            builder.isRemoteQuery();
 
             return builder.build();
         }
@@ -92,7 +192,7 @@ public class SerializedRequest
             size += TypeSizes.NATIVE.sizeof(request.cfName);
             size += TypeSizes.NATIVE.sizeofWithShortLength(request.key);
             size += 2;
-            size += ThriftCASRequest.serializer.serializedSize(request.request, version);
+            size += CASRequest.serializer.serializedSize(request.request, version);
             return size;
         }
     }
@@ -109,8 +209,16 @@ public class SerializedRequest
         private boolean isReadOnly;
         private ByteBuffer key;
         private ConsistencyLevel consistencyLevel;
-        private ThriftCASRequest casRequest;
+        private CASRequest casRequest;
         private List<ReadCommand> readCommands;
+        private boolean isRemote;
+
+        // indicates that a future doesn't need to be created
+        private Builder isRemoteQuery()
+        {
+            isRemote = true;
+            return this;
+        }
 
         public Builder keyspaceName(String keyspaceName)
         {
@@ -138,7 +246,7 @@ public class SerializedRequest
             return this;
         }
 
-        public Builder casRequest(ThriftCASRequest request)
+        public Builder casRequest(CASRequest request)
         {
             this.casRequest = request;
             return this;

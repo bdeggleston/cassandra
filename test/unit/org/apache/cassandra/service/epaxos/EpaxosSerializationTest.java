@@ -11,6 +11,7 @@ import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.service.CASRequest;
 import org.apache.cassandra.service.ThriftCASRequest;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
@@ -64,7 +65,7 @@ public class EpaxosSerializationTest
         int expectedSize = out.getLength();
         Assert.assertEquals(expectedSize, ThriftCASRequest.serializer.serializedSize(request, 0));
 
-        ThriftCASRequest deserialized = ThriftCASRequest.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
+        CASRequest deserialized = CASRequest.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
 
         Assert.assertEquals(request, deserialized);
     }
