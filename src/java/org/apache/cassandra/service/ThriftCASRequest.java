@@ -18,7 +18,7 @@ import java.io.IOException;
 */
 public class ThriftCASRequest implements CASRequest
 {
-    public static final IVersionedSerializer<ThriftCASRequest> serializer = new Serializer();
+    public static final IVersionedSerializer<CASRequest> serializer = new Serializer();
 
     private final ColumnFamily expected;
     private final ColumnFamily updates;
@@ -27,6 +27,12 @@ public class ThriftCASRequest implements CASRequest
     {
         this.expected = expected;
         this.updates = updates;
+    }
+
+    @Override
+    public Type getType()
+    {
+        return Type.THRIFT;
     }
 
     public IDiskAtomFilter readFilter()
@@ -76,17 +82,20 @@ public class ThriftCASRequest implements CASRequest
         return updates;
     }
 
-    private static class Serializer implements IVersionedSerializer<ThriftCASRequest>
+    private static class Serializer implements IVersionedSerializer<CASRequest>
     {
         @Override
-        public void serialize(ThriftCASRequest request, DataOutputPlus out, int version) throws IOException
+        public void serialize(CASRequest request, DataOutputPlus out, int version) throws IOException
         {
-            ColumnFamily.serializer.serialize(request.expected, out, version);
-            ColumnFamily.serializer.serialize(request.updates, out, version);
+            assert request instanceof ThriftCASRequest;
+            ThriftCASRequest req = (ThriftCASRequest) request;
+
+            ColumnFamily.serializer.serialize(req.expected, out, version);
+            ColumnFamily.serializer.serialize(req.updates, out, version);
         }
 
         @Override
-        public ThriftCASRequest deserialize(DataInput in, int version) throws IOException
+        public CASRequest deserialize(DataInput in, int version) throws IOException
         {
             return new ThriftCASRequest(
                     ColumnFamily.serializer.deserialize(in, version),
@@ -95,10 +104,13 @@ public class ThriftCASRequest implements CASRequest
         }
 
         @Override
-        public long serializedSize(ThriftCASRequest request, int version)
+        public long serializedSize(CASRequest request, int version)
         {
-            return ColumnFamily.serializer.serializedSize(request.expected, version)
-                 + ColumnFamily.serializer.serializedSize(request.updates, version);
+            assert request instanceof ThriftCASRequest;
+            ThriftCASRequest req = (ThriftCASRequest) request;
+
+            return ColumnFamily.serializer.serializedSize(req.expected, version)
+                 + ColumnFamily.serializer.serializedSize(req.updates, version);
         }
     }
 

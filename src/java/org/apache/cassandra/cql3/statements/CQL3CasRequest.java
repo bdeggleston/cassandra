@@ -56,7 +56,7 @@ public class CQL3CasRequest implements CASRequest
 
     private final List<RowUpdate> updates = new ArrayList<>();
 
-    public static final IVersionedSerializer<CQL3CasRequest> serializer = new Serializer();
+    public static final IVersionedSerializer<CASRequest> serializer = new Serializer();
 
     public CQL3CasRequest(CFMetaData cfm, ByteBuffer key, boolean isBatch)
     {
@@ -72,6 +72,12 @@ public class CQL3CasRequest implements CASRequest
     public ByteBuffer getKey()
     {
         return key;
+    }
+
+    @Override
+    public Type getType()
+    {
+        return Type.CQL;
     }
 
     public void addRowUpdate(Composite prefix, ModificationStatement stmt, QueryOptions options, long timestamp)
@@ -281,16 +287,19 @@ public class CQL3CasRequest implements CASRequest
     /**
      * this is pretty ghetto
      */
-    private static class Serializer implements IVersionedSerializer<CQL3CasRequest>
+    private static class Serializer implements IVersionedSerializer<CASRequest>
     {
 
         private final ConcurrentMap<String, ParsedStatement.Prepared> modificationStmts = new ConcurrentHashMap<>();
 
         @Override
-        public void serialize(CQL3CasRequest request, DataOutputPlus out, int version) throws IOException
+        public void serialize(CASRequest request, DataOutputPlus out, int version) throws IOException
         {
-            assert request.updates.size() == 1;
-            RowUpdate update = request.updates.get(0);
+            assert request instanceof CQL3CasRequest;
+            CQL3CasRequest req = (CQL3CasRequest) request;
+
+            assert req.updates.size() == 1;
+            RowUpdate update = req.updates.get(0);
             ModificationStatement statement = update.stmt;
             String query = statement.getQueryString();
             String keyspace = statement.keyspace();
@@ -304,7 +313,7 @@ public class CQL3CasRequest implements CASRequest
         }
 
         @Override
-        public CQL3CasRequest deserialize(DataInput in, int version) throws IOException
+        public CASRequest deserialize(DataInput in, int version) throws IOException
         {
             ModificationStatement.Parsed parsed = null;
             ParsedStatement.Prepared prepared = null;
@@ -346,10 +355,13 @@ public class CQL3CasRequest implements CASRequest
         }
 
         @Override
-        public long serializedSize(CQL3CasRequest request, int version)
+        public long serializedSize(CASRequest request, int version)
         {
-            assert request.updates.size() == 1;
-            RowUpdate update = request.updates.get(0);
+            assert request instanceof CQL3CasRequest;
+            CQL3CasRequest req = (CQL3CasRequest) request;
+
+            assert req.updates.size() == 1;
+            RowUpdate update = req.updates.get(0);
             ModificationStatement statement = update.stmt;
             String query = statement.getQueryString();
             String keyspace = statement.keyspace();
