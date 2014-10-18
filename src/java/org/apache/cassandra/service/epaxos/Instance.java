@@ -313,6 +313,14 @@ public class Instance
     }
 
     /**
+     * Applies mutable non-dependency attributes from remote instance copies
+     */
+    public void applyRemote(Instance remote)
+    {
+        this.noop = remote.noop;
+    }
+
+    /**
      * Serialization logic shared by internal and external serializers
      */
     public static abstract class Serializer implements IVersionedSerializer<Instance>

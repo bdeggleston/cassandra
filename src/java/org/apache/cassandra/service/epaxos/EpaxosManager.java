@@ -264,6 +264,7 @@ public class EpaxosManager
                     } else
                     {
                         instance.checkBallot(remoteInstance.getBallot());
+                        instance.applyRemote(remoteInstance);
                     }
                     instance.preaccept(getCurrentDependencies(instance.getQuery()), remoteInstance.getDependencies());
                     saveInstance(instance);
@@ -396,6 +397,7 @@ public class EpaxosManager
                 } else
                 {
                     instance.checkBallot(remoteInstance.getBallot());
+                    instance.applyRemote(remoteInstance);
                     instance.accept(remoteInstance.getDependencies());
                 }
                 saveInstance(instance);
@@ -475,6 +477,7 @@ public class EpaxosManager
                     instance = remoteInstance.copyRemote();
                 } else
                 {
+                    instance.applyRemote(remoteInstance);
                     instance.commit(remoteInstance.getDependencies());
                 }
                 saveInstance(instance);
@@ -617,6 +620,20 @@ public class EpaxosManager
 
                 PrepareDecision decision = callback.getDecision();
 
+                if (decision.commitNoop)
+                {
+                    lock.writeLock().lock();
+                    try
+                    {
+                        instance.setNoop(true);
+                    }
+                    finally
+                    {
+                        lock.writeLock().unlock();
+                    }
+                }
+
+                // perform try preaccept, if applicable
                 if (decision.state == Instance.State.PREACCEPTED && decision.tryPreacceptAttempts.size() > 0)
                 {
                     for (TryPreacceptAttempt attempt: decision.tryPreacceptAttempts)
