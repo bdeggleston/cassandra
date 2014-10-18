@@ -11,6 +11,7 @@ public class AcceptResponse
     public static final IVersionedSerializer<AcceptResponse> serializer = new Serializer();
     public final boolean success;
     public final int ballot;
+    // TODO: add missing instance request if this includes deps the receiving node hasn't seen
 
     public AcceptResponse(boolean success, int ballot)
     {

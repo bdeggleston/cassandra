@@ -126,18 +126,18 @@ public class Node extends EpaxosManager
     }
 
     @Override
-    public void accept(Instance instance, AcceptDecision decision) throws InvalidInstanceStateChange, UnavailableException, WriteTimeoutException, BallotException
+    public void accept(UUID iid, AcceptDecision decision) throws InvalidInstanceStateChange, UnavailableException, WriteTimeoutException, BallotException
     {
-        super.accept(instance, decision);
-        accepted.add(instance.getId());
+        super.accept(iid, decision);
+        accepted.add(iid);
         if (postAcceptHook != null)
             postAcceptHook.run();
     }
 
     @Override
-    public void commit(Instance instance) throws InvalidInstanceStateChange, UnavailableException
+    public void commit(UUID iid, Set<UUID> deps) throws InvalidInstanceStateChange, UnavailableException
     {
-        super.commit(instance);
+        super.commit(iid, deps);
         if (postCommitHook != null)
             postCommitHook.run();
     }
@@ -239,9 +239,9 @@ public class Node extends EpaxosManager
         }
 
         @Override
-        protected TryPreacceptCallback getTryPreacceptCallback(Instance instance, TryPreacceptAttempt attempt, final ParticipantInfo participantInfo)
+        protected TryPreacceptCallback getTryPreacceptCallback(UUID iid, TryPreacceptAttempt attempt, final ParticipantInfo participantInfo)
         {
-            return new TryPreacceptCallback(instance, attempt, participantInfo)
+            return new TryPreacceptCallback(iid, attempt, participantInfo)
             {
 
                 @Override

@@ -4,16 +4,18 @@ import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.service.epaxos.exceptions.PrepareAbortException;
 import org.apache.cassandra.service.paxos.AbstractPaxosCallback;
 
+import java.util.UUID;
+
 public class TryPreacceptCallback extends AbstractPaxosCallback<TryPreacceptResponse>
 {
-    private final Instance instance;
+    private final UUID instanceId;
     private int convinced = 0;
     private boolean contended = false;
 
-    public TryPreacceptCallback(Instance instance, TryPreacceptAttempt attempt, EpaxosManager.ParticipantInfo participantInfo)
+    public TryPreacceptCallback(UUID instanceId, TryPreacceptAttempt attempt, EpaxosManager.ParticipantInfo participantInfo)
     {
         super(attempt.requiredConvinced, participantInfo.consistencyLevel);
-        this.instance = instance;
+        this.instanceId = instanceId;
     }
 
     @Override
@@ -42,7 +44,7 @@ public class TryPreacceptCallback extends AbstractPaxosCallback<TryPreacceptResp
             return true;
 
         if (contended)
-            throw new PrepareAbortException(instance, "Contended try preaccept");
+            throw new PrepareAbortException(instanceId, "Contended try preaccept");
 
         return false;
     }

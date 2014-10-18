@@ -21,6 +21,7 @@ import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
+import org.apache.cassandra.service.epaxos.exceptions.InstanceNotFoundException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.service.epaxos.exceptions.PrepareAbortException;
 import org.apache.cassandra.utils.FBUtilities;
@@ -32,7 +33,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReadWriteLock;
 
 public class EpaxosManager
@@ -45,7 +45,6 @@ public class EpaxosManager
 
     private static final int PREPARE_BALLOT_FAILURE_RETRIES = 5;
 
-    private final ConcurrentMap<UUID, Instance> instances = Maps.newConcurrentMap();
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
 
     private final Random random = new Random();
@@ -152,15 +151,14 @@ public class EpaxosManager
         query.getConsistencyLevel().validateForCas();
 
         Instance instance = createInstance(query);
-
         AcceptDecision acceptDecision = preaccept(instance);
 
         if (acceptDecision.acceptNeeded)
-            accept(instance, acceptDecision);
+            accept(instance.getId(), acceptDecision);
 
-        commit(instance);
+        commit(instance.getId(), acceptDecision.acceptDeps);
 
-        execute(instance);
+        execute(instance.getId());
         return null;
     }
 
@@ -169,9 +167,27 @@ public class EpaxosManager
         return new Instance(request, getEndpoint());
     }
 
-    public Set<UUID> getCurrentDependencies(SerializedRequest query)
+    public Set<UUID> getCurrentDependencies(SerializedRequest request)
     {
-        return instances.keySet();
+        String query = "SELECT id, acknowledged, executed from %s.%s WHERE row_key=? AND cf_id=?";
+        UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace(), dependencyTable()),
+                                                                  request.getKey(),
+                                                                  // TODO: just store the uuid on the request
+                                                                  Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+
+        Set<UUID> deps = new HashSet<>(results.size());
+
+        for (UntypedResultSet.Row row: results)
+        {
+            if (row.getBoolean("acknowledged") && row.getBoolean("executed"))
+            {
+                // TODO: delete the row
+                continue;
+            }
+            deps.add(row.getUUID("id"));
+        }
+
+        return deps;
     }
 
     protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo)
@@ -343,13 +359,15 @@ public class EpaxosManager
         return new AcceptCallback(instance, participantInfo);
     }
 
-    public void accept(Instance instance, AcceptDecision decision) throws InvalidInstanceStateChange, UnavailableException, WriteTimeoutException, BallotException
+    public void accept(UUID iid, AcceptDecision decision) throws InvalidInstanceStateChange, UnavailableException, WriteTimeoutException, BallotException
     {
-        ReadWriteLock lock = locks.get(instance.getId());
+        ReadWriteLock lock = locks.get(iid);
         lock.writeLock().lock();
         AcceptCallback callback;
         try
         {
+            Instance instance = loadInstance(iid);
+
             instance.accept(decision.acceptDeps);
             instance.incrementBallot();
             saveInstance(instance);
@@ -436,12 +454,15 @@ public class EpaxosManager
         return new AcceptVerbHandler();
     }
 
-    public void commit(Instance instance) throws InvalidInstanceStateChange, UnavailableException
+    public void commit(UUID iid, Set<UUID> dependencies) throws InvalidInstanceStateChange, UnavailableException
     {
-        ReadWriteLock lock = locks.get(instance.getId());
+        ReadWriteLock lock = locks.get(iid);
         lock.writeLock().lock();
         try
         {
+            Instance instance = loadInstance(iid);
+            if (dependencies != null)
+                instance.setDependencies(dependencies);
             instance.commit();
             instance.incrementBallot();
             saveInstance(instance);
@@ -496,7 +517,7 @@ public class EpaxosManager
             try
             {
                 // TODO: send this to another thread
-                execute(instance);
+                execute(message.payload.getId());
             }
             catch (UnavailableException | WriteTimeoutException | BallotException e)
             {
@@ -511,36 +532,47 @@ public class EpaxosManager
         return new CommitVerbHandler();
     }
 
-    public void execute(Instance instance) throws UnavailableException, WriteTimeoutException, BallotException
+    public void execute(UUID instanceId) throws UnavailableException, WriteTimeoutException, BallotException
     {
-        assert instance.getState().atLeast(Instance.State.COMMITTED);
+        ReadWriteLock lock = locks.get(instanceId);
 
         while (true)
         {
-            ExecutionSorter executionSorter = new ExecutionSorter(instance, accessor);
-            executionSorter.buildGraph();
+            ExecutionSorter executionSorter;
+            lock.writeLock().lock();
+            try
+            {
+                Instance instance = loadInstance(instanceId);
+                assert instance.getState().atLeast(Instance.State.COMMITTED);
+                executionSorter = new ExecutionSorter(instance, accessor);
+                executionSorter.buildGraph();
+            }
+            finally
+            {
+                lock.writeLock().unlock();
+            }
 
             if (executionSorter.uncommitted.size() > 0)
             {
                 for (UUID iid : executionSorter.uncommitted)
                 {
-                    Instance toPrepare = loadInstance(iid);
-                    if (toPrepare == null)
+                    try
+                    {
+                        prepare(iid);
+                    }
+                    catch (InstanceNotFoundException e)
                     {
                         // this is only a problem if there's only a single uncommitted instance
                         if (executionSorter.uncommitted.size() > 1)
                             continue;
                         throw new AssertionError("Missing instance for prepare: " + iid.toString());
                     }
-
-                    prepare(toPrepare);
                 }
             }
             else
             {
                 for (UUID iid : executionSorter.getOrder())
                 {
-                    ReadWriteLock lock = locks.get(iid);
                     lock.writeLock().lock();
                     Instance toExecute = loadInstance(iid);
                     try
@@ -554,7 +586,7 @@ public class EpaxosManager
                         toExecute.setExecuted();
                         saveInstance(toExecute);
 
-                        if (toExecute.getId().equals(instance.getId()))
+                        if (toExecute.getId().equals(instanceId))
                             return;
 
                     }
@@ -578,19 +610,20 @@ public class EpaxosManager
     }
 
     // TODO: this might be better as a runnable we can throw into a thread pool
-    public void prepare(Instance instance) throws UnavailableException, WriteTimeoutException, BallotException
+    public void prepare(UUID iid) throws UnavailableException, WriteTimeoutException, BallotException, InstanceNotFoundException
     {
         for (int i=0; i<PREPARE_BALLOT_FAILURE_RETRIES; i++)
         {
-            if (shouldPrepare(instance))
+            if (shouldPrepare(iid))
             {
                 PrepareCallback callback;
                 ParticipantInfo participantInfo;
 
-                ReadWriteLock lock = locks.get(instance.getId());
+                ReadWriteLock lock = locks.get(iid);
                 lock.writeLock().lock();
                 try
                 {
+                    Instance instance = loadInstance(iid);
                     instance.incrementBallot();
                     saveInstance(instance);
 
@@ -625,7 +658,9 @@ public class EpaxosManager
                     lock.writeLock().lock();
                     try
                     {
+                        Instance instance = loadInstance(iid);
                         instance.setNoop(true);
+                        saveInstance(instance);
                     }
                     finally
                     {
@@ -640,14 +675,14 @@ public class EpaxosManager
                     {
                         try
                         {
-                            if (tryPreaccept(instance, attempt, participantInfo))
+                            if (tryPreaccept(iid, attempt, participantInfo))
                             {
                                 // if the attempt was successful, the next step is the accept
                                 // phase with the successful attempt's dependencies
                                 decision = new PrepareDecision(Instance.State.ACCEPTED,
                                                                attempt.dependencies,
                                                                Collections.EMPTY_LIST,
-                                                               instance.isNoop() || decision.commitNoop);
+                                                               decision.commitNoop);
                                 break;
                             }
                         }
@@ -669,19 +704,20 @@ public class EpaxosManager
                     switch (decision.state)
                     {
                         case PREACCEPTED:
-                            // reassigning will transmit any missing dependencies
+                            Instance instance = loadInstance(iid);
                             acceptDecision = preaccept(instance);
+
+                            // reassigning will transmit any missing dependencies
                             deps = acceptDecision.acceptDeps;
 
                         case ACCEPTED:
                             assert deps != null;
                             acceptDecision = acceptDecision != null ? acceptDecision
                                                                     : new AcceptDecision(true, deps, Collections.EMPTY_MAP);
-                            accept(instance, acceptDecision);
+                            accept(iid, acceptDecision);
                         case COMMITTED:
                             assert deps != null;
-                            instance.setDependencies(deps);
-                            commit(instance);
+                            commit(iid, deps);
                             break;
                         default:
                             throw new AssertionError();
@@ -689,7 +725,7 @@ public class EpaxosManager
                 }
                 catch (BallotException e)
                 {
-                    logger.debug("Prepare ballot failure " + instance.getId());
+                    logger.debug("Prepare ballot failure " + iid);
                     if (i >= PREPARE_BALLOT_FAILURE_RETRIES)
                     {
                         throw e;
@@ -715,12 +751,17 @@ public class EpaxosManager
         }
     }
 
-    protected boolean shouldPrepare(Instance instance)
+    protected boolean shouldPrepare(UUID iid) throws InstanceNotFoundException
     {
-        ReadWriteLock lock = locks.get(instance.getId());
+        ReadWriteLock lock = locks.get(iid);
         lock.readLock().lock();
         try
         {
+            Instance instance = loadInstance(iid);
+
+            if (instance == null)
+                throw new InstanceNotFoundException(iid);
+
             if (instance.getState() == Instance.State.COMMITTED || instance.getState() == Instance.State.EXECUTED)
                 return false;
 
@@ -780,18 +821,18 @@ public class EpaxosManager
         return new PrepareVerbHandler();
     }
 
-    protected TryPreacceptCallback getTryPreacceptCallback(Instance instance, TryPreacceptAttempt attempt, ParticipantInfo participantInfo)
+    protected TryPreacceptCallback getTryPreacceptCallback(UUID iid, TryPreacceptAttempt attempt, ParticipantInfo participantInfo)
     {
-        return new TryPreacceptCallback(instance, attempt, participantInfo);
+        return new TryPreacceptCallback(iid, attempt, participantInfo);
     }
 
-    public boolean tryPreaccept(Instance instance, TryPreacceptAttempt attempt, ParticipantInfo participantInfo) throws WriteTimeoutException, PrepareAbortException
+    public boolean tryPreaccept(UUID iid, TryPreacceptAttempt attempt, ParticipantInfo participantInfo) throws WriteTimeoutException, PrepareAbortException
     {
-        TryPreacceptRequest request = new TryPreacceptRequest(instance.getId(), attempt.dependencies);
+        TryPreacceptRequest request = new TryPreacceptRequest(iid, attempt.dependencies);
         MessageOut<TryPreacceptRequest> message = new MessageOut<>(MessagingService.Verb.TRYPREACCEPT_REQUEST,
                                                                    request,
                                                                    TryPreacceptRequest.serializer);
-        TryPreacceptCallback callback = getTryPreacceptCallback(instance, attempt, participantInfo);
+        TryPreacceptCallback callback = getTryPreacceptCallback(iid, attempt, participantInfo);
         for (InetAddress endpoint: attempt.toConvince)
         {
             if (!endpoint.equals(getEndpoint()))
@@ -800,10 +841,11 @@ public class EpaxosManager
             }
             else
             {
-                ReadWriteLock lock = locks.get(instance.getId());
+                ReadWriteLock lock = locks.get(iid);
                 lock.writeLock().lock();
                 try
                 {
+                    Instance instance = loadInstance(iid);
                     callback.recordDecision(handleTryPreaccept(instance, attempt.dependencies));
                 }
                 finally
@@ -898,32 +940,23 @@ public class EpaxosManager
     protected Instance loadInstance(UUID instanceId)
     {
         // read from table
-        Instance instance = instances.get(instanceId);
-        if (instance == null)
+        String query = "SELECT * FROM %s.%s WHERE id=?";
+        UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace(), instanceTable()),
+                                                                  instanceId);
+        if (results.isEmpty())
+            return null;
+
+        UntypedResultSet.Row row = results.one();
+
+        DataInput in = ByteStreams.newDataInput(row.getBlob("data").array());
+        try
         {
-            String query = "SELECT * FROM %s.%s WHERE id=?";
-            UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace(), instanceTable()),
-                                                                      instanceId);
-            if (results.isEmpty())
-                return null;
-
-            UntypedResultSet.Row row = results.one();
-
-            DataInput in = ByteStreams.newDataInput(row.getBlob("data").array());
-            try
-            {
-                instance = Instance.internalSerializer.deserialize(in, row.getInt("version"));
-            }
-            catch (IOException e)
-            {
-                throw new AssertionError(e);  // TODO: propagate original exception?
-            }
-
-            Instance previous = instances.putIfAbsent(instanceId, instance);
-            if (previous != null)
-                instance = previous;
+            return Instance.internalSerializer.deserialize(in, row.getInt("version"));
         }
-        return instance;
+        catch (IOException e)
+        {
+            throw new AssertionError(e);  // TODO: propagate original exception?
+        }
     }
 
     protected void saveInstance(Instance instance)
@@ -955,7 +988,6 @@ public class EpaxosManager
                                            Schema.instance.getId(request.getKeyspaceName(), request.getCfName()), // TODO: just store the uuid on the request
                                            instance.getId(),
                                            timestamp);
-            instances.remove(instance.getId());  // TODO: think of a sane way to remove instances
         }
         else
         {
@@ -969,7 +1001,6 @@ public class EpaxosManager
                                            instance.isAcknowledged(),
                                            instance.getState() == Instance.State.EXECUTED,
                                            timestamp);
-            instances.put(instance.getId(), instance);
         }
 
     }
@@ -987,23 +1018,15 @@ public class EpaxosManager
 
             // TODO: guard against re-adding expired instances once we start gc'ing them
             instance = remoteInstance.copyRemote();
-            Instance previous = instances.putIfAbsent(instance.getId(), instance);
-            if (previous == null)
+            // be careful if the instance is only preaccepted
+            // if a preaccepted instance from another node is blindly added,
+            // it can cause problems during the prepare phase
+            if (!instance.getState().atLeast(Instance.State.ACCEPTED))
             {
-                // be careful if the instance is only preaccepted
-                // if a preaccepted instance from another node is blindly added,
-                // it can cause problems during the prepare phase
-                if (!instance.getState().atLeast(Instance.State.ACCEPTED))
-                {
-                    instance.setDependencies(null);
-                    instance.setPlaceholder(true);  // TODO: exclude from prepare and trypreaccept
-                }
-                saveInstance(instance);
+                instance.setDependencies(null);
+                instance.setPlaceholder(true);  // TODO: exclude from prepare and trypreaccept
             }
-            else
-            {
-                instance = previous;
-            }
+            saveInstance(instance);
 
             return instance;
 

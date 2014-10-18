@@ -3,13 +3,11 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 
 /**
@@ -29,6 +27,9 @@ class ExecutionSorter
     private final Instance target;
     private final Set<UUID> targetDeps;
     private final EpaxosManager.IAccessor accessor;
+
+    // prevents saving the same scc over and over
+    private final Map<UUID, Set<UUID>> loadedScc = Maps.newHashMap();
 
     ExecutionSorter(Instance target, EpaxosManager.IAccessor accessor)
     {
@@ -127,7 +128,7 @@ class ExecutionSorter
         // As instances are executed, they will stop being added to the depGraph for sorting.
         // However, if an instance that's not added to the dep graph is part of a strongly
         // connected component, it will affect the execution order by breaking the component.
-        if (uncommitted.size() > 0)
+        if (uncommitted.size() == 0)
         {
             for (List<UUID> component: scc)
             {
@@ -140,7 +141,9 @@ class ExecutionSorter
                     //    it that far, the strongly connected set will be computed again
                     Set<UUID> componentSet = ImmutableSet.copyOf(component);
                     for (UUID iid: component)
+                    {
                         accessor.loadInstance(iid).setStronglyConnected(componentSet);
+                    }
                 }
 
             }
