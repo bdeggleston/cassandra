@@ -346,22 +346,12 @@ public class EpaxosManager
     {
         ReadWriteLock lock = locks.get(instance.getId());
         lock.writeLock().lock();
+        AcceptCallback callback;
         try
         {
             instance.accept(decision.acceptDeps);
             instance.incrementBallot();
             saveInstance(instance);
-        }
-        finally
-        {
-            lock.writeLock().unlock();
-        }
-
-        AcceptCallback callback;
-        // don't hold a write lock while sending
-        lock.readLock().lock();
-        try
-        {
             ParticipantInfo participantInfo = getParticipants(instance);
 
             callback = getAcceptCallback(instance, participantInfo);
@@ -382,7 +372,7 @@ public class EpaxosManager
         }
         finally
         {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
 
         callback.await();
@@ -453,15 +443,7 @@ public class EpaxosManager
             instance.commit();
             instance.incrementBallot();
             saveInstance(instance);
-        }
-        finally
-        {
-            lock.writeLock().unlock();
-        }
 
-        lock.readLock().lock();
-        try
-        {
             ParticipantInfo participantInfo = getParticipants(instance);
             MessageOut<Instance> message = new MessageOut<Instance>(MessagingService.Verb.COMMIT_REQUEST,
                                                                     instance,
@@ -472,7 +454,7 @@ public class EpaxosManager
         }
         finally
         {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 
@@ -481,9 +463,9 @@ public class EpaxosManager
         @Override
         public void doVerb(MessageIn<Instance> message, int id)
         {
-            Instance instance;
             ReadWriteLock lock = locks.get(message.payload.getId());
             lock.writeLock().lock();
+            Instance instance;
             try
             {
                 Instance remoteInstance = message.payload;
@@ -510,6 +492,7 @@ public class EpaxosManager
 
             try
             {
+                // TODO: send this to another thread
                 execute(instance);
             }
             catch (UnavailableException | WriteTimeoutException | BallotException e)
@@ -632,41 +615,46 @@ public class EpaxosManager
 
                 callback.await();
 
+                PrepareDecision decision = callback.getDecision();
+
+                if (decision.state == Instance.State.PREACCEPTED && decision.tryPreacceptAttempts.size() > 0)
+                {
+                    for (TryPreacceptAttempt attempt: decision.tryPreacceptAttempts)
+                    {
+                        try
+                        {
+                            if (tryPreaccept(instance, attempt, participantInfo))
+                            {
+                                // if the attempt was successful, the next step is the accept
+                                // phase with the successful attempt's dependencies
+                                decision = new PrepareDecision(Instance.State.ACCEPTED,
+                                                               attempt.dependencies,
+                                                               Collections.EMPTY_LIST,
+                                                               instance.isNoop() || decision.commitNoop);
+                                break;
+                            }
+                        }
+                        catch (PrepareAbortException e)
+                        {
+                            // just return quietly, this instance will get
+                            // picked up for repair after the others
+                            logger.debug("Prepare aborted: " + e.getMessage());
+                            return;
+                        }
+                    }
+                }
+
                 lock.writeLock().lock();
+                Set<UUID> deps = decision.deps;
                 try
                 {
-                    PrepareDecision decision = callback.getDecision();
                     AcceptDecision acceptDecision = null;
-                    Set<UUID> deps = decision.deps;
                     switch (decision.state)
                     {
                         case PREACCEPTED:
-                            boolean fullPreaccept = true;
-                            for (TryPreacceptAttempt attempt: decision.tryPreacceptAttempts)
-                            {
-                                try
-                                {
-                                    if (tryPreaccept(instance, attempt, participantInfo))
-                                    {
-                                        fullPreaccept = false;
-                                        deps = attempt.dependencies;
-                                        break;
-                                    }
-                                }
-                                catch (PrepareAbortException e)
-                                {
-                                    // just return quietly, this instance will get
-                                    // picked up for repair after the others
-                                    logger.debug("Prepare aborted: " + e.getMessage());
-                                    return;
-                                }
-                            }
-                            if (fullPreaccept)
-                            {
-                                // reassigning will transmit any missing dependencies
-                                acceptDecision = preaccept(instance);
-                                deps = acceptDecision.acceptDeps;
-                            }
+                            // reassigning will transmit any missing dependencies
+                            acceptDecision = preaccept(instance);
+                            deps = acceptDecision.acceptDeps;
 
                         case ACCEPTED:
                             assert deps != null;
@@ -795,7 +783,16 @@ public class EpaxosManager
             }
             else
             {
-                callback.recordDecision(handleTryPreaccept(instance, attempt.dependencies));
+                ReadWriteLock lock = locks.get(instance.getId());
+                lock.writeLock().lock();
+                try
+                {
+                    callback.recordDecision(handleTryPreaccept(instance, attempt.dependencies));
+                }
+                finally
+                {
+                    lock.writeLock().unlock();
+                }
             }
         }
 
@@ -857,13 +854,22 @@ public class EpaxosManager
         @Override
         public void doVerb(MessageIn<TryPreacceptRequest> message, int id)
         {
-            Instance instance = loadInstance(message.payload.iid);
-            TryPreacceptDecision decision = handleTryPreaccept(instance, message.payload.dependencies);
-            TryPreacceptResponse response = new TryPreacceptResponse(instance.getId(), decision);
-            MessageOut<TryPreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.TRYPREACCEPT_RESPONSE,
-                                                                      response,
-                                                                      TryPreacceptResponse.serializer);
-            sendReply(reply, id, message.from);
+            ReadWriteLock lock = locks.get(message.payload.iid);
+            lock.writeLock().lock();
+            try
+            {
+                Instance instance = loadInstance(message.payload.iid);
+                TryPreacceptDecision decision = handleTryPreaccept(instance, message.payload.dependencies);
+                TryPreacceptResponse response = new TryPreacceptResponse(instance.getId(), decision);
+                MessageOut<TryPreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.TRYPREACCEPT_RESPONSE,
+                                                                          response,
+                                                                          TryPreacceptResponse.serializer);
+                sendReply(reply, id, message.from);
+            }
+            finally
+            {
+                lock.writeLock().unlock();
+            }
         }
     }
 
