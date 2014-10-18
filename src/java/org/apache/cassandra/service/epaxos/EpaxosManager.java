@@ -2,8 +2,12 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.*;
+import com.google.common.io.ByteStreams;
 import com.google.common.util.concurrent.Striped;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Keyspace;
@@ -12,6 +16,7 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
+import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
@@ -22,7 +27,10 @@ import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInput;
+import java.io.IOException;
 import java.net.InetAddress;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -173,29 +181,20 @@ public class EpaxosManager
 
     public AcceptDecision preaccept(Instance instance) throws UnavailableException, InvalidInstanceStateChange, BallotException, WriteTimeoutException
     {
-        ParticipantInfo participantInfo = getParticipants(instance);
+        PreacceptCallback callback;
         ReadWriteLock lock = locks.get(instance.getId());
         lock.writeLock().lock();
+
         try
         {
+            ParticipantInfo participantInfo = getParticipants(instance);
             instance.preaccept(getCurrentDependencies(instance.getQuery()));
             List<InetAddress> successors = Lists.newArrayList(Iterables.filter(participantInfo.endpoints, nonLocalPredicate));
             Collections.shuffle(successors, getRandom());
             instance.setSuccessors(successors);
             instance.incrementBallot();
             saveInstance(instance);
-        }
-        finally
-        {
-            lock.writeLock().unlock();
-        }
 
-        PreacceptCallback callback;
-
-        // don't hold a write lock while sending
-        lock.readLock().lock();
-        try
-        {
             MessageOut<Instance> message = new MessageOut<Instance>(MessagingService.Verb.PREACCEPT_REQUEST,
                                                                     instance,
                                                                     Instance.serializer);
@@ -208,7 +207,7 @@ public class EpaxosManager
         }
         finally
         {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
 
         try
@@ -528,6 +527,8 @@ public class EpaxosManager
 
     public void execute(Instance instance) throws UnavailableException, WriteTimeoutException, BallotException
     {
+        assert instance.getState().atLeast(Instance.State.COMMITTED);
+
         while (true)
         {
             ExecutionSorter executionSorter = new ExecutionSorter(instance, accessor);
@@ -874,13 +875,80 @@ public class EpaxosManager
     protected Instance loadInstance(UUID instanceId)
     {
         // read from table
-        return instances.get(instanceId);
+        Instance instance = instances.get(instanceId);
+        if (instance == null)
+        {
+            String query = "SELECT * FROM %s.%s WHERE id=?";
+            UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace(), instanceTable()),
+                                                                      instanceId);
+            if (results.isEmpty())
+                return null;
+
+            UntypedResultSet.Row row = results.one();
+
+            DataInput in = ByteStreams.newDataInput(row.getBlob("data").array());
+            try
+            {
+                instance = Instance.internalSerializer.deserialize(in, row.getInt("version"));
+            }
+            catch (IOException e)
+            {
+                throw new AssertionError(e);  // TODO: propagate original exception?
+            }
+
+            Instance previous = instances.putIfAbsent(instanceId, instance);
+            if (previous != null)
+                instance = previous;
+        }
+        return instance;
     }
 
     protected void saveInstance(Instance instance)
     {
         // actually write to table
-        instances.put(instance.getId(), instance);
+        DataOutputBuffer out = new DataOutputBuffer((int) Instance.internalSerializer.serializedSize(instance, 0));
+        try
+        {
+            Instance.internalSerializer.serialize(instance, out, 0);
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError(e);  // TODO: propagate original exception?
+        }
+        long timestamp = System.currentTimeMillis();
+        String instanceReq = "INSERT INTO %s.%s (id, data, version) VALUES (?, ?, ?) USING TIMESTAMP ?";
+        QueryProcessor.executeInternal(String.format(instanceReq, keyspace(), instanceTable()),
+                                       instance.getId(),
+                                       ByteBuffer.wrap(out.getData()),
+                                       0,
+                                       timestamp);
+
+        SerializedRequest request = instance.getQuery();
+        if (instance.getState() == Instance.State.EXECUTED && instance.isAcknowledged())
+        {
+            String depsReq = "DELETE FROM %s.%s WHERE row_key=?, cf_id=?, id=? USING TIMESTAMP ?";
+            QueryProcessor.executeInternal(String.format(depsReq, keyspace(), instanceTable()),
+                                           request.getKey(),
+                                           Schema.instance.getId(request.getKeyspaceName(), request.getCfName()), // TODO: just store the uuid on the request
+                                           instance.getId(),
+                                           timestamp);
+            instances.remove(instance.getId());  // TODO: think of a sane way to remove instances
+        }
+        else
+        {
+            String depsReq = "INSERT INTO %s.%s (row_key, cf_id, id, data, acknowledged, executed) "
+                             + "VALUES (?, ?, ?, ?, ?, ?) USING TIMESTAMP ?";
+            QueryProcessor.executeInternal(String.format(depsReq, keyspace(), dependencyTable()),
+                                           request.getKey(),
+                                           Schema.instance.getId(request.getKeyspaceName(), request.getCfName()), // TODO: just store the uuid on the request
+                                           instance.getId(),
+                                           ByteBuffer.wrap(out.getData()),
+                                           instance.isAcknowledged(),
+                                           instance.getState() == Instance.State.EXECUTED,
+                                           timestamp);
+            instances.put(instance.getId(), instance);
+        }
+
     }
 
     protected Instance addMissingInstance(Instance remoteInstance)

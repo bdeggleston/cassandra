@@ -1,6 +1,7 @@
 package org.apache.cassandra.service.epaxos.integration;
 
 import com.google.common.collect.Lists;
+import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
@@ -14,6 +15,7 @@ import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.locator.LocalStrategy;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.ThriftCASRequest;
 import org.apache.cassandra.service.epaxos.Instance;
 import org.apache.cassandra.service.epaxos.SerializedRequest;
@@ -34,6 +36,7 @@ public abstract class AbstractEpaxosIntegrationTest
     {
         DatabaseDescriptor.getConcurrentWriters();
         MessagingService.instance();
+        SchemaLoader.prepareServer();
     }
 
     @BeforeClass

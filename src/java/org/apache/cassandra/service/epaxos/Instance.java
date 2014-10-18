@@ -75,6 +75,7 @@ public class Instance
 
     // fields not transmitted to other nodes
     private volatile boolean placeholder = false;
+    private volatile boolean acknowledged = false;
     private volatile Set<UUID> stronglyConnected = null;
 
     private class DependencyFilter implements Predicate<UUID>
@@ -195,6 +196,16 @@ public class Instance
     public boolean isPlaceholder()
     {
         return (!state.atLeast(State.ACCEPTED)) && placeholder;
+    }
+
+    public void setAcknowledged(boolean acknowledged)
+    {
+        this.acknowledged = acknowledged;
+    }
+
+    public boolean isAcknowledged()
+    {
+        return acknowledged;
     }
 
     public void setSuccessors(List<InetAddress> successors)
@@ -450,6 +461,7 @@ public class Instance
         {
             super.serialize(instance, out, version);
             out.writeBoolean(instance.placeholder);
+            out.writeBoolean(instance.acknowledged);
             out.writeBoolean(instance.stronglyConnected != null);
             if (instance.stronglyConnected != null)
             {
@@ -464,6 +476,7 @@ public class Instance
         {
             Instance instance = super.deserialize(in, version);
             instance.placeholder = in.readBoolean();
+            instance.acknowledged = in.readBoolean();
             if (in.readBoolean())
             {
                 UUID[] scc = new UUID[in.readInt()];
@@ -479,6 +492,7 @@ public class Instance
         {
             long size = super.serializedSize(instance, version);
             size += 1;  // instance.placeholder
+            size += 1;  // instance.acknowledged
             size += 1;  // instance.stronglyConnected != null
             if (instance.stronglyConnected != null)
             {

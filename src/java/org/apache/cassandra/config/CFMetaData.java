@@ -348,20 +348,23 @@ public final class CFMetaData
                                                                  + ") WITH COMMENT='show all compaction history' AND DEFAULT_TIME_TO_LIVE=604800");
 
     // TODO: make this a proper table
+    // TODO: row cache?
     public static final CFMetaData EpaxosInstanceCf = compile("CREATE TABLE " + SystemKeyspace.EPAXOS_INSTANCE + " ("
                                                               + "id timeuuid PRIMARY KEY,"
-                                                              + "data blob)");
+                                                              + "data blob,"
+                                                              + "version int)");
 
     public static final CFMetaData EpaxosDependenciesCF = compile("CREATE TABLE " + SystemKeyspace.EPAXOS_DEPENDENCIES + " ("
                                                                   + "row_key blob,"
                                                                   + "cf_id uuid,"
-                                                                  + "cluster_key blob,"
-                                                                  + "read_only boolean,"
+//                                                                  + "cluster_key blob,"
+//                                                                  + "read_only boolean,"
                                                                   + "id timeuuid,"
-                                                                  + "data blob,"
+                                                                  + "data blob," // TODO: should the data even be stored in this table?
                                                                   + "acknowledged boolean,"
                                                                   + "executed boolean,"
-                                                                  + "PRIMARY KEY (row_key, cf_id, cluster_key, read_only, id))");
+                                                                  + "PRIMARY KEY (row_key, cf_id, id))");
+//                                                                  + "PRIMARY KEY (row_key, cf_id, cluster_key, read_only, id))");
 
     public static class SpeculativeRetry
     {
