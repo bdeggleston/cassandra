@@ -270,6 +270,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.ACCEPT_REQUEST, EpaxosManager.instance.getAcceptVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.COMMIT_REQUEST, EpaxosManager.instance.getCommitVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.PREPARE_REQUEST, EpaxosManager.instance.getPrepareVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.TRYPREACCEPT_REQUEST, EpaxosManager.instance.getTryPreacceptVerbHandler());
     }
 
     public void registerDaemon(CassandraDaemon daemon)

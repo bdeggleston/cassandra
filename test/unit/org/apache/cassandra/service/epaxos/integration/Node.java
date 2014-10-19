@@ -64,6 +64,8 @@ public class Node extends EpaxosManager
         verbHandlerMap.put(MessagingService.Verb.PREACCEPT_REQUEST, getPreacceptVerbHandler());
         verbHandlerMap.put(MessagingService.Verb.ACCEPT_REQUEST, getAcceptVerbHandler());
         verbHandlerMap.put(MessagingService.Verb.COMMIT_REQUEST, getCommitVerbHandler());
+        verbHandlerMap.put(MessagingService.Verb.PREPARE_REQUEST, getPrepareVerbHandler());
+        verbHandlerMap.put(MessagingService.Verb.TRYPREACCEPT_REQUEST, getTryPreacceptVerbHandler());
     }
 
     public State getState()
