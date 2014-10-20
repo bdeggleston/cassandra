@@ -136,15 +136,10 @@ public final class MessagingService implements MessagingServiceMBean
 
         // EPaxos Messages
         PREACCEPT_REQUEST,
-        PREACCEPT_RESPONSE,
         ACCEPT_REQUEST,
-        ACCEPT_RESPONSE,
         COMMIT_REQUEST,
-        COMMIT_RESPONSE,
         PREPARE_REQUEST,
-        PREPARE_RESPONSE,
         TRYPREACCEPT_REQUEST,
-        TRYPREACCEPT_RESPONSE
         ;
     }
 
@@ -191,15 +186,10 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.ECHO, Stage.GOSSIP);
 
         put(Verb.PREACCEPT_REQUEST, Stage.MUTATION);
-        put(Verb.PREACCEPT_RESPONSE, Stage.MUTATION);
         put(Verb.ACCEPT_REQUEST, Stage.MUTATION);
-        put(Verb.ACCEPT_RESPONSE, Stage.MUTATION);
         put(Verb.COMMIT_REQUEST, Stage.MUTATION);
-        put(Verb.COMMIT_RESPONSE, Stage.MUTATION);
         put(Verb.PREACCEPT_REQUEST, Stage.MUTATION);
-        put(Verb.PREACCEPT_RESPONSE, Stage.MUTATION);
         put(Verb.TRYPREACCEPT_REQUEST, Stage.MUTATION);
-        put(Verb.TRYPREACCEPT_RESPONSE, Stage.MUTATION);
 
         put(Verb.UNUSED_1, Stage.INTERNAL_RESPONSE);
         put(Verb.UNUSED_2, Stage.INTERNAL_RESPONSE);
@@ -241,14 +231,10 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.PAXOS_COMMIT, Commit.serializer);
 
         put(Verb.PREACCEPT_REQUEST, Instance.serializer);
-        put(Verb.PREACCEPT_RESPONSE, PreacceptResponse.serializer);
         put(Verb.ACCEPT_REQUEST, AcceptRequest.serializer);
-        put(Verb.ACCEPT_RESPONSE, AcceptResponse.serializer);
         put(Verb.COMMIT_REQUEST, Instance.serializer);
         put(Verb.PREPARE_REQUEST, PrepareRequest.serializer);
-        put(Verb.PREPARE_RESPONSE, Instance.serializer);
         put(Verb.TRYPREACCEPT_REQUEST, TryPreacceptRequest.serializer);
-        put(Verb.TRYPREACCEPT_RESPONSE, TryPreacceptResponse.serializer);
     }};
 
     /**
@@ -273,10 +259,10 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.PAXOS_PREPARE, PrepareResponse.serializer);
         put(Verb.PAXOS_PROPOSE, BooleanSerializer.serializer);
 
-        put(Verb.PREACCEPT_RESPONSE, PreacceptResponse.serializer);
-        put(Verb.ACCEPT_RESPONSE, AcceptResponse.serializer);
-        put(Verb.PREPARE_RESPONSE, Instance.serializer);
-        put(Verb.TRYPREACCEPT_RESPONSE, TryPreacceptResponse.serializer);
+        put(Verb.PREACCEPT_REQUEST, PreacceptResponse.serializer);
+        put(Verb.ACCEPT_REQUEST, AcceptResponse.serializer);
+        put(Verb.PREPARE_REQUEST, Instance.serializer);
+        put(Verb.TRYPREACCEPT_REQUEST, TryPreacceptResponse.serializer);
     }};
 
     /* This records all the results mapped by message Id */

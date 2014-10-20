@@ -286,6 +286,7 @@ public class CQL3CasRequest implements CASRequest
 
     /**
      * this is pretty ghetto
+     * ... and totally busted for batch statements. Look at BatchStatement.executeWithConditions
      */
     private static class Serializer implements IVersionedSerializer<CASRequest>
     {
@@ -327,6 +328,7 @@ public class CQL3CasRequest implements CASRequest
                 {
                     parsed = (ModificationStatement.Parsed) QueryProcessor.parseStatement(query);
                     parsed.prepareKeyspace(keyspace);
+                    parsed.setQueryString(query);
                     prepared = parsed.prepare();
 
                     ParsedStatement.Prepared previous = modificationStmts.putIfAbsent(cacheKey, prepared);

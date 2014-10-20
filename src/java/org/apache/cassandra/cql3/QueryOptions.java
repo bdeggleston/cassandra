@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.netty.buffer.ByteBuf;
 
 import org.apache.cassandra.db.ConsistencyLevel;
@@ -49,18 +50,26 @@ public abstract class QueryOptions
 
     public static final CBCodec<QueryOptions> codec = new Codec();
 
-    public static enum Type
+    public static enum Type { DEFAULT, NAMED, OTHER }
+
+    private static enum SerializerMapHolder
     {
-        DEFAULT,
-        NAMED,
-        OTHER;
+        INSTANCE;
+
+        private final Map<Type, IVersionedSerializer<QueryOptions>> serializerMap;
+
+        SerializerMapHolder()
+        {
+            serializerMap = new EnumMap<>(Type.class);
+            serializerMap.put(Type.DEFAULT, DefaultQueryOptions.serializer);
+            serializerMap.put(Type.NAMED, OptionsWithNames.serializer);
+        }
     }
 
-    public static final Map<Type, IVersionedSerializer<QueryOptions>> serializerMap = new EnumMap<Type, IVersionedSerializer<QueryOptions>>(Type.class)
-    {{
-        put(Type.DEFAULT, DefaultQueryOptions.serializer);
-        put(Type.NAMED, OptionsWithNames.serializer);
-    }};
+    public static Map<Type, IVersionedSerializer<QueryOptions>> getSerializerMap()
+    {
+        return SerializerMapHolder.INSTANCE.serializerMap;
+    }
 
     public static QueryOptions fromProtocolV1(ConsistencyLevel consistency, List<ByteBuffer> values)
     {
@@ -139,6 +148,7 @@ public abstract class QueryOptions
     {
         private final ConsistencyLevel consistency;
         private final List<ByteBuffer> values;
+
         private final boolean skipMetadata;
 
         private final SpecificOptions options;
@@ -195,7 +205,7 @@ public abstract class QueryOptions
                 out.writeInt(opts.values.size());
                 for (ByteBuffer value: opts.values)
                 {
-                   ByteBufferUtil.writeWithLength(value, out);
+                   ByteBufferUtil.writeWithShortLength(value, out);
                 }
 
                 out.writeInt(opts.consistency.code);
@@ -239,6 +249,7 @@ public abstract class QueryOptions
                 return size;
             }
         };
+
     }
 
     static abstract class QueryOptionsWrapper extends QueryOptions
@@ -378,7 +389,8 @@ public abstract class QueryOptions
         private final ConsistencyLevel serialConsistency;
         private final long timestamp;
 
-        private SpecificOptions(int pageSize, PagingState state, ConsistencyLevel serialConsistency, long timestamp)
+        @VisibleForTesting
+        SpecificOptions(int pageSize, PagingState state, ConsistencyLevel serialConsistency, long timestamp)
         {
             this.pageSize = pageSize;
             this.state = state;
@@ -391,8 +403,13 @@ public abstract class QueryOptions
             @Override
             public void serialize(SpecificOptions options, DataOutputPlus out, int version) throws IOException
             {
+                out.writeBoolean(options.state != null);
+                if (options.state != null)
+                {
+                    ByteBufferUtil.writeWithShortLength(options.state.serialize(), out);
+                }
+
                 out.writeInt(options.pageSize);
-                ByteBufferUtil.writeWithLength(options.state.serialize(), out);
                 out.writeInt(options.serialConsistency.code);
                 out.writeLong(options.timestamp);
             }
@@ -400,9 +417,13 @@ public abstract class QueryOptions
             @Override
             public SpecificOptions deserialize(DataInput in, int version) throws IOException
             {
+                PagingState pagingState = null;
+                if (in.readBoolean())
+                    pagingState = PagingState.deserialize(ByteBufferUtil.readWithShortLength(in));
+
                 return new SpecificOptions(
                         in.readInt(),
-                        PagingState.deserialize(ByteBufferUtil.readWithShortLength(in)),
+                        pagingState,
                         ConsistencyLevel.fromCode(in.readInt()),
                         in.readLong()
                 );
@@ -412,8 +433,10 @@ public abstract class QueryOptions
             public long serializedSize(SpecificOptions options, int version)
             {
                 long size = 0;
+                size += 1;
+                if (options.state != null)
+                    size += options.state.serializedSize() + 2; //ByteBufferUtil.writeWithShortLength(options.state.serialize(), out);
                 size += 4; //out.writeInt(options.pageSize);
-                size += options.state.serializedSize() + 2; //ByteBufferUtil.writeWithLength(options.state.serialize(), out);
                 size += 4; //out.writeInt(options.serialConsistency.code);
                 size += 8; //out.writeLong(options.timestamp);
                 return size;
@@ -421,22 +444,24 @@ public abstract class QueryOptions
         };
     }
 
+
     public static IVersionedSerializer<QueryOptions> serializer = new IVersionedSerializer<QueryOptions>()
     {
+
         @Override
         public void serialize(QueryOptions opts, DataOutputPlus out, int version) throws IOException
         {
             Type type = opts.getType();
             assert type != null;
             out.writeInt(type.ordinal());
-            serializerMap.get(type).serialize(opts, out, version);
+            getSerializerMap().get(type).serialize(opts, out, version);
         }
 
         @Override
         public QueryOptions deserialize(DataInput in, int version) throws IOException
         {
             Type type = Type.values()[in.readInt()];
-            return serializerMap.get(type).deserialize(in, version);
+            return getSerializerMap().get(type).deserialize(in, version);
         }
 
         @Override
@@ -444,7 +469,7 @@ public abstract class QueryOptions
         {
             Type type = opts.getType();
             assert type != null;
-            return serializerMap.get(type).serializedSize(opts, version) + 4;
+            return 4 + getSerializerMap().get(type).serializedSize(opts, version);
         }
     };
 

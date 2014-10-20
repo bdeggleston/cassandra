@@ -6,16 +6,22 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.cql3.QueryOptions;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.cql3.statements.CQL3CasRequest;
+import org.apache.cassandra.cql3.statements.ModificationStatement;
+import org.apache.cassandra.cql3.statements.ParsedStatement;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.composites.CellNames;
-import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.locator.LocalStrategy;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.CASRequest;
+import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.service.ThriftCASRequest;
 import org.apache.cassandra.service.epaxos.Instance;
 import org.apache.cassandra.service.epaxos.SerializedRequest;
@@ -42,14 +48,14 @@ public abstract class AbstractEpaxosIntegrationTest
     @BeforeClass
     public static void setUpClass() throws Exception
     {
+        cfm = CFMetaData.compile("CREATE TABLE ks.tbl (k INT PRIMARY KEY, v INT);", "ks");
         Map<String, String> ksOpts = new HashMap<>();
         ksOpts.put("replication_factor", "1");
-        cfm = CFMetaData.denseCFMetaData("ks", "tbl", Int32Type.instance);
         ksm = KSMetaData.newKeyspace("ks", SimpleStrategy.class, ksOpts, true, Arrays.asList(cfm));
         Schema.instance.load(ksm);
     }
 
-    protected ThriftCASRequest getCasRequest()
+    protected ThriftCASRequest getThriftCasRequest()
     {
         ColumnFamily expected = ArrayBackedSortedColumns.factory.create("ks", "tbl");
         expected.addColumn(CellNames.simpleDense(ByteBufferUtil.bytes("v")), ByteBufferUtil.bytes(2), 3L);
@@ -60,16 +66,53 @@ public abstract class AbstractEpaxosIntegrationTest
         return new ThriftCASRequest(expected, updates);
     }
 
-    protected SerializedRequest getSerializedRequest()
+    protected CQL3CasRequest getCqlCasRequest(int k, int v)
     {
-        ThriftCASRequest thriftRequest = getCasRequest();
+        try
+        {
+            String query = "INSERT INTO ks.tbl (k, v) VALUES (?, ?) IF NOT EXISTS";
+            ModificationStatement.Parsed parsed = (ModificationStatement.Parsed) QueryProcessor.parseStatement(query);
+            parsed.prepareKeyspace("ks");
+            parsed.setQueryString(query);
+            ParsedStatement.Prepared prepared = parsed.prepare();
+
+            QueryOptions options = QueryOptions.create(ConsistencyLevel.SERIAL,
+                                                       Lists.newArrayList(ByteBufferUtil.bytes(k), ByteBufferUtil.bytes(v)),
+                                                       false, 1, null, ConsistencyLevel.QUORUM);
+            options.prepare(prepared.boundNames);
+            QueryState state = QueryState.forInternalCalls();
+
+            ModificationStatement statement = (ModificationStatement) prepared.statement;
+
+            return statement.createCasRequest(state, options);
+        }
+        catch (Exception e)
+        {
+            throw new AssertionError(e);
+        }
+    }
+
+    protected SerializedRequest newSerializedRequest(CASRequest request)
+    {
         SerializedRequest.Builder builder = SerializedRequest.builder();
-        builder.casRequest(thriftRequest);
+        builder.casRequest(request);
         builder.cfName(cfm.cfName);
         builder.keyspaceName(cfm.ksName);
         builder.key(ByteBufferUtil.bytes(7));
         builder.consistencyLevel(ConsistencyLevel.SERIAL);
         return builder.build();
+    }
+
+    protected SerializedRequest getSerializedThriftRequest()
+    {
+        ThriftCASRequest casRequest = getThriftCasRequest();
+        return newSerializedRequest(casRequest);
+    }
+
+    protected SerializedRequest getSerializedCQLRequest(int k, int v)
+    {
+        CQL3CasRequest casRequest = getCqlCasRequest(k, v);
+        return newSerializedRequest(casRequest);
     }
 
     public abstract int getReplicationFactor();

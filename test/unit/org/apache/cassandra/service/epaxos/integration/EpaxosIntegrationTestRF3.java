@@ -7,7 +7,6 @@ import org.apache.cassandra.service.epaxos.Instance;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.net.InetAddress;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -34,7 +33,7 @@ public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest
     public void successCase() throws Exception
     {
         Node leader1 = nodes.get(0);
-        leader1.query(getSerializedRequest());
+        leader1.query(getSerializedCQLRequest(1, 2));
         Instance instance1 = leader1.getLastCreatedInstance();
         Set<UUID> expectedDeps = new HashSet<>();
 
@@ -43,7 +42,7 @@ public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest
         Assert.assertFalse(leader1.accepted.contains(instance1.getId()));
 
         Node leader2 = nodes.get(1);
-        leader2.query(getSerializedRequest());
+        leader2.query(getSerializedCQLRequest(1, 2));
         Instance instance2 = leader2.getLastCreatedInstance();
         expectedDeps.add(instance1.getId());
 
@@ -69,7 +68,7 @@ public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest
         boolean acceptExpected = fastPathQuorumSize() > quorumSize();
 
         Node leader1 = nodes.get(0);
-        leader1.query(getSerializedRequest());
+        leader1.query(getSerializedThriftRequest());
         Instance instance1 = leader1.getLastCreatedInstance();
         Set<UUID> expectedDeps = new HashSet<>();
 
@@ -79,7 +78,7 @@ public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest
         Assert.assertEquals(acceptExpected, leader1.accepted.contains(instance1.getId()));
 
         Node leader2 = nodes.get(1);
-        leader2.query(getSerializedRequest());
+        leader2.query(getSerializedThriftRequest());
         Instance instance2 = leader2.getLastCreatedInstance();
         expectedDeps.add(instance1.getId());
 
@@ -104,7 +103,7 @@ public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest
         setState(down, Node.State.DOWN);
 
         Node leader1 = nodes.get(0);
-        leader1.query(getSerializedRequest());
+        leader1.query(getSerializedThriftRequest());
         Instance instance1 = leader1.getLastCreatedInstance();
         Set<UUID> expectedDeps = new HashSet<>();
 
@@ -114,7 +113,7 @@ public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest
         Assert.assertFalse(leader1.accepted.contains(instance1.getId()));
 
         Node leader2 = nodes.get(1);
-        leader2.query(getSerializedRequest());
+        leader2.query(getSerializedThriftRequest());
         Instance instance2 = leader2.getLastCreatedInstance();
         expectedDeps.add(instance1.getId());
 
@@ -156,7 +155,7 @@ public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest
         Node leader1 = nodes.get(nodes.size() - 1);
         try
         {
-            leader1.query(getSerializedRequest());
+            leader1.query(getSerializedThriftRequest());
             Assert.fail("expecting WriteTimeoutException");
         }
         catch (WriteTimeoutException e)
@@ -187,7 +186,7 @@ public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest
                 setState(nodes.subList(1, nodes.size()), Node.State.DOWN);
             }
         };
-        leader2.query(getSerializedRequest());
+        leader2.query(getSerializedThriftRequest());
         Instance instance2 = leader2.getLastCreatedInstance();
 
         // leader instance should be executed
@@ -209,7 +208,7 @@ public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest
         // preaccept phase
         setState(nodes, Node.State.DOWN);
         setState(nodes.subList(fastPathQuorumSize() - 1, nodes.size()), Node.State.UP);
-        leader1.query(getSerializedRequest());
+        leader1.query(getSerializedThriftRequest());
         Instance instance3 = leader1.getLastCreatedInstance();
 
         // instance2 was committed on node 0 with no deps, and the other nodes must have as well

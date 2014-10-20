@@ -31,7 +31,7 @@ public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
     }
 
     @Override
-    public synchronized void response(MessageIn<PreacceptResponse> msg)
+    public void response(MessageIn<PreacceptResponse> msg)
     {
         PreacceptResponse response = msg.payload;
 

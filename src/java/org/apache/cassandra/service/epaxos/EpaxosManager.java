@@ -256,9 +256,13 @@ public class EpaxosManager
             callback = getPreacceptCallback(instance, participantInfo);
             for (InetAddress endpoint : participantInfo.liveEndpoints)
                 if (!endpoint.equals(getEndpoint()))
+                {
                     sendRR(message, endpoint, callback);
+                }
                 else
+                {
                     callback.countLocal();
+                }
         }
         finally
         {
@@ -335,7 +339,7 @@ public class EpaxosManager
                         missingInstanceIds.remove(instance.getId());
                         response = PreacceptResponse.failure(instance, getInstanceCopies(missingInstanceIds));
                     }
-                    MessageOut<PreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.PREACCEPT_RESPONSE,
+                    MessageOut<PreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                            response,
                                                                            PreacceptResponse.serializer);
                     sendReply(reply, id, message.from);
@@ -343,7 +347,7 @@ public class EpaxosManager
                 catch (BallotException e)
                 {
                     PreacceptResponse response = PreacceptResponse.ballotFailure(e.localBallot);
-                    MessageOut<PreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.PREACCEPT_RESPONSE,
+                    MessageOut<PreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                            response,
                                                                            PreacceptResponse.serializer);
                     sendReply(reply, id, message.from);
@@ -475,7 +479,7 @@ public class EpaxosManager
                     addMissingInstance(missing);
 
                 AcceptResponse response = new AcceptResponse(true, 0);
-                MessageOut<AcceptResponse> reply = new MessageOut<>(MessagingService.Verb.ACCEPT_RESPONSE,
+                MessageOut<AcceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                     response,
                                                                     AcceptResponse.serializer);
                 sendReply(reply, id, message.from);
@@ -483,7 +487,7 @@ public class EpaxosManager
             catch (BallotException e)
             {
                 AcceptResponse response = new AcceptResponse(false, e.localBallot);
-                MessageOut<AcceptResponse> reply = new MessageOut<>(MessagingService.Verb.ACCEPT_RESPONSE,
+                MessageOut<AcceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                     response,
                                                                     AcceptResponse.serializer);
                 sendReply(reply, id, message.from);
@@ -869,7 +873,7 @@ public class EpaxosManager
                     }
                 }
 
-                MessageOut<Instance> reply = new MessageOut<>(MessagingService.Verb.PREPARE_RESPONSE,
+                MessageOut<Instance> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                               instance,
                                                               Instance.serializer);
                 sendReply(reply, id, message.from);
@@ -985,7 +989,7 @@ public class EpaxosManager
                 Instance instance = loadInstance(message.payload.iid);
                 TryPreacceptDecision decision = handleTryPreaccept(instance, message.payload.dependencies);
                 TryPreacceptResponse response = new TryPreacceptResponse(instance.getId(), decision);
-                MessageOut<TryPreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.TRYPREACCEPT_RESPONSE,
+                MessageOut<TryPreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                           response,
                                                                           TryPreacceptResponse.serializer);
                 sendReply(reply, id, message.from);
@@ -1004,7 +1008,6 @@ public class EpaxosManager
 
     protected Instance loadInstance(UUID instanceId)
     {
-        // TODO: put into the READ stage
         // read from table
         String query = "SELECT * FROM %s.%s WHERE id=?";
         UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace(), instanceTable()),
@@ -1014,7 +1017,9 @@ public class EpaxosManager
 
         UntypedResultSet.Row row = results.one();
 
-        DataInput in = ByteStreams.newDataInput(row.getBlob("data").array());
+        ByteBuffer data = row.getBlob("data");
+        assert data.hasArray();  // FIXME
+        DataInput in = ByteStreams.newDataInput(data.array(), data.position());
         try
         {
             return Instance.internalSerializer.deserialize(in, row.getInt("version"));
@@ -1027,7 +1032,6 @@ public class EpaxosManager
 
     protected void saveInstance(Instance instance)
     {
-        // TODO: put into the WRITE stage
         // actually write to table
         DataOutputBuffer out = new DataOutputBuffer((int) Instance.internalSerializer.serializedSize(instance, 0));
         try
