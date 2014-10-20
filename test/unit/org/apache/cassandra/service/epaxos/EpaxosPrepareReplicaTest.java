@@ -2,7 +2,7 @@ package org.apache.cassandra.service.epaxos;
 
 import org.junit.Test;
 
-public class EpaxosPrepareTest
+public class EpaxosPrepareReplicaTest
 {
     @Test
     public void placeholderInstancesAreIgnored() throws Exception
