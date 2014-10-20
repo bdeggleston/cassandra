@@ -19,7 +19,7 @@ public class PrepareCallback extends AbstractEpaxosCallback<Instance>
     private final int ballot;
     private final Map<InetAddress, Instance> responses = Maps.newHashMap();
 
-    public PrepareCallback(Instance instance, EpaxosManager.ParticipantInfo participantInfo)
+    public PrepareCallback(Instance instance, EpaxosService.ParticipantInfo participantInfo)
     {
         super(participantInfo);
         this.instance = instance;

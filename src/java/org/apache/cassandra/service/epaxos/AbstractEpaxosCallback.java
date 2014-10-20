@@ -5,9 +5,9 @@ import org.apache.cassandra.service.paxos.AbstractPaxosCallback;
 public abstract class AbstractEpaxosCallback<T> extends AbstractPaxosCallback<T>
 {
 
-    protected final EpaxosManager.ParticipantInfo participantInfo;
+    protected final EpaxosService.ParticipantInfo participantInfo;
 
-    protected AbstractEpaxosCallback(EpaxosManager.ParticipantInfo participantInfo)
+    protected AbstractEpaxosCallback(EpaxosService.ParticipantInfo participantInfo)
     {
         super(participantInfo.quorumSize, participantInfo.consistencyLevel);
         this.participantInfo = participantInfo;

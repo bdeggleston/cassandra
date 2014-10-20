@@ -1,7 +1,5 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.net.MessageIn;
@@ -23,7 +21,7 @@ public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
     private int ballotFailure = 0;
     private int localResponse = 0;
 
-    public PreacceptCallback(Instance instance, EpaxosManager.ParticipantInfo participantInfo)
+    public PreacceptCallback(Instance instance, EpaxosService.ParticipantInfo participantInfo)
     {
         super(participantInfo);
         this.instance = instance;

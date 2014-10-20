@@ -34,11 +34,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReadWriteLock;
 
-public class EpaxosManager
+public class EpaxosService
 {
-    public static final EpaxosManager instance = new EpaxosManager();
+    public static final EpaxosService instance = new EpaxosService();
 
-    private static final Logger logger = LoggerFactory.getLogger(EpaxosManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(EpaxosService.class);
 
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
 
@@ -110,13 +110,13 @@ public class EpaxosManager
         @Override
         public Instance loadInstance(UUID iid)
         {
-            return EpaxosManager.this.loadInstance(iid);
+            return EpaxosService.this.loadInstance(iid);
         }
 
         @Override
         public void saveInstance(Instance instance)
         {
-            EpaxosManager.this.saveInstance(instance);
+            EpaxosService.this.saveInstance(instance);
         }
 
         @Override

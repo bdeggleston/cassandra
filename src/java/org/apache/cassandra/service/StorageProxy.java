@@ -33,8 +33,6 @@ import com.google.common.collect.*;
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.cassandra.service.epaxos.*;
 import org.apache.cassandra.service.epaxos.SerializedRequest;
-import org.apache.cassandra.service.epaxos.exceptions.BallotException;
-import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.service.paxos.PrepareCallback;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -225,7 +223,7 @@ public class StorageProxy implements StorageProxyMBean
 
             SerializedRequest serializedRequest = builder.build();
             // TODO: don't do this in this thread
-            return EpaxosManager.instance.query(serializedRequest);
+            return EpaxosService.instance.query(serializedRequest);
         }
 
         long start = System.nanoTime();

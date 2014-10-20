@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class Node extends EpaxosManager
+public class Node extends EpaxosService
 {
     private final InetAddress endpoint;
     private final Messenger messenger;

@@ -9,7 +9,7 @@ public class AcceptCallback extends AbstractEpaxosCallback<AcceptResponse>
     private boolean success = true;
     private int ballot = 0;
 
-    public AcceptCallback(Instance instance, EpaxosManager.ParticipantInfo participantInfo)
+    public AcceptCallback(Instance instance, EpaxosService.ParticipantInfo participantInfo)
     {
         super(participantInfo);
         this.instance = instance;

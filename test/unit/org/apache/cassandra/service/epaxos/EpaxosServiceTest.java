@@ -2,7 +2,7 @@ package org.apache.cassandra.service.epaxos;
 
 import org.junit.Test;
 
-public class EpaxosManagerTest
+public class EpaxosServiceTest
 {
     @Test
     public void getParticipantsRemoteDCExcludedFromLocalSerial()

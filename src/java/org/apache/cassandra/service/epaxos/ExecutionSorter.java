@@ -18,7 +18,7 @@ import java.util.concurrent.locks.ReadWriteLock;
  */
 class ExecutionSorter
 {
-    private static final Logger logger = LoggerFactory.getLogger(EpaxosManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(EpaxosService.class);
 
     private final DependencyGraph dependencyGraph = new DependencyGraph();
     public final Set<UUID> uncommitted = new HashSet<>();
@@ -26,12 +26,12 @@ class ExecutionSorter
 
     private final Instance target;
     private final Set<UUID> targetDeps;
-    private final EpaxosManager.IAccessor accessor;
+    private final EpaxosService.IAccessor accessor;
 
     // prevents saving the same scc over and over
     private final Map<UUID, Set<UUID>> loadedScc = Maps.newHashMap();
 
-    ExecutionSorter(Instance target, EpaxosManager.IAccessor accessor)
+    ExecutionSorter(Instance target, EpaxosService.IAccessor accessor)
     {
         this.target = target;
         targetDeps = target.getDependencies();
