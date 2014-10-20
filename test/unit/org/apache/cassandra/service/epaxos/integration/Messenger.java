@@ -60,7 +60,7 @@ public class Messenger
         MessageOut<T> messageOut = wrapMessage(msg, from);
         try
         {
-            messageOut.serialize(out, 0);
+            messageOut.serialize(out, VERSION);
             messageIn = MessageIn.read(ByteStreams.newDataInput(out.getData()), VERSION, id);
         }
         catch (IOException e)
@@ -82,6 +82,10 @@ public class Messenger
         if (nodes.get(to).getState() == Node.State.DOWN)
             return msgId;
 
+        MessagingService.instance().setCallbackForTests(msgId, new CallbackInfo(to,
+                                                                                cb,
+                                                                                MessagingService.callbackDeserializers.get(msg.verb),
+                                                                                false));
         if (cb != null)
             callbackMap.put(msgId, cb);
 

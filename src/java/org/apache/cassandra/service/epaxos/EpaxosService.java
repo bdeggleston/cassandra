@@ -21,6 +21,7 @@ import org.apache.cassandra.service.epaxos.exceptions.InstanceNotFoundException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.service.epaxos.exceptions.PrepareAbortException;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.UUIDGen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,9 +30,8 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 
 public class EpaxosService
@@ -42,9 +42,22 @@ public class EpaxosService
 
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
 
-    private static final int PREPARE_BALLOT_FAILURE_RETRIES = 5;
+    // TODO: put these in DatabaseDescriptor
+
+    // the number of times a prepare phase will try to gain control of an instance before giving up
+    protected static int PREPARE_BALLOT_FAILURE_RETRIES = 5;
+
+    // the amount of time the prepare phase will wait for the leader to commit an instance before
+    // attempting a prepare phase. This is multiplied by a replica's position in the successor list
+    protected static int PREPARE_GRACE_MILLIS = 500;
 
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
+
+    // prevents multiple threads from attempting to prepare the same instance
+    private final Striped<Lock> prepareLocks = Striped.lazyWeakLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
+
+    // aborts prepare phases on commit
+    private final ConcurrentMap<UUID, CountDownLatch> commitLatches = Maps.newConcurrentMap();
 
     private final Random random = new Random();
 
@@ -174,9 +187,8 @@ public class EpaxosService
 
             return resultFuture.get(getTimeout(start), TimeUnit.MILLISECONDS);
         }
-        // TODO: figure out how C* handles interruption and maybe do something different
         catch (RequestTimeoutException | InvalidInstanceStateChange | BallotException
-                | UnavailableException | InterruptedException | ExecutionException | TimeoutException e1)
+                | UnavailableException | ExecutionException | TimeoutException e1)
         {
             try
             {
@@ -184,16 +196,23 @@ public class EpaxosService
                 // before the timeout is up, so we'll wait for it to be committed here before returning
                 return resultFuture.get(getTimeout(start), TimeUnit.MILLISECONDS);
             }
-            catch (InterruptedException | TimeoutException | ExecutionException e2)
+            catch (TimeoutException | ExecutionException e2)
             {
                 if (e1 instanceof ReadTimeoutException)
                     throw (ReadTimeoutException) e1;
                 if (e1 instanceof WriteTimeoutException)
                     throw (WriteTimeoutException) e1;
 
-//                throw new RuntimeException(e1);
                 throw new WriteTimeoutException(WriteType.CAS, query.getConsistencyLevel(), 0, 1);
             }
+            catch (InterruptedException e)
+            {
+                throw new AssertionError(e);
+            }
+        }
+        catch (InterruptedException e)
+        {
+            throw new AssertionError(e);
         }
         finally
         {
@@ -509,6 +528,41 @@ public class EpaxosService
         return new AcceptVerbHandler();
     }
 
+    /**
+     * notifies threads waiting on this commit
+     *
+     * must be called with this instances's write lock held
+     */
+    private void notifyCommit(UUID iid)
+    {
+        CountDownLatch commitLatch = commitLatches.get(iid);
+        if (commitLatch != null)
+        {
+            commitLatch.countDown();
+            commitLatches.remove(iid);
+        }
+    }
+
+    /**
+     * Returns a commit latch for an instance
+     *
+     * must be called with the instance's lock held, and only
+     * if the instance was not committed
+     */
+    private CountDownLatch getCommitLatch(UUID iid)
+    {
+        CountDownLatch commitLatch = commitLatches.get(iid);
+        if (commitLatch == null)
+        {
+            commitLatch = new CountDownLatch(1);
+            CountDownLatch previous = commitLatches.putIfAbsent(iid, commitLatch);
+            if (previous != null)
+                commitLatch = previous;
+        }
+
+        return commitLatch;
+    }
+
     public void commit(UUID iid, Set<UUID> dependencies) throws InvalidInstanceStateChange, UnavailableException
     {
         ReadWriteLock lock = locks.get(iid);
@@ -537,6 +591,8 @@ public class EpaxosService
             {
                 sendOneWay(message, endpoint);
             }
+
+            notifyCommit(iid);
         }
         finally
         {
@@ -565,6 +621,8 @@ public class EpaxosService
                     instance.commit(remoteInstance.getDependencies());
                 }
                 saveInstance(instance);
+
+                notifyCommit(instance.getId());
             }
             catch (InvalidInstanceStateChange e)
             {
@@ -681,10 +739,15 @@ public class EpaxosService
     // TODO: this might be better as a runnable we can throw into a thread pool
     public void prepare(UUID iid) throws UnavailableException, WriteTimeoutException, BallotException, InstanceNotFoundException
     {
-        for (int i=0; i<PREPARE_BALLOT_FAILURE_RETRIES; i++)
+        Lock prepareLock = prepareLocks.get(iid);
+        prepareLock.lock();
+        try
         {
-            if (shouldPrepare(iid))
+            for (int i=0; i<PREPARE_BALLOT_FAILURE_RETRIES; i++)
             {
+                if (!shouldPrepare(iid))
+                    return;
+
                 PrepareCallback callback;
                 ParticipantInfo participantInfo;
 
@@ -693,6 +756,8 @@ public class EpaxosService
                 try
                 {
                     Instance instance = loadInstance(iid);
+                    if (instance.getState().atLeast(Instance.State.COMMITTED))
+                        return;
                     instance.incrementBallot();
                     saveInstance(instance);
 
@@ -728,6 +793,8 @@ public class EpaxosService
                     try
                     {
                         Instance instance = loadInstance(iid);
+                        if (instance.getState().atLeast(Instance.State.COMMITTED))
+                            return;
                         instance.setNoop(true);
                         saveInstance(instance);
                     }
@@ -782,7 +849,7 @@ public class EpaxosService
                         case ACCEPTED:
                             assert deps != null;
                             acceptDecision = acceptDecision != null ? acceptDecision
-                                                                    : new AcceptDecision(true, deps, Collections.EMPTY_MAP);
+                                    : new AcceptDecision(true, deps, Collections.EMPTY_MAP);
                             accept(iid, acceptDecision);
                         case COMMITTED:
                             assert deps != null;
@@ -801,7 +868,6 @@ public class EpaxosService
                     }
                     else
                     {
-                        // TODO: sleep, sleep times should be slightly random and proportional to succession order
                         continue;
                     }
                 }
@@ -816,14 +882,33 @@ public class EpaxosService
 
                 return;
             }
-
         }
+        finally
+        {
+            prepareLock.unlock();
+        }
+    }
+
+    protected int getPrepareWaitTime(UUID iid, InetAddress leader, List<InetAddress> successors)
+    {
+        // TODO: successors should notify the first successor that a prepare is required instead of waiting it out
+        // TODO: wait time should be based off last updated, not created
+        int successorIndex = successors.indexOf(getEndpoint()) + 1;
+        if (successorIndex < 1 && !leader.equals(getEndpoint()))
+            successorIndex = successors.size();
+
+        int waitTime = PREPARE_GRACE_MILLIS * successorIndex;
+        // subtract time elapsed since instance creation
+        waitTime -= Math.max((System.currentTimeMillis() - UUIDGen.unixTimestamp(iid)), 0);
+        return Math.max(waitTime, 0);
     }
 
     protected boolean shouldPrepare(UUID iid) throws InstanceNotFoundException
     {
         ReadWriteLock lock = locks.get(iid);
         lock.readLock().lock();
+        CountDownLatch commitLatch;
+        int waitTime;
         try
         {
             Instance instance = loadInstance(iid);
@@ -834,12 +919,21 @@ public class EpaxosService
             if (instance.getState() == Instance.State.COMMITTED || instance.getState() == Instance.State.EXECUTED)
                 return false;
 
-            // TODO: wait for successors and grace periods
-            return true;
+            waitTime = getPrepareWaitTime(iid, instance.getLeader(), instance.getSuccessors());
+            commitLatch = getCommitLatch(iid);
         }
         finally
         {
             lock.readLock().unlock();
+        }
+
+        try
+        {
+            return !commitLatch.await(waitTime, TimeUnit.MILLISECONDS);
+        }
+        catch (InterruptedException e)
+        {
+            throw new AssertionError(e);
         }
     }
 
@@ -1098,6 +1192,9 @@ public class EpaxosService
                 instance.setPlaceholder(true);  // TODO: exclude from prepare and trypreaccept
             }
             saveInstance(instance);
+
+            if (instance.getState().atLeast(Instance.State.COMMITTED))
+                notifyCommit(instance.getId());
 
             return instance;
 

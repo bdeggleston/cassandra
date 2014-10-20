@@ -31,7 +31,7 @@ public class Node extends EpaxosService
 
     private final Map<MessagingService.Verb, IVerbHandler> verbHandlerMap = Maps.newEnumMap(MessagingService.Verb.class);
 
-    public static enum State {UP, NORESPONSE, DOWN;}
+    public static enum State {UP, NORESPONSE, DOWN}
 
     private volatile Instance lastCreatedInstance = null;
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
@@ -195,6 +195,18 @@ public class Node extends EpaxosService
         public SingleThreaded(int number, String ksName, Messenger messenger)
         {
             super(number, ksName, messenger);
+        }
+
+        @Override
+        protected long getTimeout(long start)
+        {
+            return 0;
+        }
+
+        @Override
+        protected int getPrepareWaitTime(UUID iid, InetAddress leader, List<InetAddress> successors)
+        {
+            return 0;
         }
 
         @Override

@@ -16,6 +16,7 @@ import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.composites.CellNames;
+import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.locator.LocalStrategy;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.net.MessagingService;
@@ -37,6 +38,7 @@ public abstract class AbstractEpaxosIntegrationTest
 
     private static KSMetaData ksm;
     private static CFMetaData cfm;
+    private static CFMetaData thriftcf;
 
     static
     {
@@ -49,18 +51,19 @@ public abstract class AbstractEpaxosIntegrationTest
     public static void setUpClass() throws Exception
     {
         cfm = CFMetaData.compile("CREATE TABLE ks.tbl (k INT PRIMARY KEY, v INT);", "ks");
+        thriftcf = CFMetaData.denseCFMetaData("ks", "thrifttbl", Int32Type.instance);
         Map<String, String> ksOpts = new HashMap<>();
         ksOpts.put("replication_factor", "1");
-        ksm = KSMetaData.newKeyspace("ks", SimpleStrategy.class, ksOpts, true, Arrays.asList(cfm));
+        ksm = KSMetaData.newKeyspace("ks", SimpleStrategy.class, ksOpts, true, Arrays.asList(cfm, thriftcf));
         Schema.instance.load(ksm);
     }
 
     protected ThriftCASRequest getThriftCasRequest()
     {
-        ColumnFamily expected = ArrayBackedSortedColumns.factory.create("ks", "tbl");
+        ColumnFamily expected = ArrayBackedSortedColumns.factory.create("ks", thriftcf.cfName);
         expected.addColumn(CellNames.simpleDense(ByteBufferUtil.bytes("v")), ByteBufferUtil.bytes(2), 3L);
 
-        ColumnFamily updates = ArrayBackedSortedColumns.factory.create("ks", "tbl");
+        ColumnFamily updates = ArrayBackedSortedColumns.factory.create("ks", thriftcf.cfName);
         updates.addColumn(CellNames.simpleDense(ByteBufferUtil.bytes("v")), ByteBufferUtil.bytes(5), 6L);
 
         return new ThriftCASRequest(expected, updates);
