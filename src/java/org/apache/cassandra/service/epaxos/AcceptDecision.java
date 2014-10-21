@@ -17,4 +17,12 @@ public class AcceptDecision
         this.acceptDeps = acceptDeps;
         this.missingInstances = missingInstances;
     }
+
+    @Override
+    public String toString()
+    {
+        return String.format("[AcceptDecision: accept phase: %s, %s missing instances]",
+                             acceptNeeded,
+                             missingInstances.size());
+    }
 }

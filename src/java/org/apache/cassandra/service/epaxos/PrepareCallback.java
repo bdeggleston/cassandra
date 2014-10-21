@@ -7,6 +7,8 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.net.InetAddress;
@@ -14,6 +16,7 @@ import java.util.*;
 
 public class PrepareCallback extends AbstractEpaxosCallback<Instance>
 {
+    private static final Logger logger = LoggerFactory.getLogger(PreacceptCallback.class);
 
     private final Instance instance;
     private final int ballot;
@@ -29,6 +32,7 @@ public class PrepareCallback extends AbstractEpaxosCallback<Instance>
     @Override
     public synchronized void response(MessageIn<Instance> msg)
     {
+        logger.debug("preaccept response received from {} for instance {}", msg.from, instance.getId());
         responses.put(msg.from, msg.payload);
         latch.countDown();
     }

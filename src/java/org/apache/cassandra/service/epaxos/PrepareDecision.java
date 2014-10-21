@@ -25,4 +25,10 @@ public class PrepareDecision
         this.tryPreacceptAttempts = tryPreacceptAttempts;
         this.commitNoop = commitNoop;
     }
+
+    @Override
+    public String toString()
+    {
+        return String.format("[PrepareDecision %s, # try preaccept attempts: %s, noop: %s]", state, tryPreacceptAttempts.size(), commitNoop);
+    }
 }

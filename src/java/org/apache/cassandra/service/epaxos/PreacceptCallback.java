@@ -4,6 +4,8 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.Map;
@@ -12,6 +14,8 @@ import java.util.UUID;
 
 public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
 {
+    private static final Logger logger = LoggerFactory.getLogger(PreacceptCallback.class);
+
     private final Instance instance;
     private final Set<UUID> dependencies;
     private final Set<UUID> remoteDependencies = Sets.newHashSet();
@@ -33,9 +37,12 @@ public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
     {
         PreacceptResponse response = msg.payload;
 
+        logger.debug("preaccept response received from {} for instance {}", msg.from, instance.getId());
         // another replica has taken control of this instance
         if (response.ballotFailure > 0)
         {
+
+            logger.debug("preaccept ballot failure from {} for instance {}", msg.from, instance.getId());
             ballotFailure = Math.max(ballotFailure, response.ballotFailure);
             while (latch.getCount() > 0)
                 latch.countDown();
@@ -92,7 +99,9 @@ public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
             }
         }
 
-        return new AcceptDecision((!depsMatch || !fpQuorum), unifiedDeps, missingIds);
+        AcceptDecision decision = new AcceptDecision((!depsMatch || !fpQuorum), unifiedDeps, missingIds);
+        logger.debug("preaccept accept decision for {}: {}", instance.getId(), decision);
+        return decision;
     }
 
     Iterable<Instance> getMissingInstances()
