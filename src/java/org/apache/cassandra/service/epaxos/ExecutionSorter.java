@@ -53,7 +53,7 @@ class ExecutionSorter
         }
         finally
         {
-            lock.readLock().lock();
+            lock.readLock().unlock();
         }
 
         // if the instance is already executed, and it's not a dependency
