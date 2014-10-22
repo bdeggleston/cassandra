@@ -33,7 +33,7 @@ public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
     }
 
     @Override
-    public void response(MessageIn<PreacceptResponse> msg)
+    public synchronized void response(MessageIn<PreacceptResponse> msg)
     {
         PreacceptResponse response = msg.payload;
 
@@ -64,7 +64,7 @@ public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
     }
 
     @Override
-    public void countLocal()
+    public synchronized void countLocal()
     {
         super.countLocal();
         localResponse = 1;
