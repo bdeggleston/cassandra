@@ -111,4 +111,22 @@ public class EpaxosInstanceTest
         Assert.assertEquals(Instance.State.EXECUTED, instance.getState());
     }
 
+    @Test
+    public void isAcknowledgedChanged() throws Exception
+    {
+        // TODO: test that isAcknowledgedChanged is only set when an instance moves from not acknowledged to acknowledged
+    }
+
+    @Test
+    public void copyRemote() throws Exception
+    {
+        // TODO: test that remotely copied instances have all the important things copied
+    }
+
+    @Test
+    public void applyInstance() throws Exception
+    {
+        // TODO: test that
+    }
+
 }

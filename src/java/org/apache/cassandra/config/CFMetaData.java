@@ -351,8 +351,10 @@ public final class CFMetaData
     public static final CFMetaData EpaxosInstanceCf = compile("CREATE TABLE " + SystemKeyspace.EPAXOS_INSTANCE + " ("
                                                               + "id timeuuid PRIMARY KEY,"
                                                               + "data blob,"
-                                                              + "version int)");
+                                                              + "version int)"
+                                                              + "WITH gc_grace_seconds=0");
 
+    // FIXME: this is effectively a queue
     public static final CFMetaData EpaxosDependenciesCF = compile("CREATE TABLE " + SystemKeyspace.EPAXOS_DEPENDENCIES + " ("
                                                                   + "row_key blob,"
                                                                   + "cf_id uuid,"
@@ -362,7 +364,8 @@ public final class CFMetaData
                                                                   + "data blob," // TODO: should the data even be stored in this table?
                                                                   + "acknowledged boolean,"
                                                                   + "executed boolean,"
-                                                                  + "PRIMARY KEY (row_key, cf_id, id))");
+                                                                  + "PRIMARY KEY (row_key, cf_id, id))"
+                                                                  + "WITH gc_grace_seconds=0");
 //                                                                  + "PRIMARY KEY (row_key, cf_id, cluster_key, read_only, id))");
 
     public static class SpeculativeRetry

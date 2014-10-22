@@ -532,8 +532,8 @@ public class EpaxosService
                 {
                     instance.checkBallot(remoteInstance.getBallot());
                     instance.applyRemote(remoteInstance);
-                    instance.accept(remoteInstance.getDependencies());
                 }
+                instance.accept(remoteInstance.getDependencies());
                 saveInstance(instance);
 
                 for (Instance missing: message.payload.missingInstances)
@@ -566,7 +566,9 @@ public class EpaxosService
             }
 
             if (instance != null)
+            {
                 acknowledgeDependencies(instance);
+            }
         }
     }
 
@@ -673,8 +675,8 @@ public class EpaxosService
                 } else
                 {
                     instance.applyRemote(remoteInstance);
-                    instance.commit(remoteInstance.getDependencies());
                 }
+                instance.commit(remoteInstance.getDependencies());
                 saveInstance(instance);
 
                 notifyCommit(instance.getId());
@@ -1215,6 +1217,7 @@ public class EpaxosService
     protected void saveInstance(Instance instance)
     {
         logger.debug("Saving instance {}", instance.getId());
+        assert instance.getState().atLeast(Instance.State.PREACCEPTED);
         // actually write to table
         DataOutputBuffer out = new DataOutputBuffer((int) Instance.internalSerializer.serializedSize(instance, 0));
         try
@@ -1234,7 +1237,7 @@ public class EpaxosService
                                        timestamp);
 
         SerializedRequest request = instance.getQuery();
-        if (instance.getState() == Instance.State.EXECUTED && instance.isAcknowledged())
+        if (instance.getState() == Instance.State.EXECUTED && instance.isAcknowledged() && instance.isAcknowledgedChanged())
         {
             String depsReq = "DELETE FROM %s.%s USING TIMESTAMP ? WHERE row_key=? AND cf_id=? AND id=?";
             QueryProcessor.executeInternal(String.format(depsReq, keyspace(), dependencyTable()),

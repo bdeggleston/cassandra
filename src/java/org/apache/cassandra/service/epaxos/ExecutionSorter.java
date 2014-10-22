@@ -45,6 +45,7 @@ class ExecutionSorter
         Set<UUID> deps;
         Instance.State state;
         Set<UUID> stronglyConnected;
+        boolean isPlaceholder;
         ReadWriteLock lock = accessor.getLock(instance);
         lock.readLock().lock();
         try
@@ -52,6 +53,7 @@ class ExecutionSorter
             deps = instance.getDependencies();
             state = instance.getState();
             stronglyConnected = instance.getStronglyConnected();
+            isPlaceholder = instance.isPlaceholder();
         }
         finally
         {
@@ -90,7 +92,7 @@ class ExecutionSorter
             // been committed.
             if (deps == null)
             {
-                assert instance.isPlaceholder();
+                assert isPlaceholder;
                 return;
             }
         }

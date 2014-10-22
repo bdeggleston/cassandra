@@ -9,4 +9,18 @@ public class EpaxosCommitTest
     {
 
     }
+
+    // replica tests
+
+    @Test
+    public void unknownInstanceCommitSuccess() throws Exception
+    {
+        // TODO: test status and deps are set
+    }
+
+    @Test
+    public void knownInstanceCommitSuccess() throws Exception
+    {
+
+    }
 }

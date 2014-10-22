@@ -16,6 +16,7 @@ public class EpaxosAcceptReplicaTest
     @Test
     public void requestSuccessNew() throws Exception
     {
+        // TODO: test status and deps are set
 
     }
 

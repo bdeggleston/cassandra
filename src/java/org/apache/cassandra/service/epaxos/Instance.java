@@ -79,6 +79,7 @@ public class Instance
     // fields not transmitted to other nodes
     private volatile boolean placeholder = false;
     private volatile boolean acknowledged = false;
+    private volatile boolean acknowledgedChanged = false;
     private volatile Set<UUID> stronglyConnected = null;
 
     private class DependencyFilter implements Predicate<UUID>
@@ -208,12 +209,18 @@ public class Instance
 
     public void setAcknowledged(boolean acknowledged)
     {
+        acknowledgedChanged |= acknowledged != this.acknowledged;
         this.acknowledged = acknowledged;
     }
 
     public boolean isAcknowledged()
     {
         return acknowledged;
+    }
+
+    public boolean isAcknowledgedChanged()
+    {
+        return acknowledgedChanged;
     }
 
     public void setSuccessors(List<InetAddress> successors)
