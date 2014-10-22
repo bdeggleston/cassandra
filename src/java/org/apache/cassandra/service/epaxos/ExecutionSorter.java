@@ -40,6 +40,8 @@ class ExecutionSorter
 
     private void addInstance(Instance instance)
     {
+        assert instance != null;
+
         Set<UUID> deps;
         Instance.State state;
         Set<UUID> stronglyConnected;

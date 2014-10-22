@@ -348,7 +348,6 @@ public final class CFMetaData
                                                                  + ") WITH COMMENT='show all compaction history' AND DEFAULT_TIME_TO_LIVE=604800");
 
     // TODO: make this a proper table
-    // TODO: row cache?
     public static final CFMetaData EpaxosInstanceCf = compile("CREATE TABLE " + SystemKeyspace.EPAXOS_INSTANCE + " ("
                                                               + "id timeuuid PRIMARY KEY,"
                                                               + "data blob,"

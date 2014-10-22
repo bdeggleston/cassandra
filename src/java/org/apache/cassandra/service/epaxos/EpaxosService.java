@@ -20,6 +20,7 @@ import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.service.epaxos.exceptions.InstanceNotFoundException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.service.epaxos.exceptions.PrepareAbortException;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.UUIDGen;
 import org.slf4j.Logger;
@@ -430,19 +431,43 @@ public class EpaxosService
         return new AcceptCallback(instance, participantInfo);
     }
 
+    private void acknowledgeDependencies(Instance instance)
+    {
+        for (UUID iid: instance.getDependencies())
+        {
+            if (iid.equals(instance.getId()))
+                continue;
+
+            ReadWriteLock lock = locks.get(iid);
+            lock.writeLock().lock();
+            try
+            {
+                Instance toAck = loadInstance(iid);
+                toAck.setAcknowledged();
+                saveInstance(toAck);
+            }
+            finally
+            {
+                lock.writeLock().unlock();
+            }
+        }
+    }
+
     public void accept(UUID iid, AcceptDecision decision) throws InvalidInstanceStateChange, UnavailableException, WriteTimeoutException, BallotException
     {
         logger.debug("accepting instance {}", iid);
         ReadWriteLock lock = locks.get(iid);
         lock.writeLock().lock();
         AcceptCallback callback;
+        Instance instance;
         try
         {
-            Instance instance = loadInstance(iid);
+            instance = loadInstance(iid);
 
             instance.accept(decision.acceptDeps);
             instance.incrementBallot();
             saveInstance(instance);
+
             ParticipantInfo participantInfo = getParticipants(instance);
 
             callback = getAcceptCallback(instance, participantInfo);
@@ -482,6 +507,7 @@ public class EpaxosService
         }
 
         callback.await();
+        acknowledgeDependencies(instance);
         callback.checkSuccess();
         logger.debug("accept phase successful for {}", iid);
     }
@@ -495,9 +521,10 @@ public class EpaxosService
             logger.debug("Accept request received from {} for {}", message.from, remoteInstance.getId());
             ReadWriteLock lock = locks.get(remoteInstance.getId());
             lock.writeLock().lock();
+            Instance instance = null;
             try
             {
-                Instance instance = loadInstance(remoteInstance.getId());
+                instance = loadInstance(remoteInstance.getId());
                 if (instance == null)
                 {
                     instance = remoteInstance.copyRemote();
@@ -537,6 +564,9 @@ public class EpaxosService
             {
                 lock.writeLock().unlock();
             }
+
+            if (instance != null)
+                acknowledgeDependencies(instance);
         }
     }
 
@@ -585,9 +615,10 @@ public class EpaxosService
         logger.debug("committing instance {}", iid);
         ReadWriteLock lock = locks.get(iid);
         lock.writeLock().lock();
+        Instance instance;
         try
         {
-            Instance instance = loadInstance(iid);
+            instance = loadInstance(iid);
             if (dependencies != null)
                 instance.setDependencies(dependencies);
             instance.commit();
@@ -620,6 +651,7 @@ public class EpaxosService
         {
             lock.writeLock().unlock();
         }
+        acknowledgeDependencies(instance);
     }
 
     protected class CommitVerbHandler implements IVerbHandler<Instance>
@@ -657,6 +689,7 @@ public class EpaxosService
             {
                 lock.writeLock().unlock();
             }
+            acknowledgeDependencies(instance);
 
             try
             {
@@ -1203,12 +1236,12 @@ public class EpaxosService
         SerializedRequest request = instance.getQuery();
         if (instance.getState() == Instance.State.EXECUTED && instance.isAcknowledged())
         {
-            String depsReq = "DELETE FROM %s.%s WHERE row_key=?, cf_id=?, id=? USING TIMESTAMP ?";
-            QueryProcessor.executeInternal(String.format(depsReq, keyspace(), instanceTable()),
+            String depsReq = "DELETE FROM %s.%s USING TIMESTAMP ? WHERE row_key=? AND cf_id=? AND id=?";
+            QueryProcessor.executeInternal(String.format(depsReq, keyspace(), dependencyTable()),
+                                           timestamp,
                                            request.getKey(),
                                            Schema.instance.getId(request.getKeyspaceName(), request.getCfName()), // TODO: just store the uuid on the request
-                                           instance.getId(),
-                                           timestamp);
+                                           instance.getId());
         }
         else
         {

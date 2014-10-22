@@ -201,6 +201,11 @@ public class Instance
         return (!state.atLeast(State.ACCEPTED)) && placeholder;
     }
 
+    public void setAcknowledged()
+    {
+        setAcknowledged(true);
+    }
+
     public void setAcknowledged(boolean acknowledged)
     {
         this.acknowledged = acknowledged;

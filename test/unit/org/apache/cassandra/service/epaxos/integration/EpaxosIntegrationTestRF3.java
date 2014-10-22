@@ -26,6 +26,17 @@ public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest
         return new Node.SingleThreaded(number, ksName, messenger);
     }
 
+    @Test
+    public void longTest() throws Exception
+    {
+        for (int i=0; i<500; i++)
+        {
+            Node leader = nodes.get(i % nodes.size());
+            leader.query(getSerializedCQLRequest(0, 0));
+            System.out.println(i);
+        }
+    }
+
     /**
      * All nodes are replying to messages
      */
