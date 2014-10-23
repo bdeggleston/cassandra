@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.WriteType;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
@@ -100,6 +101,12 @@ public class Node extends EpaxosService
     public Instance getInstance(UUID iid)
     {
         return loadInstance(iid);
+    }
+
+    public DependencyManager getDependencyManager(Instance instance)
+    {
+        SerializedRequest request = instance.getQuery();
+        return loadDependencyManager(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
     }
 
     @Override

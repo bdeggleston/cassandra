@@ -429,6 +429,7 @@ public class EpaxosService
                 {
                     if (instance == null)
                     {
+                        // TODO: add to deps
                         instance = remoteInstance.copyRemote();
                     } else
                     {
@@ -583,13 +584,14 @@ public class EpaxosService
             logger.debug("Accept request received from {} for {}", message.from, remoteInstance.getId());
             ReadWriteLock lock = locks.get(remoteInstance.getId());
             lock.writeLock().lock();
-            Instance instance = null;
+            Instance instance;
             try
             {
                 instance = loadInstance(remoteInstance.getId());
                 if (instance == null)
                 {
                     instance = remoteInstance.copyRemote();
+                    recordMissingInstance(instance);
                 } else
                 {
                     instance.checkBallot(remoteInstance.getBallot());
@@ -729,6 +731,7 @@ public class EpaxosService
                 instance = loadInstance(remoteInstance.getId());
                 if (instance == null)
                 {
+                    // TODO: record deps
                     instance = remoteInstance.copyRemote();
                 } else
                 {
@@ -1309,7 +1312,7 @@ public class EpaxosService
     /**
      * loads a dependency manager. Must be called within a lock held for this key & cfid pair
      */
-    private DependencyManager loadDependencyManager(ByteBuffer key, UUID cfId)
+    protected DependencyManager loadDependencyManager(ByteBuffer key, UUID cfId)
     {
         Pair<ByteBuffer, UUID> keyPair = Pair.create(key, cfId);
         DependencyManager dm = dependencyManagers.getIfPresent(keyPair);
@@ -1397,6 +1400,8 @@ public class EpaxosService
                 notifyCommit(instance.getId());
 
             recordMissingInstance(instance);
+
+            // TODO: execute if committed
 
             return instance;
 
