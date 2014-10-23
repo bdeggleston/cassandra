@@ -105,7 +105,7 @@ public class Node extends EpaxosService
     @Override
     protected String keyspace()
     {
-        return ksName;
+        return ksName != null ? ksName : super.keyspace();
     }
 
     @Override

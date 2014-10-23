@@ -178,6 +178,7 @@ public class EpaxosService
         return Math.max(1, DatabaseDescriptor.getRpcTimeout() - (System.currentTimeMillis() - start));
     }
 
+    // TODO: eventually, the type parameter will let this take read and cas requests
     public <T> T query(SerializedRequest query)
             throws UnavailableException, WriteTimeoutException, ReadTimeoutException, InvalidRequestException
     {
@@ -679,11 +680,7 @@ public class EpaxosService
         try
         {
             instance = loadInstance(iid);
-            if (dependencies != null)
-            {
-                instance.setDependencies(dependencies);
-            }
-            instance.commit();
+            instance.commit(dependencies);
             instance.incrementBallot();
             saveInstance(instance);
 

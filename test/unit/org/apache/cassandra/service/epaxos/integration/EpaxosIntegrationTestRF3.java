@@ -5,6 +5,7 @@ import com.google.common.collect.Sets;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.service.epaxos.Instance;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.HashSet;
@@ -12,20 +13,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest
+public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest.SingleThread
 {
-    @Override
-    public int getReplicationFactor()
-    {
-        return 3;
-    }
-
-    @Override
-    public Node createNode(int number, String ksName, Messenger messenger)
-    {
-        return new Node.SingleThreaded(number, ksName, messenger);
-    }
-
+    @Ignore
     @Test
     public void longTest() throws Exception
     {

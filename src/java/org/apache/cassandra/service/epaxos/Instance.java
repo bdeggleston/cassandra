@@ -307,11 +307,10 @@ public class Instance
 
     public void commit(Set<UUID> dependencies) throws InvalidInstanceStateChange
     {
-        assert dependencies.size() < 50;
         if (dependencies.size() > 50)
             logger.warn("committing instance with {} dependencies", dependencies.size());
-        setState(State.COMMITTED);
         setDependencies(dependencies);
+        setState(State.COMMITTED);
         placeholder = false;
         logger.debug("committed: {}", this);
     }

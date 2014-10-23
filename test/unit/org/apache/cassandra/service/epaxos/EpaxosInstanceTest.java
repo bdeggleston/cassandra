@@ -112,12 +112,6 @@ public class EpaxosInstanceTest
     }
 
     @Test
-    public void isAcknowledgedChanged() throws Exception
-    {
-        // TODO: test that isAcknowledgedChanged is only set when an instance moves from not acknowledged to acknowledged
-    }
-
-    @Test
     public void copyRemote() throws Exception
     {
         // TODO: test that remotely copied instances have all the important things copied

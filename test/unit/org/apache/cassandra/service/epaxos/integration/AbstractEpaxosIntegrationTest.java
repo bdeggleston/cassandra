@@ -118,7 +118,11 @@ public abstract class AbstractEpaxosIntegrationTest
         return newSerializedRequest(casRequest);
     }
 
-    public abstract int getReplicationFactor();
+    public int getReplicationFactor()
+    {
+        return 3;
+    }
+
     public abstract Node createNode(int number, String ksName, Messenger messenger);
 
     public int quorumSize()
@@ -218,17 +222,31 @@ public abstract class AbstractEpaxosIntegrationTest
         return ksName;
     }
 
+    protected Messenger createMessenger()
+    {
+        return new Messenger();
+    }
+
     @Before
     public void setUp()
     {
         String ksName = createTestKeyspace();
-        messenger = new Messenger();
+        messenger = createMessenger();
         nodes = Lists.newArrayListWithCapacity(getReplicationFactor());
         for (int i=0; i<getReplicationFactor(); i++)
         {
             Node node = createNode(i + 1, ksName, messenger);
             messenger.registerNode(node);
             nodes.add(node);
+        }
+    }
+
+    public abstract static class SingleThread extends AbstractEpaxosIntegrationTest
+    {
+        @Override
+        public Node createNode(int number, String ksName, Messenger messenger)
+        {
+            return new Node.SingleThreaded(number, ksName, messenger);
         }
     }
 }
