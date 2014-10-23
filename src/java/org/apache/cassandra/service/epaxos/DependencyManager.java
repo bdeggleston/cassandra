@@ -93,19 +93,9 @@ public class DependencyManager
             entries.remove(iid);
     }
 
-    @VisibleForTesting
-    Set<UUID> getDeps()
-    {
-        // filter out entries that were acknowledged, but weren't explicitly added
-        // this prevents executed + ack'd deps from coming back from the dead and becoming
-        // dependencies on new instances
-        return entries.keySet();
-    }
-
     public Entry recordInstance(UUID iid)
     {
-        Entry entry = create(iid);
-        return entry;
+        return create(iid);
     }
 
     public Set<UUID> getDepsAndAdd(UUID iid)
