@@ -1,5 +1,7 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.net.MessageIn;
@@ -86,7 +88,7 @@ public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
         // the fast path quorum may be larger than the simple quorum, so getResponseCount can't be used
         boolean fpQuorum = (responses.size() + localResponse) >= participantInfo.fastQuorumSize;
 
-        Set<UUID> unifiedDeps = Sets.union(dependencies, remoteDependencies);
+        Set<UUID> unifiedDeps = ImmutableSet.copyOf(Iterables.concat(dependencies, remoteDependencies));
 
         Map<InetAddress, Set<UUID>> missingIds = Maps.newHashMap();
         for (Map.Entry<InetAddress, PreacceptResponse> entry: responses.entrySet())
