@@ -1,6 +1,8 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.base.Predicate;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.*;
 import com.google.common.io.ByteStreams;
 import com.google.common.util.concurrent.SettableFuture;
@@ -20,8 +22,8 @@ import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.service.epaxos.exceptions.InstanceNotFoundException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.service.epaxos.exceptions.PrepareAbortException;
-import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDGen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +58,10 @@ public class EpaxosService
 
     // prevents multiple threads from attempting to prepare the same instance
     private final Striped<Lock> prepareLocks = Striped.lazyWeakLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
+
+    // prevents multiple threads modifying the dependency manager for a given key. Call this *after* locking an instance
+    private final Striped<Lock> depsLocks = Striped.lazyWeakLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
+    private final Cache<Pair<ByteBuffer, UUID>, DependencyManager> dependencyManagers;
 
     // aborts prepare phases on commit
     private final ConcurrentMap<UUID, CountDownLatch> commitLatches = Maps.newConcurrentMap();
@@ -139,6 +145,11 @@ public class EpaxosService
             return locks.get(key);
         }
     };
+
+    public EpaxosService()
+    {
+        dependencyManagers = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(1000).build();
+    }
 
     protected String keyspace()
     {
@@ -226,27 +237,65 @@ public class EpaxosService
         return new Instance(request, getEndpoint());
     }
 
-    public Set<UUID> getCurrentDependencies(SerializedRequest request)
+    protected Set<UUID> getCurrentDependencies(Instance instance)
     {
-        String query = "SELECT id, acknowledged, executed from %s.%s WHERE row_key=? AND cf_id=?";
-        UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace(), dependencyTable()),
-                                                                  request.getKey(),
-                                                                  // TODO: just store the uuid on the request
-                                                                  Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+        SerializedRequest request = instance.getQuery();
 
-        Set<UUID> deps = new HashSet<>(results.size());
+        Pair<ByteBuffer, UUID> keyPair = Pair.create(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
 
-        for (UntypedResultSet.Row row: results)
+        Lock lock = depsLocks.get(keyPair);
+        lock.lock();
+        try
         {
-            if (row.getBoolean("acknowledged") && row.getBoolean("executed"))
-            {
-                // TODO: delete the row
-                continue;
-            }
-            deps.add(row.getUUID("id"));
+            DependencyManager dm = loadDependencyManager(keyPair.left, keyPair.right);
+            Set<UUID> deps = dm.getDepsAndAdd(instance);
+            saveDependencyManager(keyPair.left, keyPair.right, dm);
+            return deps;
         }
+        finally
+        {
+            lock.unlock();
+        }
+    }
 
-        return deps;
+    protected void recordAcknowledgedDeps(Instance instance)
+    {
+        SerializedRequest request = instance.getQuery();
+
+        Pair<ByteBuffer, UUID> keyPair = Pair.create(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+
+        Lock lock = depsLocks.get(keyPair);
+        lock.lock();
+        try
+        {
+            DependencyManager dm = loadDependencyManager(keyPair.left, keyPair.right);
+            dm.markAcknowledged(instance.getDependencies());
+            saveDependencyManager(keyPair.left, keyPair.right, dm);
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
+    protected void recordExecuted(Instance instance)
+    {
+        SerializedRequest request = instance.getQuery();
+
+        Pair<ByteBuffer, UUID> keyPair = Pair.create(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+
+        Lock lock = depsLocks.get(keyPair);
+        lock.lock();
+        try
+        {
+            DependencyManager dm = loadDependencyManager(keyPair.left, keyPair.right);
+            dm.markExecuted(instance.getId());
+            saveDependencyManager(keyPair.left, keyPair.right, dm);
+        }
+        finally
+        {
+            lock.unlock();
+        }
     }
 
     protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo)
@@ -264,7 +313,7 @@ public class EpaxosService
         try
         {
             ParticipantInfo participantInfo = getParticipants(instance);
-            instance.preaccept(getCurrentDependencies(instance.getQuery()));
+            instance.preaccept(getCurrentDependencies(instance));
             List<InetAddress> successors = Lists.newArrayList(Iterables.filter(participantInfo.endpoints, nonLocalPredicate));
             Collections.shuffle(successors, getRandom());
             instance.setSuccessors(successors);
@@ -352,7 +401,7 @@ public class EpaxosService
                         instance.checkBallot(remoteInstance.getBallot());
                         instance.applyRemote(remoteInstance);
                     }
-                    instance.preaccept(getCurrentDependencies(instance.getQuery()), remoteInstance.getDependencies());
+                    instance.preaccept(getCurrentDependencies(instance), remoteInstance.getDependencies());
                     saveInstance(instance);
 
                     PreacceptResponse response;
@@ -431,28 +480,6 @@ public class EpaxosService
         return new AcceptCallback(instance, participantInfo);
     }
 
-    private void acknowledgeDependencies(Instance instance)
-    {
-        for (UUID iid: instance.getDependencies())
-        {
-            if (iid.equals(instance.getId()))
-                continue;
-
-            ReadWriteLock lock = locks.get(iid);
-            lock.writeLock().lock();
-            try
-            {
-                Instance toAck = loadInstance(iid);
-                toAck.setAcknowledged();
-                saveInstance(toAck);
-            }
-            finally
-            {
-                lock.writeLock().unlock();
-            }
-        }
-    }
-
     public void accept(UUID iid, AcceptDecision decision) throws InvalidInstanceStateChange, UnavailableException, WriteTimeoutException, BallotException
     {
         logger.debug("accepting instance {}", iid);
@@ -500,6 +527,8 @@ public class EpaxosService
                 logger.debug("sending accept request to non-local dc {} for instance {}", endpoint, instance.getId());
                 sendOneWay(message, endpoint);
             }
+
+            recordAcknowledgedDeps(instance);
         }
         finally
         {
@@ -507,7 +536,6 @@ public class EpaxosService
         }
 
         callback.await();
-        acknowledgeDependencies(instance);
         callback.checkSuccess();
         logger.debug("accept phase successful for {}", iid);
     }
@@ -545,6 +573,8 @@ public class EpaxosService
                                                                     AcceptResponse.serializer);
                 logger.debug("Accept request from {} successful for {}", message.from, remoteInstance.getId());
                 sendReply(reply, id, message.from);
+
+                recordAcknowledgedDeps(instance);
             }
             catch (BallotException e)
             {
@@ -563,11 +593,6 @@ public class EpaxosService
             finally
             {
                 lock.writeLock().unlock();
-            }
-
-            if (instance != null)
-            {
-                acknowledgeDependencies(instance);
             }
         }
     }
@@ -647,13 +672,14 @@ public class EpaxosService
                 sendOneWay(message, endpoint);
             }
 
+            recordAcknowledgedDeps(instance);
+
             notifyCommit(iid);
         }
         finally
         {
             lock.writeLock().unlock();
         }
-        acknowledgeDependencies(instance);
     }
 
     protected class CommitVerbHandler implements IVerbHandler<Instance>
@@ -680,6 +706,7 @@ public class EpaxosService
                 saveInstance(instance);
 
                 notifyCommit(instance.getId());
+                recordAcknowledgedDeps(instance);
             }
             catch (InvalidInstanceStateChange e)
             {
@@ -691,7 +718,6 @@ public class EpaxosService
             {
                 lock.writeLock().unlock();
             }
-            acknowledgeDependencies(instance);
 
             try
             {
@@ -785,6 +811,7 @@ public class EpaxosService
     {
         logger.debug("Executing serialized request for {}", instance.getId());
         ColumnFamily result = instance.execute();
+        recordExecuted(instance);
         SettableFuture resultFuture = resultFutures.get(instance.getId());
         if (resultFuture != null)
         {
@@ -1109,7 +1136,7 @@ public class EpaxosService
         logger.debug("Attempting TryPreaccept for {} with deps {}", instance.getId(), dependencies);
 
         // get the ids of instances the the message instance doesn't have in it's dependencies
-        Set<UUID> conflictIds = Sets.newHashSet(getCurrentDependencies(instance.getQuery()));
+        Set<UUID> conflictIds = Sets.newHashSet(getCurrentDependencies(instance));
         conflictIds.removeAll(dependencies);
         conflictIds.remove(instance.getId());
 
@@ -1236,30 +1263,92 @@ public class EpaxosService
                                        0,
                                        timestamp);
 
-        SerializedRequest request = instance.getQuery();
-        if (instance.getState() == Instance.State.EXECUTED && instance.isAcknowledged() && instance.isAcknowledgedChanged())
+//        SerializedRequest request = instance.getQuery();
+//        if (instance.getState() == Instance.State.EXECUTED && instance.isAcknowledged() && instance.isAcknowledgedChanged())
+//        {
+//            String depsReq = "DELETE FROM %s.%s USING TIMESTAMP ? WHERE row_key=? AND cf_id=? AND id=?";
+//            QueryProcessor.executeInternal(String.format(depsReq, keyspace(), dependencyTable()),
+//                                           timestamp,
+//                                           request.getKey(),
+//                                           Schema.instance.getId(request.getKeyspaceName(), request.getCfName()), // TODO: just store the uuid on the request
+//                                           instance.getId());
+//        }
+//        else
+//        {
+//            String depsReq = "INSERT INTO %s.%s (row_key, cf_id, id, data, acknowledged, executed) "
+//                             + "VALUES (?, ?, ?, ?, ?, ?) USING TIMESTAMP ?";
+//            QueryProcessor.executeInternal(String.format(depsReq, keyspace(), dependencyTable()),
+//                                           request.getKey(),
+//                                           Schema.instance.getId(request.getKeyspaceName(), request.getCfName()), // TODO: just store the uuid on the request
+//                                           instance.getId(),
+//                                           ByteBuffer.wrap(out.getData()),
+//                                           instance.isAcknowledged(),
+//                                           instance.getState() == Instance.State.EXECUTED,
+//                                           timestamp);
+//        }
+
+    }
+
+    /**
+     * loads a dependency manager. Must be called within a lock held for this key & cfid pair
+     */
+    private DependencyManager loadDependencyManager(ByteBuffer key, UUID cfId)
+    {
+        Pair<ByteBuffer, UUID> keyPair = Pair.create(key, cfId);
+        DependencyManager dm = dependencyManagers.getIfPresent(keyPair);
+        if (dm != null)
+            return dm;
+
+        String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=?";
+        UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace(), dependencyTable()), key, cfId);
+
+        if (results.isEmpty())
         {
-            String depsReq = "DELETE FROM %s.%s USING TIMESTAMP ? WHERE row_key=? AND cf_id=? AND id=?";
-            QueryProcessor.executeInternal(String.format(depsReq, keyspace(), dependencyTable()),
-                                           timestamp,
-                                           request.getKey(),
-                                           Schema.instance.getId(request.getKeyspaceName(), request.getCfName()), // TODO: just store the uuid on the request
-                                           instance.getId());
-        }
-        else
-        {
-            String depsReq = "INSERT INTO %s.%s (row_key, cf_id, id, data, acknowledged, executed) "
-                             + "VALUES (?, ?, ?, ?, ?, ?) USING TIMESTAMP ?";
-            QueryProcessor.executeInternal(String.format(depsReq, keyspace(), dependencyTable()),
-                                           request.getKey(),
-                                           Schema.instance.getId(request.getKeyspaceName(), request.getCfName()), // TODO: just store the uuid on the request
-                                           instance.getId(),
-                                           ByteBuffer.wrap(out.getData()),
-                                           instance.isAcknowledged(),
-                                           instance.getState() == Instance.State.EXECUTED,
-                                           timestamp);
+            dm = new DependencyManager();
+            dependencyManagers.put(keyPair, dm);
+            return dm;
         }
 
+        UntypedResultSet.Row row = results.one();
+
+        ByteBuffer data = row.getBlob("data");
+        assert data.hasArray();  // FIXME
+        DataInput in = ByteStreams.newDataInput(data.array(), data.position());
+        try
+        {
+            dm = DependencyManager.serializer.deserialize(in, 0);
+            dependencyManagers.put(keyPair, dm);
+            return dm;
+
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError(e);
+        }
+    }
+
+    /**
+     * persists a dependency manager. Must be called within a lock held for this key & cfid pair
+     */
+    private void saveDependencyManager(ByteBuffer key, UUID cfId, DependencyManager dm)
+    {
+
+        DataOutputBuffer out = new DataOutputBuffer((int) DependencyManager.serializer.serializedSize(dm, 0));
+        try
+        {
+            DependencyManager.serializer.serialize(dm, out, 0);
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError(e);  // TODO: propagate original exception?
+        }
+        String depsReq = "INSERT INTO %s.%s (row_key, cf_id, data) VALUES (?, ?, ?)";
+        QueryProcessor.executeInternal(String.format(depsReq, keyspace(), dependencyTable()),
+                                       key,
+                                       cfId,
+                                       ByteBuffer.wrap(out.getData()));
+
+        dependencyManagers.put(Pair.create(key, cfId), dm);
     }
 
     protected Instance addMissingInstance(Instance remoteInstance)

@@ -353,19 +353,27 @@ public final class CFMetaData
                                                               + "data blob,"
                                                               + "version int)"
                                                               + "WITH gc_grace_seconds=0");
+//
+//    // FIXME: this is effectively a queue
+//    public static final CFMetaData EpaxosDependenciesCF = compile("CREATE TABLE " + SystemKeyspace.EPAXOS_DEPENDENCIES + " ("
+//                                                                  + "row_key blob,"
+//                                                                  + "cf_id uuid,"
+////                                                                  + "cluster_key blob,"
+////                                                                  + "read_only boolean,"
+//                                                                  + "id timeuuid,"
+//                                                                  + "data blob," // TODO: should the data even be stored in this table?
+//                                                                  + "acknowledged boolean,"
+//                                                                  + "executed boolean,"
+//                                                                  + "PRIMARY KEY (row_key, cf_id, id))"
+//                                                                  + "WITH gc_grace_seconds=0");
+////                                                                  + "PRIMARY KEY (row_key, cf_id, cluster_key, read_only, id))");
 
-    // FIXME: this is effectively a queue
     public static final CFMetaData EpaxosDependenciesCF = compile("CREATE TABLE " + SystemKeyspace.EPAXOS_DEPENDENCIES + " ("
-                                                                  + "row_key blob,"
-                                                                  + "cf_id uuid,"
-//                                                                  + "cluster_key blob,"
-//                                                                  + "read_only boolean,"
-                                                                  + "id timeuuid,"
-                                                                  + "data blob," // TODO: should the data even be stored in this table?
-                                                                  + "acknowledged boolean,"
-                                                                  + "executed boolean,"
-                                                                  + "PRIMARY KEY (row_key, cf_id, id))"
-                                                                  + "WITH gc_grace_seconds=0");
+                                                                      + "row_key blob,"
+                                                                      + "cf_id uuid,"
+                                                                      + "data blob," // TODO: should the data even be stored in this table?
+                                                                      + "PRIMARY KEY (row_key, cf_id))"
+                                                                      + "WITH gc_grace_seconds=0");
 //                                                                  + "PRIMARY KEY (row_key, cf_id, cluster_key, read_only, id))");
 
     public static class SpeculativeRetry

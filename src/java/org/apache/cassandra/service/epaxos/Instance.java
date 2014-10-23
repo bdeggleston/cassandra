@@ -2,6 +2,10 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -15,6 +19,8 @@ import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.utils.UUIDGen;
 import org.apache.cassandra.utils.UUIDSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.DataInput;
@@ -23,6 +29,7 @@ import java.net.InetAddress;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * An Epaxos instance
@@ -31,6 +38,8 @@ import java.util.UUID;
  */
 public class Instance
 {
+    private static final Logger logger = LoggerFactory.getLogger(EpaxosService.class);
+
     public static final IVersionedSerializer<Instance> serializer = new ExternalSerializer();
     static final IVersionedSerializer<Instance> internalSerializer = new InternalSerializer();
 
@@ -275,6 +284,7 @@ public class Instance
         if (leaderDependencies != null)
             leaderDepsMatch = this.dependencies.equals(leaderDependencies);
         placeholder = false;
+        logger.debug("preaccepted: {}", this);
     }
 
     public void accept() throws InvalidInstanceStateChange
@@ -287,6 +297,7 @@ public class Instance
         setState(State.ACCEPTED);
         setDependencies(dependencies);
         placeholder = false;
+        logger.debug("accepted: {}", this);
     }
 
     public void commit() throws InvalidInstanceStateChange
@@ -296,9 +307,13 @@ public class Instance
 
     public void commit(Set<UUID> dependencies) throws InvalidInstanceStateChange
     {
+        assert dependencies.size() < 50;
+        if (dependencies.size() > 50)
+            logger.warn("committing instance with {} dependencies", dependencies.size());
         setState(State.COMMITTED);
         setDependencies(dependencies);
         placeholder = false;
+        logger.debug("committed: {}", this);
     }
 
     public void setExecuted()
@@ -329,6 +344,8 @@ public class Instance
         instance.ballot = ballot;
         instance.noop = noop;
         instance.successors = successors;
+        instance.state = state;
+        instance.dependencies = dependencies;
         return instance;
     }
 
@@ -529,5 +546,11 @@ public class Instance
             }
             return size;
         }
+    }
+
+    @Override
+    public String toString()
+    {
+        return String.format("[Instance %s, dependencies: %s", id, dependencies != null ? dependencies.size() : null);
     }
 }

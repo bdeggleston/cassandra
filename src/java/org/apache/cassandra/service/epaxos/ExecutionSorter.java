@@ -31,6 +31,8 @@ class ExecutionSorter
     // prevents saving the same scc over and over
     private final Map<UUID, Set<UUID>> loadedScc = Maps.newHashMap();
 
+    private int traversals = 0;
+
     ExecutionSorter(Instance target, EpaxosService.IAccessor accessor)
     {
         this.target = target;
@@ -40,6 +42,7 @@ class ExecutionSorter
 
     private void addInstance(Instance instance)
     {
+        traversals++;
         assert instance != null;
 
         Set<UUID> deps;
@@ -77,6 +80,7 @@ class ExecutionSorter
                     boolean targetDep = targetDeps.contains(dep);
                     boolean required = requiredInstances.contains(dep);
                     connected |= notExecuted || targetDep || required;
+                    if (connected) break;
                 }
                 if (!connected)
                     return;
@@ -122,6 +126,10 @@ class ExecutionSorter
     public void buildGraph()
     {
         addInstance(target);
+        if (traversals > 30)
+        {
+            logger.warn("{}: {} instances visited to build execution graph", target, traversals);
+        }
     }
 
     public List<UUID> getOrder()
