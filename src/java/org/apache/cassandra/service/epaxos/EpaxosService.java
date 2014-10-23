@@ -55,11 +55,12 @@ public class EpaxosService
     protected static int PREPARE_GRACE_MILLIS = 500;
 
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
+    private final Cache<UUID, Instance> instanceCache;
 
-    // prevents multiple threads from attempting to prepare the same instance
+    // prevents multiple threads from attempting to prepare the same instance. Aquire this before an instance lock
     private final Striped<Lock> prepareLocks = Striped.lazyWeakLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
 
-    // prevents multiple threads modifying the dependency manager for a given key. Call this *after* locking an instance
+    // prevents multiple threads modifying the dependency manager for a given key. Aquire this *after* locking an instance
     private final Striped<Lock> depsLocks = Striped.lazyWeakLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
     private final Cache<Pair<ByteBuffer, UUID>, DependencyManager> dependencyManagers;
 
@@ -148,6 +149,7 @@ public class EpaxosService
 
     public EpaxosService()
     {
+        instanceCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(10000).build();
         dependencyManagers = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(1000).build();
     }
 
@@ -678,7 +680,9 @@ public class EpaxosService
         {
             instance = loadInstance(iid);
             if (dependencies != null)
+            {
                 instance.setDependencies(dependencies);
+            }
             instance.commit();
             instance.incrementBallot();
             saveInstance(instance);
@@ -1250,6 +1254,12 @@ public class EpaxosService
     protected Instance loadInstance(UUID instanceId)
     {
         logger.debug("Loading instance {}", instanceId);
+
+        Instance instance = instanceCache.getIfPresent(instanceId);
+        if (instance != null)
+            return instance;
+
+        logger.debug("Loading instance {} from disk", instanceId);
         // read from table
         String query = "SELECT * FROM %s.%s WHERE id=?";
         UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace(), instanceTable()),
@@ -1264,7 +1274,9 @@ public class EpaxosService
         DataInput in = ByteStreams.newDataInput(data.array(), data.position());
         try
         {
-            return Instance.internalSerializer.deserialize(in, row.getInt("version"));
+            instance = Instance.internalSerializer.deserialize(in, row.getInt("version"));
+            instanceCache.put(instanceId, instance);
+            return instance;
         }
         catch (IOException e)
         {
@@ -1294,30 +1306,7 @@ public class EpaxosService
                                        0,
                                        timestamp);
 
-//        SerializedRequest request = instance.getQuery();
-//        if (instance.getState() == Instance.State.EXECUTED && instance.isAcknowledged() && instance.isAcknowledgedChanged())
-//        {
-//            String depsReq = "DELETE FROM %s.%s USING TIMESTAMP ? WHERE row_key=? AND cf_id=? AND id=?";
-//            QueryProcessor.executeInternal(String.format(depsReq, keyspace(), dependencyTable()),
-//                                           timestamp,
-//                                           request.getKey(),
-//                                           Schema.instance.getId(request.getKeyspaceName(), request.getCfName()), // TODO: just store the uuid on the request
-//                                           instance.getId());
-//        }
-//        else
-//        {
-//            String depsReq = "INSERT INTO %s.%s (row_key, cf_id, id, data, acknowledged, executed) "
-//                             + "VALUES (?, ?, ?, ?, ?, ?) USING TIMESTAMP ?";
-//            QueryProcessor.executeInternal(String.format(depsReq, keyspace(), dependencyTable()),
-//                                           request.getKey(),
-//                                           Schema.instance.getId(request.getKeyspaceName(), request.getCfName()), // TODO: just store the uuid on the request
-//                                           instance.getId(),
-//                                           ByteBuffer.wrap(out.getData()),
-//                                           instance.isAcknowledged(),
-//                                           instance.getState() == Instance.State.EXECUTED,
-//                                           timestamp);
-//        }
-
+        instanceCache.put(instance.getId(), instance);
     }
 
     /**
