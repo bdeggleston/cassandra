@@ -29,7 +29,7 @@ public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest
     @Test
     public void longTest() throws Exception
     {
-        for (int i=0; i<1000; i++)
+        for (int i=0; i<100; i++)
         {
             Node leader = nodes.get(i % nodes.size());
             leader.query(getSerializedCQLRequest(0, 0));

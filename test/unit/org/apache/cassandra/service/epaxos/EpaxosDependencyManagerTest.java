@@ -19,41 +19,52 @@ public class EpaxosDependencyManagerTest
     public void eviction() throws Exception
     {
         DependencyManager dm = new DependencyManager();
+
+        UUID dep0 = UUIDGen.getTimeUUID();
+        Set<UUID> expected = Sets.newHashSet();
+        Assert.assertEquals(expected, dm.getDepsAndAdd(dep0));
+
+        expected.add(dep0);
         UUID dep1 = UUIDGen.getTimeUUID();
+        Assert.assertEquals(expected, dm.getDepsAndAdd(dep1));
+
         UUID dep2 = UUIDGen.getTimeUUID();
+        dm.markAcknowledged(dep0);
+        Assert.assertTrue(dm.get(dep0).acknowledged);
+        expected.add(dep1);
+        Assert.assertEquals(expected, dm.getDepsAndAdd(dep2));
+
         UUID dep3 = UUIDGen.getTimeUUID();
+        dm.markExecuted(dep0);
+        Assert.assertTrue(dm.get(dep0).executed);
+        expected.add(dep2);
+        Assert.assertEquals(expected, dm.getDepsAndAdd(dep3));
 
-        dm.getOrCreate(dep1).addedExplicitly = true;
-        dm.getOrCreate(dep2).addedExplicitly = true;
-        dm.getOrCreate(dep3).addedExplicitly = true;
+        UUID dep4 = UUIDGen.getTimeUUID();
+        expected.remove(dep0);
+        expected.add(dep3);
+        Assert.assertEquals(expected, dm.getDepsAndAdd(dep4));
 
-        // all 3 should be in manager
-        Set<UUID> expected = Sets.newHashSet(dep1, dep2, dep3);
-        Assert.assertEquals(expected, dm.getDeps());
-
-        // still expecting all 3
-        dm.markAcknowledged(Sets.newHashSet(dep1));
-        dm.markExecuted(dep2);
-        Assert.assertEquals(expected, dm.getDeps());
-
-        // executing dep1 should remove it
-        dm.markExecuted(dep1);
-        expected.remove(dep1);
-        Assert.assertEquals(expected, dm.getDeps());
-
-        // acknowledging dep2 should remove it
-        dm.markAcknowledged(Sets.newHashSet(dep2));
-        expected.remove(dep2);
-        Assert.assertEquals(expected, dm.getDeps());
     }
 
+    /**
+     * Tests instances aren't assigned themselves as dependencies
+     */
     @Test
-    public void depsExcludeImplicitEntries() throws Exception
+    public void selfDependencies() throws Exception
     {
         DependencyManager dm = new DependencyManager();
-        DependencyManager.Entry entry = dm.getOrCreate(UUIDGen.getTimeUUID());
-        Assert.assertFalse(entry.addedExplicitly);
-        Assert.assertEquals(0, dm.getDeps().size());
 
+        UUID dep0 = UUIDGen.getTimeUUID();
+        Set<UUID> expected = Sets.newHashSet();
+        Assert.assertEquals(expected, dm.getDepsAndAdd(dep0));
+
+        expected.add(dep0);
+        UUID dep1 = UUIDGen.getTimeUUID();
+        Assert.assertEquals(expected, dm.getDepsAndAdd(dep1));
+
+        expected.add(dep1);
+        expected.remove(dep0);
+        Assert.assertEquals(expected, dm.getDepsAndAdd(dep0));
     }
 }

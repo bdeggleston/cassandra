@@ -248,9 +248,40 @@ public class EpaxosService
         try
         {
             DependencyManager dm = loadDependencyManager(keyPair.left, keyPair.right);
-            Set<UUID> deps = dm.getDepsAndAdd(instance);
+            Set<UUID> deps = dm.getDepsAndAdd(instance.getId());
             saveDependencyManager(keyPair.left, keyPair.right, dm);
             return deps;
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
+    protected void recordMissingInstance(Instance instance)
+    {
+        SerializedRequest request = instance.getQuery();
+
+        Pair<ByteBuffer, UUID> keyPair = Pair.create(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+
+        Lock lock = depsLocks.get(keyPair);
+        lock.lock();
+        try
+        {
+            DependencyManager dm = loadDependencyManager(keyPair.left, keyPair.right);
+            dm.recordInstance(instance.getId());
+
+            if (instance.getState().atLeast(Instance.State.ACCEPTED))
+            {
+                dm.markAcknowledged(Sets.newHashSet(instance.getId()));
+            }
+
+            if (instance.getState() == Instance.State.EXECUTED)
+            {
+                dm.markExecuted(instance.getId());
+            }
+
+            saveDependencyManager(keyPair.left, keyPair.right, dm);
         }
         finally
         {
@@ -269,7 +300,7 @@ public class EpaxosService
         try
         {
             DependencyManager dm = loadDependencyManager(keyPair.left, keyPair.right);
-            dm.markAcknowledged(instance.getDependencies());
+            dm.markAcknowledged(instance.getDependencies(), instance.getId());
             saveDependencyManager(keyPair.left, keyPair.right, dm);
         }
         finally
@@ -1378,6 +1409,8 @@ public class EpaxosService
 
             if (instance.getState().atLeast(Instance.State.COMMITTED))
                 notifyCommit(instance.getId());
+
+            recordMissingInstance(instance);
 
             return instance;
 
