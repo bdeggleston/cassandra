@@ -52,16 +52,16 @@ public class EpaxosService
 
     // the amount of time the prepare phase will wait for the leader to commit an instance before
     // attempting a prepare phase. This is multiplied by a replica's position in the successor list
-    protected static int PREPARE_GRACE_MILLIS = 500;
+    protected static int PREPARE_GRACE_MILLIS = 2000;
 
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
     private final Cache<UUID, Instance> instanceCache;
 
     // prevents multiple threads from attempting to prepare the same instance. Aquire this before an instance lock
-    private final Striped<Lock> prepareLocks = Striped.lazyWeakLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
+    private final Striped<Lock> prepareLocks = Striped.lock(DatabaseDescriptor.getConcurrentWriters() * 1024);
 
-    // prevents multiple threads modifying the dependency manager for a given key. Aquire this *after* locking an instance
-    private final Striped<Lock> depsLocks = Striped.lazyWeakLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
+    // prevents multiple threads modifying the dependency manager for a given key. Aquire this after locking an instance
+    private final Striped<Lock> depsLocks = Striped.lock(DatabaseDescriptor.getConcurrentWriters() * 1024);
     private final Cache<Pair<ByteBuffer, UUID>, DependencyManager> dependencyManagers;
 
     // aborts prepare phases on commit
@@ -389,10 +389,14 @@ public class EpaxosService
 
         AcceptDecision decision = callback.getAcceptDecision();
         if (decision.acceptNeeded)
+        {
             setFastPathImpossible(instance);
+        }
 
         for (Instance missingInstance: callback.getMissingInstances())
+        {
             addMissingInstance(missingInstance);
+        }
 
         return decision;
     }
@@ -419,6 +423,10 @@ public class EpaxosService
         public void doVerb(MessageIn<Instance> message, int id)
         {
             logger.debug("Preaccept request received from {} for {}", message.from, message.payload.getId());
+
+            PreacceptResponse response;
+            Set<UUID> missingInstanceIds = null;
+
             ReadWriteLock lock = locks.get(message.payload.getId());
             lock.writeLock().lock();
             try
@@ -431,7 +439,8 @@ public class EpaxosService
                     {
                         // TODO: add to deps
                         instance = remoteInstance.copyRemote();
-                    } else
+                    }
+                    else
                     {
                         instance.checkBallot(remoteInstance.getBallot());
                         instance.applyRemote(remoteInstance);
@@ -439,7 +448,6 @@ public class EpaxosService
                     instance.preaccept(getCurrentDependencies(instance), remoteInstance.getDependencies());
                     saveInstance(instance);
 
-                    PreacceptResponse response;
                     if (instance.getLeaderDepsMatch())
                     {
                         logger.debug("Preaccept dependencies agree for {}", instance.getId());
@@ -448,33 +456,34 @@ public class EpaxosService
                     else
                     {
                         logger.debug("Preaccept dependencies disagree for {}", instance.getId());
-                        Set<UUID> missingInstanceIds = Sets.difference(instance.getDependencies(), remoteInstance.getDependencies());
+                        missingInstanceIds = Sets.difference(instance.getDependencies(), remoteInstance.getDependencies());
                         missingInstanceIds.remove(instance.getId());
-                        response = PreacceptResponse.failure(instance, getInstanceCopies(missingInstanceIds));
+                        response = PreacceptResponse.failure(instance);
                     }
-                    MessageOut<PreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
-                                                                           response,
-                                                                           PreacceptResponse.serializer);
-                    sendReply(reply, id, message.from);
                 }
                 catch (BallotException e)
                 {
-                    PreacceptResponse response = PreacceptResponse.ballotFailure(e.localBallot);
-                    MessageOut<PreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
-                                                                           response,
-                                                                           PreacceptResponse.serializer);
-                    sendReply(reply, id, message.from);
+                    response = PreacceptResponse.ballotFailure(e.localBallot);
                 }
                 catch (InvalidInstanceStateChange e)
                 {
-                    // a BallotException should always be thrown before getting here
-                    throw new AssertionError(e.getMessage());
+                    // another node is working on a prepare phase that this node wasn't involved in.
+                    // as long as the dependencies are the same, reply with an ok, otherwise, something
+                    // has gone wrong
+                    assert instance.getDependencies().equals(message.payload.getDependencies());
+
+                    response = PreacceptResponse.success(instance);
                 }
             }
             finally
             {
                 lock.writeLock().unlock();
             }
+            response.missingInstances = getInstanceCopies(missingInstanceIds);
+            MessageOut<PreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
+                                                                   response,
+                                                                   PreacceptResponse.serializer);
+            sendReply(reply, id, message.from);
         }
     }
 
@@ -486,8 +495,8 @@ public class EpaxosService
         List<Instance> instances = Lists.newArrayListWithCapacity(iids.size());
         for (UUID iid: iids)
         {
-            ReadWriteLock missingLock = locks.get(iid);
-            missingLock.readLock().lock();
+            ReadWriteLock lock = locks.get(iid);
+            lock.readLock().lock();
             try
             {
                 Instance missingInstance = loadInstance(iid);
@@ -498,7 +507,7 @@ public class EpaxosService
             }
             finally
             {
-                missingLock.readLock().unlock();
+                lock.readLock().unlock();
             }
 
         }
@@ -518,6 +527,14 @@ public class EpaxosService
     public void accept(UUID iid, AcceptDecision decision) throws InvalidInstanceStateChange, UnavailableException, WriteTimeoutException, BallotException
     {
         logger.debug("accepting instance {}", iid);
+
+        // get missing instances
+        Map<InetAddress, List<Instance>> missingInstances = new HashMap<>();
+        for (Map.Entry<InetAddress, Set<UUID>> entry: decision.missingInstances.entrySet())
+        {
+            missingInstances.put(entry.getKey(), getInstanceCopies(entry.getValue()));
+        }
+
         ReadWriteLock lock = locks.get(iid);
         lock.writeLock().lock();
         AcceptCallback callback;
@@ -537,8 +554,9 @@ public class EpaxosService
             {
                 if (!endpoint.equals(getEndpoint()))
                 {
-                    Set<UUID> missingIds = decision.missingInstances.get(endpoint);
-                    AcceptRequest request = new AcceptRequest(instance, getInstanceCopies(missingIds));
+                    List<Instance> missing = missingInstances.get(endpoint);
+                    missing = missing != null ? missing : Collections.EMPTY_LIST;
+                    AcceptRequest request = new AcceptRequest(instance, missing);  // FIXME: deadlocks
                     MessageOut<AcceptRequest> message = new MessageOut<>(MessagingService.Verb.ACCEPT_REQUEST,
                                                                          request,
                                                                          AcceptRequest.serializer);
@@ -582,9 +600,18 @@ public class EpaxosService
         {
             Instance remoteInstance = message.payload.instance;
             logger.debug("Accept request received from {} for {}", message.from, remoteInstance.getId());
+
+            for (Instance missing: message.payload.missingInstances)
+            {
+                if (!missing.getId().equals(message.payload.instance.getId()))
+                {
+                    addMissingInstance(missing);
+                }
+            }
+
             ReadWriteLock lock = locks.get(remoteInstance.getId());
             lock.writeLock().lock();
-            Instance instance;
+            Instance instance = null;
             try
             {
                 instance = loadInstance(remoteInstance.getId());
@@ -599,9 +626,6 @@ public class EpaxosService
                 }
                 instance.accept(remoteInstance.getDependencies());
                 saveInstance(instance);
-
-                for (Instance missing: message.payload.missingInstances)
-                    addMissingInstance(missing);
 
                 AcceptResponse response = new AcceptResponse(true, 0);
                 MessageOut<AcceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
@@ -623,8 +647,17 @@ public class EpaxosService
             }
             catch (InvalidInstanceStateChange e)
             {
-                // a BallotException should always be thrown before getting here
-                throw new AssertionError(e.getMessage());
+                // another node is working on a prepare phase that this node wasn't involved in.
+                // as long as the dependencies are the same, reply with an ok, otherwise, something
+                // has gone wrong
+                assert instance.getDependencies().equals(remoteInstance.getDependencies());
+
+                logger.debug("Accept request from {} for {}, rejected. State demotion", message.from, remoteInstance.getId());
+                AcceptResponse response = new AcceptResponse(true, 0);
+                MessageOut<AcceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
+                                                                    response,
+                                                                    AcceptResponse.serializer);
+                sendReply(reply, id, message.from);
             }
             finally
             {
@@ -759,9 +792,12 @@ public class EpaxosService
                 // TODO: send this to another thread
                 execute(message.payload.getId());
             }
-            catch (UnavailableException | BallotException | RequestTimeoutException | InvalidRequestException e)
+            catch (BallotException e)
             {
-                // TODO: maybe do something besides just logging?
+                // this happens when a prepare phase loses the fight for control of an instance
+            }
+            catch (UnavailableException | RequestTimeoutException | InvalidRequestException e)
+            {
                 logger.error("Error executing instance", e);
             }
         }
@@ -808,7 +844,8 @@ public class EpaxosService
                         // this is only a problem if there's only a single uncommitted instance
                         if (executionSorter.uncommitted.size() > 1)
                             continue;
-                        throw new AssertionError("Missing instance for prepare: " + iid.toString());
+                        // lets see if progress can still be made
+                        logger.error("Missing instance for prepare: ", e);
                     }
                 }
             }
@@ -821,7 +858,16 @@ public class EpaxosService
                     try
                     {
                         if (toExecute.getState() == Instance.State.EXECUTED)
-                            continue;
+                        {
+                            if (toExecute.getId().equals(instanceId))
+                            {
+                                return;
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
 
                         assert toExecute.getState() == Instance.State.COMMITTED;
 
@@ -838,6 +884,7 @@ public class EpaxosService
                         lock.writeLock().unlock();
                     }
                 }
+                return;
             }
         }
     }
@@ -1039,9 +1086,10 @@ public class EpaxosService
 
     protected boolean shouldPrepare(UUID iid) throws InstanceNotFoundException
     {
+        CountDownLatch commitLatch;
+
         ReadWriteLock lock = locks.get(iid);
         lock.readLock().lock();
-        CountDownLatch commitLatch;
         int waitTime;
         try
         {
@@ -1165,6 +1213,7 @@ public class EpaxosService
         return callback.successful();
     }
 
+    // FIXME: this is deadlocking
     protected TryPreacceptDecision handleTryPreaccept(Instance instance, Set<UUID> dependencies)
     {
         // TODO: reread the try preaccept stuff, dependency management may break it if we're not careful

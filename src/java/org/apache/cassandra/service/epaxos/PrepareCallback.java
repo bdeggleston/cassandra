@@ -114,6 +114,11 @@ public class PrepareCallback extends AbstractEpaxosCallback<Instance>
         final Map<Set<UUID>, Integer> scores = Maps.newHashMap();
         for (Map.Entry<InetAddress, Instance> entry: responses.entrySet())
         {
+            if (entry.getValue() == null)
+            {
+                continue;
+            }
+
             Set<UUID> deps = entry.getValue().getDependencies();
             if (!depGroups.containsKey(deps))
             {

@@ -188,7 +188,7 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.PREACCEPT_REQUEST, Stage.MUTATION);
         put(Verb.ACCEPT_REQUEST, Stage.MUTATION);
         put(Verb.COMMIT_REQUEST, Stage.MUTATION);
-        put(Verb.PREACCEPT_REQUEST, Stage.MUTATION);
+        put(Verb.PREPARE_REQUEST, Stage.MUTATION);
         put(Verb.TRYPREACCEPT_REQUEST, Stage.MUTATION);
 
         put(Verb.UNUSED_1, Stage.INTERNAL_RESPONSE);

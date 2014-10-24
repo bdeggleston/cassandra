@@ -20,7 +20,7 @@ public class PreacceptResponse
     public final boolean successful;
     public final int ballotFailure;
     public final Set<UUID> dependencies;
-    public final List<Instance> missingInstances;
+    public volatile List<Instance> missingInstances;
 
     private static final List<Instance> NO_INSTANCES = ImmutableList.of();
     private static final Set<UUID> NO_DEPS = ImmutableSet.of();
@@ -38,9 +38,9 @@ public class PreacceptResponse
         return new PreacceptResponse(instance.getLeaderDepsMatch(), 0, instance.getDependencies(), NO_INSTANCES);
     }
 
-    public static PreacceptResponse failure(Instance instance, List<Instance> missingInstances)
+    public static PreacceptResponse failure(Instance instance)
     {
-        return new PreacceptResponse(false, 0, instance.getDependencies(), missingInstances);
+        return new PreacceptResponse(false, 0, instance.getDependencies(), NO_INSTANCES);
     }
 
     public static PreacceptResponse ballotFailure(int localBallot)
