@@ -26,11 +26,11 @@ public class Messenger
         nodes.put(node.getEndpoint(), node);
 
         Map<MessagingService.Verb, IVerbHandler> handlers = Maps.newEnumMap(MessagingService.Verb.class);
-        handlers.put(MessagingService.Verb.PREACCEPT_REQUEST, node.getPreacceptVerbHandler());
-        handlers.put(MessagingService.Verb.ACCEPT_REQUEST, node.getAcceptVerbHandler());
-        handlers.put(MessagingService.Verb.COMMIT_REQUEST, node.getCommitVerbHandler());
-        handlers.put(MessagingService.Verb.PREPARE_REQUEST, node.getPrepareVerbHandler());
-        handlers.put(MessagingService.Verb.TRYPREACCEPT_REQUEST, node.getTryPreacceptVerbHandler());
+        handlers.put(MessagingService.Verb.EPAXOS_PREACCEPT, node.getPreacceptVerbHandler());
+        handlers.put(MessagingService.Verb.EPAXOS_ACCEPT, node.getAcceptVerbHandler());
+        handlers.put(MessagingService.Verb.EPAXOS_COMMIT, node.getCommitVerbHandler());
+        handlers.put(MessagingService.Verb.EPAXOS_PREPARE, node.getPrepareVerbHandler());
+        handlers.put(MessagingService.Verb.EPAXOS_TRYPREACCEPT, node.getTryPreacceptVerbHandler());
 
         verbHandlers.put(node.getEndpoint(), handlers);
     }

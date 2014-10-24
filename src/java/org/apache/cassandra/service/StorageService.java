@@ -266,11 +266,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.SNAPSHOT, new SnapshotVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.ECHO, new EchoVerbHandler());
 
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.PREACCEPT_REQUEST, EpaxosService.instance.getPreacceptVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.ACCEPT_REQUEST, EpaxosService.instance.getAcceptVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.COMMIT_REQUEST, EpaxosService.instance.getCommitVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.PREPARE_REQUEST, EpaxosService.instance.getPrepareVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.TRYPREACCEPT_REQUEST, EpaxosService.instance.getTryPreacceptVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREACCEPT, EpaxosService.instance.getPreacceptVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_ACCEPT, EpaxosService.instance.getAcceptVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_COMMIT, EpaxosService.instance.getCommitVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREPARE, EpaxosService.instance.getPrepareVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_TRYPREACCEPT, EpaxosService.instance.getTryPreacceptVerbHandler());
     }
 
     public void registerDaemon(CassandraDaemon daemon)

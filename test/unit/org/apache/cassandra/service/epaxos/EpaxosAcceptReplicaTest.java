@@ -75,7 +75,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         MessageIn<AcceptRequest> message = MessageIn.create(nodes.get(1).getEndpoint(),
                                                             new AcceptRequest(instance, Lists.newArrayList(missingInstance)),
                                                             Collections.EMPTY_MAP,
-                                                            MessagingService.Verb.ACCEPT_REQUEST,
+                                                            MessagingService.Verb.EPAXOS_ACCEPT,
                                                             0);
         handler.doVerb(message, 100);
 
@@ -128,7 +128,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         MessageIn<AcceptRequest> message = MessageIn.create(nodes.get(1).getEndpoint(),
                                                             new AcceptRequest(instance, Lists.newArrayList(missingInstance)),
                                                             Collections.EMPTY_MAP,
-                                                            MessagingService.Verb.ACCEPT_REQUEST,
+                                                            MessagingService.Verb.EPAXOS_ACCEPT,
                                                             0);
         handler.doVerb(message, 100);
 
@@ -173,7 +173,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         MessageIn<AcceptRequest> message = MessageIn.create(nodes.get(1).getEndpoint(),
                                                             new AcceptRequest(instance1, Collections.EMPTY_LIST),
                                                             Collections.EMPTY_MAP,
-                                                            MessagingService.Verb.ACCEPT_REQUEST,
+                                                            MessagingService.Verb.EPAXOS_ACCEPT,
                                                             0);
         handler.doVerb(message, 100);
 
@@ -190,7 +190,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         message = MessageIn.create(nodes.get(1).getEndpoint(),
                                    new AcceptRequest(instance2, Collections.EMPTY_LIST),
                                    Collections.EMPTY_MAP,
-                                   MessagingService.Verb.ACCEPT_REQUEST,
+                                   MessagingService.Verb.EPAXOS_ACCEPT,
                                    0);
 
         handler.doVerb(message, 100);
@@ -220,7 +220,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         MessageIn<AcceptRequest> message = MessageIn.create(nodes.get(1).getEndpoint(),
                                                             new AcceptRequest(instance, Collections.EMPTY_LIST),
                                                             Collections.EMPTY_MAP,
-                                                            MessagingService.Verb.ACCEPT_REQUEST,
+                                                            MessagingService.Verb.EPAXOS_ACCEPT,
                                                             0);
         handler.doVerb(message, 100);
 
@@ -263,7 +263,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         MessageIn<AcceptRequest> message = MessageIn.create(nodes.get(1).getEndpoint(),
                                                             new AcceptRequest(instance, Collections.EMPTY_LIST),
                                                             Collections.EMPTY_MAP,
-                                                            MessagingService.Verb.ACCEPT_REQUEST,
+                                                            MessagingService.Verb.EPAXOS_ACCEPT,
                                                             0);
         handler.doVerb(message, 100);
 

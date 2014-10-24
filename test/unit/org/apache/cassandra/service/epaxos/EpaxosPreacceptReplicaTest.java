@@ -65,7 +65,7 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         MessageIn<Instance> request = MessageIn.create(nodes.get(1).getEndpoint(),
                                                        newInstance,
                                                        Collections.EMPTY_MAP,
-                                                       MessagingService.Verb.PREACCEPT_REQUEST,
+                                                       MessagingService.Verb.EPAXOS_PREACCEPT,
                                                        100);
 
         EpaxosService.PreacceptVerbHandler preacceptHandler = (EpaxosService.PreacceptVerbHandler) node.getPreacceptVerbHandler();
@@ -115,7 +115,7 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         MessageIn<Instance> request = MessageIn.create(nodes.get(1).getEndpoint(),
                                                        newInstance,
                                                        Collections.EMPTY_MAP,
-                                                       MessagingService.Verb.PREACCEPT_REQUEST,
+                                                       MessagingService.Verb.EPAXOS_PREACCEPT,
                                                        100);
 
         EpaxosService.PreacceptVerbHandler preacceptHandler = (EpaxosService.PreacceptVerbHandler) node.getPreacceptVerbHandler();
@@ -160,7 +160,7 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         MessageIn<Instance> request = MessageIn.create(nodes.get(1).getEndpoint(),
                                                        newInstance,
                                                        Collections.EMPTY_MAP,
-                                                       MessagingService.Verb.PREACCEPT_REQUEST,
+                                                       MessagingService.Verb.EPAXOS_PREACCEPT,
                                                        100);
 
         EpaxosService.PreacceptVerbHandler preacceptHandler = (EpaxosService.PreacceptVerbHandler) node.getPreacceptVerbHandler();

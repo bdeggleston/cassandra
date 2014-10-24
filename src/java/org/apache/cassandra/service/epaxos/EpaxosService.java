@@ -354,7 +354,7 @@ public class EpaxosService
             instance.incrementBallot();
             saveInstance(instance);
 
-            MessageOut<Instance> message = new MessageOut<Instance>(MessagingService.Verb.PREACCEPT_REQUEST,
+            MessageOut<Instance> message = new MessageOut<Instance>(MessagingService.Verb.EPAXOS_PREACCEPT,
                                                                     instance,
                                                                     Instance.serializer);
             callback = getPreacceptCallback(instance, participantInfo);
@@ -557,7 +557,7 @@ public class EpaxosService
                     List<Instance> missing = missingInstances.get(endpoint);
                     missing = missing != null ? missing : Collections.EMPTY_LIST;
                     AcceptRequest request = new AcceptRequest(instance, missing);  // FIXME: deadlocks
-                    MessageOut<AcceptRequest> message = new MessageOut<>(MessagingService.Verb.ACCEPT_REQUEST,
+                    MessageOut<AcceptRequest> message = new MessageOut<>(MessagingService.Verb.EPAXOS_ACCEPT,
                                                                          request,
                                                                          AcceptRequest.serializer);
                     logger.debug("sending accept request to {} for instance {}", endpoint, instance.getId());
@@ -574,7 +574,7 @@ public class EpaxosService
             for (InetAddress endpoint: participantInfo.remoteEndpoints)
             {
                 AcceptRequest request = new AcceptRequest(instance, Collections.EMPTY_LIST);
-                MessageOut<AcceptRequest> message = new MessageOut<>(MessagingService.Verb.ACCEPT_REQUEST,
+                MessageOut<AcceptRequest> message = new MessageOut<>(MessagingService.Verb.EPAXOS_ACCEPT,
                                                                      request,
                                                                      AcceptRequest.serializer);
                 logger.debug("sending accept request to non-local dc {} for instance {}", endpoint, instance.getId());
@@ -720,7 +720,7 @@ public class EpaxosService
             saveInstance(instance);
 
             ParticipantInfo participantInfo = getParticipants(instance);
-            MessageOut<Instance> message = new MessageOut<Instance>(MessagingService.Verb.COMMIT_REQUEST,
+            MessageOut<Instance> message = new MessageOut<Instance>(MessagingService.Verb.EPAXOS_COMMIT,
                                                                     instance,
                                                                     Instance.serializer);
             for (InetAddress endpoint : participantInfo.liveEndpoints)
@@ -936,7 +936,7 @@ public class EpaxosService
 
                     participantInfo = getParticipants(instance);
                     PrepareRequest request = new PrepareRequest(instance);
-                    MessageOut<PrepareRequest> message = new MessageOut<>(MessagingService.Verb.PREPARE_REQUEST,
+                    MessageOut<PrepareRequest> message = new MessageOut<>(MessagingService.Verb.EPAXOS_PREPARE,
                                                                           request,
                                                                           PrepareRequest.serializer);
                     callback = getPrepareCallback(instance, participantInfo);
@@ -1183,7 +1183,7 @@ public class EpaxosService
     public boolean tryPreaccept(UUID iid, TryPreacceptAttempt attempt, ParticipantInfo participantInfo) throws WriteTimeoutException, PrepareAbortException
     {
         TryPreacceptRequest request = new TryPreacceptRequest(iid, attempt.dependencies);
-        MessageOut<TryPreacceptRequest> message = new MessageOut<>(MessagingService.Verb.TRYPREACCEPT_REQUEST,
+        MessageOut<TryPreacceptRequest> message = new MessageOut<>(MessagingService.Verb.EPAXOS_TRYPREACCEPT,
                                                                    request,
                                                                    TryPreacceptRequest.serializer);
         TryPreacceptCallback callback = getTryPreacceptCallback(iid, attempt, participantInfo);

@@ -62,11 +62,11 @@ public class Node extends EpaxosService
         this.messenger = messenger;
         state = State.UP;
 
-        verbHandlerMap.put(MessagingService.Verb.PREACCEPT_REQUEST, getPreacceptVerbHandler());
-        verbHandlerMap.put(MessagingService.Verb.ACCEPT_REQUEST, getAcceptVerbHandler());
-        verbHandlerMap.put(MessagingService.Verb.COMMIT_REQUEST, getCommitVerbHandler());
-        verbHandlerMap.put(MessagingService.Verb.PREPARE_REQUEST, getPrepareVerbHandler());
-        verbHandlerMap.put(MessagingService.Verb.TRYPREACCEPT_REQUEST, getTryPreacceptVerbHandler());
+        verbHandlerMap.put(MessagingService.Verb.EPAXOS_PREACCEPT, getPreacceptVerbHandler());
+        verbHandlerMap.put(MessagingService.Verb.EPAXOS_ACCEPT, getAcceptVerbHandler());
+        verbHandlerMap.put(MessagingService.Verb.EPAXOS_COMMIT, getCommitVerbHandler());
+        verbHandlerMap.put(MessagingService.Verb.EPAXOS_PREPARE, getPrepareVerbHandler());
+        verbHandlerMap.put(MessagingService.Verb.EPAXOS_TRYPREACCEPT, getTryPreacceptVerbHandler());
     }
 
     public State getState()
