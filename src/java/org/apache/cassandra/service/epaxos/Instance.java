@@ -2,10 +2,6 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -29,7 +25,6 @@ import java.net.InetAddress;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 /**
  * An Epaxos instance
@@ -87,9 +82,8 @@ public class Instance
 
     // fields not transmitted to other nodes
     private volatile boolean placeholder = false;
-    private volatile boolean acknowledged = false;
-    private volatile boolean acknowledgedChanged = false;
     private volatile Set<UUID> stronglyConnected = null;
+    private volatile long lastUpdated = System.currentTimeMillis();
 
     private class DependencyFilter implements Predicate<UUID>
     {
@@ -211,27 +205,6 @@ public class Instance
         return (!state.atLeast(State.ACCEPTED)) && placeholder;
     }
 
-    public void setAcknowledged()
-    {
-        setAcknowledged(true);
-    }
-
-    public void setAcknowledged(boolean acknowledged)
-    {
-        acknowledgedChanged |= acknowledged != this.acknowledged;
-        this.acknowledged = acknowledged;
-    }
-
-    public boolean isAcknowledged()
-    {
-        return acknowledged;
-    }
-
-    public boolean isAcknowledgedChanged()
-    {
-        return acknowledgedChanged;
-    }
-
     public void setSuccessors(List<InetAddress> successors)
     {
         this.successors = successors;
@@ -250,6 +223,21 @@ public class Instance
     public void setStronglyConnected(Set<UUID> stronglyConnected)
     {
         this.stronglyConnected = ImmutableSet.copyOf(stronglyConnected);
+    }
+
+    public long getLastUpdated()
+    {
+        return lastUpdated;
+    }
+
+    public void setLastUpdated()
+    {
+        setLastUpdated(System.currentTimeMillis());
+    }
+
+    public void setLastUpdated(long lastUpdated)
+    {
+        this.lastUpdated = lastUpdated;
     }
 
     @VisibleForTesting
@@ -504,7 +492,7 @@ public class Instance
         {
             super.serialize(instance, out, version);
             out.writeBoolean(instance.placeholder);
-            out.writeBoolean(instance.acknowledged);
+            out.writeLong(instance.lastUpdated);
             out.writeBoolean(instance.stronglyConnected != null);
             if (instance.stronglyConnected != null)
             {
@@ -519,7 +507,7 @@ public class Instance
         {
             Instance instance = super.deserialize(in, version);
             instance.placeholder = in.readBoolean();
-            instance.acknowledged = in.readBoolean();
+            instance.lastUpdated = in.readLong();
             if (in.readBoolean())
             {
                 UUID[] scc = new UUID[in.readInt()];
@@ -535,7 +523,7 @@ public class Instance
         {
             long size = super.serializedSize(instance, version);
             size += 1;  // instance.placeholder
-            size += 1;  // instance.acknowledged
+            size += 8;  // instance.lastUpdated
             size += 1;  // instance.stronglyConnected != null
             if (instance.stronglyConnected != null)
             {

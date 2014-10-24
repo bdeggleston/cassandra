@@ -1337,7 +1337,7 @@ public class EpaxosService
     {
         logger.debug("Saving instance {}", instance.getId());
         assert instance.getState().atLeast(Instance.State.PREACCEPTED);
-        // actually write to table
+        instance.setLastUpdated();
         DataOutputBuffer out = new DataOutputBuffer((int) Instance.internalSerializer.serializedSize(instance, 0));
         try
         {
