@@ -50,7 +50,7 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.Uninterruptibles;
 
-import org.apache.cassandra.service.epaxos.EpaxosService;
+import org.apache.cassandra.service.epaxos.EpaxosState;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -266,11 +266,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.SNAPSHOT, new SnapshotVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.ECHO, new EchoVerbHandler());
 
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREACCEPT, EpaxosService.instance.getPreacceptVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_ACCEPT, EpaxosService.instance.getAcceptVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_COMMIT, EpaxosService.instance.getCommitVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREPARE, EpaxosService.instance.getPrepareVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_TRYPREACCEPT, EpaxosService.instance.getTryPreacceptVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREACCEPT, EpaxosState.instance.getPreacceptVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_ACCEPT, EpaxosState.instance.getAcceptVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_COMMIT, EpaxosState.instance.getCommitVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREPARE, EpaxosState.instance.getPrepareVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_TRYPREACCEPT, EpaxosState.instance.getTryPreacceptVerbHandler());
     }
 
     public void registerDaemon(CassandraDaemon daemon)

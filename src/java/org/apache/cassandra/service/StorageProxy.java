@@ -223,7 +223,7 @@ public class StorageProxy implements StorageProxyMBean
 
             SerializedRequest serializedRequest = builder.build();
             // TODO: don't do this in this thread
-            return EpaxosService.instance.query(serializedRequest);
+            return EpaxosState.instance.query(serializedRequest);
         }
 
         long start = System.nanoTime();

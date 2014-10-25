@@ -33,7 +33,7 @@ import java.util.UUID;
  */
 public class Instance
 {
-    private static final Logger logger = LoggerFactory.getLogger(EpaxosService.class);
+    private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
 
     public static final IVersionedSerializer<Instance> serializer = new ExternalSerializer();
     static final IVersionedSerializer<Instance> internalSerializer = new InternalSerializer();

@@ -68,7 +68,7 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
                                                        MessagingService.Verb.EPAXOS_PREACCEPT,
                                                        100);
 
-        EpaxosService.PreacceptVerbHandler preacceptHandler = (EpaxosService.PreacceptVerbHandler) node.getPreacceptVerbHandler();
+        EpaxosState.PreacceptVerbHandler preacceptHandler = (EpaxosState.PreacceptVerbHandler) node.getPreacceptVerbHandler();
 
         preacceptHandler.doVerb(request, 100);
 
@@ -118,7 +118,7 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
                                                        MessagingService.Verb.EPAXOS_PREACCEPT,
                                                        100);
 
-        EpaxosService.PreacceptVerbHandler preacceptHandler = (EpaxosService.PreacceptVerbHandler) node.getPreacceptVerbHandler();
+        EpaxosState.PreacceptVerbHandler preacceptHandler = (EpaxosState.PreacceptVerbHandler) node.getPreacceptVerbHandler();
 
         preacceptHandler.doVerb(request, 100);
 
@@ -163,7 +163,7 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
                                                        MessagingService.Verb.EPAXOS_PREACCEPT,
                                                        100);
 
-        EpaxosService.PreacceptVerbHandler preacceptHandler = (EpaxosService.PreacceptVerbHandler) node.getPreacceptVerbHandler();
+        EpaxosState.PreacceptVerbHandler preacceptHandler = (EpaxosState.PreacceptVerbHandler) node.getPreacceptVerbHandler();
 
         preacceptHandler.doVerb(request, 100);
 

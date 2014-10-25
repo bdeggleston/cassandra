@@ -27,7 +27,7 @@ public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
     private int ballotFailure = 0;
     private int localResponse = 0;
 
-    public PreacceptCallback(Instance instance, EpaxosService.ParticipantInfo participantInfo)
+    public PreacceptCallback(Instance instance, EpaxosState.ParticipantInfo participantInfo)
     {
         super(participantInfo);
         this.instance = instance;

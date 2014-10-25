@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class Node extends EpaxosService
+public class Node extends EpaxosState
 {
     private final InetAddress endpoint;
     private final Messenger messenger;

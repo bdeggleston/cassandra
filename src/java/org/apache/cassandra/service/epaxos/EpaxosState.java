@@ -24,7 +24,6 @@ import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange
 import org.apache.cassandra.service.epaxos.exceptions.PrepareAbortException;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
-import org.apache.cassandra.utils.UUIDGen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,11 +36,11 @@ import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 
-public class EpaxosService
+public class EpaxosState
 {
-    public static final EpaxosService instance = new EpaxosService();
+    public static final EpaxosState instance = new EpaxosState();
 
-    private static final Logger logger = LoggerFactory.getLogger(EpaxosService.class);
+    private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
 
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
 
@@ -131,13 +130,13 @@ public class EpaxosService
         @Override
         public Instance loadInstance(UUID iid)
         {
-            return EpaxosService.this.loadInstance(iid);
+            return EpaxosState.this.loadInstance(iid);
         }
 
         @Override
         public void saveInstance(Instance instance)
         {
-            EpaxosService.this.saveInstance(instance);
+            EpaxosState.this.saveInstance(instance);
         }
 
         @Override
@@ -147,7 +146,7 @@ public class EpaxosService
         }
     };
 
-    public EpaxosService()
+    public EpaxosState()
     {
         instanceCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(10000).build();
         dependencyManagers = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(1000).build();

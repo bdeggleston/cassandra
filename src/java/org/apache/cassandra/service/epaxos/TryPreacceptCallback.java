@@ -16,7 +16,7 @@ public class TryPreacceptCallback extends AbstractPaxosCallback<TryPreacceptResp
     private int convinced = 0;
     private boolean contended = false;
 
-    public TryPreacceptCallback(UUID instanceId, TryPreacceptAttempt attempt, EpaxosService.ParticipantInfo participantInfo)
+    public TryPreacceptCallback(UUID instanceId, TryPreacceptAttempt attempt, EpaxosState.ParticipantInfo participantInfo)
     {
         super(attempt.requiredConvinced, participantInfo.consistencyLevel);
         this.instanceId = instanceId;
