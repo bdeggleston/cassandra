@@ -817,12 +817,14 @@ public class EpaxosService
         {
             ExecutionSorter executionSorter;
             lock.writeLock().lock();
+            List<InetAddress> successors;
             try
             {
                 Instance instance = loadInstance(instanceId);
                 assert instance.getState().atLeast(Instance.State.COMMITTED);
                 executionSorter = new ExecutionSorter(instance, accessor);
                 executionSorter.buildGraph();
+                successors = instance.getSuccessors();
             }
             finally
             {
@@ -837,7 +839,7 @@ public class EpaxosService
                 {
                     try
                     {
-                        prepare(iid);
+                        prepare(iid, successors);
                     }
                     catch (InstanceNotFoundException e)
                     {
@@ -908,7 +910,7 @@ public class EpaxosService
     }
 
     // TODO: this might be better as a runnable we can throw into a thread pool
-    public void prepare(UUID iid) throws UnavailableException, WriteTimeoutException, BallotException, InstanceNotFoundException
+    public void prepare(UUID iid, List<InetAddress> successors) throws UnavailableException, WriteTimeoutException, BallotException, InstanceNotFoundException
     {
         Lock prepareLock = prepareLocks.get(iid);
         logger.debug("Aquiring lock for {} prepare phase", iid);
@@ -920,6 +922,18 @@ public class EpaxosService
             {
                 if (!shouldPrepare(iid))
                     return;
+
+//                for (InetAddress successor: successors)
+//                {
+//                    if (!shouldPrepare(iid))
+//                        return;
+//
+//                    // if this node is the successor, then get preparing
+//                    if (successor.equals(getEndpoint()))
+//                        break;
+//
+//                    tryprepare(successor, iid);
+//                }
 
                 PrepareCallback callback;
                 ParticipantInfo participantInfo;
@@ -1069,19 +1083,10 @@ public class EpaxosService
         }
     }
 
-    protected int getPrepareWaitTime(UUID iid, InetAddress leader, List<InetAddress> successors)
+    protected long getPrepareWaitTime(long lastUpdate, InetAddress leader, List<InetAddress> successors)
     {
-        // TODO: successors should notify the first successor that a prepare is required instead of waiting it out
-        // TODO: wait time should be based off last updated, not created
-        int successorIndex = successors.indexOf(getEndpoint()) + 1;
-        if (successorIndex < 1 && !leader.equals(getEndpoint()))
-            successorIndex = successors.size();
-
-        int waitTime = PREPARE_GRACE_MILLIS * successorIndex;
-        // subtract time elapsed since instance creation
-        waitTime -= Math.max((System.currentTimeMillis() - UUIDGen.unixTimestamp(iid)), 0);
-        waitTime = Math.max(waitTime, 0);
-        return waitTime;
+        long prepareAt = lastUpdate + PREPARE_GRACE_MILLIS;
+        return Math.max(prepareAt - System.currentTimeMillis(), 0);
     }
 
     protected boolean shouldPrepare(UUID iid) throws InstanceNotFoundException
@@ -1090,7 +1095,7 @@ public class EpaxosService
 
         ReadWriteLock lock = locks.get(iid);
         lock.readLock().lock();
-        int waitTime;
+        long waitTime;
         try
         {
             Instance instance = loadInstance(iid);
@@ -1104,7 +1109,7 @@ public class EpaxosService
                 return false;
             }
 
-            waitTime = getPrepareWaitTime(iid, instance.getLeader(), instance.getSuccessors());
+            waitTime = getPrepareWaitTime(instance.getLastUpdated(), instance.getLeader(), instance.getSuccessors());
             commitLatch = getCommitLatch(iid);
         }
         finally
@@ -1174,6 +1179,56 @@ public class EpaxosService
     {
         return new PrepareVerbHandler();
     }
+
+    protected TryPrepareCallback getTryPrepareCallback()
+    {
+        return new TryPrepareCallback();
+    }
+
+    /**
+     * If we rely only on a timeout to determine when a node should prepare an instance,
+     * they'll all start trying to prepare at once, usually causing a period of livelock.
+     * To prevent this, an ordered list of successors are specified at instance creation.
+     * When a node thinks an instance needs to be prepared, it first asks a successor instance
+     * to prepare it, then waits for it to prepare the instance
+     */
+    public void tryprepare(InetAddress endpoint, UUID iid)
+    {
+
+    }
+
+    protected class TryPrepareVerbHandler implements IVerbHandler<UUID>
+    {
+        @Override
+        public void doVerb(MessageIn<UUID> message, int id)
+        {
+            UUID iid = message.payload;
+            ReadWriteLock lock = locks.get(iid);
+            lock.readLock().lock();
+            try
+            {
+                Instance instance = loadInstance(iid);
+                if (instance.getState().atLeast(Instance.State.COMMITTED))
+                {
+                    TryPrepareResponse response = new TryPrepareResponse(false, false, 0, instance);
+                    MessageOut<TryPrepareResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
+                                                                            response,
+                                                                            TryPrepareResponse.serializer);
+                    sendReply(reply, id, message.from);
+                }
+            }
+            finally
+            {
+                lock.readLock().unlock();
+            }
+        }
+    }
+
+    protected TryPrepareVerbHandler getTryPrepareVerbHandler()
+    {
+        return new TryPrepareVerbHandler();
+    }
+
 
     protected TryPreacceptCallback getTryPreacceptCallback(UUID iid, TryPreacceptAttempt attempt, ParticipantInfo participantInfo)
     {
