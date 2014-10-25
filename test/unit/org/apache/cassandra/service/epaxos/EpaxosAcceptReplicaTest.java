@@ -51,7 +51,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
     public void requestSuccessExisting() throws Exception
     {
         Node node = nodes.get(0);
-        EpaxosState.AcceptVerbHandler handler = (EpaxosState.AcceptVerbHandler) node.getAcceptVerbHandler();
+        AcceptVerbHandler handler = (AcceptVerbHandler) node.getAcceptVerbHandler();
 
         // add an instance
         Instance instance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
@@ -107,7 +107,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
     public void requestSuccessNew() throws Exception
     {
         Node node = nodes.get(0);
-        EpaxosState.AcceptVerbHandler handler = (EpaxosState.AcceptVerbHandler) node.getAcceptVerbHandler();
+        AcceptVerbHandler handler = (AcceptVerbHandler) node.getAcceptVerbHandler();
 
         // add an instance
         Instance instance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
@@ -159,7 +159,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
     public void requestNoop() throws Exception
     {
         Node node = nodes.get(0);
-        EpaxosState.AcceptVerbHandler handler = (EpaxosState.AcceptVerbHandler) node.getAcceptVerbHandler();
+        AcceptVerbHandler handler = (AcceptVerbHandler) node.getAcceptVerbHandler();
 
         // add an instance
         Instance instance1 = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
@@ -204,7 +204,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
     public void requestBallotFailure() throws Exception
     {
         Node node = nodes.get(0);
-        EpaxosState.AcceptVerbHandler handler = (EpaxosState.AcceptVerbHandler) node.getAcceptVerbHandler();
+        AcceptVerbHandler handler = (AcceptVerbHandler) node.getAcceptVerbHandler();
 
         // add an instance
         Instance instance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
@@ -241,7 +241,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
     {
 
         Node node = nodes.get(0);
-        EpaxosState.AcceptVerbHandler handler = (EpaxosState.AcceptVerbHandler) node.getAcceptVerbHandler();
+        AcceptVerbHandler handler = (AcceptVerbHandler) node.getAcceptVerbHandler();
 
         Instance previousInstance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         previousInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));

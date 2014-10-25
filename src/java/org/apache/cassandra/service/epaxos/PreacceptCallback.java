@@ -4,8 +4,9 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.concurrent.Stage;
+import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
-import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,75 +15,84 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
+public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
 {
     private static final Logger logger = LoggerFactory.getLogger(PreacceptCallback.class);
 
-    private final Instance instance;
+    private final EpaxosState state;
+    private final UUID iid;
     private final Set<UUID> dependencies;
+    private final EpaxosState.ParticipantInfo participantInfo;
     private final Set<UUID> remoteDependencies = Sets.newHashSet();
     private final Map<InetAddress, PreacceptResponse> responses = Maps.newHashMap();
     private final Map<UUID, Instance> missingInstances = Maps.newHashMap();
 
+    private boolean completed = false;
+    private int numResponses = 0;
     private int ballotFailure = 0;
     private int localResponse = 0;
 
-    public PreacceptCallback(Instance instance, EpaxosState.ParticipantInfo participantInfo)
+    public PreacceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo)
     {
-        super(participantInfo);
-        this.instance = instance;
+        this.state = state;
+        this.iid = instance.getId();
         this.dependencies = instance.getDependencies();
+        this.participantInfo = participantInfo;
     }
 
     @Override
     public synchronized void response(MessageIn<PreacceptResponse> msg)
     {
+        if (completed)
+            return;
+
+        logger.debug("preaccept response received from {} for instance {}", msg.from, iid);
         PreacceptResponse response = msg.payload;
 
-        logger.debug("preaccept response received from {} for instance {}", msg.from, instance.getId());
         // another replica has taken control of this instance
         if (response.ballotFailure > 0)
         {
 
-            logger.debug("preaccept ballot failure from {} for instance {}", msg.from, instance.getId());
+            logger.debug("preaccept ballot failure from {} for instance {}", msg.from, iid);
             ballotFailure = Math.max(ballotFailure, response.ballotFailure);
-            while (latch.getCount() > 0)
-                latch.countDown();
+
+            completed = true;
             return;
         }
         responses.put(msg.from, response);
 
         remoteDependencies.addAll(response.dependencies);
 
-        for (Instance missingInstance: response.missingInstances)
+        if (response.missingInstances.size() > 0)
         {
-            Instance previous = missingInstances.get(missingInstance.getId());
-            if (previous != null && previous.getBallot() > missingInstance.getBallot())
-                continue;
-            missingInstances.put(missingInstance.getId(), missingInstance);
+            state.getStage(Stage.MUTATION).submit(new AddMissingInstances(state, response.missingInstances));
         }
 
-        latch.countDown();
+        numResponses++;
+        if (numResponses >= participantInfo.quorumSize)
+        {
+            AcceptDecision decision = getAcceptDecision();
+            if (decision.acceptNeeded)
+            {
+                state.accept(iid, decision);
+            }
+            else
+            {
+                state.commit(iid, decision.acceptDeps, true);
+            }
+        }
     }
 
-    @Override
     public synchronized void countLocal()
     {
-        super.countLocal();
+        numResponses++;
         localResponse = 1;
-    }
-
-    public synchronized void checkBallotFailure() throws BallotException
-    {
-        if (ballotFailure > 0)
-            throw new BallotException(instance, ballotFailure);
     }
 
     // returns deps for an accept phase if all responses didn't agree with the leader,
     // or a fast quorum didn't respond. Otherwise, null is returned
-    public synchronized AcceptDecision getAcceptDecision() throws BallotException
+    public synchronized AcceptDecision getAcceptDecision()
     {
-        checkBallotFailure();
         boolean depsMatch = dependencies.equals(remoteDependencies);
 
         // the fast path quorum may be larger than the simple quorum, so getResponseCount can't be used
@@ -96,18 +106,19 @@ public class PreacceptCallback extends AbstractEpaxosCallback<PreacceptResponse>
             Set<UUID> diff = Sets.difference(unifiedDeps, entry.getValue().dependencies);
             if (diff.size() > 0)
             {
-                diff.remove(instance.getId());
+                diff.remove(iid);
                 missingIds.put(entry.getKey(), diff);
             }
         }
 
         AcceptDecision decision = new AcceptDecision((!depsMatch || !fpQuorum), unifiedDeps, missingIds);
-        logger.debug("preaccept accept decision for {}: {}", instance.getId(), decision);
+        logger.debug("preaccept accept decision for {}: {}", iid, decision);
         return decision;
     }
 
-    Iterable<Instance> getMissingInstances()
+    @Override
+    public boolean isLatencyForSnitch()
     {
-        return missingInstances.values();
+        return false;
     }
 }

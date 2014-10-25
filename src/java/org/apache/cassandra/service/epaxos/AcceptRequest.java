@@ -3,9 +3,12 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.Lists;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.net.MessageOut;
+import org.apache.cassandra.net.MessagingService;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 public class AcceptRequest
@@ -18,7 +21,12 @@ public class AcceptRequest
     public AcceptRequest(Instance instance, List<Instance> missingInstances)
     {
         this.instance = instance;
-        this.missingInstances = missingInstances;
+        this.missingInstances = missingInstances != null ? missingInstances : Collections.<Instance>emptyList();
+    }
+
+    public MessageOut<AcceptRequest> getMessage()
+    {
+        return new MessageOut<>(MessagingService.Verb.EPAXOS_ACCEPT, this, serializer);
     }
 
     private static class Serializer implements IVersionedSerializer<AcceptRequest>

@@ -1,45 +1,62 @@
 package org.apache.cassandra.service.epaxos;
 
+import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class AcceptCallback extends AbstractEpaxosCallback<AcceptResponse>
+import java.util.Set;
+import java.util.UUID;
+
+public class AcceptCallback implements IAsyncCallback<AcceptResponse>
 {
     private static final Logger logger = LoggerFactory.getLogger(AcceptCallback.class);
 
-    private final Instance instance;
-    private boolean success = true;
-    private int ballot = 0;
+    private final EpaxosState state;
+    private final UUID iid;
+    private final EpaxosState.ParticipantInfo participantInfo;
+    private final int proposedBallot;
+    private final Set<UUID> proposedDependencies;
 
-    public AcceptCallback(Instance instance, EpaxosState.ParticipantInfo participantInfo)
+    private boolean completed = false;
+    private int numResponses = 0;
+
+    public AcceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo)
     {
-        super(participantInfo);
-        this.instance = instance;
+        this.state = state;
+        this.iid = instance.getId();
+        this.proposedBallot = instance.getBallot();
+        this.proposedDependencies = instance.getDependencies();
+        this.participantInfo = participantInfo;
     }
 
     @Override
     public synchronized void response(MessageIn<AcceptResponse> msg)
     {
-        logger.debug("preaccept response received from {} for instance {}", msg.from, instance.getId());
+        if (completed)
+            return;
+
+        logger.debug("accept response received from {} for instance {}", msg.from, iid);
         AcceptResponse response = msg.payload;
 
         if (!response.success)
         {
-            ballot = Math.max(ballot, response.ballot);
-            success = false;
-            while (latch.getCount() > 0)
-                latch.countDown();
+            logger.debug("proposed ballot rejected for accept response {} <= {}", proposedBallot, response.ballot);
+            completed = true;
             return;
         }
 
-        latch.countDown();
+        numResponses++;
+        if (numResponses >= participantInfo.quorumSize)
+        {
+            state.commit(iid, proposedDependencies, false);
+        }
     }
 
-    public void checkSuccess() throws BallotException
+    @Override
+    public boolean isLatencyForSnitch()
     {
-        if (!success)
-            throw new BallotException(instance, ballot);
+        return false;
     }
 }
