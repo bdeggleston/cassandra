@@ -285,21 +285,15 @@ public class EpaxosState
         return new PreacceptCallback(this, instance, participantInfo);
     }
 
-    public void preaccept(UUID id, boolean noop)
+    public void preacceptPrepare(UUID id, boolean noop)
     {
-        PreacceptTask task = new PreacceptTask(this, id, noop);
+        PreacceptTask task = new PreacceptTask.Prepare(this, id, noop);
         getStage(Stage.MUTATION).submit(task);
     }
 
     public void preaccept(Instance instance)
     {
-        preaccept(instance, false);
-    }
-
-    public void preaccept(Instance instance, boolean noop)
-    {
-        instance.setNoop(noop);
-        PreacceptTask task = new PreacceptTask(this, instance);
+        PreacceptTask task = new PreacceptTask.Leader(this, instance);
         getStage(Stage.MUTATION).submit(task);
     }
 

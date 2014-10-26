@@ -11,32 +11,21 @@ import java.net.InetAddress;
 import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 
-public class PreacceptTask implements Runnable
+public abstract class PreacceptTask implements Runnable
 {
-    private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
+    protected static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
 
-    private final EpaxosState state;
-    private final UUID id;
-    private final Instance initializedInstance;
-    private final boolean noop;
+    protected final EpaxosState state;
+    protected final UUID id;
 
-    // preparing instance
-    public PreacceptTask(EpaxosState state, UUID id, boolean noop)
+    protected PreacceptTask(EpaxosState state, UUID id)
     {
         this.state = state;
         this.id = id;
-        this.initializedInstance = null;
-        this.noop = noop;
     }
 
-    // new instance
-    public PreacceptTask(EpaxosState state, Instance initializedInstance)
-    {
-        this.state = state;
-        this.id = initializedInstance.getId();
-        this.initializedInstance = initializedInstance;
-        this.noop = false;
-    }
+    protected abstract void sendMessage(Instance instance, EpaxosState.ParticipantInfo participantInfo);
+    protected abstract Instance getInstance();
 
     @Override
     public void run()
@@ -48,17 +37,7 @@ public class PreacceptTask implements Runnable
         try
         {
 
-            Instance instance;
-            if (initializedInstance != null)
-            {
-                assert initializedInstance.getState() == Instance.State.INITIALIZED;
-                instance = initializedInstance;
-            }
-            else
-            {
-                instance = state.loadInstance(id);
-                assert instance != null;
-            }
+            Instance instance = getInstance();
 
             EpaxosState.ParticipantInfo participantInfo = state.getParticipants(instance);
             instance.preaccept(state.getCurrentDependencies(instance));
@@ -67,23 +46,7 @@ public class PreacceptTask implements Runnable
             instance.incrementBallot();
             state.saveInstance(instance);
 
-            MessageOut<Instance> message = new MessageOut<>(MessagingService.Verb.EPAXOS_PREACCEPT,
-                                                            instance,
-                                                            Instance.serializer);
-            callback = state.getPreacceptCallback(instance, participantInfo);
-            for (InetAddress endpoint : participantInfo.liveEndpoints)
-            {
-                if (!endpoint.equals(state.getEndpoint()))
-                {
-                    logger.debug("sending preaccept request to {} for instance {}", endpoint, instance.getId());
-                    state.sendRR(message, endpoint, callback);
-                }
-                else
-                {
-                    logger.debug("counting self in preaccept quorum for instance {}", instance.getId());
-                    callback.countLocal();
-                }
-            }
+            sendMessage(instance, participantInfo);
         }
         catch (UnavailableException | InvalidInstanceStateChange e)
         {
@@ -92,6 +55,79 @@ public class PreacceptTask implements Runnable
         finally
         {
             lock.writeLock().unlock();
+        }
+    }
+
+
+    public static class Leader extends PreacceptTask
+    {
+
+        private final Instance target;
+
+        public Leader(EpaxosState state, Instance target)
+        {
+            super(state, target.getId());
+            this.target = target;
+        }
+
+        @Override
+        protected Instance getInstance()
+        {
+            assert target.getState() == Instance.State.INITIALIZED;
+            return target;
+        }
+
+        @Override
+        protected void sendMessage(Instance instance, EpaxosState.ParticipantInfo participantInfo)
+        {
+            MessageOut<Instance> message = instance.getMessage(MessagingService.Verb.EPAXOS_PREACCEPT);
+            PreacceptCallback callback = state.getPreacceptCallback(instance, participantInfo);
+
+            if (state.getEndpoint().equals(instance.getLeader()))
+            {
+                logger.debug("counting self in preaccept quorum for instance {}", instance.getId());
+                callback.countLocal();
+            }
+            for (InetAddress endpoint : participantInfo.liveEndpoints)
+            {
+                if (!endpoint.equals(state.getEndpoint()))
+                {
+                    logger.debug("sending preaccept request to {} for instance {}", endpoint, instance.getId());
+                    state.sendRR(message, endpoint, callback);
+                }
+            }
+        }
+    }
+
+    public static class Prepare extends PreacceptTask
+    {
+
+        private final boolean noop;
+
+        public Prepare(EpaxosState state, UUID id, boolean noop)
+        {
+            super(state, id);
+            this.noop = noop;
+        }
+
+        @Override
+        protected void sendMessage(Instance instance, EpaxosState.ParticipantInfo participantInfo)
+        {
+            MessageOut<Instance> message = instance.getMessage(MessagingService.Verb.EPAXOS_PREACCEPT);
+            PreacceptCallback callback = state.getPreacceptCallback(instance, participantInfo);
+            for (InetAddress endpoint : participantInfo.liveEndpoints)
+            {
+                logger.debug("sending preaccept request to {} for instance {}", endpoint, instance.getId());
+                state.sendRR(message, endpoint, callback);
+            }
+        }
+
+        @Override
+        protected Instance getInstance()
+        {
+            Instance instance = state.getInstanceCopy(id);
+            assert instance != null;
+            return instance;
         }
     }
 }

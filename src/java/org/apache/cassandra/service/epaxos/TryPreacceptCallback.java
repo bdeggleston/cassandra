@@ -2,7 +2,6 @@ package org.apache.cassandra.service.epaxos;
 
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
-import org.apache.cassandra.service.epaxos.exceptions.PrepareAbortException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,7 +88,7 @@ public class TryPreacceptCallback implements IAsyncCallback<TryPreacceptResponse
                 else
                 {
                     // fall back to regular preaccept
-                    state.preaccept(id, false);
+                    state.preacceptPrepare(id, false);
                 }
             }
         }

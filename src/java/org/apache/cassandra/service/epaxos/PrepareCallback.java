@@ -73,7 +73,7 @@ public class PrepareCallback implements IAsyncCallback<Instance>
                     }
                     else
                     {
-                        state.preaccept(id, decision.commitNoop);
+                        state.preacceptPrepare(id, decision.commitNoop);
                     }
                     break;
                 case ACCEPTED:

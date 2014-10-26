@@ -99,7 +99,7 @@ public class PrepareTask implements Runnable, ICommitCallback
         }
 
         PrepareRequest request = new PrepareRequest(instance);
-        PrepareCallback callback = new PrepareCallback(state, instance, participantInfo, group);
+        PrepareCallback callback = state.getPrepareCallback(instance, participantInfo, group);
         MessageOut<PrepareRequest> message = request.getMessage();
         for (InetAddress endpoint: participantInfo.liveEndpoints)
         {
