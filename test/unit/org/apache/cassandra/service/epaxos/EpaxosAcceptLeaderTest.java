@@ -5,7 +5,9 @@ import com.google.common.collect.Sets;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.service.epaxos.integration.AbstractEpaxosIntegrationTest;
+import org.apache.cassandra.service.epaxos.integration.Messenger;
 import org.apache.cassandra.service.epaxos.integration.Node;
+import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
@@ -18,6 +20,61 @@ import java.util.*;
  */
 public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.SingleThread
 {
+
+    private static class LastCommit
+    {
+        public final UUID id;
+        public final Set<UUID> deps;
+        public final boolean fastPath;
+
+        private LastCommit(UUID id, Set<UUID> deps, boolean fastPath)
+        {
+            this.id = id;
+            this.deps = deps;
+            this.fastPath = fastPath;
+        }
+    }
+
+    private volatile LastCommit lastCommit = null;
+
+    @Override
+    public Node createNode(int number, String ksName, Messenger messenger)
+    {
+        return new Node.SingleThreaded(number, ksName, messenger)
+        {
+            @Override
+            protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo)
+            {
+                return new PreacceptCallback(this, instance, participantInfo)
+                {
+                    @Override
+                    protected void processDecision(AcceptDecision decision)
+                    {
+                        // do nothing
+                    }
+                };
+            }
+
+            @Override
+            public void commit(UUID iid, Set<UUID> deps)
+            {
+                lastCommit = new LastCommit(iid, deps, false);
+            }
+
+            @Override
+            public void commit(UUID iid, Set<UUID> deps, boolean fastPath)
+            {
+                lastCommit = new LastCommit(iid, deps, fastPath);
+            }
+        };
+    }
+
+    @Override
+    public void setUp()
+    {
+        super.setUp();
+        lastCommit = null;
+    }
 
     @Test
     public void successCase() throws Exception
@@ -38,8 +95,12 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         newDeps.add(UUIDGen.getTimeUUID());
         node.accept(instance.getId(), new AcceptDecision(true, newDeps, Collections.EMPTY_MAP));
 
+        instance = node.getInstance(instance.getId());
         Assert.assertEquals(newDeps, instance.getDependencies());
         Assert.assertEquals(Instance.State.ACCEPTED, instance.getState());
+
+        // check that a commit would have been performed
+        Assert.assertNotNull(lastCommit);
     }
 
     @Test
@@ -90,6 +151,7 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), Collections.EMPTY_MAP));
 
         // TODO: check not committed
+        Assert.assertNull(lastCommit);
     }
 
     @Test
@@ -106,5 +168,6 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
 
         node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), Collections.EMPTY_MAP));
         // TODO: check not committed
+        Assert.assertNull(lastCommit);
     }
 }

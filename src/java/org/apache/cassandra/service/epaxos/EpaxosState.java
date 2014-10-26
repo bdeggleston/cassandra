@@ -374,6 +374,7 @@ public class EpaxosState
 
         Instance instance = getInstanceCopy(iid);
         instance.setDependencies(decision.acceptDeps);
+        instance.incrementBallot();
 
         ParticipantInfo participantInfo;
         try
@@ -526,7 +527,7 @@ public class EpaxosState
 
     public void prepare(UUID id, PrepareGroup group)
     {
-        getStage(Stage.READ).execute(new PrepareTask(this, id, group));
+        getStage(Stage.READ).submit(new PrepareTask(this, id, group));
     }
 
     protected long getPrepareWaitTime(long lastUpdate, InetAddress leader, List<InetAddress> successors)
@@ -759,7 +760,7 @@ public class EpaxosState
         }
         catch (IOException e)
         {
-            throw new AssertionError(e);  // TODO: propagate original exception?
+            throw new AssertionError(e);
         }
     }
 
@@ -889,6 +890,11 @@ public class EpaxosState
         {
             lock.writeLock().unlock();
         }
+    }
+
+    protected void updateInstanceBallot(UUID id, int ballot)
+    {
+
     }
 
     // accessor methods

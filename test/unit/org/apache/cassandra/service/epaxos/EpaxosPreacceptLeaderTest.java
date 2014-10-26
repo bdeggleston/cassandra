@@ -64,7 +64,6 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
         AcceptDecision decision = lastAcceptDecision;
 
         Assert.assertEquals(Sets.newHashSet(oldInstance.getId()), instance.getDependencies());
-        Assert.assertFalse(instance.isFastPathImpossible());
         Assert.assertFalse(decision.acceptNeeded);
         Assert.assertEquals(instance.getDependencies(), decision.acceptDeps);
         Assert.assertEquals(Collections.EMPTY_MAP, decision.missingInstances);

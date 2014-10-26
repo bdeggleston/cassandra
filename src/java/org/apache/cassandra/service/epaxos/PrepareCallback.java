@@ -5,6 +5,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
@@ -48,10 +49,11 @@ public class PrepareCallback implements IAsyncCallback<Instance>
 
         if (msg.payload.getBallot() > ballot)
         {
-            // TODO: increment ballot, & try again
             // TODO: should we only try n times? if so start sending attempt # along
-
             completed = true;
+            BallotUpdateTask ballotTask = new BallotUpdateTask(state, id, msg.payload.getBallot());
+            ballotTask.addNextTask(Stage.READ, new PrepareTask(state, id, group));
+            state.getStage(Stage.MUTATION).submit(ballotTask);
             return;
         }
 
