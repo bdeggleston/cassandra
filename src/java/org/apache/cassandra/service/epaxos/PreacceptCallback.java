@@ -72,14 +72,19 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
         if (numResponses >= participantInfo.quorumSize)
         {
             AcceptDecision decision = getAcceptDecision();
-            if (decision.acceptNeeded)
-            {
-                state.accept(iid, decision);
-            }
-            else
-            {
-                state.commit(iid, decision.acceptDeps, true);
-            }
+            processDecision(decision);
+        }
+    }
+
+    protected void processDecision(AcceptDecision decision)
+    {
+        if (decision.acceptNeeded)
+        {
+            state.accept(iid, decision);
+        }
+        else
+        {
+            state.commit(iid, decision.acceptDeps, true);
         }
     }
 

@@ -3,6 +3,8 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.ImmutableSet;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.net.MessageOut;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.utils.UUIDSerializer;
 
 import java.io.DataInput;
@@ -21,6 +23,11 @@ public class TryPreacceptRequest
     {
         this.iid = iid;
         this.dependencies = dependencies;
+    }
+
+    public MessageOut<TryPreacceptRequest> getMessage()
+    {
+        return new MessageOut<TryPreacceptRequest>(MessagingService.Verb.EPAXOS_TRYPREACCEPT, this, serializer);
     }
 
     private static class Serializer implements IVersionedSerializer<TryPreacceptRequest>

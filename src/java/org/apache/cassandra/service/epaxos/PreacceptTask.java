@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
+import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 
 public class PreacceptTask implements Runnable
@@ -15,24 +16,50 @@ public class PreacceptTask implements Runnable
     private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
 
     private final EpaxosState state;
-    private final Instance instance;
+    private final UUID id;
+    private final Instance initializedInstance;
+    private final boolean noop;
 
-    public PreacceptTask(EpaxosState state, Instance instance)
+    // preparing instance
+    public PreacceptTask(EpaxosState state, UUID id, boolean noop)
     {
         this.state = state;
-        this.instance = instance;
+        this.id = id;
+        this.initializedInstance = null;
+        this.noop = noop;
+    }
+
+    // new instance
+    public PreacceptTask(EpaxosState state, Instance initializedInstance)
+    {
+        this.state = state;
+        this.id = initializedInstance.getId();
+        this.initializedInstance = initializedInstance;
+        this.noop = false;
     }
 
     @Override
     public void run()
     {
-        logger.debug("preaccepting instance {}", instance.getId());
+        logger.debug("preaccepting instance {}", id);
         PreacceptCallback callback;
-        ReadWriteLock lock = state.getInstanceLock(instance.getId());
+        ReadWriteLock lock = state.getInstanceLock(id);
         lock.writeLock().lock();
-
         try
         {
+
+            Instance instance;
+            if (initializedInstance != null)
+            {
+                assert initializedInstance.getState() == Instance.State.INITIALIZED;
+                instance = initializedInstance;
+            }
+            else
+            {
+                instance = state.loadInstance(id);
+                assert instance != null;
+            }
+
             EpaxosState.ParticipantInfo participantInfo = state.getParticipants(instance);
             instance.preaccept(state.getCurrentDependencies(instance));
             instance.setSuccessors(participantInfo.getSuccessors());

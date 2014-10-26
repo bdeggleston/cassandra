@@ -26,14 +26,14 @@ class ExecutionSorter
 
     private final Instance target;
     private final Set<UUID> targetDeps;
-    private final EpaxosState.IAccessor accessor;
+    private final EpaxosState accessor;
 
     // prevents saving the same scc over and over
     private final Map<UUID, Set<UUID>> loadedScc = Maps.newHashMap();
 
     private int traversals = 0;
 
-    ExecutionSorter(Instance target, EpaxosState.IAccessor accessor)
+    ExecutionSorter(Instance target, EpaxosState accessor)
     {
         this.target = target;
         targetDeps = target.getDependencies();
@@ -49,7 +49,7 @@ class ExecutionSorter
         Instance.State state;
         Set<UUID> stronglyConnected;
         boolean isPlaceholder;
-        ReadWriteLock lock = accessor.getLock(instance);
+        ReadWriteLock lock = accessor.getInstanceLock(instance.getId());
         lock.readLock().lock();
         try
         {

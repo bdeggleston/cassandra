@@ -5,6 +5,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.slf4j.Logger;
@@ -13,34 +14,76 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.util.*;
+import java.util.concurrent.locks.ReadWriteLock;
 
-public class PrepareCallback extends AbstractEpaxosCallback<Instance>
+public class PrepareCallback implements IAsyncCallback<Instance>
 {
     private static final Logger logger = LoggerFactory.getLogger(PreacceptCallback.class);
 
-    private final Instance instance;
+    private final EpaxosState state;
+    private final UUID id;
     private final int ballot;
+    private final EpaxosState.ParticipantInfo participantInfo;
+    private final PrepareGroup group;
     private final Map<InetAddress, Instance> responses = Maps.newHashMap();
 
-    public PrepareCallback(Instance instance, EpaxosState.ParticipantInfo participantInfo)
+    private boolean completed = false;
+
+    public PrepareCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, PrepareGroup group)
     {
-        super(participantInfo);
-        this.instance = instance;
+        this.state = state;
+        id = instance.getId();
         ballot = instance.getBallot();
+        this.participantInfo = participantInfo;
+        this.group = group;
     }
 
     @Override
     public synchronized void response(MessageIn<Instance> msg)
     {
-        logger.debug("preaccept response received from {} for instance {}", msg.from, instance.getId());
-        responses.put(msg.from, msg.payload);
-        latch.countDown();
-    }
+        logger.debug("preaccept response received from {} for instance {}", msg.from, id);
 
-    public synchronized void countLocal(InetAddress endpoint, Instance instance)
-    {
-        responses.put(endpoint, instance);
-        countLocal();
+        if (completed)
+            return;
+
+        if (msg.payload.getBallot() > ballot)
+        {
+            // TODO: increment ballot, & try again
+            // TODO: should we only try n times? if so start sending attempt # along
+
+            completed = true;
+            return;
+        }
+
+        responses.put(msg.from, msg.payload);
+
+        if (responses.size() > participantInfo.quorumSize)
+        {
+            PrepareDecision decision = getDecision();
+
+            switch (decision.state)
+            {
+                case PREACCEPTED:
+                    if (decision.tryPreacceptAttempts.size() > 0)
+                    {
+                        List<TryPreacceptAttempt> attempts = decision.tryPreacceptAttempts;
+                        state.tryPreaccept(id, attempts, participantInfo, group);
+                    }
+                    else
+                    {
+                        state.preaccept(id, decision.commitNoop);
+                    }
+                    break;
+                case ACCEPTED:
+                    state.accept(id, decision.deps);
+                    break;
+                case COMMITTED:
+                    state.commit(id, decision.deps);
+                    break;
+                default:
+                    throw new AssertionError();
+            }
+        }
     }
 
     private Predicate<Instance> committedPredicate = new Predicate<Instance>()
@@ -76,15 +119,12 @@ public class PrepareCallback extends AbstractEpaxosCallback<Instance>
         }
     };
 
-    public synchronized PrepareDecision getDecision() throws BallotException
+    public synchronized PrepareDecision getDecision()
     {
         int maxBallot = 0;
         for (Instance inst: responses.values())
             if (inst != null)
                 maxBallot = Math.max(maxBallot, inst.getBallot());
-
-        if (maxBallot > ballot)
-            throw new BallotException(instance, maxBallot);
 
         List<Instance> committed = Lists.newArrayList(Iterables.filter(responses.values(), committedPredicate));
         if (committed.size() > 0)
@@ -163,4 +203,9 @@ public class PrepareCallback extends AbstractEpaxosCallback<Instance>
         return attempts;
     }
 
+    @Override
+    public boolean isLatencyForSnitch()
+    {
+        return false;
+    }
 }

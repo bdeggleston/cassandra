@@ -13,7 +13,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 
 class AcceptVerbHandler implements IVerbHandler<AcceptRequest>
 {
-    private static final Logger logger = LoggerFactory.getLogger(PreacceptVerbHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(AcceptVerbHandler.class);
 
     private final EpaxosState state;
 

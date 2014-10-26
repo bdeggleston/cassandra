@@ -11,6 +11,8 @@ import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.CompactEndpointSerializationHelper;
+import org.apache.cassandra.net.MessageOut;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.utils.UUIDGen;
@@ -342,6 +344,12 @@ public class Instance
     public void applyRemote(Instance remote)
     {
         this.noop = remote.noop;
+        this.fastPathImpossible = remote.fastPathImpossible;
+    }
+
+    public MessageOut<Instance> getMessage(MessagingService.Verb verb)
+    {
+        return new MessageOut<>(verb, this, serializer);
     }
 
     /**

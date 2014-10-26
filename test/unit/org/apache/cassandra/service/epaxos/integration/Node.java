@@ -5,24 +5,22 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.concurrent.Stage;
+import org.apache.cassandra.concurrent.TracingAwareExecutorService;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.WriteType;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.epaxos.*;
-import org.apache.cassandra.service.epaxos.exceptions.BallotException;
-import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
+import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.*;
 
 public class Node extends EpaxosState
 {
@@ -39,9 +37,8 @@ public class Node extends EpaxosState
 
     public final List<UUID> executionOrder = Lists.newLinkedList();
 
-    public volatile Runnable postPreacceptHook = null;
-    public volatile Runnable postAcceptHook = null;
-    public volatile Runnable postCommitHook = null;
+    public volatile Runnable preAcceptHook = null;
+    public volatile Runnable preCommitHook = null;
     public final Set<UUID> accepted = Sets.newConcurrentHashSet();
 
     public final int number;
@@ -128,29 +125,20 @@ public class Node extends EpaxosState
     }
 
     @Override
-    public AcceptDecision preaccept(Instance instance) throws UnavailableException, InvalidInstanceStateChange, WriteTimeoutException, BallotException
+    public void accept(UUID iid, AcceptDecision decision)
     {
-        AcceptDecision decision = super.preaccept(instance);
-        if (postPreacceptHook != null)
-            postPreacceptHook.run();
-        return decision;
-    }
-
-    @Override
-    public void accept(UUID iid, AcceptDecision decision) throws InvalidInstanceStateChange, UnavailableException, WriteTimeoutException, BallotException
-    {
-        super.accept(iid, decision);
+        if (preAcceptHook != null)
+            preAcceptHook.run();
         accepted.add(iid);
-        if (postAcceptHook != null)
-            postAcceptHook.run();
+        super.accept(iid, decision);
     }
 
     @Override
-    public void commit(UUID iid, Set<UUID> deps) throws InvalidInstanceStateChange, UnavailableException
+    public void commit(UUID iid, Set<UUID> deps)
     {
+        if (preCommitHook != null)
+            preCommitHook.run();
         super.commit(iid, deps);
-        if (postCommitHook != null)
-            postCommitHook.run();
     }
 
     @Override
@@ -211,69 +199,97 @@ public class Node extends EpaxosState
         }
 
         @Override
-        protected int getPrepareWaitTime(UUID iid, InetAddress leader, List<InetAddress> successors)
+        public TracingAwareExecutorService getStage(Stage stage)
         {
-            return 0;
-        }
-
-        @Override
-        protected PreacceptCallback getPreacceptCallback(Instance instance, final ParticipantInfo participantInfo)
-        {
-            return new PreacceptCallback(instance, participantInfo) {
-
-                @Override
-                public void await() throws WriteTimeoutException
-                {
-                    if (getResponseCount() < participantInfo.quorumSize)
-                        throw new WriteTimeoutException(WriteType.CAS, participantInfo.consistencyLevel, getResponseCount(), targets);
-                }
-
-            };
-        }
-
-        @Override
-        protected AcceptCallback getAcceptCallback(Instance instance, final ParticipantInfo participantInfo)
-        {
-            return new AcceptCallback(instance, participantInfo) {
-
-                @Override
-                public void await() throws WriteTimeoutException
-                {
-                    if (getResponseCount() < participantInfo.quorumSize)
-                        throw new WriteTimeoutException(WriteType.CAS, participantInfo.consistencyLevel, getResponseCount(), targets);
-                }
-
-            };
-        }
-
-        @Override
-        protected PrepareCallback getPrepareCallback(Instance instance, ParticipantInfo participantInfo)
-        {
-            return new PrepareCallback(instance, participantInfo){
-
-                @Override
-                public void await() throws WriteTimeoutException
-                {
-                    if (getResponseCount() < participantInfo.quorumSize)
-                        throw new WriteTimeoutException(WriteType.CAS, participantInfo.consistencyLevel, getResponseCount(), targets);
-                }
-
-            };
-        }
-
-        @Override
-        protected TryPreacceptCallback getTryPreacceptCallback(UUID iid, TryPreacceptAttempt attempt, final ParticipantInfo participantInfo)
-        {
-            return new TryPreacceptCallback(iid, attempt, participantInfo)
+            return new TracingAwareExecutorService()
             {
-
                 @Override
-                public void await() throws WriteTimeoutException
+                public void execute(Runnable command, TraceState state)
                 {
-                    if (getResponseCount() < targets)
-                        throw new WriteTimeoutException(WriteType.CAS, participantInfo.consistencyLevel, getResponseCount(), targets);
+                    command.run();
                 }
 
+                @Override
+                public void maybeExecuteImmediately(Runnable command)
+                {
+                    command.run();
+                }
+
+                @Override
+                public void shutdown() {}
+
+                @Override
+                public List<Runnable> shutdownNow()
+                {
+                    throw new UnsupportedOperationException();
+                }
+
+                @Override
+                public boolean isShutdown()
+                {
+                    return false;
+                }
+
+                @Override
+                public boolean isTerminated()
+                {
+                    throw new UnsupportedOperationException();
+                }
+
+                @Override
+                public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException
+                {
+                    throw new UnsupportedOperationException();
+                }
+
+                @Override
+                public <T> Future<T> submit(Callable<T> task)
+                {
+                    return null;
+                }
+
+                @Override
+                public <T> Future<T> submit(Runnable task, T result)
+                {
+                    return null;
+                }
+
+                @Override
+                public Future<?> submit(Runnable task)
+                {
+                    task.run();
+                    return null;
+                }
+
+                @Override
+                public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) throws InterruptedException
+                {
+                    throw new UnsupportedOperationException();
+                }
+
+                @Override
+                public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException
+                {
+                    throw new UnsupportedOperationException();
+                }
+
+                @Override
+                public <T> T invokeAny(Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException
+                {
+                    throw new UnsupportedOperationException();
+                }
+
+                @Override
+                public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException
+                {
+                    throw new UnsupportedOperationException();
+                }
+
+                @Override
+                public void execute(Runnable command)
+                {
+                    throw new UnsupportedOperationException();
+                }
             };
         }
     }

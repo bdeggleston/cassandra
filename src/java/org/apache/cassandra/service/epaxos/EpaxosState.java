@@ -21,10 +21,8 @@ import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.service.epaxos.exceptions.InstanceNotFoundException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
-import org.apache.cassandra.service.epaxos.exceptions.PrepareAbortException;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
@@ -48,9 +46,6 @@ public class EpaxosState
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
 
     // TODO: put these in DatabaseDescriptor
-
-    // the number of times a prepare phase will try to gain control of an instance before giving up
-    protected static int PREPARE_BALLOT_FAILURE_RETRIES = 5;
 
     // the amount of time the prepare phase will wait for the leader to commit an instance before
     // attempting a prepare phase. This is multiplied by a replica's position in the successor list
@@ -125,36 +120,6 @@ public class EpaxosState
             return successors;
         }
     }
-
-    public static interface IAccessor
-    {
-        public Instance loadInstance(UUID iid);
-
-        public void saveInstance(Instance instance);
-
-        public ReadWriteLock getLock(Object key);
-    }
-
-    private final IAccessor accessor = new IAccessor()
-    {
-        @Override
-        public Instance loadInstance(UUID iid)
-        {
-            return EpaxosState.this.loadInstance(iid);
-        }
-
-        @Override
-        public void saveInstance(Instance instance)
-        {
-            EpaxosState.this.saveInstance(instance);
-        }
-
-        @Override
-        public ReadWriteLock getLock(Object key)
-        {
-            return locks.get(key);
-        }
-    };
 
     public EpaxosState()
     {
@@ -320,8 +285,20 @@ public class EpaxosState
         return new PreacceptCallback(this, instance, participantInfo);
     }
 
+    public void preaccept(UUID id, boolean noop)
+    {
+        PreacceptTask task = new PreacceptTask(this, id, noop);
+        getStage(Stage.MUTATION).submit(task);
+    }
+
     public void preaccept(Instance instance)
     {
+        preaccept(instance, false);
+    }
+
+    public void preaccept(Instance instance, boolean noop)
+    {
+        instance.setNoop(noop);
         PreacceptTask task = new PreacceptTask(this, instance);
         getStage(Stage.MUTATION).submit(task);
     }
@@ -379,6 +356,11 @@ public class EpaxosState
         return new AcceptCallback(this, instance, participantInfo);
     }
 
+    public void accept(UUID id, Set<UUID> dependencies)
+    {
+        accept(id, new AcceptDecision(true, dependencies, Collections.<InetAddress, Set<UUID>>emptyMap()));
+    }
+
     public void accept(UUID iid, AcceptDecision decision)
     {
         logger.debug("accepting instance {}", iid);
@@ -390,24 +372,17 @@ public class EpaxosState
             missingInstances.put(entry.getKey(), getInstanceCopies(entry.getValue()));
         }
 
-        Instance instance;
-        ParticipantInfo participantInfo;
+        Instance instance = getInstanceCopy(iid);
+        instance.setDependencies(decision.acceptDeps);
 
-        ReadWriteLock lock = locks.get(iid);
-        lock.readLock().lock();
+        ParticipantInfo participantInfo;
         try
         {
-            instance = loadInstance(iid).copy();
-            instance.incrementBallot();
             participantInfo = getParticipants(instance);
         }
         catch (UnavailableException e)
         {
             throw new RuntimeException(e);
-        }
-        finally
-        {
-            lock.readLock().unlock();
         }
 
         AcceptCallback callback = getAcceptCallback(instance, participantInfo);
@@ -437,7 +412,7 @@ public class EpaxosState
      *
      * must be called with this instances's write lock held
      */
-    private void notifyCommit(UUID iid)
+    public void notifyCommit(UUID iid)
     {
         CountDownLatch commitLatch = commitLatches.get(iid);
         if (commitLatch != null)
@@ -489,8 +464,8 @@ public class EpaxosState
 
             ParticipantInfo participantInfo = getParticipants(instance);
             MessageOut<Instance> message = new MessageOut<Instance>(MessagingService.Verb.EPAXOS_COMMIT,
-                                                                    instance,
-                                                                    Instance.serializer);
+                                                             instance,
+                                                             Instance.serializer);
             for (InetAddress endpoint : participantInfo.liveEndpoints)
             {
                 if (!endpoint.equals(getEndpoint()))
@@ -521,146 +496,14 @@ public class EpaxosState
         }
     }
 
-    protected class CommitVerbHandler implements IVerbHandler<Instance>
-    {
-        @Override
-        public void doVerb(MessageIn<Instance> message, int id)
-        {
-            logger.debug("Commit request received from {} for {}", message.from, message.payload.getId());
-            ReadWriteLock lock = locks.get(message.payload.getId());
-            lock.writeLock().lock();
-            Instance instance;
-            try
-            {
-                Instance remoteInstance = message.payload;
-                instance = loadInstance(remoteInstance.getId());
-                if (instance == null)
-                {
-                    // TODO: record deps
-                    instance = remoteInstance.copyRemote();
-                } else
-                {
-                    instance.applyRemote(remoteInstance);
-                }
-                instance.commit(remoteInstance.getDependencies());
-                saveInstance(instance);
-
-                notifyCommit(instance.getId());
-                recordAcknowledgedDeps(instance);
-            }
-            catch (InvalidInstanceStateChange e)
-            {
-                // got a duplicate commit message, no big deal
-                logger.debug("Duplicate commit message received", e);
-                return;
-            }
-            finally
-            {
-                lock.writeLock().unlock();
-            }
-
-            try
-            {
-                // TODO: send this to another thread
-                execute(message.payload.getId());
-            }
-            catch (BallotException e)
-            {
-                // this happens when a prepare phase loses the fight for control of an instance
-            }
-            catch (UnavailableException | RequestTimeoutException | InvalidRequestException e)
-            {
-                logger.error("Error executing instance", e);
-            }
-        }
-    }
-
     public IVerbHandler<Instance> getCommitVerbHandler()
     {
-        return new CommitVerbHandler();
+        return new CommitVerbHandler(this);
     }
 
-    public void execute(UUID instanceId) throws UnavailableException, BallotException, InvalidRequestException, RequestTimeoutException
+    public void execute(UUID instanceId)
     {
-        logger.debug("Running execution phase for instance {}", instanceId);
-        ReadWriteLock lock = locks.get(instanceId);
-
-        while (true)
-        {
-            ExecutionSorter executionSorter;
-            lock.writeLock().lock();
-            List<InetAddress> successors;
-            try
-            {
-                Instance instance = loadInstance(instanceId);
-                assert instance.getState().atLeast(Instance.State.COMMITTED);
-                executionSorter = new ExecutionSorter(instance, accessor);
-                executionSorter.buildGraph();
-                successors = instance.getSuccessors();
-            }
-            finally
-            {
-                lock.writeLock().unlock();
-            }
-
-            if (executionSorter.uncommitted.size() > 0)
-            {
-                logger.debug("Uncommitted ({}) instances found while attempting to execute {}",
-                             executionSorter.uncommitted.size(), instanceId);
-                for (UUID iid : executionSorter.uncommitted)
-                {
-                    try
-                    {
-                        prepare(iid, successors);
-                    }
-                    catch (InstanceNotFoundException e)
-                    {
-                        // this is only a problem if there's only a single uncommitted instance
-                        if (executionSorter.uncommitted.size() > 1)
-                            continue;
-                        // lets see if progress can still be made
-                        logger.error("Missing instance for prepare: ", e);
-                    }
-                }
-            }
-            else
-            {
-                for (UUID iid : executionSorter.getOrder())
-                {
-                    lock.writeLock().lock();
-                    Instance toExecute = loadInstance(iid);
-                    try
-                    {
-                        if (toExecute.getState() == Instance.State.EXECUTED)
-                        {
-                            if (toExecute.getId().equals(instanceId))
-                            {
-                                return;
-                            }
-                            else
-                            {
-                                continue;
-                            }
-                        }
-
-                        assert toExecute.getState() == Instance.State.COMMITTED;
-
-                        executeInstance(toExecute);
-                        toExecute.setExecuted();
-                        saveInstance(toExecute);
-
-                        if (toExecute.getId().equals(instanceId))
-                            return;
-
-                    }
-                    finally
-                    {
-                        lock.writeLock().unlock();
-                    }
-                }
-                return;
-            }
-        }
+        getStage(Stage.MUTATION).submit(new ExecuteTask(this, instanceId));
     }
 
     protected void executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
@@ -676,183 +519,14 @@ public class EpaxosState
         }
     }
 
-    protected PrepareCallback getPrepareCallback(Instance instance, ParticipantInfo participantInfo)
+    protected PrepareCallback getPrepareCallback(Instance instance, ParticipantInfo participantInfo, PrepareGroup group)
     {
-        return new PrepareCallback(instance, participantInfo);
+        return new PrepareCallback(this, instance, participantInfo, group);
     }
 
-    // TODO: this might be better as a runnable we can throw into a thread pool
-    public void prepare(UUID iid, List<InetAddress> successors) throws UnavailableException, WriteTimeoutException, BallotException, InstanceNotFoundException
+    public void prepare(UUID id, PrepareGroup group)
     {
-        Lock prepareLock = prepareLocks.get(iid);
-        logger.debug("Aquiring lock for {} prepare phase", iid);
-        prepareLock.lock();
-        logger.debug("Running prepare phase for {}", iid);
-        try
-        {
-            for (int i=0; i<PREPARE_BALLOT_FAILURE_RETRIES; i++)
-            {
-                if (!shouldPrepare(iid))
-                    return;
-
-//                for (InetAddress successor: successors)
-//                {
-//                    if (!shouldPrepare(iid))
-//                        return;
-//
-//                    // if this node is the successor, then get preparing
-//                    if (successor.equals(getEndpoint()))
-//                        break;
-//
-//                    tryprepare(successor, iid);
-//                }
-
-                PrepareCallback callback;
-                ParticipantInfo participantInfo;
-
-                ReadWriteLock lock = locks.get(iid);
-                lock.writeLock().lock();
-                try
-                {
-                    Instance instance = loadInstance(iid);
-                    if (instance.getState().atLeast(Instance.State.COMMITTED))
-                        return;
-                    instance.incrementBallot();
-                    saveInstance(instance);
-
-                    participantInfo = getParticipants(instance);
-                    PrepareRequest request = new PrepareRequest(instance);
-                    MessageOut<PrepareRequest> message = new MessageOut<>(MessagingService.Verb.EPAXOS_PREPARE,
-                                                                          request,
-                                                                          PrepareRequest.serializer);
-                    callback = getPrepareCallback(instance, participantInfo);
-                    for (InetAddress endpoint : participantInfo.liveEndpoints)
-                        if (!endpoint.equals(getEndpoint()))
-                        {
-                            sendRR(message, endpoint, callback);
-                        }
-                        else
-                        {
-                            // only provide a response if this instance is not a placeholder
-                            callback.countLocal(getEndpoint(), (!instance.isPlaceholder() ? instance : null));
-                        }
-                }
-                finally
-                {
-                    lock.writeLock().unlock();
-                }
-
-                callback.await();
-
-                PrepareDecision decision = callback.getDecision();
-                logger.debug("PrepareDecision for {}: {}", iid, decision);
-
-                if (decision.commitNoop)
-                {
-                    lock.writeLock().lock();
-                    try
-                    {
-                        logger.debug("setting noop flag for {}", iid);
-                        Instance instance = loadInstance(iid);
-                        if (instance.getState().atLeast(Instance.State.COMMITTED))
-                            return;
-                        instance.setNoop(true);
-                        saveInstance(instance);
-                    }
-                    finally
-                    {
-                        lock.writeLock().unlock();
-                    }
-                }
-
-                // perform try preaccept, if applicable
-                if (decision.state == Instance.State.PREACCEPTED && decision.tryPreacceptAttempts.size() > 0)
-                {
-                    logger.debug("running prepare phase trypreaccept for {}", iid);
-                    for (TryPreacceptAttempt attempt: decision.tryPreacceptAttempts)
-                    {
-                        try
-                        {
-                            if (tryPreaccept(iid, attempt, participantInfo))
-                            {
-                                // if the attempt was successful, the next step is the accept
-                                // phase with the successful attempt's dependencies
-                                decision = new PrepareDecision(Instance.State.ACCEPTED,
-                                                               attempt.dependencies,
-                                                               Collections.EMPTY_LIST,
-                                                               decision.commitNoop);
-                                break;
-                            }
-                        }
-                        catch (PrepareAbortException e)
-                        {
-                            // just return quietly, this instance will get
-                            // picked up for repair after the others
-                            logger.debug("Prepare aborted: " + e.getMessage());
-                            return;
-                        }
-                    }
-                }
-
-                lock.writeLock().lock();
-                Set<UUID> deps = decision.deps;
-                try
-                {
-                    AcceptDecision acceptDecision = null;
-                    switch (decision.state)
-                    {
-                        case PREACCEPTED:
-                            logger.debug("running prepare phase preaccept for {}", iid);
-                            Instance instance = loadInstance(iid);
-                            acceptDecision = preaccept(instance);
-
-                            // reassigning will transmit any missing dependencies
-                            deps = acceptDecision.acceptDeps;
-
-                        case ACCEPTED:
-                            logger.debug("running prepare phase accept for {}", iid);
-                            assert deps != null;
-                            acceptDecision = acceptDecision != null ? acceptDecision
-                                    : new AcceptDecision(true, deps, Collections.EMPTY_MAP);
-                            accept(iid, acceptDecision);
-                        case COMMITTED:
-                            logger.debug("running prepare phase commit for {}", iid);
-                            assert deps != null;
-                            commit(iid, deps);
-                            break;
-                        default:
-                            throw new AssertionError();
-                    }
-                }
-                catch (BallotException e)
-                {
-                    logger.debug("Prepare phase ballot failure for {}", iid);
-                    if (i >= PREPARE_BALLOT_FAILURE_RETRIES)
-                    {
-                        throw e;
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                }
-                catch (InvalidInstanceStateChange e)
-                {
-                    throw new AssertionError(e);
-                }
-                finally
-                {
-                    lock.writeLock().unlock();
-                }
-
-                return;
-            }
-        }
-        finally
-        {
-            prepareLock.unlock();
-            logger.debug("Released lock for {} prepare phase", iid);
-        }
+        getStage(Stage.READ).execute(new PrepareTask(this, id, group));
     }
 
     protected long getPrepareWaitTime(long lastUpdate, InetAddress leader, List<InetAddress> successors)
@@ -905,51 +579,9 @@ public class EpaxosState
         }
     }
 
-    protected class PrepareVerbHandler implements IVerbHandler<PrepareRequest>
-    {
-        @Override
-        public void doVerb(MessageIn<PrepareRequest> message, int id)
-        {
-            ReadWriteLock lock = locks.get(message.payload.iid);
-            lock.writeLock().lock();
-            try
-            {
-                Instance instance = loadInstance(message.payload.iid);
-
-                // we can't participate in the prepare phase if our
-                // local copy of the instance is a placeholder
-                if (instance != null && instance.isPlaceholder())
-                    instance = null;
-
-                if (instance != null)
-                {
-                    try
-                    {
-                        instance.checkBallot(message.payload.ballot);
-                        saveInstance(instance);
-                    }
-                    catch (BallotException e)
-                    {
-                        // don't die if the message has an old ballot value, just don't
-                        // update the instance. This instance will still be useful to the requestor
-                    }
-                }
-
-                MessageOut<Instance> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
-                                                              instance,
-                                                              Instance.serializer);
-                sendReply(reply, id, message.from);
-            }
-            finally
-            {
-                lock.writeLock().unlock();
-            }
-        }
-    }
-
     public IVerbHandler<PrepareRequest> getPrepareVerbHandler()
     {
-        return new PrepareVerbHandler();
+        return new PrepareVerbHandler(this);
     }
 
     protected TryPrepareCallback getTryPrepareCallback()
@@ -969,75 +601,31 @@ public class EpaxosState
 
     }
 
-    protected class TryPrepareVerbHandler implements IVerbHandler<UUID>
-    {
-        @Override
-        public void doVerb(MessageIn<UUID> message, int id)
-        {
-            UUID iid = message.payload;
-            ReadWriteLock lock = locks.get(iid);
-            lock.readLock().lock();
-            try
-            {
-                Instance instance = loadInstance(iid);
-                if (instance.getState().atLeast(Instance.State.COMMITTED))
-                {
-                    TryPrepareResponse response = new TryPrepareResponse(false, false, 0, instance);
-                    MessageOut<TryPrepareResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
-                                                                            response,
-                                                                            TryPrepareResponse.serializer);
-                    sendReply(reply, id, message.from);
-                }
-            }
-            finally
-            {
-                lock.readLock().unlock();
-            }
-        }
-    }
-
     protected TryPrepareVerbHandler getTryPrepareVerbHandler()
     {
-        return new TryPrepareVerbHandler();
+        return new TryPrepareVerbHandler(this);
     }
 
 
-    protected TryPreacceptCallback getTryPreacceptCallback(UUID iid, TryPreacceptAttempt attempt, ParticipantInfo participantInfo)
+    protected TryPreacceptCallback getTryPreacceptCallback(UUID iid, TryPreacceptAttempt attempt, List<TryPreacceptAttempt> nextAttempts, ParticipantInfo participantInfo, PrepareGroup group)
     {
-        return new TryPreacceptCallback(iid, attempt, participantInfo);
+        return new TryPreacceptCallback(this, iid, attempt, nextAttempts, participantInfo, group);
     }
 
-    public boolean tryPreaccept(UUID iid, TryPreacceptAttempt attempt, ParticipantInfo participantInfo) throws WriteTimeoutException, PrepareAbortException
+    public void tryPreaccept(UUID iid, List<TryPreacceptAttempt> attempts, ParticipantInfo participantInfo, PrepareGroup group)
     {
+        assert attempts.size() > 0;
+        TryPreacceptAttempt attempt = attempts.get(0);
+        List<TryPreacceptAttempt> nextAttempts = attempts.subList(1, attempts.size());
+
         TryPreacceptRequest request = new TryPreacceptRequest(iid, attempt.dependencies);
-        MessageOut<TryPreacceptRequest> message = new MessageOut<>(MessagingService.Verb.EPAXOS_TRYPREACCEPT,
-                                                                   request,
-                                                                   TryPreacceptRequest.serializer);
-        TryPreacceptCallback callback = getTryPreacceptCallback(iid, attempt, participantInfo);
+        MessageOut<TryPreacceptRequest> message = request.getMessage();
+
+        TryPreacceptCallback callback = getTryPreacceptCallback(iid, attempt, nextAttempts, participantInfo, group);
         for (InetAddress endpoint: attempt.toConvince)
         {
-            if (!endpoint.equals(getEndpoint()))
-            {
-                sendRR(message, endpoint, callback);
-            }
-            else
-            {
-                ReadWriteLock lock = locks.get(iid);
-                lock.writeLock().lock();
-                try
-                {
-                    Instance instance = loadInstance(iid);
-                    callback.recordDecision(handleTryPreaccept(instance, attempt.dependencies));
-                }
-                finally
-                {
-                    lock.writeLock().unlock();
-                }
-            }
+            sendRR(message, endpoint, callback);
         }
-
-        callback.await();
-        return callback.successful();
     }
 
     // FIXME: this is deadlocking
@@ -1125,6 +713,21 @@ public class EpaxosState
     public IVerbHandler<TryPreacceptRequest> getTryPreacceptVerbHandler()
     {
         return new TryPreacceptVerbHandler();
+    }
+
+    public Instance getInstanceCopy(UUID id)
+    {
+        ReadWriteLock lock = locks.get(id);
+        lock.readLock().lock();
+        try
+        {
+            Instance instance = loadInstance(id);
+            return instance != null ? instance.copy() : null;
+        }
+        finally
+        {
+            lock.readLock().unlock();
+        }
     }
 
     protected Instance loadInstance(UUID instanceId)

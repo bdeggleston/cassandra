@@ -2,6 +2,8 @@ package org.apache.cassandra.service.epaxos;
 
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.net.MessageOut;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.utils.UUIDSerializer;
 
 import java.io.DataInput;
@@ -24,6 +26,11 @@ public class PrepareRequest
     {
         this.iid = iid;
         this.ballot = ballot;
+    }
+
+    public MessageOut<PrepareRequest> getMessage()
+    {
+        return new MessageOut<>(MessagingService.Verb.EPAXOS_PREPARE, this, serializer);
     }
 
     private static class Serializer implements IVersionedSerializer<PrepareRequest>
