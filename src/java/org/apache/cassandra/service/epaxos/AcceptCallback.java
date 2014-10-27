@@ -51,7 +51,7 @@ public class AcceptCallback implements IAsyncCallback<AcceptResponse>
         numResponses++;
         if (numResponses >= participantInfo.quorumSize)
         {
-            state.commit(id, proposedDependencies, false);
+            state.commit(id, proposedDependencies);
         }
     }
 

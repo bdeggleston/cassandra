@@ -77,7 +77,7 @@ public class Instance
     private volatile State state = State.INITIALIZED;
     private volatile int ballot = 0;
     private volatile boolean noop;
-    private volatile boolean fastPathImpossible;
+    private volatile boolean fastPathImpossible; // TODO: remove
     private volatile Set<UUID> dependencies = null;
     private volatile boolean leaderDepsMatch = false;
     private volatile List<InetAddress> successors = null;

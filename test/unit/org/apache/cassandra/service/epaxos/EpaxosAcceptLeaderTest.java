@@ -25,13 +25,11 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
     {
         public final UUID id;
         public final Set<UUID> deps;
-        public final boolean fastPath;
 
-        private LastCommit(UUID id, Set<UUID> deps, boolean fastPath)
+        private LastCommit(UUID id, Set<UUID> deps)
         {
             this.id = id;
             this.deps = deps;
-            this.fastPath = fastPath;
         }
     }
 
@@ -58,13 +56,7 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
             @Override
             public void commit(UUID iid, Set<UUID> deps)
             {
-                lastCommit = new LastCommit(iid, deps, false);
-            }
-
-            @Override
-            public void commit(UUID iid, Set<UUID> deps, boolean fastPath)
-            {
-                lastCommit = new LastCommit(iid, deps, fastPath);
+                lastCommit = new LastCommit(iid, deps);
             }
         };
     }

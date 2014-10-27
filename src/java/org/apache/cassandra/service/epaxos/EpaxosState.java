@@ -169,7 +169,7 @@ public class EpaxosState
 
             return resultFuture.get(getTimeout(start), TimeUnit.MILLISECONDS);
         }
-        catch (ExecutionException | TimeoutException e1)
+        catch (ExecutionException | TimeoutException e)
         {
             throw new WriteTimeoutException(WriteType.CAS, query.getConsistencyLevel(), 0, 1);
         }
@@ -439,35 +439,19 @@ public class EpaxosState
 
     public void commit(UUID iid, Set<UUID> dependencies)
     {
-        commit(iid, dependencies, false);
-    }
-
-    public void commit(UUID iid, Set<UUID> dependencies, boolean fastPath)
-    {
         logger.debug("committing instance {}", iid);
-        ReadWriteLock lock = locks.get(iid);
-        lock.writeLock().lock();
-        Instance instance;
         try
         {
-            instance = loadInstance(iid);
-            if (fastPath)
-                instance.setFastPathImpossible(false);
+            Instance instance = getInstanceCopy(iid);
             instance.commit(dependencies);
             instance.incrementBallot();
-            saveInstance(instance);
 
             ParticipantInfo participantInfo = getParticipants(instance);
-            MessageOut<Instance> message = new MessageOut<Instance>(MessagingService.Verb.EPAXOS_COMMIT,
-                                                             instance,
-                                                             Instance.serializer);
+            MessageOut<Instance> message = instance.getMessage(MessagingService.Verb.EPAXOS_COMMIT);
             for (InetAddress endpoint : participantInfo.liveEndpoints)
             {
-                if (!endpoint.equals(getEndpoint()))
-                {
-                    logger.debug("sending commit request to {} for instance {}", endpoint, instance.getId());
-                    sendOneWay(message, endpoint);
-                }
+                logger.debug("sending commit request to {} for instance {}", endpoint, instance.getId());
+                sendOneWay(message, endpoint);
             }
 
             // send to remote datacenters for LOCAL_SERIAL queries
@@ -476,18 +460,10 @@ public class EpaxosState
                 logger.debug("sending commit request to non-local dc {} for instance {}", endpoint, instance.getId());
                 sendOneWay(message, endpoint);
             }
-
-            recordAcknowledgedDeps(instance);
-
-            notifyCommit(iid);
         }
         catch (UnavailableException | InvalidInstanceStateChange e)
         {
             throw new RuntimeException(e);
-        }
-        finally
-        {
-            lock.writeLock().unlock();
         }
     }
 

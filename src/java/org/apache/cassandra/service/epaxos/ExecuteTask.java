@@ -14,25 +14,25 @@ public class ExecuteTask implements Runnable
     private static final Logger logger = LoggerFactory.getLogger(ExecuteTask.class);
 
     private final EpaxosState state;
-    private final UUID iid;
+    private final UUID id;
 
-    public ExecuteTask(EpaxosState state, UUID iid)
+    public ExecuteTask(EpaxosState state, UUID id)
     {
         this.state = state;
-        this.iid = iid;
+        this.id = id;
     }
 
     @Override
     public void run()
     {
-        logger.debug("Running execution phase for instance {}", iid);
-        ReadWriteLock lock = state.getInstanceLock(iid);
+        logger.debug("Running execution phase for instance {}", id);
+        ReadWriteLock lock = state.getInstanceLock(id);
 
         ExecutionSorter executionSorter;
         lock.writeLock().lock();
         try
         {
-            Instance instance = state.loadInstance(iid);
+            Instance instance = state.loadInstance(id);
             assert instance.getState().atLeast(Instance.State.COMMITTED);
             executionSorter = new ExecutionSorter(instance, state);
             executionSorter.buildGraph();
@@ -45,22 +45,24 @@ public class ExecuteTask implements Runnable
         if (executionSorter.uncommitted.size() > 0)
         {
             logger.debug("Uncommitted ({}) instances found while attempting to execute {}",
-                         executionSorter.uncommitted.size(), iid);
-            PrepareGroup prepareGroup = new PrepareGroup(state, iid, executionSorter.uncommitted);
+                         executionSorter.uncommitted.size(), id);
+            PrepareGroup prepareGroup = new PrepareGroup(state, id, executionSorter.uncommitted);
             prepareGroup.schedule();
         }
         else
         {
-            for (UUID iid : executionSorter.getOrder())
+            for (UUID toExecuteId : executionSorter.getOrder())
             {
+                lock = state.getInstanceLock(toExecuteId);
                 lock.writeLock().lock();
-                Instance toExecute = state.loadInstance(iid);
+                Instance toExecute = state.loadInstance(toExecuteId);
                 try
                 {
                     if (toExecute.getState() == Instance.State.EXECUTED)
                     {
-                        if (toExecute.getId().equals(iid))
+                        if (toExecute.getId().equals(id))
                         {
+                            int x = 1;
                             return;
                         }
                         else
@@ -83,7 +85,7 @@ public class ExecuteTask implements Runnable
                     state.saveInstance(toExecute);
 
                     // TODO: why not just eagerly execute everything?
-                    if (toExecute.getId().equals(iid))
+                    if (toExecute.getId().equals(id))
                         return;
 
                 }

@@ -84,7 +84,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
         }
         else
         {
-            state.commit(iid, decision.acceptDeps, true);
+            state.commit(iid, decision.acceptDeps);
         }
     }
 

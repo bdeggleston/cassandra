@@ -145,10 +145,15 @@ public class PrepareCallback implements IAsyncCallback<Instance>
 
     private List<TryPreacceptAttempt> getTryPreacceptAttempts()
     {
-        // check for fast path being impossible
-        for (Instance instance: responses.values())
-            if (instance != null && instance.isFastPathImpossible())
+        // Check for the leader of the instance. If it didn't commit on the
+        // fast path, no on did, and there's no use running a TryPreaccept
+        for (Map.Entry<InetAddress, Instance> entry: responses.entrySet())
+        {
+            if (entry.getKey().equals(entry.getValue().getLeader()))
+            {
                 return Collections.EMPTY_LIST;
+            }
+        }
 
         // group common responses
         Set<InetAddress> replyingReplicas = Sets.newHashSet();
