@@ -20,7 +20,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
     private static final Logger logger = LoggerFactory.getLogger(PreacceptCallback.class);
 
     private final EpaxosState state;
-    private final UUID iid;
+    private final UUID id;
     private final Set<UUID> dependencies;
     private final EpaxosState.ParticipantInfo participantInfo;
     private final Set<UUID> remoteDependencies = Sets.newHashSet();
@@ -29,13 +29,13 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
 
     private boolean completed = false;
     private int numResponses = 0;
-    private int ballotFailure = 0;
+    private int ballot = 0;
     private int localResponse = 0;
 
     public PreacceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo)
     {
         this.state = state;
-        this.iid = instance.getId();
+        this.id = instance.getId();
         this.dependencies = instance.getDependencies();
         this.participantInfo = participantInfo;
     }
@@ -46,17 +46,16 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
         if (completed)
             return;
 
-        logger.debug("preaccept response received from {} for instance {}", msg.from, iid);
+        logger.debug("preaccept response received from {} for instance {}", msg.from, id);
         PreacceptResponse response = msg.payload;
 
         // another replica has taken control of this instance
         if (response.ballotFailure > 0)
         {
-
-            logger.debug("preaccept ballot failure from {} for instance {}", msg.from, iid);
-            ballotFailure = Math.max(ballotFailure, response.ballotFailure);
-
+            logger.debug("preaccept ballot failure from {} for instance {}", msg.from, id);
+            ballot = Math.max(ballot, response.ballotFailure);
             completed = true;
+            state.updateInstanceBallot(id, ballot);
             return;
         }
         responses.put(msg.from, response);
@@ -80,11 +79,11 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
     {
         if (decision.acceptNeeded)
         {
-            state.accept(iid, decision);
+            state.accept(id, decision);
         }
         else
         {
-            state.commit(iid, decision.acceptDeps);
+            state.commit(id, decision.acceptDeps);
         }
     }
 
@@ -111,13 +110,13 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
             Set<UUID> diff = Sets.difference(unifiedDeps, entry.getValue().dependencies);
             if (diff.size() > 0)
             {
-                diff.remove(iid);
+                diff.remove(id);
                 missingIds.put(entry.getKey(), diff);
             }
         }
 
         AcceptDecision decision = new AcceptDecision((!depsMatch || !fpQuorum), unifiedDeps, missingIds);
-        logger.debug("preaccept accept decision for {}: {}", iid, decision);
+        logger.debug("preaccept accept decision for {}: {}", id, decision);
         return decision;
     }
 

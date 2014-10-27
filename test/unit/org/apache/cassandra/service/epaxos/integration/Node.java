@@ -185,6 +185,16 @@ public class Node extends EpaxosState
         };
     }
 
+    @Override
+    public String toString()
+    {
+        return "Node{" +
+                "endpoint=" + endpoint +
+                ", state=" + state +
+                ", number=" + number +
+                '}';
+    }
+
     public static class SingleThreaded extends Node
     {
         public SingleThreaded(int number, String ksName, Messenger messenger)
@@ -194,6 +204,12 @@ public class Node extends EpaxosState
 
         @Override
         protected long getTimeout(long start)
+        {
+            return 0;
+        }
+
+        @Override
+        protected long getPrepareWaitTime(long lastUpdate)
         {
             return 0;
         }

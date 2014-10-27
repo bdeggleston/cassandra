@@ -41,7 +41,8 @@ public abstract class PreacceptTask implements Runnable
 
             EpaxosState.ParticipantInfo participantInfo = state.getParticipants(instance);
             instance.preaccept(state.getCurrentDependencies(instance));
-            instance.setSuccessors(participantInfo.getSuccessors());
+            if (instance.getSuccessors() == null)
+                instance.setSuccessors(participantInfo.getSuccessors());
             instance.setFastPathImpossible(true);
             instance.incrementBallot();
             state.saveInstance(instance);

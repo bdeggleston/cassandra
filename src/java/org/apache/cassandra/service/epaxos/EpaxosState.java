@@ -21,7 +21,6 @@ import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.service.epaxos.exceptions.InstanceNotFoundException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
@@ -63,6 +62,7 @@ public class EpaxosState
 
     // aborts prepare phases on commit
     private final ConcurrentMap<UUID, CountDownLatch> commitLatches = Maps.newConcurrentMap();
+    private final ConcurrentMap<UUID, List<ICommitCallback>> commitCallbacks = Maps.newConcurrentMap();
 
     private final Random random = new Random();
 
@@ -407,34 +407,30 @@ public class EpaxosState
      *
      * must be called with this instances's write lock held
      */
-    public void notifyCommit(UUID iid)
+    public void notifyCommit(UUID id)
     {
-        CountDownLatch commitLatch = commitLatches.get(iid);
-        if (commitLatch != null)
+        List<ICommitCallback> callbacks = commitCallbacks.get(id);
+        if (callbacks != null)
         {
-            commitLatch.countDown();
-            commitLatches.remove(iid);
+            for (ICommitCallback cb: callbacks)
+            {
+                cb.instanceCommitted(id);
+            }
         }
     }
-
-    /**
-     * Returns a commit latch for an instance
-     *
-     * must be called with the instance's lock held, and only
-     * if the instance was not committed
-     */
-    private CountDownLatch getCommitLatch(UUID iid)
+    
+    public void registerCommitCallback(UUID id, ICommitCallback callback)
     {
-        CountDownLatch commitLatch = commitLatches.get(iid);
-        if (commitLatch == null)
+        // TODO: should we check instance status, and bail out / call the callback if the instance is committed
+        List<ICommitCallback> callbacks = commitCallbacks.get(id);
+        if (callbacks == null)
         {
-            commitLatch = new CountDownLatch(1);
-            CountDownLatch previous = commitLatches.putIfAbsent(iid, commitLatch);
+            callbacks = new LinkedList<>();
+            List<ICommitCallback> previous = commitCallbacks.putIfAbsent(id, callbacks);
             if (previous != null)
-                commitLatch = previous;
+                callbacks = previous;
         }
-
-        return commitLatch;
+        callbacks.add(callback);
     }
 
     public void commit(UUID iid, Set<UUID> dependencies)
@@ -497,57 +493,13 @@ public class EpaxosState
 
     public void prepare(UUID id, PrepareGroup group)
     {
-        getStage(Stage.READ).submit(new PrepareTask(this, id, group));
+        getStage(Stage.READ).submit(PrepareTask.create(this, id, group));
     }
 
-    protected long getPrepareWaitTime(long lastUpdate, InetAddress leader, List<InetAddress> successors)
+    protected long getPrepareWaitTime(long lastUpdate)
     {
         long prepareAt = lastUpdate + PREPARE_GRACE_MILLIS;
         return Math.max(prepareAt - System.currentTimeMillis(), 0);
-    }
-
-    protected boolean shouldPrepare(UUID iid) throws InstanceNotFoundException
-    {
-        CountDownLatch commitLatch;
-
-        ReadWriteLock lock = locks.get(iid);
-        lock.readLock().lock();
-        long waitTime;
-        try
-        {
-            Instance instance = loadInstance(iid);
-
-            if (instance == null)
-                throw new InstanceNotFoundException(iid);
-
-            if (instance.getState() == Instance.State.COMMITTED || instance.getState() == Instance.State.EXECUTED)
-            {
-                logger.debug("Skipping prepare for instance {}. It's been committed or executed", iid);
-                return false;
-            }
-
-            waitTime = getPrepareWaitTime(instance.getLastUpdated(), instance.getLeader(), instance.getSuccessors());
-            commitLatch = getCommitLatch(iid);
-        }
-        finally
-        {
-            lock.readLock().unlock();
-        }
-
-        try
-        {
-            logger.debug("Waiting on commit or grace period expiration for {} ms before preparing {}.", waitTime, iid);
-            boolean committed = !commitLatch.await(waitTime, TimeUnit.MILLISECONDS);
-            if (!committed)
-            {
-                logger.debug("Instance was committed before grace period expired for {}.", iid);
-            }
-            return committed;
-        }
-        catch (InterruptedException e)
-        {
-            throw new AssertionError(e);
-        }
     }
 
     public IVerbHandler<PrepareRequest> getPrepareVerbHandler()
@@ -864,7 +816,7 @@ public class EpaxosState
 
     protected void updateInstanceBallot(UUID id, int ballot)
     {
-
+        getStage(Stage.MUTATION).submit(new BallotUpdateTask(this, id, ballot));
     }
 
     // accessor methods

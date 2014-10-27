@@ -74,6 +74,7 @@ public class TryPreacceptCallback implements IAsyncCallback<TryPreacceptResponse
                 if (group.size() == 1)
                 {
                     logger.error("Single contended instance for prepare: ", id);
+                    throw new AssertionError();
                 }
                 group.instanceCommitted(id);
             }

@@ -44,7 +44,7 @@ public class AcceptCallback implements IAsyncCallback<AcceptResponse>
         {
             logger.debug("proposed ballot rejected for accept response {} <= {}", proposedBallot, response.ballot);
             completed = true;
-            state.getStage(Stage.MUTATION).submit(new BallotUpdateTask(state, id, response.ballot));
+            state.updateInstanceBallot(id, response.ballot);
             return;
         }
 

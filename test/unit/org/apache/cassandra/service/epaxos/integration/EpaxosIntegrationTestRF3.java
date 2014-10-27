@@ -179,7 +179,7 @@ public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest.Sing
         setState(nodes.subList(fastPathQuorumSize(), nodes.size()), Node.State.NORESPONSE);
 
         // kill all replicas except the leader once the preaccept phase completes
-        leader2.preAcceptHook = new Runnable()
+        leader2.preCommitHook = new Runnable()
         {
             @Override
             public void run()

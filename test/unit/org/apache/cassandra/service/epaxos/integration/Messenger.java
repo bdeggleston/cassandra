@@ -8,6 +8,8 @@ import org.apache.cassandra.net.*;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -37,7 +39,21 @@ public class Messenger
 
     public List<InetAddress> getEndpoints()
     {
-        return Lists.newArrayList(nodes.keySet());
+        List<InetAddress> endpoints = Lists.newArrayList(nodes.keySet());
+        // we want returned endpoints to be sorted in order of down to up,
+        // which will ensure that noresponse nodes will get messages before
+        // the callback receives enough messages to move on to the next step
+        Collections.sort(endpoints, new Comparator<InetAddress>()
+        {
+            @Override
+            public int compare(InetAddress o1, InetAddress o2)
+            {
+                Node n1 = nodes.get(o1);
+                Node n2 = nodes.get(o2);
+                return n2.getState().ordinal() - n1.getState().ordinal();
+            }
+        });
+        return endpoints;
     }
 
     /**

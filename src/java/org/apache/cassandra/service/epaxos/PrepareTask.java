@@ -28,22 +28,23 @@ public class PrepareTask implements Runnable, ICommitCallback
 
     private volatile boolean committed;
 
-    public PrepareTask(EpaxosState state, UUID id, PrepareGroup group)
+    private PrepareTask(EpaxosState state, UUID id, PrepareGroup group)
     {
         this.state = state;
         this.id = id;
         this.group = group;
     }
 
+    public static PrepareTask create(EpaxosState state, UUID id, PrepareGroup group)
+    {
+        PrepareTask prepareTask = new PrepareTask(state, id, group);
+        state.registerCommitCallback(id, prepareTask);
+        return prepareTask;
+    }
+
     private boolean shouldPrepare(Instance instance)
     {
         return !instance.getState().atLeast(Instance.State.COMMITTED);
-    }
-
-    protected long getWaitTime(Instance instance)
-    {
-        long prepareAt = instance.getLastUpdated() + PREPARE_GRACE_MILLIS;
-        return Math.max(prepareAt - System.currentTimeMillis(), 0);
     }
 
     @Override
@@ -73,10 +74,13 @@ public class PrepareTask implements Runnable, ICommitCallback
         }
 
         if (!shouldPrepare(instance))
+        {
+            state.notifyCommit(id);
             return;
+        }
 
         // maybe wait for grace period to end
-        long wait = getWaitTime(instance);
+        long wait = state.getPrepareWaitTime(instance.getLastUpdated());
 
         if (wait > 0)
         {
@@ -134,7 +138,7 @@ public class PrepareTask implements Runnable, ICommitCallback
                 logger.debug("Instance {} was committed", task.id);
                 return;
             }
-            task.state.getStage(Stage.MUTATION).execute(task);
+            task.state.getStage(Stage.MUTATION).submit(task);
         }
     }
 }

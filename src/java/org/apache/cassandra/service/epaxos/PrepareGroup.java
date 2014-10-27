@@ -30,6 +30,7 @@ public class PrepareGroup implements ICommitCallback
         for (UUID toPrepare: uncommitted)
         {
             outstanding.add(toPrepare);
+            state.registerCommitCallback(toPrepare, this);
             state.prepare(toPrepare, this);
         }
     }
@@ -41,7 +42,7 @@ public class PrepareGroup implements ICommitCallback
         if (outstanding.size() == 0 && !completed)
         {
             completed = true;
-            state.getStage(Stage.MUTATION).execute(new ExecuteTask(state, id));
+            state.getStage(Stage.MUTATION).submit(new ExecuteTask(state, id));
         }
     }
 

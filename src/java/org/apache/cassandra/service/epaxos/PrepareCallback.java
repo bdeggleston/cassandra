@@ -47,21 +47,32 @@ public class PrepareCallback implements IAsyncCallback<Instance>
         if (completed)
             return;
 
-        if (msg.payload.getBallot() > ballot)
+        if (msg.payload != null && msg.payload.getBallot() > ballot)
         {
             // TODO: should we only try n times? if so start sending attempt # along
             completed = true;
             BallotUpdateTask ballotTask = new BallotUpdateTask(state, id, msg.payload.getBallot());
-            ballotTask.addNextTask(Stage.READ, new PrepareTask(state, id, group));
+            ballotTask.addNextTask(Stage.READ, PrepareTask.create(state, id, group));
             state.getStage(Stage.MUTATION).submit(ballotTask);
             return;
         }
 
         responses.put(msg.from, msg.payload);
 
-        if (responses.size() > participantInfo.quorumSize)
+        if (responses.size() >= participantInfo.quorumSize)
         {
             PrepareDecision decision = getDecision();
+
+            state.updateInstanceBallot(id, decision.ballot);
+
+            Runnable failureCallback = new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    group.instanceCommitted(id);
+                }
+            };
 
             switch (decision.state)
             {
@@ -123,24 +134,24 @@ public class PrepareCallback implements IAsyncCallback<Instance>
 
     public synchronized PrepareDecision getDecision()
     {
-        int maxBallot = 0;
+        int ballot = 0;
         for (Instance inst: responses.values())
             if (inst != null)
-                maxBallot = Math.max(maxBallot, inst.getBallot());
+                ballot = Math.max(ballot, inst.getBallot());
 
         List<Instance> committed = Lists.newArrayList(Iterables.filter(responses.values(), committedPredicate));
         if (committed.size() > 0)
-            return new PrepareDecision(Instance.State.COMMITTED, committed.get(0).getDependencies());
+            return new PrepareDecision(Instance.State.COMMITTED, committed.get(0).getDependencies(), ballot);
 
         List<Instance> accepted = Lists.newArrayList(Iterables.filter(responses.values(), acceptedPredicate));
         if (accepted.size() > 0)
-            return new PrepareDecision(Instance.State.ACCEPTED, accepted.get(0).getDependencies());
+            return new PrepareDecision(Instance.State.ACCEPTED, accepted.get(0).getDependencies(), ballot);
 
         // no other node knows about this instance, commit a noop
         if (Lists.newArrayList(Iterables.filter(responses.values(), notNullPredicate)).size() == 0)
-            return new PrepareDecision(Instance.State.PREACCEPTED, null, null, true);
+            return new PrepareDecision(Instance.State.PREACCEPTED, null, ballot, null, true);
 
-        return new PrepareDecision(Instance.State.PREACCEPTED, null, getTryPreacceptAttempts(), false);
+        return new PrepareDecision(Instance.State.PREACCEPTED, null, ballot, getTryPreacceptAttempts(), false);
     }
 
     private List<TryPreacceptAttempt> getTryPreacceptAttempts()
@@ -149,7 +160,7 @@ public class PrepareCallback implements IAsyncCallback<Instance>
         // fast path, no on did, and there's no use running a TryPreaccept
         for (Map.Entry<InetAddress, Instance> entry: responses.entrySet())
         {
-            if (entry.getKey().equals(entry.getValue().getLeader()))
+            if (entry.getValue() != null && entry.getKey().equals(entry.getValue().getLeader()))
             {
                 return Collections.EMPTY_LIST;
             }
