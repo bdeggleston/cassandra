@@ -16,19 +16,21 @@ public class AcceptCallback implements IAsyncCallback<AcceptResponse>
     private final EpaxosState state;
     private final UUID id;
     private final EpaxosState.ParticipantInfo participantInfo;
+    private final Runnable failureCallback;
     private final int proposedBallot;
     private final Set<UUID> proposedDependencies;
 
     private boolean completed = false;
     private int numResponses = 0;
 
-    public AcceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo)
+    public AcceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, Runnable failureCallback)
     {
         this.state = state;
         this.id = instance.getId();
         this.proposedBallot = instance.getBallot();
         this.proposedDependencies = instance.getDependencies();
         this.participantInfo = participantInfo;
+        this.failureCallback = failureCallback;
     }
 
     @Override
@@ -44,7 +46,11 @@ public class AcceptCallback implements IAsyncCallback<AcceptResponse>
         {
             logger.debug("proposed ballot rejected for accept response {} <= {}", proposedBallot, response.ballot);
             completed = true;
-            state.updateInstanceBallot(id, response.ballot);
+
+            BallotUpdateTask ballotTask = new BallotUpdateTask(state, id, response.ballot);
+            if (failureCallback != null)
+                ballotTask.addNextTask(null, failureCallback);
+            state.getStage(Stage.MUTATION).submit(ballotTask);
             return;
         }
 

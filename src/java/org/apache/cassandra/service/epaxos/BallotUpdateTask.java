@@ -45,7 +45,15 @@ public class BallotUpdateTask implements Runnable
 
         for (Pair<Stage, Runnable> next: nextTasks)
         {
-            state.getStage(next.left).submit(next.right);
+            // FIXME: this api sucks
+            if (next.left != null)
+            {
+                state.getStage(next.left).submit(next.right);
+            }
+            else
+            {
+                next.right.run();
+            }
         }
     }
 }

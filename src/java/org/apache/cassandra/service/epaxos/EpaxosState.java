@@ -21,7 +21,6 @@ import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
@@ -55,6 +54,7 @@ public class EpaxosState
 
     // prevents multiple threads from attempting to prepare the same instance. Aquire this before an instance lock
     private final Striped<Lock> prepareLocks = Striped.lock(DatabaseDescriptor.getConcurrentWriters() * 1024);
+    private final ConcurrentMap<UUID, PrepareGroup> prepareGroups = Maps.newConcurrentMap();
 
     // prevents multiple threads modifying the dependency manager for a given key. Aquire this after locking an instance
     private final Striped<Lock> depsLocks = Striped.lock(DatabaseDescriptor.getConcurrentWriters() * 1024);
@@ -280,14 +280,14 @@ public class EpaxosState
         }
     }
 
-    protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo)
+    protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
     {
-        return new PreacceptCallback(this, instance, participantInfo);
+        return new PreacceptCallback(this, instance, participantInfo, failureCallback, forceAccept);
     }
 
-    public void preacceptPrepare(UUID id, boolean noop)
+    public void preacceptPrepare(UUID id, boolean noop, Runnable failureCallback)
     {
-        PreacceptTask task = new PreacceptTask.Prepare(this, id, noop);
+        PreacceptTask task = new PreacceptTask.Prepare(this, id, noop, failureCallback);
         getStage(Stage.MUTATION).submit(task);
     }
 
@@ -345,17 +345,17 @@ public class EpaxosState
         return new PreacceptVerbHandler(this);
     }
 
-    protected AcceptCallback getAcceptCallback(Instance instance, ParticipantInfo participantInfo)
+    protected AcceptCallback getAcceptCallback(Instance instance, ParticipantInfo participantInfo, Runnable failureCallback)
     {
-        return new AcceptCallback(this, instance, participantInfo);
+        return new AcceptCallback(this, instance, participantInfo, failureCallback);
     }
 
-    public void accept(UUID id, Set<UUID> dependencies)
+    public void accept(UUID id, Set<UUID> dependencies, Runnable failureCallback)
     {
-        accept(id, new AcceptDecision(true, dependencies, Collections.<InetAddress, Set<UUID>>emptyMap()));
+        accept(id, new AcceptDecision(true, dependencies, Collections.<InetAddress, Set<UUID>>emptyMap()), failureCallback);
     }
 
-    public void accept(UUID iid, AcceptDecision decision)
+    public void accept(UUID iid, AcceptDecision decision, Runnable failureCallback)
     {
         logger.debug("accepting instance {}", iid);
 
@@ -380,7 +380,7 @@ public class EpaxosState
             throw new RuntimeException(e);
         }
 
-        AcceptCallback callback = getAcceptCallback(instance, participantInfo);
+        AcceptCallback callback = getAcceptCallback(instance, participantInfo, failureCallback);
         for (InetAddress endpoint : participantInfo.liveEndpoints)
         {
             logger.debug("sending accept request to {} for instance {}", endpoint, instance.getId());
@@ -439,9 +439,9 @@ public class EpaxosState
         try
         {
             Instance instance = getInstanceCopy(iid);
-            instance.commit(dependencies);
             instance.incrementBallot();
 
+            // FIXME: unavailable exception shouldn't be thrown by getParticipants. It will prevent instances from being committed locally
             ParticipantInfo participantInfo = getParticipants(instance);
             MessageOut<Instance> message = instance.getMessage(MessagingService.Verb.EPAXOS_COMMIT);
             for (InetAddress endpoint : participantInfo.liveEndpoints)
@@ -457,7 +457,7 @@ public class EpaxosState
                 sendOneWay(message, endpoint);
             }
         }
-        catch (UnavailableException | InvalidInstanceStateChange e)
+        catch (UnavailableException e)
         {
             throw new RuntimeException(e);
         }
@@ -507,6 +507,16 @@ public class EpaxosState
         return new PrepareVerbHandler(this);
     }
 
+    public PrepareGroup registerPrepareGroup(UUID id, PrepareGroup group)
+    {
+        return prepareGroups.putIfAbsent(id, group);
+    }
+
+    public void unregisterPrepareGroup(UUID id)
+    {
+        prepareGroups.remove(id);
+    }
+
     protected TryPrepareCallback getTryPrepareCallback()
     {
         return new TryPrepareCallback();
@@ -530,12 +540,12 @@ public class EpaxosState
     }
 
 
-    protected TryPreacceptCallback getTryPreacceptCallback(UUID iid, TryPreacceptAttempt attempt, List<TryPreacceptAttempt> nextAttempts, ParticipantInfo participantInfo, PrepareGroup group)
+    protected TryPreacceptCallback getTryPreacceptCallback(UUID iid, TryPreacceptAttempt attempt, List<TryPreacceptAttempt> nextAttempts, ParticipantInfo participantInfo, Runnable failureCallback)
     {
-        return new TryPreacceptCallback(this, iid, attempt, nextAttempts, participantInfo, group);
+        return new TryPreacceptCallback(this, iid, attempt, nextAttempts, participantInfo, failureCallback);
     }
 
-    public void tryPreaccept(UUID iid, List<TryPreacceptAttempt> attempts, ParticipantInfo participantInfo, PrepareGroup group)
+    public void tryPreaccept(UUID iid, List<TryPreacceptAttempt> attempts, ParticipantInfo participantInfo, Runnable failureCallback)
     {
         assert attempts.size() > 0;
         TryPreacceptAttempt attempt = attempts.get(0);
@@ -544,7 +554,7 @@ public class EpaxosState
         TryPreacceptRequest request = new TryPreacceptRequest(iid, attempt.dependencies);
         MessageOut<TryPreacceptRequest> message = request.getMessage();
 
-        TryPreacceptCallback callback = getTryPreacceptCallback(iid, attempt, nextAttempts, participantInfo, group);
+        TryPreacceptCallback callback = getTryPreacceptCallback(iid, attempt, nextAttempts, participantInfo, failureCallback);
         for (InetAddress endpoint: attempt.toConvince)
         {
             sendRR(message, endpoint, callback);

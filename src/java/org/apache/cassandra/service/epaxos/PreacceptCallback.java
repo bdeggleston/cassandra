@@ -23,21 +23,23 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
     private final UUID id;
     private final Set<UUID> dependencies;
     private final EpaxosState.ParticipantInfo participantInfo;
+    private final Runnable failureCallback;
     private final Set<UUID> remoteDependencies = Sets.newHashSet();
     private final Map<InetAddress, PreacceptResponse> responses = Maps.newHashMap();
-    private final Map<UUID, Instance> missingInstances = Maps.newHashMap();
+    private final boolean forceAccept;
 
     private boolean completed = false;
     private int numResponses = 0;
     private int ballot = 0;
-    private int localResponse = 0;
 
-    public PreacceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo)
+    public PreacceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
     {
         this.state = state;
         this.id = instance.getId();
         this.dependencies = instance.getDependencies();
         this.participantInfo = participantInfo;
+        this.failureCallback = failureCallback;
+        this.forceAccept = forceAccept;
     }
 
     @Override
@@ -56,6 +58,11 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
             ballot = Math.max(ballot, response.ballotFailure);
             completed = true;
             state.updateInstanceBallot(id, ballot);
+
+            BallotUpdateTask ballotTask = new BallotUpdateTask(state, id, ballot);
+            if (failureCallback != null)
+                ballotTask.addNextTask(null, failureCallback);
+            state.getStage(Stage.MUTATION).submit(ballotTask);
             return;
         }
         responses.put(msg.from, response);
@@ -68,6 +75,11 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
         }
 
         numResponses++;
+        maybeDecideResult();
+    }
+
+    protected void maybeDecideResult()
+    {
         if (numResponses >= participantInfo.quorumSize)
         {
             AcceptDecision decision = getAcceptDecision();
@@ -77,9 +89,9 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
 
     protected void processDecision(AcceptDecision decision)
     {
-        if (decision.acceptNeeded)
+        if (decision.acceptNeeded || forceAccept)
         {
-            state.accept(id, decision);
+            state.accept(id, decision, failureCallback);
         }
         else
         {
@@ -90,7 +102,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
     public synchronized void countLocal()
     {
         numResponses++;
-        localResponse = 1;
+        maybeDecideResult();
     }
 
     // returns deps for an accept phase if all responses didn't agree with the leader,
@@ -100,7 +112,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
         boolean depsMatch = dependencies.equals(remoteDependencies);
 
         // the fast path quorum may be larger than the simple quorum, so getResponseCount can't be used
-        boolean fpQuorum = (responses.size() + localResponse) >= participantInfo.fastQuorumSize;
+        boolean fpQuorum = numResponses >= participantInfo.fastQuorumSize;
 
         Set<UUID> unifiedDeps = ImmutableSet.copyOf(Iterables.concat(dependencies, remoteDependencies));
 

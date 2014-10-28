@@ -2,7 +2,6 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.service.epaxos.integration.AbstractEpaxosIntegrationTest;
 import org.apache.cassandra.service.epaxos.integration.Messenger;
 import org.apache.cassandra.service.epaxos.integration.Node;
@@ -23,9 +22,9 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
         return new Node.SingleThreaded(number, ksName, messenger)
         {
             @Override
-            protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo)
+            protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
             {
-                return new PreacceptCallback(this, instance, participantInfo)
+                return new PreacceptCallback(this, instance, participantInfo, failureCallback, forceAccept)
                 {
                     @Override
                     protected void processDecision(AcceptDecision decision)

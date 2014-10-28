@@ -53,9 +53,37 @@ public class PrepareTask implements Runnable, ICommitCallback
         // TODO: how to prevent multiple pending tasks? Prepare lock isn't the best option here
         if (committed)
         {
+            group.instanceCommitted(id);
             logger.debug("Instance {} was committed", id);
             return;
         }
+
+
+        // if there's another prepare in progress for this instance, tell
+        // it to rerun this one when it finishes. This prevents a single
+        // node from running multiple concurrent prepare phases for the
+        // same instance.
+        // the api however, kinda sucks
+        // TODO: make not suck
+        while (true)
+        {
+            PrepareGroup previous = state.registerPrepareGroup(id, group);
+            if (previous == null)
+            {
+                break;
+            }
+            else if (previous.addCompleteRunnable(Stage.READ, this))
+            {
+                return;
+            }
+        }
+
+//        PrepareGroup previous = state.registerPrepareGroup(id, group);
+//        if (previous != null)
+//        {
+//            group.prepareComplete(id);
+//            return;
+//        }
 
         Instance instance = state.getInstanceCopy(id);
 
@@ -75,6 +103,7 @@ public class PrepareTask implements Runnable, ICommitCallback
 
         if (!shouldPrepare(instance))
         {
+            group.instanceCommitted(id);
             state.notifyCommit(id);
             return;
         }

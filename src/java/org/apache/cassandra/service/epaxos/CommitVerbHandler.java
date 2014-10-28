@@ -47,8 +47,6 @@ class CommitVerbHandler implements IVerbHandler<Instance>
             }
             instance.commit(remoteInstance.getDependencies());
             state.saveInstance(instance);
-
-            state.notifyCommit(instance.getId());
             state.recordAcknowledgedDeps(instance);
         }
         catch (InvalidInstanceStateChange e)
@@ -62,6 +60,7 @@ class CommitVerbHandler implements IVerbHandler<Instance>
             lock.writeLock().unlock();
         }
 
+        state.notifyCommit(message.payload.getId());
         state.execute(message.payload.getId());
     }
 }

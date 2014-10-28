@@ -14,7 +14,6 @@ import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.epaxos.*;
-import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.net.InetAddress;
@@ -125,12 +124,12 @@ public class Node extends EpaxosState
     }
 
     @Override
-    public void accept(UUID iid, AcceptDecision decision)
+    public void accept(UUID iid, AcceptDecision decision, Runnable failureCallback)
     {
         if (preAcceptHook != null)
             preAcceptHook.run();
         accepted.add(iid);
-        super.accept(iid, decision);
+        super.accept(iid, decision, failureCallback);
     }
 
     @Override
@@ -151,7 +150,7 @@ public class Node extends EpaxosState
     @Override
     protected ParticipantInfo getParticipants(Instance instance) throws UnavailableException
     {
-        return new ParticipantInfo(messenger.getEndpoints(), NO_ENDPOINTS, instance.getQuery().getConsistencyLevel());
+        return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, instance.getQuery().getConsistencyLevel());
     }
 
     @Override
@@ -195,6 +194,42 @@ public class Node extends EpaxosState
                 '}';
     }
 
+    /**
+     * runs tasks in the order they're received
+     */
+    public static TracingAwareExecutorService queuedExecutor = new AbstractExecutorService()
+    {
+        private Queue<Runnable> queue = new LinkedTransferQueue<>();
+
+        private synchronized void maybeRun(Runnable runnable)
+        {
+            boolean wasEmpty = queue.isEmpty();
+            queue.add(runnable);
+            if (wasEmpty)
+            {
+                while (!queue.isEmpty())
+                {
+                    queue.peek().run();  // prevents the next added task thinking it should run
+                    queue.remove();
+                }
+            }
+        }
+
+        @Override
+        public <T> Future<T> submit(Runnable task, T result)
+        {
+            maybeRun(task);
+            return null;
+        }
+
+        @Override
+        public Future<?> submit(Runnable task)
+        {
+            maybeRun(task);
+            return null;
+        }
+    };
+
     public static class SingleThreaded extends Node
     {
         public SingleThreaded(int number, String ksName, Messenger messenger)
@@ -217,96 +252,7 @@ public class Node extends EpaxosState
         @Override
         public TracingAwareExecutorService getStage(Stage stage)
         {
-            return new TracingAwareExecutorService()
-            {
-                @Override
-                public void execute(Runnable command, TraceState state)
-                {
-                    command.run();
-                }
-
-                @Override
-                public void maybeExecuteImmediately(Runnable command)
-                {
-                    command.run();
-                }
-
-                @Override
-                public void shutdown() {}
-
-                @Override
-                public List<Runnable> shutdownNow()
-                {
-                    throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public boolean isShutdown()
-                {
-                    return false;
-                }
-
-                @Override
-                public boolean isTerminated()
-                {
-                    throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException
-                {
-                    throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public <T> Future<T> submit(Callable<T> task)
-                {
-                    return null;
-                }
-
-                @Override
-                public <T> Future<T> submit(Runnable task, T result)
-                {
-                    return null;
-                }
-
-                @Override
-                public Future<?> submit(Runnable task)
-                {
-                    task.run();
-                    return null;
-                }
-
-                @Override
-                public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) throws InterruptedException
-                {
-                    throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException
-                {
-                    throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public <T> T invokeAny(Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException
-                {
-                    throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException
-                {
-                    throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public void execute(Runnable command)
-                {
-                    throw new UnsupportedOperationException();
-                }
-            };
+            return queuedExecutor;
         }
     }
 }

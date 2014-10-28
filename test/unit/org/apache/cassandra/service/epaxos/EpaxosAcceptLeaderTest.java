@@ -2,12 +2,9 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.apache.cassandra.exceptions.WriteTimeoutException;
-import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.service.epaxos.integration.AbstractEpaxosIntegrationTest;
 import org.apache.cassandra.service.epaxos.integration.Messenger;
 import org.apache.cassandra.service.epaxos.integration.Node;
-import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
@@ -41,9 +38,9 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         return new Node.SingleThreaded(number, ksName, messenger)
         {
             @Override
-            protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo)
+            protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
             {
-                return new PreacceptCallback(this, instance, participantInfo)
+                return new PreacceptCallback(this, instance, participantInfo, failureCallback, forceAccept)
                 {
                     @Override
                     protected void processDecision(AcceptDecision decision)
@@ -85,7 +82,7 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
 
         Set<UUID> newDeps = Sets.newHashSet(instance.getDependencies());
         newDeps.add(UUIDGen.getTimeUUID());
-        node.accept(instance.getId(), new AcceptDecision(true, newDeps, Collections.EMPTY_MAP));
+        node.accept(instance.getId(), new AcceptDecision(true, newDeps, Collections.EMPTY_MAP), null);
 
         instance = node.getInstance(instance.getId());
         Assert.assertEquals(newDeps, instance.getDependencies());
@@ -118,7 +115,7 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         Map<InetAddress, Set<UUID>> missingInstances = new HashMap<>();
         missingInstances.put(nodes.get(1).getEndpoint(), Sets.newHashSet(oldInstance.getId()));
 
-        node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), missingInstances));
+        node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), missingInstances), null);
 
         Assert.assertNotNull(nodes.get(1).getInstance(oldInstance.getId()));
     }
@@ -140,7 +137,7 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
 
         setState(nodes.subList(1, nodes.size()), Node.State.DOWN);
 
-        node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), Collections.EMPTY_MAP));
+        node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), Collections.EMPTY_MAP), null);
 
         // TODO: check not committed
         Assert.assertNull(lastCommit);
@@ -158,7 +155,7 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         for (Node n: nodes.subList(1, nodes.size()))
             n.getInstance(instance.getId()).incrementBallot();
 
-        node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), Collections.EMPTY_MAP));
+        node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), Collections.EMPTY_MAP), null);
         // TODO: check not committed
         Assert.assertNull(lastCommit);
     }

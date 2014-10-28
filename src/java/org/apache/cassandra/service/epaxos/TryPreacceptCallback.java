@@ -17,21 +17,21 @@ public class TryPreacceptCallback implements IAsyncCallback<TryPreacceptResponse
     private final TryPreacceptAttempt attempt;
     private final List<TryPreacceptAttempt> nextAttempts;
     private final EpaxosState.ParticipantInfo participantInfo;
-    private final PrepareGroup group;
+    private final Runnable failureCallback;
 
     private int responses = 0;
     private int convinced = 0;
     private boolean contended = false;
     private boolean completed = false;
 
-    public TryPreacceptCallback(EpaxosState state, UUID id, TryPreacceptAttempt attempt, List<TryPreacceptAttempt> nextAttempts, EpaxosState.ParticipantInfo participantInfo, PrepareGroup group)
+    public TryPreacceptCallback(EpaxosState state, UUID id, TryPreacceptAttempt attempt, List<TryPreacceptAttempt> nextAttempts, EpaxosState.ParticipantInfo participantInfo, Runnable failureCallback)
     {
         this.state = state;
         this.id = id;
         this.attempt = attempt;
         this.nextAttempts = nextAttempts;
         this.participantInfo = participantInfo;
-        this.group = group;
+        this.failureCallback = failureCallback;
     }
 
     @Override
@@ -63,20 +63,16 @@ public class TryPreacceptCallback implements IAsyncCallback<TryPreacceptResponse
             if (convinced >= attempt.requiredConvinced)
             {
                 // try-preaccept successful
-                state.accept(id, attempt.dependencies);
+                state.accept(id, attempt.dependencies, failureCallback);
             }
             else if (contended)
             {
-                // need to wait for other instances to be committed,  tell the prepare
-                // group prepare was completed for this id. It will get picked
-                // up while preparing the other instances, and another prepare
-                // task will be started if it's not committed
-                if (group.size() == 1)
-                {
-                    logger.error("Single contended instance for prepare: ", id);
-                    throw new AssertionError();
-                }
-                group.instanceCommitted(id);
+                // need to wait for other instances to be committed,  tell the
+                // prepare group prepare was completed for this id. It will get
+                // picked up while preparing the other instances, and another
+                // prepare task will be started if it's not committed
+                if (failureCallback != null)
+                    failureCallback.run();
             }
             else
             {
@@ -84,12 +80,12 @@ public class TryPreacceptCallback implements IAsyncCallback<TryPreacceptResponse
                 if (nextAttempts.size() > 0)
                 {
                     // start the next trypreaccept
-                    state.tryPreaccept(id, nextAttempts, participantInfo, group);
+                    state.tryPreaccept(id, nextAttempts, participantInfo, failureCallback);
                 }
                 else
                 {
                     // fall back to regular preaccept
-                    state.preacceptPrepare(id, false);
+                    state.preacceptPrepare(id, false, failureCallback);
                 }
             }
         }

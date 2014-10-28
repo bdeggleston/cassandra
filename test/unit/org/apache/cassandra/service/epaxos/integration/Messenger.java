@@ -37,17 +37,23 @@ public class Messenger
         verbHandlers.put(node.getEndpoint(), handlers);
     }
 
-    public List<InetAddress> getEndpoints()
+    public List<InetAddress> getEndpoints(final InetAddress forNode)
     {
         List<InetAddress> endpoints = Lists.newArrayList(nodes.keySet());
         // we want returned endpoints to be sorted in order of down to up,
         // which will ensure that noresponse nodes will get messages before
         // the callback receives enough messages to move on to the next step
+        // the node asking for endpoints should always be the last one returned
         Collections.sort(endpoints, new Comparator<InetAddress>()
         {
             @Override
             public int compare(InetAddress o1, InetAddress o2)
             {
+                if (o1.equals(forNode))
+                    return 1;
+                if (o2.equals(forNode))
+                    return -1;
+
                 Node n1 = nodes.get(o1);
                 Node n2 = nodes.get(o2);
                 return n2.getState().ordinal() - n1.getState().ordinal();

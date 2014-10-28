@@ -61,16 +61,20 @@ public class PrepareCallback implements IAsyncCallback<Instance>
 
         if (responses.size() >= participantInfo.quorumSize)
         {
+            completed = true;
             PrepareDecision decision = getDecision();
 
             state.updateInstanceBallot(id, decision.ballot);
 
+            // if any of the next steps fail, they should report
+            // the prepare phase as complete so the prepare is
+            // tried again
             Runnable failureCallback = new Runnable()
             {
                 @Override
                 public void run()
                 {
-                    group.instanceCommitted(id);
+                    group.prepareComplete(id);
                 }
             };
 
@@ -80,15 +84,15 @@ public class PrepareCallback implements IAsyncCallback<Instance>
                     if (decision.tryPreacceptAttempts.size() > 0)
                     {
                         List<TryPreacceptAttempt> attempts = decision.tryPreacceptAttempts;
-                        state.tryPreaccept(id, attempts, participantInfo, group);
+                        state.tryPreaccept(id, attempts, participantInfo, failureCallback);
                     }
                     else
                     {
-                        state.preacceptPrepare(id, decision.commitNoop);
+                        state.preacceptPrepare(id, decision.commitNoop, failureCallback);
                     }
                     break;
                 case ACCEPTED:
-                    state.accept(id, decision.deps);
+                    state.accept(id, decision.deps, failureCallback);
                     break;
                 case COMMITTED:
                     state.commit(id, decision.deps);

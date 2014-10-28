@@ -31,6 +31,10 @@ public class PrepareDecision
     @Override
     public String toString()
     {
-        return String.format("[PrepareDecision %s, # try preaccept attempts: %s, noop: %s]", state, tryPreacceptAttempts.size(), commitNoop);
+        return "PrepareDecision{" +
+                "state=" + state +
+                ", tryPreacceptAttempts=" + (tryPreacceptAttempts != null ? tryPreacceptAttempts.size() : 0) +
+                ", commitNoop=" + commitNoop +
+                '}';
     }
 }

@@ -17,21 +17,24 @@ public abstract class PreacceptTask implements Runnable
 
     protected final EpaxosState state;
     protected final UUID id;
+    private final Runnable failureCallback;
 
-    protected PreacceptTask(EpaxosState state, UUID id)
+    protected PreacceptTask(EpaxosState state, UUID id, Runnable failureCallback)
     {
         this.state = state;
         this.id = id;
+        this.failureCallback = failureCallback;
     }
 
-    protected abstract void sendMessage(Instance instance, EpaxosState.ParticipantInfo participantInfo);
     protected abstract Instance getInstance();
+    protected abstract boolean forceAccept();
 
     @Override
     public void run()
     {
         logger.debug("preaccepting instance {}", id);
-        PreacceptCallback callback;
+        Instance instanceCopy;
+        EpaxosState.ParticipantInfo participantInfo;
         ReadWriteLock lock = state.getInstanceLock(id);
         lock.writeLock().lock();
         try
@@ -39,7 +42,18 @@ public abstract class PreacceptTask implements Runnable
 
             Instance instance = getInstance();
 
-            EpaxosState.ParticipantInfo participantInfo = state.getParticipants(instance);
+            if (instance.getState().atLeast(Instance.State.ACCEPTED))
+            {
+                if (failureCallback != null)
+                {
+                    // not technically a failure, but the task didn't
+                    // complete the way it was expected to
+                    failureCallback.run();
+                }
+                return;
+            }
+
+            participantInfo = state.getParticipants(instance);
             instance.preaccept(state.getCurrentDependencies(instance));
             if (instance.getSuccessors() == null)
                 instance.setSuccessors(participantInfo.getSuccessors());
@@ -47,7 +61,7 @@ public abstract class PreacceptTask implements Runnable
             instance.incrementBallot();
             state.saveInstance(instance);
 
-            sendMessage(instance, participantInfo);
+            instanceCopy = instance.copy();
         }
         catch (UnavailableException | InvalidInstanceStateChange e)
         {
@@ -57,8 +71,28 @@ public abstract class PreacceptTask implements Runnable
         {
             lock.writeLock().unlock();
         }
+        sendMessage(instanceCopy, participantInfo);
     }
 
+    protected void sendMessage(Instance instance, EpaxosState.ParticipantInfo participantInfo)
+    {
+        MessageOut<Instance> message = instance.getMessage(MessagingService.Verb.EPAXOS_PREACCEPT);
+        PreacceptCallback callback = state.getPreacceptCallback(instance, participantInfo, failureCallback, forceAccept());
+
+        for (InetAddress endpoint : participantInfo.liveEndpoints)
+        {
+            if (!endpoint.equals(state.getEndpoint()))
+            {
+                logger.debug("sending preaccept request to {} for instance {}", endpoint, instance.getId());
+                state.sendRR(message, endpoint, callback);
+            }
+            else
+            {
+                logger.debug("counting self in preaccept quorum for instance {}", instance.getId());
+                callback.countLocal();
+            }
+        }
+    }
 
     public static class Leader extends PreacceptTask
     {
@@ -67,7 +101,7 @@ public abstract class PreacceptTask implements Runnable
 
         public Leader(EpaxosState state, Instance target)
         {
-            super(state, target.getId());
+            super(state, target.getId(), null);
             this.target = target;
         }
 
@@ -79,24 +113,9 @@ public abstract class PreacceptTask implements Runnable
         }
 
         @Override
-        protected void sendMessage(Instance instance, EpaxosState.ParticipantInfo participantInfo)
+        protected boolean forceAccept()
         {
-            MessageOut<Instance> message = instance.getMessage(MessagingService.Verb.EPAXOS_PREACCEPT);
-            PreacceptCallback callback = state.getPreacceptCallback(instance, participantInfo);
-
-            if (state.getEndpoint().equals(instance.getLeader()))
-            {
-                logger.debug("counting self in preaccept quorum for instance {}", instance.getId());
-                callback.countLocal();
-            }
-            for (InetAddress endpoint : participantInfo.liveEndpoints)
-            {
-                if (!endpoint.equals(state.getEndpoint()))
-                {
-                    logger.debug("sending preaccept request to {} for instance {}", endpoint, instance.getId());
-                    state.sendRR(message, endpoint, callback);
-                }
-            }
+            return false;
         }
     }
 
@@ -105,30 +124,25 @@ public abstract class PreacceptTask implements Runnable
 
         private final boolean noop;
 
-        public Prepare(EpaxosState state, UUID id, boolean noop)
+        public Prepare(EpaxosState state, UUID id, boolean noop, Runnable failureCallback)
         {
-            super(state, id);
+            super(state, id, failureCallback);
             this.noop = noop;
-        }
-
-        @Override
-        protected void sendMessage(Instance instance, EpaxosState.ParticipantInfo participantInfo)
-        {
-            MessageOut<Instance> message = instance.getMessage(MessagingService.Verb.EPAXOS_PREACCEPT);
-            PreacceptCallback callback = state.getPreacceptCallback(instance, participantInfo);
-            for (InetAddress endpoint : participantInfo.liveEndpoints)
-            {
-                logger.debug("sending preaccept request to {} for instance {}", endpoint, instance.getId());
-                state.sendRR(message, endpoint, callback);
-            }
         }
 
         @Override
         protected Instance getInstance()
         {
-            Instance instance = state.getInstanceCopy(id);
+            Instance instance = state.loadInstance(id);
             assert instance != null;
+            instance.setNoop(noop);
             return instance;
+        }
+
+        @Override
+        protected boolean forceAccept()
+        {
+            return true;
         }
     }
 }
