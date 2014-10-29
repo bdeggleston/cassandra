@@ -42,17 +42,20 @@ public class PrepareCallback implements IAsyncCallback<Instance>
     @Override
     public synchronized void response(MessageIn<Instance> msg)
     {
-        logger.debug("preaccept response received from {} for instance {}", msg.from, id);
+        logger.debug("prepare response received from {} for instance {}", msg.from, id);
 
         if (completed)
+        {
+            logger.debug("ignoring prepare response from {} for instance {}. prepare messaging completed", msg.from, id);
             return;
+        }
 
         if (msg.payload != null && msg.payload.getBallot() > ballot)
         {
             // TODO: should we only try n times? if so start sending attempt # along
             completed = true;
             BallotUpdateTask ballotTask = new BallotUpdateTask(state, id, msg.payload.getBallot());
-            ballotTask.addNextTask(Stage.READ, PrepareTask.create(state, id, group));
+            ballotTask.addNextTask(Stage.READ, new PrepareTask(state, id, group));
             state.getStage(Stage.MUTATION).submit(ballotTask);
             return;
         }
@@ -63,6 +66,7 @@ public class PrepareCallback implements IAsyncCallback<Instance>
         {
             completed = true;
             PrepareDecision decision = getDecision();
+            logger.debug("prepare decision for {}: {}", id, decision);
 
             state.updateInstanceBallot(id, decision.ballot);
 

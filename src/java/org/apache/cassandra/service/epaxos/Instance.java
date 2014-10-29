@@ -118,10 +118,12 @@ public class Instance
         ballot = i.ballot;
         noop = i.noop;
         fastPathImpossible = i.fastPathImpossible;
-        placeholder = i.placeholder;
         dependencies = i.dependencies;
-        successors = i.successors;
         leaderDepsMatch = i.leaderDepsMatch;
+        successors = i.successors;
+        placeholder = i.placeholder;
+        stronglyConnected = i.stronglyConnected;
+        lastUpdated = i.lastUpdated;
     }
 
     public UUID getId()
@@ -200,6 +202,22 @@ public class Instance
     public void setPlaceholder(boolean placeholder)
     {
         this.placeholder = placeholder;
+    }
+
+    /**
+     * When we're notified of instances that have been preaccepted, but they haven't been
+     * seen locally, it's useful to record them for failure recovery, but they can't be
+     * used for a lot of things in their preaccepted state.
+     *
+     * Setting them as a placeholder instance prevents them from being included in preaccept
+     * dependencies, or prepare responses
+     */
+    // TODO: are these added to the deps manager after coming out of placeholder mode?
+    public void makePlacehoder()
+    {
+        placeholder = true;
+        dependencies = null;
+        ballot = 0;
     }
 
     public boolean isPlaceholder()
@@ -322,6 +340,9 @@ public class Instance
         return query.execute();
     }
 
+    /**
+     * Returns an exact copy of this instance for internal use
+     */
     public Instance copy()
     {
         return new Instance(this);
@@ -546,6 +567,20 @@ public class Instance
     @Override
     public String toString()
     {
-        return String.format("[Instance %s, dependencies: %s", id, dependencies != null ? dependencies.size() : null);
+        return "Instance{" +
+                "id=" + id +
+                ", leader=" + leader +
+                ", state=" + state +
+                ", dependencies=" + (dependencies != null ? dependencies.size() : null)  +
+                '}';
     }
+
+    static Predicate<Instance> skipPlaceholderPredicate = new Predicate<Instance>()
+    {
+        @Override
+        public boolean apply(Instance instance)
+        {
+            return !instance.isPlaceholder();
+        }
+    };
 }

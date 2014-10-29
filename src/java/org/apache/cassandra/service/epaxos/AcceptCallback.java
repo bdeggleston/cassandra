@@ -21,6 +21,7 @@ public class AcceptCallback implements IAsyncCallback<AcceptResponse>
     private final Set<UUID> proposedDependencies;
 
     private boolean completed = false;
+    private boolean localResponse = false;
     private int numResponses = 0;
 
     public AcceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, Runnable failureCallback)
@@ -37,7 +38,10 @@ public class AcceptCallback implements IAsyncCallback<AcceptResponse>
     public synchronized void response(MessageIn<AcceptResponse> msg)
     {
         if (completed)
+        {
+            logger.debug("ignoring accept response from {} for instance {}. accept messaging completed", msg.from, id);
             return;
+        }
 
         logger.debug("accept response received from {} for instance {}", msg.from, id);
         AcceptResponse response = msg.payload;
@@ -54,9 +58,15 @@ public class AcceptCallback implements IAsyncCallback<AcceptResponse>
             return;
         }
 
-        numResponses++;
-        if (numResponses >= participantInfo.quorumSize)
+        if (msg.from.equals(state.getEndpoint()))
         {
+            localResponse = true;
+        }
+
+        numResponses++;
+        if (numResponses >= participantInfo.quorumSize && localResponse)
+        {
+            completed = true;
             state.commit(id, proposedDependencies);
         }
     }

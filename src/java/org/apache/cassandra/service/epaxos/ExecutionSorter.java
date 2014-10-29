@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.locks.ReadWriteLock;
 
 /**
  * Builds and sorts the dependency graph to determine the execution
@@ -26,57 +25,38 @@ class ExecutionSorter
 
     private final Instance target;
     private final Set<UUID> targetDeps;
-    private final EpaxosState accessor;
+    private final EpaxosState state;
 
     // prevents saving the same scc over and over
     private final Map<UUID, Set<UUID>> loadedScc = Maps.newHashMap();
 
     private int traversals = 0;
 
-    ExecutionSorter(Instance target, EpaxosState accessor)
+    ExecutionSorter(Instance target, EpaxosState state)
     {
         this.target = target;
         targetDeps = target.getDependencies();
-        this.accessor = accessor;
+        this.state = state;
     }
 
     private void addInstance(Instance instance)
     {
         traversals++;
         assert instance != null;
-
-        Set<UUID> deps;
-        Instance.State state;
-        Set<UUID> stronglyConnected;
-        boolean isPlaceholder;
-        ReadWriteLock lock = accessor.getInstanceLock(instance.getId());
-        lock.readLock().lock();
-        try
-        {
-            deps = instance.getDependencies();
-            state = instance.getState();
-            stronglyConnected = instance.getStronglyConnected();
-            isPlaceholder = instance.isPlaceholder();
-        }
-        finally
-        {
-            lock.readLock().unlock();
-        }
-
         // if the instance is already executed, and it's not a dependency
         // of the target execution instance, only add it to the dep graph
         // if it's connected to an uncommitted instance, since that will
         // make it part of a strongly connected component of at least one
         // unexecuted instance, and will therefore affect the execution
         // ordering
-        if (state == Instance.State.EXECUTED)
+        if (instance.getState() == Instance.State.EXECUTED)
         {
             if (!targetDeps.contains(instance.getId()))
             {
                 boolean connected = false;
-                for (UUID dep: deps)
+                for (UUID dep: instance.getDependencies())
                 {
-                    boolean notExecuted = accessor.loadInstance(dep).getState() != Instance.State.EXECUTED;
+                    boolean notExecuted = this.state.loadInstance(dep).getState() != Instance.State.EXECUTED;
                     boolean targetDep = targetDeps.contains(dep);
                     boolean required = requiredInstances.contains(dep);
                     connected |= notExecuted || targetDep || required;
@@ -87,38 +67,36 @@ class ExecutionSorter
             }
 
         }
-        else if (state != Instance.State.COMMITTED)
+        else if (instance.getState() != Instance.State.COMMITTED)
         {
             uncommitted.add(instance.getId());
 
             // deps should only be null if this is an uncommitted
             // placeholder instance. We can't proceed until it's
             // been committed.
-            if (deps == null)
+            if (instance.getDependencies() == null)
             {
-                assert isPlaceholder;
+                assert instance.isPlaceholder();
                 return;
             }
         }
 
-        if (stronglyConnected != null)
-            requiredInstances.addAll(stronglyConnected);
+        if (instance.getStronglyConnected() != null)
+            requiredInstances.addAll(instance.getStronglyConnected());
 
-        dependencyGraph.addVertex(instance.getId(), deps);
-        for (UUID dep: deps)
+        dependencyGraph.addVertex(instance.getId(), instance.getDependencies());
+        for (UUID dep: instance.getDependencies())
         {
             if (dependencyGraph.contains(dep))
                 continue;
 
-            Instance depInst = accessor.loadInstance(dep);
+            Instance depInst = this.state.getInstanceCopy(dep);
             if (depInst == null)
             {
                 logger.debug("Unknown dependency encountered, adding to uncommitted. " + dep.toString());
                 uncommitted.add(dep);
                 continue;
             }
-            assert depInst != null;
-
             addInstance(depInst);
         }
     }
@@ -154,9 +132,9 @@ class ExecutionSorter
                             assert loadedScc.get(iid).equals(componentSet);
                             continue;
                         }
-                        Instance instance = accessor.loadInstance(iid);
+                        Instance instance = state.loadInstance(iid);
                         instance.setStronglyConnected(componentSet);
-                        accessor.saveInstance(instance);
+                        state.saveInstance(instance);
                     }
                 }
 

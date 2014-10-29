@@ -48,11 +48,12 @@ class CommitVerbHandler implements IVerbHandler<Instance>
             instance.commit(remoteInstance.getDependencies());
             state.saveInstance(instance);
             state.recordAcknowledgedDeps(instance);
+            state.notifyCommit(message.payload.getId());
         }
         catch (InvalidInstanceStateChange e)
         {
             // got a duplicate commit message, no big deal
-            logger.debug("Duplicate commit message received", e);
+            logger.debug("Duplicate commit message received", e.getMessage());
             return;
         }
         finally
@@ -60,7 +61,6 @@ class CommitVerbHandler implements IVerbHandler<Instance>
             lock.writeLock().unlock();
         }
 
-        state.notifyCommit(message.payload.getId());
         state.execute(message.payload.getId());
     }
 }

@@ -75,7 +75,8 @@ class AcceptVerbHandler implements IVerbHandler<AcceptRequest>
             // another node is working on a prepare phase that this node wasn't involved in.
             // as long as the dependencies are the same, reply with an ok, otherwise, something
             // has gone wrong
-            assert instance.getDependencies().equals(remoteInstance.getDependencies());
+            assert instance.getDependencies().equals(remoteInstance.getDependencies()):
+                    String.format("Proposed accept phase deps don't match. \n\tLocal: %s \n\tRemote: %s", instance, remoteInstance);
 
             logger.debug("Accept request from {} for {}, rejected. State demotion", message.from, remoteInstance.getId());
             AcceptResponse response = new AcceptResponse(true, 0);

@@ -21,8 +21,9 @@ public class AcceptDecision
     @Override
     public String toString()
     {
-        return String.format("[AcceptDecision: accept phase: %s, %s missing instances]",
-                             acceptNeeded,
-                             missingInstances.size());
+        return "AcceptDecision{" +
+                "acceptNeeded=" + acceptNeeded +
+                ", missingInstances=" + (missingInstances != null ? missingInstances.size() : null) +
+                '}';
     }
 }

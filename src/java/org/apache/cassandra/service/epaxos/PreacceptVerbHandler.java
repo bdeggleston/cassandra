@@ -1,5 +1,8 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.MessageIn;
@@ -24,6 +27,7 @@ class PreacceptVerbHandler implements IVerbHandler<Instance>
     {
         this.state = state;
     }
+
 
     @Override
     public void doVerb(MessageIn<Instance> message, int id)
@@ -85,7 +89,8 @@ class PreacceptVerbHandler implements IVerbHandler<Instance>
         {
             lock.writeLock().unlock();
         }
-        response.missingInstances = state.getInstanceCopies(missingInstanceIds);
+        response.missingInstances = Lists.newArrayList(Iterables.filter(state.getInstanceCopies(missingInstanceIds),
+                                                                        Instance.skipPlaceholderPredicate));
         MessageOut<PreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                response,
                                                                PreacceptResponse.serializer);

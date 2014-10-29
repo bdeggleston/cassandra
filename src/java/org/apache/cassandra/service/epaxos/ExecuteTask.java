@@ -26,26 +26,23 @@ public class ExecuteTask implements Runnable
     public void run()
     {
         logger.debug("Running execution phase for instance {}", id);
-        ReadWriteLock lock = state.getInstanceLock(id);
 
-        ExecutionSorter executionSorter;
-        lock.writeLock().lock();
-        try
+        Instance instance = state.getInstanceCopy(id);
+
+        if (instance.getState() == Instance.State.EXECUTED)
         {
-            Instance instance = state.loadInstance(id);
-            assert instance.getState().atLeast(Instance.State.COMMITTED);
-            executionSorter = new ExecutionSorter(instance, state);
-            executionSorter.buildGraph();
+            logger.debug("Instance {} already executed", id);
+            return;
         }
-        finally
-        {
-            lock.writeLock().unlock();
-        }
+
+        assert instance.getState().atLeast(Instance.State.COMMITTED);
+        ExecutionSorter executionSorter = new ExecutionSorter(instance, state);
+        executionSorter.buildGraph();
 
         if (executionSorter.uncommitted.size() > 0)
         {
-            logger.debug("Uncommitted ({}) instances found while attempting to execute {}",
-                         executionSorter.uncommitted.size(), id);
+            logger.debug("Uncommitted ({}) instances found while attempting to execute {}:\n\t{}",
+                         executionSorter.uncommitted.size(), id, executionSorter.uncommitted);
             PrepareGroup prepareGroup = new PrepareGroup(state, id, executionSorter.uncommitted);
             prepareGroup.schedule();
         }
@@ -53,7 +50,7 @@ public class ExecuteTask implements Runnable
         {
             for (UUID toExecuteId : executionSorter.getOrder())
             {
-                lock = state.getInstanceLock(toExecuteId);
+                ReadWriteLock lock = state.getInstanceLock(toExecuteId);
                 lock.writeLock().lock();
                 Instance toExecute = state.loadInstance(toExecuteId);
                 try
@@ -62,7 +59,6 @@ public class ExecuteTask implements Runnable
                     {
                         if (toExecute.getId().equals(id))
                         {
-                            int x = 1;
                             return;
                         }
                         else

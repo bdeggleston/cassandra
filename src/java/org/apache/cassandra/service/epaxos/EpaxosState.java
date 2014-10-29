@@ -47,7 +47,7 @@ public class EpaxosState
 
     // the amount of time the prepare phase will wait for the leader to commit an instance before
     // attempting a prepare phase. This is multiplied by a replica's position in the successor list
-    protected static int PREPARE_GRACE_MILLIS = 2000;
+    protected static long PREPARE_GRACE_MILLIS = DatabaseDescriptor.getMinRpcTimeout() / 2;
 
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
     private final Cache<UUID, Instance> instanceCache;
@@ -287,6 +287,7 @@ public class EpaxosState
 
     public void preacceptPrepare(UUID id, boolean noop, Runnable failureCallback)
     {
+        logger.debug("running preaccept prepare for {}", id);
         PreacceptTask task = new PreacceptTask.Prepare(this, id, noop, failureCallback);
         getStage(Stage.MUTATION).submit(task);
     }
@@ -363,7 +364,8 @@ public class EpaxosState
         Map<InetAddress, List<Instance>> missingInstances = new HashMap<>();
         for (Map.Entry<InetAddress, Set<UUID>> entry: decision.missingInstances.entrySet())
         {
-            missingInstances.put(entry.getKey(), getInstanceCopies(entry.getValue()));
+            missingInstances.put(entry.getKey(), Lists.newArrayList(Iterables.filter(getInstanceCopies(entry.getValue()),
+                                                                                     Instance.skipPlaceholderPredicate)));
         }
 
         Instance instance = getInstanceCopy(iid);
@@ -491,9 +493,11 @@ public class EpaxosState
         return new PrepareCallback(this, instance, participantInfo, group);
     }
 
-    public void prepare(UUID id, PrepareGroup group)
+    public PrepareTask prepare(UUID id, PrepareGroup group)
     {
-        getStage(Stage.READ).submit(PrepareTask.create(this, id, group));
+        PrepareTask task = new PrepareTask(this, id, group);
+        getStage(Stage.READ).submit(task);
+        return task;
     }
 
     protected long getPrepareWaitTime(long lastUpdate)
@@ -551,12 +555,15 @@ public class EpaxosState
         TryPreacceptAttempt attempt = attempts.get(0);
         List<TryPreacceptAttempt> nextAttempts = attempts.subList(1, attempts.size());
 
+        logger.debug("running trypreaccept prepare for {}: {}", iid, attempt);
+
         TryPreacceptRequest request = new TryPreacceptRequest(iid, attempt.dependencies);
         MessageOut<TryPreacceptRequest> message = request.getMessage();
 
         TryPreacceptCallback callback = getTryPreacceptCallback(iid, attempt, nextAttempts, participantInfo, failureCallback);
         for (InetAddress endpoint: attempt.toConvince)
         {
+            logger.debug("sending trypreaccept request to {} for instance {}", endpoint, iid);
             sendRR(message, endpoint, callback);
         }
     }
@@ -665,13 +672,13 @@ public class EpaxosState
 
     protected Instance loadInstance(UUID instanceId)
     {
-        logger.debug("Loading instance {}", instanceId);
+        logger.trace("Loading instance {}", instanceId);
 
         Instance instance = instanceCache.getIfPresent(instanceId);
         if (instance != null)
             return instance;
 
-        logger.debug("Loading instance {} from disk", instanceId);
+        logger.trace("Loading instance {} from disk", instanceId);
         // read from table
         String query = "SELECT * FROM %s.%s WHERE id=?";
         UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace(), instanceTable()),
@@ -698,7 +705,7 @@ public class EpaxosState
 
     protected void saveInstance(Instance instance)
     {
-        logger.debug("Saving instance {}", instance.getId());
+        logger.trace("Saving instance {}", instance.getId());
         assert instance.getState().atLeast(Instance.State.PREACCEPTED);
         instance.setLastUpdated();
         DataOutputBuffer out = new DataOutputBuffer((int) Instance.internalSerializer.serializedSize(instance, 0));
@@ -803,8 +810,7 @@ public class EpaxosState
             if (!instance.getState().atLeast(Instance.State.ACCEPTED))
             {
                 logger.debug("Setting {} as placeholder", remoteInstance.getId());
-                instance.setDependencies(null);
-                instance.setPlaceholder(true);  // TODO: exclude from prepare and trypreaccept
+                instance.makePlacehoder();
             }
             saveInstance(instance);
 

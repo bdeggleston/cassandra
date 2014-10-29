@@ -123,4 +123,10 @@ public class EpaxosInstanceTest
         // TODO: test that
     }
 
+    @Test
+    public void testMakePlaceholder() throws Exception
+    {
+
+    }
+
 }

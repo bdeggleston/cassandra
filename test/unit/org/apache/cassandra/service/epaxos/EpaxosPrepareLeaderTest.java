@@ -38,4 +38,13 @@ public class EpaxosPrepareLeaderTest
     {
 
     }
+
+    /**
+     * Once a quorum of responses is received, additional responses should be discarded
+     */
+    @Test
+    public void lateResponseIsDiscarded() throws Exception
+    {
+
+    }
 }

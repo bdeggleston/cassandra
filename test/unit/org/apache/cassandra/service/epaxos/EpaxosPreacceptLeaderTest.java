@@ -111,4 +111,13 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
         // check that we got our missing instance
         Assert.assertNotNull(node.getInstance(oldInstance.getId()));
     }
+
+    /**
+     * Once a quorum of responses is received, additional responses should be discarded
+     */
+    @Test
+    public void lateResponseIsDiscarded() throws Exception
+    {
+
+    }
 }

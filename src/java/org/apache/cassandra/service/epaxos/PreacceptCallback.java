@@ -46,7 +46,10 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
     public synchronized void response(MessageIn<PreacceptResponse> msg)
     {
         if (completed)
+        {
+            logger.debug("ignoring preaccept response from {} for instance {}. preaccept messaging completed", msg.from, id);
             return;
+        }
 
         logger.debug("preaccept response received from {} for instance {}", msg.from, id);
         PreacceptResponse response = msg.payload;
@@ -69,9 +72,13 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
 
         remoteDependencies.addAll(response.dependencies);
 
+        // TODO: farm out to write threads and join
         if (response.missingInstances.size() > 0)
         {
-            state.getStage(Stage.MUTATION).submit(new AddMissingInstances(state, response.missingInstances));
+            for (Instance missing: response.missingInstances)
+            {
+                state.addMissingInstance(missing);
+            }
         }
 
         numResponses++;
@@ -82,6 +89,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
     {
         if (numResponses >= participantInfo.quorumSize)
         {
+            completed = true;
             AcceptDecision decision = getAcceptDecision();
             processDecision(decision);
         }
@@ -91,10 +99,12 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
     {
         if (decision.acceptNeeded || forceAccept)
         {
+            logger.debug("preaccept messaging completed for {}, running accept phase", id);
             state.accept(id, decision, failureCallback);
         }
         else
         {
+            logger.debug("preaccept messaging completed for {}, committing on fast path", id);
             state.commit(id, decision.acceptDeps);
         }
     }

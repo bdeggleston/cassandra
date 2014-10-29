@@ -13,7 +13,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 
 public abstract class PreacceptTask implements Runnable
 {
-    protected static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
+    protected static final Logger logger = LoggerFactory.getLogger(PreacceptTask.class);
 
     protected final EpaxosState state;
     protected final UUID id;
@@ -32,7 +32,7 @@ public abstract class PreacceptTask implements Runnable
     @Override
     public void run()
     {
-        logger.debug("preaccepting instance {}", id);
+        logger.debug("preaccepting instance {}, {}", id, this.getClass().getSimpleName());
         Instance instanceCopy;
         EpaxosState.ParticipantInfo participantInfo;
         ReadWriteLock lock = state.getInstanceLock(id);

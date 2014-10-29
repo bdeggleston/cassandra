@@ -1,6 +1,7 @@
 package org.apache.cassandra.service.epaxos;
 
 import org.apache.cassandra.concurrent.Stage;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.service.StorageService;
@@ -20,7 +21,7 @@ public class PrepareTask implements Runnable, ICommitCallback
 
     // the amount of time the prepare phase will wait for the leader to commit an instance before
     // attempting a prepare phase. This is multiplied by a replica's position in the successor list
-    protected static int PREPARE_GRACE_MILLIS = 2000;
+    protected static long PREPARE_GRACE_MILLIS = DatabaseDescriptor.getMinRpcTimeout();
 
     private final EpaxosState state;
     private final UUID id;
@@ -28,18 +29,11 @@ public class PrepareTask implements Runnable, ICommitCallback
 
     private volatile boolean committed;
 
-    private PrepareTask(EpaxosState state, UUID id, PrepareGroup group)
+    public PrepareTask(EpaxosState state, UUID id, PrepareGroup group)
     {
         this.state = state;
         this.id = id;
         this.group = group;
-    }
-
-    public static PrepareTask create(EpaxosState state, UUID id, PrepareGroup group)
-    {
-        PrepareTask prepareTask = new PrepareTask(state, id, group);
-        state.registerCommitCallback(id, prepareTask);
-        return prepareTask;
     }
 
     private boolean shouldPrepare(Instance instance)
@@ -50,40 +44,13 @@ public class PrepareTask implements Runnable, ICommitCallback
     @Override
     public void run()
     {
-        // TODO: how to prevent multiple pending tasks? Prepare lock isn't the best option here
+        logger.debug("running prepare task for {}", id);
         if (committed)
         {
             group.instanceCommitted(id);
             logger.debug("Instance {} was committed", id);
             return;
         }
-
-
-        // if there's another prepare in progress for this instance, tell
-        // it to rerun this one when it finishes. This prevents a single
-        // node from running multiple concurrent prepare phases for the
-        // same instance.
-        // the api however, kinda sucks
-        // TODO: make not suck
-        while (true)
-        {
-            PrepareGroup previous = state.registerPrepareGroup(id, group);
-            if (previous == null)
-            {
-                break;
-            }
-            else if (previous.addCompleteRunnable(Stage.READ, this))
-            {
-                return;
-            }
-        }
-
-//        PrepareGroup previous = state.registerPrepareGroup(id, group);
-//        if (previous != null)
-//        {
-//            group.prepareComplete(id);
-//            return;
-//        }
 
         Instance instance = state.getInstanceCopy(id);
 
@@ -93,10 +60,7 @@ public class PrepareTask implements Runnable, ICommitCallback
         // task will be started if it's not committed
         if (instance == null)
         {
-            if (group.size() == 1)
-            {
-                logger.error("Single missing instance for prepare: ", id);
-            }
+            logger.debug("Single missing instance for prepare: ", id);
             group.instanceCommitted(id);
             return;
         }
@@ -104,7 +68,6 @@ public class PrepareTask implements Runnable, ICommitCallback
         if (!shouldPrepare(instance))
         {
             group.instanceCommitted(id);
-            state.notifyCommit(id);
             return;
         }
 
@@ -136,6 +99,7 @@ public class PrepareTask implements Runnable, ICommitCallback
         MessageOut<PrepareRequest> message = request.getMessage();
         for (InetAddress endpoint: participantInfo.liveEndpoints)
         {
+            logger.debug("sending prepare request to {} for instance {}", endpoint, instance.getId());
             state.sendRR(message, endpoint, callback);
         }
     }
@@ -143,6 +107,7 @@ public class PrepareTask implements Runnable, ICommitCallback
     @Override
     public void instanceCommitted(UUID id)
     {
+        logger.debug("Cancelling prepare task for {}. Instance committed", id);
         if (this.id.equals(id))
         {
             committed = true;
@@ -164,9 +129,11 @@ public class PrepareTask implements Runnable, ICommitCallback
         {
             if (task.committed)
             {
-                logger.debug("Instance {} was committed", task.id);
+                logger.debug("Skipping deferred prepare for committed instance {}", task.id);
+                task.group.instanceCommitted(task.id);
                 return;
             }
+            logger.debug("rerunning deferred prepare for {}", task.id);
             task.state.getStage(Stage.MUTATION).submit(task);
         }
     }
