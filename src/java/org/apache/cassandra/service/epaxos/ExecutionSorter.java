@@ -56,7 +56,8 @@ class ExecutionSorter
                 boolean connected = false;
                 for (UUID dep: instance.getDependencies())
                 {
-                    boolean notExecuted = this.state.loadInstance(dep).getState() != Instance.State.EXECUTED;
+                    Instance depInstance = this.state.getInstanceCopy(dep);
+                    boolean notExecuted = (depInstance == null) || (depInstance.getState() != Instance.State.EXECUTED);
                     boolean targetDep = targetDeps.contains(dep);
                     boolean required = requiredInstances.contains(dep);
                     connected |= notExecuted || targetDep || required;

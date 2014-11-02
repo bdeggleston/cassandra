@@ -272,6 +272,8 @@ public class OutboundTcpConnection extends Thread
         // the same between now and when the recipient reconstructs it.
         out.writeInt((int) timestamp);
         message.serialize(out, targetVersion);
+
+        MessagingService.instance().incrementSentCount(message.verb, message.serializedSize(targetVersion));
     }
 
     private static void writeHeader(DataOutput out, int version, boolean compressionEnabled) throws IOException

@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -142,6 +143,47 @@ public final class MessagingService implements MessagingServiceMBean
         EPAXOS_TRYPREPARE,
         EPAXOS_TRYPREACCEPT,
         ;
+    }
+
+    // TODO: remove
+    private Map<Verb, AtomicInteger> sentCounts = new EnumMap<Verb, AtomicInteger>(Verb.class)
+    {{
+            put(Verb.PAXOS_PREPARE, new AtomicInteger());
+            put(Verb.PAXOS_PROPOSE, new AtomicInteger());
+            put(Verb.PAXOS_COMMIT, new AtomicInteger());
+
+            put(Verb.EPAXOS_PREACCEPT, new AtomicInteger());
+            put(Verb.EPAXOS_ACCEPT, new AtomicInteger());
+            put(Verb.EPAXOS_COMMIT, new AtomicInteger());
+            put(Verb.EPAXOS_PREPARE, new AtomicInteger());
+            put(Verb.EPAXOS_TRYPREPARE, new AtomicInteger());
+            put(Verb.EPAXOS_TRYPREACCEPT, new AtomicInteger());
+        }};
+    private Map<Verb, AtomicLong> sentSizes = new EnumMap<Verb, AtomicLong>(Verb.class)
+    {{
+            put(Verb.PAXOS_PREPARE, new AtomicLong());
+            put(Verb.PAXOS_PROPOSE, new AtomicLong());
+            put(Verb.PAXOS_COMMIT, new AtomicLong());
+
+            put(Verb.EPAXOS_PREACCEPT, new AtomicLong());
+            put(Verb.EPAXOS_ACCEPT, new AtomicLong());
+            put(Verb.EPAXOS_COMMIT, new AtomicLong());
+            put(Verb.EPAXOS_PREPARE, new AtomicLong());
+            put(Verb.EPAXOS_TRYPREPARE, new AtomicLong());
+            put(Verb.EPAXOS_TRYPREACCEPT, new AtomicLong());
+        }};
+    {
+
+    }
+
+    public void incrementSentCount(Verb verb, int size)
+    {
+        AtomicInteger counter = sentCounts.get(verb);
+        if (counter != null)
+        {
+            counter.incrementAndGet();
+            sentSizes.get(verb).addAndGet(size);
+        }
     }
 
     public static final EnumMap<MessagingService.Verb, Stage> verbStages = new EnumMap<MessagingService.Verb, Stage>(MessagingService.Verb.class)
@@ -396,6 +438,29 @@ public final class MessagingService implements MessagingServiceMBean
         catch (Exception e)
         {
             throw new RuntimeException(e);
+        }
+
+        // TODO: remove
+        if (Boolean.getBoolean("cassandra.log.paxos_messages"))
+        {
+            StorageService.scheduledTasks.scheduleAtFixedRate(new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    logger.warn("\nOutgoing message stats");
+                    for (Verb verb: sentCounts.keySet())
+                    {
+                        int numSent = sentCounts.get(verb).get();
+                        long sizeSent = sentSizes.get(verb).get();
+                        logger.warn("\tOutgoing {} messages: {}, bytes: {}, avg bytes: {}",
+                                    verb,
+                                    numSent,
+                                    sizeSent,
+                                    (numSent > 0 ? sizeSent/numSent: -1));
+                    }
+                }
+            }, 0, 1, TimeUnit.SECONDS);
         }
     }
 

@@ -5,6 +5,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.*;
 import com.google.common.io.ByteStreams;
+import com.google.common.primitives.Booleans;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.Striped;
 import org.apache.cassandra.concurrent.Stage;
@@ -49,6 +50,8 @@ public class EpaxosState
     // attempting a prepare phase. This is multiplied by a replica's position in the successor list
     protected static long PREPARE_GRACE_MILLIS = DatabaseDescriptor.getMinRpcTimeout() / 2;
 
+    private static boolean CACHE = Boolean.getBoolean("cassandra.epaxos.cache");
+
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
     private final Cache<UUID, Instance> instanceCache;
 
@@ -62,7 +65,7 @@ public class EpaxosState
 
     // aborts prepare phases on commit
     private final ConcurrentMap<UUID, CountDownLatch> commitLatches = Maps.newConcurrentMap();
-    private final ConcurrentMap<UUID, List<ICommitCallback>> commitCallbacks = Maps.newConcurrentMap();
+    private final ConcurrentMap<UUID, List<ICommitCallback>> commitCallbacks = Maps.newConcurrentMap(); // TODO: make value a queue
 
     private final Random random = new Random();
 
@@ -423,7 +426,7 @@ public class EpaxosState
     
     public void registerCommitCallback(UUID id, ICommitCallback callback)
     {
-        // TODO: should we check instance status, and bail out / call the callback if the instance is committed
+        // TODO: should we check instance status, and bail out / call the callback if the instance is committed?
         List<ICommitCallback> callbacks = commitCallbacks.get(id);
         if (callbacks == null)
         {
@@ -568,7 +571,6 @@ public class EpaxosState
         }
     }
 
-    // FIXME: this is deadlocking
     protected TryPreacceptDecision handleTryPreaccept(Instance instance, Set<UUID> dependencies)
     {
         // TODO: reread the try preaccept stuff, dependency management may break it if we're not careful
@@ -694,7 +696,10 @@ public class EpaxosState
         try
         {
             instance = Instance.internalSerializer.deserialize(in, row.getInt("version"));
-            instanceCache.put(instanceId, instance);
+            if (CACHE)
+            {
+                instanceCache.put(instanceId, instance);
+            }
             return instance;
         }
         catch (IOException e)
@@ -725,7 +730,10 @@ public class EpaxosState
                                        0,
                                        timestamp);
 
-        instanceCache.put(instance.getId(), instance);
+        if (CACHE)
+        {
+            instanceCache.put(instance.getId(), instance);
+        }
     }
 
     /**
@@ -744,7 +752,10 @@ public class EpaxosState
         if (results.isEmpty())
         {
             dm = new DependencyManager();
-            dependencyManagers.put(keyPair, dm);
+            if (CACHE)
+            {
+                dependencyManagers.put(keyPair, dm);
+            }
             return dm;
         }
 
@@ -756,7 +767,10 @@ public class EpaxosState
         try
         {
             dm = DependencyManager.serializer.deserialize(in, 0);
-            dependencyManagers.put(keyPair, dm);
+            if (CACHE)
+            {
+                dependencyManagers.put(keyPair, dm);
+            }
             return dm;
 
         }
@@ -787,9 +801,13 @@ public class EpaxosState
                                        cfId,
                                        ByteBuffer.wrap(out.getData()));
 
-        dependencyManagers.put(Pair.create(key, cfId), dm);
+        if (CACHE)
+        {
+            dependencyManagers.put(Pair.create(key, cfId), dm);
+        }
     }
 
+    // TODO: consider only sending a missing instance if it's older than some threshold. Should keep message size down
     protected Instance addMissingInstance(Instance remoteInstance)
     {
         logger.debug("Adding missing instance: {}", remoteInstance.getId());

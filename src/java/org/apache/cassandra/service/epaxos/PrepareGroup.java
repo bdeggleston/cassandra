@@ -40,7 +40,7 @@ public class PrepareGroup implements ICommitCallback
             try
             {
                 Instance instance = state.loadInstance(toPrepare);
-                if (instance.getState().atLeast(Instance.State.COMMITTED))
+                if (instance != null && instance.getState().atLeast(Instance.State.COMMITTED))
                 {
                     instanceCommitted(toPrepare);
                 }

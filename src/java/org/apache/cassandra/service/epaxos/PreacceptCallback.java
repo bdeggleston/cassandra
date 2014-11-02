@@ -1,9 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
@@ -60,7 +57,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
             logger.debug("preaccept ballot failure from {} for instance {}", msg.from, id);
             ballot = Math.max(ballot, response.ballotFailure);
             completed = true;
-            state.updateInstanceBallot(id, ballot);
+//            state.updateInstanceBallot(id, ballot);
 
             BallotUpdateTask ballotTask = new BallotUpdateTask(state, id, ballot);
             if (failureCallback != null)
@@ -75,10 +72,11 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
         // TODO: farm out to write threads and join
         if (response.missingInstances.size() > 0)
         {
-            for (Instance missing: response.missingInstances)
-            {
-                state.addMissingInstance(missing);
-            }
+            state.getStage(Stage.MUTATION).submit(new AddMissingInstances(state, response.missingInstances));
+//            for (Instance missing: response.missingInstances)
+//            {
+//                state.getStage(Stage.MUTATION).submit(new AddMissingInstances(state, Lists.newArrayList(missing)));
+//            }
         }
 
         numResponses++;
@@ -117,7 +115,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
 
     // returns deps for an accept phase if all responses didn't agree with the leader,
     // or a fast quorum didn't respond. Otherwise, null is returned
-    public synchronized AcceptDecision getAcceptDecision()
+    private AcceptDecision getAcceptDecision()
     {
         boolean depsMatch = dependencies.equals(remoteDependencies);
 
