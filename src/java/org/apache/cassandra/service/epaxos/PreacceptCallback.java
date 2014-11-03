@@ -57,7 +57,6 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
             logger.debug("preaccept ballot failure from {} for instance {}", msg.from, id);
             ballot = Math.max(ballot, response.ballotFailure);
             completed = true;
-//            state.updateInstanceBallot(id, ballot);
 
             BallotUpdateTask ballotTask = new BallotUpdateTask(state, id, ballot);
             if (failureCallback != null)
@@ -69,14 +68,9 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
 
         remoteDependencies.addAll(response.dependencies);
 
-        // TODO: farm out to write threads and join
         if (response.missingInstances.size() > 0)
         {
             state.getStage(Stage.MUTATION).submit(new AddMissingInstances(state, response.missingInstances));
-//            for (Instance missing: response.missingInstances)
-//            {
-//                state.getStage(Stage.MUTATION).submit(new AddMissingInstances(state, Lists.newArrayList(missing)));
-//            }
         }
 
         numResponses++;

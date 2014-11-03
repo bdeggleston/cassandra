@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-public class EpaxosIntegrationTestRF3 extends AbstractEpaxosIntegrationTest.SingleThread
+public class EpaxosIntegrationRF3Test extends AbstractEpaxosIntegrationTest.SingleThread
 {
     @Ignore
     @Test

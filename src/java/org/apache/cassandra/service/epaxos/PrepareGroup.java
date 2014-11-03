@@ -95,38 +95,9 @@ public class PrepareGroup implements ICommitCallback
 
         if (outstanding.size() == 0)
         {
-
             state.getStage(Stage.MUTATION).submit(new ExecuteTask(state, id));
-
-//            // FIXME: this sucks
-//            for (Pair<Stage, Runnable> pair: postComplete)
-//            {
-//                if (pair.left != null)
-//                {
-//                    state.getStage(pair.left).submit(pair.right);
-//                }
-//                else
-//                {
-//                    pair.right.run();
-//                }
-//            }
         }
     }
-//
-//    /**
-//     *
-//     * @param runnable
-//     * @return
-//     */
-//    // FIXME: this sucks
-//    public synchronized boolean addCompleteRunnable(Stage stage, Runnable runnable)
-//    {
-//        if (completed)
-//            return false;
-//
-//        postComplete.add(Pair.create(stage, runnable));
-//        return true;
-//    }
 
     public synchronized boolean addCompleteGroup(UUID toPrepare, PrepareGroup group)
     {
