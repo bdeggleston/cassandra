@@ -124,6 +124,28 @@ public class MockEpaxosState extends EpaxosState
         return null;
     }
 
+    public static class UpdateBallotCall
+    {
+        public final UUID id;
+        public final int ballot;
+        public final Runnable callback;
+
+        public UpdateBallotCall(UUID id, int ballot, Runnable callback)
+        {
+            this.id = id;
+            this.ballot = ballot;
+            this.callback = callback;
+        }
+    }
+
+    public final List<UpdateBallotCall> ballotUpdates = new LinkedList<>();
+
+    @Override
+    public void updateBallot(UUID id, int ballot, Runnable callback)
+    {
+        ballotUpdates.add(new UpdateBallotCall(id, ballot, callback));
+    }
+
     @Override
     protected Predicate<InetAddress> livePredicate()
     {

@@ -561,6 +561,11 @@ public class EpaxosState
         return new TryPreacceptVerbHandler(this);
     }
 
+    public void updateBallot(UUID id, int ballot, Runnable callback)
+    {
+        getStage(Stage.MUTATION).submit(new BallotUpdateTask(this, id, ballot, callback));
+    }
+
     public Instance getInstanceCopy(UUID id)
     {
         ReadWriteLock lock = locks.get(id);
@@ -777,11 +782,6 @@ public class EpaxosState
 
         }
         return instances;
-    }
-
-    protected void updateInstanceBallot(UUID id, int ballot)
-    {
-        getStage(Stage.MUTATION).submit(new BallotUpdateTask(this, id, ballot));
     }
 
     // accessor methods

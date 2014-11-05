@@ -58,10 +58,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
             ballot = Math.max(ballot, response.ballotFailure);
             completed = true;
 
-            BallotUpdateTask ballotTask = new BallotUpdateTask(state, id, ballot);
-            if (failureCallback != null)
-                ballotTask.addNextTask(null, failureCallback);
-            state.getStage(Stage.MUTATION).submit(ballotTask);
+            state.updateBallot(id, ballot, failureCallback);
             return;
         }
         responses.put(msg.from, response);

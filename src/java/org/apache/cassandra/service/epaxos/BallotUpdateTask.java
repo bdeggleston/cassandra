@@ -1,10 +1,5 @@
 package org.apache.cassandra.service.epaxos;
 
-import org.apache.cassandra.concurrent.Stage;
-import org.apache.cassandra.utils.Pair;
-
-import java.util.LinkedList;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 
@@ -13,18 +8,14 @@ public class BallotUpdateTask implements Runnable
     private final EpaxosState state;
     private final UUID id;
     private final int ballot;
-    private final List<Pair<Stage, Runnable>> nextTasks = new LinkedList<>();
+    private final Runnable callback;
 
-    public BallotUpdateTask(EpaxosState state, UUID id, int ballot)
+    public BallotUpdateTask(EpaxosState state, UUID id, int ballot, Runnable callback)
     {
         this.state = state;
         this.id = id;
         this.ballot = ballot;
-    }
-
-    public void addNextTask(Stage stage, Runnable runnable)
-    {
-        nextTasks.add(Pair.create(stage, runnable));
+        this.callback = callback;
     }
 
     @Override
@@ -43,17 +34,7 @@ public class BallotUpdateTask implements Runnable
             lock.writeLock().unlock();
         }
 
-        for (Pair<Stage, Runnable> next: nextTasks)
-        {
-            // FIXME: this api sucks
-            if (next.left != null)
-            {
-                state.getStage(next.left).submit(next.right);
-            }
-            else
-            {
-                next.right.run();
-            }
-        }
+        if (callback != null)
+            callback.run();
     }
 }

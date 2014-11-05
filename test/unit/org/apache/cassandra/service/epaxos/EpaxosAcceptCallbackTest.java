@@ -80,7 +80,35 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void ballotFailure() throws Exception
     {
-        //TODO Test failure callback
+        MockEpaxosState state = new MockEpaxosState(3, 0);
+        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
+        instance.setDependencies(expectedDeps);
+
+        Runnable runnable = new Runnable()
+        {
+            @Override
+            public void run()
+            {
+
+            }
+        };
+
+        AcceptCallback callback = getCallback(state, instance, runnable);
+
+        Assert.assertEquals(0, callback.getNumResponses());
+        Assert.assertFalse(callback.isCompleted());
+        Assert.assertEquals(0, state.ballotUpdates.size());
+
+        callback.response(createResponse(state.localEndpoints.get(1), new AcceptResponse(false, 20)));
+        Assert.assertEquals(0, callback.getNumResponses());
+        Assert.assertTrue(callback.isCompleted());
+        Assert.assertEquals(1, state.ballotUpdates.size());
+
+        MockEpaxosState.UpdateBallotCall ballotCall = state.ballotUpdates.get(0);
+        Assert.assertEquals(instance.getId(), ballotCall.id);
+        Assert.assertEquals(20, ballotCall.ballot);
+        Assert.assertEquals(runnable, ballotCall.callback);
 
     }
 

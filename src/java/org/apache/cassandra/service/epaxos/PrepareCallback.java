@@ -5,17 +5,14 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
-import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.util.*;
-import java.util.concurrent.locks.ReadWriteLock;
 
 public class PrepareCallback implements IAsyncCallback<Instance>
 {
@@ -54,9 +51,7 @@ public class PrepareCallback implements IAsyncCallback<Instance>
         {
             // TODO: should we only try n times? if so start sending attempt # along
             completed = true;
-            BallotUpdateTask ballotTask = new BallotUpdateTask(state, id, msg.payload.getBallot());
-            ballotTask.addNextTask(Stage.READ, new PrepareTask(state, id, group));
-            state.getStage(Stage.MUTATION).submit(ballotTask);
+            state.updateBallot(id, msg.payload.getBallot(), new PrepareTask(state, id, group));
             return;
         }
 
@@ -67,8 +62,6 @@ public class PrepareCallback implements IAsyncCallback<Instance>
             completed = true;
             PrepareDecision decision = getDecision();
             logger.debug("prepare decision for {}: {}", id, decision);
-
-            state.updateInstanceBallot(id, decision.ballot);
 
             // if any of the next steps fail, they should report
             // the prepare phase as complete so the prepare is
