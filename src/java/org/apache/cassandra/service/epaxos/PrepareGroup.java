@@ -1,7 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
 import org.apache.cassandra.concurrent.Stage;
-import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,7 +8,16 @@ import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 
 /**
- * A group of prepare phases that an instance execution is waiting on
+ * A group of prepare phases that an instance execution is waiting on,
+ *
+ * When all of the prepare phases in this group have completed, another
+ * execution task will be submitted. Just because a PrepareGroup has
+ * 'completed' doesn't mean that all of it's instances were committed.
+ *
+ * If an prepare task couldn't find an instance, or a trypreaccept phase
+ * needed to wait for other instances to commit, the prepare phase for
+ * that instance will be considered completed, with the assumption that
+ * the neccesary information will be available next time around.
  */
 public class PrepareGroup implements ICommitCallback
 {
@@ -19,9 +27,7 @@ public class PrepareGroup implements ICommitCallback
     private final UUID id;
     private final Set<UUID> uncommitted;
     private final Set<UUID> outstanding;
-    private final List<Pair<Stage, Runnable>> postComplete = new LinkedList<>();
     private final Map<UUID, List<PrepareGroup>> groupNotify = new HashMap<>();
-//    private boolean completed = false;
 
     public PrepareGroup(EpaxosState state, UUID id, Set<UUID> uncommitted)
     {
@@ -69,7 +75,6 @@ public class PrepareGroup implements ICommitCallback
                         logger.debug("attempting to register prepare group for {} failed, trying again.", id);
                     }
                     PrepareTask task = state.prepare(toPrepare, this);
-                    state.registerCommitCallback(toPrepare, task);
                 }
             }
             finally

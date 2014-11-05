@@ -10,11 +10,19 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * What if
+ * Maintains the ids of 'active' instances, for determining dependencies during the preaccept phase.
+ *
+ * Since instances tend to leave the 'active' state in the same order they were created, modeling this
+ * as a cql table basically creates a queue, and all the performance problems that come along with them,
+ * so they are serialized as a big blob which is written out each time the dependencies change.
+ *
+ * An instance will remain in a partition's dependency manager until it's been both executed, and
+ * acknowledged by other nodes in the cluster. An instance is considered acknowledged when it's a
+ * dependency of another instance, which has been accepted or committed. This prevents situations where
+ * a dependency graph becomes 'split', making the execution order ambiguous.
  */
 public class DependencyManager
 {
-    // TODO: add mechanism for old, implicitly added, entries to fall off over time
     static class Entry
     {
         private final UUID iid;

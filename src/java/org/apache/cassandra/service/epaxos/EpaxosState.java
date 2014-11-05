@@ -5,7 +5,6 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.*;
 import com.google.common.io.ByteStreams;
-import com.google.common.primitives.Booleans;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.Striped;
 import org.apache.cassandra.concurrent.Stage;
@@ -56,7 +55,6 @@ public class EpaxosState
     private final Cache<UUID, Instance> instanceCache;
 
     // prevents multiple threads from attempting to prepare the same instance. Aquire this before an instance lock
-    private final Striped<Lock> prepareLocks = Striped.lock(DatabaseDescriptor.getConcurrentWriters() * 1024);
     private final ConcurrentMap<UUID, PrepareGroup> prepareGroups = Maps.newConcurrentMap();
 
     // prevents multiple threads modifying the dependency manager for a given key. Aquire this after locking an instance
@@ -64,7 +62,6 @@ public class EpaxosState
     private final Cache<Pair<ByteBuffer, UUID>, DependencyManager> dependencyManagers;
 
     // aborts prepare phases on commit
-    private final ConcurrentMap<UUID, CountDownLatch> commitLatches = Maps.newConcurrentMap();
     private final ConcurrentMap<UUID, List<ICommitCallback>> commitCallbacks = Maps.newConcurrentMap(); // TODO: make value a queue
 
     private final Random random = new Random();
@@ -150,11 +147,14 @@ public class EpaxosState
         return random;
     }
 
-    protected long getTimeout(long start)
+    protected long getQueryTimeout(long start)
     {
         return Math.max(1, DatabaseDescriptor.getRpcTimeout() - (System.currentTimeMillis() - start));
     }
 
+    /**
+     * Initiates an epaxos instance and waits for the result to become available
+     */
     // TODO: eventually, the type parameter will let this take read and cas requests
     public <T> T query(SerializedRequest query)
             throws UnavailableException, WriteTimeoutException, ReadTimeoutException, InvalidRequestException
@@ -170,7 +170,7 @@ public class EpaxosState
         {
             preaccept(instance);
 
-            return resultFuture.get(getTimeout(start), TimeUnit.MILLISECONDS);
+            return resultFuture.get(getQueryTimeout(start), TimeUnit.MILLISECONDS);
         }
         catch (ExecutionException | TimeoutException e)
         {
@@ -186,6 +186,9 @@ public class EpaxosState
         }
     }
 
+    /**
+     * Creates a new instance, setting this node as the leader
+     */
     protected Instance createInstance(SerializedRequest request)
     {
         return new Instance(request, getEndpoint());
@@ -195,7 +198,8 @@ public class EpaxosState
     {
         SerializedRequest request = instance.getQuery();
 
-        Pair<ByteBuffer, UUID> keyPair = Pair.create(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+        Pair<ByteBuffer, UUID> keyPair = Pair.create(request.getKey(),
+                                                     Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
 
         Lock lock = depsLocks.get(keyPair);
         lock.lock();
@@ -301,49 +305,6 @@ public class EpaxosState
         getStage(Stage.MUTATION).submit(task);
     }
 
-    private void setFastPathImpossible(Instance instance)
-    {
-        logger.debug("Setting fast path impossible for {}", instance.getId());
-        ReadWriteLock lock = locks.get(instance.getId());
-        lock.writeLock().lock();
-        try
-        {
-            instance.setFastPathImpossible(true);
-            saveInstance(instance);
-        }
-        finally
-        {
-            lock.writeLock().unlock();
-        }
-    }
-
-    public List<Instance> getInstanceCopies(Set<UUID> iids)
-    {
-        if (iids == null || iids.size() == 0)
-            return Collections.EMPTY_LIST;
-
-        List<Instance> instances = Lists.newArrayListWithCapacity(iids.size());
-        for (UUID iid: iids)
-        {
-            ReadWriteLock lock = locks.get(iid);
-            lock.readLock().lock();
-            try
-            {
-                Instance missingInstance = loadInstance(iid);
-                if (missingInstance != null)
-                {
-                    instances.add(missingInstance.copy());
-                }
-            }
-            finally
-            {
-                lock.readLock().unlock();
-            }
-
-        }
-        return instances;
-    }
-
     public IVerbHandler<Instance> getPreacceptVerbHandler()
     {
         return new PreacceptVerbHandler(this);
@@ -378,6 +339,7 @@ public class EpaxosState
         ParticipantInfo participantInfo;
         try
         {
+            // TODO: should we check instance status, and bail out / call the callback if the instance is committed?
             participantInfo = getParticipants(instance);
         }
         catch (UnavailableException e)
@@ -423,7 +385,12 @@ public class EpaxosState
             }
         }
     }
-    
+
+    /**
+     * Registers an implementation of ICommitCallback to be notified when an instance is committed
+     *
+     * The caller should have the instances read or write lock held when registering.
+     */
     public void registerCommitCallback(UUID id, ICommitCallback callback)
     {
         // TODO: should we check instance status, and bail out / call the callback if the instance is committed?
@@ -552,6 +519,24 @@ public class EpaxosState
         return new TryPreacceptCallback(this, iid, attempt, nextAttempts, participantInfo, failureCallback);
     }
 
+    /**
+     * The TryPreaccept phase is the part of failure recovery that makes committing on the
+     * fast path of F + ((F + 1) / 2) possible.
+     *
+     * The test case EpaxosIntegrationRF3Test.inferredFastPathFailedLeaderRecovery demonstrates
+     * a scenario that you can't get out of without first running a TryPreaccept.
+     *
+     * TryPreaccept is basically determining if an instance could have been committed on the fast
+     * path, based on responses from only a quorum of replicas.
+     *
+     * If the highest instance state a prepare phase encounters is PREACCEPTED, PrepareCallback.getTryPreacceptAttempts
+     * will identify any dependency sets that are shared by at least (F + 1) / 2 replicas, who are not the command
+     * leader.
+     *
+     * The preparer will then try to convince the other replicas to preaccept this group of dependencies for the instance
+     * being prepared. The other replicas will preaccept with the suggested dependencies if all of their active instances
+     * are either in the preparing instance's dependencies or have the preparing instance in theirs.
+     */
     public void tryPreaccept(UUID iid, List<TryPreacceptAttempt> attempts, ParticipantInfo participantInfo, Runnable failureCallback)
     {
         assert attempts.size() > 0;
@@ -571,90 +556,9 @@ public class EpaxosState
         }
     }
 
-    protected TryPreacceptDecision handleTryPreaccept(Instance instance, Set<UUID> dependencies)
-    {
-        // TODO: reread the try preaccept stuff, dependency management may break it if we're not careful
-        logger.debug("Attempting TryPreaccept for {} with deps {}", instance.getId(), dependencies);
-
-        // get the ids of instances the the message instance doesn't have in it's dependencies
-        Set<UUID> conflictIds = Sets.newHashSet(getCurrentDependencies(instance));
-        conflictIds.removeAll(dependencies);
-        conflictIds.remove(instance.getId());
-
-        // if this node hasn't seen some of the proposed dependencies, don't preaccept them
-        for (UUID dep: dependencies)
-        {
-            if (loadInstance(dep) == null)
-            {
-                logger.debug("Missing dep for TryPreaccept for {}, rejecting ", instance.getId());
-                return TryPreacceptDecision.REJECTED;
-            }
-        }
-
-        for (UUID id: conflictIds)
-        {
-            if (id.equals(instance.getId()))
-                continue;
-
-            Instance conflict = loadInstance(id);
-
-            if (!conflict.getState().isCommitted())
-            {
-                // requiring the potential conflict to be committed can cause
-                // an infinite prepare loop, so we just abort this prepare phase.
-                // This instance will get picked up again for explicit prepare after
-                // the other instances being prepared are successfully committed. Hopefully
-                // this conflicting instance will be committed as well.
-                logger.debug("TryPreaccept contended for {}, {} is not committed", instance.getId(), conflict.getId());
-                return TryPreacceptDecision.CONTENDED;
-            }
-
-            // if the instance in question isn't a dependency of the potential
-            // conflict, then it couldn't have been committed on the fast path
-            if (!conflict.getDependencies().contains(instance.getId()))
-            {
-                logger.debug("TryPreaccept rejected for {}, not a dependency of conflicting instance", instance.getId());
-                return TryPreacceptDecision.REJECTED;
-            }
-        }
-
-        logger.debug("TryPreaccept accepted for {}, with deps", instance.getId(), dependencies);
-        // set dependencies on this instance
-        assert instance.getState() == Instance.State.PREACCEPTED;
-        instance.setDependencies(dependencies);
-        saveInstance(instance);
-
-        return TryPreacceptDecision.ACCEPTED;
-    }
-
-    protected class TryPreacceptVerbHandler implements IVerbHandler<TryPreacceptRequest>
-    {
-        @Override
-        public void doVerb(MessageIn<TryPreacceptRequest> message, int id)
-        {
-            logger.debug("TryPreaccept message received from {} for {}", message.from, message.payload.iid);
-            ReadWriteLock lock = locks.get(message.payload.iid);
-            lock.writeLock().lock();
-            try
-            {
-                Instance instance = loadInstance(message.payload.iid);
-                TryPreacceptDecision decision = handleTryPreaccept(instance, message.payload.dependencies);
-                TryPreacceptResponse response = new TryPreacceptResponse(instance.getId(), decision);
-                MessageOut<TryPreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
-                                                                          response,
-                                                                          TryPreacceptResponse.serializer);
-                sendReply(reply, id, message.from);
-            }
-            finally
-            {
-                lock.writeLock().unlock();
-            }
-        }
-    }
-
     public IVerbHandler<TryPreacceptRequest> getTryPreacceptVerbHandler()
     {
-        return new TryPreacceptVerbHandler();
+        return new TryPreacceptVerbHandler(this);
     }
 
     public Instance getInstanceCopy(UUID id)
@@ -848,6 +752,33 @@ public class EpaxosState
         }
     }
 
+    public List<Instance> getInstanceCopies(Set<UUID> iids)
+    {
+        if (iids == null || iids.size() == 0)
+            return Collections.EMPTY_LIST;
+
+        List<Instance> instances = Lists.newArrayListWithCapacity(iids.size());
+        for (UUID iid: iids)
+        {
+            ReadWriteLock lock = locks.get(iid);
+            lock.readLock().lock();
+            try
+            {
+                Instance missingInstance = loadInstance(iid);
+                if (missingInstance != null)
+                {
+                    instances.add(missingInstance.copy());
+                }
+            }
+            finally
+            {
+                lock.readLock().unlock();
+            }
+
+        }
+        return instances;
+    }
+
     protected void updateInstanceBallot(UUID id, int ballot)
     {
         getStage(Stage.MUTATION).submit(new BallotUpdateTask(this, id, ballot));
@@ -857,11 +788,6 @@ public class EpaxosState
     public ReadWriteLock getInstanceLock(UUID iid)
     {
         return locks.get(iid);
-    }
-
-    public Lock getPrepareLock(UUID iid)
-    {
-        return prepareLocks.get(iid);
     }
 
     public TracingAwareExecutorService getStage(Stage stage)

@@ -1,6 +1,5 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -17,6 +16,14 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 
+/**
+ * Handles preaccept requests.
+ *
+ * This should *not* be handling initial leader requests. The leader
+ * should run a preaccept phase before sending preaccept messages to the other
+ * participants, so the other participances will know if they agree with the
+ * leader or not.
+ */
 class PreacceptVerbHandler implements IVerbHandler<Instance>
 {
     private static final Logger logger = LoggerFactory.getLogger(PreacceptVerbHandler.class);

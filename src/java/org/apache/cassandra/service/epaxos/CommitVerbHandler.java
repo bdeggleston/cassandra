@@ -1,20 +1,13 @@
 package org.apache.cassandra.service.epaxos;
 
-import org.apache.cassandra.exceptions.InvalidRequestException;
-import org.apache.cassandra.exceptions.RequestTimeoutException;
-import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.MessageIn;
-import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.locks.ReadWriteLock;
 
-/**
-* Created by beggleston on 10/25/14.
-*/
 class CommitVerbHandler implements IVerbHandler<Instance>
 {
     private static final Logger logger = LoggerFactory.getLogger(CommitVerbHandler.class);

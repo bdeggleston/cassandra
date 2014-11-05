@@ -162,6 +162,15 @@ public class PrepareCallback implements IAsyncCallback<Instance>
         return new PrepareDecision(Instance.State.PREACCEPTED, null, ballot, getTryPreacceptAttempts(), false);
     }
 
+    /**
+     * Attempts to work out if there are any dependency sets that a preaccept should be attempted
+     * for, and returns them in the order that they should be tried. Dependency groups that have
+     * instances that agree with the original leader take precedence over ones that do not.
+     *
+     * If the command leader is one of the replicas that responded, and it hasn't committed this
+     * instance, then no replica would have committed it, and we fall back to a normal preaccept
+     * phase, and committing on the slow path (accept phase required).
+     */
     private List<TryPreacceptAttempt> getTryPreacceptAttempts()
     {
         // Check for the leader of the instance. If it didn't commit on the

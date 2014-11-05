@@ -4,7 +4,7 @@ import java.util.UUID;
 
 /**
  * Implemented by classes that need to be
- * notified of instances being committed
+ * notified when instances are committed
  */
 public interface ICommitCallback
 {

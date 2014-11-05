@@ -1,8 +1,5 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-
 import java.util.*;
 
 /**
