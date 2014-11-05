@@ -159,13 +159,4 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         // TODO: check not committed
         Assert.assertNull(lastCommit);
     }
-
-    /**
-     * Once a quorum of responses is received, additional responses should be discarded
-     */
-    @Test
-    public void lateResponseIsDiscarded() throws Exception
-    {
-
-    }
 }

@@ -36,7 +36,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void testSuccessCase() throws Exception
     {
-        MockEpaxosState state = new MockEpaxosState(3, 0);
+        MockCallbackState state = new MockCallbackState(3, 0);
         Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
@@ -52,7 +52,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
         Assert.assertEquals(2, callback.getNumResponses());
         Assert.assertTrue(callback.isCompleted());
 
-        MockEpaxosState.CommitCall commitCall = state.commits.get(0);
+        MockCallbackState.CommitCall commitCall = state.commits.get(0);
         Assert.assertEquals(instance.getId(), commitCall.id);
         Assert.assertEquals(instance.getDependencies(), commitCall.dependencies);
     }
@@ -60,7 +60,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void noLocalResponse() throws Exception
     {
-        MockEpaxosState state = new MockEpaxosState(3, 0);
+        MockCallbackState state = new MockCallbackState(3, 0);
         Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
@@ -80,7 +80,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void ballotFailure() throws Exception
     {
-        MockEpaxosState state = new MockEpaxosState(3, 0);
+        MockCallbackState state = new MockCallbackState(3, 0);
         Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
@@ -105,7 +105,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
         Assert.assertTrue(callback.isCompleted());
         Assert.assertEquals(1, state.ballotUpdates.size());
 
-        MockEpaxosState.UpdateBallotCall ballotCall = state.ballotUpdates.get(0);
+        MockCallbackState.UpdateBallotCall ballotCall = state.ballotUpdates.get(0);
         Assert.assertEquals(instance.getId(), ballotCall.id);
         Assert.assertEquals(20, ballotCall.ballot);
         Assert.assertEquals(runnable, ballotCall.callback);
@@ -118,7 +118,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void duplicateMessagesIgnored() throws Exception
     {
-        MockEpaxosState state = new MockEpaxosState(3, 0);
+        MockCallbackState state = new MockCallbackState(3, 0);
         Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
@@ -142,7 +142,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void additionalMessagesAreIgnored() throws Exception
     {
-        MockEpaxosState state = new MockEpaxosState(3, 0);
+        MockCallbackState state = new MockCallbackState(3, 0);
         Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
@@ -170,7 +170,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void remoteEndpointsArentCounted() throws Exception
     {
-        MockEpaxosState state = new MockEpaxosState(3, 3);
+        MockCallbackState state = new MockCallbackState(3, 3);
         Instance instance = state.createInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.LOCAL_SERIAL));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);

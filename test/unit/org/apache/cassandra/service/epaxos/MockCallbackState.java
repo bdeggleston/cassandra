@@ -8,14 +8,17 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
 
-public class MockEpaxosState extends EpaxosState
+/**
+ * Mocked state for examining the behavior of callback classes
+ */
+public class MockCallbackState extends EpaxosState
 {
     private final InetAddress endpoint;
     public final List<InetAddress> localReplicas;
     public final List<InetAddress> localEndpoints;
     public final List<InetAddress> remoteEndpoints;
 
-    public MockEpaxosState(int numLocal, int numRemote)
+    public MockCallbackState(int numLocal, int numRemote)
     {
         numLocal = Math.max(1, numLocal);
         numRemote = Math.max(0, numRemote);

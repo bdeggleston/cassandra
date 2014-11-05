@@ -717,7 +717,7 @@ public class EpaxosState
     }
 
     // TODO: consider only sending a missing instance if it's older than some threshold. Should keep message size down
-    protected Instance addMissingInstance(Instance remoteInstance)
+    protected void addMissingInstance(Instance remoteInstance)
     {
         logger.debug("Adding missing instance: {}", remoteInstance.getId());
         ReadWriteLock lock = locks.get(remoteInstance.getId());
@@ -726,7 +726,7 @@ public class EpaxosState
         {
             Instance instance = loadInstance(remoteInstance.getId());
             if (instance != null)
-                return instance;
+                return;
 
 
             // TODO: guard against re-adding expired instances once we start gc'ing them
@@ -747,8 +747,6 @@ public class EpaxosState
             recordMissingInstance(instance);
 
             // TODO: execute if committed
-
-            return instance;
 
         }
         finally
