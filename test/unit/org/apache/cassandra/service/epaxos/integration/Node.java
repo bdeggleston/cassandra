@@ -238,7 +238,7 @@ public class Node extends EpaxosState
         }
 
         @Override
-        protected long getTimeout(long start)
+        protected long getQueryTimeout(long start)
         {
             return 0;
         }
