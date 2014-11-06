@@ -46,6 +46,22 @@ public class MockVerbHandlerState extends EpaxosState
         throw new UnsupportedOperationException();
     }
 
+    public final Set<UUID> commitNotified = Sets.newHashSet();
+
+    @Override
+    public void notifyCommit(UUID id)
+    {
+        commitNotified.add(id);
+    }
+
+    public final Set<UUID> executed = Sets.newHashSet();
+
+    @Override
+    public void execute(UUID instanceId)
+    {
+        executed.add(instanceId);
+    }
+
     public final Set<UUID> currentDeps = Sets.newHashSet();
 
     @Override

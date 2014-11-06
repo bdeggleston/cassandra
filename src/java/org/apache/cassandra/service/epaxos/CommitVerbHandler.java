@@ -32,8 +32,8 @@ class CommitVerbHandler implements IVerbHandler<Instance>
             instance = state.loadInstance(remoteInstance.getId());
             if (instance == null)
             {
-                // TODO: record deps
                 instance = remoteInstance.copyRemote();
+                state.recordMissingInstance(instance);
             } else
             {
                 instance.applyRemote(remoteInstance);
