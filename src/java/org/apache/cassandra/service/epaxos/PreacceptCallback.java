@@ -1,5 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.net.IAsyncCallback;
@@ -24,8 +25,10 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
     private final Set<UUID> remoteDependencies = Sets.newHashSet();
     private final Map<InetAddress, PreacceptResponse> responses = Maps.newHashMap();
     private final boolean forceAccept;
+    private final Set<InetAddress> endpointsReplied = Sets.newHashSet();
 
     private boolean completed = false;
+    private boolean localResponse = false;
     private int numResponses = 0;
     private int ballot = 0;
 
@@ -47,6 +50,13 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
             logger.debug("ignoring preaccept response from {} for instance {}. preaccept messaging completed", msg.from, id);
             return;
         }
+
+        if (endpointsReplied.contains(msg.from))
+        {
+            logger.debug("ignoring duplicate accept response from {} for instance {}.", msg.from, id);
+            return;
+        }
+        endpointsReplied.add(msg.from);
 
         logger.debug("preaccept response received from {} for instance {}", msg.from, id);
         PreacceptResponse response = msg.payload;
@@ -76,7 +86,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
 
     protected void maybeDecideResult()
     {
-        if (numResponses >= participantInfo.quorumSize)
+        if (numResponses >= participantInfo.quorumSize && localResponse)
         {
             completed = true;
             AcceptDecision decision = getAcceptDecision();
@@ -101,12 +111,12 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
     public synchronized void countLocal()
     {
         numResponses++;
+        localResponse = true;
         maybeDecideResult();
     }
 
-    // returns deps for an accept phase if all responses didn't agree with the leader,
-    // or a fast quorum didn't respond. Otherwise, null is returned
-    private AcceptDecision getAcceptDecision()
+    @VisibleForTesting
+    AcceptDecision getAcceptDecision()
     {
         boolean depsMatch = dependencies.equals(remoteDependencies);
 
@@ -129,6 +139,16 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
         AcceptDecision decision = new AcceptDecision((!depsMatch || !fpQuorum), unifiedDeps, missingIds);
         logger.debug("preaccept accept decision for {}: {}", id, decision);
         return decision;
+    }
+
+    public boolean isCompleted()
+    {
+        return completed;
+    }
+
+    public int getNumResponses()
+    {
+        return numResponses;
     }
 
     @Override

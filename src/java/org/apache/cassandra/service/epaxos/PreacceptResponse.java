@@ -25,7 +25,7 @@ public class PreacceptResponse
     private static final List<Instance> NO_INSTANCES = ImmutableList.of();
     private static final Set<UUID> NO_DEPS = ImmutableSet.of();
 
-    private PreacceptResponse(boolean successful, int ballotFailure, Set<UUID> dependencies, List<Instance> missingInstances)
+    PreacceptResponse(boolean successful, int ballotFailure, Set<UUID> dependencies, List<Instance> missingInstances)
     {
         this.successful = successful;
         this.ballotFailure = ballotFailure;
