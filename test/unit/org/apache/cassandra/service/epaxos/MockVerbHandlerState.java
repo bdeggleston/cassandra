@@ -46,6 +46,14 @@ public class MockVerbHandlerState extends EpaxosState
         throw new UnsupportedOperationException();
     }
 
+    public final Set<UUID> currentDeps = Sets.newHashSet();
+
+    @Override
+    protected Set<UUID> getCurrentDependencies(Instance instance)
+    {
+        return Sets.newHashSet(currentDeps);
+    }
+
     public final Map<UUID, Instance> instanceMap = Maps.newHashMap();
 
     @Override

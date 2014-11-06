@@ -79,7 +79,7 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         MessageOut reply = replies.get(node.getEndpoint()).get(0);
         PreacceptResponse response = (PreacceptResponse) reply.payload;
 
-        Assert.assertTrue(response.successful);
+        Assert.assertTrue(response.success);
         Assert.assertEquals(0, response.missingInstances.size());
         Assert.assertEquals(Sets.newHashSet(firstInstance.getId()), response.dependencies);
 
@@ -129,7 +129,7 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         MessageOut reply = replies.get(node.getEndpoint()).get(0);
         PreacceptResponse response = (PreacceptResponse) reply.payload;
 
-        Assert.assertFalse(response.successful);
+        Assert.assertFalse(response.success);
         Assert.assertEquals(0, response.missingInstances.size());
         Assert.assertEquals(Sets.newHashSet(firstInstance.getId()), response.dependencies);
 
@@ -174,7 +174,7 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         MessageOut reply = replies.get(node.getEndpoint()).get(0);
         PreacceptResponse response = (PreacceptResponse) reply.payload;
 
-        Assert.assertFalse(response.successful);
+        Assert.assertFalse(response.success);
         Assert.assertEquals(1, response.missingInstances.size());
         Assert.assertEquals(missingInstance.getId(), response.missingInstances.get(0).getId());
         Assert.assertEquals(Sets.newHashSet(missingInstance.getId()), response.dependencies);

@@ -17,7 +17,7 @@ public class PreacceptResponse
 {
     public static final IVersionedSerializer<PreacceptResponse> serializer = new Serializer();
 
-    public final boolean successful;
+    public final boolean success;
     public final int ballotFailure;
     public final Set<UUID> dependencies;
     public volatile List<Instance> missingInstances;
@@ -25,9 +25,9 @@ public class PreacceptResponse
     private static final List<Instance> NO_INSTANCES = ImmutableList.of();
     private static final Set<UUID> NO_DEPS = ImmutableSet.of();
 
-    PreacceptResponse(boolean successful, int ballotFailure, Set<UUID> dependencies, List<Instance> missingInstances)
+    PreacceptResponse(boolean success, int ballotFailure, Set<UUID> dependencies, List<Instance> missingInstances)
     {
-        this.successful = successful;
+        this.success = success;
         this.ballotFailure = ballotFailure;
         this.dependencies = dependencies;
         this.missingInstances = missingInstances;
@@ -53,7 +53,7 @@ public class PreacceptResponse
         @Override
         public void serialize(PreacceptResponse response, DataOutputPlus out, int version) throws IOException
         {
-            out.writeBoolean(response.successful);
+            out.writeBoolean(response.success);
             out.writeInt(response.ballotFailure);
 
             Set<UUID> deps = response.dependencies;
@@ -87,7 +87,7 @@ public class PreacceptResponse
         public long serializedSize(PreacceptResponse response, int version)
         {
             int size = 0;
-            size += 1;  //out.writeBoolean(response.successful);
+            size += 1;  //out.writeBoolean(response.success);
             size += 4;  //out.writeInt(response.ballotFailure);
 
             size += 4;  //out.writeInt(deps.size());
