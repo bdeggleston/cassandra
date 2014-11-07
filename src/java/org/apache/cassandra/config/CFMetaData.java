@@ -350,15 +350,13 @@ public final class CFMetaData
     public static final CFMetaData EpaxosInstanceCf = compile("CREATE TABLE " + SystemKeyspace.EPAXOS_INSTANCE + " ("
                                                               + "id timeuuid PRIMARY KEY,"
                                                               + "data blob,"
-                                                              + "version int)"
-                                                              + "WITH gc_grace_seconds=0");
+                                                              + "version int)");
 
     public static final CFMetaData EpaxosDependenciesCF = compile("CREATE TABLE " + SystemKeyspace.EPAXOS_DEPENDENCIES + " ("
                                                                       + "row_key blob,"
                                                                       + "cf_id uuid,"
                                                                       + "data blob,"
-                                                                      + "PRIMARY KEY (row_key, cf_id))"
-                                                                      + "WITH gc_grace_seconds=0");
+                                                                      + "PRIMARY KEY (row_key, cf_id))");
 
     public static class SpeculativeRetry
     {
