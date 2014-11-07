@@ -27,6 +27,7 @@ class PrepareVerbHandler implements IVerbHandler<PrepareRequest>
     @Override
     public void doVerb(MessageIn<PrepareRequest> message, int id)
     {
+        logger.debug("Prepare request received from {} for {}", message.from, message.payload.iid);
         ReadWriteLock lock = state.getInstanceLock(message.payload.iid);
         lock.writeLock().lock();
         try
@@ -49,6 +50,11 @@ class PrepareVerbHandler implements IVerbHandler<PrepareRequest>
                 {
                     // don't die if the message has an old ballot value, just don't
                     // update the instance. This instance will still be useful to the requestor
+                    logger.debug("Prepare request from {} for {} ballot failure. {} >= {}",
+                                 message.from,
+                                 message.payload.iid,
+                                 instance.getBallot(),
+                                 message.payload.ballot);
                 }
             }
 

@@ -1,5 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -44,6 +45,12 @@ public class PrepareCallback implements IAsyncCallback<Instance>
         if (completed)
         {
             logger.debug("ignoring prepare response from {} for instance {}. prepare messaging completed", msg.from, id);
+            return;
+        }
+
+        if (responses.containsKey(msg.from))
+        {
+            logger.debug("ignoring duplicate prepare response from {} for instance {}.", msg.from, id);
             return;
         }
 
@@ -150,7 +157,7 @@ public class PrepareCallback implements IAsyncCallback<Instance>
 
         // no other node knows about this instance, commit a noop
         if (Lists.newArrayList(Iterables.filter(responses.values(), notNullPredicate)).size() == 0)
-            return new PrepareDecision(Instance.State.PREACCEPTED, null, ballot, null, true);
+            return new PrepareDecision(Instance.State.PREACCEPTED, null, ballot, Collections.EMPTY_LIST, true);
 
         return new PrepareDecision(Instance.State.PREACCEPTED, null, ballot, getTryPreacceptAttempts(), false);
     }
@@ -229,6 +236,18 @@ public class PrepareCallback implements IAsyncCallback<Instance>
         Collections.sort(attempts, attemptComparator);
 
         return attempts;
+    }
+
+    @VisibleForTesting
+    boolean isCompleted()
+    {
+        return completed;
+    }
+
+    @VisibleForTesting
+    int getNumResponses()
+    {
+        return responses.size();
     }
 
     @Override

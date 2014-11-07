@@ -2,6 +2,8 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.base.Predicate;
 import org.apache.cassandra.exceptions.UnavailableException;
+import org.apache.cassandra.net.IAsyncCallback;
+import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.net.InetAddress;
@@ -58,6 +60,28 @@ public class MockCallbackState extends EpaxosState
     protected ParticipantInfo getParticipants(Instance instance) throws UnavailableException
     {
         return new ParticipantInfo(localEndpoints, remoteEndpoints, instance.getQuery().getConsistencyLevel());
+    }
+
+    public static class PreacceptPrepareCall
+    {
+        public final UUID id;
+        public final boolean noop;
+        public final Runnable failureCallback;
+
+        public PreacceptPrepareCall(UUID id, boolean noop, Runnable failureCallback)
+        {
+            this.id = id;
+            this.noop = noop;
+            this.failureCallback = failureCallback;
+        }
+    }
+
+    public final List<PreacceptPrepareCall> preacceptPrepares = new LinkedList<>();
+
+    @Override
+    public void preacceptPrepare(UUID id, boolean noop, Runnable failureCallback)
+    {
+        preacceptPrepares.add(new PreacceptPrepareCall(id, noop, failureCallback));
     }
 
     public final List<UUID> preaccepts = new LinkedList<>();
@@ -160,5 +184,39 @@ public class MockCallbackState extends EpaxosState
                 return true;
             }
         };
+    }
+
+    protected void sendReply(MessageOut message, int id, InetAddress to)
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    public static class SentMessage
+    {
+        public final MessageOut message;
+        public final InetAddress to;
+        public final IAsyncCallback cb;  // will be null for one way messages
+
+        public SentMessage(MessageOut message, InetAddress to, IAsyncCallback cb)
+        {
+            this.message = message;
+            this.to = to;
+            this.cb = cb;
+        }
+    }
+
+    List<SentMessage> sentMessages = new LinkedList<>();
+
+    @Override
+    protected int sendRR(MessageOut message, InetAddress to, IAsyncCallback cb)
+    {
+        sentMessages.add(new SentMessage(message, to, cb));
+        return -1;
+    }
+
+    @Override
+    protected void sendOneWay(MessageOut message, InetAddress to)
+    {
+        sentMessages.add(new SentMessage(message, to, null));
     }
 }
