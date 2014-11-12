@@ -568,7 +568,7 @@ public class EpaxosState
 
     public Instance getInstanceCopy(UUID id)
     {
-        ReadWriteLock lock = locks.get(id);
+        ReadWriteLock lock = getInstanceLock(id);
         lock.readLock().lock();
         try
         {
@@ -720,7 +720,7 @@ public class EpaxosState
     protected void addMissingInstance(Instance remoteInstance)
     {
         logger.debug("Adding missing instance: {}", remoteInstance.getId());
-        ReadWriteLock lock = locks.get(remoteInstance.getId());
+        ReadWriteLock lock = getInstanceLock(remoteInstance.getId());
         lock.writeLock().lock();
         try
         {
@@ -763,7 +763,7 @@ public class EpaxosState
         List<Instance> instances = Lists.newArrayListWithCapacity(iids.size());
         for (UUID iid: iids)
         {
-            ReadWriteLock lock = locks.get(iid);
+            ReadWriteLock lock = getInstanceLock(iid);
             lock.readLock().lock();
             try
             {

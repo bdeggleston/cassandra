@@ -28,6 +28,7 @@ public class BallotUpdateTask implements Runnable
             Instance instance = state.loadInstance(id);
             instance.updateBallot(ballot);
             instance.incrementBallot();
+            state.saveInstance(instance);
         }
         finally
         {
