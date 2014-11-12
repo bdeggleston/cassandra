@@ -1,14 +1,11 @@
 package org.apache.cassandra.service.epaxos;
 
-import org.apache.cassandra.concurrent.Stage;
-import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
-import org.apache.cassandra.exceptions.RequestTimeoutException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -20,7 +17,6 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.concurrent.*;
 
 public class SerializedRequest
 {
@@ -66,44 +62,17 @@ public class SerializedRequest
         return consistencyLevel;
     }
 
-    private long getExecutionTimeoutMillis(long start)
-    {
-        long elapsed = System.currentTimeMillis() - start;
-        // TODO: use a different timeout value
-        return Math.max(1, DatabaseDescriptor.getCasContentionTimeout() - elapsed);
-
-    }
-
     public ColumnFamily execute() throws ReadTimeoutException, WriteTimeoutException
     {
         Tracing.trace("Reading existing values for CAS precondition");
         CFMetaData metadata = Schema.instance.getCFMetaData(keyspaceName, cfName);
-        long start = System.currentTimeMillis();
 
         long timestamp = System.currentTimeMillis();  // TODO: why do we need a ts for a read?
         final ReadCommand command = ReadCommand.create(keyspaceName, key, cfName, timestamp, request.readFilter());
 
-        FutureTask<Row> read = new FutureTask<Row>(new Callable<Row>()
-        {
-            @Override
-            public Row call() throws Exception
-            {
-                Keyspace keyspace = Keyspace.open(command.ksName);
-                return command.getRow(keyspace);
-            }
-        });
-
-        StageManager.getStage(Stage.READ).execute(read);
-
-        Row row;
-        try
-        {
-            row = read.get(getExecutionTimeoutMillis(start), TimeUnit.MILLISECONDS);
-        }
-        catch (InterruptedException | TimeoutException | ExecutionException e)
-        {
-            throw new ReadTimeoutException(consistencyLevel, 0, 1, false);
-        }
+        // TODO: consider doing a read and write in different stages with the lock held
+        Keyspace keyspace = Keyspace.open(command.ksName);
+        Row row = command.getRow(keyspace);
 
         final ColumnFamily current = row.cf;
 
@@ -127,33 +96,16 @@ public class SerializedRequest
         {
             // TODO: see if the instance can be marked executed in the same commit log entry as this mutation
             // TODO: may need to examine the ts of any cells we're going to overwrite
-            FutureTask<ColumnFamily> write = new FutureTask<ColumnFamily>(new Callable<ColumnFamily>()
-            {
-                @Override
-                public ColumnFamily call() throws Exception
-                {
-                    try
-                    {
-                        Mutation mutation = new Mutation(key, request.makeUpdates(current));
-                        Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
-                    }
-                    catch (InvalidRequestException e)
-                    {
-                        throw new RuntimeException(e);
-                    }
-                    return null;
-                }
-            });
-            StageManager.getStage(Stage.MUTATION).execute(write);
-
             try
             {
-                return write.get(getExecutionTimeoutMillis(start), TimeUnit.MILLISECONDS);
+                Mutation mutation = new Mutation(key, request.makeUpdates(current));
+                Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
             }
-            catch (InterruptedException | TimeoutException | ExecutionException e)
+            catch (InvalidRequestException e)
             {
-                throw new WriteTimeoutException(WriteType.CAS, consistencyLevel, 0, 1);
+                throw new RuntimeException(e);
             }
+            return null;
         }
     }
 
