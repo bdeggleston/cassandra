@@ -10,10 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.locks.ReadWriteLock;
 
-/**
-* Created by beggleston on 10/25/14.
-*/
-class PrepareVerbHandler implements IVerbHandler<PrepareRequest>
+public class PrepareVerbHandler implements IVerbHandler<PrepareRequest>
 {
     private static final Logger logger = LoggerFactory.getLogger(PrepareVerbHandler.class);
 

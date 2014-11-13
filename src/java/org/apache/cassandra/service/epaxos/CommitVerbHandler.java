@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.locks.ReadWriteLock;
 
-class CommitVerbHandler implements IVerbHandler<Instance>
+public class CommitVerbHandler implements IVerbHandler<Instance>
 {
     private static final Logger logger = LoggerFactory.getLogger(CommitVerbHandler.class);
 

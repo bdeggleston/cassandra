@@ -62,7 +62,7 @@ public class EpaxosState
     private final Cache<Pair<ByteBuffer, UUID>, DependencyManager> dependencyManagers;
 
     // aborts prepare phases on commit
-    private final ConcurrentMap<UUID, List<ICommitCallback>> commitCallbacks = Maps.newConcurrentMap(); // TODO: make value a queue
+    private final ConcurrentMap<UUID, List<ICommitCallback>> commitCallbacks = Maps.newConcurrentMap();
 
     private final Random random = new Random();
 

@@ -30,7 +30,6 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
     private boolean completed = false;
     private boolean localResponse = false;
     private int numResponses = 0;
-    private int ballot = 0;
 
     public PreacceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
     {
@@ -65,10 +64,8 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
         if (response.ballotFailure > 0)
         {
             logger.debug("preaccept ballot failure from {} for instance {}", msg.from, id);
-            ballot = Math.max(ballot, response.ballotFailure);
             completed = true;
-
-            state.updateBallot(id, ballot, failureCallback);
+            state.updateBallot(id, response.ballotFailure, failureCallback);
             return;
         }
         responses.put(msg.from, response);
@@ -125,18 +122,23 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
 
         Set<UUID> unifiedDeps = ImmutableSet.copyOf(Iterables.concat(dependencies, remoteDependencies));
 
+        boolean acceptRequired = !depsMatch || !fpQuorum;
+
         Map<InetAddress, Set<UUID>> missingIds = Maps.newHashMap();
-        for (Map.Entry<InetAddress, PreacceptResponse> entry: responses.entrySet())
+        if (acceptRequired)
         {
-            Set<UUID> diff = Sets.difference(unifiedDeps, entry.getValue().dependencies);
-            if (diff.size() > 0)
+            for (Map.Entry<InetAddress, PreacceptResponse> entry: responses.entrySet())
             {
-                diff.remove(id);
-                missingIds.put(entry.getKey(), diff);
+                Set<UUID> diff = Sets.difference(unifiedDeps, entry.getValue().dependencies);
+                if (diff.size() > 0)
+                {
+                    diff.remove(id);
+                    missingIds.put(entry.getKey(), diff);
+                }
             }
         }
 
-        AcceptDecision decision = new AcceptDecision((!depsMatch || !fpQuorum), unifiedDeps, missingIds);
+        AcceptDecision decision = new AcceptDecision(acceptRequired, unifiedDeps, missingIds);
         logger.debug("preaccept accept decision for {}: {}", id, decision);
         return decision;
     }

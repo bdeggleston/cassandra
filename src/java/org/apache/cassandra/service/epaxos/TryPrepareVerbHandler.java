@@ -8,10 +8,7 @@ import org.apache.cassandra.net.MessagingService;
 import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 
-/**
-* Created by beggleston on 10/25/14.
-*/
-class TryPrepareVerbHandler implements IVerbHandler<UUID>
+public class TryPrepareVerbHandler implements IVerbHandler<UUID>
 {
     private EpaxosState state;
 

@@ -15,7 +15,7 @@ import java.util.*;
  *
  * Also records strongly connected components onto instances
  */
-class ExecutionSorter
+public class ExecutionSorter
 {
     private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
 
@@ -43,6 +43,10 @@ class ExecutionSorter
     {
         traversals++;
         assert instance != null;
+
+        if (instance.getStronglyConnected() != null)
+            loadedScc.put(instance.getId(), instance.getStronglyConnected());
+
         // if the instance is already executed, and it's not a dependency
         // of the target execution instance, only add it to the dep graph
         // if it's connected to an uncommitted instance, since that will

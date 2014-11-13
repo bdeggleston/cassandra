@@ -24,7 +24,7 @@ import java.util.concurrent.locks.ReadWriteLock;
  * participants, so the other participances will know if they agree with the
  * leader or not.
  */
-class PreacceptVerbHandler implements IVerbHandler<Instance>
+public class PreacceptVerbHandler implements IVerbHandler<Instance>
 {
     private static final Logger logger = LoggerFactory.getLogger(PreacceptVerbHandler.class);
 

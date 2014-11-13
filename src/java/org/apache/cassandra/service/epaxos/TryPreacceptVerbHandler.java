@@ -12,7 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 
-class TryPreacceptVerbHandler implements IVerbHandler<TryPreacceptRequest>
+public class TryPreacceptVerbHandler implements IVerbHandler<TryPreacceptRequest>
 {
     private static final Logger logger = LoggerFactory.getLogger(AcceptCallback.class);
 

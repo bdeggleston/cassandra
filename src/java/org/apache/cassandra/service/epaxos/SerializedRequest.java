@@ -1,7 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;

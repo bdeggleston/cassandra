@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.locks.ReadWriteLock;
 
-class AcceptVerbHandler implements IVerbHandler<AcceptRequest>
+public class AcceptVerbHandler implements IVerbHandler<AcceptRequest>
 {
     private static final Logger logger = LoggerFactory.getLogger(AcceptVerbHandler.class);
 
