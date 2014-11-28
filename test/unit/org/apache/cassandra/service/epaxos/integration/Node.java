@@ -124,6 +124,12 @@ public class Node extends EpaxosState
     }
 
     @Override
+    protected String stateTable()
+    {
+        return String.format("%s_%s", super.stateTable(), number);
+    }
+
+    @Override
     public void accept(UUID iid, AcceptDecision decision, Runnable failureCallback)
     {
         if (preAcceptHook != null)

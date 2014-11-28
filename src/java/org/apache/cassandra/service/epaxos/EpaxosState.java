@@ -142,6 +142,11 @@ public class EpaxosState
         return SystemKeyspace.EPAXOS_DEPENDENCIES;
     }
 
+    protected String stateTable()
+    {
+        return SystemKeyspace.EPAXOS_STATE;
+    }
+
     protected Random getRandom()
     {
         return random;
@@ -646,6 +651,53 @@ public class EpaxosState
     }
 
     /**
+     * increments the epoch for the given token
+     */
+    public void incrementInstance(String token)
+    {
+
+    }
+
+    public static class TokenState
+    {
+        long epoch;
+
+        public TokenState(long epoch)
+        {
+            this.epoch = epoch;
+        }
+    }
+
+    private volatile TokenState tokenState;
+
+    // FIXME: only using a single state for now
+    private TokenState getTokenState(ByteBuffer key)
+    {
+        String token = "";
+        if (tokenState != null)
+        {
+            return tokenState;
+        }
+
+        String select = String.format("SELECT * FROM %s.%s WHERE token=?", keyspace(), stateTable());
+        UntypedResultSet results = QueryProcessor.executeInternal(select, token);
+        if (results.isEmpty())
+        {
+            tokenState = new TokenState(0);
+            saveTokenState(token, tokenState);
+        }
+        return tokenState;
+    }
+
+    private void saveTokenState(String token, TokenState state)
+    {
+        token = "";
+        String insert = String.format("INSERT INTO %s.%s (token, epoch) VALUES (?, ?)", keyspace(), stateTable());
+        QueryProcessor.executeInternal(insert, token, state.epoch);
+
+    }
+
+    /**
      * loads a dependency manager. Must be called within a lock held for this key & cfid pair
      */
     protected DependencyManager loadDependencyManager(ByteBuffer key, UUID cfId)
@@ -660,7 +712,8 @@ public class EpaxosState
 
         if (results.isEmpty())
         {
-            dm = new DependencyManager();
+
+            dm = new DependencyManager(getTokenState(key).epoch);
             if (CACHE)
             {
                 dependencyManagers.put(keyPair, dm);

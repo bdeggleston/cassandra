@@ -75,7 +75,26 @@ public class DependencyManager
 
     }
 
+    // active instances - instances that still need to be taken
+    // as a dependency at least once
     private final Map<UUID, Entry> entries = new HashMap<>();
+
+    // ids of executed instances, divided into execution epochs:w
+    private final Map<Long, Set<UUID>> epochs = new HashMap<>();
+
+    private long epoch;
+    private long executionCount;
+
+    public DependencyManager(long epoch)
+    {
+        this(epoch, 0);
+    }
+
+    public DependencyManager(long epoch, long executionCount)
+    {
+        this.epoch = epoch;
+        this.executionCount = executionCount;
+    }
 
     @VisibleForTesting
     Entry get(UUID iid)
@@ -150,12 +169,62 @@ public class DependencyManager
         }
     }
 
+    // TODO: can we evict if instance has already been acknowledged?
     public void markExecuted(UUID iid)
     {
         Entry entry = get(iid);
-        if (entry == null)
+        if (entry != null)
+        {
+            entry.executed = true;
+        }
+         /*
+         we can't evict even if the instance has been acknowledged.
+         If the instance is part of a strongly connected component,
+         they could all acknowledge each other, and would terminate
+         the execution chain.
+          */
+
+        Set<UUID> epochSet = epochs.get(epoch);
+        if (epochSet == null)
+        {
+            epochSet = new HashSet<>();
+            epochs.put(epoch, epochSet);
+        }
+        if (!epochSet.contains(iid))
+        {
+            executionCount++;
+            epochSet.add(iid);
+        }
+    }
+
+    public long getEpoch()
+    {
+        return epoch;
+    }
+
+    @VisibleForTesting
+    Map<Long, Set<UUID>> getEpochExecutions()
+    {
+        return epochs;
+    }
+
+    public void setEpoch(long epoch)
+    {
+        if (epoch < this.epoch)
+        {
+            throw new RuntimeException(String.format("Cannot decrement epoch. %s -> %s", this.epoch, epoch));
+        }
+        else if (epoch == this.epoch)
+        {
             return;
-        entry.executed = true;
+        }
+        this.epoch = epoch;
+        executionCount = 0;
+    }
+
+    public long getExecutionCount()
+    {
+        return executionCount;
     }
 
     public static final IVersionedSerializer<DependencyManager> serializer = new IVersionedSerializer<DependencyManager>()
@@ -163,22 +232,50 @@ public class DependencyManager
         @Override
         public void serialize(DependencyManager deps, DataOutputPlus out, int version) throws IOException
         {
+            out.writeLong(deps.epoch);
+            out.writeLong(deps.executionCount);
+
             out.writeInt(deps.entries.size());
             for (Entry entry: deps.entries.values())
             {
                 Entry.serializer.serialize(entry, out, version);
+            }
+
+            out.writeInt(deps.epochs.size());
+            for (Map.Entry<Long, Set<UUID>> entry: deps.epochs.entrySet())
+            {
+                out.writeLong(entry.getKey());
+                Set<UUID> ids = entry.getValue();
+                out.writeInt(ids.size());
+                for (UUID id: ids)
+                {
+                    UUIDSerializer.serializer.serialize(id, out, version);
+                }
             }
         }
 
         @Override
         public DependencyManager deserialize(DataInput in, int version) throws IOException
         {
-            DependencyManager deps = new DependencyManager();
+            DependencyManager deps = new DependencyManager(in.readLong(), in.readLong());
             int size = in.readInt();
             for (int i=0; i<size; i++)
             {
                 Entry entry = Entry.serializer.deserialize(in, version);
                 deps.entries.put(entry.iid, entry);
+            }
+
+            int numEpochs = in.readInt();
+            for (int i=0; i<numEpochs; i++)
+            {
+                long epoch = in.readLong();
+                Set<UUID> ids = new HashSet<>();
+                int numIds = in.readInt();
+                for (int j=0; j<numIds; j++)
+                {
+                    ids.add(UUIDSerializer.serializer.deserialize(in, version));
+                }
+                deps.epochs.put(epoch, ids);
             }
             return deps;
         }
@@ -186,9 +283,21 @@ public class DependencyManager
         @Override
         public long serializedSize(DependencyManager deps, int version)
         {
-            long size = 4;
+            long size = 8 + 8 + 4;
             for (Entry entry: deps.entries.values())
                 size += Entry.serializer.serializedSize(entry, version);
+
+            size += 4; //out.writeInt(deps.epochs.size());
+            for (Map.Entry<Long, Set<UUID>> entry: deps.epochs.entrySet())
+            {
+                size += 8; //out.writeLong(entry.getKey());
+                Set<UUID> ids = entry.getValue();
+                size += 4; //out.writeInt(ids.size());
+                for (UUID id: ids)
+                {
+                    size += UUIDSerializer.serializer.serializedSize(id, version);
+                }
+            }
             return size;
         }
     };
