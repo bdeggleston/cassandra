@@ -21,6 +21,8 @@ import java.util.*;
  * dependency of another instance, which has been accepted or committed. This prevents situations where
  * a dependency graph becomes 'split', making the execution order ambiguous.
  */
+// TODO: rename to KeyState, rename system table too
+// TODO: move some functionality from EpaxosState to KeyStateManager
 public class DependencyManager
 {
     static class Entry
@@ -123,6 +125,12 @@ public class DependencyManager
     public Entry recordInstance(UUID iid)
     {
         return create(iid);
+    }
+
+    public Set<UUID> getDeps()
+    {
+        // TODO: make defensive copy?
+        return entries.keySet();
     }
 
     public Set<UUID> getDepsAndAdd(UUID iid)

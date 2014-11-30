@@ -33,12 +33,9 @@ import java.util.UUID;
  * Instances are not thread-safe, it's the responsibility of the user
  * to synchronize access
  */
-public class Instance
+public abstract class Instance
 {
     private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
-
-    public static final IVersionedSerializer<Instance> serializer = new ExternalSerializer();
-    static final IVersionedSerializer<Instance> internalSerializer = new InternalSerializer();
 
     public static enum State
     {
@@ -71,16 +68,36 @@ public class Instance
 
     }
 
-    private final UUID id;
-    private final SerializedRequest query;
-    private final InetAddress leader;
-    private volatile State state = State.INITIALIZED;
-    private volatile int ballot = 0;
-    private volatile boolean noop;
-    private volatile boolean fastPathImpossible; // TODO: remove
-    private volatile Set<UUID> dependencies = null;
-    private volatile boolean leaderDepsMatch = false;
-    private volatile List<InetAddress> successors = null;
+    public static enum Type
+    {
+        QUERY(0, QueryInstance.serializer, QueryInstance.internalSerializer),
+        TOKEN(1, TokenInstance.serializer, TokenInstance.internalSerializer);
+
+        public final IVersionedSerializer<Instance> serializer;
+        public final IVersionedSerializer<Instance> internalSerializer;
+
+        Type(int o, IVersionedSerializer<Instance> serializer, IVersionedSerializer<Instance> internalSerializer)
+        {
+            assert o == ordinal();
+            this.serializer = serializer;
+            this.internalSerializer = internalSerializer;
+        }
+
+        public static Type fromCode(int code)
+        {
+            return Type.values()[code];
+        }
+    }
+
+    protected final UUID id;
+    protected final InetAddress leader;
+    protected volatile State state = State.INITIALIZED;
+    protected volatile int ballot = 0;
+    protected volatile boolean noop;
+    protected volatile boolean fastPathImpossible; // TODO: remove
+    protected volatile Set<UUID> dependencies = null;
+    protected volatile boolean leaderDepsMatch = false;
+    protected volatile List<InetAddress> successors = null;
 
     // fields not transmitted to other nodes
     private volatile boolean placeholder = false;
@@ -98,22 +115,21 @@ public class Instance
 
     private final DependencyFilter dependencyFilter;
 
-    Instance(SerializedRequest query, InetAddress leader)
+    Instance(InetAddress leader)
     {
-        this(UUIDGen.getTimeUUID(), query, leader);
+        this(UUIDGen.getTimeUUID(), leader);
     }
 
-    Instance(UUID id, SerializedRequest query, InetAddress leader)
+    Instance(UUID id, InetAddress leader)
     {
         this.id = id;
         this.dependencyFilter = new DependencyFilter();
-        this.query = query;
         this.leader = leader;
     }
 
-    private Instance(Instance i)
+    protected Instance(Instance i)
     {
-        this(i.id, i.query, i.leader);
+        this(i.id, i.leader);
         state = i.state;
         ballot = i.ballot;
         noop = i.noop;
@@ -129,11 +145,6 @@ public class Instance
     public UUID getId()
     {
         return id;
-    }
-
-    public SerializedRequest getQuery()
-    {
-        return query;
     }
 
     public State getState()
@@ -335,29 +346,15 @@ public class Instance
         }
     }
 
-    public ColumnFamily execute() throws ReadTimeoutException, WriteTimeoutException
-    {
-        return query.execute();
-    }
+//    public abstract ColumnFamily execute() throws ReadTimeoutException, WriteTimeoutException;
 
     /**
      * Returns an exact copy of this instance for internal use
      */
-    public Instance copy()
-    {
-        return new Instance(this);
-    }
+    public abstract Instance copy();
 
-    public Instance copyRemote()
-    {
-        Instance instance = new Instance(this.id, this.query, this.leader);
-        instance.ballot = ballot;
-        instance.noop = noop;
-        instance.successors = successors;
-        instance.state = state;
-        instance.dependencies = dependencies;
-        return instance;
-    }
+    public abstract Instance copyRemote();
+    public abstract Type getType();
 
     /**
      * Applies mutable non-dependency attributes from remote instance copies
@@ -374,16 +371,12 @@ public class Instance
     }
 
     /**
-     * Serialization logic shared by internal and external serializers
+     * Serialization logic shared by composable internal and external serializers
      */
-    public static abstract class Serializer implements IVersionedSerializer<Instance>
+    static abstract class BaseSerializer
     {
-        @Override
         public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
         {
-            UUIDSerializer.serializer.serialize(instance.id, out, version);
-            SerializedRequest.serializer.serialize(instance.getQuery(), out, version);
-            CompactEndpointSerializationHelper.serialize(instance.leader, out);
             out.writeInt(instance.state.ordinal());
             out.writeInt(instance.ballot);
             out.writeBoolean(instance.noop);
@@ -404,14 +397,8 @@ public class Instance
                 CompactEndpointSerializationHelper.serialize(endpoint, out);
         }
 
-        @Override
-        public Instance deserialize(DataInput in, int version) throws IOException
+        public Instance deserialize(Instance instance, DataInput in, int version) throws IOException
         {
-            Instance instance = new Instance(
-                    UUIDSerializer.serializer.deserialize(in, version),
-                    SerializedRequest.serializer.deserialize(in, version),
-                    CompactEndpointSerializationHelper.deserialize(in));
-
             try
             {
                 instance.state = State.values()[in.readInt()];
@@ -447,13 +434,9 @@ public class Instance
             return instance;
         }
 
-        @Override
         public long serializedSize(Instance instance, int version)
         {
             int size = 0;
-            size += UUIDSerializer.serializer.serializedSize(instance.id, version);
-            size += SerializedRequest.serializer.serializedSize(instance.getQuery(), version);
-            size += CompactEndpointSerializationHelper.serializedSize(instance.leader);
             size += 4;  // instance.state.code
             size += 4;  // instance.ballot
             size += 1;  // instance.noop
@@ -478,7 +461,7 @@ public class Instance
     /**
      * Serialization used to communicate instances to other nodes
      */
-    private static class ExternalSerializer extends Serializer
+    static class ExternalSerializer extends BaseSerializer
     {
         @Override
         public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
@@ -493,11 +476,11 @@ public class Instance
         }
 
         @Override
-        public Instance deserialize(DataInput in, int version) throws IOException
+        public Instance deserialize(Instance instance, DataInput in, int version) throws IOException
         {
             if (!in.readBoolean())
                 return null;
-            return super.deserialize(in, version);
+            return super.deserialize(instance, in, version);
         }
 
         @Override
@@ -514,7 +497,7 @@ public class Instance
     /**
      * Serialization used for local instance persistence
      */
-    private static class InternalSerializer extends Serializer
+    static class InternalSerializer extends BaseSerializer
     {
         @Override
         public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
@@ -532,9 +515,9 @@ public class Instance
         }
 
         @Override
-        public Instance deserialize(DataInput in, int version) throws IOException
+        public Instance deserialize(Instance instance, DataInput in, int version) throws IOException
         {
-            Instance instance = super.deserialize(in, version);
+            super.deserialize(instance, in, version);
             instance.placeholder = in.readBoolean();
             instance.lastUpdated = in.readLong();
             if (in.readBoolean())
@@ -564,10 +547,70 @@ public class Instance
         }
     }
 
+    public static final IVersionedSerializer<Instance> serializer = new IVersionedSerializer<Instance>()
+    {
+        @Override
+        public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
+        {
+            out.writeBoolean(instance != null);
+            if (instance != null)
+            {
+                if (instance.dependencies == null || instance.isPlaceholder())
+                    throw new AssertionError("cannot transmit placeholder instances");
+
+                Type type = instance.getType();
+                out.writeInt(type.ordinal());
+                type.serializer.serialize(instance, out, version);
+            }
+        }
+
+        @Override
+        public Instance deserialize(DataInput in, int version) throws IOException
+        {
+            if (!in.readBoolean())
+                return null;
+            Type type = Type.fromCode(in.readInt());
+            return type.serializer.deserialize(in, version);
+        }
+
+        @Override
+        public long serializedSize(Instance instance, int version)
+        {
+            if (instance == null)
+                return 1;
+            if (instance.dependencies == null || instance.isPlaceholder())
+                throw new AssertionError("cannot transmit placeholder instances");
+            return instance.getType().serializer.serializedSize(instance, version) + 1 + 4;
+        }
+    };
+
+    public static final IVersionedSerializer<Instance> internalSerializer = new IVersionedSerializer<Instance>()
+    {
+        @Override
+        public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
+        {
+            out.writeInt(instance.getType().ordinal());
+            instance.getType().internalSerializer.serialize(instance, out, version);
+        }
+
+        @Override
+        public Instance deserialize(DataInput in, int version) throws IOException
+        {
+            Type type = Type.fromCode(in.readInt());
+            return type.internalSerializer.deserialize(in, version);
+        }
+
+        @Override
+        public long serializedSize(Instance instance, int version)
+        {
+            return instance.getType().internalSerializer.serializedSize(instance, version) + 4;
+        }
+    };
+
     @Override
     public String toString()
     {
-        return "Instance{" +
+        return getClass().getSimpleName() + "{" +
                 "id=" + id +
                 ", leader=" + leader +
                 ", state=" + state +

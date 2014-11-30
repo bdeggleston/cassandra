@@ -37,7 +37,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     public void testSuccessCase() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
@@ -61,7 +61,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     public void noLocalResponse() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
@@ -81,7 +81,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     public void ballotFailure() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
@@ -119,7 +119,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     public void duplicateMessagesIgnored() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
@@ -143,7 +143,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     public void additionalMessagesAreIgnored() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
@@ -171,7 +171,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     public void remoteEndpointsArentCounted() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 3);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.LOCAL_SERIAL));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.LOCAL_SERIAL));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 

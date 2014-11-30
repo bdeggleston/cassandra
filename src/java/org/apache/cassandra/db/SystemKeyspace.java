@@ -86,8 +86,8 @@ public class SystemKeyspace
     public static final String SSTABLE_ACTIVITY_CF = "sstable_activity";
     public static final String COMPACTION_HISTORY_CF = "compaction_history";
     public static final String EPAXOS_INSTANCE = "epaxos_instance";
-    public static final String EPAXOS_DEPENDENCIES = "epaxos_dependencies";
-    public static final String EPAXOS_STATE = "epaxos_state";
+    public static final String EPAXOS_KEY_STATE = "epaxos_key_state";
+    public static final String EPAXOS_TOKEN_STATE = "epaxos_token_state";
 
     private static final String LOCAL_KEY = "local";
 

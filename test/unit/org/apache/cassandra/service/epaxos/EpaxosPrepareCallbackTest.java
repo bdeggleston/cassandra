@@ -41,7 +41,7 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     public void ballotFailure() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         PrepareCallback callback = getCallback(state, instance);
@@ -77,7 +77,7 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     {
         MockCallbackState state = new MockCallbackState(3, 0);
 
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         instance.preaccept(Sets.newHashSet(dep1));
@@ -129,7 +129,7 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     {
         MockCallbackState state = new MockCallbackState(3, 0);
 
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         instance.preaccept(Sets.newHashSet(dep1));
@@ -183,7 +183,7 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     {
         MockCallbackState state = new MockCallbackState(3, 0);
 
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         instance.accept(Sets.newHashSet(dep1));
@@ -236,7 +236,7 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     {
         MockCallbackState state = new MockCallbackState(3, 0);
 
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
         instance.incrementBallot();
 
@@ -288,7 +288,7 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     {
         MockCallbackState state = new MockCallbackState(3, 0);
 
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
         instance.incrementBallot();
 
@@ -316,7 +316,7 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     {
         MockCallbackState state = new MockCallbackState(3, 0);
 
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
         instance.incrementBallot();
 

@@ -56,6 +56,11 @@ public class SerializedRequest
         return key;
     }
 
+    public CfKey getCfKey()
+    {
+        return new CfKey(key, keyspaceName, cfName);
+    }
+
     public ConsistencyLevel getConsistencyLevel()
     {
         return consistencyLevel;

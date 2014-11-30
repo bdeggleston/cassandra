@@ -107,8 +107,8 @@ public final class KSMetaData
                                                 CFMetaData.PaxosCf,
                                                 CFMetaData.SSTableActivityCF,
                                                 CFMetaData.EpaxosInstanceCf,
-                                                CFMetaData.EpaxosDependenciesCF,
-                                                CFMetaData.EpaxosStateCf);
+                                                CFMetaData.EpaxosKeyStateCF,
+                                                CFMetaData.EpaxosTokenStateCF);
         return new KSMetaData(Keyspace.SYSTEM_KS, LocalStrategy.class, Collections.<String, String>emptyMap(), true, cfDefs);
     }
 

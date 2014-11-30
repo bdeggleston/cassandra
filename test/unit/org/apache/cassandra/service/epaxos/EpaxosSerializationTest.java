@@ -198,7 +198,7 @@ public class EpaxosSerializationTest
     @Test
     public void checkInstance() throws Exception
     {
-        Instance instance = new Instance(getSerializedRequest(), InetAddress.getLocalHost());
+        Instance instance = new QueryInstance(getSerializedRequest(), InetAddress.getLocalHost());
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
         instance.updateBallot(5);
@@ -229,7 +229,7 @@ public class EpaxosSerializationTest
     @Test(expected=AssertionError.class)
     public void checkPlaceholderInstanceFailure() throws Exception
     {
-        Instance instance = new Instance(getSerializedRequest(), InetAddress.getLocalHost());
+        Instance instance = new QueryInstance(getSerializedRequest(), InetAddress.getLocalHost());
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
         instance.updateBallot(5);
@@ -245,7 +245,7 @@ public class EpaxosSerializationTest
     @Test
     public void checkInstanceInternal() throws Exception
     {
-        Instance instance = new Instance(getSerializedRequest(), InetAddress.getLocalHost());
+        Instance instance = new QueryInstance(getSerializedRequest(), InetAddress.getLocalHost());
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
         instance.updateBallot(5);

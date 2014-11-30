@@ -25,4 +25,10 @@ public class EpaxosEpochTest
 
     }
 
+    @Test
+    public void epochInstanceIncludedInQueryDeps() throws Exception
+    {
+
+    }
+
 }

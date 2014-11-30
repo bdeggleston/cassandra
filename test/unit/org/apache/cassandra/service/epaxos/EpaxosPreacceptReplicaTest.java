@@ -51,14 +51,14 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
     {
         // create an instance that only node0 knows about
         Node node = nodes.get(0);
-        Instance firstInstance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
+        Instance firstInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         firstInstance.commit(Sets.<UUID>newHashSet());
         firstInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         node.addMissingInstance(firstInstance);
 
 
         // send node 0 a preaccept message that doesn't include the missing instance
-        Instance newInstance = new Instance(getSerializedCQLRequest(0, 0), nodes.get(1).getEndpoint());
+        Instance newInstance = new QueryInstance(getSerializedCQLRequest(0, 0), nodes.get(1).getEndpoint());
         newInstance.preaccept(Sets.newHashSet(firstInstance.getId()));
         newInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
 
@@ -101,14 +101,14 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
     {
         // create an instance that all nodes know
         Node node = nodes.get(0);
-        Instance firstInstance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
+        Instance firstInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         firstInstance.commit(Sets.<UUID>newHashSet());
         firstInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         node.addMissingInstance(firstInstance);
 
 
         // send node 0 a preaccept message that doesn't include the missing instance
-        Instance newInstance = new Instance(getSerializedCQLRequest(0, 0), nodes.get(1).getEndpoint());
+        Instance newInstance = new QueryInstance(getSerializedCQLRequest(0, 0), nodes.get(1).getEndpoint());
         newInstance.preaccept(Sets.newHashSet(firstInstance.getId(), UUIDGen.getTimeUUID()));
         newInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
 
@@ -146,14 +146,14 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
     {
         // create an instance that only node0 knows about
         Node node = nodes.get(0);
-        Instance missingInstance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
+        Instance missingInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         missingInstance.commit(Sets.<UUID>newHashSet());
         missingInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         node.addMissingInstance(missingInstance);
 
 
         // send node 0 a preaccept message that doesn't include the missing instance
-        Instance newInstance = new Instance(getSerializedCQLRequest(0, 0), nodes.get(1).getEndpoint());
+        Instance newInstance = new QueryInstance(getSerializedCQLRequest(0, 0), nodes.get(1).getEndpoint());
         newInstance.preaccept(Sets.<UUID>newHashSet());
         newInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
 

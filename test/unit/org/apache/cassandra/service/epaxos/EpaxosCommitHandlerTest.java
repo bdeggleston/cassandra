@@ -44,7 +44,7 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
     {
         MockVerbHandlerState state = new MockVerbHandlerState();
         CommitVerbHandler handler = new CommitVerbHandler(state);
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.accept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         Assert.assertEquals(0, state.missingRecoreded.size());
@@ -74,7 +74,7 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
 
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.accept(Sets.newHashSet(dep1));
 
         state.instanceMap.put(instance.getId(), instance.copy());
@@ -99,5 +99,13 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
         Instance localInstance = state.savedInstances.get(instance.getId());
         Assert.assertEquals(Instance.State.COMMITTED, localInstance.getState());
         Assert.assertEquals(instance.getDependencies(), localInstance.getDependencies());
+    }
+
+    @Test
+    public void depsAcknowledged() throws Exception
+    {
+        // TODO: check query key deps
+        // TODO: check token state deps
+        Assert.fail();
     }
 }

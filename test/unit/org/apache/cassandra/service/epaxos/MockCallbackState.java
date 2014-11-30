@@ -57,7 +57,7 @@ public class MockCallbackState extends EpaxosState
     }
 
     @Override
-    protected ParticipantInfo getParticipants(Instance instance) throws UnavailableException
+    protected ParticipantInfo getQueryParticipants(QueryInstance instance) throws UnavailableException
     {
         return new ParticipantInfo(localEndpoints, remoteEndpoints, instance.getQuery().getConsistencyLevel());
     }

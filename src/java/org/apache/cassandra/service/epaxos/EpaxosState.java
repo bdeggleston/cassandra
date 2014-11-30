@@ -11,7 +11,6 @@ import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.*;
@@ -34,6 +33,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class EpaxosState
 {
@@ -59,7 +59,7 @@ public class EpaxosState
 
     // prevents multiple threads modifying the dependency manager for a given key. Aquire this after locking an instance
     private final Striped<Lock> depsLocks = Striped.lock(DatabaseDescriptor.getConcurrentWriters() * 1024);
-    private final Cache<Pair<ByteBuffer, UUID>, DependencyManager> dependencyManagers;
+    private final Cache<CfKey, DependencyManager> dependencyManagers;
 
     // aborts prepare phases on commit
     private final ConcurrentMap<UUID, List<ICommitCallback>> commitCallbacks = Maps.newConcurrentMap();
@@ -168,7 +168,7 @@ public class EpaxosState
 
         query.getConsistencyLevel().validateForCas();
 
-        Instance instance = createInstance(query);
+        Instance instance = createQueryInstance(query);
         SettableFuture<T> resultFuture = SettableFuture.create();
         resultFutures.put(instance.getId(), resultFuture);
         try
@@ -194,44 +194,143 @@ public class EpaxosState
     /**
      * Creates a new instance, setting this node as the leader
      */
-    protected Instance createInstance(SerializedRequest request)
+    protected QueryInstance createQueryInstance(SerializedRequest request)
     {
-        return new Instance(request, getEndpoint());
+        return new QueryInstance(request, getEndpoint());
     }
 
     protected Set<UUID> getCurrentDependencies(Instance instance)
     {
+        if (instance instanceof QueryInstance)
+        {
+            return getCurrentQueryDependencies((QueryInstance) instance);
+        }
+        else if (instance instanceof TokenInstance)
+        {
+            return getCurrentTokenDependencies((TokenInstance) instance);
+        }
+        else
+        {
+            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+        }
+    }
+
+    protected Set<UUID> getCurrentQueryDependencies(QueryInstance instance)
+    {
         SerializedRequest request = instance.getQuery();
 
-        Pair<ByteBuffer, UUID> keyPair = Pair.create(request.getKey(),
-                                                     Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+        CfKey cfKey = request.getCfKey();
 
-        Lock lock = depsLocks.get(keyPair);
+        TokenState tokenState = getTokenState(cfKey.key);
+        tokenState.rwLock.readLock().lock();
+
+        Lock lock = depsLocks.get(cfKey);
         lock.lock();
         try
         {
-            DependencyManager dm = loadDependencyManager(keyPair.left, keyPair.right);
+            DependencyManager dm = loadDependencyManager(cfKey.key, cfKey.cfId);
             Set<UUID> deps = dm.getDepsAndAdd(instance.getId());
-            saveDependencyManager(keyPair.left, keyPair.right, dm);
+            saveDependencyManager(cfKey.key, cfKey.cfId, dm);
+
+            // add any active token state mutations
+            // TODO: need to evict
+            deps.addAll(tokenState.dependencyManager.getDeps());
+            // FIXME: this is too complicated
+
             return deps;
         }
         finally
         {
             lock.unlock();
+            tokenState.rwLock.readLock().unlock();
+        }
+    }
+
+    protected Set<UUID> getCurrentTokenDependencies(TokenInstance instance)
+    {
+        TokenState tokenState = getTokenState(instance.getToken());
+        tokenState.rwLock.writeLock().lock();
+        try
+        {
+            // TODO: lock dm?
+            // TODO: bound token range
+            // TODO: work out a less crappy way to do this
+            int limit = 10000;
+
+            // since the token state lock is locked, we can read the key managers right off of disk. The key managers
+            // rely on acquiring a read lock before doing anything. However, this could be a bottleneck
+            // TODO: is this a bottleneck?
+
+            Set<UUID> deps = new HashSet<>();
+
+            UntypedResultSet result;
+            do
+            {
+                String insert = String.format("SELECT * FROM %s.%s LIMIT ?", keyspace(), dependencyTable());
+                result = QueryProcessor.executeInternal(insert, limit);
+
+                for (UntypedResultSet.Row row : result)
+                {
+                    ByteBuffer key = row.getBlob("row_key");
+                    UUID cfId = row.getUUID("cf_id");
+
+                    DependencyManager dm = dependencyManagers.getIfPresent(Pair.create(key, cfId));
+                    if (dm == null)
+                    {
+                        ByteBuffer data = row.getBytes("data");
+                        DataInput in = ByteStreams.newDataInput(data.array(), data.position());
+                        try
+                        {
+                            dm = DependencyManager.serializer.deserialize(in, 0);
+                        }
+                        catch (IOException e)
+                        {
+                            throw new AssertionError(e);
+                        }
+                    }
+                    deps.addAll(dm.getDepsAndAdd(instance.getId()));
+                    saveDependencyManager(key, cfId, dm);
+                }
+
+            } while (result.size() >= limit);
+
+            dependencyManagers.invalidateAll();
+            return deps;
+        }
+        finally
+        {
+            tokenState.rwLock.writeLock().unlock();
         }
     }
 
     protected void recordMissingInstance(Instance instance)
     {
+        if (instance instanceof QueryInstance)
+        {
+            recordMissingQueryInstance((QueryInstance) instance);
+        }
+        else if (instance instanceof TokenInstance)
+        {
+            recordMissingTokenInstance((TokenInstance) instance);
+        }
+        else
+        {
+            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+        }
+    }
+
+    protected void recordMissingQueryInstance(QueryInstance instance)
+    {
         SerializedRequest request = instance.getQuery();
 
-        Pair<ByteBuffer, UUID> keyPair = Pair.create(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+        CfKey cfKey = request.getCfKey();
 
-        Lock lock = depsLocks.get(keyPair);
+        Lock lock = depsLocks.get(cfKey);
         lock.lock();
         try
         {
-            DependencyManager dm = loadDependencyManager(keyPair.left, keyPair.right);
+            // FIXME: token state requests
+            DependencyManager dm = loadDependencyManager(cfKey.key, cfKey.cfId);
             dm.recordInstance(instance.getId());
 
             if (instance.getState().atLeast(Instance.State.ACCEPTED))
@@ -244,27 +343,50 @@ public class EpaxosState
                 dm.markExecuted(instance.getId());
             }
 
-            saveDependencyManager(keyPair.left, keyPair.right, dm);
+            saveDependencyManager(cfKey.key, cfKey.cfId, dm);
         }
         finally
         {
             lock.unlock();
         }
+    }
+
+    protected void recordMissingTokenInstance(TokenInstance instance)
+    {
+        assert false;
     }
 
     protected void recordAcknowledgedDeps(Instance instance)
     {
+        if (instance instanceof QueryInstance)
+        {
+            recordAcknowledgedQueryDeps((QueryInstance) instance);
+        }
+        else if (instance instanceof TokenInstance)
+        {
+            recordAcknowledgedTokenDeps((TokenInstance) instance);
+        }
+        else
+        {
+            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+        }
+    }
+
+    protected void recordAcknowledgedQueryDeps(QueryInstance instance)
+    {
         SerializedRequest request = instance.getQuery();
 
-        Pair<ByteBuffer, UUID> keyPair = Pair.create(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+        CfKey cfKey = request.getCfKey();
 
-        Lock lock = depsLocks.get(keyPair);
+        Lock lock = depsLocks.get(cfKey);
         lock.lock();
         try
         {
-            DependencyManager dm = loadDependencyManager(keyPair.left, keyPair.right);
+            DependencyManager dm = loadDependencyManager(cfKey.key, cfKey.cfId);
             dm.markAcknowledged(instance.getDependencies(), instance.getId());
-            saveDependencyManager(keyPair.left, keyPair.right, dm);
+            saveDependencyManager(cfKey.key, cfKey.cfId, dm);
+
+            // FIXME: acknowledge token state instances
         }
         finally
         {
@@ -272,24 +394,52 @@ public class EpaxosState
         }
     }
 
+    protected void recordAcknowledgedTokenDeps(TokenInstance instance)
+    {
+        assert false;
+    }
+
     protected void recordExecuted(Instance instance)
+    {
+        if (instance instanceof QueryInstance)
+        {
+            recordExecutedQuery((QueryInstance) instance);
+        }
+        else if (instance instanceof TokenInstance)
+        {
+            recordExecutedToken((TokenInstance) instance);
+        }
+        else
+        {
+            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+        }
+    }
+
+    protected void recordExecutedQuery(QueryInstance instance)
     {
         SerializedRequest request = instance.getQuery();
 
-        Pair<ByteBuffer, UUID> keyPair = Pair.create(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+        CfKey cfKey = request.getCfKey();
 
-        Lock lock = depsLocks.get(keyPair);
+        Lock lock = depsLocks.get(cfKey);
         lock.lock();
         try
         {
-            DependencyManager dm = loadDependencyManager(keyPair.left, keyPair.right);
+            DependencyManager dm = loadDependencyManager(cfKey.key, cfKey.cfId);
             dm.markExecuted(instance.getId());
-            saveDependencyManager(keyPair.left, keyPair.right, dm);
+            saveDependencyManager(cfKey.key, cfKey.cfId, dm);
+
+            // FIXME: acknowledge token state instances?
         }
         finally
         {
             lock.unlock();
         }
+    }
+
+    protected void recordExecutedToken(TokenInstance instance)
+    {
+        assert false;
     }
 
     protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
@@ -454,7 +604,6 @@ public class EpaxosState
     {
         logger.debug("Executing serialized request for {}", instance.getId());
         ColumnFamily result = instance.execute();
-        recordExecuted(instance);
         SettableFuture resultFuture = resultFutures.get(instance.getId());
         if (resultFuture != null)
         {
@@ -653,47 +802,68 @@ public class EpaxosState
     /**
      * increments the epoch for the given token
      */
-    public void incrementInstance(String token)
+    public void incrementEpoch(String token)
     {
+        // TODO: iterate over all dependency managers in the token range
+        // TODO: run epoch instance
 
     }
 
+    // TODO: persist
     public static class TokenState
     {
         long epoch;
 
+        public final DependencyManager dependencyManager;
+
+        // fair to give priority to token mutations
+        public final ReadWriteLock rwLock = new ReentrantReadWriteLock(true);
+
         public TokenState(long epoch)
         {
+            this(epoch, new DependencyManager(epoch));
+        }
+
+        public TokenState(long epoch, DependencyManager dependencyManager)
+        {
             this.epoch = epoch;
+            this.dependencyManager = dependencyManager;
         }
     }
 
-    private volatile TokenState tokenState;
+    private volatile TokenState __tokenState__ = new TokenState(0);
 
     // FIXME: only using a single state for now
     private TokenState getTokenState(ByteBuffer key)
     {
-        String token = "";
-        if (tokenState != null)
-        {
-            return tokenState;
-        }
+        // TODO: return the token state that corresponds to the given key
+//        String token = "";
+//        if (tokenState != null)
+//        {
+//            return tokenState;
+//        }
+//
+//        String select = String.format("SELECT * FROM %s.%s WHERE token=?", keyspace(), stateTable());
+//        UntypedResultSet results = QueryProcessor.executeInternal(select, token);
+//        if (results.isEmpty())
+//        {
+//            tokenState = new TokenState(0);
+//            saveTokenState(token, tokenState);
+//        }
+        return __tokenState__;
+    }
 
-        String select = String.format("SELECT * FROM %s.%s WHERE token=?", keyspace(), stateTable());
-        UntypedResultSet results = QueryProcessor.executeInternal(select, token);
-        if (results.isEmpty())
-        {
-            tokenState = new TokenState(0);
-            saveTokenState(token, tokenState);
-        }
-        return tokenState;
+    private TokenState getTokenState(Token token)
+    {
+        // TODO: return the token state that corresponds to the given token
+        return __tokenState__;
     }
 
     private void saveTokenState(String token, TokenState state)
     {
-        token = "";
-        String insert = String.format("INSERT INTO %s.%s (token, epoch) VALUES (?, ?)", keyspace(), stateTable());
-        QueryProcessor.executeInternal(insert, token, state.epoch);
+//        token = "";
+//        String insert = String.format("INSERT INTO %s.%s (token, epoch) VALUES (?, ?)", keyspace(), stateTable());
+//        QueryProcessor.executeInternal(insert, token, state.epoch);
 
     }
 
@@ -702,8 +872,8 @@ public class EpaxosState
      */
     protected DependencyManager loadDependencyManager(ByteBuffer key, UUID cfId)
     {
-        Pair<ByteBuffer, UUID> keyPair = Pair.create(key, cfId);
-        DependencyManager dm = dependencyManagers.getIfPresent(keyPair);
+        CfKey cfKey = new CfKey(key, cfId);
+        DependencyManager dm = dependencyManagers.getIfPresent(cfKey);
         if (dm != null)
             return dm;
 
@@ -716,7 +886,7 @@ public class EpaxosState
             dm = new DependencyManager(getTokenState(key).epoch);
             if (CACHE)
             {
-                dependencyManagers.put(keyPair, dm);
+                dependencyManagers.put(cfKey, dm);
             }
             return dm;
         }
@@ -731,7 +901,7 @@ public class EpaxosState
             dm = DependencyManager.serializer.deserialize(in, 0);
             if (CACHE)
             {
-                dependencyManagers.put(keyPair, dm);
+                dependencyManagers.put(cfKey, dm);
             }
             return dm;
 
@@ -742,10 +912,15 @@ public class EpaxosState
         }
     }
 
+    private void saveDependencyManager(ByteBuffer key, UUID cfId, DependencyManager dm)
+    {
+        saveDependencyManager(key, cfId, dm, true);
+    }
+
     /**
      * persists a dependency manager. Must be called within a lock held for this key & cfid pair
      */
-    private void saveDependencyManager(ByteBuffer key, UUID cfId, DependencyManager dm)
+    private void saveDependencyManager(ByteBuffer key, UUID cfId, DependencyManager dm, boolean cache)
     {
 
         DataOutputBuffer out = new DataOutputBuffer((int) DependencyManager.serializer.serializedSize(dm, 0));
@@ -763,9 +938,9 @@ public class EpaxosState
                                        cfId,
                                        ByteBuffer.wrap(out.getData()));
 
-        if (CACHE)
+        if (cache)
         {
-            dependencyManagers.put(Pair.create(key, cfId), dm);
+            dependencyManagers.put(new CfKey(key, cfId), dm);
         }
     }
 
@@ -869,6 +1044,22 @@ public class EpaxosState
 
     protected ParticipantInfo getParticipants(Instance instance) throws UnavailableException
     {
+        if (instance instanceof QueryInstance)
+        {
+            return getQueryParticipants((QueryInstance) instance);
+        }
+        else if (instance instanceof TokenInstance)
+        {
+            return getTokenParticipants((TokenInstance) instance);
+        }
+        else
+        {
+            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+        }
+    }
+
+    protected ParticipantInfo getQueryParticipants(QueryInstance instance) throws UnavailableException
+    {
         SerializedRequest query = instance.getQuery();
 
         Token tk = StorageService.getPartitioner().getToken(query.getKey());
@@ -888,6 +1079,11 @@ public class EpaxosState
             endpoints = ImmutableList.copyOf(Iterables.filter(endpoints, isLocalDc));
         }
         return new ParticipantInfo(endpoints, remoteEndpoints, query.getConsistencyLevel());
+    }
+
+    protected ParticipantInfo getTokenParticipants(TokenInstance instance) throws UnavailableException
+    {
+        throw new AssertionError();
     }
 
     protected Predicate<InetAddress> dcPredicateFor(final String dc, final boolean equals)

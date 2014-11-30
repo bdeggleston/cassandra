@@ -54,13 +54,13 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         AcceptVerbHandler handler = (AcceptVerbHandler) node.getAcceptVerbHandler();
 
         // add an instance
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         instance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         instance.preaccept(Sets.<UUID>newHashSet());
         node.addMissingInstance(instance);
 
         // make instance depend on a new instance
-        Instance missingInstance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
+        Instance missingInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         missingInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         missingInstance.accept(Sets.<UUID>newHashSet());
 
@@ -110,11 +110,11 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         AcceptVerbHandler handler = (AcceptVerbHandler) node.getAcceptVerbHandler();
 
         // add an instance
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         instance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
 
         // make instance depend on a new instance
-        Instance missingInstance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
+        Instance missingInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         missingInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         missingInstance.accept(Sets.<UUID>newHashSet());
 
@@ -162,7 +162,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         AcceptVerbHandler handler = (AcceptVerbHandler) node.getAcceptVerbHandler();
 
         // add an instance
-        Instance instance1 = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
+        Instance instance1 = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         instance1.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         instance1.preaccept(Sets.<UUID>newHashSet());
         node.addMissingInstance(instance1);
@@ -182,7 +182,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         Assert.assertEquals(true, node.getInstance(instance1.getId()).isNoop());
 
         // check new instance
-        Instance instance2 = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
+        Instance instance2 = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         instance2.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         instance2.accept(Sets.newHashSet(instance1.getId()));
         instance2.setNoop(true);
@@ -207,7 +207,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         AcceptVerbHandler handler = (AcceptVerbHandler) node.getAcceptVerbHandler();
 
         // add an instance
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         instance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         instance.preaccept(Sets.<UUID>newHashSet());
         node.addMissingInstance(instance);
@@ -243,7 +243,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         Node node = nodes.get(0);
         AcceptVerbHandler handler = (AcceptVerbHandler) node.getAcceptVerbHandler();
 
-        Instance previousInstance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
+        Instance previousInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         previousInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         previousInstance.preaccept(Sets.<UUID>newHashSet());
         node.addMissingInstance(previousInstance);
@@ -253,7 +253,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         Assert.assertFalse(node.getDependencyManager(previousInstance).get(previousInstance.getId()).acknowledged);
 
         // add an instance
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), node.getEndpoint());
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         instance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         instance.preaccept(Sets.<UUID>newHashSet(previousInstance.getId()));
 

@@ -50,7 +50,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         MockVerbHandlerState state = new MockVerbHandlerState();
         PrepareVerbHandler handler = new PrepareVerbHandler(state);
 
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         state.instanceMap.put(instance.getId(), instance.copy());
@@ -71,7 +71,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         MockVerbHandlerState state = new MockVerbHandlerState();
         PrepareVerbHandler handler = new PrepareVerbHandler(state);
 
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         instance.incrementBallot();
@@ -90,7 +90,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         MockVerbHandlerState state = new MockVerbHandlerState();
         PrepareVerbHandler handler = new PrepareVerbHandler(state);
 
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         state.instanceMap.put(instance.getId(), instance.copy());
@@ -112,7 +112,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         MockVerbHandlerState state = new MockVerbHandlerState();
         PrepareVerbHandler handler = new PrepareVerbHandler(state);
 
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         state.instanceMap.put(instance.getId(), instance.copy());

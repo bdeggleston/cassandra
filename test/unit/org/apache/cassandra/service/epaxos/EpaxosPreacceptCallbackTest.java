@@ -37,7 +37,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     public void fastPathSuccessCase() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
@@ -68,7 +68,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     public void slowPathSuccessCase() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         Set<UUID> expectedDeps = Sets.newHashSet(dep1, dep2);
@@ -102,7 +102,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     public void forcedAcceptSuccessCase() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
@@ -135,7 +135,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     public void noLocalResponse() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
@@ -156,7 +156,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     public void ballotFailure() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
@@ -173,7 +173,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     public void duplicateMessagesIgnored() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
@@ -201,7 +201,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     public void additionalMessagesIgnored() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
@@ -234,7 +234,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     public void sendMissingInstance() throws Exception
     {
         MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         instance.setDependencies(Sets.newHashSet(dep1));

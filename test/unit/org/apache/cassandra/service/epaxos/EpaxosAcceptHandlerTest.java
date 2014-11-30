@@ -50,7 +50,7 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
     {
         MockVerbHandlerState state = new MockVerbHandlerState();
         AcceptVerbHandler handler = new AcceptVerbHandler(state);
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         state.instanceMap.put(instance.getId(), instance.copy());
@@ -86,7 +86,7 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
     {
         MockVerbHandlerState state = new MockVerbHandlerState();
         AcceptVerbHandler handler = new AcceptVerbHandler(state);
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         Assert.assertEquals(0, state.missingRecoreded.size());
@@ -111,7 +111,7 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
     {
         MockVerbHandlerState state = new MockVerbHandlerState();
         AcceptVerbHandler handler = new AcceptVerbHandler(state);
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         state.instanceMap.put(instance.getId(), instance.copy());
@@ -133,4 +133,11 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
         Assert.assertEquals(state.instanceMap.get(instance.getId()).getBallot(), response.payload.ballot);
     }
 
+    @Test
+    public void depsAcknowledged() throws Exception
+    {
+        // TODO: check query key deps
+        // TODO: check token state deps
+        Assert.fail();
+    }
 }

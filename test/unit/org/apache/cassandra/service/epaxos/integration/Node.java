@@ -82,9 +82,9 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected Instance createInstance(SerializedRequest request)
+    protected QueryInstance createQueryInstance(SerializedRequest request)
     {
-        Instance instance = super.createInstance(request);
+        QueryInstance instance = super.createQueryInstance(request);
         lastCreatedInstance = instance;
         return instance;
     }
@@ -101,8 +101,19 @@ public class Node extends EpaxosState
 
     public DependencyManager getDependencyManager(Instance instance)
     {
-        SerializedRequest request = instance.getQuery();
-        return loadDependencyManager(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+        if (instance instanceof QueryInstance)
+        {
+            SerializedRequest request = ((QueryInstance) instance).getQuery();
+            return loadDependencyManager(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+        }
+        else if (instance instanceof TokenInstance)
+        {
+            throw new AssertionError();
+        }
+        else
+        {
+            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+        }
     }
 
     @Override
@@ -154,7 +165,7 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected ParticipantInfo getParticipants(Instance instance) throws UnavailableException
+    protected ParticipantInfo getQueryParticipants(QueryInstance instance) throws UnavailableException
     {
         return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, instance.getQuery().getConsistencyLevel());
     }

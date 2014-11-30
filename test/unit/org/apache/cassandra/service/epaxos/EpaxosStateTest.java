@@ -24,4 +24,46 @@ public class EpaxosStateTest
     {
 
     }
+
+    @Test
+    public void getCurrentDepsQuery() throws Exception
+    {
+
+    }
+
+    @Test
+    public void getCurrentDepsToken() throws Exception
+    {
+
+    }
+
+    @Test
+    public void recordMissingInstanceQuery() throws Exception
+    {
+
+    }
+
+    @Test
+    public void recordMissingInstanceToken() throws Exception
+    {
+
+    }
+
+    @Test
+    public void recordAcknowledgedDepsToken() throws Exception
+    {
+
+    }
+
+    @Test
+    public void recordExecutedQuery() throws Exception
+    {
+
+    }
+
+    @Test
+    public void recordExecutedToken() throws Exception
+    {
+
+    }
 }

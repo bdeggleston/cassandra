@@ -78,6 +78,7 @@ public class ExecuteTask implements Runnable
                         throw new RuntimeException(e);
                     }
                     toExecute.setExecuted();
+                    state.recordExecuted(toExecute);
                     state.saveInstance(toExecute);
 
                     // TODO: why not just eagerly execute everything?

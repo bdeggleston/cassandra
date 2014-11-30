@@ -49,7 +49,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
 
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
 
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(expectedDeps);
 
         state.currentDeps.addAll(expectedDeps);
@@ -77,7 +77,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
 
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
 
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(expectedDeps);
 
         Instance copy = instance.copy();
@@ -111,7 +111,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
 
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(dep1, dep2));
 
         state.currentDeps.add(dep1);
@@ -141,7 +141,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
 
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
 
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(expectedDeps);
 
         Instance copy = instance.copy();
@@ -170,9 +170,9 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         PreacceptVerbHandler handler = new PreacceptVerbHandler(state);
 
         UUID dep1 = UUIDGen.getTimeUUID();
-        Instance missingInstance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance missingInstance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
 
-        Instance instance = new Instance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(dep1));
 
         state.currentDeps.add(dep1);
