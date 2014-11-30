@@ -99,12 +99,12 @@ public class Node extends EpaxosState
         return loadInstance(iid);
     }
 
-    public DependencyManager getDependencyManager(Instance instance)
+    public KeyState getDependencyManager(Instance instance)
     {
         if (instance instanceof QueryInstance)
         {
             SerializedRequest request = ((QueryInstance) instance).getQuery();
-            return loadDependencyManager(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+            return loadKeyState(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
         }
         else if (instance instanceof TokenInstance)
         {

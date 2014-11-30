@@ -97,7 +97,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         Assert.assertNotNull(node.getInstance(missingInstance.getId()));
 
         // check dependency manager
-        DependencyManager dm = node.getDependencyManager(instance);
+        KeyState dm = node.getDependencyManager(instance);
         Assert.assertNotNull(dm.get(instance.getId()));
         Assert.assertNotNull(dm.get(missingInstance.getId()));
 
@@ -150,7 +150,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         Assert.assertNotNull(node.getInstance(missingInstance.getId()));
 
         // check dependency manager
-        DependencyManager dm = node.getDependencyManager(instance);
+        KeyState dm = node.getDependencyManager(instance);
         Assert.assertNotNull(dm.get(instance.getId()));
         Assert.assertNotNull(dm.get(missingInstance.getId()));
     }

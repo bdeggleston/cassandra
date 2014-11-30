@@ -23,7 +23,7 @@ import java.util.*;
  */
 // TODO: rename to KeyState, rename system table too
 // TODO: move some functionality from EpaxosState to KeyStateManager
-public class DependencyManager
+public class KeyState
 {
     static class Entry
     {
@@ -87,12 +87,12 @@ public class DependencyManager
     private long epoch;
     private long executionCount;
 
-    public DependencyManager(long epoch)
+    public KeyState(long epoch)
     {
         this(epoch, 0);
     }
 
-    public DependencyManager(long epoch, long executionCount)
+    public KeyState(long epoch, long executionCount)
     {
         this.epoch = epoch;
         this.executionCount = executionCount;
@@ -235,10 +235,10 @@ public class DependencyManager
         return executionCount;
     }
 
-    public static final IVersionedSerializer<DependencyManager> serializer = new IVersionedSerializer<DependencyManager>()
+    public static final IVersionedSerializer<KeyState> serializer = new IVersionedSerializer<KeyState>()
     {
         @Override
-        public void serialize(DependencyManager deps, DataOutputPlus out, int version) throws IOException
+        public void serialize(KeyState deps, DataOutputPlus out, int version) throws IOException
         {
             out.writeLong(deps.epoch);
             out.writeLong(deps.executionCount);
@@ -263,9 +263,9 @@ public class DependencyManager
         }
 
         @Override
-        public DependencyManager deserialize(DataInput in, int version) throws IOException
+        public KeyState deserialize(DataInput in, int version) throws IOException
         {
-            DependencyManager deps = new DependencyManager(in.readLong(), in.readLong());
+            KeyState deps = new KeyState(in.readLong(), in.readLong());
             int size = in.readInt();
             for (int i=0; i<size; i++)
             {
@@ -289,7 +289,7 @@ public class DependencyManager
         }
 
         @Override
-        public long serializedSize(DependencyManager deps, int version)
+        public long serializedSize(KeyState deps, int version)
         {
             long size = 8 + 8 + 4;
             for (Entry entry: deps.entries.values())

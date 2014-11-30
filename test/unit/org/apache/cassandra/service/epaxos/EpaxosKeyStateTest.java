@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class EpaxosDependencyManagerTest
+public class EpaxosKeyStateTest
 {
 
     /**
@@ -19,7 +19,7 @@ public class EpaxosDependencyManagerTest
     @Test
     public void eviction() throws Exception
     {
-        DependencyManager dm = new DependencyManager(0);
+        KeyState dm = new KeyState(0);
 
         UUID dep0 = UUIDGen.getTimeUUID();
         Set<UUID> expected = Sets.newHashSet();
@@ -54,7 +54,7 @@ public class EpaxosDependencyManagerTest
     @Test
     public void selfDependencies() throws Exception
     {
-        DependencyManager dm = new DependencyManager(0);
+        KeyState dm = new KeyState(0);
 
         UUID dep0 = UUIDGen.getTimeUUID();
         Set<UUID> expected = Sets.newHashSet();
@@ -72,7 +72,7 @@ public class EpaxosDependencyManagerTest
     @Test
     public void executionCountIncrementedOnMarkExecuted() throws Exception
     {
-        DependencyManager dm = new DependencyManager(0);
+        KeyState dm = new KeyState(0);
 
         UUID dep = UUIDGen.getTimeUUID();
         dm.getDepsAndAdd(dep);
@@ -87,7 +87,7 @@ public class EpaxosDependencyManagerTest
     @Test
     public void executionCountResetOnEpochChange() throws Exception
     {
-        DependencyManager dm = new DependencyManager(0);
+        KeyState dm = new KeyState(0);
 
         UUID dep = UUIDGen.getTimeUUID();
 
@@ -106,7 +106,7 @@ public class EpaxosDependencyManagerTest
     @Test(expected=RuntimeException.class)
     public void epochDecrementFailure() throws Exception
     {
-        DependencyManager dm = new DependencyManager(1);
+        KeyState dm = new KeyState(1);
         Assert.assertEquals(1, dm.getEpoch());
         dm.setEpoch(0);
     }
@@ -114,7 +114,7 @@ public class EpaxosDependencyManagerTest
     @Test
     public void executedInstanceBucketedByEpoch() throws Exception
     {
-        DependencyManager dm = new DependencyManager(0);
+        KeyState dm = new KeyState(0);
 
         Assert.assertEquals(0, dm.getEpoch());
 
@@ -131,14 +131,14 @@ public class EpaxosDependencyManagerTest
 
         Map<Long, Set<UUID>> executions = dm.getEpochExecutions();
         Assert.assertNull(executions.get((long)0));
-        Assert.assertEquals(Sets.newHashSet(dep1), executions.get((long)1));
+        Assert.assertEquals(Sets.newHashSet(dep1), executions.get((long) 1));
         Assert.assertEquals(Sets.newHashSet(dep2, dep3), executions.get((long)2));
     }
 
     @Test
     public void epochSetIsIdempotent() throws Exception
     {
-        DependencyManager dm = new DependencyManager(1, 2);
+        KeyState dm = new KeyState(1, 2);
 
         Assert.assertEquals(2, dm.getExecutionCount());
 
@@ -152,7 +152,7 @@ public class EpaxosDependencyManagerTest
     @Test
     public void markExecutedIdempotent() throws Exception
     {
-        DependencyManager dm = new DependencyManager(0);
+        KeyState dm = new KeyState(0);
 
         UUID dep = UUIDGen.getTimeUUID();
         dm.getDepsAndAdd(dep);

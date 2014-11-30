@@ -59,7 +59,7 @@ public class EpaxosState
 
     // prevents multiple threads modifying the dependency manager for a given key. Aquire this after locking an instance
     private final Striped<Lock> depsLocks = Striped.lock(DatabaseDescriptor.getConcurrentWriters() * 1024);
-    private final Cache<CfKey, DependencyManager> dependencyManagers;
+    private final Cache<CfKey, KeyState> dependencyManagers;
 
     // aborts prepare phases on commit
     private final ConcurrentMap<UUID, List<ICommitCallback>> commitCallbacks = Maps.newConcurrentMap();
@@ -228,13 +228,13 @@ public class EpaxosState
         lock.lock();
         try
         {
-            DependencyManager dm = loadDependencyManager(cfKey.key, cfKey.cfId);
+            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
             Set<UUID> deps = dm.getDepsAndAdd(instance.getId());
-            saveDependencyManager(cfKey.key, cfKey.cfId, dm);
+            saveKeyState(cfKey.key, cfKey.cfId, dm);
 
             // add any active token state mutations
             // TODO: need to evict
-            deps.addAll(tokenState.dependencyManager.getDeps());
+            deps.addAll(tokenState.keyState.getDeps());
             // FIXME: this is too complicated
 
             return deps;
@@ -274,14 +274,14 @@ public class EpaxosState
                     ByteBuffer key = row.getBlob("row_key");
                     UUID cfId = row.getUUID("cf_id");
 
-                    DependencyManager dm = dependencyManagers.getIfPresent(Pair.create(key, cfId));
+                    KeyState dm = dependencyManagers.getIfPresent(Pair.create(key, cfId));
                     if (dm == null)
                     {
                         ByteBuffer data = row.getBytes("data");
                         DataInput in = ByteStreams.newDataInput(data.array(), data.position());
                         try
                         {
-                            dm = DependencyManager.serializer.deserialize(in, 0);
+                            dm = KeyState.serializer.deserialize(in, 0);
                         }
                         catch (IOException e)
                         {
@@ -289,7 +289,7 @@ public class EpaxosState
                         }
                     }
                     deps.addAll(dm.getDepsAndAdd(instance.getId()));
-                    saveDependencyManager(key, cfId, dm);
+                    saveKeyState(key, cfId, dm);
                 }
 
             } while (result.size() >= limit);
@@ -330,7 +330,7 @@ public class EpaxosState
         try
         {
             // FIXME: token state requests
-            DependencyManager dm = loadDependencyManager(cfKey.key, cfKey.cfId);
+            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
             dm.recordInstance(instance.getId());
 
             if (instance.getState().atLeast(Instance.State.ACCEPTED))
@@ -343,7 +343,7 @@ public class EpaxosState
                 dm.markExecuted(instance.getId());
             }
 
-            saveDependencyManager(cfKey.key, cfKey.cfId, dm);
+            saveKeyState(cfKey.key, cfKey.cfId, dm);
         }
         finally
         {
@@ -382,9 +382,9 @@ public class EpaxosState
         lock.lock();
         try
         {
-            DependencyManager dm = loadDependencyManager(cfKey.key, cfKey.cfId);
+            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
             dm.markAcknowledged(instance.getDependencies(), instance.getId());
-            saveDependencyManager(cfKey.key, cfKey.cfId, dm);
+            saveKeyState(cfKey.key, cfKey.cfId, dm);
 
             // FIXME: acknowledge token state instances
         }
@@ -425,9 +425,9 @@ public class EpaxosState
         lock.lock();
         try
         {
-            DependencyManager dm = loadDependencyManager(cfKey.key, cfKey.cfId);
+            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
             dm.markExecuted(instance.getId());
-            saveDependencyManager(cfKey.key, cfKey.cfId, dm);
+            saveKeyState(cfKey.key, cfKey.cfId, dm);
 
             // FIXME: acknowledge token state instances?
         }
@@ -814,20 +814,20 @@ public class EpaxosState
     {
         long epoch;
 
-        public final DependencyManager dependencyManager;
+        public final KeyState keyState;
 
         // fair to give priority to token mutations
         public final ReadWriteLock rwLock = new ReentrantReadWriteLock(true);
 
         public TokenState(long epoch)
         {
-            this(epoch, new DependencyManager(epoch));
+            this(epoch, new KeyState(epoch));
         }
 
-        public TokenState(long epoch, DependencyManager dependencyManager)
+        public TokenState(long epoch, KeyState keyState)
         {
             this.epoch = epoch;
-            this.dependencyManager = dependencyManager;
+            this.keyState = keyState;
         }
     }
 
@@ -870,10 +870,10 @@ public class EpaxosState
     /**
      * loads a dependency manager. Must be called within a lock held for this key & cfid pair
      */
-    protected DependencyManager loadDependencyManager(ByteBuffer key, UUID cfId)
+    protected KeyState loadKeyState(ByteBuffer key, UUID cfId)
     {
         CfKey cfKey = new CfKey(key, cfId);
-        DependencyManager dm = dependencyManagers.getIfPresent(cfKey);
+        KeyState dm = dependencyManagers.getIfPresent(cfKey);
         if (dm != null)
             return dm;
 
@@ -883,7 +883,7 @@ public class EpaxosState
         if (results.isEmpty())
         {
 
-            dm = new DependencyManager(getTokenState(key).epoch);
+            dm = new KeyState(getTokenState(key).epoch);
             if (CACHE)
             {
                 dependencyManagers.put(cfKey, dm);
@@ -898,7 +898,7 @@ public class EpaxosState
         DataInput in = ByteStreams.newDataInput(data.array(), data.position());
         try
         {
-            dm = DependencyManager.serializer.deserialize(in, 0);
+            dm = KeyState.serializer.deserialize(in, 0);
             if (CACHE)
             {
                 dependencyManagers.put(cfKey, dm);
@@ -912,21 +912,21 @@ public class EpaxosState
         }
     }
 
-    private void saveDependencyManager(ByteBuffer key, UUID cfId, DependencyManager dm)
+    private void saveKeyState(ByteBuffer key, UUID cfId, KeyState dm)
     {
-        saveDependencyManager(key, cfId, dm, true);
+        saveKeyState(key, cfId, dm, true);
     }
 
     /**
      * persists a dependency manager. Must be called within a lock held for this key & cfid pair
      */
-    private void saveDependencyManager(ByteBuffer key, UUID cfId, DependencyManager dm, boolean cache)
+    private void saveKeyState(ByteBuffer key, UUID cfId, KeyState dm, boolean cache)
     {
 
-        DataOutputBuffer out = new DataOutputBuffer((int) DependencyManager.serializer.serializedSize(dm, 0));
+        DataOutputBuffer out = new DataOutputBuffer((int) KeyState.serializer.serializedSize(dm, 0));
         try
         {
-            DependencyManager.serializer.serialize(dm, out, 0);
+            KeyState.serializer.serialize(dm, out, 0);
         }
         catch (IOException e)
         {
