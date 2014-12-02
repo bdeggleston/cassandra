@@ -140,9 +140,34 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
     public abstract static class SingleThread extends AbstractEpaxosIntegrationTest
     {
         @Override
-        public Node createNode(int number, String ksName, Messenger messenger)
+        public Node createNode(final int nodeNumber, final String ksName, Messenger messenger)
         {
-            return new Node.SingleThreaded(number, ksName, messenger);
+            return new Node.SingleThreaded(nodeNumber, messenger)
+            {
+                @Override
+                protected String keyspace()
+                {
+                    return ksName;
+                }
+
+                @Override
+                protected String instanceTable()
+                {
+                    return String.format("%s_%s", SystemKeyspace.EPAXOS_INSTANCE, nodeNumber);
+                }
+
+                @Override
+                protected String dependencyTable()
+                {
+                    return String.format("%s_%s", SystemKeyspace.EPAXOS_DEPENDENCIES, nodeNumber);
+                }
+
+                @Override
+                protected String stateTable()
+                {
+                    return String.format("%s_%s", SystemKeyspace.EPAXOS_STATE, nodeNumber);
+                }
+            };
         }
     }
 }

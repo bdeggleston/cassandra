@@ -21,7 +21,6 @@ import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
-import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,9 +30,7 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class EpaxosState
 {
@@ -57,10 +54,6 @@ public class EpaxosState
     // prevents multiple threads from attempting to prepare the same instance. Aquire this before an instance lock
     private final ConcurrentMap<UUID, PrepareGroup> prepareGroups = Maps.newConcurrentMap();
 
-    // prevents multiple threads modifying the dependency manager for a given key. Aquire this after locking an instance
-    private final Striped<Lock> depsLocks = Striped.lock(DatabaseDescriptor.getConcurrentWriters() * 1024);
-    private final Cache<CfKey, KeyState> dependencyManagers;
-
     // aborts prepare phases on commit
     private final ConcurrentMap<UUID, List<ICommitCallback>> commitCallbacks = Maps.newConcurrentMap();
 
@@ -76,6 +69,9 @@ public class EpaxosState
     };
 
     private final Map<UUID, SettableFuture> resultFutures = Maps.newConcurrentMap();
+
+    protected final TokenStateManager tokenStateManager;
+    protected final KeyStateManager keyStateManager;
 
     public class ParticipantInfo
     {
@@ -124,7 +120,9 @@ public class EpaxosState
     public EpaxosState()
     {
         instanceCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(10000).build();
-        dependencyManagers = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(1000).build();
+
+        tokenStateManager = new TokenStateManager();
+        keyStateManager = new KeyStateManager(keyspace(), dependencyTable(), tokenStateManager);
     }
 
     protected String keyspace()
@@ -197,249 +195,6 @@ public class EpaxosState
     protected QueryInstance createQueryInstance(SerializedRequest request)
     {
         return new QueryInstance(request, getEndpoint());
-    }
-
-    protected Set<UUID> getCurrentDependencies(Instance instance)
-    {
-        if (instance instanceof QueryInstance)
-        {
-            return getCurrentQueryDependencies((QueryInstance) instance);
-        }
-        else if (instance instanceof TokenInstance)
-        {
-            return getCurrentTokenDependencies((TokenInstance) instance);
-        }
-        else
-        {
-            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
-        }
-    }
-
-    protected Set<UUID> getCurrentQueryDependencies(QueryInstance instance)
-    {
-        SerializedRequest request = instance.getQuery();
-
-        CfKey cfKey = request.getCfKey();
-
-        TokenState tokenState = getTokenState(cfKey.key);
-        tokenState.rwLock.readLock().lock();
-
-        Lock lock = depsLocks.get(cfKey);
-        lock.lock();
-        try
-        {
-            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
-            Set<UUID> deps = dm.getDepsAndAdd(instance.getId());
-            saveKeyState(cfKey.key, cfKey.cfId, dm);
-
-            // add any active token state mutations
-            // TODO: need to evict
-            deps.addAll(tokenState.keyState.getDeps());
-            // FIXME: this is too complicated
-
-            return deps;
-        }
-        finally
-        {
-            lock.unlock();
-            tokenState.rwLock.readLock().unlock();
-        }
-    }
-
-    protected Set<UUID> getCurrentTokenDependencies(TokenInstance instance)
-    {
-        TokenState tokenState = getTokenState(instance.getToken());
-        tokenState.rwLock.writeLock().lock();
-        try
-        {
-            // TODO: lock dm?
-            // TODO: bound token range
-            // TODO: work out a less crappy way to do this
-            int limit = 10000;
-
-            // since the token state lock is locked, we can read the key managers right off of disk. The key managers
-            // rely on acquiring a read lock before doing anything. However, this could be a bottleneck
-            // TODO: is this a bottleneck?
-
-            Set<UUID> deps = new HashSet<>();
-
-            UntypedResultSet result;
-            do
-            {
-                String insert = String.format("SELECT * FROM %s.%s LIMIT ?", keyspace(), dependencyTable());
-                result = QueryProcessor.executeInternal(insert, limit);
-
-                for (UntypedResultSet.Row row : result)
-                {
-                    ByteBuffer key = row.getBlob("row_key");
-                    UUID cfId = row.getUUID("cf_id");
-
-                    KeyState dm = dependencyManagers.getIfPresent(Pair.create(key, cfId));
-                    if (dm == null)
-                    {
-                        ByteBuffer data = row.getBytes("data");
-                        DataInput in = ByteStreams.newDataInput(data.array(), data.position());
-                        try
-                        {
-                            dm = KeyState.serializer.deserialize(in, 0);
-                        }
-                        catch (IOException e)
-                        {
-                            throw new AssertionError(e);
-                        }
-                    }
-                    deps.addAll(dm.getDepsAndAdd(instance.getId()));
-                    saveKeyState(key, cfId, dm);
-                }
-
-            } while (result.size() >= limit);
-
-            dependencyManagers.invalidateAll();
-            return deps;
-        }
-        finally
-        {
-            tokenState.rwLock.writeLock().unlock();
-        }
-    }
-
-    protected void recordMissingInstance(Instance instance)
-    {
-        if (instance instanceof QueryInstance)
-        {
-            recordMissingQueryInstance((QueryInstance) instance);
-        }
-        else if (instance instanceof TokenInstance)
-        {
-            recordMissingTokenInstance((TokenInstance) instance);
-        }
-        else
-        {
-            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
-        }
-    }
-
-    protected void recordMissingQueryInstance(QueryInstance instance)
-    {
-        SerializedRequest request = instance.getQuery();
-
-        CfKey cfKey = request.getCfKey();
-
-        Lock lock = depsLocks.get(cfKey);
-        lock.lock();
-        try
-        {
-            // FIXME: token state requests
-            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
-            dm.recordInstance(instance.getId());
-
-            if (instance.getState().atLeast(Instance.State.ACCEPTED))
-            {
-                dm.markAcknowledged(Sets.newHashSet(instance.getId()));
-            }
-
-            if (instance.getState() == Instance.State.EXECUTED)
-            {
-                dm.markExecuted(instance.getId());
-            }
-
-            saveKeyState(cfKey.key, cfKey.cfId, dm);
-        }
-        finally
-        {
-            lock.unlock();
-        }
-    }
-
-    protected void recordMissingTokenInstance(TokenInstance instance)
-    {
-        assert false;
-    }
-
-    protected void recordAcknowledgedDeps(Instance instance)
-    {
-        if (instance instanceof QueryInstance)
-        {
-            recordAcknowledgedQueryDeps((QueryInstance) instance);
-        }
-        else if (instance instanceof TokenInstance)
-        {
-            recordAcknowledgedTokenDeps((TokenInstance) instance);
-        }
-        else
-        {
-            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
-        }
-    }
-
-    protected void recordAcknowledgedQueryDeps(QueryInstance instance)
-    {
-        SerializedRequest request = instance.getQuery();
-
-        CfKey cfKey = request.getCfKey();
-
-        Lock lock = depsLocks.get(cfKey);
-        lock.lock();
-        try
-        {
-            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
-            dm.markAcknowledged(instance.getDependencies(), instance.getId());
-            saveKeyState(cfKey.key, cfKey.cfId, dm);
-
-            // FIXME: acknowledge token state instances
-        }
-        finally
-        {
-            lock.unlock();
-        }
-    }
-
-    protected void recordAcknowledgedTokenDeps(TokenInstance instance)
-    {
-        assert false;
-    }
-
-    protected void recordExecuted(Instance instance)
-    {
-        if (instance instanceof QueryInstance)
-        {
-            recordExecutedQuery((QueryInstance) instance);
-        }
-        else if (instance instanceof TokenInstance)
-        {
-            recordExecutedToken((TokenInstance) instance);
-        }
-        else
-        {
-            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
-        }
-    }
-
-    protected void recordExecutedQuery(QueryInstance instance)
-    {
-        SerializedRequest request = instance.getQuery();
-
-        CfKey cfKey = request.getCfKey();
-
-        Lock lock = depsLocks.get(cfKey);
-        lock.lock();
-        try
-        {
-            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
-            dm.markExecuted(instance.getId());
-            saveKeyState(cfKey.key, cfKey.cfId, dm);
-
-            // FIXME: acknowledge token state instances?
-        }
-        finally
-        {
-            lock.unlock();
-        }
-    }
-
-    protected void recordExecutedToken(TokenInstance instance)
-    {
-        assert false;
     }
 
     protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
@@ -809,141 +564,6 @@ public class EpaxosState
 
     }
 
-    // TODO: persist
-    public static class TokenState
-    {
-        long epoch;
-
-        public final KeyState keyState;
-
-        // fair to give priority to token mutations
-        public final ReadWriteLock rwLock = new ReentrantReadWriteLock(true);
-
-        public TokenState(long epoch)
-        {
-            this(epoch, new KeyState(epoch));
-        }
-
-        public TokenState(long epoch, KeyState keyState)
-        {
-            this.epoch = epoch;
-            this.keyState = keyState;
-        }
-    }
-
-    private volatile TokenState __tokenState__ = new TokenState(0);
-
-    // FIXME: only using a single state for now
-    private TokenState getTokenState(ByteBuffer key)
-    {
-        // TODO: return the token state that corresponds to the given key
-//        String token = "";
-//        if (tokenState != null)
-//        {
-//            return tokenState;
-//        }
-//
-//        String select = String.format("SELECT * FROM %s.%s WHERE token=?", keyspace(), stateTable());
-//        UntypedResultSet results = QueryProcessor.executeInternal(select, token);
-//        if (results.isEmpty())
-//        {
-//            tokenState = new TokenState(0);
-//            saveTokenState(token, tokenState);
-//        }
-        return __tokenState__;
-    }
-
-    private TokenState getTokenState(Token token)
-    {
-        // TODO: return the token state that corresponds to the given token
-        return __tokenState__;
-    }
-
-    private void saveTokenState(String token, TokenState state)
-    {
-//        token = "";
-//        String insert = String.format("INSERT INTO %s.%s (token, epoch) VALUES (?, ?)", keyspace(), stateTable());
-//        QueryProcessor.executeInternal(insert, token, state.epoch);
-
-    }
-
-    /**
-     * loads a dependency manager. Must be called within a lock held for this key & cfid pair
-     */
-    protected KeyState loadKeyState(ByteBuffer key, UUID cfId)
-    {
-        CfKey cfKey = new CfKey(key, cfId);
-        KeyState dm = dependencyManagers.getIfPresent(cfKey);
-        if (dm != null)
-            return dm;
-
-        String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=?";
-        UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace(), dependencyTable()), key, cfId);
-
-        if (results.isEmpty())
-        {
-
-            dm = new KeyState(getTokenState(key).epoch);
-            if (CACHE)
-            {
-                dependencyManagers.put(cfKey, dm);
-            }
-            return dm;
-        }
-
-        UntypedResultSet.Row row = results.one();
-
-        ByteBuffer data = row.getBlob("data");
-        assert data.hasArray();  // FIXME
-        DataInput in = ByteStreams.newDataInput(data.array(), data.position());
-        try
-        {
-            dm = KeyState.serializer.deserialize(in, 0);
-            if (CACHE)
-            {
-                dependencyManagers.put(cfKey, dm);
-            }
-            return dm;
-
-        }
-        catch (IOException e)
-        {
-            throw new AssertionError(e);
-        }
-    }
-
-    private void saveKeyState(ByteBuffer key, UUID cfId, KeyState dm)
-    {
-        saveKeyState(key, cfId, dm, true);
-    }
-
-    /**
-     * persists a dependency manager. Must be called within a lock held for this key & cfid pair
-     */
-    private void saveKeyState(ByteBuffer key, UUID cfId, KeyState dm, boolean cache)
-    {
-
-        DataOutputBuffer out = new DataOutputBuffer((int) KeyState.serializer.serializedSize(dm, 0));
-        try
-        {
-            KeyState.serializer.serialize(dm, out, 0);
-        }
-        catch (IOException e)
-        {
-            throw new AssertionError(e);  // TODO: propagate original exception?
-        }
-        String depsReq = "INSERT INTO %s.%s (row_key, cf_id, data) VALUES (?, ?, ?)";
-        QueryProcessor.executeInternal(String.format(depsReq, keyspace(), dependencyTable()),
-                                       key,
-                                       cfId,
-                                       ByteBuffer.wrap(out.getData()));
-
-        if (cache)
-        {
-            dependencyManagers.put(new CfKey(key, cfId), dm);
-        }
-    }
-
     // TODO: consider only sending a missing instance if it's older than some threshold. Should keep message size down
     protected void addMissingInstance(Instance remoteInstance)
     {
@@ -972,7 +592,7 @@ public class EpaxosState
             if (instance.getState().atLeast(Instance.State.COMMITTED))
                 notifyCommit(instance.getId());
 
-            recordMissingInstance(instance);
+            keyStateManager.recordMissingInstance(instance);
 
             // TODO: execute if committed
 
@@ -1008,6 +628,27 @@ public class EpaxosState
 
         }
         return instances;
+    }
+
+    // key state methods
+    public Set<UUID> getCurrentDependencies(Instance instance)
+    {
+        return keyStateManager.getCurrentDependencies(instance);
+    }
+
+    public void recordMissingInstance(Instance instance)
+    {
+        keyStateManager.recordMissingInstance(instance);
+    }
+
+    public void recordAcknowledgedDeps(Instance instance)
+    {
+        keyStateManager.recordAcknowledgedDeps(instance);
+    }
+
+    public void recordExecuted(Instance instance)
+    {
+        keyStateManager.recordExecuted(instance);
     }
 
     // accessor methods

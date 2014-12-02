@@ -65,7 +65,7 @@ public class MockVerbHandlerState extends EpaxosState
     public final Set<UUID> currentDeps = Sets.newHashSet();
 
     @Override
-    protected Set<UUID> getCurrentDependencies(Instance instance)
+    public Set<UUID> getCurrentDependencies(Instance instance)
     {
         return Sets.newHashSet(currentDeps);
     }
@@ -89,7 +89,7 @@ public class MockVerbHandlerState extends EpaxosState
     public final Set<UUID> missingRecoreded = Sets.newHashSet();
 
     @Override
-    protected void recordMissingInstance(Instance instance)
+    public void recordMissingInstance(Instance instance)
     {
         missingRecoreded.add(instance.getId());
     }
@@ -97,7 +97,7 @@ public class MockVerbHandlerState extends EpaxosState
     public final Set<UUID> acknowledgedRecoreded = Sets.newHashSet();
 
     @Override
-    protected void recordAcknowledgedDeps(Instance instance)
+    public void recordAcknowledgedDeps(Instance instance)
     {
         acknowledgedRecoreded.add(instance.getId());
     }
@@ -105,7 +105,7 @@ public class MockVerbHandlerState extends EpaxosState
     public final Set<UUID> executedRecorded = Sets.newHashSet();
 
     @Override
-    protected void recordExecuted(Instance instance)
+    public void recordExecuted(Instance instance)
     {
         executedRecorded.add(instance.getId());
     }

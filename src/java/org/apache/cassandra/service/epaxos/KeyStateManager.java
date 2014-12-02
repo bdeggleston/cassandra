@@ -1,0 +1,346 @@
+package org.apache.cassandra.service.epaxos;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.Sets;
+import com.google.common.io.ByteStreams;
+import com.google.common.util.concurrent.Striped;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.cql3.UntypedResultSet;
+import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.io.util.DataOutputBuffer;
+
+import java.io.DataInput;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+
+public class KeyStateManager
+{
+    // prevents multiple threads modifying the dependency manager for a given key. Aquire this after locking an instance
+    private final Striped<Lock> locks = Striped.lock(DatabaseDescriptor.getConcurrentWriters() * 1024);
+    private final Cache<CfKey, KeyState> cache;
+    private final String keyspace;
+    private final String table;
+    private final TokenStateManager tokenStateManager;
+
+    public KeyStateManager(TokenStateManager tokenStateManager)
+    {
+        this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_DEPENDENCIES, tokenStateManager);
+    }
+    public KeyStateManager(String keyspace, String table, TokenStateManager tokenStateManager)
+    {
+        this.keyspace = keyspace;
+        this.table = table;
+        this.tokenStateManager = tokenStateManager;
+        cache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(1000).build();
+    }
+
+    protected Iterator<CfKey> getCfKeyIterator(TokenState tokenState)
+    {
+        return getCfKeyIterator(tokenState, 10000);
+    }
+
+    /**
+     * Returns an iterator of CfKeys of all keys owned by the given tokenState
+     */
+    protected Iterator<CfKey> getCfKeyIterator(TokenState tokenState, final int limit)
+    {
+        // TODO: bound token range
+        // TODO: handle num rows > limit
+        // TODO: get the tail of wide rows
+        String insert = String.format("SELECT row_key, cf_id FROM %s.%s LIMIT ?", keyspace, table);
+        UntypedResultSet result = QueryProcessor.executeInternal(insert, limit);
+        final Iterator<UntypedResultSet.Row> rowIterator = result.iterator();
+        return new Iterator<CfKey>()
+        {
+            private CfKey fromRow(UntypedResultSet.Row row)
+            {
+                return new CfKey(row.getBlob("row_key"), row.getUUID("cf_id"));
+            }
+
+            @Override
+            public boolean hasNext()
+            {
+                return rowIterator.hasNext();
+            }
+
+            @Override
+            public CfKey next()
+            {
+                return fromRow(rowIterator.next());
+            }
+
+            @Override
+            public void remove()
+            {
+                throw new UnsupportedOperationException();
+            }
+        };
+    }
+
+    public Set<UUID> getCurrentDependencies(Instance instance)
+    {
+        if (instance instanceof QueryInstance)
+        {
+            SerializedRequest request = ((QueryInstance) instance).getQuery();
+            CfKey cfKey = request.getCfKey();
+            return getCurrentDependencies(instance, cfKey);
+        }
+        else if (instance instanceof TokenInstance)
+        {
+            TokenState tokenState = tokenStateManager.get(null); // FIXME: get from instance
+            Set<UUID> deps = new HashSet<>();
+            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
+            while (cfKeyIterator.hasNext())
+            {
+                CfKey cfKey = cfKeyIterator.next();
+                deps.addAll(getCurrentDependencies(instance, cfKey));
+            }
+
+            return deps;
+        }
+        else
+        {
+            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+        }
+    }
+
+    private Set<UUID> getCurrentDependencies(Instance instance, CfKey cfKey)
+    {
+        Lock lock = locks.get(cfKey);
+        lock.lock();
+        try
+        {
+            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
+            Set<UUID> deps = dm.getDepsAndAdd(instance.getId());
+            saveKeyState(cfKey.key, cfKey.cfId, dm);
+
+            return deps;
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
+    public void recordMissingInstance(Instance instance)
+    {
+        if (instance instanceof QueryInstance)
+        {
+            SerializedRequest request = ((QueryInstance) instance).getQuery();
+            CfKey cfKey = request.getCfKey();
+            recordMissingInstance(instance, cfKey);
+        }
+        else if (instance instanceof TokenInstance)
+        {
+            TokenState tokenState = tokenStateManager.get(null); // FIXME: get from instance
+            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
+            while (cfKeyIterator.hasNext())
+            {
+                CfKey cfKey = cfKeyIterator.next();
+                recordMissingInstance(instance, cfKey);
+            }
+        }
+        else
+        {
+            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+        }
+    }
+
+    private void recordMissingInstance(Instance instance, CfKey cfKey)
+    {
+        Lock lock = locks.get(cfKey);
+        lock.lock();
+        try
+        {
+            // FIXME: token state requests
+            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
+            dm.recordInstance(instance.getId());
+
+            if (instance.getState().atLeast(Instance.State.ACCEPTED))
+            {
+                dm.markAcknowledged(Sets.newHashSet(instance.getId()));
+            }
+
+            if (instance.getState() == Instance.State.EXECUTED)
+            {
+                dm.markExecuted(instance.getId());
+            }
+
+            saveKeyState(cfKey.key, cfKey.cfId, dm);
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
+    public void recordAcknowledgedDeps(Instance instance)
+    {
+        if (instance instanceof QueryInstance)
+        {
+            SerializedRequest request = ((QueryInstance) instance).getQuery();
+            CfKey cfKey = request.getCfKey();
+            recordAcknowledgedDeps(instance, cfKey);
+        }
+        else if (instance instanceof TokenInstance)
+        {
+            TokenState tokenState = tokenStateManager.get(null); // FIXME: get from instance
+            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
+            while (cfKeyIterator.hasNext())
+            {
+                CfKey cfKey = cfKeyIterator.next();
+                recordAcknowledgedDeps(instance, cfKey);
+            }
+        }
+        else
+        {
+            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+        }
+    }
+
+    private void recordAcknowledgedDeps(Instance instance, CfKey cfKey)
+    {
+        Lock lock = locks.get(cfKey);
+        lock.lock();
+        try
+        {
+            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
+            dm.markAcknowledged(instance.getDependencies(), instance.getId());
+            saveKeyState(cfKey.key, cfKey.cfId, dm);
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
+    public void recordExecuted(Instance instance)
+    {
+        if (instance instanceof QueryInstance)
+        {
+            SerializedRequest request = ((QueryInstance) instance).getQuery();
+            CfKey cfKey = request.getCfKey();
+            recordExecuted(instance, cfKey);
+        }
+        else if (instance instanceof TokenInstance)
+        {
+            TokenState tokenState = tokenStateManager.get(null); // FIXME: get from instance
+            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
+            while (cfKeyIterator.hasNext())
+            {
+                CfKey cfKey = cfKeyIterator.next();
+                recordExecuted(instance, cfKey);
+            }
+        }
+        else
+        {
+            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+        }
+    }
+
+    private void recordExecuted(Instance instance, CfKey cfKey)
+    {
+
+        Lock lock = locks.get(cfKey);
+        lock.lock();
+        try
+        {
+            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
+            dm.markExecuted(instance.getId());
+            saveKeyState(cfKey.key, cfKey.cfId, dm);
+
+            // FIXME: acknowledge token state instances?
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * loads a dependency manager. Must be called within a lock held for this key & cfid pair
+     */
+    @VisibleForTesting
+    public KeyState loadKeyState(ByteBuffer key, UUID cfId)
+    {
+        CfKey cfKey = new CfKey(key, cfId);
+        KeyState dm = cache.getIfPresent(cfKey);
+        if (dm != null)
+            return dm;
+
+        String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=?";
+        UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace, table), key, cfId);
+
+        if (results.isEmpty())
+        {
+
+            dm = new KeyState(tokenStateManager.getEpoch(key));
+            cache.put(cfKey, dm);
+            return dm;
+        }
+
+        UntypedResultSet.Row row = results.one();
+
+        ByteBuffer data = row.getBlob("data");
+        assert data.hasArray();  // FIXME
+        DataInput in = ByteStreams.newDataInput(data.array(), data.position());
+        try
+        {
+            dm = KeyState.serializer.deserialize(in, 0);
+            cache.put(cfKey, dm);
+            return dm;
+
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError(e);
+        }
+    }
+
+    void saveKeyState(ByteBuffer key, UUID cfId, KeyState dm)
+    {
+        saveKeyState(key, cfId, dm, true);
+    }
+
+    /**
+     * persists a dependency manager. Must be called within a lock held for this key & cfid pair
+     */
+    void saveKeyState(ByteBuffer key, UUID cfId, KeyState dm, boolean cache)
+    {
+
+        DataOutputBuffer out = new DataOutputBuffer((int) KeyState.serializer.serializedSize(dm, 0));
+        try
+        {
+            KeyState.serializer.serialize(dm, out, 0);
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError(e);  // TODO: propagate original exception?
+        }
+        String depsReq = "INSERT INTO %s.%s (row_key, cf_id, data) VALUES (?, ?, ?)";
+        QueryProcessor.executeInternal(String.format(depsReq, keyspace, table),
+                                       key,
+                                       cfId,
+                                       ByteBuffer.wrap(out.getData()));
+
+        if (cache)
+        {
+            this.cache.put(new CfKey(key, cfId), dm);
+        }
+    }
+
+    public void updateEpoch(TokenState tokenState)
+    {
+        // TODO: update epochs on all key states owned by this token state
+    }
+}

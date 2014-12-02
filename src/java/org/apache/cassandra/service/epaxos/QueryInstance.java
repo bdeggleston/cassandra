@@ -76,8 +76,8 @@ public class QueryInstance extends Instance
         public void serialize(QueryInstance instance, DataOutputPlus out, int version) throws IOException
         {
             UUIDSerializer.serializer.serialize(instance.id, out, version);
-            CompactEndpointSerializationHelper.serialize(instance.leader, out);
             SerializedRequest.serializer.serialize(instance.getQuery(), out, version);
+            CompactEndpointSerializationHelper.serialize(instance.leader, out);
         }
 
         @Override

@@ -2,6 +2,7 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.service.epaxos.integration.AbstractEpaxosIntegrationTest;
 import org.apache.cassandra.service.epaxos.integration.Messenger;
 import org.apache.cassandra.service.epaxos.integration.Node;
@@ -33,9 +34,9 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
     private volatile LastCommit lastCommit = null;
 
     @Override
-    public Node createNode(int number, String ksName, Messenger messenger)
+    public Node createNode(final int nodeNumber, final String ksName, Messenger messenger)
     {
-        return new Node.SingleThreaded(number, ksName, messenger)
+        return new Node.SingleThreaded(nodeNumber, messenger)
         {
             @Override
             protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
@@ -54,6 +55,30 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
             public void commit(UUID iid, Set<UUID> deps)
             {
                 lastCommit = new LastCommit(iid, deps);
+            }
+
+            @Override
+            protected String keyspace()
+            {
+                return ksName;
+            }
+
+            @Override
+            protected String instanceTable()
+            {
+                return String.format("%s_%s", SystemKeyspace.EPAXOS_INSTANCE, nodeNumber);
+            }
+
+            @Override
+            protected String dependencyTable()
+            {
+                return String.format("%s_%s", SystemKeyspace.EPAXOS_DEPENDENCIES, nodeNumber);
+            }
+
+            @Override
+            protected String stateTable()
+            {
+                return String.format("%s_%s", SystemKeyspace.EPAXOS_STATE, nodeNumber);
             }
         };
     }
@@ -153,7 +178,11 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         node.preaccept(instance);
 
         for (Node n: nodes.subList(1, nodes.size()))
-            n.getInstance(instance.getId()).incrementBallot();
+        {
+            Instance inst = n.getInstance(instance.getId());
+            inst.incrementBallot();
+            n.saveInstance(inst);
+        }
 
         node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), Collections.EMPTY_MAP), null);
         // TODO: check not committed

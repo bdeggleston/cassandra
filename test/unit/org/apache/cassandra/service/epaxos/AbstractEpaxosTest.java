@@ -24,6 +24,7 @@ import org.apache.cassandra.service.ThriftCASRequest;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.junit.BeforeClass;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -96,11 +97,16 @@ public abstract class AbstractEpaxosTest
 
     protected SerializedRequest newSerializedRequest(CASRequest request, ConsistencyLevel consistencyLevel)
     {
+        return newSerializedRequest(request, ByteBufferUtil.bytes(7), consistencyLevel);
+    }
+
+    protected SerializedRequest newSerializedRequest(CASRequest request, ByteBuffer key, ConsistencyLevel consistencyLevel)
+    {
         SerializedRequest.Builder builder = SerializedRequest.builder();
         builder.casRequest(request);
         builder.cfName(cfm.cfName);
         builder.keyspaceName(cfm.ksName);
-        builder.key(ByteBufferUtil.bytes(7));
+        builder.key(key);
         builder.consistencyLevel(consistencyLevel);
         return builder.build();
     }
@@ -119,7 +125,7 @@ public abstract class AbstractEpaxosTest
     protected SerializedRequest getSerializedCQLRequest(int k, int v, ConsistencyLevel cl)
     {
         CQL3CasRequest casRequest = getCqlCasRequest(k, v, cl);
-        return newSerializedRequest(casRequest, cl);
+        return newSerializedRequest(casRequest, casRequest.getKey(), cl);
     }
 
 }

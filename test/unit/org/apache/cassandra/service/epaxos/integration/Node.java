@@ -41,9 +41,8 @@ public class Node extends EpaxosState
     public final Set<UUID> accepted = Sets.newConcurrentHashSet();
 
     public final int number;
-    public final String ksName;
 
-    public Node(int number, String ksName, Messenger messenger)
+    public Node(int number, Messenger messenger)
     {
         this.number = number;
         try
@@ -54,7 +53,6 @@ public class Node extends EpaxosState
         {
             throw new AssertionError(e);
         }
-        this.ksName = ksName;
         this.messenger = messenger;
         state = State.UP;
 
@@ -104,7 +102,7 @@ public class Node extends EpaxosState
         if (instance instanceof QueryInstance)
         {
             SerializedRequest request = ((QueryInstance) instance).getQuery();
-            return loadKeyState(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+            return keyStateManager.loadKeyState(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
         }
         else if (instance instanceof TokenInstance)
         {
@@ -119,19 +117,19 @@ public class Node extends EpaxosState
     @Override
     protected String keyspace()
     {
-        return ksName != null ? ksName : super.keyspace();
+        throw new UnsupportedOperationException("override in concrete implementation");
     }
 
     @Override
     protected String instanceTable()
     {
-        return String.format("%s_%s", super.instanceTable(), number);
+        throw new UnsupportedOperationException("override in concrete implementation");
     }
 
     @Override
     protected String dependencyTable()
     {
-        return String.format("%s_%s", super.dependencyTable(), number);
+        throw new UnsupportedOperationException("override in concrete implementation");
     }
 
     @Override
@@ -249,9 +247,9 @@ public class Node extends EpaxosState
 
     public static class SingleThreaded extends Node
     {
-        public SingleThreaded(int number, String ksName, Messenger messenger)
+        public SingleThreaded(int number, Messenger messenger)
         {
-            super(number, ksName, messenger);
+            super(number, messenger);
         }
 
         @Override
