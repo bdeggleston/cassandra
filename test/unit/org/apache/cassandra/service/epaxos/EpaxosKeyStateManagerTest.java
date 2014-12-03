@@ -82,8 +82,8 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Before
     public void setUp() throws Exception
     {
-        String select = String.format("SELECT row_key FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_DEPENDENCIES);
-        String delete = String.format("DELETE FROM %s.%s WHERE row_key=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_DEPENDENCIES);
+        String select = String.format("SELECT row_key FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
+        String delete = String.format("DELETE FROM %s.%s WHERE row_key=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
         UntypedResultSet result = QueryProcessor.executeInternal(select);
 
         while (result.size() > 0)
@@ -458,6 +458,46 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void updateEpoch() throws Exception
     {
+        TokenStateManager tsm = new TokenStateManager();
+        KeyStateManager ksm = new KeyStateManager(tsm);
 
+        List<CfKey> cfKeys = getCfKeyList(9, 3);
+        for (CfKey cfKey: cfKeys)
+        {
+            createKeyState(ksm, cfKey.key, cfKey.cfId);
+        }
+
+        // check that all key states are on epoch 0
+        for (CfKey cfKey: cfKeys)
+        {
+            KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
+            Assert.assertEquals(0, ks.getEpoch());
+        }
+
+        TokenState tokenState = tsm.get(ByteBufferUtil.bytes(1));
+        Assert.assertEquals((long) 0, tokenState.getEpoch());
+        tokenState.setEpoch(1);
+
+        ksm.updateEpoch(tokenState);
+
+        for (CfKey cfKey: cfKeys)
+        {
+            KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
+            Assert.assertEquals((long) 1, ks.getEpoch());
+        }
+
+        // TODO: check token bounds
+    }
+
+    @Test
+    public void canIncrementEpochTrue() throws Exception
+    {
+        Assert.fail();
+    }
+
+    @Test
+    public void canIncrementEpochFalse() throws Exception
+    {
+        Assert.fail();
     }
 }

@@ -30,6 +30,7 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 
 public class EpaxosState
@@ -104,6 +105,7 @@ public class EpaxosState
             quorumSize = F + 1;
             fastQuorumSize = F + ((F + 1) / 2);
 
+            // FIXME: don't do this here
             if (liveEndpoints.size() < quorumSize)
                 throw new UnavailableException(cl, quorumSize, liveEndpoints.size());
 
@@ -122,7 +124,7 @@ public class EpaxosState
         instanceCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(10000).build();
 
         tokenStateManager = new TokenStateManager();
-        keyStateManager = new KeyStateManager(keyspace(), dependencyTable(), tokenStateManager);
+        keyStateManager = new KeyStateManager(keyspace(), keyStateTable(), tokenStateManager);
     }
 
     protected String keyspace()
@@ -135,14 +137,14 @@ public class EpaxosState
         return SystemKeyspace.EPAXOS_INSTANCE;
     }
 
-    protected String dependencyTable()
+    protected String keyStateTable()
     {
-        return SystemKeyspace.EPAXOS_DEPENDENCIES;
+        return SystemKeyspace.EPAXOS_KEY_STATE;
     }
 
-    protected String stateTable()
+    protected String tokenStateTable()
     {
-        return SystemKeyspace.EPAXOS_STATE;
+        return SystemKeyspace.EPAXOS_TOKEN_STATE;
     }
 
     protected Random getRandom()
@@ -195,6 +197,22 @@ public class EpaxosState
     protected QueryInstance createQueryInstance(SerializedRequest request)
     {
         return new QueryInstance(request, getEndpoint());
+    }
+
+    void deleteInstance(UUID id)
+    {
+        Lock lock = getInstanceLock(id).writeLock();
+        lock.lock();
+        try
+        {
+            String delete = String.format("DELETE FROM %s.%s WHERE id=?", keyspace(), instanceTable());
+            QueryProcessor.executeInternal(delete, id);
+            instanceCache.invalidate(id);
+        }
+        finally
+        {
+            lock.unlock();
+        }
     }
 
     protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
@@ -357,7 +375,24 @@ public class EpaxosState
 
     protected void executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
     {
+        if (instance instanceof QueryInstance)
+        {
+            executeQueryInstance((QueryInstance) instance);
+        }
+        else if (instance instanceof TokenInstance)
+        {
+            executeTokenInstance((TokenInstance) instance);
+        }
+        else
+        {
+            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+        }
+    }
+
+    protected void executeQueryInstance(QueryInstance instance) throws ReadTimeoutException, WriteTimeoutException
+    {
         logger.debug("Executing serialized request for {}", instance.getId());
+
         ColumnFamily result = instance.execute();
         SettableFuture resultFuture = resultFutures.get(instance.getId());
         if (resultFuture != null)
@@ -365,6 +400,30 @@ public class EpaxosState
             resultFuture.set(result);
             resultFutures.remove(instance.getId());
         }
+    }
+
+    protected void executeTokenInstance(TokenInstance instance)
+    {
+        TokenState tokenState = tokenStateManager.get(instance.getToken());
+
+        tokenState.rwLock.writeLock().lock();
+        try
+        {
+            // no use iterating over all dependency managers if this is effectively a noop
+            if (instance.getEpoch() > tokenState.getEpoch())
+            {
+                tokenState.setEpoch(instance.getEpoch());
+                // TODO: consider moving keyspace.updateEpoch out of the critical section, creation of new key states are blocked while the token state lock is held
+                keyStateManager.updateEpoch(tokenState);
+                tokenStateManager.save(tokenState);
+            }
+        }
+        finally
+        {
+            tokenState.rwLock.writeLock().unlock();
+        }
+
+        // TODO: gc instances where i.epoch < tokenState.getEpoch() - 1
     }
 
     protected PrepareCallback getPrepareCallback(Instance instance, ParticipantInfo participantInfo, PrepareGroup group)

@@ -1,6 +1,7 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.UUIDSerializer;
@@ -21,8 +22,6 @@ import java.util.*;
  * dependency of another instance, which has been accepted or committed. This prevents situations where
  * a dependency graph becomes 'split', making the execution order ambiguous.
  */
-// TODO: rename to KeyState, rename system table too
-// TODO: move some functionality from EpaxosState to KeyStateManager
 public class KeyState
 {
     static class Entry
@@ -127,9 +126,9 @@ public class KeyState
         return create(iid);
     }
 
-    public Set<UUID> getDeps()
+    @VisibleForTesting
+    Set<UUID> getDeps()
     {
-        // TODO: make defensive copy?
         return entries.keySet();
     }
 
@@ -177,7 +176,6 @@ public class KeyState
         }
     }
 
-    // TODO: can we evict if instance has already been acknowledged?
     public void markExecuted(UUID iid)
     {
         Entry entry = get(iid);
@@ -185,12 +183,10 @@ public class KeyState
         {
             entry.executed = true;
         }
-         /*
-         we can't evict even if the instance has been acknowledged.
-         If the instance is part of a strongly connected component,
-         they could all acknowledge each other, and would terminate
-         the execution chain.
-          */
+        // we can't evict even if the instance has been acknowledged.
+        // If the instance is part of a strongly connected component,
+        // they could all acknowledge each other, and would terminate
+        // the execution chain once executed.
 
         Set<UUID> epochSet = epochs.get(epoch);
         if (epochSet == null)
@@ -220,7 +216,7 @@ public class KeyState
     {
         if (epoch < this.epoch)
         {
-            throw new RuntimeException(String.format("Cannot decrement epoch. %s -> %s", this.epoch, epoch));
+            throw new IllegalArgumentException(String.format("Cannot decrement epoch. %s -> %s", this.epoch, epoch));
         }
         else if (epoch == this.epoch)
         {
@@ -233,6 +229,75 @@ public class KeyState
     public long getExecutionCount()
     {
         return executionCount;
+    }
+
+    /**
+     * returns a map of epochs older than the given value, and
+     * the instances contained in them. Since this is used for
+     * garbage collection, an exception is thrown if removing
+     * epochs older than the given value would leave the KeyState
+     * in an illegal state.
+     */
+    public Map<Long, Set<UUID>> getEpochsOlderThan(Long e)
+    {
+        if (e >= epoch - 1)
+        {
+            throw new IllegalArgumentException("Can't GC instances for epochs >= current epoch - 1");
+        }
+        return getEpochsOlderThanUnsafe(e);
+    }
+
+    private Map<Long, Set<UUID>> getEpochsOlderThanUnsafe(Long e)
+    {
+        Map<Long, Set<UUID>> rmap = new HashMap<>(epochs.size());
+        for (Map.Entry<Long, Set<UUID>> entry: epochs.entrySet())
+        {
+            if (entry.getKey() < e)
+            {
+                rmap.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return rmap;
+    }
+
+    /**
+     * Checks that none of the key managers owned by the given token state
+     * have any active instances in any epochs but the current one
+     */
+    public boolean canIncrementToEpoch(long targetEpoch)
+    {
+        if (targetEpoch == epoch)
+        {
+            // duplicate message received. Let it pass
+            return true;
+        }
+        if (targetEpoch > epoch + 1)
+        {
+            // TODO: how to handle incrementing epochs by more than 1 (failure recovery)
+            throw new IllegalArgumentException("what to do here??");
+        }
+        if (targetEpoch < epoch)
+        {
+            // TODO: haven't thought through what to do here yet
+            throw new IllegalArgumentException("what to do here??");
+        }
+
+        for (Map.Entry<Long, Set<UUID>> entry: getEpochsOlderThanUnsafe(epoch).entrySet())
+        {
+            if (Sets.intersection(entries.keySet(), entry.getValue()).size() > 0)
+            {
+                return false;
+            }
+
+        }
+        return true;
+    }
+
+    public void removeEpoch(Long e)
+    {
+        Set<UUID> ids = epochs.get(e);
+        assert Sets.intersection(entries.keySet(), ids).size() == 0;
+        epochs.remove(e);
     }
 
     public static final IVersionedSerializer<KeyState> serializer = new IVersionedSerializer<KeyState>()

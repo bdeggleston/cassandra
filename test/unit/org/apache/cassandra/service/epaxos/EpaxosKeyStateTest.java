@@ -1,13 +1,12 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class EpaxosKeyStateTest
 {
@@ -103,7 +102,7 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(0, dm.getExecutionCount());
     }
 
-    @Test(expected=RuntimeException.class)
+    @Test(expected=IllegalArgumentException.class)
     public void epochDecrementFailure() throws Exception
     {
         KeyState dm = new KeyState(1);
@@ -163,4 +162,119 @@ public class EpaxosKeyStateTest
         dm.markExecuted(dep);
         Assert.assertEquals(1, dm.getExecutionCount());
     }
+
+    @Test
+    public void getEpochsOlderThanSuccess() throws Exception
+    {
+        Map<Long, Set<UUID>> expectedEpochs = new HashMap<>();
+        long targetEpoch = 4;
+
+        KeyState keyState = new KeyState(0);
+        for (long i=0; i<targetEpoch; i++)
+        {
+            keyState.setEpoch(i);
+            Set<UUID> ids = new HashSet<>();
+            assert keyState.getEpoch() == i;
+            for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
+            {
+                keyState.markExecuted(id);
+                ids.add(id);
+            }
+            assert keyState.getExecutionCount() == 2;
+
+            // add to expected if we're below the end epoch
+            if (i < targetEpoch - 2)
+            {
+                expectedEpochs.put(i, ids);
+            }
+        }
+
+        keyState.setEpoch(targetEpoch);
+        Map<Long, Set<UUID>> actualEpochs = keyState.getEpochsOlderThan(targetEpoch - 2);
+        Assert.assertEquals(expectedEpochs, actualEpochs);
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void getEpochsOlderThanFailure() throws Exception
+    {
+        long targetEpoch = 4;
+
+        KeyState keyState = new KeyState(0);
+        for (long i=0; i<targetEpoch; i++)
+        {
+            keyState.setEpoch(i);
+            assert keyState.getEpoch() == i;
+            for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
+            {
+                keyState.markExecuted(id);
+            }
+            assert keyState.getExecutionCount() == 2;
+        }
+
+        keyState.setEpoch(targetEpoch);
+        keyState.getEpochsOlderThan(targetEpoch - 1);
+    }
+
+    @Test
+    public void canIncrementToEpochTrue() throws Exception
+    {
+        long targetEpoch = 4;
+        long currentEpoch = targetEpoch - 1;
+
+        KeyState keyState = new KeyState(0);
+        for (long i=0; i<targetEpoch; i++)
+        {
+            keyState.setEpoch(i);
+            assert keyState.getEpoch() == i;
+            for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
+            {
+                keyState.markExecuted(id);
+                if (i == currentEpoch)
+                {
+                    // if this is the 'current' or previous epoch, set the dependency as active
+                    keyState.create(id);
+                }
+            }
+            assert keyState.getExecutionCount() == 2;
+        }
+
+        Assert.assertTrue(keyState.canIncrementToEpoch(targetEpoch));
+    }
+
+    @Test
+    public void canIncrementToEpochFalse() throws Exception
+    {
+        long targetEpoch = 4;
+        long currentEpoch = targetEpoch - 1;
+
+        KeyState keyState = new KeyState(0);
+        for (long i=0; i<targetEpoch; i++)
+        {
+            keyState.setEpoch(i);
+            for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
+            {
+                keyState.markExecuted(id);
+                if (i == currentEpoch - 1)
+                {
+                    // if this is the 'current' epoch, set the dependency as active
+                    keyState.create(id);
+                }
+            }
+        }
+
+        Assert.assertFalse(keyState.canIncrementToEpoch(targetEpoch));
+    }
+
+    @Test
+    public void canIncrementPlus2() throws Exception
+    {
+        // TODO: work out what to do here
+    }
+
+    @Test
+    public void canIncrementMinus1() throws Exception
+    {
+        // TODO: work out what to do here
+    }
 }
+

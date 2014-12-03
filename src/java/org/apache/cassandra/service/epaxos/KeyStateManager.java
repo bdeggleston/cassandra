@@ -11,6 +11,7 @@ import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 
 import java.io.DataInput;
@@ -34,7 +35,7 @@ public class KeyStateManager
 
     public KeyStateManager(TokenStateManager tokenStateManager)
     {
-        this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_DEPENDENCIES, tokenStateManager);
+        this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE, tokenStateManager);
     }
     public KeyStateManager(String keyspace, String table, TokenStateManager tokenStateManager)
     {
@@ -42,6 +43,11 @@ public class KeyStateManager
         this.table = table;
         this.tokenStateManager = tokenStateManager;
         cache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(1000).build();
+    }
+
+    public Lock getCfKeyLock(CfKey cfKey)
+    {
+        return locks.get(cfKey);
     }
 
     protected Iterator<CfKey> getCfKeyIterator(TokenState tokenState)
@@ -52,7 +58,7 @@ public class KeyStateManager
     /**
      * Returns an iterator of CfKeys of all keys owned by the given tokenState
      */
-    protected Iterator<CfKey> getCfKeyIterator(TokenState tokenState, final int limit)
+    public Iterator<CfKey> getCfKeyIterator(TokenState tokenState, final int limit)
     {
         // TODO: bound token range
         // TODO: handle num rows > limit
@@ -97,7 +103,8 @@ public class KeyStateManager
         }
         else if (instance instanceof TokenInstance)
         {
-            TokenState tokenState = tokenStateManager.get(null); // FIXME: get from instance
+            Token token = ((TokenInstance) instance).getToken();
+            TokenState tokenState = tokenStateManager.get(token); // FIXME: get from instance
             Set<UUID> deps = new HashSet<>();
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
@@ -116,7 +123,7 @@ public class KeyStateManager
 
     private Set<UUID> getCurrentDependencies(Instance instance, CfKey cfKey)
     {
-        Lock lock = locks.get(cfKey);
+        Lock lock = getCfKeyLock(cfKey);
         lock.lock();
         try
         {
@@ -142,7 +149,8 @@ public class KeyStateManager
         }
         else if (instance instanceof TokenInstance)
         {
-            TokenState tokenState = tokenStateManager.get(null); // FIXME: get from instance
+            Token token = ((TokenInstance) instance).getToken();
+            TokenState tokenState = tokenStateManager.get(token); // FIXME: get from instance
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
             {
@@ -158,7 +166,7 @@ public class KeyStateManager
 
     private void recordMissingInstance(Instance instance, CfKey cfKey)
     {
-        Lock lock = locks.get(cfKey);
+        Lock lock = getCfKeyLock(cfKey);
         lock.lock();
         try
         {
@@ -194,7 +202,8 @@ public class KeyStateManager
         }
         else if (instance instanceof TokenInstance)
         {
-            TokenState tokenState = tokenStateManager.get(null); // FIXME: get from instance
+            Token token = ((TokenInstance) instance).getToken();
+            TokenState tokenState = tokenStateManager.get(token); // FIXME: get from instance
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
             {
@@ -210,7 +219,7 @@ public class KeyStateManager
 
     private void recordAcknowledgedDeps(Instance instance, CfKey cfKey)
     {
-        Lock lock = locks.get(cfKey);
+        Lock lock = getCfKeyLock(cfKey);
         lock.lock();
         try
         {
@@ -234,7 +243,8 @@ public class KeyStateManager
         }
         else if (instance instanceof TokenInstance)
         {
-            TokenState tokenState = tokenStateManager.get(null); // FIXME: get from instance
+            Token token = ((TokenInstance) instance).getToken();
+            TokenState tokenState = tokenStateManager.get(token); // FIXME: get from instance
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
             {
@@ -251,15 +261,13 @@ public class KeyStateManager
     private void recordExecuted(Instance instance, CfKey cfKey)
     {
 
-        Lock lock = locks.get(cfKey);
+        Lock lock = getCfKeyLock(cfKey);
         lock.lock();
         try
         {
             KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
             dm.markExecuted(instance.getId());
             saveKeyState(cfKey.key, cfKey.cfId, dm);
-
-            // FIXME: acknowledge token state instances?
         }
         finally
         {
@@ -339,8 +347,48 @@ public class KeyStateManager
         }
     }
 
+    /**
+     * Checks that none of the key managers owned by the given token state
+     * have any active instances in any epochs but the current one
+     */
+    public boolean canIncrementToEpoch(TokenState tokenState, long targetEpoch)
+    {
+        Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
+        while (cfKeyIterator.hasNext())
+        {
+            CfKey cfKey = cfKeyIterator.next();
+            KeyState keyState = loadKeyState(cfKey.key, cfKey.cfId);
+            if (!keyState.canIncrementToEpoch(targetEpoch))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public void updateEpoch(TokenState tokenState)
     {
-        // TODO: update epochs on all key states owned by this token state
+        Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
+        while (cfKeyIterator.hasNext())
+        {
+            CfKey cfKey = cfKeyIterator.next();
+            updateEpoch(cfKey, tokenState.getEpoch());
+        }
+    }
+
+    private void updateEpoch(CfKey cfKey, long epoch)
+    {
+        Lock lock = getCfKeyLock(cfKey);
+        lock.lock();
+        try
+        {
+            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
+            dm.setEpoch(epoch);
+            saveKeyState(cfKey.key, cfKey.cfId, dm);
+        }
+        finally
+        {
+            lock.unlock();
+        }
     }
 }

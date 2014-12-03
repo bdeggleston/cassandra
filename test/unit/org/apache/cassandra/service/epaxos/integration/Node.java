@@ -127,15 +127,15 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected String dependencyTable()
+    protected String keyStateTable()
     {
         throw new UnsupportedOperationException("override in concrete implementation");
     }
 
     @Override
-    protected String stateTable()
+    protected String tokenStateTable()
     {
-        return String.format("%s_%s", super.stateTable(), number);
+        return String.format("%s_%s", super.tokenStateTable(), number);
     }
 
     @Override

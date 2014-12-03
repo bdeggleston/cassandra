@@ -70,15 +70,15 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
             }
 
             @Override
-            protected String dependencyTable()
+            protected String keyStateTable()
             {
-                return String.format("%s_%s", SystemKeyspace.EPAXOS_DEPENDENCIES, nodeNumber);
+                return String.format("%s_%s", SystemKeyspace.EPAXOS_KEY_STATE, nodeNumber);
             }
 
             @Override
-            protected String stateTable()
+            protected String tokenStateTable()
             {
-                return String.format("%s_%s", SystemKeyspace.EPAXOS_STATE, nodeNumber);
+                return String.format("%s_%s", SystemKeyspace.EPAXOS_TOKEN_STATE, nodeNumber);
             }
         };
     }

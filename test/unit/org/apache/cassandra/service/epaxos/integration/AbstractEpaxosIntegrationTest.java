@@ -32,10 +32,10 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
             cfDefs.add(instanceTable);
 
             CFMetaData dependencyTable = new CFMetaData(ksName,
-                                                        String.format("%s_%s", SystemKeyspace.EPAXOS_DEPENDENCIES, i + 1),
-                                                        CFMetaData.EpaxosDependenciesCF.cfType,
-                                                        CFMetaData.EpaxosDependenciesCF.comparator);
-            dependencyTable = CFMetaData.copyOpts(dependencyTable, CFMetaData.EpaxosDependenciesCF);
+                                                        String.format("%s_%s", SystemKeyspace.EPAXOS_KEY_STATE, i + 1),
+                                                        CFMetaData.EpaxosKeyStateCF.cfType,
+                                                        CFMetaData.EpaxosKeyStateCF.comparator);
+            dependencyTable = CFMetaData.copyOpts(dependencyTable, CFMetaData.EpaxosKeyStateCF);
 
             cfDefs.add(dependencyTable);
         }
@@ -157,15 +157,15 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
                 }
 
                 @Override
-                protected String dependencyTable()
+                protected String keyStateTable()
                 {
-                    return String.format("%s_%s", SystemKeyspace.EPAXOS_DEPENDENCIES, nodeNumber);
+                    return String.format("%s_%s", SystemKeyspace.EPAXOS_KEY_STATE, nodeNumber);
                 }
 
                 @Override
-                protected String stateTable()
+                protected String tokenStateTable()
                 {
-                    return String.format("%s_%s", SystemKeyspace.EPAXOS_STATE, nodeNumber);
+                    return String.format("%s_%s", SystemKeyspace.EPAXOS_TOKEN_STATE, nodeNumber);
                 }
             };
         }
