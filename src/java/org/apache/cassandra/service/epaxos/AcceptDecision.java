@@ -9,12 +9,14 @@ public class AcceptDecision
 {
     public final boolean acceptNeeded;
     public final Set<UUID> acceptDeps;
+    public final boolean vetoed;
     public final Map<InetAddress, Set<UUID>> missingInstances;
 
-    public AcceptDecision(boolean acceptNeeded, Set<UUID> acceptDeps, Map<InetAddress, Set<UUID>> missingInstances)
+    public AcceptDecision(boolean acceptNeeded, Set<UUID> acceptDeps, boolean vetoed, Map<InetAddress, Set<UUID>> missingInstances)
     {
         this.acceptNeeded = acceptNeeded;
         this.acceptDeps = acceptDeps;
+        this.vetoed = vetoed;
         this.missingInstances = missingInstances;
     }
 
@@ -23,7 +25,9 @@ public class AcceptDecision
     {
         return "AcceptDecision{" +
                 "acceptNeeded=" + acceptNeeded +
-                ", missingInstances=" + (missingInstances != null ? missingInstances.size() : null) +
+                ", acceptDeps=" + acceptDeps +
+                ", vetoed=" + vetoed +
+                ", missingInstances=" + missingInstances +
                 '}';
     }
 }

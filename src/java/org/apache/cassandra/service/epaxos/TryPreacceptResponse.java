@@ -14,11 +14,13 @@ public class TryPreacceptResponse
 
     public final UUID iid;
     public final TryPreacceptDecision decision;
+    public final boolean vetoed;
 
-    public TryPreacceptResponse(UUID iid, TryPreacceptDecision decision)
+    public TryPreacceptResponse(UUID iid, TryPreacceptDecision decision, boolean vetoed)
     {
         this.iid = iid;
         this.decision = decision;
+        this.vetoed = vetoed;
     }
 
     private static class Serializer implements IVersionedSerializer<TryPreacceptResponse>
@@ -28,6 +30,7 @@ public class TryPreacceptResponse
         {
             UUIDSerializer.serializer.serialize(response.iid, out, version);
             out.writeInt(response.decision.ordinal());
+            out.writeBoolean(response.vetoed);
         }
 
         @Override
@@ -35,13 +38,14 @@ public class TryPreacceptResponse
         {
             return new TryPreacceptResponse(
                     UUIDSerializer.serializer.deserialize(in, version),
-                    TryPreacceptDecision.values()[in.readInt()]);
+                    TryPreacceptDecision.values()[in.readInt()],
+                    in.readBoolean());
         }
 
         @Override
         public long serializedSize(TryPreacceptResponse response, int version)
         {
-            return UUIDSerializer.serializer.serializedSize(response.iid, version) + 4;
+            return UUIDSerializer.serializer.serializedSize(response.iid, version) + 4 + 1;
         }
     }
 }

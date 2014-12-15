@@ -1,9 +1,12 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Sets;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
@@ -189,4 +192,31 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
 
     }
 
+    /**
+     * Tests that proposed epochs that are more than
+     * 1 greater than the current epoch are vetoed, and
+     * the response says so.
+     */
+    @Test
+    public void epochVeto() throws Exception
+    {
+        MockVerbHandlerState state = new MockVerbHandlerState();
+        PreacceptVerbHandler handler = new PreacceptVerbHandler(state);
+
+        Token token = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
+
+        long currentEpoch = 5;
+        long proposedEpoch = 7;
+        TokenState tokenState = state.tokenStateManager.get(token);
+        tokenState.setEpoch(currentEpoch);
+        state.tokenStateManager.save(tokenState);
+
+        TokenInstance instance = new TokenInstance(LEADER, token, proposedEpoch);
+        instance.preaccept(Collections.EMPTY_SET);
+        handler.doVerb(createMessage(instance), 0);
+
+        MessageOut<PreacceptResponse> response = state.replies.get(0);
+        Assert.assertFalse(response.payload.success);
+        Assert.assertTrue(response.payload.vetoed);
+    }
 }

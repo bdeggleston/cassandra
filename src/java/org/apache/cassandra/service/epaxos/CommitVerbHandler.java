@@ -28,6 +28,7 @@ public class CommitVerbHandler implements IVerbHandler<Instance>
         Instance instance;
         try
         {
+            // TODO: check for illegal epoch increments and kickoff failure recovery if found
             Instance remoteInstance = message.payload;
             instance = state.loadInstance(remoteInstance.getId());
             if (instance == null)

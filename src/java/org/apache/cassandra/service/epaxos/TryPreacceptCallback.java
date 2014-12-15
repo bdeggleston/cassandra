@@ -21,6 +21,7 @@ public class TryPreacceptCallback implements IAsyncCallback<TryPreacceptResponse
 
     private int responses = 0;
     private int convinced = 0;
+    private boolean vetoed = false;
     private boolean contended = false;
     private boolean completed = false;
 
@@ -45,6 +46,7 @@ public class TryPreacceptCallback implements IAsyncCallback<TryPreacceptResponse
         // TODO: should wait for more than `targets`? Or should a single negative response abort the attempt?
 
         responses++;
+        vetoed |= response.vetoed;
 
         if (response.decision == TryPreacceptDecision.ACCEPTED)
         {
@@ -63,7 +65,7 @@ public class TryPreacceptCallback implements IAsyncCallback<TryPreacceptResponse
             if (convinced >= attempt.requiredConvinced)
             {
                 // try-preaccept successful
-                state.accept(id, attempt.dependencies, failureCallback);
+                state.accept(id, attempt.dependencies, vetoed, failureCallback);
             }
             else if (contended)
             {

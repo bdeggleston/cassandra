@@ -5,6 +5,7 @@ import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,8 +34,8 @@ public class TryPreacceptVerbHandler implements IVerbHandler<TryPreacceptRequest
         try
         {
             Instance instance = state.loadInstance(message.payload.iid);
-            TryPreacceptDecision decision = handleTryPreaccept(instance, message.payload.dependencies);
-            TryPreacceptResponse response = new TryPreacceptResponse(instance.getId(), decision);
+            Pair<TryPreacceptDecision, Boolean> decision = handleTryPreaccept(instance, message.payload.dependencies);
+            TryPreacceptResponse response = new TryPreacceptResponse(instance.getId(), decision.left, decision.right);
             MessageOut<TryPreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                       response,
                                                                       TryPreacceptResponse.serializer);
@@ -46,7 +47,24 @@ public class TryPreacceptVerbHandler implements IVerbHandler<TryPreacceptRequest
         }
     }
 
-    protected TryPreacceptDecision handleTryPreaccept(Instance instance, Set<UUID> dependencies)
+    private boolean maybeVetoEpoch(Instance inst)
+    {
+        if (!(inst instanceof TokenInstance))
+        {
+            return false;
+        }
+
+        TokenInstance instance = (TokenInstance) inst;
+        long currentEpoch = state.tokenStateManager.getEpoch(instance.getToken());
+
+        if (instance.getEpoch() > currentEpoch + 1)
+        {
+            instance.setVetoed(true);
+        }
+        return instance.isVetoed();
+    }
+
+    protected Pair<TryPreacceptDecision, Boolean> handleTryPreaccept(Instance instance, Set<UUID> dependencies)
     {
         // TODO: reread the try preaccept stuff, dependency management may break it if we're not careful
         logger.debug("Attempting TryPreaccept for {} with deps {}", instance.getId(), dependencies);
@@ -57,13 +75,16 @@ public class TryPreacceptVerbHandler implements IVerbHandler<TryPreacceptRequest
         conflictIds.removeAll(dependencies);
         conflictIds.remove(instance.getId());
 
+        boolean vetoed = maybeVetoEpoch(instance);
+
+
         // if this node hasn't seen some of the proposed dependencies, don't preaccept them
         for (UUID dep: dependencies)
         {
             if (state.loadInstance(dep) == null)
             {
                 logger.debug("Missing dep for TryPreaccept for {}, rejecting ", instance.getId());
-                return TryPreacceptDecision.REJECTED;
+                return Pair.create(TryPreacceptDecision.REJECTED, vetoed);
             }
         }
 
@@ -82,7 +103,7 @@ public class TryPreacceptVerbHandler implements IVerbHandler<TryPreacceptRequest
                 // the other instances being prepared are successfully committed. Hopefully
                 // this conflicting instance will be committed as well.
                 logger.debug("TryPreaccept contended for {}, {} is not committed", instance.getId(), conflict.getId());
-                return TryPreacceptDecision.CONTENDED;
+                return Pair.create(TryPreacceptDecision.CONTENDED, vetoed);
             }
 
             // if the instance in question isn't a dependency of the potential
@@ -90,7 +111,7 @@ public class TryPreacceptVerbHandler implements IVerbHandler<TryPreacceptRequest
             if (!conflict.getDependencies().contains(instance.getId()))
             {
                 logger.debug("TryPreaccept rejected for {}, not a dependency of conflicting instance", instance.getId());
-                return TryPreacceptDecision.REJECTED;
+                return Pair.create(TryPreacceptDecision.REJECTED, vetoed);
             }
         }
 
@@ -100,7 +121,7 @@ public class TryPreacceptVerbHandler implements IVerbHandler<TryPreacceptRequest
         instance.setDependencies(dependencies);
         state.saveInstance(instance);
 
-        return TryPreacceptDecision.ACCEPTED;
+        return Pair.create(TryPreacceptDecision.ACCEPTED, vetoed);
     }
 
 }

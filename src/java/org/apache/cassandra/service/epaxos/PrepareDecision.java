@@ -10,19 +10,21 @@ public class PrepareDecision
 {
     public final Instance.State state;
     public final Set<UUID> deps;
+    public final boolean vetoed;
     public final int ballot;
     public final List<TryPreacceptAttempt> tryPreacceptAttempts;
     public final boolean commitNoop;
 
-    public PrepareDecision(Instance.State state, Set<UUID> deps, int ballot)
+    public PrepareDecision(Instance.State state, Set<UUID> deps, boolean vetoed, int ballot)
     {
-        this(state, deps, ballot, null, false);
+        this(state, deps, vetoed, ballot, null, false);
     }
 
-    public PrepareDecision(Instance.State state, Set<UUID> deps, int ballot, List<TryPreacceptAttempt> tryPreacceptAttempts, boolean commitNoop)
+    public PrepareDecision(Instance.State state, Set<UUID> deps, boolean vetoed, int ballot, List<TryPreacceptAttempt> tryPreacceptAttempts, boolean commitNoop)
     {
         this.state = state;
         this.deps = deps != null ? ImmutableSet.copyOf(deps) : null;
+        this.vetoed = vetoed;
         this.ballot = ballot;
         this.tryPreacceptAttempts = tryPreacceptAttempts;
         this.commitNoop = commitNoop;

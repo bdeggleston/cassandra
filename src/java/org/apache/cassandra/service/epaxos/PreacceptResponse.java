@@ -20,32 +20,43 @@ public class PreacceptResponse
     public final boolean success;
     public final int ballotFailure;
     public final Set<UUID> dependencies;
+    public final boolean vetoed;
     public volatile List<Instance> missingInstances;
 
     private static final List<Instance> NO_INSTANCES = ImmutableList.of();
     private static final Set<UUID> NO_DEPS = ImmutableSet.of();
 
-    PreacceptResponse(boolean success, int ballotFailure, Set<UUID> dependencies, List<Instance> missingInstances)
+    public PreacceptResponse(boolean success, int ballotFailure, Set<UUID> dependencies, boolean vetoed, List<Instance> missingInstances)
     {
         this.success = success;
         this.ballotFailure = ballotFailure;
         this.dependencies = dependencies;
+        this.vetoed = vetoed;
         this.missingInstances = missingInstances;
+    }
+
+    private static boolean getVetoed(Instance instance)
+    {
+        if (instance instanceof TokenInstance)
+        {
+            return ((TokenInstance) instance).isVetoed();
+        }
+        return false;
     }
 
     public static PreacceptResponse success(Instance instance)
     {
-        return new PreacceptResponse(instance.getLeaderDepsMatch(), 0, instance.getDependencies(), NO_INSTANCES);
+        return new PreacceptResponse(instance.getLeaderAttrsMatch(), 0, instance.getDependencies(), getVetoed(instance), NO_INSTANCES);
     }
 
     public static PreacceptResponse failure(Instance instance)
     {
-        return new PreacceptResponse(false, 0, instance.getDependencies(), NO_INSTANCES);
+        return new PreacceptResponse(false, 0, instance.getDependencies(), getVetoed(instance), NO_INSTANCES);
     }
 
     public static PreacceptResponse ballotFailure(int localBallot)
     {
-        return new PreacceptResponse(false, localBallot, NO_DEPS, NO_INSTANCES);
+        return new PreacceptResponse(false, localBallot, NO_DEPS, false, NO_INSTANCES);
     }
 
     public static class Serializer implements IVersionedSerializer<PreacceptResponse>
@@ -60,6 +71,8 @@ public class PreacceptResponse
             out.writeInt(deps.size());
             for (UUID dep : deps)
                 UUIDSerializer.serializer.serialize(dep, out, version);
+
+            out.writeBoolean(response.vetoed);
 
             out.writeInt(response.missingInstances.size());
             for (Instance instance: response.missingInstances)
@@ -76,11 +89,13 @@ public class PreacceptResponse
             for (int i=0; i<deps.length; i++)
                 deps[i] = UUIDSerializer.serializer.deserialize(in, version);
 
+            boolean vetoed = in.readBoolean();
+
             Instance[] missing = new Instance[in.readInt()];
             for (int i=0; i<missing.length; i++)
                 missing[i] = Instance.serializer.deserialize(in, version);
 
-            return new PreacceptResponse(successful, ballotFailure, ImmutableSet.copyOf(deps), Lists.newArrayList(missing));
+            return new PreacceptResponse(successful, ballotFailure, ImmutableSet.copyOf(deps), vetoed, Lists.newArrayList(missing));
         }
 
         @Override
@@ -93,6 +108,8 @@ public class PreacceptResponse
             size += 4;  //out.writeInt(deps.size());
             for (UUID dep : response.dependencies)
                 size += UUIDSerializer.serializer.serializedSize(dep, version);
+
+            size += 1;  //out.writeBoolean(response.vetoed);
 
             size += 4;  //out.writeInt(response.missingInstances.size());
             for (Instance instance: response.missingInstances)

@@ -88,7 +88,7 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         Assert.assertNotNull(remoteCopy);
         Assert.assertEquals(Instance.State.PREACCEPTED, remoteCopy.getState());
         Assert.assertEquals(Sets.newHashSet(firstInstance.getId()), remoteCopy.getDependencies());
-        Assert.assertTrue(remoteCopy.getLeaderDepsMatch());
+        Assert.assertTrue(remoteCopy.getLeaderAttrsMatch());
 
         // check added to dependency manager
         KeyState dm = node.getDependencyManager(newInstance);
@@ -138,7 +138,7 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         Assert.assertNotNull(remoteCopy);
         Assert.assertEquals(Instance.State.PREACCEPTED, remoteCopy.getState());
         Assert.assertEquals(Sets.newHashSet(firstInstance.getId()), remoteCopy.getDependencies());
-        Assert.assertFalse(remoteCopy.getLeaderDepsMatch());
+        Assert.assertFalse(remoteCopy.getLeaderAttrsMatch());
     }
 
     @Test
@@ -184,6 +184,6 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         Assert.assertNotNull(remoteCopy);
         Assert.assertEquals(Instance.State.PREACCEPTED, remoteCopy.getState());
         Assert.assertEquals(Sets.newHashSet(missingInstance.getId()), remoteCopy.getDependencies());
-        Assert.assertFalse(remoteCopy.getLeaderDepsMatch());
+        Assert.assertFalse(remoteCopy.getLeaderAttrsMatch());
     }
 }

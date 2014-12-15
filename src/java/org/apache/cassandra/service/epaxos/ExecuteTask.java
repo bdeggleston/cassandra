@@ -71,7 +71,10 @@ public class ExecuteTask implements Runnable
 
                     try
                     {
-                        state.executeInstance(toExecute);
+                        if (!instance.skipExecution())
+                        {
+                            state.executeInstance(toExecute);
+                        }
                     }
                     catch (InvalidRequestException | WriteTimeoutException | ReadTimeoutException e)
                     {

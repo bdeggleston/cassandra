@@ -264,9 +264,9 @@ public class EpaxosState
         return new AcceptCallback(this, instance, participantInfo, failureCallback);
     }
 
-    public void accept(UUID id, Set<UUID> dependencies, Runnable failureCallback)
+    public void accept(UUID id, Set<UUID> dependencies, boolean vetoed, Runnable failureCallback)
     {
-        accept(id, new AcceptDecision(true, dependencies, Collections.<InetAddress, Set<UUID>>emptyMap()), failureCallback);
+        accept(id, new AcceptDecision(true, dependencies, vetoed, Collections.<InetAddress, Set<UUID>>emptyMap()), failureCallback);
     }
 
     public void accept(UUID iid, AcceptDecision decision, Runnable failureCallback)
@@ -655,6 +655,11 @@ public class EpaxosState
         {
             tokenStateManager.recordHighEpoch((TokenInstance) instance);
         }
+    }
+
+    protected long getCurrentEpoch(Token token)
+    {
+        return tokenStateManager.get(token).getEpoch();
     }
 
     // TODO: consider only sending a missing instance if it's older than some threshold. Should keep message size down

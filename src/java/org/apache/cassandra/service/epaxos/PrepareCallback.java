@@ -96,7 +96,7 @@ public class PrepareCallback implements IAsyncCallback<Instance>
                     }
                     break;
                 case ACCEPTED:
-                    state.accept(id, decision.deps, failureCallback);
+                    state.accept(id, decision.deps, decision.vetoed, failureCallback);
                     break;
                 case COMMITTED:
                     state.commit(id, decision.deps);
@@ -143,23 +143,32 @@ public class PrepareCallback implements IAsyncCallback<Instance>
     public synchronized PrepareDecision getDecision()
     {
         int ballot = 0;
+        boolean vetoed = false;
         for (Instance inst: responses.values())
+        {
             if (inst != null)
+            {
                 ballot = Math.max(ballot, inst.getBallot());
+                if (inst instanceof TokenInstance)
+                {
+                    vetoed |= ((TokenInstance) inst).isVetoed();
+                }
+            }
+        }
 
         List<Instance> committed = Lists.newArrayList(Iterables.filter(responses.values(), committedPredicate));
         if (committed.size() > 0)
-            return new PrepareDecision(Instance.State.COMMITTED, committed.get(0).getDependencies(), ballot);
+            return new PrepareDecision(Instance.State.COMMITTED, committed.get(0).getDependencies(), vetoed, ballot);
 
         List<Instance> accepted = Lists.newArrayList(Iterables.filter(responses.values(), acceptedPredicate));
         if (accepted.size() > 0)
-            return new PrepareDecision(Instance.State.ACCEPTED, accepted.get(0).getDependencies(), ballot);
+            return new PrepareDecision(Instance.State.ACCEPTED, accepted.get(0).getDependencies(), vetoed, ballot);
 
         // no other node knows about this instance, commit a noop
         if (Lists.newArrayList(Iterables.filter(responses.values(), notNullPredicate)).size() == 0)
-            return new PrepareDecision(Instance.State.PREACCEPTED, null, ballot, Collections.EMPTY_LIST, true);
+            return new PrepareDecision(Instance.State.PREACCEPTED, null, vetoed, ballot, Collections.EMPTY_LIST, true);
 
-        return new PrepareDecision(Instance.State.PREACCEPTED, null, ballot, getTryPreacceptAttempts(), false);
+        return new PrepareDecision(Instance.State.PREACCEPTED, null, vetoed, ballot, getTryPreacceptAttempts(), false);
     }
 
     /**
@@ -203,7 +212,7 @@ public class PrepareCallback implements IAsyncCallback<Instance>
             depGroups.get(deps).add(entry.getKey());
             replyingReplicas.add(entry.getKey());
 
-            scores.put(deps, (scores.get(deps) + (entry.getValue().getLeaderDepsMatch() ? 2 : 1)));
+            scores.put(deps, (scores.get(deps) + (entry.getValue().getLeaderAttrsMatch() ? 2 : 1)));
         }
 
         // min # of identical preaccepts

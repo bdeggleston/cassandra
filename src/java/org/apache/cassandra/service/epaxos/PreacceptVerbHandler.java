@@ -35,6 +35,19 @@ public class PreacceptVerbHandler implements IVerbHandler<Instance>
         this.state = state;
     }
 
+    private void maybeVetoEpoch(Instance inst)
+    {
+        if (!(inst instanceof TokenInstance))
+            return;
+
+        TokenInstance instance = (TokenInstance) inst;
+        long currentEpoch = state.tokenStateManager.getEpoch(instance.getToken());
+
+        if (instance.getEpoch() > currentEpoch + 1)
+        {
+            instance.setVetoed(true);
+        }
+    }
 
     @Override
     public void doVerb(MessageIn<Instance> message, int id)
@@ -63,9 +76,10 @@ public class PreacceptVerbHandler implements IVerbHandler<Instance>
                     instance.applyRemote(remoteInstance);
                 }
                 instance.preaccept(state.getCurrentDependencies(instance), remoteInstance.getDependencies());
+                maybeVetoEpoch(instance);
                 state.saveInstance(instance);
 
-                if (instance.getLeaderDepsMatch())
+                if (instance.getLeaderAttrsMatch())
                 {
                     logger.debug("Preaccept dependencies agree for {}", instance.getId());
                     response = PreacceptResponse.success(instance);

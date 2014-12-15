@@ -43,6 +43,7 @@ public class AcceptVerbHandler implements IVerbHandler<AcceptRequest>
         Instance instance = null;
         try
         {
+            // TODO: check for illegal epoch increments and kickoff failure recovery if found
             instance = state.loadInstance(remoteInstance.getId());
             if (instance == null)
             {

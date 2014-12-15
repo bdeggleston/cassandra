@@ -114,7 +114,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         {
             Instance instance = node.getInstance(iid);
             String msg = String.format("Unexpected leader deps match value on %s", node.getEndpoint());
-            Assert.assertEquals(msg, expected, instance.getLeaderDepsMatch());
+            Assert.assertEquals(msg, expected, instance.getLeaderAttrsMatch());
         }
     }
 

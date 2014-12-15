@@ -23,6 +23,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
     private final EpaxosState.ParticipantInfo participantInfo;
     private final Runnable failureCallback;
     private final Set<UUID> remoteDependencies = Sets.newHashSet();
+    private boolean vetoed = false;  // only used for token instances
     private final Map<InetAddress, PreacceptResponse> responses = Maps.newHashMap();
     private final boolean forceAccept;
     private final Set<InetAddress> endpointsReplied = Sets.newHashSet();
@@ -71,6 +72,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
         responses.put(msg.from, response);
 
         remoteDependencies.addAll(response.dependencies);
+        vetoed |= response.vetoed;
 
         if (response.missingInstances.size() > 0)
         {
@@ -122,7 +124,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
 
         Set<UUID> unifiedDeps = ImmutableSet.copyOf(Iterables.concat(dependencies, remoteDependencies));
 
-        boolean acceptRequired = !depsMatch || !fpQuorum;
+        boolean acceptRequired = !depsMatch || !fpQuorum || vetoed;
 
         Map<InetAddress, Set<UUID>> missingIds = Maps.newHashMap();
         if (acceptRequired)
@@ -138,7 +140,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
             }
         }
 
-        AcceptDecision decision = new AcceptDecision(acceptRequired, unifiedDeps, missingIds);
+        AcceptDecision decision = new AcceptDecision(acceptRequired, unifiedDeps, vetoed, missingIds);
         logger.debug("preaccept accept decision for {}: {}", id, decision);
         return decision;
     }

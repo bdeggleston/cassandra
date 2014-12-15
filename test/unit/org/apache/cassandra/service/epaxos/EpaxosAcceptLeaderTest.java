@@ -107,7 +107,7 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
 
         Set<UUID> newDeps = Sets.newHashSet(instance.getDependencies());
         newDeps.add(UUIDGen.getTimeUUID());
-        node.accept(instance.getId(), new AcceptDecision(true, newDeps, Collections.EMPTY_MAP), null);
+        node.accept(instance.getId(), new AcceptDecision(true, newDeps, false, Collections.EMPTY_MAP), null);
 
         instance = node.getInstance(instance.getId());
         Assert.assertEquals(newDeps, instance.getDependencies());
@@ -140,7 +140,7 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         Map<InetAddress, Set<UUID>> missingInstances = new HashMap<>();
         missingInstances.put(nodes.get(1).getEndpoint(), Sets.newHashSet(oldInstance.getId()));
 
-        node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), missingInstances), null);
+        node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), false, missingInstances), null);
 
         Assert.assertNotNull(nodes.get(1).getInstance(oldInstance.getId()));
     }
@@ -162,7 +162,7 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
 
         setState(nodes.subList(1, nodes.size()), Node.State.DOWN);
 
-        node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), Collections.EMPTY_MAP), null);
+        node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), false, Collections.EMPTY_MAP), null);
 
         // TODO: check not committed
         Assert.assertNull(lastCommit);
@@ -184,7 +184,7 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
             n.saveInstance(inst);
         }
 
-        node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), Collections.EMPTY_MAP), null);
+        node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), false, Collections.EMPTY_MAP), null);
         // TODO: check not committed
         Assert.assertNull(lastCommit);
     }

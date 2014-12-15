@@ -5,9 +5,6 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.exceptions.ReadTimeoutException;
-import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.CompactEndpointSerializationHelper;
@@ -96,7 +93,7 @@ public abstract class Instance
     protected volatile boolean noop;
     protected volatile boolean fastPathImpossible; // TODO: remove
     protected volatile Set<UUID> dependencies = null;
-    protected volatile boolean leaderDepsMatch = false;
+    protected volatile boolean leaderAttrsMatch = false;
     protected volatile List<InetAddress> successors = null;
 
     // fields not transmitted to other nodes
@@ -135,7 +132,7 @@ public abstract class Instance
         noop = i.noop;
         fastPathImpossible = i.fastPathImpossible;
         dependencies = i.dependencies;
-        leaderDepsMatch = i.leaderDepsMatch;
+        leaderAttrsMatch = i.leaderAttrsMatch;
         successors = i.successors;
         placeholder = i.placeholder;
         stronglyConnected = i.stronglyConnected;
@@ -157,9 +154,9 @@ public abstract class Instance
         return dependencies;
     }
 
-    public boolean getLeaderDepsMatch()
+    public boolean getLeaderAttrsMatch()
     {
-        return leaderDepsMatch;
+        return leaderAttrsMatch;
     }
 
     public int getBallot()
@@ -206,6 +203,11 @@ public abstract class Instance
     }
 
     public boolean isNoop()
+    {
+        return noop;
+    }
+
+    public boolean skipExecution()
     {
         return noop;
     }
@@ -301,7 +303,7 @@ public abstract class Instance
         setDependencies(dependencies);
 
         if (leaderDependencies != null)
-            leaderDepsMatch = this.dependencies.equals(leaderDependencies);
+            leaderAttrsMatch = this.dependencies.equals(leaderDependencies);
         placeholder = false;
         logger.debug("preaccepted: {}", this);
     }
@@ -346,8 +348,6 @@ public abstract class Instance
         }
     }
 
-//    public abstract ColumnFamily execute() throws ReadTimeoutException, WriteTimeoutException;
-
     /**
      * Returns an exact copy of this instance for internal use
      */
@@ -361,6 +361,7 @@ public abstract class Instance
      */
     public void applyRemote(Instance remote)
     {
+        assert remote.getId().equals(getId());
         this.noop = remote.noop;
         this.fastPathImpossible = remote.fastPathImpossible;
     }
@@ -389,7 +390,7 @@ public abstract class Instance
                 for (UUID dep : deps)
                     UUIDSerializer.serializer.serialize(dep, out, version);
             }
-            out.writeBoolean(instance.leaderDepsMatch);
+            out.writeBoolean(instance.leaderAttrsMatch);
 
             // there should never be a null successor list at this point
             out.writeInt(instance.successors.size());
@@ -424,7 +425,7 @@ public abstract class Instance
                 instance.dependencies = null;
             }
 
-            instance.leaderDepsMatch = in.readBoolean();
+            instance.leaderAttrsMatch = in.readBoolean();
 
             InetAddress[] successors = new InetAddress[in.readInt()];
             for (int i=0; i<successors.length; i++)
@@ -448,7 +449,7 @@ public abstract class Instance
                 for (UUID dep : instance.dependencies)
                     size += UUIDSerializer.serializer.serializedSize(dep, version);
             }
-            size += 1;  // instance.leaderDepsMatch
+            size += 1;  // instance.leaderAttrsMatch
 
             size += 4;  // instance.successors.size
             for (InetAddress successor: instance.successors)

@@ -49,7 +49,12 @@ public class TokenStateManager
      */
     public long getEpoch(ByteBuffer key)
     {
-        TokenState ts = get(key);
+        return getEpoch(StorageService.getPartitioner().getToken(key));
+    }
+
+    public long getEpoch(Token token)
+    {
+        TokenState ts = get(token);
         ts.rwLock.readLock().lock();
         try
         {

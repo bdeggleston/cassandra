@@ -16,6 +16,7 @@ public class TokenInstance extends Instance
 {
     private final Token token;
     private final long epoch;
+    private volatile boolean vetoed;
 
     public TokenInstance(InetAddress leader, Token token, long epoch)
     {
@@ -36,6 +37,7 @@ public class TokenInstance extends Instance
         super(i);
         this.token = i.token;
         this.epoch = i.epoch;
+        this.vetoed = i.vetoed;
     }
 
     @Override
@@ -72,6 +74,36 @@ public class TokenInstance extends Instance
         return Type.TOKEN;
     }
 
+    @Override
+    public boolean getLeaderAttrsMatch()
+    {
+        return super.getLeaderAttrsMatch() && !isVetoed();
+    }
+
+    public boolean isVetoed()
+    {
+        return vetoed;
+    }
+
+    public void setVetoed(boolean vetoed)
+    {
+        this.vetoed = vetoed;
+    }
+
+    @Override
+    public boolean skipExecution()
+    {
+        return super.skipExecution() || vetoed;
+    }
+
+    @Override
+    public void applyRemote(Instance remote)
+    {
+        assert remote instanceof TokenInstance;
+        super.applyRemote(remote);
+        this.vetoed = ((TokenInstance) remote).vetoed;
+    }
+
     private static final IVersionedSerializer<TokenInstance> commonSerializer = new IVersionedSerializer<TokenInstance>()
     {
         @Override
@@ -81,15 +113,18 @@ public class TokenInstance extends Instance
             CompactEndpointSerializationHelper.serialize(instance.getLeader(), out);
             Token.serializer.serialize(instance.token, out);
             out.writeLong(instance.epoch);
+            out.writeBoolean(instance.vetoed);
         }
 
         @Override
         public TokenInstance deserialize(DataInput in, int version) throws IOException
         {
-            return new TokenInstance(UUIDSerializer.serializer.deserialize(in, version),
-                                     CompactEndpointSerializationHelper.deserialize(in),
-                                     Token.serializer.deserialize(in),
-                                     in.readLong());
+            TokenInstance instance = new TokenInstance(UUIDSerializer.serializer.deserialize(in, version),
+                                                       CompactEndpointSerializationHelper.deserialize(in),
+                                                       Token.serializer.deserialize(in), in.readLong());
+
+            instance.vetoed = in.readBoolean();
+            return instance;
         }
 
         @Override
@@ -100,6 +135,7 @@ public class TokenInstance extends Instance
             size += CompactEndpointSerializationHelper.serializedSize(instance.getLeader());
             size += Token.serializer.serializedSize(instance.token, TypeSizes.NATIVE);
             size += 8;
+            size += 1;
             return size;
         }
     };

@@ -217,7 +217,7 @@ public class EpaxosSerializationTest
         Assert.assertEquals(instance.getId(), deserialized.getId());
         Assert.assertEquals(instance.getState(), deserialized.getState());
         Assert.assertEquals(instance.getDependencies(), deserialized.getDependencies());
-        Assert.assertEquals(instance.getLeaderDepsMatch(), deserialized.getLeaderDepsMatch());
+        Assert.assertEquals(instance.getLeaderAttrsMatch(), deserialized.getLeaderAttrsMatch());
         Assert.assertEquals(instance.getBallot(), deserialized.getBallot());
         Assert.assertEquals(instance.getSuccessors(), deserialized.getSuccessors());
 
@@ -265,7 +265,7 @@ public class EpaxosSerializationTest
         Assert.assertEquals(instance.getId(), deserialized.getId());
         Assert.assertEquals(instance.getState(), deserialized.getState());
         Assert.assertEquals(instance.getDependencies(), deserialized.getDependencies());
-        Assert.assertEquals(instance.getLeaderDepsMatch(), deserialized.getLeaderDepsMatch());
+        Assert.assertEquals(instance.getLeaderAttrsMatch(), deserialized.getLeaderAttrsMatch());
         Assert.assertEquals(instance.getBallot(), deserialized.getBallot());
         Assert.assertEquals(instance.getSuccessors(), deserialized.getSuccessors());
 

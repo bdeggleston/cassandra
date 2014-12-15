@@ -63,7 +63,7 @@ public class EpaxosInstanceTest
         instance.preaccept(expectedDeps, leaderDeps);
 
         Assert.assertEquals(expectedDeps, leaderDeps);
-        Assert.assertTrue(instance.getLeaderDepsMatch());
+        Assert.assertTrue(instance.getLeaderAttrsMatch());
     }
 
     @Test
@@ -76,7 +76,7 @@ public class EpaxosInstanceTest
         instance.preaccept(expectedDeps, leaderDeps);
 
         Assert.assertNotSame(expectedDeps, leaderDeps);
-        Assert.assertFalse(instance.getLeaderDepsMatch());
+        Assert.assertFalse(instance.getLeaderAttrsMatch());
     }
 
     @Test
