@@ -47,6 +47,13 @@ public class EpaxosState
     // attempting a prepare phase. This is multiplied by a replica's position in the successor list
     protected static long PREPARE_GRACE_MILLIS = DatabaseDescriptor.getMinRpcTimeout() / 2;
 
+    // how often the TokenMaintenanceTask runs (seconds)
+    static final long TOKEN_MAINTENANCE_INTERVAL = 30;
+
+    // how many instances should be executed under an
+    // epoch before the epoch is incremented
+    static final int EPOCH_INCREMENT_THRESHOLD = 100;
+
     private static boolean CACHE = Boolean.getBoolean("cassandra.epaxos.cache");
 
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
@@ -122,9 +129,18 @@ public class EpaxosState
     public EpaxosState()
     {
         instanceCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(10000).build();
-
         tokenStateManager = new TokenStateManager();
         keyStateManager = new KeyStateManager(keyspace(), keyStateTable(), tokenStateManager);
+
+        scheduleTokenStateMaintenanceTask();
+    }
+
+    protected void scheduleTokenStateMaintenanceTask()
+    {
+        StorageService.scheduledTasks.scheduleAtFixedRate(new TokenStateMaintenanceTask(this, tokenStateManager),
+                                                          0,
+                                                          TOKEN_MAINTENANCE_INTERVAL,
+                                                          TimeUnit.SECONDS);
     }
 
     protected String keyspace()
@@ -150,6 +166,11 @@ public class EpaxosState
     protected Random getRandom()
     {
         return random;
+    }
+
+    public int getEpochIncrementThreshold()
+    {
+        return EPOCH_INCREMENT_THRESHOLD;
     }
 
     protected long getQueryTimeout(long start)
@@ -402,6 +423,11 @@ public class EpaxosState
         }
     }
 
+    /**
+     * Token Instance will be recorded as executing in the epoch it increments to.
+     * This means that the first instance executed for any epoch > 0 will be the
+     * incrementing token instance.
+     */
     protected void executeTokenInstance(TokenInstance instance)
     {
         TokenState tokenState = tokenStateManager.get(instance.getToken());
@@ -423,7 +449,8 @@ public class EpaxosState
             tokenState.rwLock.writeLock().unlock();
         }
 
-        // TODO: gc instances where i.epoch < tokenState.getEpoch() - 1
+        //
+        getStage(Stage.MUTATION).submit(new GarbageCollectionTask(this, tokenState, keyStateManager));
     }
 
     protected PrepareCallback getPrepareCallback(Instance instance, ParticipantInfo participantInfo, PrepareGroup group)
@@ -616,11 +643,18 @@ public class EpaxosState
     /**
      * increments the epoch for the given token
      */
-    public void incrementEpoch(String token)
+    public void incrementEpoch(Token token)
     {
         // TODO: iterate over all dependency managers in the token range
         // TODO: run epoch instance
+    }
 
+    protected void maybeRecordHighEpoch(Instance instance)
+    {
+        if (instance instanceof TokenInstance)
+        {
+            tokenStateManager.recordHighEpoch((TokenInstance) instance);
+        }
     }
 
     // TODO: consider only sending a missing instance if it's older than some threshold. Should keep message size down
