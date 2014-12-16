@@ -2,9 +2,12 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,10 +39,12 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
         }
     }
 
+    private static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
+
     MessageIn<AcceptRequest> createMessage(Instance instance, Instance... missing)
     {
         return MessageIn.create(LEADER,
-                                new AcceptRequest(instance, Lists.newArrayList(missing)),
+                                new AcceptRequest(TOKEN, 0, instance, Lists.newArrayList(missing)),
                                 Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.EPAXOS_ACCEPT,
                                 0);
@@ -138,6 +143,6 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
     {
         // TODO: check query key deps
         // TODO: check token state deps
-        Assert.fail();
+        Assert.fail("TODO");
     }
 }

@@ -492,12 +492,12 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void canIncrementEpochTrue() throws Exception
     {
-        Assert.fail();
+        Assert.fail("TODO");
     }
 
     @Test
     public void canIncrementEpochFalse() throws Exception
     {
-        Assert.fail();
+        Assert.fail("TODO");
     }
 }

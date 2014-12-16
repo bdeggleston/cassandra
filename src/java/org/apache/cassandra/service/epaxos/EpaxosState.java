@@ -21,6 +21,7 @@ import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -254,7 +255,7 @@ public class EpaxosState
         getStage(Stage.MUTATION).submit(task);
     }
 
-    public IVerbHandler<Instance> getPreacceptVerbHandler()
+    public IVerbHandler<MessageEnvelope<Instance>> getPreacceptVerbHandler()
     {
         return new PreacceptVerbHandler(this);
     }
@@ -300,7 +301,10 @@ public class EpaxosState
         for (InetAddress endpoint : participantInfo.liveEndpoints)
         {
             logger.debug("sending accept request to {} for instance {}", endpoint, instance.getId());
-            AcceptRequest request = new AcceptRequest(instance, missingInstances.get(endpoint));
+            AcceptRequest request = new AcceptRequest(instance.getToken(),
+                                                      getCurrentEpoch(instance.getToken()),
+                                                      instance,
+                                                      missingInstances.get(endpoint));
             sendRR(request.getMessage(), endpoint, callback);
         }
 
@@ -308,7 +312,9 @@ public class EpaxosState
         for (InetAddress endpoint: participantInfo.remoteEndpoints)
         {
             logger.debug("sending accept request to non-local dc {} for instance {}", endpoint, instance.getId());
-            AcceptRequest request = new AcceptRequest(instance, null);
+            AcceptRequest request = new AcceptRequest(instance.getToken(),
+                                                      getCurrentEpoch(instance.getToken()),
+                                                      instance, null);
             sendOneWay(request.getMessage(), endpoint);
         }
     }
@@ -364,7 +370,8 @@ public class EpaxosState
 
             // FIXME: unavailable exception shouldn't be thrown by getParticipants. It will prevent instances from being committed locally
             ParticipantInfo participantInfo = getParticipants(instance);
-            MessageOut<Instance> message = instance.getMessage(MessagingService.Verb.EPAXOS_COMMIT);
+            MessageOut<MessageEnvelope<Instance>> message = instance.getMessage(MessagingService.Verb.EPAXOS_COMMIT,
+                                                                                tokenStateManager.getEpoch(instance.getToken()));
             for (InetAddress endpoint : participantInfo.liveEndpoints)
             {
                 logger.debug("sending commit request to {} for instance {}", endpoint, instance.getId());
@@ -374,6 +381,7 @@ public class EpaxosState
             // send to remote datacenters for LOCAL_SERIAL queries
             for (InetAddress endpoint: participantInfo.remoteEndpoints)
             {
+                // TODO: skip dead nodes
                 logger.debug("sending commit request to non-local dc {} for instance {}", endpoint, instance.getId());
                 sendOneWay(message, endpoint);
             }
@@ -384,7 +392,7 @@ public class EpaxosState
         }
     }
 
-    public IVerbHandler<Instance> getCommitVerbHandler()
+    public IVerbHandler<MessageEnvelope<Instance>> getCommitVerbHandler()
     {
         return new CommitVerbHandler(this);
     }
@@ -540,7 +548,8 @@ public class EpaxosState
 
         logger.debug("running trypreaccept prepare for {}: {}", iid, attempt);
 
-        TryPreacceptRequest request = new TryPreacceptRequest(iid, attempt.dependencies);
+        Pair<Token, Long> epochInfo = getInstanceEpochInfo(iid);
+        TryPreacceptRequest request = new TryPreacceptRequest(epochInfo.left, epochInfo.right, iid, attempt.dependencies);
         MessageOut<TryPreacceptRequest> message = request.getMessage();
 
         TryPreacceptCallback callback = getTryPreacceptCallback(iid, attempt, nextAttempts, participantInfo, failureCallback);
@@ -657,9 +666,58 @@ public class EpaxosState
         }
     }
 
-    protected long getCurrentEpoch(Token token)
+    // failure recovery
+
+    public Pair<Token, Long> getInstanceEpochInfo(UUID id)
+    {
+        Lock lock = getInstanceLock(id).readLock();
+        lock.lock();
+        try
+        {
+            Instance instance = loadInstance(id);
+            return Pair.create(instance.getToken(), getCurrentEpoch(instance));
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
+    public long getCurrentEpoch(Instance instance)
+    {
+        return getCurrentEpoch(instance.getToken());
+    }
+
+    public long getCurrentEpoch(Token token)
     {
         return tokenStateManager.get(token).getEpoch();
+    }
+
+
+    public EpochDecision validateMessageEpoch(IEpochMessage message)
+    {
+        long localEpoch = getCurrentEpoch(message.getToken());
+        long remoteEpoch = message.getEpoch();
+        return new EpochDecision(EpochDecision.evaluate(localEpoch, remoteEpoch),
+                                 message.getToken(),
+                                 localEpoch,
+                                 remoteEpoch);
+    }
+
+    /**
+     * starts a new local failure recovery task for the given token.
+     */
+    public void startLocalFailureRecovery(Token token, long epoch)
+    {
+        // TODO: track failure recoveries in-progress
+    }
+
+    /**
+     * starts a new failure recovery task for the given endpoint and token.
+     */
+    public void startRemoteFailureRecovery(InetAddress endpoint, Token token, long epoch)
+    {
+        // TODO: track failure recoveries in-progress so we don't DOS the other node
     }
 
     // TODO: consider only sending a missing instance if it's older than some threshold. Should keep message size down

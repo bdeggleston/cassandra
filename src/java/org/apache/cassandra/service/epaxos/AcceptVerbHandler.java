@@ -1,6 +1,5 @@
 package org.apache.cassandra.service.epaxos;
 
-import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
@@ -9,19 +8,17 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.locks.ReadWriteLock;
 
-public class AcceptVerbHandler implements IVerbHandler<AcceptRequest>
+public class AcceptVerbHandler extends AbstractEpochVerbHandler<AcceptRequest>
 {
     private static final Logger logger = LoggerFactory.getLogger(AcceptVerbHandler.class);
 
-    private final EpaxosState state;
-
     public AcceptVerbHandler(EpaxosState state)
     {
-        this.state = state;
+        super(state);
     }
 
     @Override
-    public void doVerb(MessageIn<AcceptRequest> message, int id)
+    public void doEpochVerb(MessageIn<AcceptRequest> message, int id)
     {
         Instance remoteInstance = message.payload.instance;
         logger.debug("Accept request received from {} for {}", message.from, remoteInstance.getId());
@@ -58,7 +55,7 @@ public class AcceptVerbHandler implements IVerbHandler<AcceptRequest>
             state.saveInstance(instance);
 
             logger.debug("Accept request from {} successful for {}", message.from, remoteInstance.getId());
-            AcceptResponse response = new AcceptResponse(true, 0);
+            AcceptResponse response = new AcceptResponse(instance.getToken(), state.getCurrentEpoch(instance), true, 0);
             state.sendReply(response.getMessage(), id, message.from);
 
             state.recordAcknowledgedDeps(instance);
@@ -66,7 +63,7 @@ public class AcceptVerbHandler implements IVerbHandler<AcceptRequest>
         catch (BallotException e)
         {
             logger.debug("Accept request from {} for {}, rejected. Old ballot", message.from, remoteInstance.getId());
-            AcceptResponse response = new AcceptResponse(false, e.localBallot);
+            AcceptResponse response = new AcceptResponse(instance.getToken(), state.getCurrentEpoch(instance), false, e.localBallot);
             state.sendReply(response.getMessage(), id, message.from);
         }
         catch (InvalidInstanceStateChange e)
@@ -78,7 +75,7 @@ public class AcceptVerbHandler implements IVerbHandler<AcceptRequest>
                     String.format("Proposed accept phase deps don't match. \n\tLocal: %s \n\tRemote: %s", instance, remoteInstance);
 
             logger.debug("Accept request from {} for {}, rejected. State demotion", message.from, remoteInstance.getId());
-            AcceptResponse response = new AcceptResponse(true, 0);
+            AcceptResponse response = new AcceptResponse(instance.getToken(), state.getCurrentEpoch(instance), true, 0);
             state.sendReply(response.getMessage(), id, message.from);
         }
         finally

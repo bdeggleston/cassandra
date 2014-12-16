@@ -1,5 +1,7 @@
 package org.apache.cassandra.service.epaxos;
 
+import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 
@@ -10,18 +12,29 @@ import java.io.IOException;
  * Sends information used for failure detection
  * along with epaxos messages
  */
-public class MessageEnvelope<T>
+public class MessageEnvelope<T> implements IEpochMessage
 {
-    public final T payload;
-
-    // the expected epoch for new instances this should
-    // consider unexecuted / uncommitted epoch instances
+    public final Token token;
     public final long epoch;
+    public final T contents;
 
-    public MessageEnvelope(T payload, long epoch)
+    public MessageEnvelope(Token token, long epoch, T contents)
     {
-        this.payload = payload;
+        this.token = token;
         this.epoch = epoch;
+        this.contents = contents;
+    }
+
+    @Override
+    public Token getToken()
+    {
+        return token;
+    }
+
+    @Override
+    public long getEpoch()
+    {
+        return epoch;
     }
 
     public static <T> Serializer<T> getSerializer(IVersionedSerializer<T> payloadSerializer)
@@ -41,37 +54,35 @@ public class MessageEnvelope<T>
         @Override
         public void serialize(MessageEnvelope<T> envelope, DataOutputPlus out, int version) throws IOException
         {
-            out.writeBoolean(envelope.payload != null);
-            if (envelope.payload != null)
-            {
-                payloadSerializer.serialize(envelope.payload, out, version);
-            }
-
+            Token.serializer.serialize(envelope.token, out);
             out.writeLong(envelope.epoch);
+
+            out.writeBoolean(envelope.contents != null);
+            if (envelope.contents != null)
+            {
+                payloadSerializer.serialize(envelope.contents, out, version);
+            }
         }
 
         @Override
         public MessageEnvelope<T> deserialize(DataInput in, int version) throws IOException
         {
-            T payload = null;
-            if (in.readBoolean())
-            {
-                payload = payloadSerializer.deserialize(in, version);
-            }
-
-            return new MessageEnvelope<>(payload, in.readLong());
+            return new MessageEnvelope<>(Token.serializer.deserialize(in),
+                                         in.readLong(),
+                                         in.readBoolean() ? payloadSerializer.deserialize(in, version) : null);
         }
 
         @Override
         public long serializedSize(MessageEnvelope<T> envelope, int version)
         {
-            long size = 1;
-            if (envelope.payload != null)
-            {
-                size += payloadSerializer.serializedSize(envelope.payload, version);
-            }
-
+            long size = Token.serializer.serializedSize(envelope.token, TypeSizes.NATIVE);
             size += 8;  // envelope.epoch
+
+            size += 1;
+            if (envelope.contents != null)
+            {
+                size += payloadSerializer.serializedSize(envelope.contents, version);
+            }
             return size;
         }
     }

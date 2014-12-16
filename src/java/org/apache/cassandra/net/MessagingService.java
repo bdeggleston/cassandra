@@ -273,9 +273,9 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.PAXOS_PROPOSE, Commit.serializer);
         put(Verb.PAXOS_COMMIT, Commit.serializer);
 
-        put(Verb.EPAXOS_PREACCEPT, Instance.serializer);
+        put(Verb.EPAXOS_PREACCEPT, MessageEnvelope.getSerializer(Instance.serializer));
         put(Verb.EPAXOS_ACCEPT, AcceptRequest.serializer);
-        put(Verb.EPAXOS_COMMIT, Instance.serializer);
+        put(Verb.EPAXOS_COMMIT, MessageEnvelope.getSerializer(Instance.serializer));
         put(Verb.EPAXOS_PREPARE, PrepareRequest.serializer);
         put(Verb.EPAXOS_TRYPREACCEPT, TryPreacceptRequest.serializer);
     }};
@@ -304,7 +304,7 @@ public final class MessagingService implements MessagingServiceMBean
 
         put(Verb.EPAXOS_PREACCEPT, PreacceptResponse.serializer);
         put(Verb.EPAXOS_ACCEPT, AcceptResponse.serializer);
-        put(Verb.EPAXOS_PREPARE, Instance.serializer);
+        put(Verb.EPAXOS_PREPARE, MessageEnvelope.getSerializer(Instance.serializer));
         put(Verb.EPAXOS_TRYPREACCEPT, TryPreacceptResponse.serializer);
     }};
 

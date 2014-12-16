@@ -24,15 +24,13 @@ import java.util.concurrent.locks.ReadWriteLock;
  * participants, so the other participances will know if they agree with the
  * leader or not.
  */
-public class PreacceptVerbHandler implements IVerbHandler<Instance>
+public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelope<Instance>>
 {
     private static final Logger logger = LoggerFactory.getLogger(PreacceptVerbHandler.class);
 
-    private final EpaxosState state;
-
-    public PreacceptVerbHandler(EpaxosState state)
+    protected PreacceptVerbHandler(EpaxosState state)
     {
-        this.state = state;
+        super(state);
     }
 
     private void maybeVetoEpoch(Instance inst)
@@ -50,18 +48,18 @@ public class PreacceptVerbHandler implements IVerbHandler<Instance>
     }
 
     @Override
-    public void doVerb(MessageIn<Instance> message, int id)
+    public void doEpochVerb(MessageIn<MessageEnvelope<Instance>> message, int id)
     {
-        logger.debug("Preaccept request received from {} for {}", message.from, message.payload.getId());
+        Instance remoteInstance = message.payload.contents;
+        logger.debug("Preaccept request received from {} for {}", message.from, remoteInstance.getId());
 
         PreacceptResponse response;
         Set<UUID> missingInstanceIds = null;
 
-        ReadWriteLock lock = state.getInstanceLock(message.payload.getId());
+        ReadWriteLock lock = state.getInstanceLock(remoteInstance.getId());
         lock.writeLock().lock();
         try
         {
-            Instance remoteInstance = message.payload;
             Instance instance = state.loadInstance(remoteInstance.getId());
             try
             {
@@ -82,28 +80,36 @@ public class PreacceptVerbHandler implements IVerbHandler<Instance>
                 if (instance.getLeaderAttrsMatch())
                 {
                     logger.debug("Preaccept dependencies agree for {}", instance.getId());
-                    response = PreacceptResponse.success(instance);
+                    response = PreacceptResponse.success(instance.getToken(),
+                                                         state.getCurrentEpoch(instance.getToken()),
+                                                         instance);
                 }
                 else
                 {
                     logger.debug("Preaccept dependencies disagree for {}", instance.getId());
                     missingInstanceIds = Sets.difference(instance.getDependencies(), remoteInstance.getDependencies());
                     missingInstanceIds.remove(instance.getId());
-                    response = PreacceptResponse.failure(instance);
+                    response = PreacceptResponse.failure(instance.getToken(),
+                                                         state.getCurrentEpoch(instance.getToken()),
+                                                         instance);
                 }
             }
             catch (BallotException e)
             {
-                response = PreacceptResponse.ballotFailure(e.localBallot);
+                response = PreacceptResponse.ballotFailure(instance.getToken(),
+                                                           state.getCurrentEpoch(instance.getToken()),
+                                                           e.localBallot);
             }
             catch (InvalidInstanceStateChange e)
             {
                 // another node is working on a prepare phase that this node wasn't involved in.
                 // as long as the dependencies are the same, reply with an ok, otherwise, something
                 // has gone wrong
-                assert instance.getDependencies().equals(message.payload.getDependencies());
+                assert instance.getDependencies().equals(remoteInstance.getDependencies());
 
-                response = PreacceptResponse.success(instance);
+                response = PreacceptResponse.success(instance.getToken(),
+                                                     state.getCurrentEpoch(instance.getToken()),
+                                                     instance);
             }
         }
         finally

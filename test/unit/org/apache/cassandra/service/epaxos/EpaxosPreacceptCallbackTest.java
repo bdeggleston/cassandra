@@ -51,7 +51,8 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         Assert.assertEquals(0, state.commits.size());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(1), PreacceptResponse.success(instance.copy())));
+        callback.response(createResponse(state.localEndpoints.get(1),
+                                         PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
         Assert.assertEquals(1, state.commits.size());
         Assert.assertTrue(callback.isCompleted());
 
@@ -88,7 +89,8 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         // respond with a failure, missing the expected dep, and replying with another
         Instance responseInstance = instance.copy();
         responseInstance.setDependencies(Sets.newHashSet(dep2));
-        callback.response(createResponse(state.localEndpoints.get(1), PreacceptResponse.failure(responseInstance)));
+        callback.response(createResponse(state.localEndpoints.get(1),
+                                         PreacceptResponse.failure(instance.getToken(), 0, responseInstance)));
         Assert.assertEquals(1, state.accepts.size());
         Assert.assertEquals(0, state.commits.size());
         Assert.assertTrue(callback.isCompleted());
@@ -118,7 +120,8 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
 
         // the instance should be accepted, even if the
         // accept  decision says it't not neccesary
-        callback.response(createResponse(state.localEndpoints.get(1), PreacceptResponse.success(instance.copy())));
+        callback.response(createResponse(state.localEndpoints.get(1),
+                                         PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
         Assert.assertEquals(1, state.accepts.size());
         Assert.assertTrue(callback.isCompleted());
 
@@ -141,12 +144,14 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
 
         PreacceptCallback callback = getCallback(state, instance, null, false);
 
-        callback.response(createResponse(state.localEndpoints.get(1), PreacceptResponse.success(instance.copy())));
+        callback.response(createResponse(state.localEndpoints.get(1),
+                                         PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
         Assert.assertEquals(0, state.accepts.size());
         Assert.assertEquals(0, state.commits.size());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(1), PreacceptResponse.success(instance.copy())));
+        callback.response(createResponse(state.localEndpoints.get(1),
+                                         PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
         Assert.assertEquals(0, state.accepts.size());
         Assert.assertEquals(0, state.commits.size());
         Assert.assertFalse(callback.isCompleted());
@@ -162,7 +167,8 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
 
         PreacceptCallback callback = getCallback(state, instance, null, false);
 
-        callback.response(createResponse(state.localEndpoints.get(1), PreacceptResponse.ballotFailure(5)));
+        callback.response(createResponse(state.localEndpoints.get(1),
+                                         PreacceptResponse.ballotFailure(instance.getToken(), 0, 5)));
         Assert.assertEquals(0, state.accepts.size());
         Assert.assertEquals(0, state.commits.size());
         Assert.assertEquals(1, state.ballotUpdates.size());
@@ -187,12 +193,14 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         Assert.assertEquals(1, callback.getNumResponses());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(1), PreacceptResponse.success(instance.copy())));
+        callback.response(createResponse(state.localEndpoints.get(1),
+                                         PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
         Assert.assertEquals(2, callback.getNumResponses());
         Assert.assertTrue(callback.isCompleted());
 
         // should be ignored
-        callback.response(createResponse(state.localEndpoints.get(2), PreacceptResponse.success(instance.copy())));
+        callback.response(createResponse(state.localEndpoints.get(2),
+                                         PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
         Assert.assertEquals(2, callback.getNumResponses());
         Assert.assertTrue(callback.isCompleted());
     }
@@ -207,11 +215,13 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
 
         PreacceptCallback callback = getCallback(state, instance, null, false);
 
-        callback.response(createResponse(state.localEndpoints.get(1), PreacceptResponse.success(instance.copy())));
+        callback.response(createResponse(state.localEndpoints.get(1),
+                                         PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
         Assert.assertEquals(1, callback.getNumResponses());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(1), PreacceptResponse.success(instance.copy())));
+        callback.response(createResponse(state.localEndpoints.get(1),
+                                         PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
         Assert.assertEquals(1, callback.getNumResponses());
         Assert.assertFalse(callback.isCompleted());
     }
@@ -251,7 +261,8 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         // respond with a failure, missing the expected dep, and replying with another
         Instance responseInstance = instance.copy();
         responseInstance.setDependencies(Sets.newHashSet(dep2));
-        callback.response(createResponse(state.localEndpoints.get(1), PreacceptResponse.failure(responseInstance)));
+        callback.response(createResponse(state.localEndpoints.get(1),
+                                         PreacceptResponse.failure(instance.getToken(), 0, responseInstance)));
         Assert.assertTrue(callback.isCompleted());
 
         // check that the missing instances not retured by the remote

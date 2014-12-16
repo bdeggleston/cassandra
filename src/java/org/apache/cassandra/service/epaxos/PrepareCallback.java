@@ -6,7 +6,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,11 +14,10 @@ import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.util.*;
 
-public class PrepareCallback implements IAsyncCallback<Instance>
+public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Instance>>
 {
     private static final Logger logger = LoggerFactory.getLogger(PreacceptCallback.class);
 
-    private final EpaxosState state;
     private final UUID id;
     private final int ballot;
     private final EpaxosState.ParticipantInfo participantInfo;
@@ -30,7 +28,7 @@ public class PrepareCallback implements IAsyncCallback<Instance>
 
     public PrepareCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, PrepareGroup group)
     {
-        this.state = state;
+        super(state);
         id = instance.getId();
         ballot = instance.getBallot();
         this.participantInfo = participantInfo;
@@ -38,9 +36,10 @@ public class PrepareCallback implements IAsyncCallback<Instance>
     }
 
     @Override
-    public synchronized void response(MessageIn<Instance> msg)
+    public synchronized void epochResponse(MessageIn<MessageEnvelope<Instance>> msg)
     {
         logger.debug("prepare response received from {} for instance {}", msg.from, id);
+
 
         if (completed)
         {
@@ -54,15 +53,17 @@ public class PrepareCallback implements IAsyncCallback<Instance>
             return;
         }
 
-        if (msg.payload != null && msg.payload.getBallot() > ballot)
+        Instance msgInstance = msg.payload.contents;
+
+        if (msgInstance != null && msgInstance.getBallot() > ballot)
         {
             // TODO: should we only try n times? if so start sending attempt # along
             completed = true;
-            state.updateBallot(id, msg.payload.getBallot(), new PrepareTask(state, id, group));
+            state.updateBallot(id, msgInstance.getBallot(), new PrepareTask(state, id, group));
             return;
         }
 
-        responses.put(msg.from, msg.payload);
+        responses.put(msg.from, msgInstance);
 
         if (responses.size() >= participantInfo.quorumSize)
         {

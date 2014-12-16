@@ -1,6 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
-import org.apache.cassandra.net.IVerbHandler;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
@@ -10,19 +10,17 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.locks.ReadWriteLock;
 
-public class PrepareVerbHandler implements IVerbHandler<PrepareRequest>
+public class PrepareVerbHandler extends AbstractEpochVerbHandler<PrepareRequest>
 {
     private static final Logger logger = LoggerFactory.getLogger(PrepareVerbHandler.class);
 
-    private final EpaxosState state;
-
     public PrepareVerbHandler(EpaxosState state)
     {
-        this.state = state;
+        super(state);
     }
 
     @Override
-    public void doVerb(MessageIn<PrepareRequest> message, int id)
+    public void doEpochVerb(MessageIn<PrepareRequest> message, int id)
     {
         logger.debug("Prepare request received from {} for {}", message.from, message.payload.iid);
         ReadWriteLock lock = state.getInstanceLock(message.payload.iid);
@@ -55,9 +53,12 @@ public class PrepareVerbHandler implements IVerbHandler<PrepareRequest>
                 }
             }
 
-            MessageOut<Instance> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
-                                                          instance,
-                                                          Instance.serializer);
+            Token token = instance != null ? instance.getToken() : message.payload.getToken();
+            MessageOut<MessageEnvelope<Instance>> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
+                                                                           new MessageEnvelope<>(token,
+                                                                                                 state.getCurrentEpoch(token),
+                                                                                                 instance),
+                                                                           Instance.envelopeSerializer);
             state.sendReply(reply, id, message.from);
         }
         finally

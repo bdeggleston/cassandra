@@ -10,6 +10,6 @@ public class EpaxosPreacceptTaskTest
     {
         // TODO: check query key deps
         // TODO: check token state deps
-        Assert.fail();
+        Assert.fail("TODO");
     }
 }

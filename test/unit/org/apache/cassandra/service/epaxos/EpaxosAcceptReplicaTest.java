@@ -2,12 +2,15 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.epaxos.integration.AbstractEpaxosIntegrationTest;
 import org.apache.cassandra.service.epaxos.integration.Messenger;
 import org.apache.cassandra.service.epaxos.integration.Node;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -20,8 +23,8 @@ import java.util.*;
 public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.SingleThread
 {
     private final Map<InetAddress, List<MessageOut>> replies = new HashMap<>();
+    private static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
 
-    @Override
     public void setUp()
     {
         super.setUp();
@@ -73,7 +76,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         // send accept request with new deps, and missing instance
         instance.incrementBallot();
         MessageIn<AcceptRequest> message = MessageIn.create(nodes.get(1).getEndpoint(),
-                                                            new AcceptRequest(instance, Lists.newArrayList(missingInstance)),
+                                                            new AcceptRequest(TOKEN, 0, instance, Lists.newArrayList(missingInstance)),
                                                             Collections.EMPTY_MAP,
                                                             MessagingService.Verb.EPAXOS_ACCEPT,
                                                             0);
@@ -126,7 +129,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         // send accept request with new deps, and missing instance
         instance.incrementBallot();
         MessageIn<AcceptRequest> message = MessageIn.create(nodes.get(1).getEndpoint(),
-                                                            new AcceptRequest(instance, Lists.newArrayList(missingInstance)),
+                                                            new AcceptRequest(TOKEN, 0, instance, Lists.newArrayList(missingInstance)),
                                                             Collections.EMPTY_MAP,
                                                             MessagingService.Verb.EPAXOS_ACCEPT,
                                                             0);
@@ -171,7 +174,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         instance1.incrementBallot();
         instance1.accept();
         MessageIn<AcceptRequest> message = MessageIn.create(nodes.get(1).getEndpoint(),
-                                                            new AcceptRequest(instance1, Collections.EMPTY_LIST),
+                                                            new AcceptRequest(TOKEN, 0, instance1, Collections.EMPTY_LIST),
                                                             Collections.EMPTY_MAP,
                                                             MessagingService.Verb.EPAXOS_ACCEPT,
                                                             0);
@@ -188,7 +191,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         instance2.setNoop(true);
 
         message = MessageIn.create(nodes.get(1).getEndpoint(),
-                                   new AcceptRequest(instance2, Collections.EMPTY_LIST),
+                                   new AcceptRequest(TOKEN, 0, instance2, Collections.EMPTY_LIST),
                                    Collections.EMPTY_MAP,
                                    MessagingService.Verb.EPAXOS_ACCEPT,
                                    0);
@@ -218,7 +221,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
 
         // send accept request with new deps, and missing instance
         MessageIn<AcceptRequest> message = MessageIn.create(nodes.get(1).getEndpoint(),
-                                                            new AcceptRequest(instance, Collections.EMPTY_LIST),
+                                                            new AcceptRequest(TOKEN, 0, instance, Collections.EMPTY_LIST),
                                                             Collections.EMPTY_MAP,
                                                             MessagingService.Verb.EPAXOS_ACCEPT,
                                                             0);
@@ -261,7 +264,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         // send accept request with new deps, and missing instance
         instance.incrementBallot();
         MessageIn<AcceptRequest> message = MessageIn.create(nodes.get(1).getEndpoint(),
-                                                            new AcceptRequest(instance, Collections.EMPTY_LIST),
+                                                            new AcceptRequest(TOKEN, 0, instance, Collections.EMPTY_LIST),
                                                             Collections.EMPTY_MAP,
                                                             MessagingService.Verb.EPAXOS_ACCEPT,
                                                             0);

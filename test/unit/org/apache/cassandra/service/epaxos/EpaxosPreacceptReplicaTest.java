@@ -62,11 +62,11 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         newInstance.preaccept(Sets.newHashSet(firstInstance.getId()));
         newInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
 
-        MessageIn<Instance> request = MessageIn.create(nodes.get(1).getEndpoint(),
-                                                       newInstance,
-                                                       Collections.EMPTY_MAP,
-                                                       MessagingService.Verb.EPAXOS_PREACCEPT,
-                                                       100);
+        MessageIn<MessageEnvelope<Instance>> request = MessageIn.create(nodes.get(1).getEndpoint(),
+                                                                        wrapInstance(newInstance),
+                                                                        Collections.EMPTY_MAP,
+                                                                        MessagingService.Verb.EPAXOS_PREACCEPT,
+                                                                        100);
 
         PreacceptVerbHandler preacceptHandler = (PreacceptVerbHandler) node.getPreacceptVerbHandler();
 
@@ -112,11 +112,11 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         newInstance.preaccept(Sets.newHashSet(firstInstance.getId(), UUIDGen.getTimeUUID()));
         newInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
 
-        MessageIn<Instance> request = MessageIn.create(nodes.get(1).getEndpoint(),
-                                                       newInstance,
-                                                       Collections.EMPTY_MAP,
-                                                       MessagingService.Verb.EPAXOS_PREACCEPT,
-                                                       100);
+        MessageIn<MessageEnvelope<Instance>> request = MessageIn.create(nodes.get(1).getEndpoint(),
+                                                                        wrapInstance(newInstance),
+                                                                        Collections.EMPTY_MAP,
+                                                                        MessagingService.Verb.EPAXOS_PREACCEPT,
+                                                                        100);
 
         PreacceptVerbHandler preacceptHandler = (PreacceptVerbHandler) node.getPreacceptVerbHandler();
 
@@ -157,11 +157,11 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         newInstance.preaccept(Sets.<UUID>newHashSet());
         newInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
 
-        MessageIn<Instance> request = MessageIn.create(nodes.get(1).getEndpoint(),
-                                                       newInstance,
-                                                       Collections.EMPTY_MAP,
-                                                       MessagingService.Verb.EPAXOS_PREACCEPT,
-                                                       100);
+        MessageIn<MessageEnvelope<Instance>> request = MessageIn.create(nodes.get(1).getEndpoint(),
+                                                                        wrapInstance(newInstance),
+                                                                        Collections.EMPTY_MAP,
+                                                                        MessagingService.Verb.EPAXOS_PREACCEPT,
+                                                                        100);
 
         PreacceptVerbHandler preacceptHandler = (PreacceptVerbHandler) node.getPreacceptVerbHandler();
 

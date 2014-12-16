@@ -32,9 +32,9 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         }
     }
 
-    public MessageIn<Instance> createResponse(InetAddress from, Instance instance)
+    public MessageIn<MessageEnvelope<Instance>> createResponse(InetAddress from, Instance instance)
     {
-        return MessageIn.create(from, instance, Collections.<String, byte[]>emptyMap(), null, 0);
+        return MessageIn.create(from, new MessageEnvelope<>(TOKEN, 0, instance), Collections.<String, byte[]>emptyMap(), null, 0);
     }
 
     @Test

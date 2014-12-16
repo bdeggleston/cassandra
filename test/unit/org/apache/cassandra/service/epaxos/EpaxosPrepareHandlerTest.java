@@ -39,7 +39,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
     MessageIn<PrepareRequest> createMessage(UUID id, int ballot)
     {
         return MessageIn.create(LEADER,
-                                new PrepareRequest(id, ballot),
+                                new PrepareRequest(TOKEN, 0, id, ballot),
                                 Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.EPAXOS_ACCEPT,
                                 0);
@@ -61,8 +61,8 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         Assert.assertEquals(1, state.savedInstances.size());
         Assert.assertEquals(1, state.replies.size());
 
-        MessageOut<Instance> message = state.replies.get(0);
-        Assert.assertEquals(instance.getBallot(), message.payload.getBallot());
+        MessageOut<MessageEnvelope<Instance>> message = state.replies.get(0);
+        Assert.assertEquals(instance.getBallot(), message.payload.contents.getBallot());
     }
 
     @Test
@@ -80,8 +80,8 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         Assert.assertEquals(0, state.savedInstances.size());
         Assert.assertEquals(1, state.replies.size());
 
-        MessageOut<Instance> message = state.replies.get(0);
-        Assert.assertNull(message.payload);
+        MessageOut<MessageEnvelope<Instance>> message = state.replies.get(0);
+        Assert.assertNull(message.payload.contents);
     }
 
     @Test
@@ -102,8 +102,8 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         Assert.assertEquals(0, state.savedInstances.size());
         Assert.assertEquals(1, state.replies.size());
 
-        MessageOut<Instance> message = state.replies.get(0);
-        Assert.assertEquals(20, message.payload.getBallot());
+        MessageOut<MessageEnvelope<Instance>> message = state.replies.get(0);
+        Assert.assertEquals(20, message.payload.contents.getBallot());
     }
 
     @Test
@@ -124,7 +124,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         Assert.assertEquals(0, state.savedInstances.size());
         Assert.assertEquals(1, state.replies.size());
 
-        MessageOut<Instance> message = state.replies.get(0);
-        Assert.assertNull(message.payload);
+        MessageOut<MessageEnvelope<Instance>> message = state.replies.get(0);
+        Assert.assertNull(message.payload.contents);
     }
 }

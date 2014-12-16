@@ -3,7 +3,6 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 import org.apache.cassandra.concurrent.Stage;
-import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,11 +12,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
+public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
 {
     private static final Logger logger = LoggerFactory.getLogger(PreacceptCallback.class);
 
-    private final EpaxosState state;
     private final UUID id;
     private final Set<UUID> dependencies;
     private final EpaxosState.ParticipantInfo participantInfo;
@@ -34,7 +32,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
 
     public PreacceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
     {
-        this.state = state;
+        super(state);
         this.id = instance.getId();
         this.dependencies = instance.getDependencies();
         this.participantInfo = participantInfo;
@@ -43,7 +41,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
     }
 
     @Override
-    public synchronized void response(MessageIn<PreacceptResponse> msg)
+    public synchronized void epochResponse(MessageIn<PreacceptResponse> msg)
     {
         if (completed)
         {
@@ -85,6 +83,7 @@ public class PreacceptCallback implements IAsyncCallback<PreacceptResponse>
 
     protected void maybeDecideResult()
     {
+        // TODO: maybe wait for fast path to be satisfied? multi-DC SERIAL requests with >5 nodes will always run an accept
         if (numResponses >= participantInfo.quorumSize && localResponse)
         {
             completed = true;

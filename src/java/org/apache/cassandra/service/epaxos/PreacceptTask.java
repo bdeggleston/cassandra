@@ -76,7 +76,8 @@ public abstract class PreacceptTask implements Runnable
 
     protected void sendMessage(Instance instance, EpaxosState.ParticipantInfo participantInfo)
     {
-        MessageOut<Instance> message = instance.getMessage(MessagingService.Verb.EPAXOS_PREACCEPT);
+        MessageOut<MessageEnvelope<Instance>> message = instance.getMessage(MessagingService.Verb.EPAXOS_PREACCEPT,
+                                                                            state.tokenStateManager.getEpoch(instance.getToken()));
         PreacceptCallback callback = state.getPreacceptCallback(instance, participantInfo, failureCallback, forceAccept());
 
         for (InetAddress endpoint : participantInfo.liveEndpoints)

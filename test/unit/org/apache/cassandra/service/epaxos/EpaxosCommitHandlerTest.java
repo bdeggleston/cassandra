@@ -30,10 +30,10 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
         }
     }
 
-    MessageIn<Instance> createMessage(Instance instance)
+    MessageIn<MessageEnvelope<Instance>> createMessage(Instance instance)
     {
         return MessageIn.create(LEADER,
-                                instance,
+                                new MessageEnvelope<>(instance.getToken(), 0, instance),
                                 Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.EPAXOS_COMMIT,
                                 0);
@@ -106,6 +106,19 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
     {
         // TODO: check query key deps
         // TODO: check token state deps
-        Assert.fail();
+        Assert.fail("TODO");
     }
+
+    @Test
+    public void remoteEpochFailure()
+    {
+        Assert.fail("TODO");
+    }
+
+    @Test
+    public void localEpochFailure()
+    {
+        Assert.fail("TODO");
+    }
+
 }

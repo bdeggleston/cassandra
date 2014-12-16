@@ -1,6 +1,8 @@
 package org.apache.cassandra.service.epaxos;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.io.IVersionedSerializer;
@@ -68,6 +70,12 @@ public class QueryInstance extends Instance
     public Type getType()
     {
         return Type.QUERY;
+    }
+
+    @Override
+    public Token getToken()
+    {
+        return DatabaseDescriptor.getPartitioner().getToken(query.getKey());
     }
 
     private static final IVersionedSerializer<QueryInstance> commonSerializer = new IVersionedSerializer<QueryInstance>()

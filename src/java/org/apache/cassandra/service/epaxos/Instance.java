@@ -5,6 +5,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.CompactEndpointSerializationHelper;
@@ -355,6 +356,7 @@ public abstract class Instance
 
     public abstract Instance copyRemote();
     public abstract Type getType();
+    public abstract Token getToken();
 
     /**
      * Applies mutable non-dependency attributes from remote instance copies
@@ -366,6 +368,12 @@ public abstract class Instance
         this.fastPathImpossible = remote.fastPathImpossible;
     }
 
+    public MessageOut<MessageEnvelope<Instance>> getMessage(MessagingService.Verb verb, long epoch)
+    {
+        return new MessageOut<>(verb, new MessageEnvelope<>(getToken(), epoch, this), envelopeSerializer);
+    }
+
+    @Deprecated
     public MessageOut<Instance> getMessage(MessagingService.Verb verb)
     {
         return new MessageOut<>(verb, this, serializer);
@@ -584,6 +592,8 @@ public abstract class Instance
             return instance.getType().serializer.serializedSize(instance, version) + 1 + 4;
         }
     };
+
+    public static final IVersionedSerializer<MessageEnvelope<Instance>> envelopeSerializer = MessageEnvelope.getSerializer(serializer);
 
     public static final IVersionedSerializer<Instance> internalSerializer = new IVersionedSerializer<Instance>()
     {

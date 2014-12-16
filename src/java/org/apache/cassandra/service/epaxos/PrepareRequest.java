@@ -1,5 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.MessageOut;
@@ -10,20 +11,21 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.util.UUID;
 
-public class PrepareRequest
+public class PrepareRequest extends AbstractEpochMessage
 {
     public static final IVersionedSerializer<PrepareRequest> serializer = new Serializer();
 
     public final UUID iid;
     public final int ballot;
 
-    public PrepareRequest(Instance instance)
+    public PrepareRequest(Token token, long epoch, Instance instance)
     {
-        this(instance.getId(), instance.getBallot());
+        this(token, epoch, instance.getId(), instance.getBallot());
     }
 
-    public PrepareRequest(UUID iid, int ballot)
+    public PrepareRequest(Token token, long epoch, UUID iid, int ballot)
     {
+        super(token, epoch);
         this.iid = iid;
         this.ballot = ballot;
     }
@@ -38,6 +40,7 @@ public class PrepareRequest
         @Override
         public void serialize(PrepareRequest request, DataOutputPlus out, int version) throws IOException
         {
+            AbstractEpochMessage.serializer.serialize(request, out, version);
             UUIDSerializer.serializer.serialize(request.iid, out, version);
             out.writeInt(request.ballot);
         }
@@ -45,13 +48,15 @@ public class PrepareRequest
         @Override
         public PrepareRequest deserialize(DataInput in, int version) throws IOException
         {
-            return new PrepareRequest(UUIDSerializer.serializer.deserialize(in, version), in.readInt());
+            AbstractEpochMessage epochInfo = AbstractEpochMessage.serializer.deserialize(in, version);
+            return new PrepareRequest(epochInfo.token, epochInfo.epoch, UUIDSerializer.serializer.deserialize(in, version), in.readInt());
         }
 
         @Override
         public long serializedSize(PrepareRequest request, int version)
         {
-            return UUIDSerializer.serializer.serializedSize(request.iid, version) + 4;
+            return AbstractEpochMessage.serializer.serializedSize(request, version)
+                    + UUIDSerializer.serializer.serializedSize(request.iid, version) + 4;
         }
     }
 }

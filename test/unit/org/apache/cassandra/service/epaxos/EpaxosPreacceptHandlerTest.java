@@ -35,10 +35,14 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         }
     }
 
-    MessageIn<Instance> createMessage(Instance instance)
+    MessageIn<MessageEnvelope<Instance>> createMessage(Instance instance)
+    {
+        return createMessage(instance, 0);
+    }
+    MessageIn<MessageEnvelope<Instance>> createMessage(Instance instance, long epoch)
     {
         return MessageIn.create(LEADER,
-                                instance,
+                                wrapInstance(instance, epoch),
                                 Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.EPAXOS_PREACCEPT,
                                 0);
@@ -198,7 +202,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
      * the response says so.
      */
     @Test
-    public void epochVeto() throws Exception
+    public void epochVetoBehindLocally() throws Exception
     {
         MockVerbHandlerState state = new MockVerbHandlerState();
         PreacceptVerbHandler handler = new PreacceptVerbHandler(state);
@@ -206,6 +210,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         Token token = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
 
         long currentEpoch = 5;
+        long remoteEpoch = 6;
         long proposedEpoch = 7;
         TokenState tokenState = state.tokenStateManager.get(token);
         tokenState.setEpoch(currentEpoch);
@@ -213,10 +218,23 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
 
         TokenInstance instance = new TokenInstance(LEADER, token, proposedEpoch);
         instance.preaccept(Collections.EMPTY_SET);
-        handler.doVerb(createMessage(instance), 0);
+        handler.doVerb(createMessage(instance, remoteEpoch), 0);
 
+        Assert.assertEquals(1, state.replies.size());
         MessageOut<PreacceptResponse> response = state.replies.get(0);
         Assert.assertFalse(response.payload.success);
         Assert.assertTrue(response.payload.vetoed);
+    }
+
+    /**
+     * Incrementing an epoch while a failure recovery is
+     * in progress could lock up the recovery if yet-to-be-recovered
+     * data is gc'd
+     * @throws Exception
+     */
+    @Test
+    public void epochVetoFailureRecoveryInProgress() throws Exception
+    {
+        // TODO: this
     }
 }

@@ -1,7 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Sets;
-import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
@@ -13,19 +12,17 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 
-public class TryPreacceptVerbHandler implements IVerbHandler<TryPreacceptRequest>
+public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacceptRequest>
 {
     private static final Logger logger = LoggerFactory.getLogger(AcceptCallback.class);
 
-    private EpaxosState state;
-
     public TryPreacceptVerbHandler(EpaxosState state)
     {
-        this.state = state;
+        super(state);
     }
 
     @Override
-    public void doVerb(MessageIn<TryPreacceptRequest> message, int id)
+    public void doEpochVerb(MessageIn<TryPreacceptRequest> message, int id)
     {
         logger.debug("TryPreaccept message received from {} for {}", message.from, message.payload.iid);
         // TODO: check ballot
@@ -35,7 +32,11 @@ public class TryPreacceptVerbHandler implements IVerbHandler<TryPreacceptRequest
         {
             Instance instance = state.loadInstance(message.payload.iid);
             Pair<TryPreacceptDecision, Boolean> decision = handleTryPreaccept(instance, message.payload.dependencies);
-            TryPreacceptResponse response = new TryPreacceptResponse(instance.getId(), decision.left, decision.right);
+            TryPreacceptResponse response = new TryPreacceptResponse(instance.getToken(),
+                                                                     state.getCurrentEpoch(instance),
+                                                                     instance.getId(),
+                                                                     decision.left,
+                                                                     decision.right);
             MessageOut<TryPreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                       response,
                                                                       TryPreacceptResponse.serializer);

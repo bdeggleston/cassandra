@@ -8,11 +8,10 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.UUID;
 
-public class TryPreacceptCallback implements IAsyncCallback<TryPreacceptResponse>
+public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResponse>
 {
     private static final Logger logger = LoggerFactory.getLogger(PreacceptCallback.class);
 
-    private final EpaxosState state;
     private final UUID id;
     private final TryPreacceptAttempt attempt;
     private final List<TryPreacceptAttempt> nextAttempts;
@@ -27,7 +26,7 @@ public class TryPreacceptCallback implements IAsyncCallback<TryPreacceptResponse
 
     public TryPreacceptCallback(EpaxosState state, UUID id, TryPreacceptAttempt attempt, List<TryPreacceptAttempt> nextAttempts, EpaxosState.ParticipantInfo participantInfo, Runnable failureCallback)
     {
-        this.state = state;
+        super(state);
         this.id = id;
         this.attempt = attempt;
         this.nextAttempts = nextAttempts;
@@ -36,7 +35,7 @@ public class TryPreacceptCallback implements IAsyncCallback<TryPreacceptResponse
     }
 
     @Override
-    public synchronized void response(MessageIn<TryPreacceptResponse> msg)
+    public synchronized void epochResponse(MessageIn<TryPreacceptResponse> msg)
     {
         if (completed)
             return;

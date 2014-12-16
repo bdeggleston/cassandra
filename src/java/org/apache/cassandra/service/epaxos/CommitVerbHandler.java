@@ -1,6 +1,5 @@
 package org.apache.cassandra.service.epaxos;
 
-import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.slf4j.Logger;
@@ -8,28 +7,27 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.locks.ReadWriteLock;
 
-public class CommitVerbHandler implements IVerbHandler<Instance>
+public class CommitVerbHandler extends AbstractEpochVerbHandler<MessageEnvelope<Instance>>
 {
     private static final Logger logger = LoggerFactory.getLogger(CommitVerbHandler.class);
 
-    private EpaxosState state;
-
     public CommitVerbHandler(EpaxosState state)
     {
-        this.state = state;
+        super(state);
     }
 
     @Override
-    public void doVerb(MessageIn<Instance> message, int id)
+    public void doEpochVerb(MessageIn<MessageEnvelope<Instance>> message, int id)
     {
-        logger.debug("Commit request received from {} for {}", message.from, message.payload.getId());
-        ReadWriteLock lock = state.getInstanceLock(message.payload.getId());
+        Instance remoteInstance = message.payload.contents;
+
+        logger.debug("Commit request received from {} for {}", message.from, remoteInstance.getId());
+        ReadWriteLock lock = state.getInstanceLock(remoteInstance.getId());
         lock.writeLock().lock();
         Instance instance;
         try
         {
             // TODO: check for illegal epoch increments and kickoff failure recovery if found
-            Instance remoteInstance = message.payload;
             instance = state.loadInstance(remoteInstance.getId());
             if (instance == null)
             {
@@ -42,7 +40,7 @@ public class CommitVerbHandler implements IVerbHandler<Instance>
             instance.commit(remoteInstance.getDependencies());
             state.saveInstance(instance);
             state.recordAcknowledgedDeps(instance);
-            state.notifyCommit(message.payload.getId());
+            state.notifyCommit(remoteInstance.getId());
         }
         catch (InvalidInstanceStateChange e)
         {
@@ -55,6 +53,6 @@ public class CommitVerbHandler implements IVerbHandler<Instance>
             lock.writeLock().unlock();
         }
 
-        state.execute(message.payload.getId());
+        state.execute(remoteInstance.getId());
     }
 }

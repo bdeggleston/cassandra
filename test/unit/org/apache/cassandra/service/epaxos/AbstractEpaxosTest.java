@@ -16,6 +16,7 @@ import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.composites.CellNames;
 import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.CASRequest;
@@ -31,7 +32,6 @@ import java.util.Map;
 
 public abstract class AbstractEpaxosTest
 {
-
     private static KSMetaData ksm;
     private static CFMetaData cfm;
     private static CFMetaData thriftcf;
@@ -43,6 +43,8 @@ public abstract class AbstractEpaxosTest
         SchemaLoader.prepareServer();
     }
 
+    protected static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
+
     @BeforeClass
     public static void setUpClass() throws Exception
     {
@@ -52,6 +54,16 @@ public abstract class AbstractEpaxosTest
         ksOpts.put("replication_factor", "1");
         ksm = KSMetaData.newKeyspace("ks", SimpleStrategy.class, ksOpts, true, Arrays.asList(cfm, thriftcf));
         Schema.instance.load(ksm);
+    }
+
+    protected MessageEnvelope<Instance> wrapInstance(Instance instance)
+    {
+        return wrapInstance(instance, 0);
+    }
+
+    protected MessageEnvelope<Instance> wrapInstance(Instance instance, long epoch)
+    {
+        return new MessageEnvelope<>(instance.getToken(), epoch, instance);
     }
 
     protected ThriftCASRequest getThriftCasRequest()

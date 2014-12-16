@@ -2,9 +2,7 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
-import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.db.ConsistencyLevel;
-import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,11 +11,10 @@ import java.net.InetAddress;
 import java.util.Set;
 import java.util.UUID;
 
-public class AcceptCallback implements IAsyncCallback<AcceptResponse>
+public class AcceptCallback extends AbstractEpochCallback<AcceptResponse>
 {
     private static final Logger logger = LoggerFactory.getLogger(AcceptCallback.class);
 
-    private final EpaxosState state;
     private final UUID id;
     private final EpaxosState.ParticipantInfo participantInfo;
     private final Runnable failureCallback;
@@ -31,7 +28,7 @@ public class AcceptCallback implements IAsyncCallback<AcceptResponse>
 
     public AcceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, Runnable failureCallback)
     {
-        this.state = state;
+        super(state);
         this.id = instance.getId();
         this.proposedBallot = instance.getBallot();
         this.proposedDependencies = instance.getDependencies();
@@ -40,7 +37,7 @@ public class AcceptCallback implements IAsyncCallback<AcceptResponse>
     }
 
     @Override
-    public synchronized void response(MessageIn<AcceptResponse> msg)
+    public synchronized void epochResponse(MessageIn<AcceptResponse> msg)
     {
         if (completed)
         {

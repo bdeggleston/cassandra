@@ -36,6 +36,7 @@ public class TokenStateManager
         // TODO: maybe 'start' Epaxos?
     }
 
+    // TODO: all token operations should quantize tokens to the proper token state, and token states should be inclusive of their own tokens
     // FIXME: only using a single state for now
     public TokenState get(ByteBuffer key)
     {
@@ -52,6 +53,7 @@ public class TokenStateManager
         return getEpoch(StorageService.getPartitioner().getToken(key));
     }
 
+    // ambiguous: is this token for the key, or for the token state
     public long getEpoch(Token token)
     {
         TokenState ts = get(token);

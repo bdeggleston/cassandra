@@ -58,6 +58,7 @@ public class TokenInstance extends Instance
         return instance;
     }
 
+    @Override
     public Token getToken()
     {
         return token;
