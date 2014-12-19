@@ -1,6 +1,7 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Lists;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.Token;
@@ -116,16 +117,10 @@ public class TokenStateManager
      * and starts epoch increment tasks when thresholds
      * are reached
      */
-    public void reportExecution(ByteBuffer key)
-    {
-        // TODO: we shouldn't need to synchronize anything here because the execution algorithm does that, right?
-        TokenState ts = get(key);
-        ts.recordExecution();
-
-    }
-
     public void reportExecution(Token token)
     {
-
+        // TODO: we shouldn't need to synchronize anything here because the execution algorithm does that, right?
+        TokenState ts = get(token);
+        ts.recordExecution();
     }
 }

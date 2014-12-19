@@ -8,6 +8,8 @@ import com.google.common.collect.Sets;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.UnavailableException;
@@ -41,6 +43,8 @@ public class Node extends EpaxosState
     public final Set<UUID> accepted = Sets.newConcurrentHashSet();
 
     public final int number;
+
+    private volatile int epochIncrementThreshold = EPOCH_INCREMENT_THRESHOLD;
 
     public Node(int number, Messenger messenger)
     {
@@ -83,6 +87,14 @@ public class Node extends EpaxosState
     protected QueryInstance createQueryInstance(SerializedRequest request)
     {
         QueryInstance instance = super.createQueryInstance(request);
+        lastCreatedInstance = instance;
+        return instance;
+    }
+
+    @Override
+    protected TokenInstance createTokenInstance(Token token, long epoch)
+    {
+        TokenInstance instance = super.createTokenInstance(token, epoch);
         lastCreatedInstance = instance;
         return instance;
     }
@@ -169,6 +181,12 @@ public class Node extends EpaxosState
     }
 
     @Override
+    protected ParticipantInfo getTokenParticipants(TokenInstance instance) throws UnavailableException
+    {
+        return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, ConsistencyLevel.SERIAL);
+    }
+
+    @Override
     protected void sendOneWay(MessageOut message, InetAddress to)
     {
         messenger.sendOneWay(message, endpoint, to);
@@ -207,6 +225,22 @@ public class Node extends EpaxosState
                 ", state=" + state +
                 ", number=" + number +
                 '}';
+    }
+
+    public TokenStateMaintenanceTask newTokenStateMaintenanceTask()
+    {
+        return new TokenStateMaintenanceTask(this, tokenStateManager);
+    }
+
+    public void setEpochIncrementThreshold(int threshold)
+    {
+        epochIncrementThreshold = threshold;
+    }
+
+    @Override
+    public int getEpochIncrementThreshold()
+    {
+        return epochIncrementThreshold;
     }
 
     /**

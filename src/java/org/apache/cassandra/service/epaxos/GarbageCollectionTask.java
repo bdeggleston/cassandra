@@ -40,7 +40,7 @@ public class GarbageCollectionTask implements Runnable
         while (cfKeyIterator.hasNext())
         {
             CfKey cfKey = cfKeyIterator.next();
-            gcForKey(cfKey, oldestEpoch);
+            gcForKey(cfKey, oldestEpoch - 1);
         }
     }
 

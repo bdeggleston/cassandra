@@ -492,12 +492,62 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void canIncrementEpochTrue() throws Exception
     {
-        Assert.fail("TODO");
+        long targetEpoch = 4;
+        long currentEpoch = targetEpoch - 1;
+
+        TokenStateManager tsm = new TokenStateManager();
+        KeyStateManager ksm = new KeyStateManager(tsm);
+        ByteBuffer key = ByteBufferUtil.bytes(1234);
+        KeyState keyState = ksm.loadKeyState(key, UUIDGen.getTimeUUID());
+
+        for (long i=0; i<targetEpoch; i++)
+        {
+            keyState.setEpoch(i);
+            assert keyState.getEpoch() == i;
+            for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
+            {
+                keyState.markExecuted(id);
+                if (i == currentEpoch)
+                {
+                    // if this is the 'current' or previous epoch, set the dependency as active
+                    keyState.create(id);
+                }
+            }
+            assert keyState.getExecutionCount() == 2;
+        }
+
+        Assert.assertTrue(keyState.canIncrementToEpoch(targetEpoch));
+        TokenState tokenState = tsm.get(key);
+        Assert.assertTrue(ksm.canIncrementToEpoch(tokenState, targetEpoch));
     }
 
     @Test
     public void canIncrementEpochFalse() throws Exception
     {
-        Assert.fail("TODO");
+        long targetEpoch = 4;
+        long currentEpoch = targetEpoch - 1;
+
+        TokenStateManager tsm = new TokenStateManager();
+        KeyStateManager ksm = new KeyStateManager(tsm);
+        ByteBuffer key = ByteBufferUtil.bytes(1234);
+        KeyState keyState = ksm.loadKeyState(key, UUIDGen.getTimeUUID());
+
+        for (long i=0; i<targetEpoch; i++)
+        {
+            keyState.setEpoch(i);
+            for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
+            {
+                keyState.markExecuted(id);
+                if (i == currentEpoch - 1)
+                {
+                    // if this is the 'current' epoch, set the dependency as active
+                    keyState.create(id);
+                }
+            }
+        }
+
+        Assert.assertFalse(keyState.canIncrementToEpoch(targetEpoch));
+        TokenState tokenState = tsm.get(key);
+        Assert.assertTrue(ksm.canIncrementToEpoch(tokenState, targetEpoch));
     }
 }

@@ -1,6 +1,5 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.collect.Maps;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
@@ -8,9 +7,6 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 
 import java.io.DataInput;
 import java.io.IOException;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -21,7 +17,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 // TODO: persist
 public class TokenState
 {
+
     private final Token token;
+
     // the current epoch used in recording
     // execution epochs
     private long epoch;
@@ -29,15 +27,16 @@ public class TokenState
     // the highest epoch instance seen so far
     // this is the epoch we expect new instances
     // to be executed in
+    // determines whether an epoch increment is already in the works
     // FIXME: this is currently being used to detect if an epoch increment is in progress. Will this work across DCs?
     private long highEpoch;
 
-    private final ConcurrentMap<Long, Set<UUID>> epochInstances = Maps.newConcurrentMap();
-
     private final AtomicInteger executions;
-    private transient volatile int lastPersistedExecutionCount = 0;
 
-    public final KeyState keyState;
+    public static enum State { NORMAL, RECOVERING }
+    private volatile State state;  // local only
+
+    private transient volatile int lastPersistedExecutionCount = 0;
 
     // TODO: is a lock even needed? The execution algorithm should handle serialization by itself
     // fair to give priority to token mutations
@@ -45,17 +44,17 @@ public class TokenState
 
     public TokenState(Token token, long epoch, long highEpoch, int executions)
     {
-        this(token, epoch, highEpoch, executions, new KeyState(epoch));
+        this(token, epoch, highEpoch, executions, State.NORMAL);
     }
 
-    public TokenState(Token token, long epoch, long highEpoch, int executions, KeyState keyState)
+    public TokenState(Token token, long epoch, long highEpoch, int executions, State state)
     {
         this.token = token;
         this.epoch = epoch;
         this.highEpoch = highEpoch;
         this.executions = new AtomicInteger(executions);
         lastPersistedExecutionCount = executions;
-        this.keyState = keyState;
+        this.state = state;
     }
 
     public Token getToken()
@@ -115,12 +114,21 @@ public class TokenState
         lastPersistedExecutionCount = executions.get();
     }
 
+    public State getState()
+    {
+        return state;
+    }
+
+    public void setState(State state)
+    {
+        this.state = state;
+    }
+
     void onSave()
     {
         resetUnrecordedExecutions();
     }
 
-    // TODO: persist high epoch and execution count
     public static final IVersionedSerializer<TokenState> serializer = new IVersionedSerializer<TokenState>()
     {
         @Override
@@ -130,19 +138,24 @@ public class TokenState
             out.writeLong(tokenState.epoch);
             out.writeLong(tokenState.highEpoch);
             out.writeInt(tokenState.executions.get());
+            out.writeInt(tokenState.state.ordinal());
         }
 
         @Override
         public TokenState deserialize(DataInput in, int version) throws IOException
         {
-            return new TokenState(Token.serializer.deserialize(in), in.readLong(), in.readLong(), in.readInt());
+            return new TokenState(Token.serializer.deserialize(in),
+                                  in.readLong(),
+                                  in.readLong(),
+                                  in.readInt(),
+                                  State.values()[in.readInt()]);
         }
 
         @Override
         public long serializedSize(TokenState tokenState, int version)
         {
             long size = Token.serializer.serializedSize(tokenState.token, TypeSizes.NATIVE);
-            return size + 8 + 8 + 4;
+            return size + 8 + 8 + 4 + 4;
         }
     };
 
@@ -154,6 +167,7 @@ public class TokenState
                 ", epoch=" + epoch +
                 ", highEpoch=" + highEpoch +
                 ", executions=" + executions +
+                ", state=" + state +
                 '}';
     }
 }

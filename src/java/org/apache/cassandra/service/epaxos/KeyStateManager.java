@@ -58,6 +58,7 @@ public class KeyStateManager
     /**
      * Returns an iterator of CfKeys of all keys owned by the given tokenState
      */
+    // TODO: use token ranges instead of token state
     public Iterator<CfKey> getCfKeyIterator(TokenState tokenState, final int limit)
     {
         // TODO: bound token range
@@ -149,7 +150,7 @@ public class KeyStateManager
         }
         else if (instance instanceof TokenInstance)
         {
-            Token token = ((TokenInstance) instance).getToken();
+            Token token = instance.getToken();
             TokenState tokenState = tokenStateManager.get(token); // FIXME: get from instance
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
@@ -243,7 +244,7 @@ public class KeyStateManager
         }
         else if (instance instanceof TokenInstance)
         {
-            Token token = ((TokenInstance) instance).getToken();
+            Token token = instance.getToken();
             TokenState tokenState = tokenStateManager.get(token); // FIXME: get from instance
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
@@ -353,6 +354,7 @@ public class KeyStateManager
      */
     public boolean canIncrementToEpoch(TokenState tokenState, long targetEpoch)
     {
+        // TODO: pass in token range
         Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
         while (cfKeyIterator.hasNext())
         {

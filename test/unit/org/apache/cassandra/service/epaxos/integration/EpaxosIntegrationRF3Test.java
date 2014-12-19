@@ -8,10 +8,7 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class EpaxosIntegrationRF3Test extends AbstractEpaxosIntegrationTest.SingleThread
 {

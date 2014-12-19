@@ -3,7 +3,6 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
@@ -39,10 +38,17 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
             return;
 
         TokenInstance instance = (TokenInstance) inst;
+        TokenState tokenState = state.tokenStateManager.get(instance.getToken());
         long currentEpoch = state.tokenStateManager.getEpoch(instance.getToken());
 
         if (instance.getEpoch() > currentEpoch + 1)
         {
+            logger.debug("Epoch {} is greater than {} + 1", instance.getEpoch(), currentEpoch);
+            instance.setVetoed(true);
+        }
+        else if (!state.keyStateManager.canIncrementToEpoch(tokenState, instance.getEpoch()))
+        {
+            logger.debug("KeyStateManager can't increment epoch to {}", instance.getEpoch());
             instance.setVetoed(true);
         }
     }

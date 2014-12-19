@@ -167,6 +167,12 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
                 {
                     return String.format("%s_%s", SystemKeyspace.EPAXOS_TOKEN_STATE, nodeNumber);
                 }
+
+                @Override
+                protected void scheduleTokenStateMaintenanceTask()
+                {
+                    // no-op
+                }
             };
         }
     }

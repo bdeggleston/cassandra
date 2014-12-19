@@ -264,17 +264,5 @@ public class EpaxosKeyStateTest
 
         Assert.assertFalse(keyState.canIncrementToEpoch(targetEpoch));
     }
-
-    @Test
-    public void canIncrementPlus2() throws Exception
-    {
-        // TODO: work out what to do here
-    }
-
-    @Test
-    public void canIncrementMinus1() throws Exception
-    {
-        // TODO: work out what to do here
-    }
 }
 

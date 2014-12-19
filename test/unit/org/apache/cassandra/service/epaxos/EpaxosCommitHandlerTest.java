@@ -104,21 +104,16 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
     @Test
     public void depsAcknowledged() throws Exception
     {
-        // TODO: check query key deps
-        // TODO: check token state deps
-        Assert.fail("TODO");
-    }
+        MockVerbHandlerState state = new MockVerbHandlerState();
+        CommitVerbHandler handler = new CommitVerbHandler(state);
 
-    @Test
-    public void remoteEpochFailure()
-    {
-        Assert.fail("TODO");
-    }
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        instance.commit(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
-    @Test
-    public void localEpochFailure()
-    {
-        Assert.fail("TODO");
+        Assert.assertFalse(state.acknowledgedRecoreded.contains(instance.getId()));
+
+        handler.doVerb(createMessage(instance.copy()), 0);
+        Assert.assertTrue(state.acknowledgedRecoreded.contains(instance.getId()));
     }
 
 }

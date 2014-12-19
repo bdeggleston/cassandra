@@ -26,7 +26,7 @@ public class TokenStateMaintenanceTask implements Runnable
         logger.debug("TokenStateManager running");
         for (TokenState ts: tokenStateManager.all())
         {
-            if (ts.getExecutions() > state.getEpochIncrementThreshold())
+            if (ts.getExecutions() >= state.getEpochIncrementThreshold())
             {
                 // TODO: start new epoch increment instance
                 // TODO: check that another epoch increment instance hasn't been started yet
@@ -48,7 +48,7 @@ public class TokenStateMaintenanceTask implements Runnable
 
                     logger.debug("Incrementing epoch for {}", ts);
 
-                    TokenInstance instance = new TokenInstance(state.getEndpoint(), ts.getToken(), ts.getEpoch() + 1);
+                    TokenInstance instance = state.createTokenInstance(ts.getToken(), ts.getEpoch() + 1);
                     state.preaccept(instance);
                     ts.recordHighEpoch(instance.getEpoch());
                     tokenStateManager.save(ts);

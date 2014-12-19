@@ -15,4 +15,14 @@ public class EpaxosExecuteTaskTest
     {
 
     }
+
+    /**
+     * tests that the execution was reported
+     * to the token state
+     */
+    @Test
+    public void tokenStateReport()
+    {
+
+    }
 }

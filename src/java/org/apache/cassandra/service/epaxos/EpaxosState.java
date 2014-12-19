@@ -22,6 +22,7 @@ import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
+import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +54,7 @@ public class EpaxosState
 
     // how many instances should be executed under an
     // epoch before the epoch is incremented
-    static final int EPOCH_INCREMENT_THRESHOLD = 100;
+    protected static final int EPOCH_INCREMENT_THRESHOLD = 100;
 
     private static boolean CACHE = Boolean.getBoolean("cassandra.epaxos.cache");
 
@@ -219,6 +220,11 @@ public class EpaxosState
     protected QueryInstance createQueryInstance(SerializedRequest request)
     {
         return new QueryInstance(request, getEndpoint());
+    }
+
+    protected TokenInstance createTokenInstance(Token token, long epoch)
+    {
+        return new TokenInstance(getEndpoint(), token, epoch);
     }
 
     void deleteInstance(UUID id)
@@ -710,6 +716,7 @@ public class EpaxosState
     public void startLocalFailureRecovery(Token token, long epoch)
     {
         // TODO: track failure recoveries in-progress
+        throw new NotImplementedException();
     }
 
     /**
@@ -718,6 +725,7 @@ public class EpaxosState
     public void startRemoteFailureRecovery(InetAddress endpoint, Token token, long epoch)
     {
         // TODO: track failure recoveries in-progress so we don't DOS the other node
+        throw new NotImplementedException();
     }
 
     // TODO: consider only sending a missing instance if it's older than some threshold. Should keep message size down
@@ -805,6 +813,7 @@ public class EpaxosState
     public void recordExecuted(Instance instance)
     {
         keyStateManager.recordExecuted(instance);
+        tokenStateManager.reportExecution(instance.getToken());
     }
 
     // accessor methods
@@ -880,6 +889,7 @@ public class EpaxosState
 
     protected ParticipantInfo getTokenParticipants(TokenInstance instance) throws UnavailableException
     {
+        // TODO: this
         throw new AssertionError();
     }
 

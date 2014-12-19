@@ -141,8 +141,15 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
     @Test
     public void depsAcknowledged() throws Exception
     {
-        // TODO: check query key deps
-        // TODO: check token state deps
-        Assert.fail("TODO");
+        MockVerbHandlerState state = new MockVerbHandlerState();
+        AcceptVerbHandler handler = new AcceptVerbHandler(state);
+
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        instance.accept(Sets.newHashSet(UUIDGen.getTimeUUID()));
+
+        Assert.assertFalse(state.acknowledgedRecoreded.contains(instance.getId()));
+
+        handler.doVerb(createMessage(instance.copy()), 0);
+        Assert.assertTrue(state.acknowledgedRecoreded.contains(instance.getId()));
     }
 }

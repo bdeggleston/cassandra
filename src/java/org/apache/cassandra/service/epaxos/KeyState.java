@@ -268,18 +268,8 @@ public class KeyState
     {
         if (targetEpoch == epoch)
         {
-            // duplicate message received. Let it pass
+            // duplicate message
             return true;
-        }
-        if (targetEpoch > epoch + 1)
-        {
-            // TODO: how to handle incrementing epochs by more than 1 (failure recovery)
-            throw new IllegalArgumentException("what to do here??");
-        }
-        if (targetEpoch < epoch)
-        {
-            // TODO: haven't thought through what to do here yet
-            throw new IllegalArgumentException("what to do here??");
         }
 
         for (Map.Entry<Long, Set<UUID>> entry: getEpochsOlderThanUnsafe(epoch).entrySet())
