@@ -3,7 +3,6 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.collect.Sets;
 import com.google.common.io.ByteStreams;
 import com.google.common.util.concurrent.Striped;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -100,19 +99,23 @@ public class KeyStateManager
         {
             SerializedRequest request = ((QueryInstance) instance).getQuery();
             CfKey cfKey = request.getCfKey();
-            return getCurrentDependencies(instance, cfKey);
+            Set<UUID> deps = getCurrentDependencies(instance, cfKey);
+            deps.remove(instance.getId());
+            return deps;
         }
         else if (instance instanceof TokenInstance)
         {
-            Token token = ((TokenInstance) instance).getToken();
+            Token token = instance.getToken();
             TokenState tokenState = tokenStateManager.get(token); // FIXME: get from instance
-            Set<UUID> deps = new HashSet<>();
+            Set<UUID> deps = new HashSet<>(tokenStateManager.getCurrentDependencies((TokenInstance) instance));
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
             {
                 CfKey cfKey = cfKeyIterator.next();
                 deps.addAll(getCurrentDependencies(instance, cfKey));
             }
+
+            deps.remove(instance.getId());
 
             return deps;
         }
@@ -177,12 +180,7 @@ public class KeyStateManager
 
             if (instance.getState().atLeast(Instance.State.ACCEPTED))
             {
-                dm.markAcknowledged(Sets.newHashSet(instance.getId()));
-            }
-
-            if (instance.getState() == Instance.State.EXECUTED)
-            {
-                dm.markExecuted(instance.getId());
+                dm.markAcknowledged(instance.getDependencies(), instance.getId());
             }
 
             saveKeyState(cfKey.key, cfKey.cfId, dm);
@@ -267,12 +265,20 @@ public class KeyStateManager
         try
         {
             KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
-            dm.markExecuted(instance.getId());
+            dm.markExecuted(instance.getId(), instance.getStronglyConnected());
             saveKeyState(cfKey.key, cfKey.cfId, dm);
         }
         finally
         {
             lock.unlock();
+        }
+    }
+
+    private void addTokenDeps(ByteBuffer key, KeyState keyState)
+    {
+        for (UUID id: tokenStateManager.getCurrentTokenDependencies(key))
+        {
+            keyState.recordInstance(id);
         }
     }
 
@@ -294,6 +300,11 @@ public class KeyStateManager
         {
 
             dm = new KeyState(tokenStateManager.getEpoch(key));
+
+            // add the current epoch dependencies if this is a new key
+            addTokenDeps(key, dm);
+            saveKeyState(key, cfId, dm);
+
             cache.put(cfKey, dm);
             return dm;
         }

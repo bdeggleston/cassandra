@@ -56,7 +56,8 @@ public class EpaxosState
     // epoch before the epoch is incremented
     protected static final int EPOCH_INCREMENT_THRESHOLD = 100;
 
-    private static boolean CACHE = Boolean.getBoolean("cassandra.epaxos.cache");
+//    private static boolean CACHE = Boolean.getBoolean("cassandra.epaxos.cache");
+    private static boolean CACHE = true;
 
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
     private final Cache<UUID, Instance> instanceCache;

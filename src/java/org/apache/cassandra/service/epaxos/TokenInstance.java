@@ -12,6 +12,11 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.UUID;
 
+/**
+ * Dependency management, we may need to keep 3 epochs around. If an instance forms a
+ * strongly connected component with an epoch increment instance, and there's no other
+ * activity on that partition, the *next* epoch increment instance will also depend on it
+ */
 public class TokenInstance extends Instance
 {
     private final Token token;

@@ -3,6 +3,7 @@ package org.apache.cassandra.service.epaxos.integration;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
+import org.apache.cassandra.concurrent.TracingAwareExecutorService;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.net.*;
 
@@ -22,6 +23,18 @@ public class Messenger
     private final Map<InetAddress, Node> nodes = Maps.newConcurrentMap();
     private final Map<InetAddress, Map<MessagingService.Verb, IVerbHandler>> verbHandlers = Maps.newConcurrentMap();
     private final Map<Integer, IAsyncCallback> callbackMap = Maps.newConcurrentMap();
+
+    private final TracingAwareExecutorService executorService;
+
+    public Messenger()
+    {
+        this(null);
+    }
+
+    public Messenger(TracingAwareExecutorService executorService)
+    {
+        this.executorService = executorService;
+    }
 
     public void registerNode(Node node)
     {
@@ -70,12 +83,24 @@ public class Messenger
         return new MessageOut<T>(from, msg.verb, msg.payload, msg.serializer, msg.parameters);
     }
 
-    public <T> void sendReply(MessageOut<T> msg, int id, InetAddress from, InetAddress to)
+    private void submit(Runnable r)
+    {
+        if (executorService != null)
+        {
+            executorService.submit(r);
+        }
+        else
+        {
+            r.run();
+        }
+    }
+
+    public <T> void sendReply(MessageOut<T> msg, final int id, InetAddress from, InetAddress to)
     {
         if (nodes.get(from).getState() != Node.State.UP)
             return;
 
-        MessageIn<T> messageIn;
+        final MessageIn<T> messageIn;
         DataOutputBuffer out = new DataOutputBuffer();
 
         // make new message to capture fake endpoint
@@ -90,17 +115,25 @@ public class Messenger
             throw new AssertionError(e);
         }
 
-        @SuppressWarnings("unchecked")
-        IAsyncCallback<T> cb = callbackMap.get(id);
-        callbackMap.remove(id);
+        submit(new Runnable()
+        {
+            @Override
+            public void run()
+            {
 
-        cb.response(messageIn);
+                @SuppressWarnings("unchecked")
+                IAsyncCallback<T> cb = callbackMap.get(id);
+                callbackMap.remove(id);
+
+                cb.response(messageIn);
+            }
+        });
     }
 
     @SuppressWarnings("unchecked")
-    public <T> int sendRR(MessageOut<T> msg, InetAddress from, InetAddress to, IAsyncCallback cb)
+    public <T> int sendRR(MessageOut<T> msg, InetAddress from, final InetAddress to, IAsyncCallback cb)
     {
-        int msgId = nextMsgNumber.getAndIncrement();
+        final int msgId = nextMsgNumber.getAndIncrement();
         if (nodes.get(to).getState() == Node.State.DOWN)
             return msgId;
 
@@ -111,7 +144,7 @@ public class Messenger
         if (cb != null)
             callbackMap.put(msgId, cb);
 
-        MessageIn<T> messageIn;
+        final MessageIn<T> messageIn;
         DataOutputBuffer out = new DataOutputBuffer();
         MessageOut<T> messageOut = wrapMessage(msg, from);
         try
@@ -124,19 +157,26 @@ public class Messenger
             throw new AssertionError(e);
         }
 
-        verbHandlers.get(to).get(messageIn.verb).doVerb(messageIn, msgId);
+        submit(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                verbHandlers.get(to).get(messageIn.verb).doVerb(messageIn, msgId);
+            }
+        });
 
         return msgId;
     }
 
     @SuppressWarnings("unchecked")
-    public <T> void sendOneWay(MessageOut<T> msg, InetAddress from, InetAddress to)
+    public <T> void sendOneWay(MessageOut<T> msg, InetAddress from, final InetAddress to)
     {
-        int msgId = nextMsgNumber.getAndIncrement();
+        final int msgId = nextMsgNumber.getAndIncrement();
         if (nodes.get(to).getState() == Node.State.DOWN)
             return;
 
-        MessageIn<T> messageIn;
+        final MessageIn<T> messageIn;
         DataOutputBuffer out = new DataOutputBuffer();
         MessageOut<T> messageOut = wrapMessage(msg, from);
         try
@@ -149,6 +189,13 @@ public class Messenger
             throw new AssertionError(e);
         }
 
-        verbHandlers.get(to).get(messageIn.verb).doVerb(messageIn, msgId);
+        submit(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                verbHandlers.get(to).get(messageIn.verb).doVerb(messageIn, msgId);
+            }
+        });
     }
 }

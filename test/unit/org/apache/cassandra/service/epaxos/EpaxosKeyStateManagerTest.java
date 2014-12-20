@@ -113,7 +113,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
             for (UUID id: deps)
             {
-                ks.create(id);
+                ks.recordInstance(id);
             }
             keyDeps.put(cfKey, deps);
             Assert.assertEquals(deps, ks.getDeps());
@@ -150,7 +150,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
             for (UUID id: deps)
             {
-                ks.create(id);
+                ks.recordInstance(id);
             }
             keyDeps.put(cfKey, deps);
             Assert.assertEquals(deps, ks.getDeps());
@@ -242,7 +242,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
             for (UUID id: deps)
             {
-                ks.create(id);
+                ks.recordInstance(id);
             }
             keyDeps.put(cfKey, deps);
             Assert.assertEquals(deps, ks.getDeps());
@@ -265,7 +265,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             for (UUID id: ks.getDeps())
             {
                 KeyState.Entry dep = ks.get(id);
-                Assert.assertFalse(dep.acknowledged);
+                Assert.assertEquals(0, dep.acknowledged.size());
                 expected.remove(id);
             }
         }
@@ -282,7 +282,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             for (UUID id: ks.getDeps())
             {
                 KeyState.Entry dep = ks.get(id);
-                Assert.assertEquals(expected.contains(id), dep.acknowledged);
+                Assert.assertEquals(expected.contains(id), dep.acknowledged.size() > 0);
                 expected.remove(id);
             }
         }
@@ -302,7 +302,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
             for (UUID id: deps)
             {
-                ks.create(id);
+                ks.recordInstance(id);
             }
             Assert.assertEquals(deps, ks.getDeps());
 
@@ -324,7 +324,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             for (UUID id: ks.getDeps())
             {
                 KeyState.Entry dep = ks.get(id);
-                Assert.assertFalse(dep.acknowledged);
+                Assert.assertEquals(0, dep.acknowledged.size());
                 expected.remove(id);
             }
         }
@@ -340,7 +340,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             for (UUID id: ks.getDeps())
             {
                 KeyState.Entry dep = ks.get(id);
-                Assert.assertEquals(expected.contains(id), dep.acknowledged);
+                Assert.assertEquals(expected.contains(id), dep.acknowledged.size() > 0);
                 expected.remove(id);
             }
         }
@@ -365,7 +365,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
             for (UUID id: deps)
             {
-                ks.create(id);
+                ks.recordInstance(id);
             }
             keyDeps.put(cfKey, deps);
             Assert.assertEquals(deps, ks.getDeps());
@@ -425,7 +425,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
             for (UUID id: deps)
             {
-                ks.create(id);
+                ks.recordInstance(id);
             }
             Assert.assertEquals(deps, ks.getDeps());
 
@@ -506,11 +506,11 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             assert keyState.getEpoch() == i;
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id);
+                keyState.markExecuted(id, new HashSet<UUID>());
                 if (i == currentEpoch)
                 {
                     // if this is the 'current' or previous epoch, set the dependency as active
-                    keyState.create(id);
+                    keyState.recordInstance(id);
                 }
             }
             assert keyState.getExecutionCount() == 2;
@@ -537,17 +537,17 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             keyState.setEpoch(i);
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id);
+                keyState.markExecuted(id, new HashSet<UUID>());
                 if (i == currentEpoch - 1)
                 {
                     // if this is the 'current' epoch, set the dependency as active
-                    keyState.create(id);
+                    keyState.recordInstance(id);
                 }
             }
         }
 
         Assert.assertFalse(keyState.canIncrementToEpoch(targetEpoch));
         TokenState tokenState = tsm.get(key);
-        Assert.assertTrue(ksm.canIncrementToEpoch(tokenState, targetEpoch));
+        Assert.assertFalse(ksm.canIncrementToEpoch(tokenState, targetEpoch));
     }
 }

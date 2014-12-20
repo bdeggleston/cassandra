@@ -1,14 +1,17 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.collect.Sets;
 import com.google.common.io.ByteStreams;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class EpaxosTokenStateTest extends AbstractEpaxosTest
 {
@@ -111,5 +114,28 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
         Assert.assertEquals(3, ts.getNumUnrecordedExecutions());
         ts.onSave();
         Assert.assertEquals(0, ts.getNumUnrecordedExecutions());
+    }
+
+    /**
+     * Check that correct token instance ids are returned, and removed
+     * when epoch is changed
+     */
+    @Test
+    public void tokenInstances()
+    {
+        TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), 0, 0, 0);
+        UUID i0 = UUIDGen.getTimeUUID();
+        UUID i1 = UUIDGen.getTimeUUID();
+        UUID i2 = UUIDGen.getTimeUUID();
+
+        ts.recordTokenInstance(0, i0);
+        ts.recordTokenInstance(0, i1);
+        ts.recordTokenInstance(1, i2);
+
+        Assert.assertEquals(Sets.newHashSet(i0, i1, i2), ts.getCurrentTokenInstances());
+
+        ts.setEpoch(1);
+
+        Assert.assertEquals(Sets.newHashSet(i2), ts.getCurrentTokenInstances());
     }
 }

@@ -3,19 +3,28 @@ package org.apache.cassandra.service.epaxos.integration;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.Token;
-import org.apache.cassandra.service.epaxos.Instance;
-import org.apache.cassandra.service.epaxos.TokenInstance;
-import org.apache.cassandra.service.epaxos.TokenStateMaintenanceTask;
+import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.exceptions.ReadTimeoutException;
+import org.apache.cassandra.exceptions.UnavailableException;
+import org.apache.cassandra.exceptions.WriteTimeoutException;
+import org.apache.cassandra.service.epaxos.*;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.SingleThread
 {
     private static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
+
+    @Override
+    protected Messenger createMessenger()
+    {
+        return new Messenger(Node.queuedExecutor);
+    }
 
     @Test
     public void successCase() throws Exception
@@ -67,7 +76,6 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         {
             Node leader = nodes.get(i % nodes.size());
             leader.query(getSerializedCQLRequest(i + roundSize, 0));
-//            leader.query(getSerializedCQLRequest(i, 0));
             Instance instance = leader.getLastCreatedInstance();
             round2Ids.add(instance.getId());
         }
@@ -97,5 +105,93 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             Assert.assertEquals(0, oldDeps.size());
             Assert.assertEquals(expectedDeps, instance.getDependencies());
         }
+    }
+
+    /**
+     * If a query instance for a given key in epoch 0 is strongly connected with an epoch
+     * instance, incrementing the epoch to 1, and that key has no activity in the next epoch (1)
+     * the epoch instance that increments to epoch 2 will be dependent on that key
+     *
+     * Making the epoch increment instance part of the epoch it increments out of would fix this
+     * issue, so we could keep 2 epochs around, not 3
+     */
+    @Test
+    public void stronglyConnectedEpochInstance() throws Exception
+    {
+        for (Node node: nodes)
+        {
+            node.setEpochIncrementThreshold(0);
+            Assert.assertEquals(0, node.getCurrentEpoch(TOKEN));
+        }
+
+        // submit a query and epoch increment "in parallel" to form a strongly connected component
+        Node.queuedExecutor.submit(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                Node.queuedExecutor.submit(new Runnable()
+                {
+                    @Override
+                    public void run()
+                    {
+                        try
+                        {
+                            nodes.get(0).query(getSerializedCQLRequest(0, 0));
+                        }
+                        catch (ReadTimeoutException | WriteTimeoutException | UnavailableException | InvalidRequestException e)
+                        {
+                            // the query will think it's timed out
+                        }
+                    }
+                });
+
+                Node.queuedExecutor.submit(new Runnable()
+                {
+                    @Override
+                    public void run()
+                    {
+                        nodes.get(1).newTokenStateMaintenanceTask().run();
+                    }
+                });
+            }
+        });
+
+        QueryInstance queryInstance = (QueryInstance) nodes.get(0).getLastCreatedInstance();
+        TokenInstance tokenInstance = (TokenInstance) nodes.get(1).getLastCreatedInstance();
+
+        Assert.assertNotNull(queryInstance);
+        Assert.assertNotNull(tokenInstance);
+
+        Assert.assertEquals(Sets.newHashSet(tokenInstance.getId()), queryInstance.getDependencies());
+        Assert.assertEquals(Sets.newHashSet(queryInstance.getId()), tokenInstance.getDependencies());
+
+        for (Node node: nodes)
+        {
+            Assert.assertEquals(1, node.getCurrentEpoch(TOKEN));
+            KeyState keyState = node.getKeyState(queryInstance);
+            Map<Long, Set<UUID>> epochs = keyState.getEpochExecutions();
+            Assert.assertTrue(epochs.get(0l).contains(queryInstance.getId()));
+            Assert.assertTrue(epochs.get(1l).contains(tokenInstance.getId()));
+        }
+
+        Node leader = nodes.get(0);
+        TokenStateMaintenanceTask maintenanceTask = leader.newTokenStateMaintenanceTask();
+        maintenanceTask.run();
+
+        for (Node node: nodes)
+        {
+            Assert.assertEquals(2, node.getCurrentEpoch(TOKEN));
+        }
+
+        Assert.assertTrue(leader.getLastCreatedInstance() instanceof TokenInstance);
+        TokenInstance instance = (TokenInstance) leader.getLastCreatedInstance();
+
+        Assert.assertEquals(2, instance.getEpoch());
+        Assert.assertFalse(instance.isVetoed());
+
+        // should have taken all of the first round of instances
+        // as deps since they all targeted a different key
+        Assert.assertEquals(Sets.newHashSet(tokenInstance.getId()), instance.getDependencies());
     }
 }

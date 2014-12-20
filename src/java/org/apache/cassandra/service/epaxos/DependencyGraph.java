@@ -38,7 +38,7 @@ public class DependencyGraph
 
     private boolean used = false;
 
-    private static final Comparator<UUID> comparator = new Comparator<UUID>()
+    static final Comparator<UUID> comparator = new Comparator<UUID>()
     {
         @Override
         public int compare(UUID o1, UUID o2)

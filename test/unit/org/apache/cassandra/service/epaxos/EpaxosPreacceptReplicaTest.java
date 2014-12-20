@@ -91,7 +91,7 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         Assert.assertTrue(remoteCopy.getLeaderAttrsMatch());
 
         // check added to dependency manager
-        KeyState dm = node.getDependencyManager(newInstance);
+        KeyState dm = node.getKeyState(newInstance);
         KeyState.Entry entry = dm.get(newInstance.getId());
         Assert.assertNotNull(entry);
     }

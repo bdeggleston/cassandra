@@ -109,7 +109,7 @@ public class Node extends EpaxosState
         return loadInstance(iid);
     }
 
-    public KeyState getDependencyManager(Instance instance)
+    public KeyState getKeyState(Instance instance)
     {
         if (instance instanceof QueryInstance)
         {

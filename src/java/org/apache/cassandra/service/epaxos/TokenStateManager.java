@@ -9,6 +9,8 @@ import org.apache.cassandra.service.StorageService;
 
 import java.nio.ByteBuffer;
 import java.util.Collection;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * TokenStates are always in memory
@@ -79,6 +81,37 @@ public class TokenStateManager
             {
                 save(ts);
             }
+        }
+        finally
+        {
+            ts.rwLock.writeLock().unlock();
+        }
+    }
+
+    public Set<UUID> getCurrentDependencies(TokenInstance instance)
+    {
+        TokenState ts = get(instance.getToken());
+        ts.rwLock.writeLock().lock();
+        try
+        {
+            Set<UUID> deps = ts.getCurrentTokenInstances();
+            ts.recordTokenInstance(instance);
+            save(ts);
+            return deps;
+        }
+        finally
+        {
+            ts.rwLock.writeLock().unlock();
+        }
+    }
+
+    public Set<UUID> getCurrentTokenDependencies(ByteBuffer key)
+    {
+        TokenState ts = get(key);
+        ts.rwLock.writeLock().lock();
+        try
+        {
+            return ts.getCurrentTokenInstances();
         }
         finally
         {

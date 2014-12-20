@@ -100,7 +100,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         Assert.assertNotNull(node.getInstance(missingInstance.getId()));
 
         // check dependency manager
-        KeyState dm = node.getDependencyManager(instance);
+        KeyState dm = node.getKeyState(instance);
         Assert.assertNotNull(dm.get(instance.getId()));
         Assert.assertNotNull(dm.get(missingInstance.getId()));
 
@@ -153,7 +153,7 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         Assert.assertNotNull(node.getInstance(missingInstance.getId()));
 
         // check dependency manager
-        KeyState dm = node.getDependencyManager(instance);
+        KeyState dm = node.getKeyState(instance);
         Assert.assertNotNull(dm.get(instance.getId()));
         Assert.assertNotNull(dm.get(missingInstance.getId()));
     }
@@ -252,8 +252,8 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         node.addMissingInstance(previousInstance);
 
         // check that it's in the deps manager
-        Assert.assertNotNull(node.getDependencyManager(previousInstance));
-        Assert.assertFalse(node.getDependencyManager(previousInstance).get(previousInstance.getId()).acknowledged);
+        Assert.assertNotNull(node.getKeyState(previousInstance));
+        Assert.assertEquals(0, node.getKeyState(previousInstance).get(previousInstance.getId()).acknowledged.size());
 
         // add an instance
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
@@ -271,6 +271,6 @@ public class EpaxosAcceptReplicaTest extends AbstractEpaxosIntegrationTest.Singl
         handler.doVerb(message, 100);
 
         // should now be acknowledged
-        Assert.assertTrue(node.getDependencyManager(previousInstance).get(previousInstance.getId()).acknowledged);
+        Assert.assertEquals(1, node.getKeyState(previousInstance).get(previousInstance.getId()).acknowledged.size());
     }
 }

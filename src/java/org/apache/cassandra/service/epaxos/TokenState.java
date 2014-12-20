@@ -1,5 +1,9 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.SetMultimap;
+import com.google.common.collect.Sets;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
@@ -7,6 +11,8 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -35,6 +41,7 @@ public class TokenState
 
     public static enum State { NORMAL, RECOVERING }
     private volatile State state;  // local only
+    private final SetMultimap<Long, UUID> tokenInstances = HashMultimap.create();
 
     private transient volatile int lastPersistedExecutionCount = 0;
 
@@ -74,6 +81,7 @@ public class TokenState
 
         executions.set(0);
         resetUnrecordedExecutions();
+        cleanTokenInstances();
     }
 
     public synchronized boolean recordHighEpoch(long epoch)
@@ -129,6 +137,38 @@ public class TokenState
         resetUnrecordedExecutions();
     }
 
+    public void recordTokenInstance(TokenInstance instance)
+    {
+        recordTokenInstance(instance.getEpoch(), instance.getId());
+    }
+
+    void recordTokenInstance(long epoch, UUID id)
+    {
+        if (epoch < this.epoch)
+        {
+            return;
+        }
+
+        tokenInstances.put(epoch, id);
+    }
+
+    private void cleanTokenInstances()
+    {
+        Set<Long> keys = Sets.newHashSet(tokenInstances.keySet());
+        for (long key : keys)
+        {
+            if (key < epoch)
+            {
+                tokenInstances.removeAll(key);
+            }
+        }
+    }
+
+    public Set<UUID> getCurrentTokenInstances()
+    {
+        return ImmutableSet.copyOf(tokenInstances.values());
+    }
+
     public static final IVersionedSerializer<TokenState> serializer = new IVersionedSerializer<TokenState>()
     {
         @Override
@@ -139,23 +179,51 @@ public class TokenState
             out.writeLong(tokenState.highEpoch);
             out.writeInt(tokenState.executions.get());
             out.writeInt(tokenState.state.ordinal());
+
+            // epoch instances
+            Set<Long> keys = tokenState.tokenInstances.keySet();
+            out.writeInt(keys.size());
+            for (Long epoch: keys)
+            {
+                out.writeLong(epoch);
+                Serializers.uuidSets.serialize(tokenState.tokenInstances.get(epoch), out, version);
+            }
         }
 
         @Override
         public TokenState deserialize(DataInput in, int version) throws IOException
         {
-            return new TokenState(Token.serializer.deserialize(in),
-                                  in.readLong(),
-                                  in.readLong(),
-                                  in.readInt(),
-                                  State.values()[in.readInt()]);
+            TokenState ts = new TokenState(Token.serializer.deserialize(in),
+                                           in.readLong(),
+                                           in.readLong(),
+                                           in.readInt(),
+                                           State.values()[in.readInt()]);
+
+            int numEpochInstanceKeys = in.readInt();
+            for (int i=0; i<numEpochInstanceKeys; i++)
+            {
+                Long epoch = in.readLong();
+                ts.tokenInstances.putAll(epoch, Serializers.uuidSets.deserialize(in, version));
+            }
+
+            return ts;
         }
 
         @Override
         public long serializedSize(TokenState tokenState, int version)
         {
             long size = Token.serializer.serializedSize(tokenState.token, TypeSizes.NATIVE);
-            return size + 8 + 8 + 4 + 4;
+            size += 8 + 8 + 4 + 4;
+
+            // epoch instances
+            size += 4;
+            for (Long epoch: tokenState.tokenInstances.keySet())
+            {
+                size += 8;
+                size += Serializers.uuidSets.serializedSize(tokenState.tokenInstances.get(epoch), version);
+            }
+
+            return size;
         }
     };
 
