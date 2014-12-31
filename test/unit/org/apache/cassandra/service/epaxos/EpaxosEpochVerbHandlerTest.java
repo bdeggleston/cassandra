@@ -5,12 +5,14 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collections;
+import java.util.UUID;
 
 /**
  * tests the AbstractEpochVerbHandler
@@ -18,11 +20,12 @@ import java.util.Collections;
 public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
 {
     private static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
+    private static final UUID CFID = UUIDGen.getTimeUUID();
 
     private static MessageIn<Message> getMessage(long epoch) throws UnknownHostException
     {
         return MessageIn.create(InetAddress.getLocalHost(),
-                                new Message(TOKEN, epoch),
+                                new Message(TOKEN, CFID, epoch),
                                 Collections.EMPTY_MAP,
                                 MessagingService.Verb.ECHO,
                                 0);
@@ -30,9 +33,9 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
 
     private static class Message extends AbstractEpochMessage
     {
-        private Message(Token token, long epoch)
+        private Message(Token token, UUID cfId, long epoch)
         {
-            super(token, epoch);
+            super(token, cfId, epoch);
         }
     }
 
@@ -77,7 +80,7 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         }
 
         @Override
-        public long getCurrentEpoch(Token token)
+        public long getCurrentEpoch(Token token, UUID cfId)
         {
             return epoch;
         }

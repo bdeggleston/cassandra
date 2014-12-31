@@ -208,15 +208,16 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         PreacceptVerbHandler handler = new PreacceptVerbHandler(state);
 
         Token token = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
+        UUID cfId = UUIDGen.getTimeUUID();
 
         long currentEpoch = 5;
         long remoteEpoch = 6;
         long proposedEpoch = 7;
-        TokenState tokenState = state.tokenStateManager.get(token);
+        TokenState tokenState = state.tokenStateManager.get(token, cfId);
         tokenState.setEpoch(currentEpoch);
         state.tokenStateManager.save(tokenState);
 
-        TokenInstance instance = new TokenInstance(LEADER, token, proposedEpoch);
+        TokenInstance instance = new TokenInstance(LEADER, token, cfId, proposedEpoch);
         instance.preaccept(Collections.EMPTY_SET);
         handler.doVerb(createMessage(instance, remoteEpoch), 0);
 

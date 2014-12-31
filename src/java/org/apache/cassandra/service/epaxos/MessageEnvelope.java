@@ -4,9 +4,11 @@ import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.utils.UUIDSerializer;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * Sends information used for failure detection
@@ -15,12 +17,14 @@ import java.io.IOException;
 public class MessageEnvelope<T> implements IEpochMessage
 {
     public final Token token;
+    public final UUID cfId;
     public final long epoch;
     public final T contents;
 
-    public MessageEnvelope(Token token, long epoch, T contents)
+    public MessageEnvelope(Token token, UUID cfId, long epoch, T contents)
     {
         this.token = token;
+        this.cfId = cfId;
         this.epoch = epoch;
         this.contents = contents;
     }
@@ -29,6 +33,12 @@ public class MessageEnvelope<T> implements IEpochMessage
     public Token getToken()
     {
         return token;
+    }
+
+    @Override
+    public UUID getCfId()
+    {
+        return cfId;
     }
 
     @Override
@@ -55,6 +65,7 @@ public class MessageEnvelope<T> implements IEpochMessage
         public void serialize(MessageEnvelope<T> envelope, DataOutputPlus out, int version) throws IOException
         {
             Token.serializer.serialize(envelope.token, out);
+            UUIDSerializer.serializer.serialize(envelope.cfId, out, version);
             out.writeLong(envelope.epoch);
 
             out.writeBoolean(envelope.contents != null);
@@ -68,6 +79,7 @@ public class MessageEnvelope<T> implements IEpochMessage
         public MessageEnvelope<T> deserialize(DataInput in, int version) throws IOException
         {
             return new MessageEnvelope<>(Token.serializer.deserialize(in),
+                                         UUIDSerializer.serializer.deserialize(in, version),
                                          in.readLong(),
                                          in.readBoolean() ? payloadSerializer.deserialize(in, version) : null);
         }
@@ -76,6 +88,7 @@ public class MessageEnvelope<T> implements IEpochMessage
         public long serializedSize(MessageEnvelope<T> envelope, int version)
         {
             long size = Token.serializer.serializedSize(envelope.token, TypeSizes.NATIVE);
+            size += UUIDSerializer.serializer.serializedSize(envelope.cfId, version);
             size += 8;  // envelope.epoch
 
             size += 1;

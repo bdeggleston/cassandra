@@ -18,14 +18,14 @@ public class PrepareRequest extends AbstractEpochMessage
     public final UUID iid;
     public final int ballot;
 
-    public PrepareRequest(Token token, long epoch, Instance instance)
+    public PrepareRequest(Token token, UUID cfId, long epoch, Instance instance)
     {
-        this(token, epoch, instance.getId(), instance.getBallot());
+        this(token, cfId, epoch, instance.getId(), instance.getBallot());
     }
 
-    public PrepareRequest(Token token, long epoch, UUID iid, int ballot)
+    public PrepareRequest(Token token, UUID cfId, long epoch, UUID iid, int ballot)
     {
-        super(token, epoch);
+        super(token, cfId, epoch);
         this.iid = iid;
         this.ballot = ballot;
     }
@@ -49,7 +49,7 @@ public class PrepareRequest extends AbstractEpochMessage
         public PrepareRequest deserialize(DataInput in, int version) throws IOException
         {
             AbstractEpochMessage epochInfo = AbstractEpochMessage.serializer.deserialize(in, version);
-            return new PrepareRequest(epochInfo.token, epochInfo.epoch, UUIDSerializer.serializer.deserialize(in, version), in.readInt());
+            return new PrepareRequest(epochInfo.token, epochInfo.cfId, epochInfo.epoch, UUIDSerializer.serializer.deserialize(in, version), in.readInt());
         }
 
         @Override

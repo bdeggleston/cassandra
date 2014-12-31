@@ -1,6 +1,7 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Sets;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.utils.UUIDGen;
@@ -31,10 +32,14 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
             throw new AssertionError(e);
         }
     }
-
     public MessageIn<MessageEnvelope<Instance>> createResponse(InetAddress from, Instance instance)
     {
-        return MessageIn.create(from, new MessageEnvelope<>(TOKEN, 0, instance), Collections.<String, byte[]>emptyMap(), null, 0);
+        return createResponse(from, instance, instance.getToken(), instance.getCfId());
+    }
+
+    public MessageIn<MessageEnvelope<Instance>> createResponse(InetAddress from, Instance instance, Token token, UUID cfId)
+    {
+        return MessageIn.create(from, new MessageEnvelope<>(token, cfId, 0, instance), Collections.<String, byte[]>emptyMap(), null, 0);
     }
 
     @Test
@@ -251,12 +256,12 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         Assert.assertEquals(0, callback.getNumResponses());
 
         // send a preaccepted response from the leader to prevent trypreaccept
-        callback.response(createResponse(state.localEndpoints.get(1), null));
+        callback.response(createResponse(state.localEndpoints.get(1), null, instance.getToken(), instance.getCfId()));
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(1, callback.getNumResponses());
 
         // send a null responses for the second reply
-        callback.response(createResponse(state.localEndpoints.get(2), null));
+        callback.response(createResponse(state.localEndpoints.get(2), null, instance.getToken(), instance.getCfId()));
         Assert.assertTrue(callback.isCompleted());
         Assert.assertEquals(2, callback.getNumResponses());
 

@@ -33,6 +33,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
             Instance instance = state.loadInstance(message.payload.iid);
             Pair<TryPreacceptDecision, Boolean> decision = handleTryPreaccept(instance, message.payload.dependencies);
             TryPreacceptResponse response = new TryPreacceptResponse(instance.getToken(),
+                                                                     instance.getCfId(),
                                                                      state.getCurrentEpoch(instance),
                                                                      instance.getId(),
                                                                      decision.left,
@@ -56,7 +57,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
         }
 
         TokenInstance instance = (TokenInstance) inst;
-        long currentEpoch = state.tokenStateManager.getEpoch(instance.getToken());
+        long currentEpoch = state.tokenStateManager.getEpoch(instance);
 
         if (instance.getEpoch() > currentEpoch + 1)
         {

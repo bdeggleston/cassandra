@@ -8,6 +8,7 @@ import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 
 public class PrepareVerbHandler extends AbstractEpochVerbHandler<PrepareRequest>
@@ -54,9 +55,11 @@ public class PrepareVerbHandler extends AbstractEpochVerbHandler<PrepareRequest>
             }
 
             Token token = instance != null ? instance.getToken() : message.payload.getToken();
+            UUID cfId = instance != null ? instance.getCfId() : message.payload.getCfId();
             MessageOut<MessageEnvelope<Instance>> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                            new MessageEnvelope<>(token,
-                                                                                                 state.getCurrentEpoch(token),
+                                                                                                 cfId,
+                                                                                                 state.getCurrentEpoch(token, cfId),
                                                                                                  instance),
                                                                            Instance.envelopeSerializer);
             state.sendReply(reply, id, message.from);

@@ -3,11 +3,13 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.LongToken;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
@@ -33,6 +35,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             throw new AssertionError();
         }
     }
+    private static final UUID CFID = UUIDGen.getTimeUUID();
 
     /**
      * Loads/saves a key state, persisting an empty one to disk
@@ -143,7 +146,11 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         KeyStateManager ksm = new KeyStateManager(tsm);
 
         List<CfKey> cfKeys = getCfKeyList(9, 3);
+        Token token = DatabaseDescriptor.getPartitioner().getToken(cfKeys.get(0).key);
+        UUID cfId = cfKeys.get(0).cfId;
+
         Map<CfKey, Set<UUID>> keyDeps = new HashMap<>();
+        Set<UUID> expectedDeps = Sets.newHashSet();
         for (CfKey cfKey: cfKeys)
         {
             Set<UUID> deps = Sets.newHashSet(getUUIDList(3));
@@ -153,13 +160,18 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
                 ks.recordInstance(id);
             }
             keyDeps.put(cfKey, deps);
+
+            if (cfKey.cfId.equals(cfId))
+            {
+                expectedDeps.addAll(deps);
+            }
+
             Assert.assertEquals(deps, ks.getDeps());
 
             ksm.saveKeyState(cfKey.key, cfKey.cfId, ks);
         }
 
-        Set<UUID> expectedDeps = Sets.newHashSet(Iterables.concat(keyDeps.values()));
-        TokenInstance instance = new TokenInstance(ADDRESS, new LongToken((long)0), 0);
+        TokenInstance instance = new TokenInstance(ADDRESS, token, cfId, 0);
 
         Set<UUID> actualDeps = ksm.getCurrentDependencies(instance);
         Assert.assertEquals(expectedDeps, actualDeps);
@@ -167,8 +179,16 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         // check that the token instance has been added to each of the individual key states
         for (CfKey cfKey: cfKeys)
         {
+            // FIXME: only key states that match the cfId above should be changed
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
-            Assert.assertTrue(ks.getDeps().contains(instance.getId()));
+            if (cfKey.cfId.equals(cfId))
+            {
+                Assert.assertTrue(ks.getDeps().contains(instance.getId()));
+            }
+            else
+            {
+                Assert.assertFalse(ks.getDeps().contains(instance.getId()));
+            }
         }
 
         // TODO: check token bounds
@@ -213,14 +233,26 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         {
             createKeyState(ksm, cfKey.key, cfKey.cfId);
         }
-        TokenInstance instance = new TokenInstance(ADDRESS, new LongToken((long)0), 0);
+
+        Token token = DatabaseDescriptor.getPartitioner().getToken(cfKeys.get(0).key);
+        UUID cfId = cfKeys.get(0).cfId;
+
+        TokenInstance instance = new TokenInstance(ADDRESS, token, cfId, 0);
         ksm.recordMissingInstance(instance);
 
         // check that the token instance has been added to each of the individual key states
         for (CfKey cfKey: cfKeys)
         {
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
-            Assert.assertTrue(ks.getDeps().contains(instance.getId()));
+
+            if (cfKey.cfId.equals(cfId))
+            {
+                Assert.assertTrue(ks.getDeps().contains(instance.getId()));
+            }
+            else
+            {
+                Assert.assertFalse(ks.getDeps().contains(instance.getId()));
+            }
         }
     }
 
@@ -309,7 +341,9 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             ksm.saveKeyState(cfKey.key, cfKey.cfId, ks);
         }
 
-        TokenInstance instance = new TokenInstance(ADDRESS, new LongToken((long)0), 0);
+        Token token = DatabaseDescriptor.getPartitioner().getToken(cfKeys.get(0).key);
+        UUID cfId = cfKeys.get(0).cfId;
+        TokenInstance instance = new TokenInstance(ADDRESS, token, cfId, 0);
 
         Set<UUID> deps = ksm.getCurrentDependencies(instance);
         instance.preaccept(deps);
@@ -336,6 +370,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         expected = new HashSet<>(deps);
         for (CfKey cfKey: cfKeys)
         {
+            // FIXME: only keystates with the same cfid should be affected
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
             for (UUID id: ks.getDeps())
             {
@@ -432,7 +467,9 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             ksm.saveKeyState(cfKey.key, cfKey.cfId, ks);
         }
 
-        TokenInstance instance = new TokenInstance(ADDRESS, new LongToken((long)0), 0);
+        Token token = DatabaseDescriptor.getPartitioner().getToken(cfKeys.get(0).key);
+        UUID cfId = cfKeys.get(0).cfId;
+        TokenInstance instance = new TokenInstance(ADDRESS, token, cfId, 0);
 
         Set<UUID> deps = ksm.getCurrentDependencies(instance);
         instance.preaccept(deps);
@@ -442,7 +479,14 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         {
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
             KeyState.Entry dep = ks.get(instance.getId());
-            Assert.assertFalse(dep.executed);
+            if (cfKey.cfId.equals(cfId))
+            {
+                Assert.assertFalse(dep.executed);
+            }
+            else
+            {
+                Assert.assertNull(dep);
+            }
         }
 
         ksm.recordExecuted(instance);
@@ -451,7 +495,14 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         {
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
             KeyState.Entry dep = ks.get(instance.getId());
-            Assert.assertTrue(dep.executed);
+            if (cfKey.cfId.equals(cfId))
+            {
+                Assert.assertTrue(dep.executed);
+            }
+            else
+            {
+                Assert.assertNull(dep);
+            }
         }
     }
 
@@ -474,7 +525,8 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             Assert.assertEquals(0, ks.getEpoch());
         }
 
-        TokenState tokenState = tsm.get(ByteBufferUtil.bytes(1));
+        UUID cfId = cfKeys.get(0).cfId;
+        TokenState tokenState = tsm.get(ByteBufferUtil.bytes(1), cfId);
         Assert.assertEquals((long) 0, tokenState.getEpoch());
         tokenState.setEpoch(1);
 
@@ -482,8 +534,16 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         for (CfKey cfKey: cfKeys)
         {
+            // FIXME: only the keystates with the correct cfid should be updated
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
-            Assert.assertEquals((long) 1, ks.getEpoch());
+            if (cfKey.cfId.equals(cfId))
+            {
+                Assert.assertEquals((long) 1, ks.getEpoch());
+            }
+            else
+            {
+                Assert.assertEquals((long) 0, ks.getEpoch());
+            }
         }
 
         // TODO: check token bounds
@@ -498,7 +558,8 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         TokenStateManager tsm = new TokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
         ByteBuffer key = ByteBufferUtil.bytes(1234);
-        KeyState keyState = ksm.loadKeyState(key, UUIDGen.getTimeUUID());
+        UUID cfId = UUIDGen.getTimeUUID();
+        KeyState keyState = ksm.loadKeyState(key, cfId);
 
         for (long i=0; i<targetEpoch; i++)
         {
@@ -517,7 +578,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         }
 
         Assert.assertTrue(keyState.canIncrementToEpoch(targetEpoch));
-        TokenState tokenState = tsm.get(key);
+        TokenState tokenState = tsm.get(key, cfId);
         Assert.assertTrue(ksm.canIncrementToEpoch(tokenState, targetEpoch));
     }
 
@@ -530,7 +591,8 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         TokenStateManager tsm = new TokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
         ByteBuffer key = ByteBufferUtil.bytes(1234);
-        KeyState keyState = ksm.loadKeyState(key, UUIDGen.getTimeUUID());
+        UUID cfId = UUIDGen.getTimeUUID();
+        KeyState keyState = ksm.loadKeyState(key, cfId);
 
         for (long i=0; i<targetEpoch; i++)
         {
@@ -547,7 +609,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         }
 
         Assert.assertFalse(keyState.canIncrementToEpoch(targetEpoch));
-        TokenState tokenState = tsm.get(key);
+        TokenState tokenState = tsm.get(key, cfId);
         Assert.assertFalse(ksm.canIncrementToEpoch(tokenState, targetEpoch));
     }
 }

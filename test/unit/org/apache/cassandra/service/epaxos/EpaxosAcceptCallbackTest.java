@@ -43,11 +43,11 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
 
         AcceptCallback callback = getCallback(state, instance, null);
 
-        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN, 0, true, 0)));
+        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN, CFID, 0, true, 0)));
         Assert.assertEquals(0, state.commits.size());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(1), new AcceptResponse(TOKEN, 0, true, 0)));
+        callback.response(createResponse(state.localEndpoints.get(1), new AcceptResponse(TOKEN, CFID, 0, true, 0)));
         Assert.assertEquals(1, state.commits.size());
         Assert.assertEquals(2, callback.getNumResponses());
         Assert.assertTrue(callback.isCompleted());
@@ -67,11 +67,11 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
 
         AcceptCallback callback = getCallback(state, instance, null);
 
-        callback.response(createResponse(state.localEndpoints.get(1), new AcceptResponse(TOKEN, 0, true, 0)));
+        callback.response(createResponse(state.localEndpoints.get(1), new AcceptResponse(TOKEN, CFID, 0, true, 0)));
         Assert.assertEquals(0, state.commits.size());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(2), new AcceptResponse(TOKEN, 0, true, 0)));
+        callback.response(createResponse(state.localEndpoints.get(2), new AcceptResponse(TOKEN, CFID, 0, true, 0)));
         Assert.assertEquals(0, state.commits.size());
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(2, callback.getNumResponses());
@@ -100,7 +100,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(0, state.ballotUpdates.size());
 
-        callback.response(createResponse(state.localEndpoints.get(1), new AcceptResponse(TOKEN, 0, false, 20)));
+        callback.response(createResponse(state.localEndpoints.get(1), new AcceptResponse(TOKEN, CFID, 0, false, 20)));
         Assert.assertEquals(0, callback.getNumResponses());
         Assert.assertTrue(callback.isCompleted());
         Assert.assertEquals(1, state.ballotUpdates.size());
@@ -125,12 +125,12 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
 
         AcceptCallback callback = getCallback(state, instance, null);
 
-        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN, 0, true, 0)));
+        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN, CFID, 0, true, 0)));
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(1, callback.getNumResponses());
         Assert.assertEquals(0, state.commits.size());
 
-        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN, 0, true, 0)));
+        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN, CFID, 0, true, 0)));
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(1, callback.getNumResponses());
         Assert.assertEquals(0, state.commits.size());
@@ -149,16 +149,16 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
 
         AcceptCallback callback = getCallback(state, instance, null);
 
-        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN, 0, true, 0)));
+        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN, CFID, 0, true, 0)));
         Assert.assertEquals(0, state.commits.size());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(1), new AcceptResponse(TOKEN, 0, true, 0)));
+        callback.response(createResponse(state.localEndpoints.get(1), new AcceptResponse(TOKEN, CFID, 0, true, 0)));
         Assert.assertEquals(1, state.commits.size());
         Assert.assertEquals(2, callback.getNumResponses());
         Assert.assertTrue(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(2), new AcceptResponse(TOKEN, 0, true, 0)));
+        callback.response(createResponse(state.localEndpoints.get(2), new AcceptResponse(TOKEN, CFID, 0, true, 0)));
         Assert.assertEquals(1, state.commits.size());
         Assert.assertEquals(2, callback.getNumResponses());
         Assert.assertTrue(callback.isCompleted());
@@ -177,11 +177,11 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
 
         AcceptCallback callback = getCallback(state, instance, null);
 
-        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN, 0, true, 0)));
+        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN, CFID, 0, true, 0)));
         Assert.assertEquals(0, state.commits.size());
         Assert.assertEquals(1, callback.getNumResponses());
 
-        callback.response(createResponse(state.remoteEndpoints.get(1), new AcceptResponse(TOKEN, 0, true, 0)));
+        callback.response(createResponse(state.remoteEndpoints.get(1), new AcceptResponse(TOKEN, CFID, 0, true, 0)));
         Assert.assertEquals(0, state.commits.size());
         Assert.assertEquals(1, callback.getNumResponses());
     }

@@ -44,7 +44,7 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
     MessageIn<AcceptRequest> createMessage(Instance instance, Instance... missing)
     {
         return MessageIn.create(LEADER,
-                                new AcceptRequest(TOKEN, 0, instance, Lists.newArrayList(missing)),
+                                new AcceptRequest(instance, 0, Lists.newArrayList(missing)),
                                 Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.EPAXOS_ACCEPT,
                                 0);

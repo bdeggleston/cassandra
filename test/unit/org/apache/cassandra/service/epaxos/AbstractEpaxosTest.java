@@ -23,18 +23,20 @@ import org.apache.cassandra.service.CASRequest;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.service.ThriftCASRequest;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.UUIDGen;
 import org.junit.BeforeClass;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public abstract class AbstractEpaxosTest
 {
-    private static KSMetaData ksm;
-    private static CFMetaData cfm;
-    private static CFMetaData thriftcf;
+    protected static KSMetaData ksm;
+    protected static CFMetaData cfm;
+    protected static CFMetaData thriftcf;
 
     static
     {
@@ -44,6 +46,7 @@ public abstract class AbstractEpaxosTest
     }
 
     protected static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
+    protected static final UUID CFID = UUIDGen.getTimeUUID();
 
     @BeforeClass
     public static void setUpClass() throws Exception
@@ -63,7 +66,7 @@ public abstract class AbstractEpaxosTest
 
     protected MessageEnvelope<Instance> wrapInstance(Instance instance, long epoch)
     {
-        return new MessageEnvelope<>(instance.getToken(), epoch, instance);
+        return new MessageEnvelope<>(instance.getToken(), instance.getCfId(), epoch, instance);
     }
 
     protected ThriftCASRequest getThriftCasRequest()

@@ -21,7 +21,6 @@ import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
-import org.apache.cassandra.utils.Pair;
 import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -223,9 +222,9 @@ public class EpaxosState
         return new QueryInstance(request, getEndpoint());
     }
 
-    protected TokenInstance createTokenInstance(Token token, long epoch)
+    protected TokenInstance createTokenInstance(Token token, UUID cfId, long epoch)
     {
-        return new TokenInstance(getEndpoint(), token, epoch);
+        return new TokenInstance(getEndpoint(), token, cfId, epoch);
     }
 
     void deleteInstance(UUID id)
@@ -308,9 +307,8 @@ public class EpaxosState
         for (InetAddress endpoint : participantInfo.liveEndpoints)
         {
             logger.debug("sending accept request to {} for instance {}", endpoint, instance.getId());
-            AcceptRequest request = new AcceptRequest(instance.getToken(),
-                                                      getCurrentEpoch(instance.getToken()),
-                                                      instance,
+            AcceptRequest request = new AcceptRequest(instance,
+                                                      getCurrentEpoch(instance),
                                                       missingInstances.get(endpoint));
             sendRR(request.getMessage(), endpoint, callback);
         }
@@ -319,9 +317,9 @@ public class EpaxosState
         for (InetAddress endpoint: participantInfo.remoteEndpoints)
         {
             logger.debug("sending accept request to non-local dc {} for instance {}", endpoint, instance.getId());
-            AcceptRequest request = new AcceptRequest(instance.getToken(),
-                                                      getCurrentEpoch(instance.getToken()),
-                                                      instance, null);
+            AcceptRequest request = new AcceptRequest(instance,
+                                                      getCurrentEpoch(instance),
+                                                      null);
             sendOneWay(request.getMessage(), endpoint);
         }
     }
@@ -378,7 +376,7 @@ public class EpaxosState
             // FIXME: unavailable exception shouldn't be thrown by getParticipants. It will prevent instances from being committed locally
             ParticipantInfo participantInfo = getParticipants(instance);
             MessageOut<MessageEnvelope<Instance>> message = instance.getMessage(MessagingService.Verb.EPAXOS_COMMIT,
-                                                                                tokenStateManager.getEpoch(instance.getToken()));
+                                                                                tokenStateManager.getEpoch(instance));
             for (InetAddress endpoint : participantInfo.liveEndpoints)
             {
                 logger.debug("sending commit request to {} for instance {}", endpoint, instance.getId());
@@ -445,7 +443,7 @@ public class EpaxosState
      */
     protected void executeTokenInstance(TokenInstance instance)
     {
-        TokenState tokenState = tokenStateManager.get(instance.getToken());
+        TokenState tokenState = tokenStateManager.get(instance);
 
         tokenState.rwLock.writeLock().lock();
         try
@@ -555,8 +553,24 @@ public class EpaxosState
 
         logger.debug("running trypreaccept prepare for {}: {}", iid, attempt);
 
-        Pair<Token, Long> epochInfo = getInstanceEpochInfo(iid);
-        TryPreacceptRequest request = new TryPreacceptRequest(epochInfo.left, epochInfo.right, iid, attempt.dependencies);
+        Token token;
+        UUID cfId;
+        long epoch;
+        Lock lock = getInstanceLock(iid).readLock();
+        lock.lock();
+        try
+        {
+            Instance instance = loadInstance(iid);
+            token = instance.getToken();
+            cfId = instance.getCfId();
+            epoch = getCurrentEpoch(instance);
+        }
+        finally
+        {
+            lock.unlock();
+        }
+
+        TryPreacceptRequest request = new TryPreacceptRequest(token, cfId, epoch, iid, attempt.dependencies);
         MessageOut<TryPreacceptRequest> message = request.getMessage();
 
         TryPreacceptCallback callback = getTryPreacceptCallback(iid, attempt, nextAttempts, participantInfo, failureCallback);
@@ -674,36 +688,19 @@ public class EpaxosState
     }
 
     // failure recovery
-
-    public Pair<Token, Long> getInstanceEpochInfo(UUID id)
+    public long getCurrentEpoch(Instance i)
     {
-        Lock lock = getInstanceLock(id).readLock();
-        lock.lock();
-        try
-        {
-            Instance instance = loadInstance(id);
-            return Pair.create(instance.getToken(), getCurrentEpoch(instance));
-        }
-        finally
-        {
-            lock.unlock();
-        }
+        return getCurrentEpoch(i.getToken(), i.getCfId());
     }
 
-    public long getCurrentEpoch(Instance instance)
+    public long getCurrentEpoch(Token token, UUID cfId)
     {
-        return getCurrentEpoch(instance.getToken());
+        return tokenStateManager.get(token, cfId).getEpoch();
     }
-
-    public long getCurrentEpoch(Token token)
-    {
-        return tokenStateManager.get(token).getEpoch();
-    }
-
 
     public EpochDecision validateMessageEpoch(IEpochMessage message)
     {
-        long localEpoch = getCurrentEpoch(message.getToken());
+        long localEpoch = getCurrentEpoch(message.getToken(), message.getCfId());
         long remoteEpoch = message.getEpoch();
         return new EpochDecision(EpochDecision.evaluate(localEpoch, remoteEpoch),
                                  message.getToken(),
@@ -814,7 +811,7 @@ public class EpaxosState
     public void recordExecuted(Instance instance)
     {
         keyStateManager.recordExecuted(instance);
-        tokenStateManager.reportExecution(instance.getToken());
+        tokenStateManager.reportExecution(instance.getToken(), instance.getCfId());
     }
 
     // accessor methods

@@ -20,9 +20,9 @@ public class TryPreacceptRequest extends AbstractEpochMessage
     public final UUID iid;
     public final Set<UUID> dependencies;
 
-    public TryPreacceptRequest(Token token, long epoch, UUID iid, Set<UUID> dependencies)
+    public TryPreacceptRequest(Token token, UUID cfId, long epoch, UUID iid, Set<UUID> dependencies)
     {
-        super(token, epoch);
+        super(token, cfId, epoch);
         this.iid = iid;
         this.dependencies = dependencies;
     }
@@ -53,7 +53,7 @@ public class TryPreacceptRequest extends AbstractEpochMessage
             UUID[] deps = new UUID[in.readInt()];
             for (int i=0; i<deps.length; i++)
                 deps[i] = UUIDSerializer.serializer.deserialize(in, version);
-            return new TryPreacceptRequest(epochInfo.token, epochInfo.epoch, iid, ImmutableSet.copyOf(deps));
+            return new TryPreacceptRequest(epochInfo.token, epochInfo.cfId, epochInfo.epoch, iid, ImmutableSet.copyOf(deps));
         }
 
         @Override

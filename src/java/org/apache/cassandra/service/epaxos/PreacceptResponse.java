@@ -29,6 +29,7 @@ public class PreacceptResponse extends AbstractEpochMessage
     private static final Set<UUID> NO_DEPS = ImmutableSet.of();
 
     public PreacceptResponse(Token token,
+                             UUID cfId,
                              long epoch,
                              boolean success,
                              int ballotFailure,
@@ -36,7 +37,7 @@ public class PreacceptResponse extends AbstractEpochMessage
                              boolean vetoed,
                              List<Instance> missingInstances)
     {
-        super(token, epoch);
+        super(token, cfId, epoch);
         this.success = success;
         this.ballotFailure = ballotFailure;
         this.dependencies = dependencies;
@@ -55,17 +56,17 @@ public class PreacceptResponse extends AbstractEpochMessage
 
     public static PreacceptResponse success(Token token, long epoch, Instance instance)
     {
-        return new PreacceptResponse(token, epoch, instance.getLeaderAttrsMatch(), 0, instance.getDependencies(), getVetoed(instance), NO_INSTANCES);
+        return new PreacceptResponse(token, instance.getCfId(), epoch, instance.getLeaderAttrsMatch(), 0, instance.getDependencies(), getVetoed(instance), NO_INSTANCES);
     }
 
     public static PreacceptResponse failure(Token token, long epoch, Instance instance)
     {
-        return new PreacceptResponse(token, epoch, false, 0, instance.getDependencies(), getVetoed(instance), NO_INSTANCES);
+        return new PreacceptResponse(token, instance.getCfId(), epoch, false, 0, instance.getDependencies(), getVetoed(instance), NO_INSTANCES);
     }
 
-    public static PreacceptResponse ballotFailure(Token token, long epoch, int localBallot)
+    public static PreacceptResponse ballotFailure(Token token, UUID cfId, long epoch, int localBallot)
     {
-        return new PreacceptResponse(token, epoch, false, localBallot, NO_DEPS, false, NO_INSTANCES);
+        return new PreacceptResponse(token, cfId, epoch, false, localBallot, NO_DEPS, false, NO_INSTANCES);
     }
 
     public static class Serializer implements IVersionedSerializer<PreacceptResponse>
@@ -74,6 +75,7 @@ public class PreacceptResponse extends AbstractEpochMessage
         public void serialize(PreacceptResponse response, DataOutputPlus out, int version) throws IOException
         {
             Token.serializer.serialize(response.token, out);
+            UUIDSerializer.serializer.serialize(response.cfId, out, version);
             out.writeLong(response.epoch);
 
             out.writeBoolean(response.success);
@@ -99,6 +101,7 @@ public class PreacceptResponse extends AbstractEpochMessage
         public PreacceptResponse deserialize(DataInput in, int version) throws IOException
         {
             Token token = Token.serializer.deserialize(in);
+            UUID cfId = UUIDSerializer.serializer.deserialize(in, version);
             long epoch = in.readLong();
 
             boolean successful = in.readBoolean();
@@ -119,6 +122,7 @@ public class PreacceptResponse extends AbstractEpochMessage
             }
 
             return new PreacceptResponse(token,
+                                         cfId,
                                          epoch,
                                          successful,
                                          ballotFailure,
@@ -131,6 +135,7 @@ public class PreacceptResponse extends AbstractEpochMessage
         public long serializedSize(PreacceptResponse response, int version)
         {
             long size = Token.serializer.serializedSize(response.token, TypeSizes.NATIVE);
+            size += UUIDSerializer.serializer.serializedSize(response.cfId, version);
             size += 8;  // response.epoch
 
             size += 1;  //out.writeBoolean(response.success);

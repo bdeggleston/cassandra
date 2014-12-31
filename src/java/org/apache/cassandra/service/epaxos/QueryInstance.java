@@ -78,6 +78,12 @@ public class QueryInstance extends Instance
         return DatabaseDescriptor.getPartitioner().getToken(query.getKey());
     }
 
+    @Override
+    public UUID getCfId()
+    {
+        return query.getCfKey().cfId;
+    }
+
     private static final IVersionedSerializer<QueryInstance> commonSerializer = new IVersionedSerializer<QueryInstance>()
     {
         @Override

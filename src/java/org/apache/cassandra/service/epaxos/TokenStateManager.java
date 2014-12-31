@@ -1,7 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.collect.Lists;
-import org.apache.cassandra.config.DatabaseDescriptor;
+import com.google.common.collect.Maps;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.Token;
@@ -11,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * TokenStates are always in memory
@@ -21,7 +21,7 @@ import java.util.UUID;
  */
 public class TokenStateManager
 {
-    private volatile TokenState __tokenState__ = new TokenState(StorageService.getPartitioner().getMinimumToken(), 0, 0, 0);
+    private final ConcurrentMap<UUID, TokenState> tokenStates = Maps.newConcurrentMap();
 
     private final String keyspace;
     private final String table;
@@ -39,11 +39,31 @@ public class TokenStateManager
         // TODO: maybe 'start' Epaxos?
     }
 
+    public TokenState get(CfKey cfKey)
+    {
+        return get(cfKey.key, cfKey.cfId);
+    }
+
+    public TokenState get(Instance instance)
+    {
+        return get(instance.getToken(), instance.getCfId());
+    }
+
     // TODO: all token operations should quantize tokens to the proper token state, and token states should be inclusive of their own tokens
     // FIXME: only using a single state for now
-    public TokenState get(ByteBuffer key)
+    public TokenState get(ByteBuffer key, UUID cfId)
     {
-        return __tokenState__;
+        return getClosestTokenState(StorageService.getPartitioner().getToken(key), cfId);
+    }
+
+    /**
+     * Returns the token state that matches the given token
+     */
+    public TokenState get(Token token, UUID cfId)
+    {
+        // TODO: return the token state that corresponds to the given token
+        // TODO: how to deal with unknown tokens?
+        return getClosestTokenState(token, cfId);
     }
 
     /**
@@ -51,15 +71,20 @@ public class TokenStateManager
      * @param key
      * @return
      */
-    public long getEpoch(ByteBuffer key)
+    public long getEpoch(ByteBuffer key, UUID cfId)
     {
-        return getEpoch(StorageService.getPartitioner().getToken(key));
+        return getEpoch(StorageService.getPartitioner().getToken(key), cfId);
+    }
+
+    public long getEpoch(Instance instance)
+    {
+        return getEpoch(instance.getToken(), instance.getCfId());
     }
 
     // ambiguous: is this token for the key, or for the token state
-    public long getEpoch(Token token)
+    public long getEpoch(Token token, UUID cfId)
     {
-        TokenState ts = get(token);
+        TokenState ts = get(token, cfId);
         ts.rwLock.readLock().lock();
         try
         {
@@ -73,7 +98,7 @@ public class TokenStateManager
 
     public void recordHighEpoch(TokenInstance instance)
     {
-        TokenState ts = get(instance.getToken());
+        TokenState ts = get(instance.getToken(), instance.getCfId());
         ts.rwLock.writeLock().lock();
         try
         {
@@ -90,7 +115,7 @@ public class TokenStateManager
 
     public Set<UUID> getCurrentDependencies(TokenInstance instance)
     {
-        TokenState ts = get(instance.getToken());
+        TokenState ts = get(instance.getToken(), instance.getCfId());
         ts.rwLock.writeLock().lock();
         try
         {
@@ -105,9 +130,9 @@ public class TokenStateManager
         }
     }
 
-    public Set<UUID> getCurrentTokenDependencies(ByteBuffer key)
+    public Set<UUID> getCurrentTokenDependencies(CfKey cfKey)
     {
-        TokenState ts = get(key);
+        TokenState ts = get(cfKey);
         ts.rwLock.writeLock().lock();
         try
         {
@@ -121,17 +146,25 @@ public class TokenStateManager
 
     public Collection<TokenState> all()
     {
-        return Lists.newArrayList(__tokenState__);
+        return tokenStates.values();
     }
 
-    /**
-     * Returns the token state that matches the given token
-     */
-    public TokenState get(Token token)
+    private Token getClosestToken(Token token)
     {
-        // TODO: return the token state that corresponds to the given token
-        // TODO: how to deal with unknown tokens?
-        return __tokenState__;
+        return StorageService.getPartitioner().getMinimumToken();
+    }
+
+    private TokenState getClosestTokenState(Token keyToken, UUID cfId)
+    {
+        Token token = getClosestToken(keyToken);
+        TokenState tokenState = tokenStates.get(cfId);
+        if (tokenState == null)
+        {
+            tokenStates.putIfAbsent(cfId, new TokenState(token, cfId, 0, 0, 0));
+            tokenState = tokenStates.get(cfId);
+            assert tokenState != null;
+        }
+        return tokenState;
     }
 
     public void save(TokenState state)
@@ -150,10 +183,10 @@ public class TokenStateManager
      * and starts epoch increment tasks when thresholds
      * are reached
      */
-    public void reportExecution(Token token)
+    public void reportExecution(Token token, UUID cfId)
     {
         // TODO: we shouldn't need to synchronize anything here because the execution algorithm does that, right?
-        TokenState ts = get(token);
+        TokenState ts = get(token, cfId);
         ts.recordExecution();
     }
 }

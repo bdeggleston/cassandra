@@ -168,7 +168,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         PreacceptCallback callback = getCallback(state, instance, null, false);
 
         callback.response(createResponse(state.localEndpoints.get(1),
-                                         PreacceptResponse.ballotFailure(instance.getToken(), 0, 5)));
+                                         PreacceptResponse.ballotFailure(instance.getToken(), instance.getCfId(), 0, 5)));
         Assert.assertEquals(0, state.accepts.size());
         Assert.assertEquals(0, state.commits.size());
         Assert.assertEquals(1, state.ballotUpdates.size());

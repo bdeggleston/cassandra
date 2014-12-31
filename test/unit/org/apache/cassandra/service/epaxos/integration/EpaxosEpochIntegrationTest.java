@@ -34,7 +34,7 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         // sanity check
         for (Node node: nodes)
         {
-            Assert.assertEquals(0, node.getCurrentEpoch(TOKEN));
+            Assert.assertEquals(0, node.getCurrentEpoch(TOKEN, cfm.cfId));
             node.setEpochIncrementThreshold(roundSize);
         }
 
@@ -55,7 +55,7 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
             for (Node node: nodes)
             {
-                Assert.assertEquals(1, node.getCurrentEpoch(TOKEN));
+                Assert.assertEquals(1, node.getCurrentEpoch(TOKEN, cfm.cfId));
             }
 
             Assert.assertTrue(leader.getLastCreatedInstance() instanceof TokenInstance);
@@ -87,7 +87,7 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
             for (Node node: nodes)
             {
-                Assert.assertEquals(2, node.getCurrentEpoch(TOKEN));
+                Assert.assertEquals(2, node.getCurrentEpoch(TOKEN, cfm.cfId));
             }
 
             Assert.assertTrue(leader.getLastCreatedInstance() instanceof TokenInstance);
@@ -121,7 +121,7 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         for (Node node: nodes)
         {
             node.setEpochIncrementThreshold(0);
-            Assert.assertEquals(0, node.getCurrentEpoch(TOKEN));
+            Assert.assertEquals(0, node.getCurrentEpoch(TOKEN, cfm.cfId));
         }
 
         // submit a query and epoch increment "in parallel" to form a strongly connected component
@@ -168,7 +168,7 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
         for (Node node: nodes)
         {
-            Assert.assertEquals(1, node.getCurrentEpoch(TOKEN));
+            Assert.assertEquals(1, node.getCurrentEpoch(TOKEN, cfm.cfId));
             KeyState keyState = node.getKeyState(queryInstance);
             Map<Long, Set<UUID>> epochs = keyState.getEpochExecutions();
             Assert.assertTrue(epochs.get(0l).contains(queryInstance.getId()));
@@ -181,7 +181,7 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
         for (Node node: nodes)
         {
-            Assert.assertEquals(2, node.getCurrentEpoch(TOKEN));
+            Assert.assertEquals(2, node.getCurrentEpoch(TOKEN, cfm.cfId));
         }
 
         Assert.assertTrue(leader.getLastCreatedInstance() instanceof TokenInstance);

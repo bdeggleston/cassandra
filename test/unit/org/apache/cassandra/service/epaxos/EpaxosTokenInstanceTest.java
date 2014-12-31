@@ -17,6 +17,7 @@ public class EpaxosTokenInstanceTest
 {
     static final InetAddress LEADER;
     static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
+    static final UUID CFID = UUIDGen.getTimeUUID();
 
     static
     {
@@ -57,7 +58,7 @@ public class EpaxosTokenInstanceTest
     @Test
     public void vetoed() throws Exception
     {
-        TokenInstance instance = new TokenInstance(LEADER, TOKEN, 5);
+        TokenInstance instance = new TokenInstance(LEADER, TOKEN, CFID, 5);
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
 

@@ -8,6 +8,7 @@ import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.utils.UUIDSerializer;
 
 import java.io.DataInput;
 import java.io.IOException;
@@ -25,6 +26,7 @@ public class TokenState
 {
 
     private final Token token;
+    private final UUID cfId;
 
     // the current epoch used in recording
     // execution epochs
@@ -49,14 +51,15 @@ public class TokenState
     // fair to give priority to token mutations
     public final ReadWriteLock rwLock = new ReentrantReadWriteLock(true);
 
-    public TokenState(Token token, long epoch, long highEpoch, int executions)
+    public TokenState(Token token, UUID cfId, long epoch, long highEpoch, int executions)
     {
-        this(token, epoch, highEpoch, executions, State.NORMAL);
+        this(token, cfId, epoch, highEpoch, executions, State.NORMAL);
     }
 
-    public TokenState(Token token, long epoch, long highEpoch, int executions, State state)
+    public TokenState(Token token, UUID cfId, long epoch, long highEpoch, int executions, State state)
     {
         this.token = token;
+        this.cfId = cfId;
         this.epoch = epoch;
         this.highEpoch = highEpoch;
         this.executions = new AtomicInteger(executions);
@@ -67,6 +70,11 @@ public class TokenState
     public Token getToken()
     {
         return token;
+    }
+
+    public UUID getCfId()
+    {
+        return cfId;
     }
 
     public long getEpoch()
@@ -175,6 +183,7 @@ public class TokenState
         public void serialize(TokenState tokenState, DataOutputPlus out, int version) throws IOException
         {
             Token.serializer.serialize(tokenState.token, out);
+            UUIDSerializer.serializer.serialize(tokenState.cfId, out, version);
             out.writeLong(tokenState.epoch);
             out.writeLong(tokenState.highEpoch);
             out.writeInt(tokenState.executions.get());
@@ -194,6 +203,7 @@ public class TokenState
         public TokenState deserialize(DataInput in, int version) throws IOException
         {
             TokenState ts = new TokenState(Token.serializer.deserialize(in),
+                                           UUIDSerializer.serializer.deserialize(in, version),
                                            in.readLong(),
                                            in.readLong(),
                                            in.readInt(),
@@ -213,6 +223,7 @@ public class TokenState
         public long serializedSize(TokenState tokenState, int version)
         {
             long size = Token.serializer.serializedSize(tokenState.token, TypeSizes.NATIVE);
+            size += UUIDSerializer.serializer.serializedSize(tokenState.cfId, version);
             size += 8 + 8 + 4 + 4;
 
             // epoch instances
@@ -232,6 +243,7 @@ public class TokenState
     {
         return "TokenState{" +
                 "token=" + token +
+                ", cfId=" + cfId +
                 ", epoch=" + epoch +
                 ", highEpoch=" + highEpoch +
                 ", executions=" + executions +

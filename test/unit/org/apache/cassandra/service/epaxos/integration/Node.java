@@ -92,9 +92,9 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected TokenInstance createTokenInstance(Token token, long epoch)
+    protected TokenInstance createTokenInstance(Token token, UUID cfId, long epoch)
     {
-        TokenInstance instance = super.createTokenInstance(token, epoch);
+        TokenInstance instance = super.createTokenInstance(token, cfId, epoch);
         lastCreatedInstance = instance;
         return instance;
     }

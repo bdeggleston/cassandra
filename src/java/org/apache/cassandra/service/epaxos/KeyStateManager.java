@@ -10,16 +10,12 @@ import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 
 import java.io.DataInput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
@@ -58,7 +54,7 @@ public class KeyStateManager
      * Returns an iterator of CfKeys of all keys owned by the given tokenState
      */
     // TODO: use token ranges instead of token state
-    public Iterator<CfKey> getCfKeyIterator(TokenState tokenState, final int limit)
+    public Iterator<CfKey> getCfKeyIterator(final TokenState tokenState, final int limit)
     {
         // TODO: bound token range
         // TODO: handle num rows > limit
@@ -68,21 +64,48 @@ public class KeyStateManager
         final Iterator<UntypedResultSet.Row> rowIterator = result.iterator();
         return new Iterator<CfKey>()
         {
+            private CfKey next = null;
+
             private CfKey fromRow(UntypedResultSet.Row row)
             {
                 return new CfKey(row.getBlob("row_key"), row.getUUID("cf_id"));
             }
 
+            private void maybeSetNext()
+            {
+                if (next != null) return;
+                while (rowIterator.hasNext())
+                {
+                    CfKey n = fromRow(rowIterator.next());
+                    if (n.cfId.equals(tokenState.getCfId()))
+                    {
+                        next = n;
+                        return;
+                    }
+                }
+            }
+
             @Override
             public boolean hasNext()
             {
-                return rowIterator.hasNext();
+                maybeSetNext();
+                return next != null;
             }
 
             @Override
             public CfKey next()
             {
-                return fromRow(rowIterator.next());
+                maybeSetNext();
+                if (next == null)
+                {
+                    throw new NoSuchElementException();
+                }
+                else
+                {
+                    CfKey n = next;
+                    next = null;
+                    return n;
+                }
             }
 
             @Override
@@ -105,8 +128,7 @@ public class KeyStateManager
         }
         else if (instance instanceof TokenInstance)
         {
-            Token token = instance.getToken();
-            TokenState tokenState = tokenStateManager.get(token); // FIXME: get from instance
+            TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
             Set<UUID> deps = new HashSet<>(tokenStateManager.getCurrentDependencies((TokenInstance) instance));
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
@@ -133,7 +155,7 @@ public class KeyStateManager
         {
             KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
             Set<UUID> deps = dm.getDepsAndAdd(instance.getId());
-            saveKeyState(cfKey.key, cfKey.cfId, dm);
+            saveKeyState(cfKey, dm);
 
             return deps;
         }
@@ -153,8 +175,7 @@ public class KeyStateManager
         }
         else if (instance instanceof TokenInstance)
         {
-            Token token = instance.getToken();
-            TokenState tokenState = tokenStateManager.get(token); // FIXME: get from instance
+            TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
             {
@@ -183,7 +204,7 @@ public class KeyStateManager
                 dm.markAcknowledged(instance.getDependencies(), instance.getId());
             }
 
-            saveKeyState(cfKey.key, cfKey.cfId, dm);
+            saveKeyState(cfKey, dm);
         }
         finally
         {
@@ -201,8 +222,7 @@ public class KeyStateManager
         }
         else if (instance instanceof TokenInstance)
         {
-            Token token = ((TokenInstance) instance).getToken();
-            TokenState tokenState = tokenStateManager.get(token); // FIXME: get from instance
+            TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
             {
@@ -224,7 +244,7 @@ public class KeyStateManager
         {
             KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
             dm.markAcknowledged(instance.getDependencies(), instance.getId());
-            saveKeyState(cfKey.key, cfKey.cfId, dm);
+            saveKeyState(cfKey, dm);
         }
         finally
         {
@@ -242,8 +262,7 @@ public class KeyStateManager
         }
         else if (instance instanceof TokenInstance)
         {
-            Token token = instance.getToken();
-            TokenState tokenState = tokenStateManager.get(token); // FIXME: get from instance
+            TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
             {
@@ -266,7 +285,7 @@ public class KeyStateManager
         {
             KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
             dm.markExecuted(instance.getId(), instance.getStronglyConnected());
-            saveKeyState(cfKey.key, cfKey.cfId, dm);
+            saveKeyState(cfKey, dm);
         }
         finally
         {
@@ -274,9 +293,9 @@ public class KeyStateManager
         }
     }
 
-    private void addTokenDeps(ByteBuffer key, KeyState keyState)
+    private void addTokenDeps(CfKey cfKey, KeyState keyState)
     {
-        for (UUID id: tokenStateManager.getCurrentTokenDependencies(key))
+        for (UUID id: tokenStateManager.getCurrentTokenDependencies(cfKey))
         {
             keyState.recordInstance(id);
         }
@@ -299,11 +318,11 @@ public class KeyStateManager
         if (results.isEmpty())
         {
 
-            dm = new KeyState(tokenStateManager.getEpoch(key));
+            dm = new KeyState(tokenStateManager.getEpoch(key, cfId));
 
             // add the current epoch dependencies if this is a new key
-            addTokenDeps(key, dm);
-            saveKeyState(key, cfId, dm);
+            addTokenDeps(cfKey, dm);
+            saveKeyState(cfKey, dm);
 
             cache.put(cfKey, dm);
             return dm;
@@ -325,6 +344,11 @@ public class KeyStateManager
         {
             throw new AssertionError(e);
         }
+    }
+
+    void saveKeyState(CfKey cfKey, KeyState dm)
+    {
+        saveKeyState(cfKey.key, cfKey.cfId, dm, true);
     }
 
     void saveKeyState(ByteBuffer key, UUID cfId, KeyState dm)
@@ -397,7 +421,7 @@ public class KeyStateManager
         {
             KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
             dm.setEpoch(epoch);
-            saveKeyState(cfKey.key, cfKey.cfId, dm);
+            saveKeyState(cfKey, dm);
         }
         finally
         {

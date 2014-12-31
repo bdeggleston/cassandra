@@ -8,6 +8,7 @@ import org.apache.cassandra.net.MessagingService;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.util.UUID;
 
 public class AcceptResponse extends AbstractEpochMessage
 {
@@ -15,9 +16,9 @@ public class AcceptResponse extends AbstractEpochMessage
     public final boolean success;
     public final int ballot;
 
-    public AcceptResponse(Token token, long epoch, boolean success, int ballot)
+    public AcceptResponse(Token token, UUID cfId, long epoch, boolean success, int ballot)
     {
-        super(token, epoch);
+        super(token, cfId, epoch);
         this.success = success;
         this.ballot = ballot;
     }
@@ -41,7 +42,7 @@ public class AcceptResponse extends AbstractEpochMessage
         public AcceptResponse deserialize(DataInput in, int version) throws IOException
         {
             AbstractEpochMessage epochInfo = AbstractEpochMessage.serializer.deserialize(in, version);
-            return new AcceptResponse(epochInfo.token, epochInfo.epoch, in.readBoolean(), in.readInt());
+            return new AcceptResponse(epochInfo.token, epochInfo.cfId, epochInfo.epoch, in.readBoolean(), in.readInt());
         }
 
         @Override

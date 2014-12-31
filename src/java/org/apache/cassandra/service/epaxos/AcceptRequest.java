@@ -11,6 +11,7 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 public class AcceptRequest extends AbstractEpochMessage
 {
@@ -19,9 +20,9 @@ public class AcceptRequest extends AbstractEpochMessage
     public final Instance instance;
     public final List<Instance> missingInstances;
 
-    public AcceptRequest(Token token, long epoch, Instance instance, List<Instance> missingInstances)
+    public AcceptRequest(Instance instance, long epoch, List<Instance> missingInstances)
     {
-        super(token, epoch);
+        super(instance.getToken(), instance.getCfId(), epoch);
         this.instance = instance;
         this.missingInstances = missingInstances != null ? missingInstances : Collections.<Instance>emptyList();
     }

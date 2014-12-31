@@ -38,8 +38,8 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
             return;
 
         TokenInstance instance = (TokenInstance) inst;
-        TokenState tokenState = state.tokenStateManager.get(instance.getToken());
-        long currentEpoch = state.tokenStateManager.getEpoch(instance.getToken());
+        TokenState tokenState = state.tokenStateManager.get(instance);
+        long currentEpoch = state.tokenStateManager.getEpoch(instance);
 
         if (instance.getEpoch() > currentEpoch + 1)
         {
@@ -87,7 +87,7 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
                 {
                     logger.debug("Preaccept dependencies agree for {}", instance.getId());
                     response = PreacceptResponse.success(instance.getToken(),
-                                                         state.getCurrentEpoch(instance.getToken()),
+                                                         state.getCurrentEpoch(instance),
                                                          instance);
                 }
                 else
@@ -96,14 +96,15 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
                     missingInstanceIds = Sets.difference(instance.getDependencies(), remoteInstance.getDependencies());
                     missingInstanceIds.remove(instance.getId());
                     response = PreacceptResponse.failure(instance.getToken(),
-                                                         state.getCurrentEpoch(instance.getToken()),
+                                                         state.getCurrentEpoch(instance),
                                                          instance);
                 }
             }
             catch (BallotException e)
             {
                 response = PreacceptResponse.ballotFailure(instance.getToken(),
-                                                           state.getCurrentEpoch(instance.getToken()),
+                                                           instance.getCfId(),
+                                                           state.getCurrentEpoch(instance),
                                                            e.localBallot);
             }
             catch (InvalidInstanceStateChange e)
@@ -114,7 +115,7 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
                 assert instance.getDependencies().equals(remoteInstance.getDependencies());
 
                 response = PreacceptResponse.success(instance.getToken(),
-                                                     state.getCurrentEpoch(instance.getToken()),
+                                                     state.getCurrentEpoch(instance),
                                                      instance);
             }
         }

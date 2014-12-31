@@ -357,6 +357,7 @@ public abstract class Instance
     public abstract Instance copyRemote();
     public abstract Type getType();
     public abstract Token getToken();
+    public abstract UUID getCfId();
 
     /**
      * Applies mutable non-dependency attributes from remote instance copies
@@ -370,7 +371,7 @@ public abstract class Instance
 
     public MessageOut<MessageEnvelope<Instance>> getMessage(MessagingService.Verb verb, long epoch)
     {
-        return new MessageOut<>(verb, new MessageEnvelope<>(getToken(), epoch, this), envelopeSerializer);
+        return new MessageOut<>(verb, new MessageEnvelope<>(getToken(), getCfId(), epoch, this), envelopeSerializer);
     }
 
     @Deprecated

@@ -20,20 +20,23 @@ import java.util.UUID;
 public class TokenInstance extends Instance
 {
     private final Token token;
+    private final UUID cfId;
     private final long epoch;
     private volatile boolean vetoed;
 
-    public TokenInstance(InetAddress leader, Token token, long epoch)
+    public TokenInstance(InetAddress leader, Token token, UUID cfId, long epoch)
     {
         super(leader);
         this.token = token;
+        this.cfId = cfId;
         this.epoch = epoch;
     }
 
-    public TokenInstance(UUID id, InetAddress leader, Token token, long epoch)
+    public TokenInstance(UUID id, InetAddress leader, Token token, UUID cfId, long epoch)
     {
         super(id, leader);
         this.token = token;
+        this.cfId = cfId;
         this.epoch = epoch;
     }
 
@@ -41,6 +44,7 @@ public class TokenInstance extends Instance
     {
         super(i);
         this.token = i.token;
+        this.cfId = i.cfId;
         this.epoch = i.epoch;
         this.vetoed = i.vetoed;
     }
@@ -54,7 +58,7 @@ public class TokenInstance extends Instance
     @Override
     public Instance copyRemote()
     {
-        Instance instance = new TokenInstance(this.id, this.leader, this.token, this.epoch);
+        Instance instance = new TokenInstance(this.id, this.leader, this.token, this.cfId, this.epoch);
         instance.ballot = ballot;
         instance.noop = noop;
         instance.successors = successors;
@@ -67,6 +71,12 @@ public class TokenInstance extends Instance
     public Token getToken()
     {
         return token;
+    }
+
+    @Override
+    public UUID getCfId()
+    {
+        return cfId;
     }
 
     public long getEpoch()
@@ -118,6 +128,7 @@ public class TokenInstance extends Instance
             UUIDSerializer.serializer.serialize(instance.getId(), out, version);
             CompactEndpointSerializationHelper.serialize(instance.getLeader(), out);
             Token.serializer.serialize(instance.token, out);
+            UUIDSerializer.serializer.serialize(instance.cfId, out, version);
             out.writeLong(instance.epoch);
             out.writeBoolean(instance.vetoed);
         }
@@ -127,7 +138,9 @@ public class TokenInstance extends Instance
         {
             TokenInstance instance = new TokenInstance(UUIDSerializer.serializer.deserialize(in, version),
                                                        CompactEndpointSerializationHelper.deserialize(in),
-                                                       Token.serializer.deserialize(in), in.readLong());
+                                                       Token.serializer.deserialize(in),
+                                                       UUIDSerializer.serializer.deserialize(in, version),
+                                                       in.readLong());
 
             instance.vetoed = in.readBoolean();
             return instance;
@@ -140,6 +153,7 @@ public class TokenInstance extends Instance
             size += UUIDSerializer.serializer.serializedSize(instance.getId(), version);
             size += CompactEndpointSerializationHelper.serializedSize(instance.getLeader());
             size += Token.serializer.serializedSize(instance.token, TypeSizes.NATIVE);
+            size += UUIDSerializer.serializer.serializedSize(instance.cfId, version);
             size += 8;
             size += 1;
             return size;
