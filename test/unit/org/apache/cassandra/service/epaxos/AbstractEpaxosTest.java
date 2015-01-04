@@ -125,7 +125,7 @@ public abstract class AbstractEpaxosTest
         return new MessageEnvelope<>(instance.getToken(), instance.getCfId(), epoch, instance);
     }
 
-    protected ThriftCASRequest getThriftCasRequest()
+    protected static ThriftCASRequest getThriftCasRequest()
     {
         ColumnFamily expected = ArrayBackedSortedColumns.factory.create("ks", thriftcf.cfName);
         expected.addColumn(CellNames.simpleDense(ByteBufferUtil.bytes("v")), ByteBufferUtil.bytes(2), 3L);
@@ -136,7 +136,7 @@ public abstract class AbstractEpaxosTest
         return new ThriftCASRequest(expected, updates);
     }
 
-    protected CQL3CasRequest getCqlCasRequest(int k, int v, ConsistencyLevel consistencyLevel)
+    protected static CQL3CasRequest getCqlCasRequest(int k, int v, ConsistencyLevel consistencyLevel)
     {
         try
         {
@@ -161,17 +161,17 @@ public abstract class AbstractEpaxosTest
             throw new AssertionError(e);
         }
     }
-    protected SerializedRequest newSerializedRequest(CASRequest request)
+    protected static SerializedRequest newSerializedRequest(CASRequest request)
     {
         return newSerializedRequest(request, ConsistencyLevel.SERIAL);
     }
 
-    protected SerializedRequest newSerializedRequest(CASRequest request, ConsistencyLevel consistencyLevel)
+    protected static SerializedRequest newSerializedRequest(CASRequest request, ConsistencyLevel consistencyLevel)
     {
         return newSerializedRequest(request, ByteBufferUtil.bytes(7), consistencyLevel);
     }
 
-    protected SerializedRequest newSerializedRequest(CASRequest request, ByteBuffer key, ConsistencyLevel consistencyLevel)
+    protected static SerializedRequest newSerializedRequest(CASRequest request, ByteBuffer key, ConsistencyLevel consistencyLevel)
     {
         SerializedRequest.Builder builder = SerializedRequest.builder();
         builder.casRequest(request);
@@ -182,18 +182,18 @@ public abstract class AbstractEpaxosTest
         return builder.build();
     }
 
-    protected SerializedRequest getSerializedThriftRequest()
+    protected static SerializedRequest getSerializedThriftRequest()
     {
         ThriftCASRequest casRequest = getThriftCasRequest();
         return newSerializedRequest(casRequest);
     }
 
-    protected SerializedRequest getSerializedCQLRequest(int k, int v)
+    protected static SerializedRequest getSerializedCQLRequest(int k, int v)
     {
         return getSerializedCQLRequest(k, v, ConsistencyLevel.SERIAL);
     }
 
-    protected SerializedRequest getSerializedCQLRequest(int k, int v, ConsistencyLevel cl)
+    protected static SerializedRequest getSerializedCQLRequest(int k, int v, ConsistencyLevel cl)
     {
         CQL3CasRequest casRequest = getCqlCasRequest(k, v, cl);
         return newSerializedRequest(casRequest, casRequest.getKey(), cl);
