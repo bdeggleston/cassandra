@@ -2,7 +2,6 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Sets;
 import org.apache.cassandra.db.ConsistencyLevel;
-import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
@@ -18,14 +17,7 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
 
     public AcceptCallback getCallback(EpaxosState state, Instance instance, Runnable failureCallback)
     {
-        try
-        {
-            return new AcceptCallback(state, instance, state.getParticipants(instance), failureCallback);
-        }
-        catch (UnavailableException e)
-        {
-            throw new AssertionError(e);
-        }
+        return new AcceptCallback(state, instance, state.getParticipants(instance), failureCallback);
     }
 
     public MessageIn<AcceptResponse> createResponse(InetAddress from, AcceptResponse response)

@@ -20,6 +20,7 @@ import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
@@ -99,7 +100,7 @@ public class EpaxosState
         public final int quorumSize;
         public final int fastQuorumSize;
 
-        public ParticipantInfo(List<InetAddress> endpoints, List<InetAddress> remoteEndpoints, ConsistencyLevel cl) throws UnavailableException
+        public ParticipantInfo(List<InetAddress> endpoints, List<InetAddress> remoteEndpoints, ConsistencyLevel cl)
         {
             this.endpoints = endpoints;
             this.liveEndpoints = ImmutableList.copyOf(Iterables.filter(endpoints, livePredicate()));
@@ -113,11 +114,25 @@ public class EpaxosState
             F = N / 2;
             quorumSize = F + 1;
             fastQuorumSize = F + ((F + 1) / 2);
+        }
 
-            // FIXME: don't do this here
-            if (liveEndpoints.size() < quorumSize)
-                throw new UnavailableException(cl, quorumSize, liveEndpoints.size());
+        /**
+         * returns true or false, depending on whether the number of
+         * live endpoints satisfies a quorum or not
+         */
+        public boolean quorumExists()
+        {
+            return liveEndpoints.size() >= quorumSize;
+        }
 
+        /**
+         * Throws an UnavailableException if a quorum isn't present
+         * @throws UnavailableException
+         */
+        public void quorumExistsOrDie() throws UnavailableException
+        {
+            if (!quorumExists())
+                throw new UnavailableException(consistencyLevel, quorumSize, liveEndpoints.size());
         }
 
         public List<InetAddress> getSuccessors()
@@ -293,15 +308,8 @@ public class EpaxosState
         instance.incrementBallot();
 
         ParticipantInfo participantInfo;
-        try
-        {
-            // TODO: should we check instance status, and bail out / call the callback if the instance is committed?
-            participantInfo = getParticipants(instance);
-        }
-        catch (UnavailableException e)
-        {
-            throw new RuntimeException(e);
-        }
+        // TODO: should we check instance status, and bail out / call the callback if the instance is committed?
+        participantInfo = getParticipants(instance);
 
         AcceptCallback callback = getAcceptCallback(instance, participantInfo, failureCallback);
         for (InetAddress endpoint : participantInfo.liveEndpoints)
@@ -399,7 +407,7 @@ public class EpaxosState
                 sendOneWay(message, endpoint);
             }
         }
-        catch (UnavailableException e)
+        catch (InvalidInstanceStateChange  e)
         {
             throw new RuntimeException(e);
         }
@@ -854,7 +862,7 @@ public class EpaxosState
         return FBUtilities.getBroadcastAddress();
     }
 
-    protected ParticipantInfo getParticipants(Instance instance) throws UnavailableException
+    protected ParticipantInfo getParticipants(Instance instance)
     {
         if (instance instanceof QueryInstance)
         {
@@ -870,7 +878,7 @@ public class EpaxosState
         }
     }
 
-    protected ParticipantInfo getQueryParticipants(QueryInstance instance) throws UnavailableException
+    protected ParticipantInfo getQueryParticipants(QueryInstance instance)
     {
         SerializedRequest query = instance.getQuery();
 
@@ -893,7 +901,7 @@ public class EpaxosState
         return new ParticipantInfo(endpoints, remoteEndpoints, query.getConsistencyLevel());
     }
 
-    protected ParticipantInfo getTokenParticipants(TokenInstance instance) throws UnavailableException
+    protected ParticipantInfo getTokenParticipants(TokenInstance instance)
     {
         // TODO: this
         throw new AssertionError();

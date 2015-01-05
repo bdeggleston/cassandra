@@ -18,19 +18,10 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
 
     public PrepareCallback getCallback(EpaxosState state, Instance instance)
     {
-        try
-        {
-            return new PrepareCallback(state,
-                                       instance,
-                                       state.getParticipants(instance),
-                                       new PrepareGroup(state,
-                                                        UUIDGen.getTimeUUID(),
-                                                        Sets.newHashSet(instance.getId())));
-        }
-        catch (UnavailableException e)
-        {
-            throw new AssertionError(e);
-        }
+        return new PrepareCallback(state,
+                                   instance,
+                                   state.getParticipants(instance),
+                                   new PrepareGroup(state, UUIDGen.getTimeUUID(), Sets.newHashSet(instance.getId())));
     }
     public MessageIn<MessageEnvelope<Instance>> createResponse(InetAddress from, Instance instance)
     {
