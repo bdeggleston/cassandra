@@ -175,13 +175,13 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected ParticipantInfo getQueryParticipants(QueryInstance instance) throws UnavailableException
+    protected ParticipantInfo getQueryParticipants(QueryInstance instance)
     {
         return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, instance.getQuery().getConsistencyLevel());
     }
 
     @Override
-    protected ParticipantInfo getTokenParticipants(TokenInstance instance) throws UnavailableException
+    protected ParticipantInfo getTokenParticipants(TokenInstance instance)
     {
         return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, ConsistencyLevel.SERIAL);
     }

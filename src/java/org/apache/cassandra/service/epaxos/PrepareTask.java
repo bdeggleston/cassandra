@@ -85,14 +85,7 @@ public class PrepareTask implements Runnable, ICommitCallback
 
         instance.incrementBallot();
         EpaxosState.ParticipantInfo participantInfo;
-        try
-        {
-            participantInfo = state.getParticipants(instance);
-        }
-        catch (UnavailableException e)
-        {
-            throw new RuntimeException(e);
-        }
+        participantInfo = state.getParticipants(instance);
 
         PrepareRequest request = new PrepareRequest(instance.getToken(), instance.getCfId(), state.getCurrentEpoch(instance), instance);
         PrepareCallback callback = state.getPrepareCallback(instance, participantInfo, group);

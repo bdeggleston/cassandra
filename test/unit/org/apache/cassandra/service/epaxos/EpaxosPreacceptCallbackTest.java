@@ -18,14 +18,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
 {
     public PreacceptCallback getCallback(EpaxosState state, Instance instance, Runnable failureCallback, boolean forceAccept)
     {
-        try
-        {
-            return new PreacceptCallback(state, instance, state.getParticipants(instance), failureCallback, forceAccept);
-        }
-        catch (UnavailableException e)
-        {
-            throw new AssertionError(e);
-        }
+        return new PreacceptCallback(state, instance, state.getParticipants(instance), failureCallback, forceAccept);
     }
 
     public MessageIn<PreacceptResponse> createResponse(InetAddress from, PreacceptResponse response)

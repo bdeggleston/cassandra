@@ -54,6 +54,8 @@ public abstract class PreacceptTask implements Runnable
             }
 
             participantInfo = state.getParticipants(instance);
+            participantInfo.quorumExistsOrDie();
+
             instance.preaccept(state.getCurrentDependencies(instance));
             if (instance.getSuccessors() == null)
                 instance.setSuccessors(participantInfo.getSuccessors());

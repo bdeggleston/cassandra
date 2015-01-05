@@ -2,7 +2,6 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Sets;
 import org.apache.cassandra.dht.Token;
-import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
@@ -18,19 +17,10 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
 
     public PrepareCallback getCallback(EpaxosState state, Instance instance)
     {
-        try
-        {
-            return new PrepareCallback(state,
-                                       instance,
-                                       state.getParticipants(instance),
-                                       new PrepareGroup(state,
-                                                        UUIDGen.getTimeUUID(),
-                                                        Sets.newHashSet(instance.getId())));
-        }
-        catch (UnavailableException e)
-        {
-            throw new AssertionError(e);
-        }
+        return new PrepareCallback(state,
+                                   instance,
+                                   state.getParticipants(instance),
+                                   new PrepareGroup(state, UUIDGen.getTimeUUID(), Sets.newHashSet(instance.getId())));
     }
     public MessageIn<MessageEnvelope<Instance>> createResponse(InetAddress from, Instance instance)
     {
