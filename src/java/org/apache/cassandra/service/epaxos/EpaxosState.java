@@ -372,6 +372,14 @@ public class EpaxosState
         {
             Instance instance = getInstanceCopy(iid);
             instance.incrementBallot();
+            if (instance.getState() == Instance.State.EXECUTED)
+            {
+                assert instance.getDependencies().equals(dependencies);
+            }
+            else
+            {
+                instance.commit(dependencies);
+            }
 
             // FIXME: unavailable exception shouldn't be thrown by getParticipants. It will prevent instances from being committed locally
             ParticipantInfo participantInfo = getParticipants(instance);
