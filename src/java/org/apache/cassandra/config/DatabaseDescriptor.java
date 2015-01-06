@@ -998,6 +998,7 @@ public class DatabaseDescriptor
             case EPAXOS_COMMIT:
             case EPAXOS_PREPARE:
             case EPAXOS_TRYPREACCEPT:
+            case EPAXOS_READ_REPAIR:
                 return getWriteRpcTimeout();
             case COUNTER_MUTATION:
                 return getCounterWriteRpcTimeout();

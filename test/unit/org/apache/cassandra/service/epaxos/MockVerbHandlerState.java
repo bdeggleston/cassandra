@@ -136,4 +136,10 @@ public class MockVerbHandlerState extends EpaxosState
     {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    protected void scheduleTokenStateMaintenanceTask()
+    {
+        // no-op
+    }
 }

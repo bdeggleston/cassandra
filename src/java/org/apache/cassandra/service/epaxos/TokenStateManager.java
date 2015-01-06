@@ -174,7 +174,6 @@ public class TokenStateManager
     }
 
     // TODO: handle changes to the token ring
-    // TODO: manage epochs by cfId?
     // TODO: should there be something like prepare successors to prevent multiple nodes doing redundant increments?
 
     /**
@@ -185,8 +184,21 @@ public class TokenStateManager
      */
     public void reportExecution(Token token, UUID cfId)
     {
-        // TODO: we shouldn't need to synchronize anything here because the execution algorithm does that, right?
         TokenState ts = get(token, cfId);
-        ts.recordExecution();
+        ts.rwLock.writeLock().lock();
+        try
+        {
+            ts.recordExecution();
+            save(ts);
+        }
+        finally
+        {
+            ts.rwLock.writeLock().unlock();
+        }
+    }
+
+    public boolean managesCfId(UUID cfId)
+    {
+        return tokenStates.containsKey(cfId);
     }
 }

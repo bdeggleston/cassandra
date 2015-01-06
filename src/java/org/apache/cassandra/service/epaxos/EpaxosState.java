@@ -22,6 +22,7 @@ import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.Pair;
 import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +57,7 @@ public class EpaxosState
     // epoch before the epoch is incremented
     protected static final int EPOCH_INCREMENT_THRESHOLD = 100;
 
-//    private static boolean CACHE = Boolean.getBoolean("cassandra.epaxos.cache");
+    //    private static boolean CACHE = Boolean.getBoolean("cassandra.epaxos.cache");
     private static boolean CACHE = true;
 
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
@@ -127,6 +128,7 @@ public class EpaxosState
 
         /**
          * Throws an UnavailableException if a quorum isn't present
+         *
          * @throws UnavailableException
          */
         public void quorumExistsOrDie() throws UnavailableException
@@ -297,7 +299,7 @@ public class EpaxosState
 
         // get missing instances
         Map<InetAddress, List<Instance>> missingInstances = new HashMap<>();
-        for (Map.Entry<InetAddress, Set<UUID>> entry: decision.missingInstances.entrySet())
+        for (Map.Entry<InetAddress, Set<UUID>> entry : decision.missingInstances.entrySet())
         {
             missingInstances.put(entry.getKey(), Lists.newArrayList(Iterables.filter(getInstanceCopies(entry.getValue()),
                                                                                      Instance.skipPlaceholderPredicate)));
@@ -322,7 +324,7 @@ public class EpaxosState
         }
 
         // send to remote datacenters for LOCAL_SERIAL queries
-        for (InetAddress endpoint: participantInfo.remoteEndpoints)
+        for (InetAddress endpoint : participantInfo.remoteEndpoints)
         {
             logger.debug("sending accept request to non-local dc {} for instance {}", endpoint, instance.getId());
             AcceptRequest request = new AcceptRequest(instance,
@@ -339,7 +341,7 @@ public class EpaxosState
 
     /**
      * notifies threads waiting on this commit
-     *
+     * <p/>
      * must be called with this instances's write lock held
      */
     public void notifyCommit(UUID id)
@@ -347,7 +349,7 @@ public class EpaxosState
         List<ICommitCallback> callbacks = commitCallbacks.get(id);
         if (callbacks != null)
         {
-            for (ICommitCallback cb: callbacks)
+            for (ICommitCallback cb : callbacks)
             {
                 cb.instanceCommitted(id);
             }
@@ -356,7 +358,7 @@ public class EpaxosState
 
     /**
      * Registers an implementation of ICommitCallback to be notified when an instance is committed
-     *
+     * <p/>
      * The caller should have the instances read or write lock held when registering.
      */
     public void registerCommitCallback(UUID id, ICommitCallback callback)
@@ -383,8 +385,7 @@ public class EpaxosState
             if (instance.getState() == Instance.State.EXECUTED)
             {
                 assert instance.getDependencies().equals(dependencies);
-            }
-            else
+            } else
             {
                 instance.commit(dependencies);
             }
@@ -400,14 +401,14 @@ public class EpaxosState
             }
 
             // send to remote datacenters for LOCAL_SERIAL queries
-            for (InetAddress endpoint: participantInfo.remoteEndpoints)
+            for (InetAddress endpoint : participantInfo.remoteEndpoints)
             {
                 // TODO: skip dead nodes
                 logger.debug("sending commit request to non-local dc {} for instance {}", endpoint, instance.getId());
                 sendOneWay(message, endpoint);
             }
         }
-        catch (InvalidInstanceStateChange  e)
+        catch (InvalidInstanceStateChange e)
         {
             throw new RuntimeException(e);
         }
@@ -428,12 +429,10 @@ public class EpaxosState
         if (instance instanceof QueryInstance)
         {
             executeQueryInstance((QueryInstance) instance);
-        }
-        else if (instance instanceof TokenInstance)
+        } else if (instance instanceof TokenInstance)
         {
             executeTokenInstance((TokenInstance) instance);
-        }
-        else
+        } else
         {
             throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
         }
@@ -546,17 +545,17 @@ public class EpaxosState
     /**
      * The TryPreaccept phase is the part of failure recovery that makes committing on the
      * fast path of F + ((F + 1) / 2) possible.
-     *
+     * <p/>
      * The test case EpaxosIntegrationRF3Test.inferredFastPathFailedLeaderRecovery demonstrates
      * a scenario that you can't get out of without first running a TryPreaccept.
-     *
+     * <p/>
      * TryPreaccept is basically determining if an instance could have been committed on the fast
      * path, based on responses from only a quorum of replicas.
-     *
+     * <p/>
      * If the highest instance state a prepare phase encounters is PREACCEPTED, PrepareCallback.getTryPreacceptAttempts
      * will identify any dependency sets that are shared by at least (F + 1) / 2 replicas, who are not the command
      * leader.
-     *
+     * <p/>
      * The preparer will then try to convince the other replicas to preaccept this group of dependencies for the instance
      * being prepared. The other replicas will preaccept with the suggested dependencies if all of their active instances
      * are either in the preparing instance's dependencies or have the preparing instance in theirs.
@@ -590,7 +589,7 @@ public class EpaxosState
         MessageOut<TryPreacceptRequest> message = request.getMessage();
 
         TryPreacceptCallback callback = getTryPreacceptCallback(iid, attempt, nextAttempts, participantInfo, failureCallback);
-        for (InetAddress endpoint: attempt.toConvince)
+        for (InetAddress endpoint : attempt.toConvince)
         {
             logger.debug("sending trypreaccept request to {} for instance {}", endpoint, iid);
             sendRR(message, endpoint, callback);
@@ -740,6 +739,56 @@ public class EpaxosState
     {
         // TODO: track failure recoveries in-progress so we don't DOS the other node
         throw new NotImplementedException();
+    }
+
+    // repair support
+    public boolean managesCfId(UUID cfId)
+    {
+        return tokenStateManager.managesCfId(cfId);
+    }
+
+    /**
+     * Returns a tuple containing the current epoch, and instances executed in the current epoch for the given key/cfId
+     */
+    public ExecutionInfo getEpochExecutionInfo(ByteBuffer key, UUID cfId)
+    {
+        if (!managesCfId(cfId))
+        {
+            return null;
+        }
+        CfKey cfKey = new CfKey(key, cfId);
+        Lock lock = keyStateManager.getCfKeyLock(cfKey);
+        lock.lock();
+        try
+        {
+            KeyState keyState = keyStateManager.loadKeyState(key, cfId);
+            return keyState != null ? new ExecutionInfo(keyState.getEpoch(), keyState.getExecutionCount()) : null;
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * Determines if a repair can be applied to a key.
+     */
+    public boolean canApplyRepair(ByteBuffer key, UUID cfId, long epoch, long executionCount)
+    {
+        ExecutionInfo local = getEpochExecutionInfo(key, cfId);
+
+        if (local == null || local.epoch > epoch)
+        {
+            return true;
+        }
+        else if (local.epoch == epoch)
+        {
+            return local.executed >= executionCount;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     // TODO: consider only sending a missing instance if it's older than some threshold. Should keep message size down

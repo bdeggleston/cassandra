@@ -281,6 +281,14 @@ public class KeyState
         return executionCount;
     }
 
+    // for testing only
+    @VisibleForTesting
+    void setExecutionCount(long executionCount)
+    {
+        this.executionCount = executionCount;
+    }
+
+
     /**
      * returns a map of epochs older than the given value, and
      * the instances contained in them. Since this is used for

@@ -238,7 +238,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         /* register the verb handlers */
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.MUTATION, new MutationVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.READ_REPAIR, new ReadRepairVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.READ_REPAIR, new ReadRepairVerbHandler.Normal());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.READ, new ReadVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.RANGE_SLICE, new RangeSliceVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.PAGED_RANGE, new RangeSliceVerbHandler());
@@ -271,6 +271,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_COMMIT, EpaxosState.instance.getCommitVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREPARE, EpaxosState.instance.getPrepareVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_TRYPREACCEPT, EpaxosState.instance.getTryPreacceptVerbHandler());
+
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_READ_REPAIR, new ReadRepairVerbHandler.Epaxos(EpaxosState.instance));
     }
 
     public void registerDaemon(CassandraDaemon daemon)

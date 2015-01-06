@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.Iterables;
@@ -31,6 +32,8 @@ import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.net.*;
+import org.apache.cassandra.service.epaxos.EpaxosState;
+import org.apache.cassandra.service.epaxos.ExecutionInfo;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -118,10 +121,33 @@ public class RowDataResolver extends AbstractRowResolver
 
             // create and send the mutation message based on the diff
             Mutation mutation = new Mutation(keyspaceName, key.getKey(), diffCf);
+
+            assert mutation.getColumnFamilyIds().size() == 1;
+            UUID cfId = mutation.getColumnFamilyIds().iterator().next();
+
+            ExecutionInfo epaxosInfo = EpaxosState.instance.getEpochExecutionInfo(mutation.key(), cfId);
+
             // use a separate verb here because we don't want these to be get the white glove hint-
             // on-timeout behavior that a "real" mutation gets
-            results.add(MessagingService.instance().sendRR(mutation.createMessage(MessagingService.Verb.READ_REPAIR),
-                                                           endpoints.get(i)));
+            if (epaxosInfo != null)
+            {
+
+                // we need to send the current state of this key in epaxos to prevent the repairee from becoming inconsistent
+                MessageOut<ExecutionInfo.Tuple<Mutation>> msg = new MessageOut<>(MessagingService.Verb.EPAXOS_READ_REPAIR,
+                                                                                 new ExecutionInfo.Tuple<>(epaxosInfo, mutation),
+                                                                                 ReadRepairVerbHandler.Epaxos.serializer);
+                results.add(MessagingService.instance().sendRR(msg, endpoints.get(i)));
+
+                if (logger.isDebugEnabled())
+                {
+                    logger.debug("Sending epaxos read repair for to {}", endpoints.get(i));
+                }
+            }
+            else
+            {
+                results.add(MessagingService.instance().sendRR(mutation.createMessage(MessagingService.Verb.READ_REPAIR),
+                                                               endpoints.get(i)));
+            }
         }
 
         return results;
