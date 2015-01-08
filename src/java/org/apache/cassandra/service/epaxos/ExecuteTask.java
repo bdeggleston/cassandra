@@ -1,5 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
+import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
@@ -69,11 +70,13 @@ public class ExecuteTask implements Runnable
 
                     assert toExecute.getState() == Instance.State.COMMITTED;
 
+                    // TODO: maybe block flush
+                    ReplayPosition position = null;
                     try
                     {
                         if (!instance.skipExecution())
                         {
-                            state.executeInstance(toExecute);
+                            position = state.executeInstance(toExecute);
                         }
                     }
                     catch (InvalidRequestException | WriteTimeoutException | ReadTimeoutException e)
@@ -81,7 +84,7 @@ public class ExecuteTask implements Runnable
                         throw new RuntimeException(e);
                     }
                     toExecute.setExecuted();
-                    state.recordExecuted(toExecute);
+                    state.recordExecuted(toExecute, position);
                     state.saveInstance(toExecute);
 
                     // TODO: why not just eagerly execute everything?

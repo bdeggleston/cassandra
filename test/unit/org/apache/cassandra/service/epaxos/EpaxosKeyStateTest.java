@@ -2,6 +2,7 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
@@ -11,6 +12,7 @@ import java.util.*;
 public class EpaxosKeyStateTest
 {
     private static final Set<UUID> EMPTY = Sets.newHashSet();
+    private static final ReplayPosition REPLAY_POS = new ReplayPosition(1, 2);
 
     /**
      * Tests that dependencies are evicted once they've
@@ -36,7 +38,7 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(expected, dm.getDepsAndAdd(dep2));
 
         UUID dep3 = UUIDGen.getTimeUUID();
-        dm.markExecuted(dep0, EMPTY);
+        dm.markExecuted(dep0, EMPTY, REPLAY_POS);
         Assert.assertNull(dm.get(dep0));
 
         expected.add(dep2);
@@ -58,7 +60,7 @@ public class EpaxosKeyStateTest
         UUID dep1 = UUIDGen.getTimeUUID();
 
         KeyState.Entry entry = dm.recordInstance(dep0);
-        dm.markExecuted(dep0, Sets.newHashSet(dep0, dep1));
+        dm.markExecuted(dep0, Sets.newHashSet(dep0, dep1), REPLAY_POS);
         Assert.assertEquals(Sets.newHashSet(dep1), entry.stronglyConnected);
     }
 
@@ -81,7 +83,7 @@ public class EpaxosKeyStateTest
         {
             dm.recordInstance(id);
             Assert.assertNotNull(dm.get(id));
-            dm.markExecuted(id, Sets.newHashSet(ids));
+            dm.markExecuted(id, Sets.newHashSet(ids), REPLAY_POS);
             dm.markAcknowledged(Sets.newHashSet(ids), id);
         }
 
@@ -103,7 +105,7 @@ public class EpaxosKeyStateTest
         dm.recordInstance(dep0);
         Assert.assertNotNull(dm.get(dep0));
 
-        dm.markExecuted(dep0, Sets.newHashSet(dep0, dep1));
+        dm.markExecuted(dep0, Sets.newHashSet(dep0, dep1), REPLAY_POS);
         dm.markAcknowledged(Sets.newHashSet(dep0), dep2);
 
         Assert.assertNull(dm.get(dep0));
@@ -132,8 +134,8 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(1, entry.acknowledged.size());
         Assert.assertTrue(entry.acknowledged.contains(dep2));
 
-        dm.markExecuted(dep0, EMPTY);
-        dm.markExecuted(dep1, EMPTY);
+        dm.markExecuted(dep0, EMPTY, null);
+        dm.markExecuted(dep1, EMPTY, REPLAY_POS);
 
         Assert.assertNull(dm.get(dep0));
         Assert.assertNull(dm.get(dep1));
@@ -191,7 +193,7 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(0, dm.getEpoch());
         Assert.assertEquals(0, dm.getExecutionCount());
 
-        dm.markExecuted(dep, EMPTY);
+        dm.markExecuted(dep, EMPTY, REPLAY_POS);
         Assert.assertEquals(1, dm.getExecutionCount());
     }
 
@@ -207,7 +209,7 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(0, dm.getEpoch());
         Assert.assertEquals(0, dm.getExecutionCount());
 
-        dm.markExecuted(dep, EMPTY);
+        dm.markExecuted(dep, EMPTY, REPLAY_POS);
         Assert.assertEquals(1, dm.getExecutionCount());
 
         dm.setEpoch(1);
@@ -234,11 +236,11 @@ public class EpaxosKeyStateTest
         UUID dep3 = UUIDGen.getTimeUUID();
 
         dm.setEpoch(1);
-        dm.markExecuted(dep1, EMPTY);
+        dm.markExecuted(dep1, EMPTY, REPLAY_POS);
 
         dm.setEpoch(2);
-        dm.markExecuted(dep2, EMPTY);
-        dm.markExecuted(dep3, EMPTY);
+        dm.markExecuted(dep2, EMPTY, REPLAY_POS);
+        dm.markExecuted(dep3, EMPTY, REPLAY_POS);
 
         Map<Long, Set<UUID>> executions = dm.getEpochExecutions();
         Assert.assertNull(executions.get((long)0));
@@ -254,9 +256,9 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(2, dm.getExecutionCount());
 
         UUID dep = UUIDGen.getTimeUUID();
-        dm.markExecuted(dep, EMPTY);
+        dm.markExecuted(dep, EMPTY, REPLAY_POS);
         Assert.assertEquals(3, dm.getExecutionCount());
-        dm.markExecuted(dep, EMPTY);
+        dm.markExecuted(dep, EMPTY, REPLAY_POS);
         Assert.assertEquals(3, dm.getExecutionCount());
     }
 
@@ -271,7 +273,7 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(0, dm.getEpoch());
         Assert.assertEquals(0, dm.getExecutionCount());
 
-        dm.markExecuted(dep, EMPTY);
+        dm.markExecuted(dep, EMPTY, REPLAY_POS);
         Assert.assertEquals(1, dm.getExecutionCount());
     }
 
@@ -289,7 +291,7 @@ public class EpaxosKeyStateTest
             assert keyState.getEpoch() == i;
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id, EMPTY);
+                keyState.markExecuted(id, EMPTY, REPLAY_POS);
                 ids.add(id);
             }
             assert keyState.getExecutionCount() == 2;
@@ -318,7 +320,7 @@ public class EpaxosKeyStateTest
             assert keyState.getEpoch() == i;
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id, EMPTY);
+                keyState.markExecuted(id, EMPTY, REPLAY_POS);
             }
             assert keyState.getExecutionCount() == 2;
         }
@@ -340,7 +342,7 @@ public class EpaxosKeyStateTest
             assert keyState.getEpoch() == i;
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id, EMPTY);
+                keyState.markExecuted(id, EMPTY, REPLAY_POS);
                 if (i == currentEpoch)
                 {
                     // if this is the 'current' or previous epoch, set the dependency as active
@@ -365,7 +367,7 @@ public class EpaxosKeyStateTest
             keyState.setEpoch(i);
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id, EMPTY);
+                keyState.markExecuted(id, EMPTY, REPLAY_POS);
                 if (i == currentEpoch - 1)
                 {
                     // if this is the 'current' epoch, set the dependency as active
@@ -375,6 +377,35 @@ public class EpaxosKeyStateTest
         }
 
         Assert.assertFalse(keyState.canIncrementToEpoch(targetEpoch));
+    }
+
+    /**
+     * Checks that the correct epoch/exec# can be determined from a replay position
+     */
+    @Test
+    public void getExecInfoFromReplayPosition() throws Exception
+    {
+        KeyState dm = new KeyState(0);
+
+        Assert.assertEquals(0, dm.getEpoch());
+
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, new ReplayPosition(0, 1));
+
+        dm.setEpoch(1);
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null);
+
+        dm.setEpoch(2);
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, new ReplayPosition(1, 0));
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, new ReplayPosition(1, 5));
+
+        Assert.assertEquals(new ExecutionInfo(0, 0), dm.getExecutionInfoAtPosition(new ReplayPosition(0, 0)));
+        Assert.assertEquals(new ExecutionInfo(0, 1), dm.getExecutionInfoAtPosition(new ReplayPosition(0, 1)));
+        Assert.assertEquals(new ExecutionInfo(0, 1), dm.getExecutionInfoAtPosition(new ReplayPosition(0, 199)));
+        Assert.assertEquals(new ExecutionInfo(2, 1), dm.getExecutionInfoAtPosition(new ReplayPosition(1, 0)));
+        Assert.assertEquals(new ExecutionInfo(2, 1), dm.getExecutionInfoAtPosition(new ReplayPosition(1, 1)));
+        Assert.assertEquals(new ExecutionInfo(2, 2), dm.getExecutionInfoAtPosition(new ReplayPosition(1, 10)));
+
+
     }
 }
 

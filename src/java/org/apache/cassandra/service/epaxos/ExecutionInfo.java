@@ -17,6 +17,37 @@ public class ExecutionInfo
         this.executed = executed;
     }
 
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ExecutionInfo info = (ExecutionInfo) o;
+
+        if (epoch != info.epoch) return false;
+        if (executed != info.executed) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+        int result = (int) (epoch ^ (epoch >>> 32));
+        result = 31 * result + (int) (executed ^ (executed >>> 32));
+        return result;
+    }
+
+    @Override
+    public String toString()
+    {
+        return "ExecutionInfo{" +
+                "epoch=" + epoch +
+                ", executed=" + executed +
+                '}';
+    }
+
     public static final IVersionedSerializer<ExecutionInfo> serializer = new IVersionedSerializer<ExecutionInfo>()
     {
         @Override

@@ -337,6 +337,17 @@ public abstract class Instance
         logger.debug("committed: {}", this);
     }
 
+    /**
+     * sets an executed remote instance to committed. Only used when adding missing instances
+     */
+    public void commitRemote()
+    {
+        if (state.atLeast(State.EXECUTED))
+        {
+            state = State.COMMITTED;
+        }
+    }
+
     public void setExecuted()
     {
         try

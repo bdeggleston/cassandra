@@ -2,8 +2,11 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
+import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDSerializer;
 
 import java.io.DataInput;
@@ -30,13 +33,14 @@ import java.util.*;
  *
  * To prevent the problems created by strongly connected components, acknowledgements from other instances
  * in the component are allowed to evict instances in the component, with the exception of the last instance
- * in the sorted instances. This instance must be acknowledged by an instance outside of the component.
+ * in the sorted component. This instance must be acknowledged by an instance outside of the component.
  *
  * A side effect of needing to know what's in a strongly connected component is that instances must be
  * executed themselves before they can be evicted.
  */
 public class KeyState
 {
+    // TODO: should epochs be kept around after gc if they haven't been flushed
     static class Entry
     {
         private final UUID iid;
@@ -129,7 +133,7 @@ public class KeyState
     private final Map<UUID, Entry> entries = new HashMap<>();
 
     // ids of executed instances, divided into execution epochs:w
-    private final Map<Long, Set<UUID>> epochs = new HashMap<>();
+    private final Map<Long, EpochExecutionInfo> epochs = new HashMap<>();
 
     private long epoch;
     private long executionCount;
@@ -223,7 +227,7 @@ public class KeyState
         }
     }
 
-    public void markExecuted(UUID iid, Set<UUID> stronglyConnected)
+    public void markExecuted(UUID iid, Set<UUID> stronglyConnected, ReplayPosition position)
     {
         Entry entry = get(iid);
         if (entry != null)
@@ -236,19 +240,71 @@ public class KeyState
         // they could all acknowledge each other, and would terminate
         // the execution chain once executed.
 
-        Set<UUID> epochSet = epochs.get(epoch);
-        if (epochSet == null)
+        EpochExecutionInfo info = epochs.get(epoch);
+        if (info == null)
         {
-            epochSet = new HashSet<>();
-            epochs.put(epoch, epochSet);
+            info = new EpochExecutionInfo();
+            epochs.put(epoch, info);
         }
-        if (!epochSet.contains(iid))
+        if (!info.contains(iid))
         {
             executionCount++;
-            epochSet.add(iid);
+            info.add(iid, position);
         }
 
         maybeEvict(iid);
+    }
+
+    /**
+     * Return the latest possible local execution point for the given replay position
+     */
+    public ExecutionInfo getExecutionInfoAtPosition(ReplayPosition rp)
+    {
+        List<Long> recordedEpochs = Lists.newArrayList(epochs.keySet());
+        Collections.sort(recordedEpochs);
+        recordedEpochs = Lists.reverse(recordedEpochs);
+
+        ExecutionInfo position = new ExecutionInfo(getEpoch(), getExecutionCount());
+        for (long ep: recordedEpochs)
+        {
+            EpochExecutionInfo executionInfo = epochs.get(ep);
+
+            ReplayPosition min = executionInfo.min;
+            ReplayPosition max = executionInfo.min;
+
+            if (min == null)
+            {
+                // no mutations for this epoch
+                continue;
+            }
+
+            if (min.compareTo(rp) <= 0)
+            {
+                // this epoch's min replay position is less than the
+                // one we're looking for. Since we're going through the
+                // epochs backwards, the one we're looking for is in here
+                Iterator<Pair<UUID, ReplayPosition>> iter = executionInfo.executed.iterator();
+                long execPos = 0;
+                while (iter.hasNext())
+                {
+                    ReplayPosition here = iter.next().right;
+                    if (here != null && here.compareTo(rp) > 0)
+                    {
+                        break;
+                    }
+                    execPos++;
+                }
+                return new ExecutionInfo(ep, execPos);
+            }
+            else
+            {
+                // if the next epoch has no mutations, we consider the
+                // replay position to match the beginning of this epoch
+                position = new ExecutionInfo(ep, 0);
+            }
+        }
+
+        return position;
     }
 
     public long getEpoch()
@@ -259,7 +315,12 @@ public class KeyState
     @VisibleForTesting
     public Map<Long, Set<UUID>> getEpochExecutions()
     {
-        return epochs;
+        Map<Long, Set<UUID>> m = new HashMap<>();
+        for (Map.Entry<Long, EpochExecutionInfo> entry: epochs.entrySet())
+        {
+            m.put(entry.getKey(), entry.getValue().idSet);
+        }
+        return m;
     }
 
     public void setEpoch(long epoch)
@@ -308,11 +369,11 @@ public class KeyState
     private Map<Long, Set<UUID>> getEpochsOlderThanUnsafe(Long e)
     {
         Map<Long, Set<UUID>> rmap = new HashMap<>(epochs.size());
-        for (Map.Entry<Long, Set<UUID>> entry: epochs.entrySet())
+        for (Map.Entry<Long, EpochExecutionInfo> entry: epochs.entrySet())
         {
             if (entry.getKey() < e)
             {
-                rmap.put(entry.getKey(), entry.getValue());
+                rmap.put(entry.getKey(), entry.getValue().idSet);
             }
         }
         return rmap;
@@ -343,8 +404,8 @@ public class KeyState
 
     public void removeEpoch(Long e)
     {
-        Set<UUID> ids = epochs.get(e);
-        assert ids == null || Sets.intersection(entries.keySet(), ids).size() == 0;
+        EpochExecutionInfo ids = epochs.get(e);
+        assert ids == null || Sets.intersection(entries.keySet(), ids.idSet).size() == 0;
         epochs.remove(e);
 
         // clean up pending acks
@@ -352,6 +413,82 @@ public class KeyState
         {
             pendingAcknowledgements.removeAll(id);
         }
+    }
+
+    private static class EpochExecutionInfo
+    {
+        public transient ReplayPosition min = null;
+        public transient ReplayPosition max = null;
+        public final LinkedList<Pair<UUID, ReplayPosition>> executed = new LinkedList<>();
+        public final Set<UUID> idSet = new HashSet<>();
+
+        private void add(UUID id, ReplayPosition position)
+        {
+            if (position != null)
+            {
+                if (min == null)
+                {
+                    min = position;
+                }
+                max = position;
+            }
+            executed.add(Pair.create(id, position));
+            idSet.add(id);
+        }
+
+        private boolean contains(UUID id)
+        {
+            return idSet.contains(id);
+        }
+
+        public static final IVersionedSerializer<EpochExecutionInfo> serializer = new IVersionedSerializer<EpochExecutionInfo>()
+        {
+            @Override
+            public void serialize(EpochExecutionInfo info, DataOutputPlus out, int version) throws IOException
+            {
+                out.writeInt(info.executed.size());
+                for (Pair<UUID, ReplayPosition> entry: info.executed)
+                {
+                    UUIDSerializer.serializer.serialize(entry.left, out, version);
+                    out.writeBoolean(entry.right != null);
+                    if (entry.right != null)
+                    {
+                        ReplayPosition.serializer.serialize(entry.right, out);
+                    }
+                }
+            }
+
+            @Override
+            public EpochExecutionInfo deserialize(DataInput in, int version) throws IOException
+            {
+                int numEntries = in.readInt();
+                EpochExecutionInfo info = new EpochExecutionInfo();
+                for (int i=0; i<numEntries; i++)
+                {
+                    UUID id = UUIDSerializer.serializer.deserialize(in, version);
+                    ReplayPosition rp = in.readBoolean() ? ReplayPosition.serializer.deserialize(in) : null;
+                    info.add(id, rp);
+                }
+                return info;
+            }
+
+            @Override
+            public long serializedSize(EpochExecutionInfo info, int version)
+            {
+                long size = 0;
+                size += 4; // out.writeInt(info.executed.size());
+                for (Pair<UUID, ReplayPosition> entry: info.executed)
+                {
+                    size += UUIDSerializer.serializer.serializedSize(entry.left, version);
+                    size += 1; // out.writeBoolean(entry.right != null);
+                    if (entry.right != null)
+                    {
+                        size += ReplayPosition.serializer.serializedSize(entry.right, TypeSizes.NATIVE);
+                    }
+                }
+                return size;
+            }
+        };
     }
 
     public static final IVersionedSerializer<KeyState> serializer = new IVersionedSerializer<KeyState>()
@@ -368,15 +505,10 @@ public class KeyState
                 Entry.serializer.serialize(entry, out, version);
             }
             out.writeInt(deps.epochs.size());
-            for (Map.Entry<Long, Set<UUID>> entry: deps.epochs.entrySet())
+            for (Map.Entry<Long, EpochExecutionInfo> entry: deps.epochs.entrySet())
             {
                 out.writeLong(entry.getKey());
-                Set<UUID> ids = entry.getValue();
-                out.writeInt(ids.size());
-                for (UUID id: ids)
-                {
-                    UUIDSerializer.serializer.serialize(id, out, version);
-                }
+                EpochExecutionInfo.serializer.serialize(entry.getValue(), out, version);
             }
 
             // pending acks
@@ -414,14 +546,7 @@ public class KeyState
             int numEpochs = in.readInt();
             for (int i=0; i<numEpochs; i++)
             {
-                long epoch = in.readLong();
-                Set<UUID> ids = new HashSet<>();
-                int numIds = in.readInt();
-                for (int j=0; j<numIds; j++)
-                {
-                    ids.add(UUIDSerializer.serializer.deserialize(in, version));
-                }
-                deps.epochs.put(epoch, ids);
+                deps.epochs.put(in.readLong(), EpochExecutionInfo.serializer.deserialize(in, version));
             }
 
             // pending acks
@@ -451,15 +576,10 @@ public class KeyState
                 size += Entry.serializer.serializedSize(entry, version);
 
             size += 4; //out.writeInt(deps.epochs.size());
-            for (Map.Entry<Long, Set<UUID>> entry: deps.epochs.entrySet())
+            for (Map.Entry<Long, EpochExecutionInfo> entry: deps.epochs.entrySet())
             {
                 size += 8; //out.writeLong(entry.getKey());
-                Set<UUID> ids = entry.getValue();
-                size += 4; //out.writeInt(ids.size());
-                for (UUID id: ids)
-                {
-                    size += UUIDSerializer.serializer.serializedSize(id, version);
-                }
+                size += EpochExecutionInfo.serializer.serializedSize(entry.getValue(), version);
             }
 
             // pending acks

@@ -10,11 +10,18 @@ import com.google.common.util.concurrent.Striped;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
+import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.cql3.ResultSet;
 import org.apache.cassandra.cql3.UntypedResultSet;
+import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.db.commitlog.ReplayPosition;
+import org.apache.cassandra.db.filter.QueryFilter;
+import org.apache.cassandra.dht.*;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.IEndpointSnitch;
@@ -424,31 +431,33 @@ public class EpaxosState
         getStage(Stage.MUTATION).submit(new ExecuteTask(this, instanceId));
     }
 
-    protected void executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
+    protected ReplayPosition executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
     {
         if (instance instanceof QueryInstance)
         {
-            executeQueryInstance((QueryInstance) instance);
+            return executeQueryInstance((QueryInstance) instance);
         } else if (instance instanceof TokenInstance)
         {
             executeTokenInstance((TokenInstance) instance);
+            return null;
         } else
         {
             throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
         }
     }
 
-    protected void executeQueryInstance(QueryInstance instance) throws ReadTimeoutException, WriteTimeoutException
+    protected ReplayPosition executeQueryInstance(QueryInstance instance) throws ReadTimeoutException, WriteTimeoutException
     {
         logger.debug("Executing serialized request for {}", instance.getId());
 
-        ColumnFamily result = instance.execute();
+        Pair<ColumnFamily, ReplayPosition> result = instance.getQuery().execute();
         SettableFuture resultFuture = resultFutures.get(instance.getId());
         if (resultFuture != null)
         {
-            resultFuture.set(result);
+            resultFuture.set(result.left);
             resultFutures.remove(instance.getId());
         }
+        return result.right;
     }
 
     /**
@@ -791,6 +800,11 @@ public class EpaxosState
         }
     }
 
+    public Iterator<Pair<ByteBuffer, ExecutionInfo>> getRangeExecutionInfo(UUID cfId, Range<Token> range, ReplayPosition position)
+    {
+        return keyStateManager.getRangeExecutionInfo(cfId, range, position);
+    }
+
     // TODO: consider only sending a missing instance if it's older than some threshold. Should keep message size down
     protected void addMissingInstance(Instance remoteInstance)
     {
@@ -814,6 +828,13 @@ public class EpaxosState
                 logger.debug("Setting {} as placeholder", remoteInstance.getId());
                 instance.makePlacehoder();
             }
+
+            // don't add missing instances with an EXECUTED state
+            if (instance.getState().atLeast(Instance.State.EXECUTED))
+            {
+                instance.commitRemote();
+            }
+
             saveInstance(instance);
 
             if (instance.getState().atLeast(Instance.State.COMMITTED))
@@ -873,9 +894,9 @@ public class EpaxosState
         keyStateManager.recordAcknowledgedDeps(instance);
     }
 
-    public void recordExecuted(Instance instance)
+    public void recordExecuted(Instance instance, ReplayPosition position)
     {
-        keyStateManager.recordExecuted(instance);
+        keyStateManager.recordExecuted(instance, position);
         tokenStateManager.reportExecution(instance.getToken(), instance.getCfId());
     }
 

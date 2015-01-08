@@ -1,6 +1,5 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -8,7 +7,7 @@ import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.dht.LongToken;
+import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
@@ -35,7 +34,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             throw new AssertionError();
         }
     }
-    private static final UUID CFID = UUIDGen.getTimeUUID();
+    private static final ReplayPosition REPLAY_POS = new ReplayPosition(1, 2);
 
     /**
      * Loads/saves a key state, persisting an empty one to disk
@@ -429,7 +428,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             }
         }
 
-        ksm.recordExecuted(instance);
+        ksm.recordExecuted(instance, REPLAY_POS);
 
         for (CfKey cfKey: cfKeys)
         {
@@ -489,7 +488,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             }
         }
 
-        ksm.recordExecuted(instance);
+        ksm.recordExecuted(instance, REPLAY_POS);
 
         for (CfKey cfKey: cfKeys)
         {
@@ -567,7 +566,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             assert keyState.getEpoch() == i;
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id, new HashSet<UUID>());
+                keyState.markExecuted(id, new HashSet<UUID>(), REPLAY_POS);
                 if (i == currentEpoch)
                 {
                     // if this is the 'current' or previous epoch, set the dependency as active
@@ -599,7 +598,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             keyState.setEpoch(i);
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id, new HashSet<UUID>());
+                keyState.markExecuted(id, new HashSet<UUID>(), REPLAY_POS);
                 if (i == currentEpoch - 1)
                 {
                     // if this is the 'current' epoch, set the dependency as active
