@@ -9,6 +9,7 @@ import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
@@ -168,9 +169,9 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected void executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
+    protected void executeInstance(Instance instance, Mutation.ApplyCallback callback) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
     {
-        super.executeInstance(instance);
+        super.executeInstance(instance, callback);
         executionOrder.add(instance.getId());
     }
 

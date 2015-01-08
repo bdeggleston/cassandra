@@ -2,6 +2,7 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageOut;
 
@@ -105,7 +106,7 @@ public class MockVerbHandlerState extends EpaxosState
     public final Set<UUID> executedRecorded = Sets.newHashSet();
 
     @Override
-    public void recordExecuted(Instance instance)
+    public void recordExecuted(Instance instance, ReplayPosition position)
     {
         executedRecorded.add(instance.getId());
     }

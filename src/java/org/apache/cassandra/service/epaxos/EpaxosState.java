@@ -873,9 +873,9 @@ public class EpaxosState
         keyStateManager.recordAcknowledgedDeps(instance);
     }
 
-    public void recordExecuted(Instance instance)
+    public void recordExecuted(Instance instance, ReplayPosition position)
     {
-        keyStateManager.recordExecuted(instance);
+        keyStateManager.recordExecuted(instance, position);
         tokenStateManager.reportExecution(instance.getToken(), instance.getCfId());
     }
 

@@ -10,6 +10,7 @@ import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 
 import java.io.DataInput;
@@ -252,13 +253,13 @@ public class KeyStateManager
         }
     }
 
-    public void recordExecuted(Instance instance)
+    public void recordExecuted(Instance instance, ReplayPosition position)
     {
         if (instance instanceof QueryInstance)
         {
             SerializedRequest request = ((QueryInstance) instance).getQuery();
             CfKey cfKey = request.getCfKey();
-            recordExecuted(instance, cfKey);
+            recordExecuted(instance, cfKey, position);
         }
         else if (instance instanceof TokenInstance)
         {
@@ -267,7 +268,7 @@ public class KeyStateManager
             while (cfKeyIterator.hasNext())
             {
                 CfKey cfKey = cfKeyIterator.next();
-                recordExecuted(instance, cfKey);
+                recordExecuted(instance, cfKey, position);
             }
         }
         else
@@ -276,7 +277,7 @@ public class KeyStateManager
         }
     }
 
-    private void recordExecuted(Instance instance, CfKey cfKey)
+    private void recordExecuted(Instance instance, CfKey cfKey, ReplayPosition position)
     {
 
         Lock lock = getCfKeyLock(cfKey);
@@ -284,7 +285,7 @@ public class KeyStateManager
         try
         {
             KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
-            dm.markExecuted(instance.getId(), instance.getStronglyConnected());
+            dm.markExecuted(instance.getId(), instance.getStronglyConnected(), position);
             saveKeyState(cfKey, dm);
         }
         finally
