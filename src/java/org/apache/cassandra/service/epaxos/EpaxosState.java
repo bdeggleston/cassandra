@@ -14,6 +14,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.io.util.DataOutputBuffer;
@@ -424,31 +425,33 @@ public class EpaxosState
         getStage(Stage.MUTATION).submit(new ExecuteTask(this, instanceId));
     }
 
-    protected void executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
+    protected ReplayPosition executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
     {
         if (instance instanceof QueryInstance)
         {
-            executeQueryInstance((QueryInstance) instance);
+            return executeQueryInstance((QueryInstance) instance);
         } else if (instance instanceof TokenInstance)
         {
             executeTokenInstance((TokenInstance) instance);
+            return null;
         } else
         {
             throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
         }
     }
 
-    protected void executeQueryInstance(QueryInstance instance) throws ReadTimeoutException, WriteTimeoutException
+    protected ReplayPosition executeQueryInstance(QueryInstance instance) throws ReadTimeoutException, WriteTimeoutException
     {
         logger.debug("Executing serialized request for {}", instance.getId());
 
-        ColumnFamily result = instance.execute();
+        Pair<ColumnFamily, ReplayPosition> result = instance.getQuery().execute();
         SettableFuture resultFuture = resultFutures.get(instance.getId());
         if (resultFuture != null)
         {
-            resultFuture.set(result);
+            resultFuture.set(result.left);
             resultFutures.remove(instance.getId());
         }
+        return result.right;
     }
 
     /**

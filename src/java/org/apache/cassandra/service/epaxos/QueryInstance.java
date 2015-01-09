@@ -61,11 +61,6 @@ public class QueryInstance extends Instance
         return instance;
     }
 
-    public ColumnFamily execute() throws ReadTimeoutException, WriteTimeoutException
-    {
-        return query.execute();
-    }
-
     @Override
     public Type getType()
     {

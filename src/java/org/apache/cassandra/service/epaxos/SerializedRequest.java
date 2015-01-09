@@ -3,6 +3,7 @@ package org.apache.cassandra.service.epaxos;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
@@ -11,6 +12,7 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.service.CASRequest;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.Pair;
 
 import java.io.DataInput;
 import java.io.IOException;
@@ -66,7 +68,7 @@ public class SerializedRequest
         return consistencyLevel;
     }
 
-    public ColumnFamily execute() throws ReadTimeoutException, WriteTimeoutException
+    public Pair<ColumnFamily, ReplayPosition> execute() throws ReadTimeoutException, WriteTimeoutException
     {
         Tracing.trace("Reading existing values for CAS precondition");
         CFMetaData metadata = Schema.instance.getCFMetaData(keyspaceName, cfName);
@@ -94,7 +96,8 @@ public class SerializedRequest
         {
             Tracing.trace("CAS precondition does not match current values {}", current);
             // We should not return null as this means success
-            return current == null ? ArrayBackedSortedColumns.factory.create(metadata) : current;
+            ColumnFamily rCF = current == null ? ArrayBackedSortedColumns.factory.create(metadata) : current;
+            return Pair.create(rCF, null);
         }
         else
         {
@@ -103,7 +106,7 @@ public class SerializedRequest
             try
             {
                 Mutation mutation = new Mutation(key, request.makeUpdates(current));
-                Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
+                ReplayPosition rp = Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
             }
             catch (InvalidRequestException e)
             {
