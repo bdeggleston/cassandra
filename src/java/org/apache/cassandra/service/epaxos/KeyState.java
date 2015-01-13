@@ -255,6 +255,58 @@ public class KeyState
         maybeEvict(iid);
     }
 
+    /**
+     * Return the latest possible local execution point for the given replay position
+     */
+    public ExecutionInfo getExecutionInfoAtPosition(ReplayPosition rp)
+    {
+        List<Long> recordedEpochs = Lists.newArrayList(epochs.keySet());
+        Collections.sort(recordedEpochs);
+        recordedEpochs = Lists.reverse(recordedEpochs);
+
+        ExecutionInfo position = new ExecutionInfo(getEpoch(), getExecutionCount());
+        for (long ep: recordedEpochs)
+        {
+            EpochExecutionInfo executionInfo = epochs.get(ep);
+
+            ReplayPosition min = executionInfo.min;
+            ReplayPosition max = executionInfo.min;
+
+            if (min == null)
+            {
+                // no mutations for this epoch
+                continue;
+            }
+
+            if (min.compareTo(rp) <= 0)
+            {
+                // this epoch's min replay position is less than the
+                // one we're looking for. Since we're going through the
+                // epochs backwards, the one we're looking for is in here
+                Iterator<Pair<UUID, ReplayPosition>> iter = executionInfo.executed.iterator();
+                long execPos = 0;
+                while (iter.hasNext())
+                {
+                    ReplayPosition here = iter.next().right;
+                    if (here != null && here.compareTo(rp) > 0)
+                    {
+                        break;
+                    }
+                    execPos++;
+                }
+                return new ExecutionInfo(ep, execPos);
+            }
+            else
+            {
+                // if the next epoch has no mutations, we consider the
+                // replay position to match the beginning of this epoch
+                position = new ExecutionInfo(ep, 0);
+            }
+        }
+
+        return position;
+    }
+
     public long getEpoch()
     {
         return epoch;
@@ -365,10 +417,10 @@ public class KeyState
 
     private static class EpochExecutionInfo
     {
-        private transient ReplayPosition min = null;
-        private transient ReplayPosition max = null;
-        private final LinkedList<Pair<UUID, ReplayPosition>> executed = new LinkedList<>();
-        private final Set<UUID> idSet = new HashSet<>();
+        public transient ReplayPosition min = null;
+        public transient ReplayPosition max = null;
+        public final LinkedList<Pair<UUID, ReplayPosition>> executed = new LinkedList<>();
+        public final Set<UUID> idSet = new HashSet<>();
 
         private void add(UUID id, ReplayPosition position)
         {

@@ -379,18 +379,32 @@ public class EpaxosKeyStateTest
         Assert.assertFalse(keyState.canIncrementToEpoch(targetEpoch));
     }
 
-    @Test
-    public void replayPositionIsRecorded() throws Exception
-    {
-
-    }
-
     /**
      * Checks that the correct epoch/exec# can be determined from a replay position
      */
     @Test
-    public void inferExecInfoFromReplayPosition() throws Exception
+    public void getExecInfoFromReplayPosition() throws Exception
     {
+        KeyState dm = new KeyState(0);
+
+        Assert.assertEquals(0, dm.getEpoch());
+
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, new ReplayPosition(0, 1));
+
+        dm.setEpoch(1);
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null);
+
+        dm.setEpoch(2);
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, new ReplayPosition(1, 0));
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, new ReplayPosition(1, 5));
+
+        Assert.assertEquals(new ExecutionInfo(0, 0), dm.getExecutionInfoAtPosition(new ReplayPosition(0, 0)));
+        Assert.assertEquals(new ExecutionInfo(0, 1), dm.getExecutionInfoAtPosition(new ReplayPosition(0, 1)));
+        Assert.assertEquals(new ExecutionInfo(0, 1), dm.getExecutionInfoAtPosition(new ReplayPosition(0, 199)));
+        Assert.assertEquals(new ExecutionInfo(2, 1), dm.getExecutionInfoAtPosition(new ReplayPosition(1, 0)));
+        Assert.assertEquals(new ExecutionInfo(2, 1), dm.getExecutionInfoAtPosition(new ReplayPosition(1, 1)));
+        Assert.assertEquals(new ExecutionInfo(2, 2), dm.getExecutionInfoAtPosition(new ReplayPosition(1, 10)));
+
 
     }
 }
