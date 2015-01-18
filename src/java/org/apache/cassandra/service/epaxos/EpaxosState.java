@@ -828,6 +828,13 @@ public class EpaxosState
                 logger.debug("Setting {} as placeholder", remoteInstance.getId());
                 instance.makePlacehoder();
             }
+
+            // don't add missing instances with an EXECUTED state
+            if (instance.getState().atLeast(Instance.State.EXECUTED))
+            {
+                instance.commitRemote();
+            }
+
             saveInstance(instance);
 
             if (instance.getState().atLeast(Instance.State.COMMITTED))
