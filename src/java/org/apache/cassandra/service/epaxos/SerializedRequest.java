@@ -13,6 +13,8 @@ import org.apache.cassandra.service.CASRequest;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataInput;
 import java.io.IOException;
@@ -21,6 +23,8 @@ import java.util.List;
 
 public class SerializedRequest
 {
+    private static final Logger logger = LoggerFactory.getLogger(SerializedRequest.class);
+
     public static final IVersionedSerializer<SerializedRequest> serializer = new Serializer();
 
     private final String keyspaceName;
@@ -95,6 +99,7 @@ public class SerializedRequest
         if (!applies)
         {
             Tracing.trace("CAS precondition does not match current values {}", current);
+            logger.debug("CAS precondition does not match current values {}", current);
             // We should not return null as this means success
             ColumnFamily rCF = current == null ? ArrayBackedSortedColumns.factory.create(metadata) : current;
             return Pair.create(rCF, null);
@@ -103,16 +108,18 @@ public class SerializedRequest
         {
             // TODO: see if the instance can be marked executed in the same commit log entry as this mutation
             // TODO: may need to examine the ts of any cells we're going to overwrite
+            ReplayPosition rp;
             try
             {
                 Mutation mutation = new Mutation(key, request.makeUpdates(current));
-                ReplayPosition rp = Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
+                rp = Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
+                logger.debug("Applying mutation {} at {}", mutation, current);
             }
             catch (InvalidRequestException e)
             {
                 throw new RuntimeException(e);
             }
-            return null;
+            return Pair.create(null, rp);
         }
     }
 

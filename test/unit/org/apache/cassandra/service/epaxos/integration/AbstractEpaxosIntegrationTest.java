@@ -10,9 +10,11 @@ import org.apache.cassandra.service.epaxos.AbstractEpaxosTest;
 import org.apache.cassandra.service.epaxos.Instance;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 
 import java.util.*;
 
+@Ignore
 public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
 {
     public List<Node> nodes;

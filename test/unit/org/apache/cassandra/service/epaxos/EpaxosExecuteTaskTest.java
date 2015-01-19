@@ -25,4 +25,14 @@ public class EpaxosExecuteTaskTest
     {
 
     }
+
+    /**
+     * tests that execution is skipped if
+     * the keystate prevents it
+     */
+    @Test
+    public void keyStateCantExecute()
+    {
+
+    }
 }

@@ -8,8 +8,10 @@ import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Before;
@@ -610,5 +612,47 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         Assert.assertFalse(keyState.canIncrementToEpoch(targetEpoch));
         TokenState tokenState = tsm.get(key, cfId);
         Assert.assertFalse(ksm.canIncrementToEpoch(tokenState, targetEpoch));
+    }
+
+    @Test
+    public void tokenRangeIteration() throws Exception
+    {
+        TokenStateManager tsm = new TokenStateManager();
+        KeyStateManager ksm = new KeyStateManager(tsm);
+
+        int size = 4;
+        UUID cfId = UUIDGen.getTimeUUID();
+
+        List<ByteBuffer> keys = new ArrayList<>(size);
+        List<Token> tokens = new ArrayList<>(size);
+        Map<Token, ByteBuffer> tokenMap = new HashMap<>(size);
+        for (int i=0; i<size; i++)
+        {
+            ByteBuffer key = ByteBufferUtil.bytes(i);
+            Token token = DatabaseDescriptor.getPartitioner().getToken(key);
+
+            keys.add(key);
+            tokens.add(token);
+            Assert.assertFalse(tokenMap.containsKey(token));
+            tokenMap.put(token, key);
+
+            KeyState ks = ksm.loadKeyState(key, cfId);
+            ks.markExecuted(UUIDGen.getTimeUUID(), null, null);
+            ksm.saveKeyState(key, cfId, ks);
+        }
+
+        Collections.sort(tokens);
+
+        Token start = tokens.get(1);
+        Token stop = tokens.get(2);
+
+        Iterator<Pair<ByteBuffer, ExecutionInfo>> iter = ksm.getRangeExecutionInfo(cfId,
+                                                                                   new Range<>(start, stop),
+                                                                                   new ReplayPosition(0, 0));
+
+        List<Pair<ByteBuffer, ExecutionInfo>> infos = Lists.newArrayList(iter);
+        Assert.assertEquals(2, infos.size());
+        Assert.assertEquals(tokenMap.get(tokens.get(1)), infos.get(0).left);
+        Assert.assertEquals(tokenMap.get(tokens.get(2)), infos.get(1).left);
     }
 }

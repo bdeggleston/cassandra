@@ -130,7 +130,11 @@ public class SSTableLoader implements StreamEventHandler
                         List<Pair<Long, Long>> sstableSections = sstable.getPositionsForRanges(tokenRanges);
                         long estimatedKeys = sstable.estimatedKeysForRanges(tokenRanges);
 
-                        StreamSession.SSTableStreamingSections details = new StreamSession.SSTableStreamingSections(sstable, sstableSections, estimatedKeys, ActiveRepairService.UNREPAIRED_SSTABLE);
+                        StreamSession.SSTableStreamingSections details = new StreamSession.SSTableStreamingSections(sstable,
+                                                                                                                    tokenRanges,
+                                                                                                                    sstableSections,
+                                                                                                                    estimatedKeys,
+                                                                                                                    ActiveRepairService.UNREPAIRED_SSTABLE);
                         streamingDetails.put(endpoint, details);
                     }
 

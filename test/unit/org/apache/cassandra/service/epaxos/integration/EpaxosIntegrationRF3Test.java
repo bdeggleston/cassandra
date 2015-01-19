@@ -12,17 +12,6 @@ import java.util.*;
 
 public class EpaxosIntegrationRF3Test extends AbstractEpaxosIntegrationTest.SingleThread
 {
-    @Ignore
-    @Test
-    public void longTest() throws Exception
-    {
-        for (int i=0; i<100; i++)
-        {
-            Node leader = nodes.get(i % nodes.size());
-            leader.query(getSerializedCQLRequest(0, 0));
-            System.out.println(i);
-        }
-    }
 
     /**
      * All nodes are replying to messages

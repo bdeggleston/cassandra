@@ -21,12 +21,16 @@ import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.Collection;
+import java.util.Map;
 import java.util.UUID;
 
 import com.google.common.base.Throwables;
+import org.apache.cassandra.service.epaxos.EpaxosState;
+import org.apache.cassandra.service.epaxos.ExecutionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +62,7 @@ public class StreamReader
     protected final StreamSession session;
     protected final Descriptor.Version inputVersion;
     protected final long repairedAt;
+    protected final Map<ByteBuffer, ExecutionInfo> epaxos;
 
     protected Descriptor desc;
 
@@ -69,6 +74,7 @@ public class StreamReader
         this.sections = header.sections;
         this.inputVersion = new Descriptor.Version(header.version);
         this.repairedAt = header.repairedAt;
+        this.epaxos = header.epaxos;
     }
 
     /**
@@ -150,9 +156,20 @@ public class StreamReader
         return size;
     }
 
+    private void maybeReportEpaxosCorrection(ByteBuffer key)
+    {
+        ExecutionInfo info = epaxos.get(key);
+        if (info != null && !EpaxosState.instance.canApplyRepair(key, cfId, info.epoch, info.executed))
+        {
+            logger.debug("Key has data from unexecuted epaxos instance {}: {}", key, info);
+            session.addEpaxosCorrection(key, info);
+        }
+    }
+
     protected void writeRow(SSTableWriter writer, DataInput in, ColumnFamilyStore cfs) throws IOException
     {
         DecoratedKey key = StorageService.getPartitioner().decorateKey(ByteBufferUtil.readWithShortLength(in));
+        maybeReportEpaxosCorrection(key.getKey());
         writer.appendFromStream(key, cfs.metadata, in, inputVersion);
         cfs.invalidateCachedRow(key);
     }

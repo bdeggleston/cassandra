@@ -5,8 +5,9 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.util.Comparator;
 
-public class ExecutionInfo
+public class ExecutionInfo implements Comparable<ExecutionInfo>
 {
     public final long epoch;
     public final long executed;
@@ -15,6 +16,25 @@ public class ExecutionInfo
     {
         this.epoch = epoch;
         this.executed = executed;
+    }
+
+    public static final Comparator<ExecutionInfo> comparator = new Comparator<ExecutionInfo>()
+    {
+        @Override
+        public int compare(ExecutionInfo o1, ExecutionInfo o2)
+        {
+            if (o1.epoch != o2.epoch)
+            {
+                return Long.valueOf(o1.epoch).compareTo(o2.epoch);
+            }
+            return Long.valueOf(o1.executed).compareTo(o2.executed);
+        }
+    };
+
+    @Override
+    public int compareTo(ExecutionInfo o)
+    {
+        return comparator.compare(this, o);
     }
 
     @Override

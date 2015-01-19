@@ -19,8 +19,11 @@ package org.apache.cassandra.streaming.messages;
 
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
+import java.util.Collection;
 import java.util.List;
 
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.compress.CompressionMetadata;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.DataOutputStreamAndChannel;
@@ -59,11 +62,13 @@ public class OutgoingFileMessage extends StreamMessage
 
     public FileMessageHeader header;
     public SSTableReader sstable;
+    public transient Collection<Range<Token>> ranges;
 
-    public OutgoingFileMessage(SSTableReader sstable, int sequenceNumber, long estimatedKeys, List<Pair<Long, Long>> sections, long repairedAt)
+    public OutgoingFileMessage(SSTableReader sstable, int sequenceNumber, long estimatedKeys, List<Pair<Long, Long>> sections, Collection<Range<Token>> ranges, long repairedAt)
     {
         super(Type.FILE);
         this.sstable = sstable;
+        this.ranges = ranges;
 
         CompressionInfo compressionInfo = null;
         if (sstable.compression)

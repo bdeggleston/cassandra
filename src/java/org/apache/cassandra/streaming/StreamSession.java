@@ -20,11 +20,13 @@ package org.apache.cassandra.streaming;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.collect.*;
+import org.apache.cassandra.service.epaxos.ExecutionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -133,6 +135,8 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     private int retries;
 
     private AtomicBoolean isAborted = new AtomicBoolean(false);
+
+    private final ConcurrentMap<ByteBuffer, ExecutionInfo> epaxosCorrections = new ConcurrentHashMap<>();
 
     public static enum State
     {
@@ -294,6 +298,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
                 if (overriddenRepairedAt == ActiveRepairService.UNREPAIRED_SSTABLE)
                     repairedAt = sstable.getSSTableMetadata().repairedAt;
                 sections.add(new SSTableStreamingSections(sstable,
+                                                          ranges,
                                                           sstable.getPositionsForRanges(ranges),
                                                           sstable.estimatedKeysForRanges(ranges),
                                                           repairedAt));
@@ -328,21 +333,54 @@ public class StreamSession implements IEndpointStateChangeSubscriber
                 task = new StreamTransferTask(this, cfId);
                 transfers.put(cfId, task);
             }
-            task.addTransferFile(details.sstable, details.estimatedKeys, details.sections, details.repairedAt);
+            task.addTransferFile(details.sstable, details.estimatedKeys, details.sections, details.ranges, details.repairedAt);
             iter.remove();
         }
+    }
+
+    public boolean addEpaxosCorrection(ByteBuffer key, ExecutionInfo info)
+    {
+        ExecutionInfo previous = epaxosCorrections.putIfAbsent(key, info);
+
+        if (previous == null )
+        {
+            return true;
+        }
+        else if (previous.compareTo(info) > 0)
+        {
+            return false;
+        }
+
+        while (!epaxosCorrections.replace(key, previous, info))
+        {
+            previous = epaxosCorrections.get(key);
+            if (previous.compareTo(info) > 0)
+            {
+                // there's a higher correction for this
+                // key, so don't do anything
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public Map<ByteBuffer, ExecutionInfo> getExpaxosCorrections()
+    {
+        return epaxosCorrections;
     }
 
     public static class SSTableStreamingSections
     {
         public final SSTableReader sstable;
+        public final Collection<Range<Token>> ranges;
         public final List<Pair<Long, Long>> sections;
         public final long estimatedKeys;
         public final long repairedAt;
 
-        public SSTableStreamingSections(SSTableReader sstable, List<Pair<Long, Long>> sections, long estimatedKeys, long repairedAt)
+        public SSTableStreamingSections(SSTableReader sstable, Collection<Range<Token>> ranges, List<Pair<Long, Long>> sections, long estimatedKeys, long repairedAt)
         {
             this.sstable = sstable;
+            this.ranges = ranges;
             this.sections = sections;
             this.estimatedKeys = estimatedKeys;
             this.repairedAt = repairedAt;

@@ -8,6 +8,8 @@ import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataInput;
 import java.io.IOException;
@@ -40,7 +42,8 @@ import java.util.*;
  */
 public class KeyState
 {
-    // TODO: should epochs be kept around after gc if they haven't been flushed
+    private static final Logger logger = LoggerFactory.getLogger(KeyState.class);
+
     static class Entry
     {
         private final UUID iid;
@@ -137,6 +140,14 @@ public class KeyState
 
     private long epoch;
     private long executionCount;
+
+    /**
+     * If a row was streamed to this node containing a mutation from an instance
+     * that wasn't yet locally executed, the execution position of the remote node
+     * will be recorded here, and all instances up to and including this position
+     * will be no-oped to guard against inconsistencies.
+     */
+    private ExecutionInfo futureExecution = null;
 
     private final SetMultimap<UUID, UUID> pendingAcknowledgements = HashMultimap.create();
     private final SetMultimap<Long, UUID> pendingEpochAcknowledgements = HashMultimap.create(); // for gc'ing pendingEpochAcknowledgements
@@ -253,6 +264,51 @@ public class KeyState
         }
 
         maybeEvict(iid);
+
+        if (futureExecution != null)
+        {
+            if (new ExecutionInfo(epoch, executionCount).compareTo(futureExecution) >= 0)
+            {
+                futureExecution = null;
+            }
+        }
+
+        logger.debug("Instance {} marked executed at rp={}, epoch={}, execNum={}", iid, position, epoch, executionCount);
+    }
+
+    /**
+     * Sets the execution position in local storage. This is for keeping
+     * track of data from repairs that include mutations from instances
+     * that haven't been executed yet.
+     */
+    public boolean setFutureExecution(ExecutionInfo info)
+    {
+        if (futureExecution != null && info.compareTo(futureExecution) <= 0)
+        {
+            // don't set smaller max execution
+            return false;
+        }
+
+        futureExecution = info;
+        return true;
+    }
+
+    /**
+     * Returns false if the streamed sstables have data from a mutation
+     * not executed locally yet
+     */
+    public boolean canExecute()
+    {
+        if (futureExecution == null)
+            return true;
+
+        ExecutionInfo localPosition = new ExecutionInfo(epoch, executionCount);
+        boolean okToExecute = localPosition.compareTo(futureExecution) >= 0;
+        if (!okToExecute && logger.isDebugEnabled())
+        {
+            logger.debug("Skipping execution locally. {} < {}", localPosition, futureExecution);
+        }
+        return okToExecute;
     }
 
     /**
@@ -529,7 +585,12 @@ public class KeyState
                 Serializers.uuidSets.serialize(deps.pendingEpochAcknowledgements.get(epoch), out, version);
             }
 
-
+            boolean hasMaxExecution = deps.futureExecution != null;
+            out.writeBoolean(hasMaxExecution);
+            if (hasMaxExecution)
+            {
+                ExecutionInfo.serializer.serialize(deps.futureExecution, out, version);
+            }
         }
 
         @Override
@@ -565,6 +626,11 @@ public class KeyState
                 deps.pendingEpochAcknowledgements.putAll(epoch, Serializers.uuidSets.deserialize(in, version));
             }
 
+            if (in.readBoolean())
+            {
+                deps.setFutureExecution(ExecutionInfo.serializer.deserialize(in, version));
+            }
+
             return deps;
         }
 
@@ -596,6 +662,13 @@ public class KeyState
             {
                 size += 8;
                 size += Serializers.uuidSets.serializedSize(deps.pendingEpochAcknowledgements.get(epoch), version);
+            }
+
+            // futureExecution
+            size += 1;
+            if (deps.futureExecution != null)
+            {
+                size += ExecutionInfo.serializer.serializedSize(deps.futureExecution, version);
             }
 
             return size;

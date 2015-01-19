@@ -243,7 +243,7 @@ public class EpaxosKeyStateTest
         dm.markExecuted(dep3, EMPTY, REPLAY_POS);
 
         Map<Long, Set<UUID>> executions = dm.getEpochExecutions();
-        Assert.assertNull(executions.get((long)0));
+        Assert.assertNull(executions.get((long) 0));
         Assert.assertEquals(Sets.newHashSet(dep1), executions.get((long) 1));
         Assert.assertEquals(Sets.newHashSet(dep2, dep3), executions.get((long) 2));
     }
@@ -404,8 +404,35 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(new ExecutionInfo(2, 1), dm.getExecutionInfoAtPosition(new ReplayPosition(1, 0)));
         Assert.assertEquals(new ExecutionInfo(2, 1), dm.getExecutionInfoAtPosition(new ReplayPosition(1, 1)));
         Assert.assertEquals(new ExecutionInfo(2, 2), dm.getExecutionInfoAtPosition(new ReplayPosition(1, 10)));
+    }
 
+    @Test
+    public void canExecute()
+    {
+        KeyState dm = new KeyState(0);
+        Assert.assertTrue(dm.canExecute());
 
+        Assert.assertTrue(dm.setFutureExecution(new ExecutionInfo(2, 2)));
+        Assert.assertFalse(dm.canExecute());
+
+        dm.setEpoch(2);
+        Assert.assertEquals(0, dm.getExecutionCount());
+        Assert.assertFalse(dm.canExecute());
+
+        // this execution info should be rejected, since it's before the first one
+        Assert.assertFalse(dm.setFutureExecution(new ExecutionInfo(1, 2)));
+
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null);
+        Assert.assertEquals(1, dm.getExecutionCount());
+        Assert.assertFalse(dm.canExecute());
+
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null);
+        Assert.assertEquals(2, dm.getExecutionCount());
+        Assert.assertTrue(dm.canExecute());
+
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null);
+        Assert.assertEquals(3, dm.getExecutionCount());
+        Assert.assertTrue(dm.canExecute());
     }
 }
 

@@ -17,7 +17,7 @@ import java.util.*;
  */
 public class ExecutionSorter
 {
-    private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
+    private static final Logger logger = LoggerFactory.getLogger(ExecutionSorter.class);
 
     private final DependencyGraph dependencyGraph = new DependencyGraph();
     public final Set<UUID> uncommitted = new HashSet<>();
@@ -144,6 +144,11 @@ public class ExecutionSorter
                 }
 
             }
+        }
+
+        if (logger.isDebugEnabled())
+        {
+            logger.debug("Instance {} execution order -> {}", target, Lists.newArrayList(Iterables.concat(scc)));
         }
 
         return Lists.newArrayList(Iterables.concat(scc));
