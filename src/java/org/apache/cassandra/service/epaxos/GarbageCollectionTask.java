@@ -7,7 +7,8 @@ import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 
 /**
- * Garbage collects instances for the given token range
+ * Garbage collects instances for the given token range, instances executed in
+ * epochs older than currentEpoch - 1 can be safely deleted
  */
 public class GarbageCollectionTask implements Runnable
 {
@@ -46,7 +47,6 @@ public class GarbageCollectionTask implements Runnable
 
     private void gcForKey(CfKey cfKey, Long oldestEpoch)
     {
-        // FIXME: this aquires locks in the reverse order, and will deadlock
         // TODO: we should be able to work with past epochs, it shouldn't be possible to mutate them once the epoch has advanced
         Map<Long, Set<UUID>> expiredEpochs;
         Lock lock = keyStateManager.getCfKeyLock(cfKey);

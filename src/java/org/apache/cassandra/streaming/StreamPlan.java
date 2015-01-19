@@ -86,6 +86,15 @@ public class StreamPlan
         return this;
     }
 
+    public StreamPlan requestEpaxosRange(InetAddress from, UUID cfId, Range<Token> range)
+    {
+        StreamSession session = coordinator.getOrCreateNextSession(from);
+        session.addEpaxosRequest(cfId, range);
+        return this;
+    }
+
+    // TODO: transferEpaxosInstance
+
     /**
      * Add transfer task to send data of specific keyspace and ranges.
      *

@@ -10,27 +10,24 @@ import com.google.common.util.concurrent.Striped;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
-import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
-import org.apache.cassandra.cql3.ResultSet;
 import org.apache.cassandra.cql3.UntypedResultSet;
-import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
-import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.exceptions.*;
+import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
+import org.apache.cassandra.streaming.messages.FileMessageHeader;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.IFilter;
 import org.apache.cassandra.utils.Pair;
-import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -154,11 +151,19 @@ public class EpaxosState
 
     public EpaxosState()
     {
+        this(true);
+    }
+
+    public EpaxosState(boolean startMaintenanceTask)
+    {
         instanceCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(10000).build();
-        tokenStateManager = new TokenStateManager();
+        tokenStateManager = new TokenStateManager(keyspace(), tokenStateTable());
         keyStateManager = new KeyStateManager(keyspace(), keyStateTable(), tokenStateManager);
 
-        scheduleTokenStateMaintenanceTask();
+        if (startMaintenanceTask)
+        {
+            scheduleTokenStateMaintenanceTask();
+        }
     }
 
     protected void scheduleTokenStateMaintenanceTask()
@@ -251,6 +256,7 @@ public class EpaxosState
         return new TokenInstance(getEndpoint(), token, cfId, epoch);
     }
 
+    // a blind instance delete
     void deleteInstance(UUID id)
     {
         Lock lock = getInstanceLock(id).writeLock();
@@ -487,6 +493,11 @@ public class EpaxosState
         }
 
         //
+        startTokenStateGc(tokenState);
+    }
+
+    void startTokenStateGc(TokenState tokenState)
+    {
         getStage(Stage.MUTATION).submit(new GarbageCollectionTask(this, tokenState, keyStateManager));
     }
 
@@ -732,13 +743,18 @@ public class EpaxosState
                                  remoteEpoch);
     }
 
+    public TokenState getTokenState(IEpochMessage message)
+    {
+        return tokenStateManager.get(message.getToken(), message.getCfId());
+    }
+
     /**
      * starts a new local failure recovery task for the given token.
      */
     public void startLocalFailureRecovery(Token token, long epoch)
     {
         // TODO: track failure recoveries in-progress
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException("implement");
     }
 
     /**
@@ -747,10 +763,10 @@ public class EpaxosState
     public void startRemoteFailureRecovery(InetAddress endpoint, Token token, long epoch)
     {
         // TODO: track failure recoveries in-progress so we don't DOS the other node
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException("implement");
     }
 
-    // repair support
+    // repair / streaming support
     public boolean managesCfId(UUID cfId)
     {
         return tokenStateManager.managesCfId(cfId);
@@ -800,9 +816,65 @@ public class EpaxosState
         }
     }
 
+    public boolean canExecute(Instance instance)
+    {
+        if (instance instanceof QueryInstance)
+        {
+            QueryInstance queryInstance = (QueryInstance) instance;
+            return keyStateManager.canExecute(queryInstance.getQuery().getCfKey());
+        }
+
+        return true;
+    }
+
+    public boolean reportFutureExecution(ByteBuffer key, UUID cfId, ExecutionInfo info)
+    {
+        // TODO: check epoch and maybe start recovery
+        return keyStateManager.reportFutureRepair(new CfKey(key, cfId), info);
+    }
+
     public Iterator<Pair<ByteBuffer, ExecutionInfo>> getRangeExecutionInfo(UUID cfId, Range<Token> range, ReplayPosition position)
     {
         return keyStateManager.getRangeExecutionInfo(cfId, range, position);
+    }
+
+    /**
+     * writes metadata about the state of epaxos when the given sstable was flushed.
+     */
+    public void writeStreamHeader(SSTableReader ssTable, Collection<Range<Token>> ranges, FileMessageHeader header)
+    {
+        UUID cfId = ssTable.metadata.cfId;
+        ReplayPosition position = ssTable.getReplayPosition();
+        IFilter filter = ssTable.getBloomFilter();
+
+        // TODO: work out a better way of working out how many keys will be sent so we don't have to prefix each one with a flag
+        Range<Token> sstableRange = new Range<>(ssTable.first.getToken(), ssTable.last.getToken());
+        for (Range<Token> range: ranges)
+        {
+            if (!range.intersects(sstableRange))
+            {
+                logger.debug("skipping range not covered by sstable {}", range);
+                continue;
+            }
+
+            Iterator<Pair<ByteBuffer, ExecutionInfo>> iter = getRangeExecutionInfo(cfId, range, position);
+
+            while (iter.hasNext())
+            {
+                Pair<ByteBuffer, ExecutionInfo> next = iter.next();
+                if (!filter.isPresent(next.left))
+                {
+                    logger.debug("skipping key not contained by sstable {}", range);
+                    continue;
+                }
+                header.epaxos.put(next.left, next.right);
+                if (logger.isDebugEnabled())
+                {
+                    logger.debug("Added {} {} to outgoing epaxos header", next.left, next.right);
+                }
+
+            }
+        }
     }
 
     // TODO: consider only sending a missing instance if it's older than some threshold. Should keep message size down

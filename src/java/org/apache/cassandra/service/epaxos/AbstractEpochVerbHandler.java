@@ -22,7 +22,28 @@ public abstract class AbstractEpochVerbHandler<T extends IEpochMessage> implemen
     @Override
     public final void doVerb(MessageIn<T> message, int id)
     {
-        EpochDecision decision = state.validateMessageEpoch(message.payload);
+
+        TokenState tokenState = state.getTokenState(message.payload);
+        tokenState.rwLock.readLock().lock();
+        EpochDecision decision;
+        try
+        {
+            TokenState.State s = tokenState.getState();
+            if (!s.isOkToParticipate())
+            {
+                if (!(s.isPassiveRecord() && canPassiveRecord()))
+                {
+                    // can't do anything, don't respond
+                    return;
+                }
+            }
+            decision = tokenState.evaluateMessageEpoch(message.payload);
+        }
+        finally
+        {
+            tokenState.rwLock.readLock().unlock();
+        }
+
         switch (decision.outcome)
         {
             case LOCAL_FAILURE:
@@ -39,6 +60,15 @@ public abstract class AbstractEpochVerbHandler<T extends IEpochMessage> implemen
             default:
                 throw new IllegalStateException();
         }
+    }
+
+    /**
+     * indicates that this verb handler can still process messages
+     * if the token state is in passive record mode
+     */
+    public boolean canPassiveRecord()
+    {
+        return false;
     }
 
     public abstract void doEpochVerb(MessageIn<T> message, int id);

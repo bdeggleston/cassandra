@@ -127,4 +127,12 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         MessageOut<MessageEnvelope<Instance>> message = state.replies.get(0);
         Assert.assertNull(message.payload.contents);
     }
+
+    @Test
+    public void passiveRecord()
+    {
+        MockVerbHandlerState state = new MockVerbHandlerState();
+        PrepareVerbHandler handler = new PrepareVerbHandler(state);
+        Assert.assertFalse(handler.canPassiveRecord());
+    }
 }

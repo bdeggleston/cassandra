@@ -20,7 +20,24 @@ public abstract class AbstractEpochCallback<T extends IEpochMessage> implements 
     public final void response(MessageIn<T> message)
     {
         // TODO: consider the null instance behavior of PrepareVerbHandler when evaluating tokens (probably shouldn't quantize them to token boundaries)
-        EpochDecision decision = state.validateMessageEpoch(message.payload);
+
+        TokenState tokenState = state.getTokenState(message.payload);
+        tokenState.rwLock.readLock().lock();
+        EpochDecision decision;
+        try
+        {
+            TokenState.State s = tokenState.getState();
+            if (!s.isOkToParticipate())
+            {
+                return;
+            }
+            decision = tokenState.evaluateMessageEpoch(message.payload);
+        }
+        finally
+        {
+            tokenState.rwLock.readLock().unlock();
+        }
+
         switch (decision.outcome)
         {
             case LOCAL_FAILURE:

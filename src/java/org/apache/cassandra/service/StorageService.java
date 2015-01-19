@@ -2615,6 +2615,23 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         return repairingRange;
     }
 
+    public FutureTask<Object> createRepairTask(String keyspace,
+                                               Collection<Range<Token>> ranges,
+                                               boolean isSequential,
+                                               boolean isLocal,
+                                               boolean fullRepair,
+                                               String... columnFamilies)
+    {
+        return createRepairTask(nextRepairCommand.incrementAndGet(),
+                                keyspace,
+                                ranges,
+                                isSequential,
+                                isLocal,
+                                fullRepair,
+                                columnFamilies);
+    }
+
+
     private FutureTask<Object> createRepairTask(int cmd,
                                                 String keyspace,
                                                 Collection<Range<Token>> ranges,

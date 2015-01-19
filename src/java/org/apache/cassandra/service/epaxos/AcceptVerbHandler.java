@@ -83,4 +83,10 @@ public class AcceptVerbHandler extends AbstractEpochVerbHandler<AcceptRequest>
             lock.writeLock().unlock();
         }
     }
+
+    @Override
+    public boolean canPassiveRecord()
+    {
+        return true;
+    }
 }

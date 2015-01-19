@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -41,13 +42,58 @@ public class TokenState
 
     private final AtomicInteger executions;
 
-    public static enum State { NORMAL, RECOVERING }
+    // the number of failure recovery streams are open
+    // instances cannot be gc'd unless this is 0
+    private final AtomicInteger recoveryStreams = new AtomicInteger(0);
+
+    public static enum State {
+
+        NORMAL(true, true),
+        PRE_RECOVERY(false, false),
+        RECOVERING_INSTANCES(false, false, true),
+        RECOVERING_DATA(true, false);
+
+        // this node can participate in epaxos rounds
+        private final boolean okToParticipate;
+        // this node can execute instances
+        private final boolean okToExecute;
+
+        // this node can't execute or participate, but should
+        // passively record accept and committed instances
+        private final boolean passiveRecord;
+
+        State(boolean okToParticipate, boolean okToExecute)
+        {
+            this(okToParticipate, okToExecute, false);
+        }
+
+        State(boolean okToParticipate, boolean okToExecute, boolean passiveRecord)
+        {
+            this.okToParticipate = okToParticipate;
+            this.okToExecute = okToExecute;
+            this.passiveRecord = passiveRecord;
+        }
+
+        public boolean isOkToParticipate()
+        {
+            return okToParticipate;
+        }
+
+        public boolean isOkToExecute()
+        {
+            return okToExecute;
+        }
+
+        public boolean isPassiveRecord()
+        {
+            return passiveRecord;
+        }
+    }
     private volatile State state;  // local only
     private final SetMultimap<Long, UUID> tokenInstances = HashMultimap.create();
 
     private transient volatile int lastPersistedExecutionCount = 0;
 
-    // TODO: is a lock even needed? The execution algorithm should handle serialization by itself
     // fair to give priority to token mutations
     public final ReadWriteLock rwLock = new ReentrantReadWriteLock(true);
 
@@ -86,6 +132,7 @@ public class TokenState
     {
         assert epoch >= this.epoch;
         this.epoch = epoch;
+        recordHighEpoch(epoch);
 
         executions.set(0);
         resetUnrecordedExecutions();
@@ -150,6 +197,22 @@ public class TokenState
         recordTokenInstance(instance.getEpoch(), instance.getId());
     }
 
+    public void lockGc()
+    {
+        long current = recoveryStreams.incrementAndGet();
+        assert current > 0;
+    }
+
+    public void unlockGc()
+    {
+        long current = recoveryStreams.decrementAndGet();
+    }
+
+    public boolean canGc()
+    {
+        return recoveryStreams.get() < 1;
+    }
+
     void recordTokenInstance(long epoch, UUID id)
     {
         if (epoch < this.epoch)
@@ -175,6 +238,29 @@ public class TokenState
     public Set<UUID> getCurrentTokenInstances()
     {
         return ImmutableSet.copyOf(tokenInstances.values());
+    }
+
+    public EpochDecision evaluateMessageEpoch(IEpochMessage message)
+    {
+        long remoteEpoch = message.getEpoch();
+        return new EpochDecision(EpochDecision.evaluate(epoch, remoteEpoch),
+                                 message.getToken(),
+                                 epoch,
+                                 remoteEpoch);
+    }
+
+    public Range<Token> getRange()
+    {
+        throw new AssertionError("Not Implemented!");
+    }
+
+    /**
+     * returns true if every instance for the current and last epoch used
+     * the LOCAL_SERIAL consistency level
+     */
+    public boolean localOnly()
+    {
+        throw new AssertionError("Not Implemented!");
     }
 
     public static final IVersionedSerializer<TokenState> serializer = new IVersionedSerializer<TokenState>()

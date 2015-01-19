@@ -74,7 +74,7 @@ public class ExecuteTask implements Runnable
                     ReplayPosition position = null;
                     try
                     {
-                        if (!instance.skipExecution())
+                        if (!instance.skipExecution() && state.canExecute(instance))
                         {
                             position = state.executeInstance(toExecute);
                         }

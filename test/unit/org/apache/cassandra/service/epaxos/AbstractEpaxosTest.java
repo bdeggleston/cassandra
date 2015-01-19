@@ -25,6 +25,7 @@ import org.apache.cassandra.service.ThriftCASRequest;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -32,6 +33,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@Ignore
 public abstract class AbstractEpaxosTest
 {
     protected static KSMetaData ksm;

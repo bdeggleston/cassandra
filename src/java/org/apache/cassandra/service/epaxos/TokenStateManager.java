@@ -1,15 +1,20 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Maps;
+import com.google.common.io.ByteStreams;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.service.StorageService;
 
+import java.io.DataInput;
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collection;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 
 /**
@@ -35,8 +40,29 @@ public class TokenStateManager
     {
         this.keyspace = keyspace;
         this.table = table;
-        // TODO: read token data off disk
-        // TODO: maybe 'start' Epaxos?
+    }
+
+    private List<TokenState> loadCf(UUID cfId)
+    {
+        String query = String.format("SELECT * FROM %s.%s WHERE cf_id=?", keyspace, table);
+        UntypedResultSet rows = QueryProcessor.executeInternal(query, cfId);
+        List<TokenState> states = new ArrayList<>(rows.size());
+        for (UntypedResultSet.Row row: rows)
+        {
+            ByteBuffer data = row.getBlob("data");
+            assert data.hasArray();  // FIXME
+            DataInput in = ByteStreams.newDataInput(data.array(), data.position());
+            try
+            {
+                states.add(TokenState.serializer.deserialize(in, 0));
+
+            }
+            catch (IOException e)
+            {
+                throw new AssertionError(e);
+            }
+        }
+        return states;
     }
 
     public TokenState get(CfKey cfKey)
@@ -160,8 +186,19 @@ public class TokenStateManager
         TokenState tokenState = tokenStates.get(cfId);
         if (tokenState == null)
         {
-            tokenStates.putIfAbsent(cfId, new TokenState(token, cfId, 0, 0, 0));
-            tokenState = tokenStates.get(cfId);
+            List<TokenState> states = loadCf(cfId);
+            assert states.size() == 0 || states.size() == 1;
+            tokenState = states.size() > 0 ? states.get(0) : new TokenState(token, cfId, 0, 0, 0);
+
+            TokenState previous = tokenStates.putIfAbsent(cfId, tokenState);
+            if (previous == null && states.size() == 0)
+            {
+                save(tokenState);
+            }
+            else if (previous != null)
+            {
+                tokenState = previous;
+            }
             assert tokenState != null;
         }
         return tokenState;
@@ -169,8 +206,24 @@ public class TokenStateManager
 
     public void save(TokenState state)
     {
+        DataOutputBuffer tokenOut = new DataOutputBuffer((int) Token.serializer.serializedSize(state.getToken(), TypeSizes.NATIVE));
+        DataOutputBuffer stateOut = new DataOutputBuffer((int) TokenState.serializer.serializedSize(state, 0));
+        try
+        {
+            Token.serializer.serialize(state.getToken(), tokenOut);
+            TokenState.serializer.serialize(state, stateOut, 0);
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError(e);
+        }
+        String depsReq = "INSERT INTO %s.%s (cf_id, token_bytes, data) VALUES (?, ?, ?)";
+        QueryProcessor.executeInternal(String.format(depsReq, keyspace, table),
+                                       state.getCfId(),
+                                       ByteBuffer.wrap(tokenOut.getData()),
+                                       ByteBuffer.wrap(stateOut.getData()));
+
         state.onSave();
-        // TODO: persist
     }
 
     // TODO: handle changes to the token ring
@@ -199,6 +252,6 @@ public class TokenStateManager
 
     public boolean managesCfId(UUID cfId)
     {
-        return tokenStates.containsKey(cfId);
+        return tokenStates.containsKey(cfId) || loadCf(cfId).size() > 0;
     }
 }

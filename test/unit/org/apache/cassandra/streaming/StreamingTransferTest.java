@@ -243,6 +243,7 @@ public class StreamingTransferTest
         for (SSTableReader sstable : sstables)
         {
             details.add(new StreamSession.SSTableStreamingSections(sstable,
+                                                                   ranges,
                                                                    sstable.getPositionsForRanges(ranges),
                                                                    sstable.estimatedKeysForRanges(ranges), sstable.getSSTableMetadata().repairedAt));
         }

@@ -19,11 +19,13 @@ package org.apache.cassandra.streaming;
 
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.cassandra.concurrent.NamedThreadFactory;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.sstable.SSTableReader;
+import org.apache.cassandra.service.epaxos.EpaxosState;
 import org.apache.cassandra.streaming.messages.OutgoingFileMessage;
 import org.apache.cassandra.utils.Pair;
 
@@ -47,10 +49,14 @@ public class StreamTransferTask extends StreamTask
         super(session, cfId);
     }
 
-    public synchronized void addTransferFile(SSTableReader sstable, long estimatedKeys, List<Pair<Long, Long>> sections, long repairedAt)
+    public synchronized void addTransferFile(SSTableReader sstable, long estimatedKeys, List<Pair<Long, Long>> sections, Collection<Range<Token>> ranges, long repairedAt)
     {
         assert sstable != null && cfId.equals(sstable.metadata.cfId);
-        OutgoingFileMessage message = new OutgoingFileMessage(sstable, sequenceNumber.getAndIncrement(), estimatedKeys, sections, repairedAt);
+        OutgoingFileMessage message = new OutgoingFileMessage(sstable, sequenceNumber.getAndIncrement(), estimatedKeys, sections, ranges, repairedAt);
+
+        // add epaxos data
+        EpaxosState.instance.writeStreamHeader(sstable, ranges, message.header);
+
         files.put(message.header.sequenceNumber, message);
         totalSize += message.header.size();
     }

@@ -4,7 +4,7 @@ import org.apache.cassandra.dht.Token;
 
 public class EpochDecision
 {
-    public static enum Outcome { OK, LOCAL_FAILURE, REMOTE_FAILURE }
+    public static enum Outcome { OK, LOCAL_FAILURE, REMOTE_FAILURE, RECOVERY }
 
     public final Outcome outcome;
     public final Token token;

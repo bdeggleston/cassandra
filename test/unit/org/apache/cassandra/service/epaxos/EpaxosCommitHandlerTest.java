@@ -3,6 +3,7 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.service.paxos.Commit;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
@@ -116,4 +117,11 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
         Assert.assertTrue(state.acknowledgedRecoreded.contains(instance.getId()));
     }
 
+    @Test
+    public void passiveRecord()
+    {
+        MockVerbHandlerState state = new MockVerbHandlerState();
+        CommitVerbHandler handler = new CommitVerbHandler(state);
+        Assert.assertTrue(handler.canPassiveRecord());
+    }
 }

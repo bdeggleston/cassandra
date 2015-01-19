@@ -55,4 +55,10 @@ public class CommitVerbHandler extends AbstractEpochVerbHandler<MessageEnvelope<
 
         state.execute(remoteInstance.getId());
     }
+
+    @Override
+    public boolean canPassiveRecord()
+    {
+        return true;
+    }
 }

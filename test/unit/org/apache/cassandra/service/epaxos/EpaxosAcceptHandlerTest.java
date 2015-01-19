@@ -152,4 +152,12 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
         handler.doVerb(createMessage(instance.copy()), 0);
         Assert.assertTrue(state.acknowledgedRecoreded.contains(instance.getId()));
     }
+
+    @Test
+    public void passiveRecord()
+    {
+        MockVerbHandlerState state = new MockVerbHandlerState();
+        AcceptVerbHandler handler = new AcceptVerbHandler(state);
+        Assert.assertTrue(handler.canPassiveRecord());
+    }
 }

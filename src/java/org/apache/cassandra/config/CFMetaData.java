@@ -359,10 +359,10 @@ public final class CFMetaData
                                                                       + "PRIMARY KEY (row_key, cf_id))");
 
     public static final CFMetaData EpaxosTokenStateCF = compile("CREATE TABLE " + SystemKeyspace.EPAXOS_TOKEN_STATE + " ("
-                                                                        + "token_bytes blob,"
                                                                         + "cf_id uuid,"
+                                                                        + "token_bytes blob,"
                                                                         + "data blob,"
-                                                                        + "PRIMARY KEY (token_bytes, cf_id))");
+                                                                        + "PRIMARY KEY (cf_id, token_bytes))");
 
     public static class SpeculativeRetry
     {

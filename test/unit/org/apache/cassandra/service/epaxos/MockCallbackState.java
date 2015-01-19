@@ -1,7 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.base.Predicate;
-import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -11,7 +10,7 @@ import java.net.UnknownHostException;
 import java.util.*;
 
 /**
- * Mocked state for examining the behavior of callback classes
+ * Mocked state for testing the behavior of callback classes
  */
 public class MockCallbackState extends EpaxosState
 {
@@ -218,5 +217,11 @@ public class MockCallbackState extends EpaxosState
     protected void sendOneWay(MessageOut message, InetAddress to)
     {
         sentMessages.add(new SentMessage(message, to, null));
+    }
+
+    @Override
+    protected void scheduleTokenStateMaintenanceTask()
+    {
+        // no-op
     }
 }

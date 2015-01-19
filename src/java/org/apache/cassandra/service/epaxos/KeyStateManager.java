@@ -8,10 +8,18 @@ import com.google.common.util.concurrent.Striped;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
-import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
+import org.apache.cassandra.db.filter.ColumnSlice;
+import org.apache.cassandra.db.filter.IDiskAtomFilter;
+import org.apache.cassandra.db.filter.SliceQueryFilter;
+import org.apache.cassandra.dht.AbstractBounds;
+import org.apache.cassandra.dht.Bounds;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataOutputBuffer;
+import org.apache.cassandra.utils.Pair;
 
 import java.io.DataInput;
 import java.io.IOException;
@@ -302,6 +310,53 @@ public class KeyStateManager
         }
     }
 
+    private KeyState deserialize(ByteBuffer data)
+    {
+        assert data.hasArray();  // FIXME
+        DataInput in = ByteStreams.newDataInput(data.array(), data.position());
+        try
+        {
+            return KeyState.serializer.deserialize(in, 0);
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError(e);
+        }
+    }
+
+    public KeyState loadKeyState(CfKey cfKey)
+    {
+        return loadKeyState(cfKey.key, cfKey.cfId);
+    }
+
+    public KeyState loadKeyStateIfExists(CfKey cfKey)
+    {
+        KeyState dm = cache.getIfPresent(cfKey);
+        if (dm != null)
+            return dm;
+
+        String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=?";
+        UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace, table), cfKey.key, cfKey.cfId);
+
+        if (results.isEmpty())
+        {
+            return null;
+        }
+
+        UntypedResultSet.Row row = results.one();
+
+        ByteBuffer data = row.getBlob("data");
+        dm = deserialize(data);
+        cache.put(cfKey, dm);
+        return dm;
+    }
+
+    public boolean exists(CfKey cfKey)
+    {
+        String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=?";
+        return cache.getIfPresent(cfKey) != null || !QueryProcessor.executeInternal(String.format(query, keyspace, table), cfKey.key, cfKey.cfId).isEmpty();
+    }
+
     /**
      * loads a dependency manager. Must be called within a lock held for this key & cfid pair
      */
@@ -318,7 +373,6 @@ public class KeyStateManager
 
         if (results.isEmpty())
         {
-
             dm = new KeyState(tokenStateManager.getEpoch(key, cfId));
 
             // add the current epoch dependencies if this is a new key
@@ -332,18 +386,23 @@ public class KeyStateManager
         UntypedResultSet.Row row = results.one();
 
         ByteBuffer data = row.getBlob("data");
-        assert data.hasArray();  // FIXME
-        DataInput in = ByteStreams.newDataInput(data.array(), data.position());
-        try
-        {
-            dm = KeyState.serializer.deserialize(in, 0);
-            cache.put(cfKey, dm);
-            return dm;
+        dm = deserialize(data);
+        cache.put(cfKey, dm);
+        return dm;
+    }
 
-        }
-        catch (IOException e)
+    @VisibleForTesting
+    boolean managesKey(ByteBuffer key, UUID cfId)
+    {
+        if (cache.getIfPresent(new CfKey(key, cfId)) != null)
         {
-            throw new AssertionError(e);
+            return true;
+        }
+        else
+        {
+            String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=?";
+            UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace, table), key, cfId);
+            return !results.isEmpty();
         }
     }
 
@@ -382,6 +441,13 @@ public class KeyStateManager
         {
             this.cache.put(new CfKey(key, cfId), dm);
         }
+    }
+
+    void deleteKeyState(CfKey cfKey)
+    {
+        cache.invalidate(cfKey);
+        String deleteReq = "DELETE FROM %s.%s WHERE row_key=? AND cf_id=?";
+        QueryProcessor.executeInternal(String.format(deleteReq, keyspace, table), cfKey.key, cfKey.cfId);
     }
 
     /**
@@ -427,6 +493,163 @@ public class KeyStateManager
         finally
         {
             lock.unlock();
+        }
+    }
+
+    /**
+     * Returns true if we haven't been streamed any mutations
+     * that are ahead of the current execution position
+     */
+    public boolean canExecute(CfKey cfKey)
+    {
+        Lock lock = getCfKeyLock(cfKey);
+        lock.lock();
+        try
+        {
+            KeyState ks = loadKeyState(cfKey.key, cfKey.cfId);
+            return ks.canExecute();
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * Reports that a row was streamed to us that contains a mutation
+     * from an instance that hasn't been executed locally yet.
+     */
+    public boolean reportFutureRepair(CfKey cfKey, ExecutionInfo info)
+    {
+        Lock lock = getCfKeyLock(cfKey);
+        lock.lock();
+        try
+        {
+            KeyState ks = loadKeyState(cfKey.key, cfKey.cfId);
+            return ks.setFutureExecution(info);
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * Returns execution info for the given token range at the given replay position. If the given replay position
+     * is too far in the past to have data, the execution position directly before the first known mutation is returned.
+     * This is ok since it will be in a current epoch which we know about or are in the process of recovering.
+     */
+    public Iterator<Pair<ByteBuffer, ExecutionInfo>> getRangeExecutionInfo(UUID cfId, Range<Token> range, final ReplayPosition replayPosition)
+    {
+        // TODO: refactor
+        final Iterator<Pair<ByteBuffer, KeyState>> iterator = new KeyStateIterator(cfId, range);
+        return new Iterator<Pair<ByteBuffer, ExecutionInfo>>()
+        {
+            @Override
+            public boolean hasNext()
+            {
+                return iterator.hasNext();
+            }
+
+            @Override
+            public Pair<ByteBuffer, ExecutionInfo> next()
+            {
+                Pair<ByteBuffer, KeyState> next = iterator.next();
+                return Pair.create(next.left, next.right.getExecutionInfoAtPosition(replayPosition));
+            }
+
+            @Override
+            public void remove()
+            {
+
+            }
+        };
+    }
+
+    /**
+     * This reads the current key state data off of disk, bypassing the cache and locks. So
+     * the likelihood of getting stale data is high. This exists to generate metadata for streams.
+     */
+    private class KeyStateIterator implements Iterator<Pair<ByteBuffer, KeyState>>
+    {
+        private static final int LIMIT = 10000;
+
+        final UUID cfId;
+        Range<Token> range;
+        Iterator<UntypedResultSet.Row> iter = null;
+        Pair<ByteBuffer, KeyState> next = null;
+        boolean endReached = false;
+
+        private KeyStateIterator(UUID cfId, Range<Token> range)
+        {
+            this.cfId = cfId;
+            this.range = range;
+        }
+
+        private void fillIter()
+        {
+            ColumnFamilyStore cfs = Keyspace.open(keyspace).getColumnFamilyStore(table);
+
+            AbstractBounds<RowPosition> bounds = new Bounds<RowPosition>(range.left.minKeyBound(), range.right.maxKeyBound());
+            IDiskAtomFilter atomFilter = new IdentityQueryFilter();
+            List<Row> partitions = cfs.getRangeSlice(bounds, null, atomFilter, LIMIT);
+            String query = String.format("SELECT * FROM %s.%s", keyspace, table);
+            // TODO: handle more than initial limit
+            UntypedResultSet results = QueryProcessor.resultify(query, partitions);
+            endReached = results.size() < LIMIT;
+            iter = results.iterator();
+        }
+
+        private void maybeSetNext()
+        {
+            if (next != null)
+            {
+                return;
+            }
+
+            if (iter == null || (!iter.hasNext() && !endReached))
+            {
+                fillIter();
+            }
+
+            while (iter.hasNext())
+            {
+                UntypedResultSet.Row nextRow = iter.next();
+                if (!nextRow.getUUID("cf_id").equals(cfId))
+                {
+                    continue;
+                }
+                ByteBuffer key = nextRow.getBlob("row_key");
+                KeyState keyState = deserialize(nextRow.getBlob("data"));
+                next = Pair.create(key, keyState);
+                return;
+            }
+        }
+
+        @Override
+        public boolean hasNext()
+        {
+            maybeSetNext();
+            return next != null;
+        }
+
+        @Override
+        public Pair<ByteBuffer, KeyState> next()
+        {
+            try
+            {
+                return next;
+            }
+            finally
+            {
+                next = null;
+            }
+        }
+
+        @Override
+        public void remove()
+        {
+            throw new UnsupportedOperationException();
         }
     }
 }
