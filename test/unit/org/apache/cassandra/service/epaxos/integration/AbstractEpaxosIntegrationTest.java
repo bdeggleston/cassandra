@@ -40,6 +40,14 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
             dependencyTable = CFMetaData.copyOpts(dependencyTable, CFMetaData.EpaxosKeyStateCF);
 
             cfDefs.add(dependencyTable);
+
+            CFMetaData tokenStateTable = new CFMetaData(ksName,
+                                                        String.format("%s_%s", SystemKeyspace.EPAXOS_TOKEN_STATE, i + 1),
+                                                        CFMetaData.EpaxosTokenStateCF.cfType,
+                                                        CFMetaData.EpaxosTokenStateCF.comparator);
+            tokenStateTable = CFMetaData.copyOpts(tokenStateTable, CFMetaData.EpaxosTokenStateCF);
+
+            cfDefs.add(tokenStateTable);
         }
 
         KSMetaData ks = KSMetaData.newKeyspace(ksName, LocalStrategy.class, Collections.EMPTY_MAP, true, cfDefs);

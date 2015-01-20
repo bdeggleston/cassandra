@@ -157,7 +157,7 @@ public class EpaxosState
     public EpaxosState(boolean startMaintenanceTask)
     {
         instanceCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(10000).build();
-        tokenStateManager = new TokenStateManager();
+        tokenStateManager = new TokenStateManager(keyspace(), tokenStateTable());
         keyStateManager = new KeyStateManager(keyspace(), keyStateTable(), tokenStateManager);
 
         if (startMaintenanceTask)
