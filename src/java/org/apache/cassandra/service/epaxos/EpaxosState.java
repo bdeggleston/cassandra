@@ -737,6 +737,11 @@ public class EpaxosState
                                  remoteEpoch);
     }
 
+    public TokenState getTokenState(IEpochMessage message)
+    {
+        return tokenStateManager.get(message.getToken(), message.getCfId());
+    }
+
     /**
      * starts a new local failure recovery task for the given token.
      */

@@ -58,10 +58,17 @@ public class EpaxosEpochCallbackTest
         public volatile int localFailureCalls = 0;
 
         public final long epoch;
+        public final TokenState.State state;
 
         private State(long epoch)
         {
+            this(epoch, TokenState.State.NORMAL);
+        }
+
+        private State(long epoch, TokenState.State state)
+        {
             this.epoch = epoch;
+            this.state = state;
         }
 
         @Override
@@ -77,9 +84,9 @@ public class EpaxosEpochCallbackTest
         }
 
         @Override
-        public long getCurrentEpoch(Token token, UUID cfid)
+        public TokenState getTokenState(IEpochMessage message)
         {
-            return epoch;
+            return new TokenState(message.getToken(), message.getCfId(), epoch, epoch, 0, state);
         }
     }
 
@@ -145,5 +152,30 @@ public class EpaxosEpochCallbackTest
         Assert.assertEquals(1, state.remoteFailureCalls);
         Assert.assertEquals(0, state.localFailureCalls);
 
+    }
+
+    private void assertModeResponse(TokenState.State mode, boolean doCallbackExpected) throws UnknownHostException
+    {
+        State state = new State(5, mode);
+        Callback callback = new Callback(state);
+
+        Assert.assertEquals(0, callback.epochResponseCalls);
+        Assert.assertEquals(0, state.remoteFailureCalls);
+        Assert.assertEquals(0, state.localFailureCalls);
+
+        callback.response(getMessage(5));
+
+        Assert.assertEquals(doCallbackExpected ? 1 : 0, callback.epochResponseCalls);
+        Assert.assertEquals(0, state.remoteFailureCalls);
+        Assert.assertEquals(0, state.localFailureCalls);
+    }
+
+    @Test
+    public void recoveryModes() throws Exception
+    {
+        assertModeResponse(TokenState.State.NORMAL, true);
+        assertModeResponse(TokenState.State.PRE_RECOVERY, false);
+        assertModeResponse(TokenState.State.RECOVERING_INSTANCES, false);
+        assertModeResponse(TokenState.State.RECOVERING_DATA, true);
     }
 }

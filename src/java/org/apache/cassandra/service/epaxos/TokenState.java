@@ -41,7 +41,49 @@ public class TokenState
 
     private final AtomicInteger executions;
 
-    public static enum State { NORMAL, RECOVERING }
+    public static enum State {
+
+        NORMAL(true, true),
+        PRE_RECOVERY(false, false),
+        RECOVERING_INSTANCES(false, false, true),
+        RECOVERING_DATA(true, false);
+
+        // this node can participate in epaxos rounds
+        private final boolean okToParticipate;
+        // this node can execute instances
+        private final boolean okToExecute;
+
+        // this node can't execute or participate, but should
+        // passively record accept and committed instances
+        private final boolean passiveRecord;
+
+        State(boolean okToParticipate, boolean okToExecute)
+        {
+            this(okToParticipate, okToExecute, false);
+        }
+
+        State(boolean okToParticipate, boolean okToExecute, boolean passiveRecord)
+        {
+            this.okToParticipate = okToParticipate;
+            this.okToExecute = okToExecute;
+            this.passiveRecord = passiveRecord;
+        }
+
+        public boolean isOkToParticipate()
+        {
+            return okToParticipate;
+        }
+
+        public boolean isOkToExecute()
+        {
+            return okToExecute;
+        }
+
+        public boolean isPassiveRecord()
+        {
+            return passiveRecord;
+        }
+    }
     private volatile State state;  // local only
     private final SetMultimap<Long, UUID> tokenInstances = HashMultimap.create();
 
@@ -175,6 +217,15 @@ public class TokenState
     public Set<UUID> getCurrentTokenInstances()
     {
         return ImmutableSet.copyOf(tokenInstances.values());
+    }
+
+    public EpochDecision evaluateMessageEpoch(IEpochMessage message)
+    {
+        long remoteEpoch = message.getEpoch();
+        return new EpochDecision(EpochDecision.evaluate(epoch, remoteEpoch),
+                                 message.getToken(),
+                                 epoch,
+                                 remoteEpoch);
     }
 
     public static final IVersionedSerializer<TokenState> serializer = new IVersionedSerializer<TokenState>()

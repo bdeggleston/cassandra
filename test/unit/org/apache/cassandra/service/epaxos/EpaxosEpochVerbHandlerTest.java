@@ -61,10 +61,17 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         public volatile int localFailureCalls = 0;
 
         public final long epoch;
+        public final TokenState.State state;
 
         private State(long epoch)
         {
+            this(epoch, TokenState.State.NORMAL);
+        }
+
+        private State(long epoch, TokenState.State state)
+        {
             this.epoch = epoch;
+            this.state = state;
         }
 
         @Override
@@ -80,9 +87,9 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         }
 
         @Override
-        public long getCurrentEpoch(Token token, UUID cfId)
+        public TokenState getTokenState(IEpochMessage message)
         {
-            return epoch;
+            return new TokenState(message.getToken(), message.getCfId(), epoch, epoch, 0, state);
         }
     }
 
@@ -147,5 +154,43 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         Assert.assertEquals(0, handler.doEpochVerbCalls);
         Assert.assertEquals(1, state.remoteFailureCalls);
         Assert.assertEquals(0, state.localFailureCalls);
+    }
+
+    private void assertModeResponse(TokenState.State mode, boolean doVerbExpected, final boolean passiveRecord) throws UnknownHostException
+    {
+        State state = new State(5, mode);
+        Handler handler = new Handler(state) {
+            @Override
+            public boolean canPassiveRecord()
+            {
+                return passiveRecord;
+            }
+        };
+
+        Assert.assertEquals(0, handler.doEpochVerbCalls);
+        Assert.assertEquals(0, state.remoteFailureCalls);
+        Assert.assertEquals(0, state.localFailureCalls);
+
+        handler.doVerb(getMessage(5), 0);
+
+        Assert.assertEquals(doVerbExpected ? 1 : 0, handler.doEpochVerbCalls);
+        Assert.assertEquals(0, state.remoteFailureCalls);
+        Assert.assertEquals(0, state.localFailureCalls);
+    }
+
+    @Test
+    public void recoveryModes() throws Exception
+    {
+        assertModeResponse(TokenState.State.NORMAL, true, false);
+        assertModeResponse(TokenState.State.NORMAL, true, true);
+
+        assertModeResponse(TokenState.State.PRE_RECOVERY, false, false);
+        assertModeResponse(TokenState.State.PRE_RECOVERY, false, true);
+
+        assertModeResponse(TokenState.State.RECOVERING_INSTANCES, false, false);
+        assertModeResponse(TokenState.State.RECOVERING_INSTANCES, true, true);
+
+        assertModeResponse(TokenState.State.RECOVERING_DATA, true, false);
+        assertModeResponse(TokenState.State.RECOVERING_DATA, true, true);
     }
 }

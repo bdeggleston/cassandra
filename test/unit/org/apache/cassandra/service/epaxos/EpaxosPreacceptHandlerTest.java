@@ -238,4 +238,12 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
     {
         // TODO: this
     }
+
+    @Test
+    public void passiveRecord()
+    {
+        MockVerbHandlerState state = new MockVerbHandlerState();
+        PreacceptVerbHandler handler = new PreacceptVerbHandler(state);
+        Assert.assertFalse(handler.canPassiveRecord());
+    }
 }
