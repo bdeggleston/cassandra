@@ -324,6 +324,10 @@ public class KeyStateManager
         }
     }
 
+    public KeyState loadKeyState(CfKey cfKey)
+    {
+        return loadKeyState(cfKey.key, cfKey.cfId);
+    }
     /**
      * loads a dependency manager. Must be called within a lock held for this key & cfid pair
      */
@@ -394,6 +398,13 @@ public class KeyStateManager
         {
             this.cache.put(new CfKey(key, cfId), dm);
         }
+    }
+
+    void deleteKeyState(CfKey cfKey)
+    {
+        cache.invalidate(cfKey);
+        String deleteReq = "DELETE FROM %s.%s WHERE row_key=? AND cf_id=?";
+        QueryProcessor.executeInternal(String.format(deleteReq, keyspace, table), cfKey.key, cfKey.cfId);
     }
 
     /**

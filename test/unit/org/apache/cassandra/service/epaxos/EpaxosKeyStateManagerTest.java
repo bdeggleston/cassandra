@@ -120,7 +120,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
                 ks.recordInstance(id);
             }
             keyDeps.put(cfKey, deps);
-            Assert.assertEquals(deps, ks.getDeps());
+            Assert.assertEquals(deps, ks.getActiveInstanceIds());
 
             ksm.saveKeyState(cfKey.key, cfKey.cfId, ks);
         }
@@ -133,9 +133,9 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         // check that the instance has been added to it's own key state, but not the other
         KeyState ks1 = ksm.loadKeyState(request1.getKey(), request1.getCfKey().cfId);
-        Assert.assertTrue(ks1.getDeps().contains(instance.getId()));
+        Assert.assertTrue(ks1.getActiveInstanceIds().contains(instance.getId()));
         KeyState ks2 = ksm.loadKeyState(request2.getKey(), request2.getCfKey().cfId);
-        Assert.assertFalse(ks2.getDeps().contains(instance.getId()));
+        Assert.assertFalse(ks2.getActiveInstanceIds().contains(instance.getId()));
 
         // TODO: check token bounds
     }
@@ -167,7 +167,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
                 expectedDeps.addAll(deps);
             }
 
-            Assert.assertEquals(deps, ks.getDeps());
+            Assert.assertEquals(deps, ks.getActiveInstanceIds());
 
             ksm.saveKeyState(cfKey.key, cfKey.cfId, ks);
         }
@@ -184,11 +184,11 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
             if (cfKey.cfId.equals(cfId))
             {
-                Assert.assertTrue(ks.getDeps().contains(instance.getId()));
+                Assert.assertTrue(ks.getActiveInstanceIds().contains(instance.getId()));
             }
             else
             {
-                Assert.assertFalse(ks.getDeps().contains(instance.getId()));
+                Assert.assertFalse(ks.getActiveInstanceIds().contains(instance.getId()));
             }
         }
 
@@ -212,15 +212,15 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         KeyState ks1 = ksm.loadKeyState(request1.getKey(), request1.getCfKey().cfId);
         KeyState ks2 = ksm.loadKeyState(request2.getKey(), request2.getCfKey().cfId);
 
-        Assert.assertEquals(0, ks1.getDeps().size());
-        Assert.assertEquals(0, ks2.getDeps().size());
+        Assert.assertEquals(0, ks1.getActiveInstanceIds().size());
+        Assert.assertEquals(0, ks2.getActiveInstanceIds().size());
 
         ksm.recordMissingInstance(instance);
 
-        Assert.assertEquals(1, ks1.getDeps().size());
-        Assert.assertEquals(0, ks2.getDeps().size());
+        Assert.assertEquals(1, ks1.getActiveInstanceIds().size());
+        Assert.assertEquals(0, ks2.getActiveInstanceIds().size());
 
-        Assert.assertTrue(ks1.getDeps().contains(instance.getId()));
+        Assert.assertTrue(ks1.getActiveInstanceIds().contains(instance.getId()));
     }
 
     @Test
@@ -248,11 +248,11 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
             if (cfKey.cfId.equals(cfId))
             {
-                Assert.assertTrue(ks.getDeps().contains(instance.getId()));
+                Assert.assertTrue(ks.getActiveInstanceIds().contains(instance.getId()));
             }
             else
             {
-                Assert.assertFalse(ks.getDeps().contains(instance.getId()));
+                Assert.assertFalse(ks.getActiveInstanceIds().contains(instance.getId()));
             }
         }
     }
@@ -278,7 +278,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
                 ks.recordInstance(id);
             }
             keyDeps.put(cfKey, deps);
-            Assert.assertEquals(deps, ks.getDeps());
+            Assert.assertEquals(deps, ks.getActiveInstanceIds());
 
             ksm.saveKeyState(cfKey.key, cfKey.cfId, ks);
         }
@@ -295,7 +295,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         for (CfKey cfKey: cfKeys)
         {
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
-            for (UUID id: ks.getDeps())
+            for (UUID id: ks.getActiveInstanceIds())
             {
                 KeyState.Entry dep = ks.get(id);
                 Assert.assertEquals(0, dep.acknowledged.size());
@@ -312,7 +312,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         for (CfKey cfKey: cfKeys)
         {
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
-            for (UUID id: ks.getDeps())
+            for (UUID id: ks.getActiveInstanceIds())
             {
                 KeyState.Entry dep = ks.get(id);
                 Assert.assertEquals(expected.contains(id), dep.acknowledged.size() > 0);
@@ -337,7 +337,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             {
                 ks.recordInstance(id);
             }
-            Assert.assertEquals(deps, ks.getDeps());
+            Assert.assertEquals(deps, ks.getActiveInstanceIds());
 
             ksm.saveKeyState(cfKey.key, cfKey.cfId, ks);
         }
@@ -356,7 +356,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         for (CfKey cfKey: cfKeys)
         {
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
-            for (UUID id: ks.getDeps())
+            for (UUID id: ks.getActiveInstanceIds())
             {
                 KeyState.Entry dep = ks.get(id);
                 Assert.assertEquals(0, dep.acknowledged.size());
@@ -373,7 +373,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         {
             // FIXME: only keystates with the same cfid should be affected
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
-            for (UUID id: ks.getDeps())
+            for (UUID id: ks.getActiveInstanceIds())
             {
                 KeyState.Entry dep = ks.get(id);
                 Assert.assertEquals(expected.contains(id), dep.acknowledged.size() > 0);
@@ -404,7 +404,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
                 ks.recordInstance(id);
             }
             keyDeps.put(cfKey, deps);
-            Assert.assertEquals(deps, ks.getDeps());
+            Assert.assertEquals(deps, ks.getActiveInstanceIds());
 
             ksm.saveKeyState(cfKey.key, cfKey.cfId, ks);
         }
@@ -463,7 +463,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             {
                 ks.recordInstance(id);
             }
-            Assert.assertEquals(deps, ks.getDeps());
+            Assert.assertEquals(deps, ks.getActiveInstanceIds());
 
             ksm.saveKeyState(cfKey.key, cfKey.cfId, ks);
         }

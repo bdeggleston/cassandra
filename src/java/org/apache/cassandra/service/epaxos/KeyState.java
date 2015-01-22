@@ -194,7 +194,7 @@ public class KeyState
     }
 
     @VisibleForTesting
-    Set<UUID> getDeps()
+    Set<UUID> getActiveInstanceIds()
     {
         return ImmutableSet.copyOf(entries.keySet());
     }
