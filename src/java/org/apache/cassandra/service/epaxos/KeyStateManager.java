@@ -363,6 +363,21 @@ public class KeyStateManager
         return dm;
     }
 
+    @VisibleForTesting
+    boolean managesKey(ByteBuffer key, UUID cfId)
+    {
+        if (cache.getIfPresent(new CfKey(key, cfId)) != null)
+        {
+            return true;
+        }
+        else
+        {
+            String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=?";
+            UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace, table), key, cfId);
+            return !results.isEmpty();
+        }
+    }
+
     void saveKeyState(CfKey cfKey, KeyState dm)
     {
         saveKeyState(cfKey.key, cfKey.cfId, dm, true);
