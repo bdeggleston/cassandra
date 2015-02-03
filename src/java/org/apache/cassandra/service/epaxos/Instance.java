@@ -33,7 +33,7 @@ import java.util.UUID;
  */
 public abstract class Instance
 {
-    private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
+    private static final Logger logger = LoggerFactory.getLogger(Instance.class);
 
     public static enum State
     {
@@ -526,13 +526,7 @@ public abstract class Instance
             super.serialize(instance, out, version);
             out.writeBoolean(instance.placeholder);
             out.writeLong(instance.lastUpdated);
-            out.writeBoolean(instance.stronglyConnected != null);
-            if (instance.stronglyConnected != null)
-            {
-                out.writeInt(instance.stronglyConnected.size());
-                for (UUID iid: instance.stronglyConnected)
-                    UUIDSerializer.serializer.serialize(iid, out, version);
-            }
+            Serializers.uuidSets.serialize(instance.stronglyConnected, out, version);
         }
 
         @Override
@@ -541,13 +535,7 @@ public abstract class Instance
             super.deserialize(instance, in, version);
             instance.placeholder = in.readBoolean();
             instance.lastUpdated = in.readLong();
-            if (in.readBoolean())
-            {
-                UUID[] scc = new UUID[in.readInt()];
-                for (int i=0; i<scc.length; i++)
-                    scc[i] = UUIDSerializer.serializer.deserialize(in, version);
-                instance.stronglyConnected = ImmutableSet.copyOf(scc);
-            }
+            instance.stronglyConnected = Serializers.uuidSets.deserialize(in, version);
             return instance;
         }
 
@@ -558,12 +546,7 @@ public abstract class Instance
             size += 1;  // instance.placeholder
             size += 8;  // instance.lastUpdated
             size += 1;  // instance.stronglyConnected != null
-            if (instance.stronglyConnected != null)
-            {
-                size += 4;  // stronglyConnected.size
-                for (UUID iid : instance.stronglyConnected)
-                    size += UUIDSerializer.serializer.serializedSize(iid, version);
-            }
+            size += Serializers.uuidSets.serializedSize(instance.stronglyConnected, version);
             return size;
         }
     }

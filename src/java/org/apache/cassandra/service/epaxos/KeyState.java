@@ -237,8 +237,12 @@ public class KeyState
             maybeEvict(iid);
         }
     }
-
     public void markExecuted(UUID iid, Set<UUID> stronglyConnected, ReplayPosition position)
+    {
+        markExecuted(iid, stronglyConnected, epoch, position);
+    }
+
+    void markExecuted(UUID iid, Set<UUID> stronglyConnected, long execEpoch, ReplayPosition position)
     {
         Entry entry = get(iid);
         if (entry != null)
@@ -251,11 +255,11 @@ public class KeyState
         // they could all acknowledge each other, and would terminate
         // the execution chain once executed.
 
-        EpochExecutionInfo info = epochs.get(epoch);
+        EpochExecutionInfo info = epochs.get(execEpoch);
         if (info == null)
         {
             info = new EpochExecutionInfo();
-            epochs.put(epoch, info);
+            epochs.put(execEpoch, info);
         }
         if (!info.contains(iid))
         {
@@ -267,13 +271,13 @@ public class KeyState
 
         if (futureExecution != null)
         {
-            if (new ExecutionInfo(epoch, executionCount).compareTo(futureExecution) >= 0)
+            if (new ExecutionInfo(execEpoch, executionCount).compareTo(futureExecution) >= 0)
             {
                 futureExecution = null;
             }
         }
 
-        logger.debug("Instance {} marked executed at rp={}, epoch={}, execNum={}", iid, position, epoch, executionCount);
+        logger.debug("Instance {} marked executed at rp={}, epoch={}, execNum={}", iid, position, execEpoch, executionCount);
     }
 
     /**
@@ -375,6 +379,21 @@ public class KeyState
         for (Map.Entry<Long, EpochExecutionInfo> entry: epochs.entrySet())
         {
             m.put(entry.getKey(), entry.getValue().idSet);
+        }
+        return m;
+    }
+
+    public Map<Long, List<UUID>> getOrderedEpochExecutions()
+    {
+        Map<Long, List<UUID>> m = new HashMap<>();
+        for (Map.Entry<Long, EpochExecutionInfo> entry: epochs.entrySet())
+        {
+            List<UUID> executed = new ArrayList<>(entry.getValue().executed.size());
+            for (Pair<UUID, ReplayPosition> info: entry.getValue().executed)
+            {
+                executed.add(info.left);
+            }
+            m.put(entry.getKey(), executed);
         }
         return m;
     }

@@ -328,6 +328,35 @@ public class KeyStateManager
     {
         return loadKeyState(cfKey.key, cfKey.cfId);
     }
+
+    public KeyState loadKeyStateIfExists(CfKey cfKey)
+    {
+        KeyState dm = cache.getIfPresent(cfKey);
+        if (dm != null)
+            return dm;
+
+        String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=?";
+        UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace, table), cfKey.key, cfKey.cfId);
+
+        if (results.isEmpty())
+        {
+            return null;
+        }
+
+        UntypedResultSet.Row row = results.one();
+
+        ByteBuffer data = row.getBlob("data");
+        dm = deserialize(data);
+        cache.put(cfKey, dm);
+        return dm;
+    }
+
+    public boolean exists(CfKey cfKey)
+    {
+        String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=?";
+        return cache.getIfPresent(cfKey) != null || !QueryProcessor.executeInternal(String.format(query, keyspace, table), cfKey.key, cfKey.cfId).isEmpty();
+    }
+
     /**
      * loads a dependency manager. Must be called within a lock held for this key & cfid pair
      */
@@ -344,7 +373,6 @@ public class KeyStateManager
 
         if (results.isEmpty())
         {
-
             dm = new KeyState(tokenStateManager.getEpoch(key, cfId));
 
             // add the current epoch dependencies if this is a new key

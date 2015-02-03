@@ -122,12 +122,11 @@ public class FailureRecoveryTask implements Runnable
     {
         preRecover();
 
-        // TODO: stop actively participating in any epaxos queries
-        // TODO: still receive accepts and commits, no execution though
+        // TODO: start receiving accepts and commits, no participation or execution though
         // TODO: stream in instances for the affected token range from other nodes
-        // TODO: begin participating in epaxos instances
         recoverInstances();
 
+        // TODO: begin participating in epaxos instances
         // TODO: stream in raw data for affected partition range.
         recoverData();
 

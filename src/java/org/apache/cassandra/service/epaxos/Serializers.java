@@ -17,6 +17,10 @@ public class Serializers
         @Override
         public void serialize(Set<UUID> uuids, DataOutputPlus out, int version) throws IOException
         {
+            out.writeBoolean(uuids != null);
+            if (uuids == null)
+                return;
+
             out.writeInt(uuids.size());
             for (UUID id: uuids)
             {
@@ -27,6 +31,8 @@ public class Serializers
         @Override
         public Set<UUID> deserialize(DataInput in, int version) throws IOException
         {
+            if (!in.readBoolean())
+                return null;
             int num = in.readInt();
             Set<UUID> uuids = new HashSet<>(num);
             for (int i=0; i<num; i++)
@@ -39,7 +45,10 @@ public class Serializers
         @Override
         public long serializedSize(Set<UUID> uuids, int version)
         {
-            long size = 4;
+            if (uuids == null)
+                return 1;
+
+            long size = 4 + 1;
             for (UUID id: uuids)
             {
                 size += UUIDSerializer.serializer.serializedSize(id, version);

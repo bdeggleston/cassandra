@@ -256,6 +256,7 @@ public class EpaxosState
         return new TokenInstance(getEndpoint(), token, cfId, epoch);
     }
 
+    // a blind instance delete
     void deleteInstance(UUID id)
     {
         Lock lock = getInstanceLock(id).writeLock();
@@ -492,6 +493,11 @@ public class EpaxosState
         }
 
         //
+        startTokenStateGc(tokenState);
+    }
+
+    void startTokenStateGc(TokenState tokenState)
+    {
         getStage(Stage.MUTATION).submit(new GarbageCollectionTask(this, tokenState, keyStateManager));
     }
 

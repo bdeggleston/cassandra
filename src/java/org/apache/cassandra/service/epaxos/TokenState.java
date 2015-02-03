@@ -14,6 +14,7 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -40,6 +41,10 @@ public class TokenState
     private long highEpoch;
 
     private final AtomicInteger executions;
+
+    // the number of failure recovery streams are open
+    // instances cannot be gc'd unless this is 0
+    private final AtomicInteger recoveryStreams = new AtomicInteger(0);
 
     public static enum State {
 
@@ -190,6 +195,22 @@ public class TokenState
     public void recordTokenInstance(TokenInstance instance)
     {
         recordTokenInstance(instance.getEpoch(), instance.getId());
+    }
+
+    public void lockGc()
+    {
+        long current = recoveryStreams.incrementAndGet();
+        assert current > 0;
+    }
+
+    public void unlockGc()
+    {
+        long current = recoveryStreams.decrementAndGet();
+    }
+
+    public boolean canGc()
+    {
+        return recoveryStreams.get() < 1;
     }
 
     void recordTokenInstance(long epoch, UUID id)
