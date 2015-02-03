@@ -383,6 +383,20 @@ public class KeyState
         return m;
     }
 
+    public boolean contains(UUID id)
+    {
+        if (entries.keySet().contains(id))
+            return true;
+
+        for (EpochExecutionInfo executionInfo: epochs.values())
+        {
+            if (executionInfo.contains(id))
+                return true;
+        }
+
+        return false;
+    }
+
     public Map<Long, List<UUID>> getOrderedEpochExecutions()
     {
         Map<Long, List<UUID>> m = new HashMap<>();

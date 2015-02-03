@@ -87,4 +87,11 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
             Assert.assertFalse(state.keyStateManager.managesKey(key, CFID));
         }
     }
+
+    @Test
+    public void preRecoverBailsIfNotBehindRemoteEpoch()
+    {
+
+    }
+
 }

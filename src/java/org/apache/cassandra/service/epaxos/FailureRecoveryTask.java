@@ -10,6 +10,7 @@ import java.util.*;
  * 1. Pre-recovery.
  *      * token state is set to PRE_RECOVERY. This prevents it from participating in any
  *          epaxos instances, or executing any instances.
+ *      * token state is set to the remote epoch value we're trying to recover towards
  *      * all of the key states owned by the recovering token state, and the instances owned
  *          by those key states are deleted.
  * 2. Instance recovery.
@@ -24,6 +25,8 @@ import java.util.*;
  *      * repair streams include epaxos header data that tells the local key states where the
  *          local dataset has been executed to. Instance executions are a no-op until the key
  *          state has caught up to the streamed data.
+ * 4. Normal
+ *      * token state is now repaired and is participating in, and executing instances.
  */
 public class FailureRecoveryTask implements Runnable
 {
@@ -52,15 +55,23 @@ public class FailureRecoveryTask implements Runnable
      * Set the relevant token state to PRE_RECOVERY, which will prevent any
      * participation then delete all data owned by the recovering token manager.
      */
-    void preRecover()
+    boolean preRecover()
     {
         // set token state status to recovering
         // stop participating in any epaxos instances
         TokenState tokenState = getTokenState();
+
+        // bail out if we're not actually behind
+        if (tokenState.getState() == TokenState.State.NORMAL && tokenState.getEpoch() >= epoch)
+        {
+            return false;
+        }
+
         tokenState.rwLock.writeLock().lock();
         try
         {
             tokenState.setState(TokenState.State.PRE_RECOVERY);
+            tokenState.setEpoch(epoch);
             state.tokenStateManager.save(tokenState);
         }
         finally
@@ -100,10 +111,12 @@ public class FailureRecoveryTask implements Runnable
                 state.deleteInstance(id);
             }
         }
+        return true;
     }
 
     void recoverInstances()
     {
+        // TODO: only try one replica at a time
 
     }
 
@@ -120,7 +133,9 @@ public class FailureRecoveryTask implements Runnable
     @Override
     public void run()
     {
-        preRecover();
+        // bail out if we're not actually behind
+        if (!preRecover())
+            return;
 
         // TODO: start receiving accepts and commits, no participation or execution though
         // TODO: stream in instances for the affected token range from other nodes

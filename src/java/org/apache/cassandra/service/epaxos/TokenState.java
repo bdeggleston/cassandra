@@ -94,7 +94,6 @@ public class TokenState
 
     private transient volatile int lastPersistedExecutionCount = 0;
 
-    // TODO: is a lock even needed? The execution algorithm should handle serialization by itself
     // fair to give priority to token mutations
     public final ReadWriteLock rwLock = new ReentrantReadWriteLock(true);
 
@@ -133,6 +132,7 @@ public class TokenState
     {
         assert epoch >= this.epoch;
         this.epoch = epoch;
+        recordHighEpoch(epoch);
 
         executions.set(0);
         resetUnrecordedExecutions();
