@@ -76,7 +76,8 @@ public abstract class StreamMessage
         RECEIVED(3, 4, ReceivedMessage.serializer),
         RETRY(4, 4, RetryMessage.serializer),
         COMPLETE(5, 1, CompleteMessage.serializer),
-        SESSION_FAILED(6, 5, SessionFailedMessage.serializer);
+        SESSION_FAILED(6, 5, SessionFailedMessage.serializer),
+        EPAXOS(7, 0, EpaxosMessage.serializer);
 
         public static Type get(byte type)
         {

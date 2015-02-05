@@ -2,6 +2,8 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Lists;
 import com.ning.compress.lzf.LZFOutputStream;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.DataOutputStreamPlus;
 import org.apache.cassandra.net.MessagingService;
@@ -20,19 +22,27 @@ public class InstanceStreamWriter
     private static final int DEFAULT_CHUNK_SIZE = 64 * 1024;
 
     private final EpaxosState state;
-    private final TokenState tokenState;
     private final UUID cfId;
-    private final long fromEpoch;
+    private final Range<Token> range;
     private final StreamManager.StreamRateLimiter limiter;
     private long bytesSinceFlush = 0;
 
-    public InstanceStreamWriter(EpaxosState state, TokenState tokenState, UUID cfId, InetAddress peer, long fromEpoch)
+    public InstanceStreamWriter(UUID cfId, Range<Token> range, InetAddress peer)
+    {
+        this(EpaxosState.instance, cfId, range, peer);
+    }
+
+    public InstanceStreamWriter(EpaxosState state, UUID cfId, Range<Token> range, InetAddress peer)
     {
         this.state = state;
-        this.tokenState = tokenState;
         this.cfId = cfId;
-        this.fromEpoch = fromEpoch;
+        this.range = range;
         limiter = StreamManager.getRateLimiter(peer);
+    }
+
+    protected TokenState getTokenState()
+    {
+        return state.tokenStateManager.get(range.left, cfId);
     }
 
     /**
@@ -41,6 +51,7 @@ public class InstanceStreamWriter
      */
     public void write(WritableByteChannel channel) throws IOException
     {
+        TokenState tokenState = getTokenState();
         Iterator<CfKey> cfKeyIter = state.keyStateManager.getCfKeyIterator(tokenState);
         OutputStream outputStream = new LZFOutputStream(Channels.newOutputStream(channel));
         DataOutputPlus out = new DataOutputStreamPlus(outputStream);

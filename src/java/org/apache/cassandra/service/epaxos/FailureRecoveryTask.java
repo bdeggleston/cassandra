@@ -1,7 +1,17 @@
 package org.apache.cassandra.service.epaxos;
 
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.streaming.StreamEvent;
+import org.apache.cassandra.streaming.StreamEventHandler;
+import org.apache.cassandra.streaming.StreamPlan;
+import org.apache.cassandra.streaming.StreamState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
 import java.util.*;
 
 /**
@@ -30,6 +40,8 @@ import java.util.*;
  */
 public class FailureRecoveryTask implements Runnable
 {
+    // TODO: convert each method to a Runnable/StreamEventListener/RepairEventListener, etc
+    private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
 
     private final EpaxosState state;
     private final Token token;
@@ -49,6 +61,23 @@ public class FailureRecoveryTask implements Runnable
     protected TokenState getTokenState()
     {
         return state.tokenStateManager.get(token, cfId);
+    }
+
+    protected String getKeyspace()
+    {
+        return Schema.instance.getCF(cfId).left;
+    }
+
+    protected String getColumnFamily()
+    {
+        return Schema.instance.getCF(cfId).right;
+    }
+
+    protected Collection<InetAddress> getEndpoints(Range<Token> range)
+    {
+        // TODO: check that left token will return the correct endpoints
+        // TODO: perform some other checks to make sure the requested token state and token metadata are on the same page
+        return StorageService.instance.getNaturalEndpoints(getKeyspace(), range.left);
     }
 
     /**
@@ -117,7 +146,64 @@ public class FailureRecoveryTask implements Runnable
     void recoverInstances()
     {
         // TODO: only try one replica at a time
+        TokenState tokenState = getTokenState();
+        Range<Token> range;
+        tokenState.rwLock.writeLock().lock();
+        try
+        {
+            if (tokenState.getState() != TokenState.State.PRE_RECOVERY)
+            {
 
+                logger.info("Aborting instance recovery for {}. Status is {}, expected {}",
+                            tokenState, tokenState.getState(), TokenState.State.PRE_RECOVERY);
+                return;
+            }
+
+            tokenState.setState(TokenState.State.RECOVERING_INSTANCES);
+            state.tokenStateManager.save(tokenState);
+            range = tokenState.getRange();
+        }
+        finally
+        {
+            tokenState.rwLock.writeLock().unlock();
+        }
+
+        StreamPlan streamPlan = new StreamPlan(tokenState.toString() + "-Instance-Recovery");
+
+        // TODO: don't request data from ALL
+        for (InetAddress endpoint: getEndpoints(tokenState.getRange()))
+        {
+            streamPlan.requestEpaxosRange(endpoint, getKeyspace(), range, getColumnFamily());
+        }
+
+        streamPlan.listeners(new RecoverDataTask());
+        streamPlan.execute();
+    }
+
+    private class RecoverDataTask implements StreamEventHandler
+    {
+        private RecoverDataTask()
+        {
+            throw new AssertionError("not implemented");
+        }
+
+        @Override
+        public void handleStreamEvent(StreamEvent event)
+        {
+            throw new AssertionError("not implemented");
+        }
+
+        @Override
+        public void onSuccess(StreamState streamState)
+        {
+            throw new AssertionError("not implemented");
+        }
+
+        @Override
+        public void onFailure(Throwable throwable)
+        {
+            throw new AssertionError("not implemented");
+        }
     }
 
     void recoverData()

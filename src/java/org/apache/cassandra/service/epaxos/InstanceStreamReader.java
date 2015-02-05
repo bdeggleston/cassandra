@@ -1,6 +1,8 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.ning.compress.lzf.LZFInputStream;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.slf4j.Logger;
@@ -20,18 +22,29 @@ public class InstanceStreamReader
     private static final Logger logger = LoggerFactory.getLogger(InstanceStreamReader.class);
 
     private final EpaxosState state;
-    private final TokenState tokenState;
     private final UUID cfId;
+    private final Range<Token> range;
 
-    public InstanceStreamReader(EpaxosState state, TokenState tokenState, UUID cfId)
+    public InstanceStreamReader(UUID cfId, Range<Token> range)
+    {
+        this(EpaxosState.instance, cfId, range);
+    }
+
+    public InstanceStreamReader(EpaxosState state, UUID cfId, Range<Token> range)
     {
         this.state = state;
-        this.tokenState = tokenState;
         this.cfId = cfId;
+        this.range = range;
+    }
+
+    protected TokenState getTokenState()
+    {
+        return state.tokenStateManager.get(range.left, cfId);
     }
 
     public void read(ReadableByteChannel channel) throws IOException
     {
+        TokenState tokenState = getTokenState();
         assert tokenState.getState() != TokenState.State.NORMAL;
         tokenState.lockGc();
         try

@@ -1,0 +1,55 @@
+package org.apache.cassandra.streaming;
+
+import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.IVersionedSerializer;
+import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.utils.UUIDSerializer;
+
+import java.io.DataInput;
+import java.io.IOException;
+import java.util.UUID;
+
+/**
+ * Epaxos instance requests are one way
+ */
+public class EpaxosRequest
+{
+    public final UUID cfId;
+    public final Range<Token> range;
+
+    public EpaxosRequest(UUID cfId, Range<Token> range)
+    {
+        this.cfId = cfId;
+        this.range = range;
+    }
+
+    public static final IVersionedSerializer<EpaxosRequest> serializer = new IVersionedSerializer<EpaxosRequest>()
+    {
+        @Override
+        public void serialize(EpaxosRequest request, DataOutputPlus out, int version) throws IOException
+        {
+            UUIDSerializer.serializer.serialize(request.cfId, out, version);
+            Token.serializer.serialize(request.range.left, out);
+            Token.serializer.serialize(request.range.right, out);
+        }
+
+        @Override
+        public EpaxosRequest deserialize(DataInput in, int version) throws IOException
+        {
+            return new EpaxosRequest(UUIDSerializer.serializer.deserialize(in, version),
+                                     new Range<>(Token.serializer.deserialize(in), Token.serializer.deserialize(in)));
+        }
+
+        @Override
+        public long serializedSize(EpaxosRequest request, int version)
+        {
+            long size = 0;
+            size += UUIDSerializer.serializer.serializedSize(request.cfId, version);
+            size += Token.serializer.serializedSize(request.range.left, TypeSizes.NATIVE);
+            size += Token.serializer.serializedSize(request.range.right, TypeSizes.NATIVE);
+            return size;
+        }
+    };
+}

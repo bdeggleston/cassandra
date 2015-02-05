@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -14,7 +15,6 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -247,6 +247,11 @@ public class TokenState
                                  message.getToken(),
                                  epoch,
                                  remoteEpoch);
+    }
+
+    public Range<Token> getRange()
+    {
+        throw new AssertionError("Not Implemented!");
     }
 
     public static final IVersionedSerializer<TokenState> serializer = new IVersionedSerializer<TokenState>()

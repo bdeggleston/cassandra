@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.collect.*;
 import org.apache.cassandra.service.epaxos.ExecutionInfo;
+import org.apache.cassandra.utils.UUIDGen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -126,6 +127,12 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     private final Map<UUID, StreamTransferTask> transfers = new ConcurrentHashMap<>();
     // data receivers, filled after receiving prepare message
     private final Map<UUID, StreamReceiveTask> receivers = new ConcurrentHashMap<>();
+
+    private final Set<EpaxosRequest> epaxosRequests = Sets.newConcurrentHashSet();
+    private final Map<UUID, EpaxosTransferTask> epaxosTransfers = new ConcurrentHashMap<>();
+    private final Map<UUID, EpaxosReceiveTask> epaxosReceivers = new ConcurrentHashMap<>();
+
+
     private final StreamingMetrics metrics;
     /* can be null when session is created in remote */
     private final StreamConnectionFactory factory;
@@ -229,6 +236,17 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     public void addStreamRequest(String keyspace, Collection<Range<Token>> ranges, Collection<String> columnFamilies, long repairedAt)
     {
         requests.add(new StreamRequest(keyspace, ranges, columnFamilies, repairedAt));
+    }
+
+    public void addEpaxosRequest(UUID cfId, Range<Token> range)
+    {
+        epaxosRequests.add(new EpaxosRequest(cfId, range));
+    }
+
+    public void addEpaxosTransfer(UUID cfId, Range<Token> range)
+    {
+        UUID taskId = UUIDGen.getTimeUUID();
+        epaxosTransfers.put(taskId, new EpaxosTransferTask(this, taskId, cfId, range));
     }
 
     /**
@@ -441,7 +459,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         {
             case PREPARE:
                 PrepareMessage msg = (PrepareMessage) message;
-                prepare(msg.requests, msg.summaries);
+                prepare(msg.requests, msg.summaries, msg.epaxosRequests, msg.epaxosSummaries);
                 break;
 
             case FILE:
@@ -465,11 +483,16 @@ public class StreamSession implements IEndpointStateChangeSubscriber
             case SESSION_FAILED:
                 sessionFailed();
                 break;
+
+            case EPAXOS:
+                epaxosReceive((EpaxosMessage) message);
+                break;
         }
     }
 
     /**
      * Call back when connection initialization is complete to start the prepare phase.
+     * called by the initiator
      */
     public void onInitializationComplete()
     {
@@ -504,7 +527,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     /**
      * Prepare this session for sending/receiving files.
      */
-    public void prepare(Collection<StreamRequest> requests, Collection<StreamSummary> summaries)
+    public void prepare(Collection<StreamRequest> requests, Collection<StreamSummary> summaries, Collection<EpaxosRequest> epaxosRequests, Collection<EpaxosSummary> epaxosSummaries)
     {
         // prepare tasks
         state(State.PREPARING);
@@ -512,15 +535,24 @@ public class StreamSession implements IEndpointStateChangeSubscriber
             addTransferRanges(request.keyspace, request.ranges, request.columnFamilies, true, request.repairedAt); // always flush on stream request
         for (StreamSummary summary : summaries)
             prepareReceiving(summary);
+        for (EpaxosRequest request: epaxosRequests)
+            addEpaxosTransfer(request.cfId, request.range);
+        for (EpaxosSummary summary: epaxosSummaries)
+            prepareEpaxosReceiving(summary);
 
         // send back prepare message if prepare message contains stream request
-        if (!requests.isEmpty())
+        if (!requests.isEmpty() || !epaxosRequests.isEmpty())
         {
             PrepareMessage prepare = new PrepareMessage();
             for (StreamTransferTask task : transfers.values())
                 prepare.summaries.add(task.getSummary());
+            for (EpaxosTransferTask task: epaxosTransfers.values())
+                prepare.epaxosSummaries.add(task.getSummary());
             handler.sendMessage(prepare);
         }
+
+        if (!epaxosTransfers.isEmpty() && !maybeCompleted())
+            startStreamingTokenStates();
 
         // if there are files to stream
         if (!maybeCompleted())
@@ -611,6 +643,11 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         closeSession(State.FAILED);
     }
 
+    private void epaxosReceive(EpaxosMessage message)
+    {
+        epaxosReceiveComplete(message.taskId);
+    }
+
     public void doRetry(FileMessageHeader header, Throwable e)
     {
         logger.warn("[Stream #{}] Retrying for following error", planId(), e);
@@ -648,6 +685,18 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         maybeCompleted();
     }
 
+    public synchronized void epaxosTransferComplete(UUID taskId)
+    {
+        epaxosTransfers.remove(taskId);
+        maybeCompleted();
+    }
+
+    public synchronized void epaxosReceiveComplete(UUID taskId)
+    {
+        epaxosReceivers.remove(taskId);
+        maybeCompleted();
+    }
+
     public void onJoin(InetAddress endpoint, EndpointState epState) {}
     public void beforeChange(InetAddress endpoint, EndpointState currentState, ApplicationState newStateKey, VersionedValue newValue) {}
     public void onChange(InetAddress endpoint, ApplicationState state, VersionedValue value) {}
@@ -666,7 +715,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     private boolean maybeCompleted()
     {
-        boolean completed = receivers.isEmpty() && transfers.isEmpty();
+        boolean completed = receivers.isEmpty() && transfers.isEmpty() && epaxosReceivers.isEmpty() && epaxosTransfers.isEmpty();
         if (completed)
         {
             if (state == State.WAIT_COMPLETE)
@@ -707,11 +756,34 @@ public class StreamSession implements IEndpointStateChangeSubscriber
             receivers.put(summary.cfId, new StreamReceiveTask(this, summary.cfId, summary.files, summary.totalSize));
     }
 
+    private void prepareEpaxosReceiving(EpaxosSummary summary)
+    {
+        epaxosReceivers.put(summary.taskId, new EpaxosReceiveTask(this, summary.taskId, summary.cfId, summary.range));
+    }
+
+    private void maybeSetStreamingState()
+    {
+        if (state() != State.STREAMING)
+        {
+            assert state() == State.PREPARING;
+            streamResult.handleSessionPrepared(this);
+            state(State.STREAMING);
+        }
+    }
+
+    private void startStreamingTokenStates()
+    {
+        maybeSetStreamingState();
+        for (EpaxosTransferTask task: epaxosTransfers.values())
+        {
+
+        }
+        throw new AssertionError("Not implemented");
+    }
+
     private void startStreamingFiles()
     {
-        streamResult.handleSessionPrepared(this);
-
-        state(State.STREAMING);
+        maybeSetStreamingState();
         for (StreamTransferTask task : transfers.values())
         {
             Collection<OutgoingFileMessage> messages = task.getFileMessages();
