@@ -86,7 +86,7 @@ public class StreamPlan
         return this;
     }
 
-    public StreamPlan requestEpaxosRange(InetAddress from, InetAddress to, UUID cfId, Range<Token> range)
+    public StreamPlan requestEpaxosRange(InetAddress from, UUID cfId, Range<Token> range)
     {
         StreamSession session = coordinator.getOrCreateNextSession(from);
         session.addEpaxosRequest(cfId, range);

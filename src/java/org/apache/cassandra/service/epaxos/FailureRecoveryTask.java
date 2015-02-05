@@ -1,5 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
+import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -8,11 +9,14 @@ import org.apache.cassandra.streaming.StreamEvent;
 import org.apache.cassandra.streaming.StreamEventHandler;
 import org.apache.cassandra.streaming.StreamPlan;
 import org.apache.cassandra.streaming.StreamState;
+import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.util.*;
+import java.util.concurrent.FutureTask;
 
 /**
  * Performs a recovery of epaxos data for a given token range.
@@ -84,7 +88,7 @@ public class FailureRecoveryTask implements Runnable
      * Set the relevant token state to PRE_RECOVERY, which will prevent any
      * participation then delete all data owned by the recovering token manager.
      */
-    boolean preRecover()
+    void preRecover()
     {
         // set token state status to recovering
         // stop participating in any epaxos instances
@@ -93,7 +97,7 @@ public class FailureRecoveryTask implements Runnable
         // bail out if we're not actually behind
         if (tokenState.getState() == TokenState.State.NORMAL && tokenState.getEpoch() >= epoch)
         {
-            return false;
+            return;
         }
 
         tokenState.rwLock.writeLock().lock();
@@ -140,9 +144,12 @@ public class FailureRecoveryTask implements Runnable
                 state.deleteInstance(id);
             }
         }
-        return true;
     }
 
+    /**
+     * Recovers current instances by streaming them from other replicas.
+     * At this point, the recovering node will start receiving accepts and commits, but will not participation or execute instances
+     */
     void recoverInstances()
     {
         // TODO: only try one replica at a time
@@ -168,74 +175,112 @@ public class FailureRecoveryTask implements Runnable
             tokenState.rwLock.writeLock().unlock();
         }
 
-        StreamPlan streamPlan = new StreamPlan(tokenState.toString() + "-Instance-Recovery");
+        final StreamPlan streamPlan = new StreamPlan(tokenState.toString() + "-Instance-Recovery");
 
         // TODO: don't request data from ALL
-        for (InetAddress endpoint: getEndpoints(tokenState.getRange()))
+        for (InetAddress endpoint: getEndpoints(range))
         {
-            streamPlan.requestEpaxosRange(endpoint, getKeyspace(), range, getColumnFamily());
+            streamPlan.requestEpaxosRange(endpoint, cfId, range);
         }
 
-        streamPlan.listeners(new RecoverDataTask());
+        streamPlan.listeners(new StreamEventHandler()
+        {
+            private boolean submitted = false;
+
+            public void handleStreamEvent(StreamEvent event)
+            {
+                if (event.eventType == StreamEvent.Type.STREAM_COMPLETE && !submitted)
+                {
+                    logger.debug("Instance stream complete. Submitting data recovery task");
+                    state.getStage(Stage.MISC).submit(new Runnable()
+                    {
+                        @Override
+                        public void run()
+                        {
+                            recoverData();
+                        }
+                    });
+                    submitted = true;
+                }
+            }
+
+            public void onSuccess(@Nullable StreamState streamState) {}
+
+            public void onFailure(Throwable throwable) {}
+        });
         streamPlan.execute();
     }
 
-    private class RecoverDataTask implements StreamEventHandler
-    {
-        private RecoverDataTask()
-        {
-            throw new AssertionError("not implemented");
-        }
-
-        @Override
-        public void handleStreamEvent(StreamEvent event)
-        {
-            throw new AssertionError("not implemented");
-        }
-
-        @Override
-        public void onSuccess(StreamState streamState)
-        {
-            throw new AssertionError("not implemented");
-        }
-
-        @Override
-        public void onFailure(Throwable throwable)
-        {
-            throw new AssertionError("not implemented");
-        }
-    }
-
+    /**
+     * Start a repair task that repairs the affected range.
+     * Replica can now participate in instances, but won't execute the instances
+     */
     void recoverData()
     {
+        TokenState tokenState = getTokenState();
+        Range<Token> range;
+        boolean localOnly;
+        tokenState.rwLock.writeLock().lock();
+        try
+        {
+            if (tokenState.getState() != TokenState.State.RECOVERING_INSTANCES)
+            {
 
+                logger.info("Aborting instance recovery for {}. Status is {}, expected {}",
+                            tokenState, tokenState.getState(), TokenState.State.PRE_RECOVERY);
+                return;
+            }
+
+            tokenState.setState(TokenState.State.RECOVERING_DATA);
+            state.tokenStateManager.save(tokenState);
+            range = tokenState.getRange();
+            localOnly = tokenState.localOnly();
+        }
+        finally
+        {
+            tokenState.rwLock.writeLock().unlock();
+        }
+
+        Pair<String, String> cfName = Schema.instance.getCF(cfId);
+        FutureTask<Object> future = StorageService.instance.createRepairTask(cfName.left,
+                                                                             Collections.singleton(range),
+                                                                             false,
+                                                                             localOnly,
+                                                                             true,
+                                                                             cfName.right);
+
+        new Thread(new FutureTask<Object>(future, null) {
+            @Override
+            protected void done()
+            {
+                super.done();
+                complete();
+            }
+        }).start();
     }
 
+    /**
+     * return the token state to a normal state
+     */
     void complete()
     {
-
+        TokenState tokenState = getTokenState();
+        tokenState.rwLock.writeLock().lock();
+        try
+        {
+            tokenState.setState(TokenState.State.NORMAL);
+            state.tokenStateManager.save(tokenState);
+        }
+        finally
+        {
+            tokenState.rwLock.writeLock().unlock();
+        }
     }
 
     @Override
     public void run()
     {
-        // bail out if we're not actually behind
-        if (!preRecover())
-            return;
-
-        // TODO: start receiving accepts and commits, no participation or execution though
-        // TODO: stream in instances for the affected token range from other nodes
+        preRecover();
         recoverInstances();
-
-        // TODO: begin participating in epaxos instances
-        // TODO: stream in raw data for affected partition range.
-        recoverData();
-
-        // TODO: get all instances executed in epoch -1, execute them in the order they were executed in remotely
-        // we trust the remote ordering because the instances may rely on GC'd instances, so building a dependency graph will find dangling pointers
-        // META-TODO: maybe dovetail with incremental repair for this
-        // TODO: get all instances executed in current epoch, execute via dependency graph
-        // TODO: set token state status to normal
-        complete();
     }
 }

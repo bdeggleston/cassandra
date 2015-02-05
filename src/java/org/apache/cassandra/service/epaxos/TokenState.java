@@ -254,6 +254,15 @@ public class TokenState
         throw new AssertionError("Not Implemented!");
     }
 
+    /**
+     * returns true if every instance for the current and last epoch used
+     * the LOCAL_SERIAL consistency level
+     */
+    public boolean localOnly()
+    {
+        throw new AssertionError("Not Implemented!");
+    }
+
     public static final IVersionedSerializer<TokenState> serializer = new IVersionedSerializer<TokenState>()
     {
         @Override
