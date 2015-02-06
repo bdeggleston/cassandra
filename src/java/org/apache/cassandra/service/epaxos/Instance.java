@@ -545,7 +545,6 @@ public abstract class Instance
             long size = super.serializedSize(instance, version);
             size += 1;  // instance.placeholder
             size += 8;  // instance.lastUpdated
-            size += 1;  // instance.stronglyConnected != null
             size += Serializers.uuidSets.serializedSize(instance.stronglyConnected, version);
             return size;
         }
