@@ -7,6 +7,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
@@ -65,6 +66,19 @@ public class Node extends EpaxosState
         verbHandlerMap.put(MessagingService.Verb.EPAXOS_COMMIT, getCommitVerbHandler());
         verbHandlerMap.put(MessagingService.Verb.EPAXOS_PREPARE, getPrepareVerbHandler());
         verbHandlerMap.put(MessagingService.Verb.EPAXOS_TRYPREACCEPT, getTryPreacceptVerbHandler());
+    }
+
+    @Override
+    protected TokenStateManager createTokenStateManager()
+    {
+        return new TokenStateManager(keyspace(), tokenStateTable()) {
+
+            @Override
+            protected Token getClosestToken(Token token)
+            {
+                return DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
+            }
+        };
     }
 
     public State getState()

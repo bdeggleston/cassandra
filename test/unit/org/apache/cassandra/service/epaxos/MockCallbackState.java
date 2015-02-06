@@ -50,6 +50,12 @@ public class MockCallbackState extends EpaxosState
     }
 
     @Override
+    protected TokenStateManager createTokenStateManager()
+    {
+        return new MockTokenStateManager();
+    }
+
+    @Override
     protected InetAddress getEndpoint()
     {
         return endpoint;

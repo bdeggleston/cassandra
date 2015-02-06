@@ -103,7 +103,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void getCurrentQueryDependencies() throws Exception
     {
-        TokenStateManager tsm = new TokenStateManager();
+        TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
 
         SerializedRequest request1 = getSerializedCQLRequest(1, 1);
@@ -143,7 +143,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void getCurrentTokenDependencies() throws Exception
     {
-        TokenStateManager tsm = new TokenStateManager();
+        TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
 
         List<CfKey> cfKeys = getCfKeyList(9, 3);
@@ -198,7 +198,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void recordMissingQueryInstance() throws Exception
     {
-        TokenStateManager tsm = new TokenStateManager();
+        TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
 
         SerializedRequest request1 = getSerializedCQLRequest(1, 1);
@@ -226,7 +226,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void recordMissingTokenInstance() throws Exception
     {
-        TokenStateManager tsm = new TokenStateManager();
+        TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
 
         List<CfKey> cfKeys = getCfKeyList(9, 3);
@@ -260,7 +260,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void recordAcknowledgedQueryDeps() throws Exception
     {
-        TokenStateManager tsm = new TokenStateManager();
+        TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
 
         SerializedRequest request1 = getSerializedCQLRequest(1, 1);
@@ -325,7 +325,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void recordAcknowledgedTokenDeps() throws Exception
     {
-        TokenStateManager tsm = new TokenStateManager();
+        TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
 
         List<CfKey> cfKeys = getCfKeyList(9, 3);
@@ -386,7 +386,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void recordExecutedQuery() throws Exception
     {
-        TokenStateManager tsm = new TokenStateManager();
+        TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
 
         SerializedRequest request1 = getSerializedCQLRequest(1, 1);
@@ -451,7 +451,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void recordExecutedToken() throws Exception
     {
-        TokenStateManager tsm = new TokenStateManager();
+        TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
 
         List<CfKey> cfKeys = getCfKeyList(9, 3);
@@ -510,7 +510,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void updateEpoch() throws Exception
     {
-        TokenStateManager tsm = new TokenStateManager();
+        TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
 
         List<CfKey> cfKeys = getCfKeyList(9, 3);
@@ -556,7 +556,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         long targetEpoch = 4;
         long currentEpoch = targetEpoch - 1;
 
-        TokenStateManager tsm = new TokenStateManager();
+        TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
         ByteBuffer key = ByteBufferUtil.bytes(1234);
         UUID cfId = UUIDGen.getTimeUUID();
@@ -589,7 +589,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         long targetEpoch = 4;
         long currentEpoch = targetEpoch - 1;
 
-        TokenStateManager tsm = new TokenStateManager();
+        TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
         ByteBuffer key = ByteBufferUtil.bytes(1234);
         UUID cfId = UUIDGen.getTimeUUID();
@@ -617,7 +617,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void tokenRangeIteration() throws Exception
     {
-        TokenStateManager tsm = new TokenStateManager();
+        TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
 
         int size = 4;

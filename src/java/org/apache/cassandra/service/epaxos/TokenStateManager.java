@@ -9,6 +9,7 @@ import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataOutputBuffer;
+import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.service.StorageService;
 
 import java.io.DataInput;
@@ -23,6 +24,9 @@ import java.util.concurrent.ConcurrentMap;
  * Operations that are only performed during the
  * execution of instances don't have to be synchronized
  * because the epaxos execution algorithm handles that.
+ *
+ *
+ *
  */
 public class TokenStateManager
 {
@@ -175,15 +179,19 @@ public class TokenStateManager
         return tokenStates.values();
     }
 
-    private Token getClosestToken(Token token)
+    protected Token getClosestToken(Token token)
     {
-        return StorageService.getPartitioner().getMinimumToken();
+        // TODO: is this right?
+        return TokenMetadata.firstToken(StorageService.instance.getTokenMetadata().cachedOnlyTokenMap().sortedTokens(), token);
     }
 
     private TokenState getClosestTokenState(Token keyToken, UUID cfId)
     {
         Token token = getClosestToken(keyToken);
         TokenState tokenState = tokenStates.get(cfId);
+
+        // TODO: what to do if the token doesn't exist?
+
         if (tokenState == null)
         {
             List<TokenState> states = loadCf(cfId);
@@ -248,6 +256,11 @@ public class TokenStateManager
         {
             ts.rwLock.writeLock().unlock();
         }
+    }
+
+    public Set<UUID> getAllManagedCfIds()
+    {
+        throw new AssertionError("Not Implemented");
     }
 
     public boolean managesCfId(UUID cfId)

@@ -11,6 +11,13 @@ import java.util.*;
 
 public class MockVerbHandlerState extends EpaxosState
 {
+
+    @Override
+    protected TokenStateManager createTokenStateManager()
+    {
+        return new MockTokenStateManager();
+    }
+
     @Override
     public void preacceptPrepare(UUID id, boolean noop, Runnable failureCallback)
     {
