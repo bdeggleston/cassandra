@@ -7,6 +7,7 @@ import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 
@@ -26,9 +27,9 @@ public class ExecuteTask implements Runnable
     @Override
     public void run()
     {
-        logger.debug("Running execution phase for instance {}", id);
-
         Instance instance = state.getInstanceCopy(id);
+
+        logger.debug("Running execution phase for instance {}, with deps: {}", id, instance.getDependencies());
 
         if (instance.getState() == Instance.State.EXECUTED)
         {
@@ -49,7 +50,8 @@ public class ExecuteTask implements Runnable
         }
         else
         {
-            for (UUID toExecuteId : executionSorter.getOrder())
+            List<UUID> executionOrder = executionSorter.getOrder();
+            for (UUID toExecuteId : executionOrder)
             {
                 ReadWriteLock lock = state.getInstanceLock(toExecuteId);
                 lock.writeLock().lock();
@@ -70,7 +72,6 @@ public class ExecuteTask implements Runnable
 
                     assert toExecute.getState() == Instance.State.COMMITTED;
 
-                    // TODO: maybe block flush
                     ReplayPosition position = null;
                     try
                     {
@@ -78,12 +79,21 @@ public class ExecuteTask implements Runnable
                         {
                             position = state.executeInstance(toExecute);
                         }
+                        else
+                        {
+                            // FIXME: cleanup/test
+                            if (!(instance instanceof QueryInstance))
+                            {
+                                state.maybeSetResultFuture(instance.getId(), null);
+                            }
+                            logger.debug("Skipping execution for {}.", instance);
+                        }
                     }
                     catch (InvalidRequestException | WriteTimeoutException | ReadTimeoutException e)
                     {
                         throw new RuntimeException(e);
                     }
-                    toExecute.setExecuted();
+                    toExecute.setExecuted(state.getCurrentEpoch(instance));
                     state.recordExecuted(toExecute, position);
                     state.saveInstance(toExecute);
 

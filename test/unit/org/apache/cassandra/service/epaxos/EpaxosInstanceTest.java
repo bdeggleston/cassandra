@@ -107,20 +107,16 @@ public class EpaxosInstanceTest
     public void setExecutedSuccess() throws Exception
     {
         Instance instance = new QueryInstance(null, null);
-        instance.setExecuted();
+        Assert.assertEquals(-1, instance.getExecutionEpoch());
+        instance.setExecuted(5);
         Assert.assertEquals(Instance.State.EXECUTED, instance.getState());
+        Assert.assertEquals(5, instance.getExecutionEpoch());
     }
 
     @Test
     public void copyRemote() throws Exception
     {
         // TODO: test that remotely copied instances have all the important things copied
-    }
-
-    @Test
-    public void applyInstance() throws Exception
-    {
-        // TODO: test that
     }
 
     @Test

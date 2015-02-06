@@ -46,9 +46,14 @@ public class EpaxosStateTest extends AbstractEpaxosTest
     @Test
     public void executedMissingInstances() throws Exception
     {
-        EpaxosState state = new EpaxosState(false);
+        EpaxosState state = new EpaxosState() {
+            protected TokenStateManager createTokenStateManager()
+            {
+                return new MockTokenStateManager();
+            }
+        };
         QueryInstance extInstance = new QueryInstance(getSerializedCQLRequest(0, 1), InetAddress.getByAddress(new byte[] {127, 0, 0, 127}));
-        extInstance.setExecuted();
+        extInstance.setExecuted(0);
         extInstance.setSuccessors(Lists.newArrayList(InetAddress.getLocalHost()));
         extInstance.setDependencies(Sets.newHashSet(UUIDGen.getTimeUUID()));
 

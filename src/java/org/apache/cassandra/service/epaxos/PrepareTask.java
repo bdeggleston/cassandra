@@ -60,7 +60,7 @@ public class PrepareTask implements Runnable, ICommitCallback
         // task will be started if it's not committed
         if (instance == null)
         {
-            logger.debug("Single missing instance for prepare: ", id);
+            logger.debug("Single missing instance for prepare: {}", id);
             group.instanceCommitted(id);
             return;
         }
@@ -80,8 +80,6 @@ public class PrepareTask implements Runnable, ICommitCallback
             StorageService.optionalTasks.schedule(new DelayedPrepare(this), wait, TimeUnit.MILLISECONDS);
             return;
         }
-
-        // TODO: maybe defer to successor
 
         instance.incrementBallot();
         EpaxosState.ParticipantInfo participantInfo;

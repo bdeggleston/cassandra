@@ -1,5 +1,8 @@
 package org.apache.cassandra.service.epaxos;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -12,6 +15,8 @@ import java.util.concurrent.locks.Lock;
  */
 public class GarbageCollectionTask implements Runnable
 {
+    private static final Logger logger = LoggerFactory.getLogger(GarbageCollectionTask.class);
+
     private final EpaxosState epaxosState;
     private final TokenState tokenState;
     private final KeyStateManager keyStateManager;
@@ -26,6 +31,13 @@ public class GarbageCollectionTask implements Runnable
     @Override
     public void run()
     {
+        if (!tokenState.canGc())
+        {
+            logger.debug("Skipping GC task for {}", tokenState);
+            return;
+        }
+        logger.debug("Running GC task for {}", tokenState);
+
         Long oldestEpoch;
         tokenState.rwLock.readLock().lock();
         try
@@ -37,6 +49,8 @@ public class GarbageCollectionTask implements Runnable
             tokenState.rwLock.readLock().unlock();
         }
 
+        logger.debug("Running GC task for {} with oldest epoch", tokenState, oldestEpoch);
+
         Iterator<CfKey> cfKeyIterator = keyStateManager.getCfKeyIterator(tokenState);
         while (cfKeyIterator.hasNext())
         {
@@ -47,7 +61,6 @@ public class GarbageCollectionTask implements Runnable
 
     private void gcForKey(CfKey cfKey, Long oldestEpoch)
     {
-        // TODO: we should be able to work with past epochs, it shouldn't be possible to mutate them once the epoch has advanced
         Map<Long, Set<UUID>> expiredEpochs;
         Lock lock = keyStateManager.getCfKeyLock(cfKey);
         lock.lock();
@@ -70,6 +83,7 @@ public class GarbageCollectionTask implements Runnable
             assert entry.getKey() < oldestEpoch;
             for (UUID id: entry.getValue())
             {
+                logger.debug("deleting instance {}", id);
                 epaxosState.deleteInstance(id);
             }
         }

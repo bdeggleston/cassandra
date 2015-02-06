@@ -44,8 +44,6 @@ public class Node extends EpaxosState
 
     public final int number;
 
-    private volatile int epochIncrementThreshold = EPOCH_INCREMENT_THRESHOLD;
-
     public Node(int number, Messenger messenger)
     {
         this.number = number;
@@ -65,6 +63,12 @@ public class Node extends EpaxosState
         verbHandlerMap.put(MessagingService.Verb.EPAXOS_COMMIT, getCommitVerbHandler());
         verbHandlerMap.put(MessagingService.Verb.EPAXOS_PREPARE, getPrepareVerbHandler());
         verbHandlerMap.put(MessagingService.Verb.EPAXOS_TRYPREACCEPT, getTryPreacceptVerbHandler());
+    }
+
+    @Override
+    protected TokenStateManager createTokenStateManager()
+    {
+        return new MockTokenStateManager(keyspace(), tokenStateTable());
     }
 
     public State getState()
@@ -92,9 +96,9 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected TokenInstance createTokenInstance(Token token, UUID cfId, long epoch)
+    public EpochInstance createEpochInstance(Token token, UUID cfId, long epoch)
     {
-        TokenInstance instance = super.createTokenInstance(token, cfId, epoch);
+        EpochInstance instance = super.createEpochInstance(token, cfId, epoch);
         lastCreatedInstance = instance;
         return instance;
     }
@@ -116,7 +120,7 @@ public class Node extends EpaxosState
             SerializedRequest request = ((QueryInstance) instance).getQuery();
             return keyStateManager.loadKeyState(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
         }
-        else if (instance instanceof TokenInstance)
+        else if (instance instanceof EpochInstance)
         {
             throw new AssertionError();
         }
@@ -168,7 +172,7 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected ReplayPosition executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
+    public ReplayPosition executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
     {
         ReplayPosition rp = super.executeInstance(instance);
         executionOrder.add(instance.getId());
@@ -182,7 +186,7 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected ParticipantInfo getTokenParticipants(TokenInstance instance)
+    protected ParticipantInfo getTokenParticipants(AbstractTokenInstance instance)
     {
         return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, ConsistencyLevel.SERIAL);
     }
@@ -230,18 +234,20 @@ public class Node extends EpaxosState
 
     public TokenStateMaintenanceTask newTokenStateMaintenanceTask()
     {
-        return new TokenStateMaintenanceTask(this, tokenStateManager);
+        return new TokenStateMaintenanceTask(this, tokenStateManager) {
+            // TODO: de-override for token splitting tests
+            @Override
+            protected boolean replicatesTokenForKeyspace(Token token, UUID cfId)
+            {
+                return true;
+            }
+
+        };
     }
 
     public void setEpochIncrementThreshold(int threshold)
     {
-        epochIncrementThreshold = threshold;
-    }
-
-    @Override
-    public int getEpochIncrementThreshold()
-    {
-        return epochIncrementThreshold;
+        ((MockTokenStateManager) tokenStateManager).epochIncrementThreshold = threshold;
     }
 
     /**

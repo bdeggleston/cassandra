@@ -54,6 +54,9 @@ public abstract class PreacceptTask implements Runnable
             }
 
             participantInfo = state.getParticipants(instance);
+            assert participantInfo.endpoints.contains(state.getEndpoint()):
+                    "Implement query forwarding: " + instance.getToken().toString() + " -> " + participantInfo.endpoints.toString();
+
             participantInfo.quorumExistsOrDie();
 
             instance.preaccept(state.getCurrentDependencies(instance));

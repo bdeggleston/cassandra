@@ -2,11 +2,14 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.google.common.io.ByteStreams;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
+import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.*;
 
 public class EpaxosKeyStateTest
@@ -433,6 +436,50 @@ public class EpaxosKeyStateTest
         dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null);
         Assert.assertEquals(3, dm.getExecutionCount());
         Assert.assertTrue(dm.canExecute());
+    }
+
+    @Test
+    public void serialization() throws IOException
+    {
+        KeyState ks = new KeyState(5, 10);
+
+        UUID id1 = UUIDGen.getTimeUUID();
+        UUID id2 = UUIDGen.getTimeUUID();
+        UUID id3 = UUIDGen.getTimeUUID();
+        UUID id4 = UUIDGen.getTimeUUID();
+        UUID id5 = UUIDGen.getTimeUUID();
+
+        ks.recordInstance(id1);
+        ks.markAcknowledged(Sets.newHashSet(id1), id2);
+        ks.markAcknowledged(Sets.newHashSet(id3), id4);
+        ks.recordInstance(id5);
+
+        DataOutputBuffer out = new DataOutputBuffer();
+        KeyState.serializer.serialize(ks, out, 0);
+
+        long expectedSize = out.getLength();
+        Assert.assertEquals(expectedSize, KeyState.serializer.serializedSize(ks, 0));
+
+        KeyState deserialized = KeyState.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
+        Assert.assertEquals(ks, deserialized);
+    }
+
+    @Test
+    public void entrySerialization() throws Exception
+    {
+        Set<UUID> stronglyConnected = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
+        Set<UUID> acknowledged = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
+        KeyState.Entry entry = new KeyState.Entry(UUIDGen.getTimeUUID(), acknowledged, true);
+        entry.setStronglyConnected(stronglyConnected);
+
+        DataOutputBuffer out = new DataOutputBuffer();
+        KeyState.Entry.serializer.serialize(entry, out, 0);
+
+        long expectedSize = out.getLength();
+        Assert.assertEquals(expectedSize, KeyState.Entry.serializer.serializedSize(entry, 0));
+
+        KeyState.Entry deserialized = KeyState.Entry.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
+        Assert.assertEquals(entry, deserialized);
     }
 }
 

@@ -1,12 +1,13 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import com.google.common.collect.*;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
 import java.util.*;
 
 /**
@@ -44,6 +45,16 @@ public class ExecutionSorter
         traversals++;
         assert instance != null;
 
+        // we're not concerned with instances affecting tokens not replicated by this node
+        // epoch instances from non-replicated tokens are sometimes streamed over during ring changes
+        // from ring changes. This prevents those from causing problems
+        if (!state.replicates(instance))
+        {
+            logger.debug("Excluding {} {} with non-replicated token {} from dependency graph of {}",
+                         instance.getClass().getSimpleName(), instance.getId(), instance.getToken(), target.getId());
+            return;
+        }
+
         if (instance.getStronglyConnected() != null)
             loadedScc.put(instance.getId(), instance.getStronglyConnected());
 
@@ -60,11 +71,27 @@ public class ExecutionSorter
                 boolean connected = false;
                 for (UUID dep: instance.getDependencies())
                 {
-                    Instance depInstance = this.state.getInstanceCopy(dep);
-                    boolean notExecuted = (depInstance == null) || (depInstance.getState() != Instance.State.EXECUTED);
+
                     boolean targetDep = targetDeps.contains(dep);
                     boolean required = requiredInstances.contains(dep);
-                    connected |= notExecuted || targetDep || required;
+
+                    Instance depInstance = this.state.getInstanceCopy(dep);
+                    boolean notExecuted;
+                    if (depInstance == null)
+                    {
+                        // if the dependency instance is not on this node, and the parent was executed in a past
+                        // epoch AND it's not not connected to the target instance by dependency or strongly connected
+                        // component, it's been GC'd, and can be ignored
+                        long parentEpoch = instance.getExecutionEpoch();
+                        long currentEpoch = state.getCurrentEpoch(instance);
+                        notExecuted = parentEpoch >= currentEpoch;
+                    }
+                    else
+                    {
+                        notExecuted = depInstance.getState() != Instance.State.EXECUTED;
+                    }
+
+                    connected |= targetDep || required || notExecuted;
                     if (connected) break;
                 }
                 if (!connected)

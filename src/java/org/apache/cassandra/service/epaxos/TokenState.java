@@ -1,20 +1,19 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.SetMultimap;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import org.apache.cassandra.db.TypeSizes;
-import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.UUIDSerializer;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -22,16 +21,16 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /**
  * The epoch state for a given token range
  */
-// TODO: persist
 public class TokenState
 {
+    // TODO: record if there are any SERIAL instances executed against this token state
 
     private final Token token;
     private final UUID cfId;
 
     // the current epoch used in recording
     // execution epochs
-    private long epoch;
+    private volatile long epoch;
 
     // the highest epoch instance seen so far
     // this is the epoch we expect new instances
@@ -46,9 +45,19 @@ public class TokenState
     // instances cannot be gc'd unless this is 0
     private final AtomicInteger recoveryStreams = new AtomicInteger(0);
 
+    // set to false if there were any SERIAL queries committed in the current epoch
+    // this is used to determine if epoch and token instances should be executed at
+    // SERIAL or LOCAL_SERIAL
+    private final AtomicBoolean localOnly = new AtomicBoolean(true);
+
+    private volatile long minStreamEpoch = 0;
+    private volatile Token creatorToken = null;
+
     public static enum State {
 
+        INITIALIZING(false, false),
         NORMAL(true, true),
+        RECOVERY_REQUIRED(false, false),
         PRE_RECOVERY(false, false),
         RECOVERING_INSTANCES(false, false, true),
         RECOVERING_DATA(true, false);
@@ -89,8 +98,10 @@ public class TokenState
             return passiveRecord;
         }
     }
+
     private volatile State state;  // local only
-    private final SetMultimap<Long, UUID> tokenInstances = HashMultimap.create();
+    private final SetMultimap<Long, UUID> epochInstances = HashMultimap.create();
+    private final SetMultimap<Token, UUID> tokenInstances = HashMultimap.create();
 
     private transient volatile int lastPersistedExecutionCount = 0;
 
@@ -135,8 +146,9 @@ public class TokenState
         recordHighEpoch(epoch);
 
         executions.set(0);
+        localOnly.set(false);
         resetUnrecordedExecutions();
-        cleanTokenInstances();
+        cleanEpochInstances();
     }
 
     public synchronized boolean recordHighEpoch(long epoch)
@@ -192,9 +204,26 @@ public class TokenState
         resetUnrecordedExecutions();
     }
 
+    public void recordEpochInstance(EpochInstance instance)
+    {
+        recordEpochInstance(instance.getEpoch(), instance.getId());
+    }
+
     public void recordTokenInstance(TokenInstance instance)
     {
-        recordTokenInstance(instance.getEpoch(), instance.getId());
+        recordTokenInstance(instance.getToken(), instance.getId());
+    }
+
+    /**
+     * Moves the given token instance from the token instance collection, into
+     * the epoch instances collection as part of the given epoch.
+     */
+    public boolean recordTokenInstanceExecution(TokenInstance instance)
+    {
+        boolean changed = tokenInstances.remove(instance.getToken(), instance.getId());
+        if (changed)
+            recordEpochInstance(epoch, instance.getId());
+        return changed;
     }
 
     public void lockGc()
@@ -206,6 +235,7 @@ public class TokenState
     public void unlockGc()
     {
         long current = recoveryStreams.decrementAndGet();
+        assert current >= 0;
     }
 
     public boolean canGc()
@@ -213,45 +243,85 @@ public class TokenState
         return recoveryStreams.get() < 1;
     }
 
-    void recordTokenInstance(long epoch, UUID id)
+    void recordEpochInstance(long epoch, UUID id)
     {
         if (epoch < this.epoch)
         {
             return;
         }
 
-        tokenInstances.put(epoch, id);
+        epochInstances.put(epoch, id);
     }
 
-    private void cleanTokenInstances()
+    void recordTokenInstance(Token token, UUID id)
     {
-        Set<Long> keys = Sets.newHashSet(tokenInstances.keySet());
+        tokenInstances.put(token, id);
+    }
+
+    void removeTokenInstance(Token token, UUID id)
+    {
+        tokenInstances.remove(token, id);
+    }
+
+    private void cleanEpochInstances()
+    {
+        Set<Long> keys = Sets.newHashSet(epochInstances.keySet());
         for (long key : keys)
         {
             if (key < epoch)
             {
-                tokenInstances.removeAll(key);
+                epochInstances.removeAll(key);
             }
         }
     }
 
-    public Set<UUID> getCurrentTokenInstances()
+    /**
+     * records a serial commit. Returns true if this is the first serial commit
+     * seen in this epoch, and the token state needs to be saved
+     */
+    public boolean recordSerialCommit()
     {
-        return ImmutableSet.copyOf(tokenInstances.values());
+        return localOnly.compareAndSet(true, false);
+    }
+
+    public Set<UUID> getCurrentEpochInstances()
+    {
+        return ImmutableSet.copyOf(epochInstances.values());
+    }
+
+    /**
+     * return token instances for tokens that are > the given token
+     */
+    public Set<UUID> getCurrentTokenInstances(Range<Token> range)
+    {
+        Set<UUID> ids = Sets.newHashSet();
+        for (Token t: tokenInstances.keySet())
+        {
+            if (range.contains(t))
+            {
+                ids.addAll(tokenInstances.get(t));
+            }
+        }
+        return ids;
+    }
+
+    public Map<Token, Set<UUID>> allTokenInstances()
+    {
+        Map<Token, Set<UUID>> deps = Maps.newHashMap();
+        for (Token depToken: Sets.newHashSet(tokenInstances.keySet()))
+        {
+            deps.put(depToken, tokenInstances.get(depToken));
+        }
+        return deps;
     }
 
     public EpochDecision evaluateMessageEpoch(IEpochMessage message)
     {
         long remoteEpoch = message.getEpoch();
         return new EpochDecision(EpochDecision.evaluate(epoch, remoteEpoch),
-                                 message.getToken(),
+                                 getToken(),
                                  epoch,
                                  remoteEpoch);
-    }
-
-    public Range<Token> getRange()
-    {
-        throw new AssertionError("Not Implemented!");
     }
 
     /**
@@ -260,7 +330,30 @@ public class TokenState
      */
     public boolean localOnly()
     {
-        throw new AssertionError("Not Implemented!");
+        return localOnly.get();
+    }
+
+    public long getMinStreamEpoch()
+    {
+        return minStreamEpoch;
+    }
+
+    public synchronized void setMinStreamEpoch(long minStreamEpoch)
+    {
+        if (minStreamEpoch > this.minStreamEpoch)
+            this.minStreamEpoch = minStreamEpoch;
+    }
+
+    public Token getCreatorToken()
+    {
+        return creatorToken;
+    }
+
+    public void setCreatorToken(Token creatorToken)
+    {
+        assert creatorToken != null;
+        assert this.creatorToken == null || this.creatorToken.equals(creatorToken);
+        this.creatorToken = creatorToken;
     }
 
     public static final IVersionedSerializer<TokenState> serializer = new IVersionedSerializer<TokenState>()
@@ -274,14 +367,21 @@ public class TokenState
             out.writeLong(tokenState.highEpoch);
             out.writeInt(tokenState.executions.get());
             out.writeInt(tokenState.state.ordinal());
+            out.writeBoolean(tokenState.localOnly.get());
+            out.writeLong(tokenState.minStreamEpoch);
+            out.writeBoolean(tokenState.creatorToken != null);
+            if (tokenState.creatorToken != null)
+            {
+                Token.serializer.serialize(tokenState.creatorToken, out);
+            }
 
             // epoch instances
-            Set<Long> keys = tokenState.tokenInstances.keySet();
+            Set<Long> keys = tokenState.epochInstances.keySet();
             out.writeInt(keys.size());
             for (Long epoch: keys)
             {
                 out.writeLong(epoch);
-                Serializers.uuidSets.serialize(tokenState.tokenInstances.get(epoch), out, version);
+                Serializers.uuidSets.serialize(tokenState.epochInstances.get(epoch), out, version);
             }
         }
 
@@ -295,11 +395,19 @@ public class TokenState
                                            in.readInt(),
                                            State.values()[in.readInt()]);
 
+            ts.localOnly.set(in.readBoolean());
+            ts.minStreamEpoch = in.readLong();
+
+            if (in.readBoolean())
+            {
+                ts.creatorToken = Token.serializer.deserialize(in);
+            }
+
             int numEpochInstanceKeys = in.readInt();
             for (int i=0; i<numEpochInstanceKeys; i++)
             {
                 Long epoch = in.readLong();
-                ts.tokenInstances.putAll(epoch, Serializers.uuidSets.deserialize(in, version));
+                ts.epochInstances.putAll(epoch, Serializers.uuidSets.deserialize(in, version));
             }
 
             return ts;
@@ -310,14 +418,20 @@ public class TokenState
         {
             long size = Token.serializer.serializedSize(tokenState.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(tokenState.cfId, version);
-            size += 8 + 8 + 4 + 4;
+            size += 8 + 8 + 4 + 4 + 1 + 8;
+
+            size += 1;
+            if (tokenState.creatorToken != null)
+            {
+                size += Token.serializer.serializedSize(tokenState.creatorToken, TypeSizes.NATIVE);
+            }
 
             // epoch instances
             size += 4;
-            for (Long epoch: tokenState.tokenInstances.keySet())
+            for (Long epoch: tokenState.epochInstances.keySet())
             {
                 size += 8;
-                size += Serializers.uuidSets.serializedSize(tokenState.tokenInstances.get(epoch), version);
+                size += Serializers.uuidSets.serializedSize(tokenState.epochInstances.get(epoch), version);
             }
 
             return size;

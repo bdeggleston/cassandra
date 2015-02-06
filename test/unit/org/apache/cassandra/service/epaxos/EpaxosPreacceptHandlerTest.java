@@ -217,7 +217,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         tokenState.setEpoch(currentEpoch);
         state.tokenStateManager.save(tokenState);
 
-        TokenInstance instance = new TokenInstance(LEADER, token, cfId, proposedEpoch);
+        EpochInstance instance = new EpochInstance(LEADER, token, cfId, proposedEpoch);
         instance.preaccept(Collections.EMPTY_SET);
         handler.doVerb(createMessage(instance, remoteEpoch), 0);
 
@@ -225,18 +225,6 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         MessageOut<PreacceptResponse> response = state.replies.get(0);
         Assert.assertFalse(response.payload.success);
         Assert.assertTrue(response.payload.vetoed);
-    }
-
-    /**
-     * Incrementing an epoch while a failure recovery is
-     * in progress could lock up the recovery if yet-to-be-recovered
-     * data is gc'd
-     * @throws Exception
-     */
-    @Test
-    public void epochVetoFailureRecoveryInProgress() throws Exception
-    {
-        // TODO: this
     }
 
     @Test

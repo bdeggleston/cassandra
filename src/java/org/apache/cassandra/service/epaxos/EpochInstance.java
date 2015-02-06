@@ -13,73 +13,146 @@ import java.net.InetAddress;
 import java.util.UUID;
 
 /**
- * Adds new tokens to the token state manager
+ * breaks up execution space
+ * why are instances vetoed?
  */
-public class TokenInstance extends AbstractTokenInstance
+public class EpochInstance extends AbstractTokenInstance
 {
-    public TokenInstance(InetAddress leader, UUID cfId, Token token)
+    private final long epoch;
+    private volatile boolean vetoed;
+
+    public EpochInstance(InetAddress leader, Token token, UUID cfId, long epoch)
     {
         super(leader, cfId, token);
+        this.epoch = epoch;
     }
 
-    public TokenInstance(UUID id, InetAddress leader, UUID cfId, Token token)
+    public EpochInstance(UUID id, InetAddress leader, Token token, UUID cfId, long epoch)
     {
         super(id, leader, cfId, token);
+        this.epoch = epoch;
     }
 
-    public TokenInstance(AbstractTokenInstance i)
+    public EpochInstance(EpochInstance i)
     {
         super(i);
+        this.epoch = i.epoch;
+        this.vetoed = i.vetoed;
     }
 
     @Override
     public Instance copy()
     {
-        return new TokenInstance(this);
+        return new EpochInstance(this);
     }
 
     @Override
     public Instance copyRemote()
     {
-        return copy();
+        Instance instance = new EpochInstance(this.id, this.leader, this.token, this.cfId, this.epoch);
+        instance.ballot = ballot;
+        instance.noop = noop;
+        instance.successors = successors;
+        instance.state = state;
+        instance.dependencies = dependencies;
+        return instance;
+    }
+
+    @Override
+    public Token getToken()
+    {
+        return token;
+    }
+
+    @Override
+    public UUID getCfId()
+    {
+        return cfId;
+    }
+
+    public long getEpoch()
+    {
+        return epoch;
     }
 
     @Override
     public Type getType()
     {
-        return Type.TOKEN;
+        return Type.EPOCH;
     }
 
-    private static final IVersionedSerializer<TokenInstance> commonSerializer = new IVersionedSerializer<TokenInstance>()
+    @Override
+    public boolean getLeaderAttrsMatch()
+    {
+        return super.getLeaderAttrsMatch() && !isVetoed();
+    }
+
+    public boolean isVetoed()
+    {
+        return vetoed;
+    }
+
+    public void setVetoed(boolean vetoed)
+    {
+        this.vetoed = vetoed;
+    }
+
+    @Override
+    public boolean skipExecution()
+    {
+        return super.skipExecution() || vetoed;
+    }
+
+    @Override
+    public void applyRemote(Instance remote)
+    {
+        assert remote instanceof EpochInstance;
+        super.applyRemote(remote);
+        this.vetoed = ((EpochInstance) remote).vetoed;
+    }
+
+    @Override
+    protected String toStringExtra()
+    {
+        return ", epoch=" + epoch + ", vetoed=" + vetoed;
+    }
+
+    private static final IVersionedSerializer<EpochInstance> commonSerializer = new IVersionedSerializer<EpochInstance>()
     {
         @Override
-        public void serialize(TokenInstance instance, DataOutputPlus out, int version) throws IOException
+        public void serialize(EpochInstance instance, DataOutputPlus out, int version) throws IOException
         {
             UUIDSerializer.serializer.serialize(instance.getId(), out, version);
             CompactEndpointSerializationHelper.serialize(instance.getLeader(), out);
-            UUIDSerializer.serializer.serialize(instance.cfId, out, version);
             Token.serializer.serialize(instance.token, out);
+            UUIDSerializer.serializer.serialize(instance.cfId, out, version);
+            out.writeLong(instance.epoch);
+            out.writeBoolean(instance.vetoed);
         }
 
         @Override
-        public TokenInstance deserialize(DataInput in, int version) throws IOException
+        public EpochInstance deserialize(DataInput in, int version) throws IOException
         {
-            TokenInstance instance = new TokenInstance(UUIDSerializer.serializer.deserialize(in, version),
+            EpochInstance instance = new EpochInstance(UUIDSerializer.serializer.deserialize(in, version),
                                                        CompactEndpointSerializationHelper.deserialize(in),
+                                                       Token.serializer.deserialize(in),
                                                        UUIDSerializer.serializer.deserialize(in, version),
-                                                       Token.serializer.deserialize(in));
+                                                       in.readLong());
 
+            instance.vetoed = in.readBoolean();
             return instance;
         }
 
         @Override
-        public long serializedSize(TokenInstance instance, int version)
+        public long serializedSize(EpochInstance instance, int version)
         {
             long size = 0;
             size += UUIDSerializer.serializer.serializedSize(instance.getId(), version);
             size += CompactEndpointSerializationHelper.serializedSize(instance.getLeader());
-            size += UUIDSerializer.serializer.serializedSize(instance.cfId, version);
             size += Token.serializer.serializedSize(instance.token, TypeSizes.NATIVE);
+            size += UUIDSerializer.serializer.serializedSize(instance.cfId, version);
+            size += 8;
+            size += 1;
             return size;
         }
     };
@@ -91,8 +164,8 @@ public class TokenInstance extends AbstractTokenInstance
         @Override
         public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
         {
-            assert instance instanceof TokenInstance;
-            commonSerializer.serialize((TokenInstance) instance, out, version);
+            assert instance instanceof EpochInstance;
+            commonSerializer.serialize((EpochInstance) instance, out, version);
             baseSerializer.serialize(instance, out, version);
         }
 
@@ -107,8 +180,8 @@ public class TokenInstance extends AbstractTokenInstance
         @Override
         public long serializedSize(Instance instance, int version)
         {
-            assert instance instanceof TokenInstance;
-            return commonSerializer.serializedSize((TokenInstance) instance, version)
+            assert instance instanceof EpochInstance;
+            return commonSerializer.serializedSize((EpochInstance) instance, version)
                     + baseSerializer.serializedSize(instance, version);
         }
     };
@@ -120,8 +193,8 @@ public class TokenInstance extends AbstractTokenInstance
         @Override
         public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
         {
-            assert instance instanceof TokenInstance;
-            commonSerializer.serialize((TokenInstance) instance, out, version);
+            assert instance instanceof EpochInstance;
+            commonSerializer.serialize((EpochInstance) instance, out, version);
             baseSerializer.serialize(instance, out, version);
         }
 
@@ -136,8 +209,8 @@ public class TokenInstance extends AbstractTokenInstance
         @Override
         public long serializedSize(Instance instance, int version)
         {
-            assert instance instanceof TokenInstance;
-            return commonSerializer.serializedSize((TokenInstance) instance, version)
+            assert instance instanceof EpochInstance;
+            return commonSerializer.serializedSize((EpochInstance) instance, version)
                     + baseSerializer.serializedSize(instance, version);
         }
     };

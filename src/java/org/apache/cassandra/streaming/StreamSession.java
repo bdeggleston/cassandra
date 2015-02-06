@@ -26,6 +26,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.collect.*;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.service.epaxos.EpaxosState;
 import org.apache.cassandra.service.epaxos.ExecutionInfo;
 import org.apache.cassandra.utils.UUIDGen;
 import org.slf4j.Logger;
@@ -132,7 +134,6 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     private final Map<UUID, EpaxosTransferTask> epaxosTransfers = new ConcurrentHashMap<>();
     private final Map<UUID, EpaxosReceiveTask> epaxosReceivers = new ConcurrentHashMap<>();
 
-
     private final StreamingMetrics metrics;
     /* can be null when session is created in remote */
     private final StreamConnectionFactory factory;
@@ -201,7 +202,11 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     public void start()
     {
-        if (requests.isEmpty() && transfers.isEmpty())
+        boolean completed = requests.isEmpty()
+                && transfers.isEmpty()
+                && epaxosRequests.isEmpty()
+                && epaxosTransfers.isEmpty();
+        if (completed)
         {
             logger.info("[Stream #{}] Session does not have any tasks.", planId());
             closeSession(State.COMPLETE);
@@ -245,8 +250,14 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     public void addEpaxosTransfer(UUID cfId, Range<Token> range)
     {
+        if (!EpaxosState.getInstance().managesCfId(cfId))
+        {
+            Pair<String, String> cf = Schema.instance.getCF(cfId);
+            logger.info("Table {} not managed by epaxos, skipping token state transfer", cf != null ? cf : cfId);
+        }
         UUID taskId = UUIDGen.getTimeUUID();
         epaxosTransfers.put(taskId, new EpaxosTransferTask(this, taskId, cfId, range));
+        logger.debug("adding epaxos transfer {} for {} on ", taskId, range, cfId);
     }
 
     /**
@@ -499,14 +510,23 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         // send prepare message
         state(State.PREPARING);
         PrepareMessage prepare = new PrepareMessage();
+
         prepare.requests.addAll(requests);
         for (StreamTransferTask task : transfers.values())
             prepare.summaries.add(task.getSummary());
+
+        prepare.epaxosRequests.addAll(epaxosRequests);
+        for (EpaxosTransferTask task: epaxosTransfers.values())
+            prepare.epaxosSummaries.add(task.getSummary());
+
         handler.sendMessage(prepare);
 
         // if we don't need to prepare for receiving stream, start sending files immediately
-        if (requests.isEmpty())
+        if (requests.isEmpty() && epaxosRequests.isEmpty())
+        {
+            startStreamingTokenStates();
             startStreamingFiles();
+        }
     }
 
     /**l
@@ -539,6 +559,8 @@ public class StreamSession implements IEndpointStateChangeSubscriber
             addEpaxosTransfer(request.cfId, request.range);
         for (EpaxosSummary summary: epaxosSummaries)
             prepareEpaxosReceiving(summary);
+
+        maybePrepareEpaxosState();
 
         // send back prepare message if prepare message contains stream request
         if (!requests.isEmpty() || !epaxosRequests.isEmpty())
@@ -688,12 +710,14 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     public synchronized void epaxosTransferComplete(UUID taskId)
     {
         epaxosTransfers.remove(taskId);
+        logger.debug("epaxos transfer completed: {} for {} on ", taskId);
         maybeCompleted();
     }
 
     public synchronized void epaxosReceiveComplete(UUID taskId)
     {
         epaxosReceivers.remove(taskId);
+        logger.debug("epaxos receive completed: {} for {} on ", taskId);
         maybeCompleted();
     }
 
@@ -718,6 +742,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         boolean completed = receivers.isEmpty() && transfers.isEmpty() && epaxosReceivers.isEmpty() && epaxosTransfers.isEmpty();
         if (completed)
         {
+            logger.debug("session completed");
             if (state == State.WAIT_COMPLETE)
             {
                 if (!completeSent)
@@ -759,6 +784,28 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     private void prepareEpaxosReceiving(EpaxosSummary summary)
     {
         epaxosReceivers.put(summary.taskId, new EpaxosReceiveTask(this, summary.taskId, summary.cfId, summary.range));
+        logger.debug("adding epaxos receive {} for {} on ", summary.taskId, summary.range, summary.cfId);
+    }
+
+    private void maybePrepareEpaxosState()
+    {
+        if (!epaxosReceivers.isEmpty() && streamingInData())
+        {
+            for (EpaxosReceiveTask receiveTask: epaxosReceivers.values())
+            {
+                EpaxosState.getInstance().prepareForIncomingStream(receiveTask.range, receiveTask.cfId);
+            }
+        }
+    }
+
+    public boolean streamingInData()
+    {
+        return !receivers.isEmpty();
+    }
+
+    public void addListener(StreamEventHandler listener)
+    {
+        streamResult.addEventListener(listener);
     }
 
     private void maybeSetStreamingState()
@@ -776,9 +823,8 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         maybeSetStreamingState();
         for (EpaxosTransferTask task: epaxosTransfers.values())
         {
-
+            handler.sendMessage(task.getMessage());
         }
-        throw new AssertionError("Not implemented");
     }
 
     private void startStreamingFiles()

@@ -27,7 +27,6 @@ public class CommitVerbHandler extends AbstractEpochVerbHandler<MessageEnvelope<
         Instance instance;
         try
         {
-            // TODO: check for illegal epoch increments and kickoff failure recovery if found
             instance = state.loadInstance(remoteInstance.getId());
             if (instance == null)
             {

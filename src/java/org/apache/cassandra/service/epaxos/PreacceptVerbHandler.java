@@ -34,10 +34,10 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
 
     private void maybeVetoEpoch(Instance inst)
     {
-        if (!(inst instanceof TokenInstance))
+        if (!(inst instanceof EpochInstance))
             return;
 
-        TokenInstance instance = (TokenInstance) inst;
+        EpochInstance instance = (EpochInstance) inst;
         TokenState tokenState = state.tokenStateManager.get(instance);
         long currentEpoch = state.tokenStateManager.getEpoch(instance);
 
@@ -48,13 +48,14 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
         }
         else if (!state.keyStateManager.canIncrementToEpoch(tokenState, instance.getEpoch()))
         {
+            state.keyStateManager.canIncrementToEpoch(tokenState, instance.getEpoch());
             logger.debug("KeyStateManager can't increment epoch to {}", instance.getEpoch());
             instance.setVetoed(true);
         }
     }
 
     @Override
-    public void doEpochVerb(MessageIn<MessageEnvelope<Instance>> message, int id)
+    public void doEpochVerb(MessageIn<MessageEnvelope<Instance>> message, final int id)
     {
         Instance remoteInstance = message.payload.contents;
         logger.debug("Preaccept request received from {} for {}", message.from, remoteInstance.getId());
@@ -71,7 +72,6 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
             {
                 if (instance == null)
                 {
-                    // TODO: add to deps
                     instance = remoteInstance.copyRemote();
                 }
                 else

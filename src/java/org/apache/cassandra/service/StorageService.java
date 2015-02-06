@@ -266,13 +266,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.SNAPSHOT, new SnapshotVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.ECHO, new EchoVerbHandler());
 
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREACCEPT, EpaxosState.instance.getPreacceptVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_ACCEPT, EpaxosState.instance.getAcceptVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_COMMIT, EpaxosState.instance.getCommitVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREPARE, EpaxosState.instance.getPrepareVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_TRYPREACCEPT, EpaxosState.instance.getTryPreacceptVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREACCEPT, EpaxosState.getInstance().getPreacceptVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_ACCEPT, EpaxosState.getInstance().getAcceptVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_COMMIT, EpaxosState.getInstance().getCommitVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREPARE, EpaxosState.getInstance().getPrepareVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_TRYPREACCEPT, EpaxosState.getInstance().getTryPreacceptVerbHandler());
 
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_READ_REPAIR, new ReadRepairVerbHandler.Epaxos(EpaxosState.instance));
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_READ_REPAIR, new ReadRepairVerbHandler.Epaxos(EpaxosState.getInstance()));
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_FAILURE_RECOVERY, EpaxosState.getInstance().getFailureRecoveryVerbHandler());
     }
 
     public void registerDaemon(CassandraDaemon daemon)
@@ -721,6 +722,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
             HintedHandOffManager.instance.start();
             BatchlogManager.instance.start();
+
+            EpaxosState.getInstance().start();
         }
     }
 
@@ -3367,6 +3370,18 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     for (InetAddress address : endpointRanges.keySet())
                     {
                         logger.debug("Will stream range {} of keyspace {} to endpoint {}", endpointRanges.get(address), keyspace, address);
+                        KSMetaData ks = Schema.instance.getKSMetaData(keyspace);
+                        for (CFMetaData cf: ks.cfMetaData().values())
+                        {
+                            if (!EpaxosState.getInstance().managesCfId(cf.cfId))
+                                continue;
+
+                            for (Range<Token> range: endpointRanges.get(address))
+                            {
+                                // TODO: should remote instances and token ranges be deleted first?
+                                streamPlan.transferEpaxosRange(address, cf.cfId, range);
+                            }
+                        }
                         streamPlan.transferRanges(address, keyspace, endpointRanges.get(address));
                     }
 
@@ -3375,6 +3390,19 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     for (InetAddress address : workMap.keySet())
                     {
                         logger.debug("Will request range {} of keyspace {} from endpoint {}", workMap.get(address), keyspace, address);
+
+                        // TODO: request a list of managed cfIds so we can proactively create 'recovering' token states
+                        KSMetaData ks = Schema.instance.getKSMetaData(keyspace);
+                        for (CFMetaData cf: ks.cfMetaData().values())
+                        {
+                            for (Range<Token> range: workMap.get(address))
+                            {
+                                // TODO: should instances and token ranges be deleted first?
+                                // TODO: just request the keyspace + ranges, this might be a little too intense
+                                streamPlan.requestEpaxosRange(address, cf.cfId, range);
+                            }
+                        }
+
                         streamPlan.requestRanges(address, keyspace, workMap.get(address));
                     }
 
@@ -3861,6 +3889,19 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             {
                 List<Range<Token>> ranges = rangesEntry.getValue();
                 InetAddress newEndpoint = rangesEntry.getKey();
+
+                KSMetaData ks = Schema.instance.getKSMetaData(keyspaceName);
+                for (CFMetaData cf: ks.cfMetaData().values())
+                {
+                    if (!EpaxosState.getInstance().managesCfId(cf.cfId))
+                        continue;
+
+                    for (Range<Token> range: ranges)
+                    {
+                        // TODO: should remote instances and token ranges be deleted first?
+                        streamPlan.transferEpaxosRange(newEndpoint, cf.cfId, range);
+                    }
+                }
 
                 // TODO each call to transferRanges re-flushes, this is potentially a lot of waste
                 streamPlan.transferRanges(newEndpoint, keyspaceName, ranges);

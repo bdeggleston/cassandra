@@ -4,6 +4,9 @@ import com.google.common.collect.Sets;
 import com.google.common.io.ByteStreams;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.dht.LongToken;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
@@ -17,6 +20,16 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
 {
     private static final IPartitioner partitioner = DatabaseDescriptor.getPartitioner();
     private static final UUID CFID = UUIDGen.getTimeUUID();
+
+    private static Range<Token> rangeFor(long right)
+    {
+        return rangeFor(0l, right);
+    }
+
+    private static Range<Token> rangeFor(long left, long right)
+    {
+        return new Range<Token>(new LongToken(left), new LongToken(right));
+    }
 
     @Test
     public void serialization() throws IOException
@@ -58,7 +71,6 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
     @Test
     public void highEpochDecrementFailure()
     {
-
         TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 0, 5, 0);
         Assert.assertEquals(5, ts.getHighEpoch());
 
@@ -122,21 +134,37 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
      * when epoch is changed
      */
     @Test
-    public void tokenInstances()
+    public void epochInstances()
     {
         TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 0, 0, 0);
         UUID i0 = UUIDGen.getTimeUUID();
         UUID i1 = UUIDGen.getTimeUUID();
         UUID i2 = UUIDGen.getTimeUUID();
 
-        ts.recordTokenInstance(0, i0);
-        ts.recordTokenInstance(0, i1);
-        ts.recordTokenInstance(1, i2);
+        ts.recordEpochInstance(0, i0);
+        ts.recordEpochInstance(0, i1);
+        ts.recordEpochInstance(1, i2);
 
-        Assert.assertEquals(Sets.newHashSet(i0, i1, i2), ts.getCurrentTokenInstances());
+        Assert.assertEquals(Sets.newHashSet(i0, i1, i2), ts.getCurrentEpochInstances());
 
         ts.setEpoch(1);
 
-        Assert.assertEquals(Sets.newHashSet(i2), ts.getCurrentTokenInstances());
+        Assert.assertEquals(Sets.newHashSet(i2), ts.getCurrentEpochInstances());
+    }
+
+    @Test
+    public void tokenInstances()
+    {
+        TokenState ts = new TokenState(new LongToken(200l), CFID, 0, 0, 0);
+        UUID tId0 = UUIDGen.getTimeUUID();
+        UUID tId1 = UUIDGen.getTimeUUID();
+        ts.recordTokenInstance(new LongToken(75l), tId0);
+        ts.recordTokenInstance(new LongToken(150l), tId1);
+
+        Assert.assertEquals(Sets.newHashSet(tId0, tId1), ts.getCurrentTokenInstances(rangeFor(151l)));
+        Assert.assertEquals(Sets.newHashSet(tId0, tId1), ts.getCurrentTokenInstances(rangeFor(150l)));
+        Assert.assertEquals(Sets.newHashSet(tId0), ts.getCurrentTokenInstances(rangeFor(149l)));
+        Assert.assertEquals(Sets.newHashSet(tId0), ts.getCurrentTokenInstances(rangeFor(75l)));
+        Assert.assertEquals(Sets.<UUID>newHashSet(), ts.getCurrentTokenInstances(rangeFor(50l)));
     }
 }

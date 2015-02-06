@@ -77,10 +77,9 @@ public class SerializedRequest
         Tracing.trace("Reading existing values for CAS precondition");
         CFMetaData metadata = Schema.instance.getCFMetaData(keyspaceName, cfName);
 
-        long timestamp = System.currentTimeMillis();  // TODO: why do we need a ts for a read?
+        long timestamp = System.currentTimeMillis();
         final ReadCommand command = ReadCommand.create(keyspaceName, key, cfName, timestamp, request.readFilter());
 
-        // TODO: consider doing a read and write in different stages with the lock held
         Keyspace keyspace = Keyspace.open(command.ksName);
         Row row = command.getRow(keyspace);
 

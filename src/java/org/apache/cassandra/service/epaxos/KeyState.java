@@ -53,29 +53,41 @@ public class KeyState
         Set<UUID> stronglyConnected = null;
         private boolean isSccTerminator = false;
 
-        private Entry(UUID iid)
+        Entry(UUID iid)
         {
             this.iid = iid;
             this.acknowledged = Sets.newHashSet();
         }
 
-        private Entry(UUID iid, Set<UUID> acknowledged, boolean executed)
+        Entry(UUID iid, Set<UUID> acknowledged, boolean executed)
         {
             this.iid = iid;
             this.acknowledged = acknowledged;
             this.executed = executed;
         }
 
+        @Override
+        public String toString()
+        {
+            return "Entry{" +
+                    "iid=" + iid +
+                    ", acknowledged=" + acknowledged +
+                    ", executed=" + executed +
+                    ", stronglyConnected=" + stronglyConnected +
+                    ", isSccTerminator=" + isSccTerminator +
+                    '}';
+        }
+
         // if an instance has been acknowledged by an instance that
         // isn't part of it's strongly connected component, we can evict
-        private boolean canEvict()
+        boolean canEvict()
         {
-
             if (acknowledged.size() == 0 || stronglyConnected == null)
                 return false;
 
             if (isSccTerminator)
             {
+                // needs to have been ack'd by an instance outside of the scc
                 return Sets.difference(acknowledged, stronglyConnected).size() > 0;
             }
             else
@@ -84,11 +96,11 @@ public class KeyState
             }
         }
 
-        private void setStronglyConnected(Set<UUID> scc)
+        void setStronglyConnected(Set<UUID> scc)
         {
             assert stronglyConnected == null || stronglyConnected.equals(scc);
 
-            stronglyConnected = scc != null ? Sets.newHashSet(scc) : Sets.<UUID>newHashSet();
+            stronglyConnected = scc != null ? Sets.newHashSet(scc) : Collections.<UUID>emptySet();
 
             if (stronglyConnected.size() > 0)
             {
@@ -100,7 +112,36 @@ public class KeyState
             }
         }
 
-        private static final IVersionedSerializer<Entry> serializer = new IVersionedSerializer<Entry>()
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            Entry entry = (Entry) o;
+
+            if (executed != entry.executed) return false;
+            if (isSccTerminator != entry.isSccTerminator) return false;
+            if (!acknowledged.equals(entry.acknowledged)) return false;
+            if (!iid.equals(entry.iid)) return false;
+            if (stronglyConnected != null ? !stronglyConnected.equals(entry.stronglyConnected) : entry.stronglyConnected != null)
+                return false;
+
+            return true;
+        }
+
+        @Override
+        public int hashCode()
+        {
+            int result = iid.hashCode();
+            result = 31 * result + acknowledged.hashCode();
+            result = 31 * result + (executed ? 1 : 0);
+            result = 31 * result + (stronglyConnected != null ? stronglyConnected.hashCode() : 0);
+            result = 31 * result + (isSccTerminator ? 1 : 0);
+            return result;
+        }
+
+        static final IVersionedSerializer<Entry> serializer = new IVersionedSerializer<Entry>()
         {
             @Override
             public void serialize(Entry entry, DataOutputPlus out, int version) throws IOException
@@ -110,22 +151,29 @@ public class KeyState
                 Serializers.uuidSets.serialize(entry.acknowledged, out, version);
 
                 out.writeBoolean(entry.executed);
+                out.writeBoolean(entry.isSccTerminator);
+                Serializers.uuidSets.serialize(entry.stronglyConnected, out, version);
             }
 
             @Override
             public Entry deserialize(DataInput in, int version) throws IOException
             {
-                return new Entry(
-                        UUIDSerializer.serializer.deserialize(in, version),
-                        Serializers.uuidSets.deserialize(in, version),
-                        in.readBoolean());
+                Entry entry = new Entry(UUIDSerializer.serializer.deserialize(in, version),
+                                        Serializers.uuidSets.deserialize(in, version),
+                                        in.readBoolean());
+                entry.isSccTerminator = in.readBoolean();
+                entry.stronglyConnected = Serializers.uuidSets.deserialize(in, version);
+                return entry;
             }
 
             @Override
             public long serializedSize(Entry entry, int version)
             {
                 return UUIDSerializer.serializer.serializedSize(entry.iid, version)
-                        + Serializers.uuidSets.serializedSize(entry.acknowledged, version) + 1 + 1;
+                        + Serializers.uuidSets.serializedSize(entry.acknowledged, version)
+                        + 1
+                        + 1
+                        + Serializers.uuidSets.serializedSize(entry.stronglyConnected, version);
             }
         };
 
@@ -169,6 +217,39 @@ public class KeyState
         return entries.get(iid);
     }
 
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        KeyState keyState = (KeyState) o;
+
+        if (epoch != keyState.epoch) return false;
+        if (executionCount != keyState.executionCount) return false;
+        if (!entries.equals(keyState.entries)) return false;
+        if (!epochs.equals(keyState.epochs)) return false;
+        if (futureExecution != null ? !futureExecution.equals(keyState.futureExecution) : keyState.futureExecution != null)
+            return false;
+        if (!pendingAcknowledgements.equals(keyState.pendingAcknowledgements)) return false;
+        if (!pendingEpochAcknowledgements.equals(keyState.pendingEpochAcknowledgements)) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+        int result = entries.hashCode();
+        result = 31 * result + epochs.hashCode();
+        result = 31 * result + (int) (epoch ^ (epoch >>> 32));
+        result = 31 * result + (int) (executionCount ^ (executionCount >>> 32));
+        result = 31 * result + (futureExecution != null ? futureExecution.hashCode() : 0);
+        result = 31 * result + pendingAcknowledgements.hashCode();
+        result = 31 * result + pendingEpochAcknowledgements.hashCode();
+        return result;
+    }
+
     private void maybeEvict(UUID iid)
     {
         Entry entry = entries.get(iid);
@@ -179,7 +260,12 @@ public class KeyState
 
         if (entry.canEvict())
         {
+            logger.debug("evicting {}", entry);
             entries.remove(iid);
+        }
+        else
+        {
+            logger.debug("not evicting {}", entry);
         }
     }
 
@@ -484,6 +570,11 @@ public class KeyState
         {
             if (Sets.intersection(entries.keySet(), entry.getValue()).size() > 0)
             {
+                if (logger.isDebugEnabled())
+                {
+                    logger.debug("Can't increment epoch. These instances are still active -> {}",
+                                 Sets.intersection(entries.keySet(), entry.getValue()));
+                }
                 return false;
             }
 
@@ -611,7 +702,7 @@ public class KeyState
 
             // pending epoch acks
             Set<Long> pendingEpochKeys = deps.pendingEpochAcknowledgements.keySet();
-            out.writeInt(pendingKeys.size());
+            out.writeInt(pendingEpochKeys.size());
             for (Long epoch: pendingEpochKeys)
             {
                 out.writeLong(epoch);

@@ -13,7 +13,7 @@ import java.net.UnknownHostException;
 import java.util.Set;
 import java.util.UUID;
 
-public class EpaxosTokenInstanceTest
+public class EpaxosEpochInstanceTest
 {
     static final InetAddress LEADER;
     static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
@@ -58,7 +58,7 @@ public class EpaxosTokenInstanceTest
     @Test
     public void vetoed() throws Exception
     {
-        TokenInstance instance = new TokenInstance(LEADER, TOKEN, CFID, 5);
+        EpochInstance instance = new EpochInstance(LEADER, TOKEN, CFID, 5);
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
 

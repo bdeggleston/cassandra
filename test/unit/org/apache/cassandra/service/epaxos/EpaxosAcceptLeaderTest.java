@@ -164,8 +164,8 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
 
         node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), false, Collections.EMPTY_MAP), null);
 
-        // TODO: check not committed
         Assert.assertNull(lastCommit);
+        Assert.assertFalse(instance.getState().atLeast(Instance.State.COMMITTED));
     }
 
     @Test
@@ -185,7 +185,18 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         }
 
         node.accept(instance.getId(), new AcceptDecision(true, instance.getDependencies(), false, Collections.EMPTY_MAP), null);
-        // TODO: check not committed
         Assert.assertNull(lastCommit);
+        Assert.assertFalse(instance.getState().atLeast(Instance.State.COMMITTED));
+    }
+
+    // TODO: probably delete above tests, they're duplicated by the accept callback test
+
+    /**
+     * Check that the EpaxosState.accept uses the vetoed decision when working with EpochInstances
+     */
+    @Test
+    public void epochVetos()
+    {
+
     }
 }

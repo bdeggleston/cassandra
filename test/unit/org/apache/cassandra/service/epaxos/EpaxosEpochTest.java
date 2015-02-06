@@ -10,25 +10,18 @@ public class EpaxosEpochTest
      * @throws Exception
      */
     @Test
-    public void minimalActivityGC() throws Exception
+    public void partitionGC() throws Exception
     {
 
     }
 
     /**
      * When a token's epoch is incremented, the epochs for all
-     * of it's dependency managers should be incremented as well
+     * of it's key managers should be incremented as well
      */
     @Test
-    public void depsManagerEpochIsIncremented() throws Exception
+    public void keyManagerEpochIsIncremented() throws Exception
     {
 
     }
-
-    @Test
-    public void epochInstanceIncludedInQueryDeps() throws Exception
-    {
-
-    }
-
 }

@@ -1,13 +1,19 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.ning.compress.lzf.LZFInputStream;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.streaming.StreamEvent;
+import org.apache.cassandra.streaming.StreamEventHandler;
+import org.apache.cassandra.streaming.StreamSession;
+import org.apache.cassandra.streaming.StreamState;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -27,7 +33,7 @@ public class InstanceStreamReader
 
     public InstanceStreamReader(UUID cfId, Range<Token> range)
     {
-        this(EpaxosState.instance, cfId, range);
+        this(EpaxosState.getInstance(), cfId, range);
     }
 
     public InstanceStreamReader(EpaxosState state, UUID cfId, Range<Token> range)
@@ -42,104 +48,265 @@ public class InstanceStreamReader
         return state.tokenStateManager.get(range.left, cfId);
     }
 
-    public void read(ReadableByteChannel channel) throws IOException
+    protected TokenState getExact(Token token)
     {
-        TokenState tokenState = getTokenState();
-        assert tokenState.getState() != TokenState.State.NORMAL;
-        tokenState.lockGc();
-        try
+        return state.tokenStateManager.getExact(token, cfId);
+    }
+
+    protected int drainEpochKeyState(DataInputStream in) throws IOException
+    {
+        int instancesDrained = 0;
+        int size = in.readInt();
+        for (int i=0; i<size; i++)
         {
-            DataInputStream in = new DataInputStream(new LZFInputStream(Channels.newInputStream(channel)));
-            long currentEpoch = in.readLong();
+            Instance.serializer.deserialize(in, MessagingService.current_version);
+            Serializers.uuidSets.deserialize(in, MessagingService.current_version);
+            instancesDrained++;
+        }
+        return instancesDrained;
+    }
 
-            if (currentEpoch <= tokenState.getEpoch())
+    protected int drainInstanceStream(DataInputStream in) throws IOException
+    {
+        int instancesDrained = 0;
+        while (in.readBoolean())
+        {
+            ByteBufferUtil.readWithShortLength(in);
+            boolean last = false;
+            while (!last)
             {
-                logger.info("Remote epoch is <= to the local one. Aborting instance stream");
-                return;
+                long epoch = in.readLong();
+                last = epoch < 0;
+                instancesDrained += drainEpochKeyState(in);
             }
+        }
+        return instancesDrained;
+    }
 
-            long minEpoch = currentEpoch - 1;
+    public void read(ReadableByteChannel channel, StreamSession session) throws IOException
+    {
+        DataInputStream in = new DataInputStream(new LZFInputStream(Channels.newInputStream(channel)));
 
-            while (in.readBoolean())
+        // TODO: create and put token states into recovery mode in the stream session prepare
+        // TODO: think through concurrency problems with this
+        while (in.readBoolean())
+        {
+            Token token = Token.serializer.deserialize(in);
+            int instancesRead = 0;
+
+            boolean canSkip = true;
+            TokenState ts = getExact(token);
+            if (ts == null)
             {
-                ByteBuffer key = ByteBufferUtil.readWithShortLength(in);
-                CfKey cfKey = new CfKey(key, cfId);
-                // this will instantiate the key state (if it doesn't already exist) in the epoch
-                // of the token state manager
-                KeyState ks = state.keyStateManager.loadKeyState(cfKey);
-
-                boolean last = false;
-                while (!last)
+                ts = new TokenState(token, cfId, 0, 0, 0, TokenState.State.RECOVERING_INSTANCES);
+                TokenState previous = state.tokenStateManager.putState(ts);
+                if (previous == ts)
                 {
-                    long epoch = in.readLong();
-                    last = epoch < 0;
-                    int size = in.readInt();
-                    ks.setEpoch(last ? currentEpoch : epoch);
-                    boolean ignoreEpoch = epoch >= minEpoch;
-                    if (ignoreEpoch)
+                    canSkip = false;
+                }
+                else
+                {
+                    ts = previous;
+                }
+            }
+            else
+            {
+                ts.rwLock.writeLock().lock();
+                try
+                {
+                    if (ts.getState() == TokenState.State.PRE_RECOVERY)
                     {
-                        logger.debug("Ignoring epoch {}. Min epoch is {}", epoch, minEpoch);
+                        ts.setState(TokenState.State.RECOVERING_INSTANCES);
+                        state.tokenStateManager.save(ts);
+                        canSkip = false;
                     }
+                }
+                finally
+                {
+                    ts.rwLock.writeLock().unlock();
+                }
+            }
+            final TokenState tokenState = ts;
+            // TODO: work out which state we should handle in which ways
 
-                    for (int i=0; i<size; i++)
+            logger.info("Streaming in token state for {} on {} ({})", token, Schema.instance.getCF(cfId), cfId);
+
+            // TODO: check that the token state locking/saving/state changes work with all instance stream applications
+            tokenState.lockGc();
+            try
+            {
+                if (!in.readBoolean())
+                {
+                    logger.info("Token state doesn't exist for {} on {}", token, cfId);
+                    continue;
+                }
+
+                long currentEpoch = in.readLong();
+
+                boolean ignore = canSkip && currentEpoch <= tokenState.getEpoch();
+                if (ignore)
+                {
+                    int instancesDrained = drainInstanceStream(in);
+                    logger.info("Remote epoch {} is <= to the local one {}. Ignoring {} from instance stream for this token",
+                                currentEpoch, tokenState.getEpoch(), instancesDrained);
+                    instancesRead += instancesDrained;
+                    continue;
+                }
+
+                long minEpoch = currentEpoch - 1;
+
+                while (in.readBoolean())
+                {
+                    ByteBuffer key = ByteBufferUtil.readWithShortLength(in);
+                    CfKey cfKey = new CfKey(key, cfId);
+                    // this will instantiate the key state (if it doesn't already exist) in the epoch
+                    // of the token state manager
+                    KeyState ks = state.keyStateManager.loadKeyState(cfKey);
+
+                    boolean last = false;
+                    while (!last)
                     {
-                        Instance instance = Instance.serializer.deserialize(in, MessagingService.current_version);
-                        Set<UUID> scc = Serializers.uuidSets.deserialize(in, MessagingService.current_version);
-
-                        if (ignoreEpoch)
+                        long epoch = in.readLong();
+                        last = epoch < 0;
+                        long setEpoch = last ? currentEpoch : epoch;
+                        if (setEpoch < ks.getEpoch())
+                        {
+                            int instancesDrained = drainEpochKeyState(in);
+                            instancesRead += instancesDrained;
+                            logger.info("Remote epoch for ks {} is < to the local one {}. Ignoring {} from instance stream for this token",
+                                        setEpoch, ks.getEpoch(), instancesDrained);
                             continue;
-
-                        Lock instanceLock = state.getInstanceLock(instance.getId()).writeLock();
-                        Lock ksLock = state.keyStateManager.getCfKeyLock(cfKey);
-                        instanceLock.lock();
-                        ksLock.lock();
-                        try
-                        {
-                            // reload the key state in case there are other threads receiving instances
-                            // it should be cached anyway
-                            ks = state.keyStateManager.loadKeyState(cfKey);
-                            // don't add the same instance multiple times
-                            if (!ks.contains(instance.getId()))
-                            {
-                                if (!last)
-                                {
-                                    // if this isn't the active set of instances, all these instances should be executed
-                                    assert instance.getState() == Instance.State.EXECUTED;
-                                    ks.markAcknowledged(instance.getDependencies(), instance.getId());
-                                    ks.markExecuted(instance.getId(), scc, epoch, null);
-
-                                    // the keystate needs to be persisted before the instance is, so
-                                    // if we need to start over, there aren't a bunch of orphan instances
-                                    // sitting around forever
-                                    state.keyStateManager.saveKeyState(cfKey, ks);
-                                    state.saveInstance(instance);
-
-                                    logger.debug("Adding instance {} to epoch {}", instance.getId(), epoch);
-                                }
-                                else if (instance.getState().atLeast(Instance.State.ACCEPTED))
-                                {
-                                    state.addMissingInstance(instance);
-                                }
-                            }
-                            else
-                            {
-                                logger.debug("Skipping adding already recorded instance: {}", instance.getId());
-                            }
                         }
-                        finally
+                        ks.setEpoch(last ? currentEpoch : epoch);
+                        int size = in.readInt();
+                        boolean ignoreEpoch = epoch < minEpoch && !last;
+                        if (ignoreEpoch)
                         {
-                            ksLock.unlock();
-                            instanceLock.unlock();
+                            logger.debug("Ignoring epoch {}. Min epoch is {}", epoch, minEpoch);
+                        }
+
+                        for (int i=0; i<size; i++)
+                        {
+                            Instance instance = Instance.serializer.deserialize(in, MessagingService.current_version);
+                            Set<UUID> stronglyConnected = Serializers.uuidSets.deserialize(in, MessagingService.current_version);
+                            logger.debug("Reading instance {} on token {} for {}", instance.getId(), token, cfId);
+                            instancesRead++;
+
+                            if (ignoreEpoch)
+                                continue;
+
+                            Lock instanceLock = state.getInstanceLock(instance.getId()).writeLock();
+                            Lock ksLock = state.keyStateManager.getCfKeyLock(cfKey);
+                            instanceLock.lock();
+                            ksLock.lock();
+                            try
+                            {
+                                // reload the key state in case there are other threads receiving instances
+                                // it should be cached anyway
+                                ks = state.keyStateManager.loadKeyState(cfKey);
+                                // don't add the same instance multiple times
+                                if (!ks.contains(instance.getId()))
+                                {
+                                    // TODO: do token and epoch instances require and special handling? previous epochs should be transmitted
+                                    if (instance.getState().atLeast(Instance.State.ACCEPTED))
+                                    {
+                                        if (!last && instance.getState() != Instance.State.EXECUTED)
+                                        {
+                                            logger.warn("Got non-executed instance from previous epoch: {}", instance);
+                                        }
+
+                                        ks.recordInstance(instance.getId());
+                                        ks.markAcknowledged(instance.getDependencies(), instance.getId());
+                                        if (instance.getState() == Instance.State.EXECUTED)
+                                        {
+                                            // since instance streams are expected to be accompanied by data streams
+                                            // we do not call commitRemote on the instances
+                                            if (stronglyConnected != null && stronglyConnected.size() > 1)
+                                            {
+                                                instance.setStronglyConnected(stronglyConnected);
+                                            }
+                                            ks.markExecuted(instance.getId(), stronglyConnected, null);
+                                        }
+                                        state.keyStateManager.saveKeyState(cfKey, ks);
+                                        // the instance is persisted after the keystate is, so if this bootstrap/recovery
+                                        // fails, and another failure recovery starts, we know to delete the instance
+                                        state.saveInstance(instance);
+
+                                    }
+                                    else
+                                    {
+                                        if (!last)
+                                        {
+                                            logger.warn("Got non-accepted instance from previous epoch: {}", instance);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    logger.debug("Skipping adding already recorded instance: {}", instance.getId());
+                                }
+                            }
+                            finally
+                            {
+                                ksLock.unlock();
+                                instanceLock.unlock();
+                            }
                         }
                     }
                 }
-            }
-            tokenState.setEpoch(currentEpoch);
-        }
-        finally
-        {
-            tokenState.unlockGc();
-        }
+                tokenState.setEpoch(currentEpoch);
 
+                // if this stream session is including data, it's not part of a failure recovery task, so
+                // we need to update the token state ourselves
+                // TODO: clean this up
+                if (session != null && session.streamingInData())
+                {
+                    tokenState.rwLock.writeLock().lock();
+                    try
+                    {
+                        logger.debug("Setting token state to {}", TokenState.State.RECOVERING_DATA);
+                        tokenState.setState(TokenState.State.RECOVERING_DATA);
+                        state.tokenStateManager.save(tokenState);
+                    }
+                    finally
+                    {
+                        tokenState.rwLock.writeLock().unlock();
+                    }
+
+                    session.addListener(new StreamEventHandler()
+                    {
+                        @Override
+                        public void handleStreamEvent(StreamEvent event)
+                        {
+                            if (event.eventType == StreamEvent.Type.STREAM_COMPLETE)
+                            {
+                                logger.debug("Setting token state to {}", TokenState.State.NORMAL);
+                                tokenState.rwLock.writeLock().lock();
+                                try
+                                {
+                                    tokenState.setState(TokenState.State.NORMAL);
+                                    state.tokenStateManager.save(tokenState);
+                                }
+                                finally
+                                {
+                                    tokenState.rwLock.writeLock().unlock();
+                                }
+                            }
+                        }
+
+                        public void onSuccess(@Nullable StreamState streamState) {}
+
+                        public void onFailure(Throwable throwable) {}
+                    });
+                }
+            }
+            finally
+            {
+                tokenState.unlockGc();
+            }
+
+            logger.info("Read in {} instances for token {} on {}", instancesRead, token, cfId);
+            state.tokenStateManager.save(tokenState);
+        }
     }
 }

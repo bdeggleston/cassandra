@@ -150,9 +150,9 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
             if (inst != null)
             {
                 ballot = Math.max(ballot, inst.getBallot());
-                if (inst instanceof TokenInstance)
+                if (inst instanceof EpochInstance)
                 {
-                    vetoed |= ((TokenInstance) inst).isVetoed();
+                    vetoed |= ((EpochInstance) inst).isVetoed();
                 }
             }
         }
