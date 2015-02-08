@@ -22,7 +22,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /**
  * The epoch state for a given token range
  */
-// TODO: persist
 public class TokenState
 {
 
@@ -89,6 +88,7 @@ public class TokenState
             return passiveRecord;
         }
     }
+
     private volatile State state;  // local only
     private final SetMultimap<Long, UUID> tokenInstances = HashMultimap.create();
 

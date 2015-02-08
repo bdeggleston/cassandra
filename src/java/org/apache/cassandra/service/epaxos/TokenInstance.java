@@ -17,6 +17,7 @@ import java.util.UUID;
  * strongly connected component with an epoch increment instance, and there's no other
  * activity on that partition, the *next* epoch increment instance will also depend on it
  */
+// TODO: rename to EpochInstance
 public class TokenInstance extends Instance
 {
     private final Token token;

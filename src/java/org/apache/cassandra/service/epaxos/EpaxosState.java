@@ -159,8 +159,18 @@ public class EpaxosState
         instanceCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(10000).build();
         tokenStateManager = createTokenStateManager();
         keyStateManager = new KeyStateManager(keyspace(), keyStateTable(), tokenStateManager);
+    }
 
-        if (startMaintenanceTask)
+    public void start()
+    {
+        start(true);
+    }
+
+    public void start(boolean startMaintenanceTasks)
+    {
+        tokenStateManager.start();
+
+        if (startMaintenanceTasks)
         {
             scheduleTokenStateMaintenanceTask();
         }
@@ -710,23 +720,6 @@ public class EpaxosState
         }
     }
 
-    /**
-     * increments the epoch for the given token
-     */
-    public void incrementEpoch(Token token)
-    {
-        // TODO: iterate over all dependency managers in the token range
-        // TODO: run epoch instance
-    }
-
-    protected void maybeRecordHighEpoch(Instance instance)
-    {
-        if (instance instanceof TokenInstance)
-        {
-            tokenStateManager.recordHighEpoch((TokenInstance) instance);
-        }
-    }
-
     // failure recovery
     public long getCurrentEpoch(Instance i)
     {
@@ -953,6 +946,11 @@ public class EpaxosState
 
         }
         return instances;
+    }
+
+    public void addToken(UUID cfId, Token token)
+    {
+
     }
 
     // key state methods

@@ -26,6 +26,7 @@ public class TokenStateMaintenanceTask implements Runnable
         logger.debug("TokenStateManager running");
         for (TokenState ts: tokenStateManager.all())
         {
+            // TODO: skip if we no longer replicate this token
             if (ts.getExecutions() >= state.getEpochIncrementThreshold())
             {
                 // TODO: start new epoch increment instance
