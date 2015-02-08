@@ -266,9 +266,9 @@ public class EpaxosState
         return new QueryInstance(request, getEndpoint());
     }
 
-    protected TokenInstance createTokenInstance(Token token, UUID cfId, long epoch)
+    protected EpochInstance createEpochInstance(Token token, UUID cfId, long epoch)
     {
-        return new TokenInstance(getEndpoint(), token, cfId, epoch);
+        return new EpochInstance(getEndpoint(), token, cfId, epoch);
     }
 
     // a blind instance delete
@@ -457,9 +457,9 @@ public class EpaxosState
         if (instance instanceof QueryInstance)
         {
             return executeQueryInstance((QueryInstance) instance);
-        } else if (instance instanceof TokenInstance)
+        } else if (instance instanceof EpochInstance)
         {
-            executeTokenInstance((TokenInstance) instance);
+            executeEpochInstance((EpochInstance) instance);
             return null;
         } else
         {
@@ -486,7 +486,7 @@ public class EpaxosState
      * This means that the first instance executed for any epoch > 0 will be the
      * incrementing token instance.
      */
-    protected void executeTokenInstance(TokenInstance instance)
+    protected void executeEpochInstance(EpochInstance instance)
     {
         TokenState tokenState = tokenStateManager.get(instance);
 
@@ -1013,9 +1013,9 @@ public class EpaxosState
         {
             return getQueryParticipants((QueryInstance) instance);
         }
-        else if (instance instanceof TokenInstance)
+        else if (instance instanceof EpochInstance)
         {
-            return getTokenParticipants((TokenInstance) instance);
+            return getTokenParticipants((EpochInstance) instance);
         }
         else
         {
@@ -1046,7 +1046,7 @@ public class EpaxosState
         return new ParticipantInfo(endpoints, remoteEndpoints, query.getConsistencyLevel());
     }
 
-    protected ParticipantInfo getTokenParticipants(TokenInstance instance)
+    protected ParticipantInfo getTokenParticipants(EpochInstance instance)
     {
         // TODO: this
         throw new AssertionError();

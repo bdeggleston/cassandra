@@ -122,21 +122,21 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
      * when epoch is changed
      */
     @Test
-    public void tokenInstances()
+    public void epochInstances()
     {
         TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 0, 0, 0);
         UUID i0 = UUIDGen.getTimeUUID();
         UUID i1 = UUIDGen.getTimeUUID();
         UUID i2 = UUIDGen.getTimeUUID();
 
-        ts.recordTokenInstance(0, i0);
-        ts.recordTokenInstance(0, i1);
-        ts.recordTokenInstance(1, i2);
+        ts.recordEpochInstance(0, i0);
+        ts.recordEpochInstance(0, i1);
+        ts.recordEpochInstance(1, i2);
 
-        Assert.assertEquals(Sets.newHashSet(i0, i1, i2), ts.getCurrentTokenInstances());
+        Assert.assertEquals(Sets.newHashSet(i0, i1, i2), ts.getCurrentEpochInstances());
 
         ts.setEpoch(1);
 
-        Assert.assertEquals(Sets.newHashSet(i2), ts.getCurrentTokenInstances());
+        Assert.assertEquals(Sets.newHashSet(i2), ts.getCurrentEpochInstances());
     }
 }

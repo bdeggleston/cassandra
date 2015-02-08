@@ -49,7 +49,7 @@ public class TokenStateMaintenanceTask implements Runnable
 
                     logger.debug("Incrementing epoch for {}", ts);
 
-                    TokenInstance instance = state.createTokenInstance(ts.getToken(), ts.getCfId(), ts.getEpoch() + 1);
+                    EpochInstance instance = state.createEpochInstance(ts.getToken(), ts.getCfId(), ts.getEpoch() + 1);
                     state.preaccept(instance);
                     ts.recordHighEpoch(instance.getEpoch());
                     tokenStateManager.save(ts);

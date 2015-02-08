@@ -90,7 +90,7 @@ public class TokenState
     }
 
     private volatile State state;  // local only
-    private final SetMultimap<Long, UUID> tokenInstances = HashMultimap.create();
+    private final SetMultimap<Long, UUID> epochInstances = HashMultimap.create();
 
     private transient volatile int lastPersistedExecutionCount = 0;
 
@@ -136,7 +136,7 @@ public class TokenState
 
         executions.set(0);
         resetUnrecordedExecutions();
-        cleanTokenInstances();
+        cleanEpochInstances();
     }
 
     public synchronized boolean recordHighEpoch(long epoch)
@@ -192,9 +192,9 @@ public class TokenState
         resetUnrecordedExecutions();
     }
 
-    public void recordTokenInstance(TokenInstance instance)
+    public void recordEpochInstance(EpochInstance instance)
     {
-        recordTokenInstance(instance.getEpoch(), instance.getId());
+        recordEpochInstance(instance.getEpoch(), instance.getId());
     }
 
     public void lockGc()
@@ -213,31 +213,31 @@ public class TokenState
         return recoveryStreams.get() < 1;
     }
 
-    void recordTokenInstance(long epoch, UUID id)
+    void recordEpochInstance(long epoch, UUID id)
     {
         if (epoch < this.epoch)
         {
             return;
         }
 
-        tokenInstances.put(epoch, id);
+        epochInstances.put(epoch, id);
     }
 
-    private void cleanTokenInstances()
+    private void cleanEpochInstances()
     {
-        Set<Long> keys = Sets.newHashSet(tokenInstances.keySet());
+        Set<Long> keys = Sets.newHashSet(epochInstances.keySet());
         for (long key : keys)
         {
             if (key < epoch)
             {
-                tokenInstances.removeAll(key);
+                epochInstances.removeAll(key);
             }
         }
     }
 
-    public Set<UUID> getCurrentTokenInstances()
+    public Set<UUID> getCurrentEpochInstances()
     {
-        return ImmutableSet.copyOf(tokenInstances.values());
+        return ImmutableSet.copyOf(epochInstances.values());
     }
 
     public EpochDecision evaluateMessageEpoch(IEpochMessage message)
@@ -276,12 +276,12 @@ public class TokenState
             out.writeInt(tokenState.state.ordinal());
 
             // epoch instances
-            Set<Long> keys = tokenState.tokenInstances.keySet();
+            Set<Long> keys = tokenState.epochInstances.keySet();
             out.writeInt(keys.size());
             for (Long epoch: keys)
             {
                 out.writeLong(epoch);
-                Serializers.uuidSets.serialize(tokenState.tokenInstances.get(epoch), out, version);
+                Serializers.uuidSets.serialize(tokenState.epochInstances.get(epoch), out, version);
             }
         }
 
@@ -299,7 +299,7 @@ public class TokenState
             for (int i=0; i<numEpochInstanceKeys; i++)
             {
                 Long epoch = in.readLong();
-                ts.tokenInstances.putAll(epoch, Serializers.uuidSets.deserialize(in, version));
+                ts.epochInstances.putAll(epoch, Serializers.uuidSets.deserialize(in, version));
             }
 
             return ts;
@@ -314,10 +314,10 @@ public class TokenState
 
             // epoch instances
             size += 4;
-            for (Long epoch: tokenState.tokenInstances.keySet())
+            for (Long epoch: tokenState.epochInstances.keySet())
             {
                 size += 8;
-                size += Serializers.uuidSets.serializedSize(tokenState.tokenInstances.get(epoch), version);
+                size += Serializers.uuidSets.serializedSize(tokenState.epochInstances.get(epoch), version);
             }
 
             return size;

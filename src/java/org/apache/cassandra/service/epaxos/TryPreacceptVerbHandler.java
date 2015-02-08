@@ -51,12 +51,12 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
 
     private boolean maybeVetoEpoch(Instance inst)
     {
-        if (!(inst instanceof TokenInstance))
+        if (!(inst instanceof EpochInstance))
         {
             return false;
         }
 
-        TokenInstance instance = (TokenInstance) inst;
+        EpochInstance instance = (EpochInstance) inst;
         long currentEpoch = state.tokenStateManager.getEpoch(instance);
 
         if (instance.getEpoch() > currentEpoch + 1)

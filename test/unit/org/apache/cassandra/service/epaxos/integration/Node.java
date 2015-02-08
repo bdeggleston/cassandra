@@ -106,9 +106,9 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected TokenInstance createTokenInstance(Token token, UUID cfId, long epoch)
+    protected EpochInstance createEpochInstance(Token token, UUID cfId, long epoch)
     {
-        TokenInstance instance = super.createTokenInstance(token, cfId, epoch);
+        EpochInstance instance = super.createEpochInstance(token, cfId, epoch);
         lastCreatedInstance = instance;
         return instance;
     }
@@ -130,7 +130,7 @@ public class Node extends EpaxosState
             SerializedRequest request = ((QueryInstance) instance).getQuery();
             return keyStateManager.loadKeyState(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
         }
-        else if (instance instanceof TokenInstance)
+        else if (instance instanceof EpochInstance)
         {
             throw new AssertionError();
         }
@@ -196,7 +196,7 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected ParticipantInfo getTokenParticipants(TokenInstance instance)
+    protected ParticipantInfo getTokenParticipants(EpochInstance instance)
     {
         return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, ConsistencyLevel.SERIAL);
     }

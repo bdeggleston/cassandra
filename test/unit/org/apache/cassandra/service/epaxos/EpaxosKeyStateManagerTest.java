@@ -172,7 +172,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             ksm.saveKeyState(cfKey.key, cfKey.cfId, ks);
         }
 
-        TokenInstance instance = new TokenInstance(ADDRESS, token, cfId, 0);
+        EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0);
 
         Set<UUID> actualDeps = ksm.getCurrentDependencies(instance);
         Assert.assertEquals(expectedDeps, actualDeps);
@@ -224,7 +224,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     }
 
     @Test
-    public void recordMissingTokenInstance() throws Exception
+    public void recordMissingEpochInstance() throws Exception
     {
         TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
@@ -238,7 +238,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         Token token = DatabaseDescriptor.getPartitioner().getToken(cfKeys.get(0).key);
         UUID cfId = cfKeys.get(0).cfId;
 
-        TokenInstance instance = new TokenInstance(ADDRESS, token, cfId, 0);
+        EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0);
         ksm.recordMissingInstance(instance);
 
         // check that the token instance has been added to each of the individual key states
@@ -344,7 +344,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         Token token = DatabaseDescriptor.getPartitioner().getToken(cfKeys.get(0).key);
         UUID cfId = cfKeys.get(0).cfId;
-        TokenInstance instance = new TokenInstance(ADDRESS, token, cfId, 0);
+        EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0);
 
         Set<UUID> deps = ksm.getCurrentDependencies(instance);
         instance.preaccept(deps);
@@ -470,7 +470,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         Token token = DatabaseDescriptor.getPartitioner().getToken(cfKeys.get(0).key);
         UUID cfId = cfKeys.get(0).cfId;
-        TokenInstance instance = new TokenInstance(ADDRESS, token, cfId, 0);
+        EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0);
 
         Set<UUID> deps = ksm.getCurrentDependencies(instance);
         instance.preaccept(deps);

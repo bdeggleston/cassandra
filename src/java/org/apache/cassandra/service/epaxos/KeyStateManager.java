@@ -11,9 +11,7 @@ import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
-import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
-import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Bounds;
 import org.apache.cassandra.dht.Range;
@@ -135,10 +133,10 @@ public class KeyStateManager
             deps.remove(instance.getId());
             return deps;
         }
-        else if (instance instanceof TokenInstance)
+        else if (instance instanceof EpochInstance)
         {
             TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
-            Set<UUID> deps = new HashSet<>(tokenStateManager.getCurrentDependencies((TokenInstance) instance));
+            Set<UUID> deps = new HashSet<>(tokenStateManager.getCurrentDependencies((EpochInstance) instance));
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
             {
@@ -182,7 +180,7 @@ public class KeyStateManager
             CfKey cfKey = request.getCfKey();
             recordMissingInstance(instance, cfKey);
         }
-        else if (instance instanceof TokenInstance)
+        else if (instance instanceof EpochInstance)
         {
             TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
@@ -229,7 +227,7 @@ public class KeyStateManager
             CfKey cfKey = request.getCfKey();
             recordAcknowledgedDeps(instance, cfKey);
         }
-        else if (instance instanceof TokenInstance)
+        else if (instance instanceof EpochInstance)
         {
             TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
@@ -269,7 +267,7 @@ public class KeyStateManager
             CfKey cfKey = request.getCfKey();
             recordExecuted(instance, cfKey, position);
         }
-        else if (instance instanceof TokenInstance)
+        else if (instance instanceof EpochInstance)
         {
             TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);

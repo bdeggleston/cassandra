@@ -47,9 +47,9 @@ public class PreacceptResponse extends AbstractEpochMessage
 
     private static boolean getVetoed(Instance instance)
     {
-        if (instance instanceof TokenInstance)
+        if (instance instanceof EpochInstance)
         {
-            return ((TokenInstance) instance).isVetoed();
+            return ((EpochInstance) instance).isVetoed();
         }
         return false;
     }

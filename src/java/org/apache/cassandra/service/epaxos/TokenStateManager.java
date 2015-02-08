@@ -299,7 +299,7 @@ public class TokenStateManager
         }
     }
 
-    public void recordHighEpoch(TokenInstance instance)
+    public void recordHighEpoch(EpochInstance instance)
     {
         TokenState ts = get(instance.getToken(), instance.getCfId());
         ts.rwLock.writeLock().lock();
@@ -316,14 +316,14 @@ public class TokenStateManager
         }
     }
 
-    public Set<UUID> getCurrentDependencies(TokenInstance instance)
+    public Set<UUID> getCurrentDependencies(EpochInstance instance)
     {
         TokenState ts = get(instance.getToken(), instance.getCfId());
         ts.rwLock.writeLock().lock();
         try
         {
-            Set<UUID> deps = ts.getCurrentTokenInstances();
-            ts.recordTokenInstance(instance);
+            Set<UUID> deps = ts.getCurrentEpochInstances();
+            ts.recordEpochInstance(instance);
             save(ts);
             return deps;
         }
@@ -339,7 +339,7 @@ public class TokenStateManager
         ts.rwLock.writeLock().lock();
         try
         {
-            return ts.getCurrentTokenInstances();
+            return ts.getCurrentEpochInstances();
         }
         finally
         {

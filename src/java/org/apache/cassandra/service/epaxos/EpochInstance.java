@@ -18,14 +18,14 @@ import java.util.UUID;
  * activity on that partition, the *next* epoch increment instance will also depend on it
  */
 // TODO: rename to EpochInstance
-public class TokenInstance extends Instance
+public class EpochInstance extends Instance
 {
     private final Token token;
     private final UUID cfId;
     private final long epoch;
     private volatile boolean vetoed;
 
-    public TokenInstance(InetAddress leader, Token token, UUID cfId, long epoch)
+    public EpochInstance(InetAddress leader, Token token, UUID cfId, long epoch)
     {
         super(leader);
         this.token = token;
@@ -33,7 +33,7 @@ public class TokenInstance extends Instance
         this.epoch = epoch;
     }
 
-    public TokenInstance(UUID id, InetAddress leader, Token token, UUID cfId, long epoch)
+    public EpochInstance(UUID id, InetAddress leader, Token token, UUID cfId, long epoch)
     {
         super(id, leader);
         this.token = token;
@@ -41,7 +41,7 @@ public class TokenInstance extends Instance
         this.epoch = epoch;
     }
 
-    public TokenInstance(TokenInstance i)
+    public EpochInstance(EpochInstance i)
     {
         super(i);
         this.token = i.token;
@@ -53,13 +53,13 @@ public class TokenInstance extends Instance
     @Override
     public Instance copy()
     {
-        return new TokenInstance(this);
+        return new EpochInstance(this);
     }
 
     @Override
     public Instance copyRemote()
     {
-        Instance instance = new TokenInstance(this.id, this.leader, this.token, this.cfId, this.epoch);
+        Instance instance = new EpochInstance(this.id, this.leader, this.token, this.cfId, this.epoch);
         instance.ballot = ballot;
         instance.noop = noop;
         instance.successors = successors;
@@ -88,7 +88,7 @@ public class TokenInstance extends Instance
     @Override
     public Type getType()
     {
-        return Type.TOKEN;
+        return Type.EPOCH;
     }
 
     @Override
@@ -116,15 +116,15 @@ public class TokenInstance extends Instance
     @Override
     public void applyRemote(Instance remote)
     {
-        assert remote instanceof TokenInstance;
+        assert remote instanceof EpochInstance;
         super.applyRemote(remote);
-        this.vetoed = ((TokenInstance) remote).vetoed;
+        this.vetoed = ((EpochInstance) remote).vetoed;
     }
 
-    private static final IVersionedSerializer<TokenInstance> commonSerializer = new IVersionedSerializer<TokenInstance>()
+    private static final IVersionedSerializer<EpochInstance> commonSerializer = new IVersionedSerializer<EpochInstance>()
     {
         @Override
-        public void serialize(TokenInstance instance, DataOutputPlus out, int version) throws IOException
+        public void serialize(EpochInstance instance, DataOutputPlus out, int version) throws IOException
         {
             UUIDSerializer.serializer.serialize(instance.getId(), out, version);
             CompactEndpointSerializationHelper.serialize(instance.getLeader(), out);
@@ -135,9 +135,9 @@ public class TokenInstance extends Instance
         }
 
         @Override
-        public TokenInstance deserialize(DataInput in, int version) throws IOException
+        public EpochInstance deserialize(DataInput in, int version) throws IOException
         {
-            TokenInstance instance = new TokenInstance(UUIDSerializer.serializer.deserialize(in, version),
+            EpochInstance instance = new EpochInstance(UUIDSerializer.serializer.deserialize(in, version),
                                                        CompactEndpointSerializationHelper.deserialize(in),
                                                        Token.serializer.deserialize(in),
                                                        UUIDSerializer.serializer.deserialize(in, version),
@@ -148,7 +148,7 @@ public class TokenInstance extends Instance
         }
 
         @Override
-        public long serializedSize(TokenInstance instance, int version)
+        public long serializedSize(EpochInstance instance, int version)
         {
             long size = 0;
             size += UUIDSerializer.serializer.serializedSize(instance.getId(), version);
@@ -168,8 +168,8 @@ public class TokenInstance extends Instance
         @Override
         public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
         {
-            assert instance instanceof TokenInstance;
-            commonSerializer.serialize((TokenInstance) instance, out, version);
+            assert instance instanceof EpochInstance;
+            commonSerializer.serialize((EpochInstance) instance, out, version);
             baseSerializer.serialize(instance, out, version);
         }
 
@@ -184,8 +184,8 @@ public class TokenInstance extends Instance
         @Override
         public long serializedSize(Instance instance, int version)
         {
-            assert instance instanceof TokenInstance;
-            return commonSerializer.serializedSize((TokenInstance) instance, version)
+            assert instance instanceof EpochInstance;
+            return commonSerializer.serializedSize((EpochInstance) instance, version)
                     + baseSerializer.serializedSize(instance, version);
         }
     };
@@ -197,8 +197,8 @@ public class TokenInstance extends Instance
         @Override
         public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
         {
-            assert instance instanceof TokenInstance;
-            commonSerializer.serialize((TokenInstance) instance, out, version);
+            assert instance instanceof EpochInstance;
+            commonSerializer.serialize((EpochInstance) instance, out, version);
             baseSerializer.serialize(instance, out, version);
         }
 
@@ -213,8 +213,8 @@ public class TokenInstance extends Instance
         @Override
         public long serializedSize(Instance instance, int version)
         {
-            assert instance instanceof TokenInstance;
-            return commonSerializer.serializedSize((TokenInstance) instance, version)
+            assert instance instanceof EpochInstance;
+            return commonSerializer.serializedSize((EpochInstance) instance, version)
                     + baseSerializer.serializedSize(instance, version);
         }
     };

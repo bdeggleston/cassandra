@@ -34,10 +34,10 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
 
     private void maybeVetoEpoch(Instance inst)
     {
-        if (!(inst instanceof TokenInstance))
+        if (!(inst instanceof EpochInstance))
             return;
 
-        TokenInstance instance = (TokenInstance) inst;
+        EpochInstance instance = (EpochInstance) inst;
         TokenState tokenState = state.tokenStateManager.get(instance);
         long currentEpoch = state.tokenStateManager.getEpoch(instance);
 

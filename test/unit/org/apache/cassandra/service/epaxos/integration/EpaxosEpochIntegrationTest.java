@@ -47,7 +47,7 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             round1Ids.add(instance.getId());
         }
 
-        Instance lastTokenInstance;
+        Instance lastEpochInstance;
         {
             Node leader = nodes.get(0);
             TokenStateMaintenanceTask maintenanceTask = leader.newTokenStateMaintenanceTask();
@@ -58,8 +58,8 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
                 Assert.assertEquals(1, node.getCurrentEpoch(TOKEN, cfm.cfId));
             }
 
-            Assert.assertTrue(leader.getLastCreatedInstance() instanceof TokenInstance);
-            TokenInstance instance = (TokenInstance) leader.getLastCreatedInstance();
+            Assert.assertTrue(leader.getLastCreatedInstance() instanceof EpochInstance);
+            EpochInstance instance = (EpochInstance) leader.getLastCreatedInstance();
 
             Assert.assertEquals(1, instance.getEpoch());
             Assert.assertFalse(instance.isVetoed());
@@ -68,7 +68,7 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             // as deps since they all targeted a different key
             Assert.assertEquals(round1Ids, instance.getDependencies());
 
-            lastTokenInstance = instance;
+            lastEpochInstance = instance;
         }
 
         Set<UUID> round2Ids = Sets.newHashSet();
@@ -90,8 +90,8 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
                 Assert.assertEquals(2, node.getCurrentEpoch(TOKEN, cfm.cfId));
             }
 
-            Assert.assertTrue(leader.getLastCreatedInstance() instanceof TokenInstance);
-            TokenInstance instance = (TokenInstance) leader.getLastCreatedInstance();
+            Assert.assertTrue(leader.getLastCreatedInstance() instanceof EpochInstance);
+            EpochInstance instance = (EpochInstance) leader.getLastCreatedInstance();
 
             Assert.assertEquals(2, instance.getEpoch());
             Assert.assertFalse(instance.isVetoed());
@@ -99,7 +99,7 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             // should have taken all of the first round of instances
             // as deps since they all targeted a different key
             Set<UUID> expectedDeps = Sets.newHashSet(round2Ids);
-            expectedDeps.add(lastTokenInstance.getId());
+            expectedDeps.add(lastEpochInstance.getId());
 
             Set<UUID> oldDeps = Sets.intersection(round1Ids, instance.getDependencies());
             Assert.assertEquals(0, oldDeps.size());
@@ -158,13 +158,13 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         });
 
         QueryInstance queryInstance = (QueryInstance) nodes.get(0).getLastCreatedInstance();
-        TokenInstance tokenInstance = (TokenInstance) nodes.get(1).getLastCreatedInstance();
+        EpochInstance epochInstance = (EpochInstance) nodes.get(1).getLastCreatedInstance();
 
         Assert.assertNotNull(queryInstance);
-        Assert.assertNotNull(tokenInstance);
+        Assert.assertNotNull(epochInstance);
 
-        Assert.assertEquals(Sets.newHashSet(tokenInstance.getId()), queryInstance.getDependencies());
-        Assert.assertEquals(Sets.newHashSet(queryInstance.getId()), tokenInstance.getDependencies());
+        Assert.assertEquals(Sets.newHashSet(epochInstance.getId()), queryInstance.getDependencies());
+        Assert.assertEquals(Sets.newHashSet(queryInstance.getId()), epochInstance.getDependencies());
 
         for (Node node: nodes)
         {
@@ -172,7 +172,7 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             KeyState keyState = node.getKeyState(queryInstance);
             Map<Long, Set<UUID>> epochs = keyState.getEpochExecutions();
             Assert.assertTrue(epochs.get(0l).contains(queryInstance.getId()));
-            Assert.assertTrue(epochs.get(1l).contains(tokenInstance.getId()));
+            Assert.assertTrue(epochs.get(1l).contains(epochInstance.getId()));
         }
 
         Node leader = nodes.get(0);
@@ -184,14 +184,14 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             Assert.assertEquals(2, node.getCurrentEpoch(TOKEN, cfm.cfId));
         }
 
-        Assert.assertTrue(leader.getLastCreatedInstance() instanceof TokenInstance);
-        TokenInstance instance = (TokenInstance) leader.getLastCreatedInstance();
+        Assert.assertTrue(leader.getLastCreatedInstance() instanceof EpochInstance);
+        EpochInstance instance = (EpochInstance) leader.getLastCreatedInstance();
 
         Assert.assertEquals(2, instance.getEpoch());
         Assert.assertFalse(instance.isVetoed());
 
         // should have taken all of the first round of instances
         // as deps since they all targeted a different key
-        Assert.assertEquals(Sets.newHashSet(tokenInstance.getId()), instance.getDependencies());
+        Assert.assertEquals(Sets.newHashSet(epochInstance.getId()), instance.getDependencies());
     }
 }
