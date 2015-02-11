@@ -69,7 +69,8 @@ public abstract class Instance
     public static enum Type
     {
         QUERY(0, QueryInstance.serializer, QueryInstance.internalSerializer),
-        EPOCH(1, EpochInstance.serializer, EpochInstance.internalSerializer);
+        EPOCH(1, EpochInstance.serializer, EpochInstance.internalSerializer),
+        TOKEN(2, TokenInstance.serializer, TokenInstance.internalSerializer);
 
         public final IVersionedSerializer<Instance> serializer;
         public final IVersionedSerializer<Instance> internalSerializer;

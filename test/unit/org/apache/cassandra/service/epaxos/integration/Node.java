@@ -7,7 +7,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
@@ -71,14 +70,7 @@ public class Node extends EpaxosState
     @Override
     protected TokenStateManager createTokenStateManager()
     {
-        return new TokenStateManager(keyspace(), tokenStateTable()) {
-
-            @Override
-            protected Token getClosestToken(Token token)
-            {
-                return DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
-            }
-        };
+        return new MockTokenStateManager(keyspace(), tokenStateTable());
     }
 
     public State getState()
@@ -196,7 +188,7 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected ParticipantInfo getTokenParticipants(EpochInstance instance)
+    protected ParticipantInfo getTokenParticipants(Instance instance)
     {
         return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, ConsistencyLevel.SERIAL);
     }
@@ -244,7 +236,14 @@ public class Node extends EpaxosState
 
     public TokenStateMaintenanceTask newTokenStateMaintenanceTask()
     {
-        return new TokenStateMaintenanceTask(this, tokenStateManager);
+        return new TokenStateMaintenanceTask(this, tokenStateManager) {
+            // TODO: de-override for token splitting tests
+            @Override
+            protected boolean replicatesTokenForKeyspace(Token token, UUID cfId)
+            {
+                return true;
+            }
+        };
     }
 
     public void setEpochIncrementThreshold(int threshold)

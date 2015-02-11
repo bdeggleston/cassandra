@@ -1,8 +1,13 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.collect.Sets;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.utils.ByteBufferUtil;
+
+import java.util.Set;
+import java.util.UUID;
+
 
 public class MockTokenStateManager extends TokenStateManager
 {
@@ -10,12 +15,13 @@ public class MockTokenStateManager extends TokenStateManager
 
     public MockTokenStateManager()
     {
-
+        start();
     }
 
     public MockTokenStateManager(String keyspace, String table)
     {
         super(keyspace, table);
+        start();
     }
 
     @Override
@@ -23,4 +29,12 @@ public class MockTokenStateManager extends TokenStateManager
     {
         return TOKEN;
     }
+
+    @Override
+    protected Set<Token> getReplicatedTokensForCf(UUID cfId)
+    {
+        return Sets.newHashSet(TOKEN);
+    }
+
+
 }

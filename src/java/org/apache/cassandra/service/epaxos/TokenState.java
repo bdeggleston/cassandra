@@ -1,9 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.SetMultimap;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -13,6 +10,7 @@ import org.apache.cassandra.utils.UUIDSerializer;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -47,6 +45,7 @@ public class TokenState
 
     public static enum State {
 
+        INITIALIZING(false, false),
         NORMAL(true, true),
         PRE_RECOVERY(false, false),
         RECOVERING_INSTANCES(false, false, true),
@@ -91,6 +90,7 @@ public class TokenState
 
     private volatile State state;  // local only
     private final SetMultimap<Long, UUID> epochInstances = HashMultimap.create();
+    private final SetMultimap<Token, UUID> tokenInstances = HashMultimap.create();
 
     private transient volatile int lastPersistedExecutionCount = 0;
 
@@ -197,6 +197,23 @@ public class TokenState
         recordEpochInstance(instance.getEpoch(), instance.getId());
     }
 
+    public void recordTokenInstance(TokenInstance instance)
+    {
+        recordTokenInstance(instance.getToken(), instance.getId());
+    }
+
+    /**
+     * Moves the given token instance from the token instance collection, into
+     * the epoch instances collection as part of the given epoch.
+     *
+     * TODO: is it possible for token instances to not be removed?
+     */
+    public void recordTokenInstanceExecution(TokenInstance instance)
+    {
+        tokenInstances.remove(instance.getToken(), instance.getId());
+        recordEpochInstance(epoch, instance.getId());
+    }
+
     public void lockGc()
     {
         long current = recoveryStreams.incrementAndGet();
@@ -206,6 +223,7 @@ public class TokenState
     public void unlockGc()
     {
         long current = recoveryStreams.decrementAndGet();
+        assert current >= 0;
     }
 
     public boolean canGc()
@@ -223,6 +241,11 @@ public class TokenState
         epochInstances.put(epoch, id);
     }
 
+    void recordTokenInstance(Token token, UUID id)
+    {
+        tokenInstances.put(token, id);
+    }
+
     private void cleanEpochInstances()
     {
         Set<Long> keys = Sets.newHashSet(epochInstances.keySet());
@@ -238,6 +261,44 @@ public class TokenState
     public Set<UUID> getCurrentEpochInstances()
     {
         return ImmutableSet.copyOf(epochInstances.values());
+    }
+
+    /**
+     * return token instances for tokens that are > the given token
+     * @param token
+     * @return
+     */
+    public Set<UUID> getCurrentTokenInstances(Token token)
+    {
+        Set<UUID> ids = Sets.newHashSet();
+        for (Token splitToken: tokenInstances.keySet())
+        {
+            // exclude greater tokens
+            if (token.compareTo(splitToken) < 1)
+            {
+                ids.addAll(tokenInstances.get(splitToken));
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * If this is the token state for the given token, the token
+     * instance ids are moved into the current epoch instances. Otherwise,
+     * they're removed
+     * @return true if there are changes to be saved
+     */
+    public Map<Token, Set<UUID>> splitTokenInstances(Token splitToken)
+    {
+        Map<Token, Set<UUID>> deps = Maps.newHashMap();
+        for (Token depToken: Sets.newHashSet(tokenInstances.keySet()))
+        {
+            if (depToken.compareTo(splitToken) < 1)
+            {
+                deps.put(depToken, tokenInstances.removeAll(depToken));
+            }
+        }
+        return deps;
     }
 
     public EpochDecision evaluateMessageEpoch(IEpochMessage message)

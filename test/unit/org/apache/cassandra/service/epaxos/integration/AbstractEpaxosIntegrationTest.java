@@ -8,6 +8,8 @@ import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.locator.LocalStrategy;
 import org.apache.cassandra.service.epaxos.AbstractEpaxosTest;
 import org.apache.cassandra.service.epaxos.Instance;
+import org.apache.cassandra.service.epaxos.MockTokenStateManager;
+import org.apache.cassandra.service.epaxos.TokenStateManager;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -154,6 +156,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         {
             return new Node.SingleThreaded(nodeNumber, messenger)
             {
+
                 @Override
                 protected String keyspace()
                 {

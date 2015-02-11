@@ -45,6 +45,7 @@ public class KeyStateManager
         this.table = table;
         this.tokenStateManager = tokenStateManager;
         cache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(1000).build();
+        // TODO: on startup, check that all key states have the same epoch as their token state... or at least during read.
     }
 
     public Lock getCfKeyLock(CfKey cfKey)
@@ -125,7 +126,7 @@ public class KeyStateManager
 
     public Set<UUID> getCurrentDependencies(Instance instance)
     {
-        if (instance instanceof QueryInstance)
+        if (instance.getType() == Instance.Type.QUERY)
         {
             SerializedRequest request = ((QueryInstance) instance).getQuery();
             CfKey cfKey = request.getCfKey();
@@ -133,10 +134,10 @@ public class KeyStateManager
             deps.remove(instance.getId());
             return deps;
         }
-        else if (instance instanceof EpochInstance)
+        else if (instance.getType() == Instance.Type.EPOCH || instance.getType() == Instance.Type.TOKEN)
         {
             TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
-            Set<UUID> deps = new HashSet<>(tokenStateManager.getCurrentDependencies((EpochInstance) instance));
+            Set<UUID> deps = new HashSet<>(tokenStateManager.getCurrentDependencies((TokenInstance) instance));
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
             {
@@ -221,25 +222,26 @@ public class KeyStateManager
 
     public void recordAcknowledgedDeps(Instance instance)
     {
-        if (instance instanceof QueryInstance)
+        CfKey cfKey;
+        switch (instance.getType())
         {
-            SerializedRequest request = ((QueryInstance) instance).getQuery();
-            CfKey cfKey = request.getCfKey();
-            recordAcknowledgedDeps(instance, cfKey);
-        }
-        else if (instance instanceof EpochInstance)
-        {
-            TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
-            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
-            while (cfKeyIterator.hasNext())
-            {
-                CfKey cfKey = cfKeyIterator.next();
+            case QUERY:
+                SerializedRequest request = ((QueryInstance) instance).getQuery();
+                cfKey = request.getCfKey();
                 recordAcknowledgedDeps(instance, cfKey);
-            }
-        }
-        else
-        {
-            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+                break;
+            case EPOCH:
+            case TOKEN:
+                TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
+                Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
+                while (cfKeyIterator.hasNext())
+                {
+                    cfKey = cfKeyIterator.next();
+                    recordAcknowledgedDeps(instance, cfKey);
+                }
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
         }
     }
 
@@ -261,25 +263,27 @@ public class KeyStateManager
 
     public void recordExecuted(Instance instance, ReplayPosition position)
     {
-        if (instance instanceof QueryInstance)
+        CfKey cfKey;
+        TokenState tokenState = tokenStateManager.get(instance);
+        switch (instance.getType())
         {
-            SerializedRequest request = ((QueryInstance) instance).getQuery();
-            CfKey cfKey = request.getCfKey();
-            recordExecuted(instance, cfKey, position);
-        }
-        else if (instance instanceof EpochInstance)
-        {
-            TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
-            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
-            while (cfKeyIterator.hasNext())
-            {
-                CfKey cfKey = cfKeyIterator.next();
+            case QUERY:
+                SerializedRequest request = ((QueryInstance) instance).getQuery();
+                cfKey = request.getCfKey();
                 recordExecuted(instance, cfKey, position);
-            }
-        }
-        else
-        {
-            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+                break;
+            case TOKEN:
+                tokenStateManager.recordExecutedTokenInstance((TokenInstance) instance);
+            case EPOCH:
+                Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
+                while (cfKeyIterator.hasNext())
+                {
+                    cfKey = cfKeyIterator.next();
+                    recordExecuted(instance, cfKey, position);
+                }
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
         }
     }
 
@@ -386,6 +390,7 @@ public class KeyStateManager
         ByteBuffer data = row.getBlob("data");
         dm = deserialize(data);
         cache.put(cfKey, dm);
+        // TODO: check keyState epoch against expected tokenState epoch
         return dm;
     }
 

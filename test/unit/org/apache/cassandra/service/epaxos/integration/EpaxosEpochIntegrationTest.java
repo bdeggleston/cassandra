@@ -11,6 +11,7 @@ import org.apache.cassandra.service.epaxos.*;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.theories.suppliers.TestedOn;
 
 import java.util.Map;
 import java.util.Set;
@@ -193,5 +194,11 @@ public class EpaxosEpochIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         // should have taken all of the first round of instances
         // as deps since they all targeted a different key
         Assert.assertEquals(Sets.newHashSet(epochInstance.getId()), instance.getDependencies());
+    }
+
+    @Test
+    public void nonreplicatedTokenStatesAreSkipped()
+    {
+
     }
 }

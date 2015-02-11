@@ -1,7 +1,19 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.collect.Sets;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.locator.AbstractReplicationStrategy;
+import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.InetAddress;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Periodically examines the token states, persisting execution
@@ -20,61 +32,81 @@ public class TokenStateMaintenanceTask implements Runnable
         this.tokenStateManager = tokenStateManager;
     }
 
+    protected boolean replicatesTokenForKeyspace(Token token, UUID cfId)
+    {
+        Pair<String, String> cfName = Schema.instance.getCF(cfId);
+        if (cfName == null)
+            return false;
+
+        Keyspace keyspace = Keyspace.open(cfName.left);
+        AbstractReplicationStrategy replicationStrategy = keyspace.getReplicationStrategy();
+        Set<InetAddress> replicas = Sets.newHashSet(replicationStrategy.getNaturalEndpoints(token));
+        replicas.addAll(StorageService.instance.getTokenMetadata().pendingEndpointsFor(token, cfName.left));
+
+        return replicas.contains(FBUtilities.getLocalAddress());
+    }
+
     @Override
     public void run()
     {
         logger.debug("TokenStateManager running");
-        for (TokenState ts: tokenStateManager.all())
+        for (UUID cfId: tokenStateManager.getAllManagedCfIds())
         {
-            // TODO: skip if we no longer replicate this token
-            if (ts.getExecutions() >= state.getEpochIncrementThreshold())
+            for (Token token: tokenStateManager.allTokenStatesForCf(cfId))
             {
-                // TODO: start new epoch increment instance
-                // TODO: check that another epoch increment instance hasn't been started yet
-                // TODO: check that a previously seen epoch instance isn't local serial from another dc
-                ts.rwLock.writeLock().lock();
-                try
+                if (!replicatesTokenForKeyspace(token, cfId))
+                    // TODO: is it safe to remove then?
+                    continue;
+
+                TokenState ts = tokenStateManager.getExact(token, cfId);
+                if (ts.getExecutions() >= state.getEpochIncrementThreshold())
                 {
-                    if (ts.getExecutions() < state.getEpochIncrementThreshold())
+                    // TODO: check that another epoch increment instance hasn't been started yet
+                    // TODO: check that a previously seen epoch instance isn't local serial from another dc
+                    ts.rwLock.writeLock().lock();
+                    try
                     {
-                        continue;
-                    }
+                        if (ts.getExecutions() < state.getEpochIncrementThreshold())
+                        {
+                            continue;
+                        }
 
-                    // if the high epoch is greater than the current epoch, then an
-                    // epoch increment is already in the works
-                    if (ts.getHighEpoch() > ts.getEpoch())
+                        // if the high epoch is greater than the current epoch, then an
+                        // epoch increment is already in the works
+                        if (ts.getHighEpoch() > ts.getEpoch())
+                        {
+                            continue;
+                        }
+
+                        logger.debug("Incrementing epoch for {}", ts);
+
+                        EpochInstance instance = state.createEpochInstance(ts.getToken(), ts.getCfId(), ts.getEpoch() + 1);
+                        state.preaccept(instance);
+                        ts.recordHighEpoch(instance.getEpoch());
+                        tokenStateManager.save(ts);
+                    }
+                    finally
                     {
-                        continue;
+                        ts.rwLock.writeLock().unlock();
                     }
-
-                    logger.debug("Incrementing epoch for {}", ts);
-
-                    EpochInstance instance = state.createEpochInstance(ts.getToken(), ts.getCfId(), ts.getEpoch() + 1);
-                    state.preaccept(instance);
-                    ts.recordHighEpoch(instance.getEpoch());
-                    tokenStateManager.save(ts);
                 }
-                finally
+                else if (ts.getNumUnrecordedExecutions() > 0)
                 {
-                    ts.rwLock.writeLock().unlock();
+                    ts.rwLock.writeLock().lock();
+                    try
+                    {
+                        logger.debug("Persisting execution data for {}", ts);
+                        tokenStateManager.save(ts);
+                    }
+                    finally
+                    {
+                        ts.rwLock.writeLock().unlock();
+                    }
                 }
-            }
-            else if (ts.getNumUnrecordedExecutions() > 0)
-            {
-                ts.rwLock.writeLock().lock();
-                try
+                else
                 {
-                    logger.debug("Persisting execution data for {}", ts);
-                    tokenStateManager.save(ts);
+                    logger.debug("No activity to update for {}", ts);
                 }
-                finally
-                {
-                    ts.rwLock.writeLock().unlock();
-                }
-            }
-            else
-            {
-                logger.debug("No activity to update for {}", ts);
             }
         }
     }

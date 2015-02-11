@@ -4,6 +4,8 @@ import com.google.common.collect.Sets;
 import com.google.common.io.ByteStreams;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.dht.LongToken;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
@@ -11,6 +13,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class EpaxosTokenStateTest extends AbstractEpaxosTest
@@ -138,5 +143,54 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
         ts.setEpoch(1);
 
         Assert.assertEquals(Sets.newHashSet(i2), ts.getCurrentEpochInstances());
+    }
+
+    @Test
+    public void epochInstanceCleanup()
+    {
+
+    }
+
+    @Test
+    public void tokenInstances()
+    {
+        TokenState ts = new TokenState(new LongToken(200l), CFID, 0, 0, 0);
+        UUID tId0 = UUIDGen.getTimeUUID();
+        UUID tId1 = UUIDGen.getTimeUUID();
+        ts.recordTokenInstance(new LongToken(75l), tId0);
+        ts.recordTokenInstance(new LongToken(150l), tId1);
+
+        Assert.assertEquals(Sets.<UUID>newHashSet(), ts.getCurrentTokenInstances(new LongToken(151l)));
+        Assert.assertEquals(Sets.newHashSet(tId1), ts.getCurrentTokenInstances(new LongToken(150l)));
+        Assert.assertEquals(Sets.newHashSet(tId1), ts.getCurrentTokenInstances(new LongToken(149l)));
+        Assert.assertEquals(Sets.newHashSet(tId0, tId1), ts.getCurrentTokenInstances(new LongToken(75l)));
+        Assert.assertEquals(Sets.newHashSet(tId0, tId1), ts.getCurrentTokenInstances(new LongToken(50l)));
+    }
+
+    /**
+     * splitTokenInstances should return a map of all token instances less than or equal to the
+     * given token. These token instances should also be removed from the token state
+     */
+    @Test
+    public void tokenInstanceCleanup()
+    {
+        TokenState ts = new TokenState(new LongToken(200l), CFID, 0, 0, 0);
+        UUID t50Id = UUIDGen.getTimeUUID();
+        ts.recordTokenInstance(new LongToken(50l), t50Id);
+        UUID t100Id = UUIDGen.getTimeUUID();
+        ts.recordTokenInstance(new LongToken(100l), t100Id);
+        UUID t150Id = UUIDGen.getTimeUUID();
+        ts.recordTokenInstance(new LongToken(150l), t150Id);
+
+        Assert.assertEquals(Sets.newHashSet(t50Id, t100Id, t150Id), ts.getCurrentTokenInstances(new LongToken(0l)));
+
+        Map<Token, Set<UUID>> expectedDeps = new HashMap<>();
+        expectedDeps.put(new LongToken(50l), Sets.newHashSet(t50Id));
+        expectedDeps.put(new LongToken(100l), Sets.newHashSet(t100Id));
+        Map<Token, Set<UUID>> actualDeps = ts.splitTokenInstances(new LongToken(100l));
+
+        Assert.assertEquals(expectedDeps, actualDeps);
+
+        Assert.assertEquals(Sets.newHashSet(t150Id), ts.getCurrentTokenInstances(new LongToken(0l)));
     }
 }

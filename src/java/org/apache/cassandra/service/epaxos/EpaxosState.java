@@ -151,11 +151,6 @@ public class EpaxosState
 
     public EpaxosState()
     {
-        this(true);
-    }
-
-    public EpaxosState(boolean startMaintenanceTask)
-    {
         instanceCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(10000).build();
         tokenStateManager = createTokenStateManager();
         keyStateManager = new KeyStateManager(keyspace(), keyStateTable(), tokenStateManager);
@@ -454,16 +449,18 @@ public class EpaxosState
 
     protected ReplayPosition executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
     {
-        if (instance instanceof QueryInstance)
+        switch (instance.getType())
         {
-            return executeQueryInstance((QueryInstance) instance);
-        } else if (instance instanceof EpochInstance)
-        {
-            executeEpochInstance((EpochInstance) instance);
-            return null;
-        } else
-        {
-            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+            case QUERY:
+                return executeQueryInstance((QueryInstance) instance);
+            case EPOCH:
+                executeEpochInstance((EpochInstance) instance);
+                return null;
+            case TOKEN:
+                executeTokenInstance((TokenInstance) instance);
+                return null;
+            default:
+                throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
         }
     }
 
@@ -488,12 +485,13 @@ public class EpaxosState
      */
     protected void executeEpochInstance(EpochInstance instance)
     {
+        // TODO: get exact
         TokenState tokenState = tokenStateManager.get(instance);
 
         tokenState.rwLock.writeLock().lock();
         try
         {
-            // no use iterating over all dependency managers if this is effectively a noop
+            // no use iterating over all key states if this is effectively a noop
             if (instance.getEpoch() > tokenState.getEpoch())
             {
                 tokenState.setEpoch(instance.getEpoch());
@@ -509,6 +507,74 @@ public class EpaxosState
 
         //
         startTokenStateGc(tokenState);
+    }
+
+    protected synchronized void executeTokenInstance(TokenInstance instance)
+    {
+        // TODO: Maybe create new token state, otherwise return
+        // TODO: transfer token instances to new state
+        // TODO: increment epoch for both states
+        UUID cfId = instance.getCfId();
+        Token token = instance.getToken();
+
+        TokenState neighbor = tokenStateManager.get(token, cfId);
+
+        // token states for this node's replicated tokens
+        // are initialized at epoch 0 the first time `get` is
+        // called for a cfId
+        assert neighbor != null;
+
+        if (neighbor.getToken().equals(token))
+        {
+            // this token has already been created, making this a no-op
+            return;
+        }
+
+        neighbor.rwLock.writeLock().lock();
+        try
+        {
+            long epoch = neighbor.getEpoch();
+            TokenState tokenState = new TokenState(token, cfId, neighbor.getEpoch(), neighbor.getEpoch(), 0, TokenState.State.INITIALIZING);
+            tokenState.rwLock.writeLock().lock();
+            try
+            {
+                if (tokenStateManager.putState(tokenState) != tokenState)
+                {
+                    logger.warn("Token state {} exists unexpectedly for {}", token, cfId);
+                    return;
+                }
+
+                // transfer token state uuid to new token state
+                // epoch instances aren't also recorded because those
+                // will only  affect the neighbor, not the new token instance
+                for (Map.Entry<Token, Set<UUID>> entry: neighbor.splitTokenInstances(token).entrySet())
+                {
+                    for (UUID id: entry.getValue())
+                    {
+                        tokenState.recordTokenInstance(entry.getKey(), id);
+                    }
+                }
+                tokenState.setEpoch(epoch + 1);
+                neighbor.setEpoch(epoch + 1);
+
+                // neighbor is saved after in case of failure. Double entries
+                // can be removed from the neighbor if initialization doesn't complete
+                tokenStateManager.save(tokenState);
+                tokenStateManager.save(neighbor);
+
+
+                keyStateManager.updateEpoch(tokenState);
+                keyStateManager.updateEpoch(neighbor);
+            }
+            finally
+            {
+                tokenState.rwLock.writeLock().unlock();
+            }
+        }
+        finally
+        {
+            neighbor.rwLock.writeLock().unlock();
+        }
     }
 
     void startTokenStateGc(TokenState tokenState)
@@ -948,9 +1014,11 @@ public class EpaxosState
         return instances;
     }
 
-    public void addToken(UUID cfId, Token token)
+    public UUID addToken(UUID cfId, Token token)
     {
-
+        TokenInstance instance = new TokenInstance(getEndpoint(), cfId, token);
+        preaccept(instance);
+        return instance.getId();
     }
 
     // key state methods
@@ -1013,9 +1081,9 @@ public class EpaxosState
         {
             return getQueryParticipants((QueryInstance) instance);
         }
-        else if (instance instanceof EpochInstance)
+        else if (instance instanceof TokenInstance)
         {
-            return getTokenParticipants((EpochInstance) instance);
+            return getTokenParticipants(instance);
         }
         else
         {
@@ -1046,7 +1114,7 @@ public class EpaxosState
         return new ParticipantInfo(endpoints, remoteEndpoints, query.getConsistencyLevel());
     }
 
-    protected ParticipantInfo getTokenParticipants(EpochInstance instance)
+    protected ParticipantInfo getTokenParticipants(Instance instance)
     {
         // TODO: this
         throw new AssertionError();

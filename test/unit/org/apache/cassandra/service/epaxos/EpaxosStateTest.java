@@ -46,7 +46,7 @@ public class EpaxosStateTest extends AbstractEpaxosTest
     @Test
     public void executedMissingInstances() throws Exception
     {
-        EpaxosState state = new EpaxosState(false) {
+        EpaxosState state = new EpaxosState() {
             protected TokenStateManager createTokenStateManager()
             {
                 return new MockTokenStateManager();
