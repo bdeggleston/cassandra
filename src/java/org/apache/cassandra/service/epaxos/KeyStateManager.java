@@ -33,7 +33,7 @@ public class KeyStateManager
     private final Cache<CfKey, KeyState> cache;
     private final String keyspace;
     private final String table;
-    private final TokenStateManager tokenStateManager;
+    protected final TokenStateManager tokenStateManager;
 
     public KeyStateManager(TokenStateManager tokenStateManager)
     {
@@ -137,7 +137,7 @@ public class KeyStateManager
         else if (instance.getType() == Instance.Type.EPOCH || instance.getType() == Instance.Type.TOKEN)
         {
             TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
-            Set<UUID> deps = new HashSet<>(tokenStateManager.getCurrentDependencies((TokenInstance) instance));
+            Set<UUID> deps = new HashSet<>(tokenStateManager.getCurrentDependencies((AbstractTokenInstance) instance));
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
             while (cfKeyIterator.hasNext())
             {

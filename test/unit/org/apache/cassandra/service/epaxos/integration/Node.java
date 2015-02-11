@@ -98,7 +98,7 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected EpochInstance createEpochInstance(Token token, UUID cfId, long epoch)
+    public EpochInstance createEpochInstance(Token token, UUID cfId, long epoch)
     {
         EpochInstance instance = super.createEpochInstance(token, cfId, epoch);
         lastCreatedInstance = instance;
@@ -174,7 +174,7 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected ReplayPosition executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
+    public ReplayPosition executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
     {
         ReplayPosition rp = super.executeInstance(instance);
         executionOrder.add(instance.getId());
@@ -188,7 +188,7 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected ParticipantInfo getTokenParticipants(Instance instance)
+    protected ParticipantInfo getTokenParticipants(AbstractTokenInstance instance)
     {
         return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, ConsistencyLevel.SERIAL);
     }

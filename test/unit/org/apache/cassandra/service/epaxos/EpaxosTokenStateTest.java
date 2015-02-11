@@ -160,11 +160,11 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
         ts.recordTokenInstance(new LongToken(75l), tId0);
         ts.recordTokenInstance(new LongToken(150l), tId1);
 
-        Assert.assertEquals(Sets.<UUID>newHashSet(), ts.getCurrentTokenInstances(new LongToken(151l)));
-        Assert.assertEquals(Sets.newHashSet(tId1), ts.getCurrentTokenInstances(new LongToken(150l)));
-        Assert.assertEquals(Sets.newHashSet(tId1), ts.getCurrentTokenInstances(new LongToken(149l)));
-        Assert.assertEquals(Sets.newHashSet(tId0, tId1), ts.getCurrentTokenInstances(new LongToken(75l)));
-        Assert.assertEquals(Sets.newHashSet(tId0, tId1), ts.getCurrentTokenInstances(new LongToken(50l)));
+        Assert.assertEquals(Sets.newHashSet(tId0, tId1), ts.getCurrentTokenInstances(new LongToken(151l)));
+        Assert.assertEquals(Sets.newHashSet(tId0, tId1), ts.getCurrentTokenInstances(new LongToken(150l)));
+        Assert.assertEquals(Sets.newHashSet(tId0), ts.getCurrentTokenInstances(new LongToken(149l)));
+        Assert.assertEquals(Sets.newHashSet(tId0), ts.getCurrentTokenInstances(new LongToken(75l)));
+        Assert.assertEquals(Sets.<UUID>newHashSet(), ts.getCurrentTokenInstances(new LongToken(50l)));
     }
 
     /**
@@ -182,7 +182,8 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
         UUID t150Id = UUIDGen.getTimeUUID();
         ts.recordTokenInstance(new LongToken(150l), t150Id);
 
-        Assert.assertEquals(Sets.newHashSet(t50Id, t100Id, t150Id), ts.getCurrentTokenInstances(new LongToken(0l)));
+        Assert.assertEquals(Sets.<UUID>newHashSet(), ts.getCurrentTokenInstances(new LongToken(0l)));
+        Assert.assertEquals(Sets.newHashSet(t50Id, t100Id, t150Id), ts.getCurrentTokenInstances(new LongToken(200l)));
 
         Map<Token, Set<UUID>> expectedDeps = new HashMap<>();
         expectedDeps.put(new LongToken(50l), Sets.newHashSet(t50Id));
@@ -191,6 +192,6 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
 
         Assert.assertEquals(expectedDeps, actualDeps);
 
-        Assert.assertEquals(Sets.newHashSet(t150Id), ts.getCurrentTokenInstances(new LongToken(0l)));
+        Assert.assertEquals(Sets.newHashSet(t150Id), ts.getCurrentTokenInstances(new LongToken(200l)));
     }
 }

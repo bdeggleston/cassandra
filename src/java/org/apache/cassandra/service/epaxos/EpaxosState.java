@@ -153,7 +153,7 @@ public class EpaxosState
     {
         instanceCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(10000).build();
         tokenStateManager = createTokenStateManager();
-        keyStateManager = new KeyStateManager(keyspace(), keyStateTable(), tokenStateManager);
+        keyStateManager = createKeyStateManager();
     }
 
     public void start()
@@ -169,6 +169,11 @@ public class EpaxosState
         {
             scheduleTokenStateMaintenanceTask();
         }
+    }
+
+    protected KeyStateManager createKeyStateManager()
+    {
+        return new KeyStateManager(keyspace(), keyStateTable(), tokenStateManager);
     }
 
     protected TokenStateManager createTokenStateManager()
@@ -534,7 +539,7 @@ public class EpaxosState
         try
         {
             long epoch = neighbor.getEpoch();
-            TokenState tokenState = new TokenState(token, cfId, neighbor.getEpoch(), neighbor.getEpoch(), 0, TokenState.State.INITIALIZING);
+            TokenState tokenState = new TokenState(token, cfId, neighbor.getEpoch(), neighbor.getEpoch(), 0);
             tokenState.rwLock.writeLock().lock();
             try
             {
@@ -1077,17 +1082,15 @@ public class EpaxosState
 
     protected ParticipantInfo getParticipants(Instance instance)
     {
-        if (instance instanceof QueryInstance)
+        switch (instance.getType())
         {
-            return getQueryParticipants((QueryInstance) instance);
-        }
-        else if (instance instanceof TokenInstance)
-        {
-            return getTokenParticipants(instance);
-        }
-        else
-        {
-            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+            case QUERY:
+                return getQueryParticipants((QueryInstance) instance);
+            case TOKEN:
+            case EPOCH:
+                return getTokenParticipants((AbstractTokenInstance) instance);
+            default:
+                throw new IllegalArgumentException("Unsupported instance type: " + instance.getType());
         }
     }
 
@@ -1114,7 +1117,7 @@ public class EpaxosState
         return new ParticipantInfo(endpoints, remoteEndpoints, query.getConsistencyLevel());
     }
 
-    protected ParticipantInfo getTokenParticipants(Instance instance)
+    protected ParticipantInfo getTokenParticipants(AbstractTokenInstance instance)
     {
         // TODO: this
         throw new AssertionError();

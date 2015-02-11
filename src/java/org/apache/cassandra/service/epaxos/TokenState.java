@@ -274,7 +274,7 @@ public class TokenState
         for (Token splitToken: tokenInstances.keySet())
         {
             // exclude greater tokens
-            if (token.compareTo(splitToken) < 1)
+            if (splitToken.compareTo(token) < 1)
             {
                 ids.addAll(tokenInstances.get(splitToken));
             }
