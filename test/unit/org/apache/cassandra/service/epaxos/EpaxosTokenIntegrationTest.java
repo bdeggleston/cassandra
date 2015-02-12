@@ -1,7 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.*;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.service.epaxos.integration.AbstractEpaxosIntegrationTest;
@@ -17,12 +16,14 @@ import java.util.*;
 
 public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.SingleThread
 {
-    static
+
+    private static BytesToken tokenFor(int i)
     {
-        DatabaseDescriptor.setPartitioner(new Murmur3Partitioner());
+        return new BytesToken(ByteBufferUtil.bytes(i));
     }
-    private static final Token TOKEN1 = new LongToken(100l);
-    private static final Token TOKEN2 = new LongToken(200l);
+
+    private static final Token TOKEN1 = tokenFor(100);
+    private static final Token TOKEN2 = tokenFor(200);
     private static final UUID CFID = UUIDGen.getTimeUUID();
 
     static class IntegrationTokenStateManager extends TokenStateManager
@@ -33,20 +34,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             start();
         }
 
-        private volatile Token closestToken = null;
-
         private volatile Set<Token> replicatedTokens = null;
-
-        public void setClosestToken(Token closestToken)
-        {
-            this.closestToken = closestToken;
-        }
-
-        @Override
-        protected Token getClosestToken(Token token)
-        {
-            return closestToken;
-        }
 
         public void setReplicatedTokens(Set<Token> replicatedTokens)
         {
@@ -57,41 +45,6 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         protected Set<Token> getReplicatedTokensForCf(UUID cfId)
         {
             return replicatedTokens;
-        }
-    }
-
-    static class IntegrationKeyStateManager extends KeyStateManager
-    {
-
-        final SetMultimap<Token, ByteBuffer> assignedTokens = HashMultimap.create();
-
-        IntegrationKeyStateManager(String keyspace, String table, TokenStateManager tokenStateManager)
-        {
-            super(keyspace, table, tokenStateManager);
-        }
-
-        /**
-         * overridden to allow control over epochs set on key states
-         */
-        @Override
-        public Iterator<CfKey> getCfKeyIterator(TokenState tokenState, int limit)
-        {
-            if (assignedTokens.size() > 0)
-            {
-                List<CfKey> cfKeys = new LinkedList<>();
-                for (Map.Entry<Token, ByteBuffer> entry: assignedTokens.entries())
-                {
-                    if (tokenStateManager.getClosestToken(entry.getKey()).equals(tokenState.getToken()))
-                    {
-                        cfKeys.add(new CfKey(entry.getValue(), tokenState.getCfId()));
-                    }
-                }
-                return cfKeys.iterator();
-            }
-            else
-            {
-                return super.getCfKeyIterator(tokenState);
-            }
         }
     }
 
@@ -135,12 +88,6 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             {
                 return new IntegrationTokenStateManager(keyspace(), tokenStateTable());
             }
-
-            @Override
-            protected KeyStateManager createKeyStateManager()
-            {
-                return new IntegrationKeyStateManager(keyspace(), keyStateTable(), tokenStateManager);
-            }
         };
     }
 
@@ -151,7 +98,6 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         for (Node node: nodes)
         {
             IntegrationTokenStateManager tsm = (IntegrationTokenStateManager) node.tokenStateManager;
-            tsm.setClosestToken(TOKEN2);
             tsm.setReplicatedTokens(Sets.newHashSet(TOKEN2));
 
             // token states for the currently replicated tokens should be implicitly initialized
@@ -160,13 +106,12 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             Assert.assertEquals(0, node.getCurrentEpoch(TOKEN2, CFID));
 
             // add some key states
-            IntegrationKeyStateManager ksm = (IntegrationKeyStateManager) node.keyStateManager;
+            KeyStateManager ksm = node.keyStateManager;
             for (int i=0; i<4; i++)
             {
                 ByteBuffer key = ByteBufferUtil.bytes(i);
                 Token token = new LongToken((long) (i * 50) + 50);
                 ksm.loadKeyState(key, CFID);
-                ksm.assignedTokens.put(token, key);
             }
         }
 
@@ -213,7 +158,6 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         Node node = nodes.get(0);
 
         IntegrationTokenStateManager tsm = (IntegrationTokenStateManager) node.tokenStateManager;
-        tsm.setClosestToken(TOKEN2);
         tsm.setReplicatedTokens(Sets.newHashSet(TOKEN2));
         tsm.getOrInitManagedCf(CFID);
 
@@ -221,17 +165,19 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         Assert.assertNotNull(ts);
 
         Map<Token, UUID> fakeIds = Maps.newHashMap();
+        Map<Token, ByteBuffer> fakeKeys = Maps.newHashMap();
 
         // add some key states and pending token instances
         // this will create a key state for tokens 50, 100, 150, & 200, as well as token state
         // dependencies at 50 & 150
-        IntegrationKeyStateManager ksm = (IntegrationKeyStateManager) node.keyStateManager;
+        KeyStateManager ksm = node.keyStateManager;
         for (int i=0; i<4; i++)
         {
-            ByteBuffer key = ByteBufferUtil.bytes(i + 1);
-            Token token = new LongToken((long) (i * 50) + 50);
+            int iKey = (i * 50) + 50;
+            ByteBuffer key = ByteBufferUtil.bytes(iKey);
+            Token token = tokenFor(iKey);
             ksm.loadKeyState(key, CFID);
-            ksm.assignedTokens.put(token, key);
+            fakeKeys.put(token, key);
             if (i%2 == 0)
             {
                 UUID id = UUIDGen.getTimeUUID();
@@ -261,17 +207,17 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         Assert.assertEquals(1, ts.getEpoch());
         Set<UUID> deps = ts.getCurrentTokenInstances(TOKEN2);
         Assert.assertEquals(1, deps.size());
-        Assert.assertEquals(fakeIds.get(new LongToken(150l)), deps.iterator().next());
+        Assert.assertEquals(fakeIds.get(tokenFor(150)), deps.iterator().next());
 
         // check second token state
         Assert.assertEquals(1, ts2.getEpoch());
         deps = ts2.getCurrentTokenInstances(TOKEN2);
         Assert.assertEquals(1, deps.size());
-        Assert.assertEquals(fakeIds.get(new LongToken(50l)), deps.iterator().next());
+        Assert.assertEquals(fakeIds.get(tokenFor(50)), deps.iterator().next());
         Assert.assertEquals(Sets.newHashSet(instance.getId()), ts2.getCurrentEpochInstances());
 
         // check key states
-        for (Map.Entry<Token, ByteBuffer> entry: ksm.assignedTokens.entries())
+        for (Map.Entry<Token, ByteBuffer> entry: fakeKeys.entrySet())
         {
             ByteBuffer key = entry.getValue();
 
@@ -290,14 +236,15 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         Assert.assertEquals(2, ts.getEpoch());
         Assert.assertEquals(1, ts2.getEpoch());
 
-//        for (Map.Entry<Token, ByteBuffer> entry: ksm.assignedTokens.entries())
-//        {
-//            Token token = entry.getKey();
-//            ByteBuffer key = entry.getValue();
-//
-//            KeyState ks = ksm.loadKeyState(key, CFID);
-//            long expectedEpoch = token.compareTo(TOKEN1) >= 1 ? 2 : 1;
-//            Assert.assertEquals(String.format("Token: " + token.toString()), expectedEpoch, ks.getEpoch());
-//        }
+        // keys with tokens TOKEN1 < t <= TOKEN2 should be at epoch 2
+        for (Map.Entry<Token, ByteBuffer> entry: fakeKeys.entrySet())
+        {
+            Token token = entry.getKey();
+            ByteBuffer key = entry.getValue();
+
+            KeyState ks = ksm.loadKeyState(key, CFID);
+            long expectedEpoch = token.compareTo(TOKEN1) >= 1 ? 2 : 1;
+            Assert.assertEquals(String.format("Token: " + token.toString()), expectedEpoch, ks.getEpoch());
+        }
     }
 }

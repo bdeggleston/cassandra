@@ -1,5 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 import com.google.common.io.ByteStreams;
 import org.apache.cassandra.config.Schema;
@@ -8,6 +9,7 @@ import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
@@ -74,6 +76,22 @@ public class TokenStateManager
             try
             {
                 return TokenMetadata.firstToken(tokens, searchToken);
+            }
+            finally
+            {
+                lock.readLock().unlock();
+            }
+        }
+
+        Range<Token> rangeFor(Token right)
+        {
+            lock.readLock().lock();
+            try
+            {
+                int rightIdx = TokenMetadata.firstTokenIndex(tokens, right, false);
+                int leftIdx = rightIdx > 0 ? rightIdx - 1 : tokens.size() - 1;
+                Token left = tokens.get(leftIdx);
+                return new Range<Token>(left, right);
             }
             finally
             {
@@ -188,6 +206,12 @@ public class TokenStateManager
 
         // TODO: check that there aren't any token instances in the INITIALIZING phase
         // TODO: check that
+        setStarted();
+    }
+
+    @VisibleForTesting
+    void setStarted()
+    {
         started = true;
     }
 
@@ -293,6 +317,17 @@ public class TokenStateManager
     {
         // TODO: is this right?
         return TokenMetadata.firstToken(StorageService.instance.getTokenMetadata().cachedOnlyTokenMap().sortedTokens(), token);
+    }
+
+    public Range<Token> rangeFor(TokenState tokenState)
+    {
+        return rangeFor(tokenState.getToken(), tokenState.getCfId());
+    }
+
+    public Range<Token> rangeFor(Token token, UUID cfId)
+    {
+        ManagedCf cf = states.get(cfId);
+        return cf != null ? cf.rangeFor(token) : null;
     }
 
     public long getEpoch(ByteBuffer key, UUID cfId)

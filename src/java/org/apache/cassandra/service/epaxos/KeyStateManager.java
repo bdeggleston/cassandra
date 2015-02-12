@@ -1,8 +1,11 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Function;
+import com.google.common.base.Predicate;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.Iterables;
 import com.google.common.io.ByteStreams;
 import com.google.common.util.concurrent.Striped;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -11,11 +14,7 @@ import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
-import org.apache.cassandra.db.filter.IDiskAtomFilter;
-import org.apache.cassandra.dht.AbstractBounds;
-import org.apache.cassandra.dht.Bounds;
-import org.apache.cassandra.dht.Range;
-import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.dht.*;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.utils.Pair;
 
@@ -61,67 +60,17 @@ public class KeyStateManager
     /**
      * Returns an iterator of CfKeys of all keys owned by the given tokenState
      */
-    // TODO: use token ranges instead of token state
     public Iterator<CfKey> getCfKeyIterator(final TokenState tokenState, final int limit)
     {
-        // TODO: bound token range
-        // TODO: handle num rows > limit
-        // TODO: get the tail of wide rows
-        String insert = String.format("SELECT row_key, cf_id FROM %s.%s LIMIT ?", keyspace, table);
-        UntypedResultSet result = QueryProcessor.executeInternal(insert, limit);
-        final Iterator<UntypedResultSet.Row> rowIterator = result.iterator();
-        return new Iterator<CfKey>()
+        Function<UntypedResultSet.Row, CfKey> f = new Function<UntypedResultSet.Row, CfKey>()
         {
-            private CfKey next = null;
-
-            private CfKey fromRow(UntypedResultSet.Row row)
+            public CfKey apply(UntypedResultSet.Row row)
             {
                 return new CfKey(row.getBlob("row_key"), row.getUUID("cf_id"));
             }
-
-            private void maybeSetNext()
-            {
-                if (next != null) return;
-                while (rowIterator.hasNext())
-                {
-                    CfKey n = fromRow(rowIterator.next());
-                    if (n.cfId.equals(tokenState.getCfId()))
-                    {
-                        next = n;
-                        return;
-                    }
-                }
-            }
-
-            @Override
-            public boolean hasNext()
-            {
-                maybeSetNext();
-                return next != null;
-            }
-
-            @Override
-            public CfKey next()
-            {
-                maybeSetNext();
-                if (next == null)
-                {
-                    throw new NoSuchElementException();
-                }
-                else
-                {
-                    CfKey n = next;
-                    next = null;
-                    return n;
-                }
-            }
-
-            @Override
-            public void remove()
-            {
-                throw new UnsupportedOperationException();
-            }
         };
+        TableIterable i = new TableIterable(tokenState.getCfId(), tokenStateManager.rangeFor(tokenState), limit, false);
+        return Iterables.transform(i, f).iterator();
     }
 
     public Set<UUID> getCurrentDependencies(Instance instance)
@@ -538,94 +487,164 @@ public class KeyStateManager
     }
 
     /**
-     * Returns execution info for the given token range at the given replay position. If the given replay position
-     * is too far in the past to have data, the execution position directly before the first known mutation is returned.
-     * This is ok since it will be in a current epoch which we know about or are in the process of recovering.
+     * Returns execution info for the given token range and replay position. If the replay position is too far in the
+     * past to have data, the execution position directly before the first known mutation is returned. This is ok since
+     * it will be in a current epoch which we know about or are in the process of recovering.
+     *
+     * This reads the current key state data off of disk, bypassing the cache and locks. So the likelihood of getting
+     * stale data is high. This exists to generate metadata for streams.
      */
     public Iterator<Pair<ByteBuffer, ExecutionInfo>> getRangeExecutionInfo(UUID cfId, Range<Token> range, final ReplayPosition replayPosition)
     {
-        // TODO: refactor
-        final Iterator<Pair<ByteBuffer, KeyState>> iterator = new KeyStateIterator(cfId, range);
-        return new Iterator<Pair<ByteBuffer, ExecutionInfo>>()
+        Function<UntypedResultSet.Row, Pair<ByteBuffer, ExecutionInfo>> f;
+        f = new Function<UntypedResultSet.Row, Pair<ByteBuffer, ExecutionInfo>>()
         {
-            @Override
-            public boolean hasNext()
+            public Pair<ByteBuffer, ExecutionInfo> apply(UntypedResultSet.Row row)
             {
-                return iterator.hasNext();
-            }
-
-            @Override
-            public Pair<ByteBuffer, ExecutionInfo> next()
-            {
-                Pair<ByteBuffer, KeyState> next = iterator.next();
-                return Pair.create(next.left, next.right.getExecutionInfoAtPosition(replayPosition));
-            }
-
-            @Override
-            public void remove()
-            {
-
+                ByteBuffer key = row.getBlob("row_key");
+                KeyState keyState = deserialize(row.getBlob("data"));
+                return Pair.create(key, keyState.getExecutionInfoAtPosition(replayPosition));
             }
         };
+        TableIterable i = new TableIterable(cfId, range, 10000, true);
+        return Iterables.transform(i, f).iterator();
     }
 
-    /**
-     * This reads the current key state data off of disk, bypassing the cache and locks. So
-     * the likelihood of getting stale data is high. This exists to generate metadata for streams.
-     */
-    private class KeyStateIterator implements Iterator<Pair<ByteBuffer, KeyState>>
+    private class TableIterable implements Iterable<UntypedResultSet.Row>
     {
-        private static final int LIMIT = 10000;
-
         final UUID cfId;
-        Range<Token> range;
-        Iterator<UntypedResultSet.Row> iter = null;
-        Pair<ByteBuffer, KeyState> next = null;
-        boolean endReached = false;
+        final Range<Token> range;
+        final int limit;
+        final boolean inclusive;
 
-        private KeyStateIterator(UUID cfId, Range<Token> range)
+        private TableIterable(UUID cfId, Range<Token> range, int limit, boolean inclusive)
         {
             this.cfId = cfId;
             this.range = range;
+            this.limit = limit;
+            this.inclusive = inclusive;
         }
 
-        private void fillIter()
+        @Override
+        public Iterator<UntypedResultSet.Row> iterator()
         {
-            ColumnFamilyStore cfs = Keyspace.open(keyspace).getColumnFamilyStore(table);
+            return new TableIterator(cfId, range, limit, inclusive);
+        }
+    }
 
-            AbstractBounds<RowPosition> bounds = new Bounds<RowPosition>(range.left.minKeyBound(), range.right.maxKeyBound());
-            IDiskAtomFilter atomFilter = new IdentityQueryFilter();
-            List<Row> partitions = cfs.getRangeSlice(bounds, null, atomFilter, LIMIT);
-            String query = String.format("SELECT * FROM %s.%s", keyspace, table);
-            // TODO: handle more than initial limit
-            UntypedResultSet results = QueryProcessor.resultify(query, partitions);
-            endReached = results.size() < LIMIT;
-            iter = results.iterator();
+    private class TableIterator implements Iterator<UntypedResultSet.Row>
+    {
+        final UUID cfId;
+        final Iterator<Range<Token>> rangeIterator;
+        final int limit;
+        final boolean inclusive;
+        final ColumnFamilyStore cfs;
+
+        volatile UntypedResultSet.Row next;
+        volatile boolean endReached = false;
+        volatile Iterator<UntypedResultSet.Row> rowIterator = null;
+        volatile Range<Token> currentRange;
+        volatile ByteBuffer lastKey = null;
+
+        private TableIterator(UUID cfId, Range<Token> range, int limit, boolean inclusive)
+        {
+            this.cfId = cfId;
+            rangeIterator = range.unwrap().iterator();
+            currentRange = rangeIterator.next();
+            this.limit = limit;
+            this.inclusive = inclusive;
+            cfs = Keyspace.open(keyspace).getColumnFamilyStore(table);
         }
 
-        private void maybeSetNext()
+
+        Iterator<UntypedResultSet.Row> getRowIterator(Token left, Token right)
         {
-            if (next != null)
-            {
-                return;
-            }
+            return getRowIterator(left, right, false);
+        }
 
-            if (iter == null || (!iter.hasNext() && !endReached))
+        Iterator<UntypedResultSet.Row> getRowIterator(Token left, Token right, boolean inclusive)
+        {
+            Token leftToken = left;
+            while (true)
             {
-                fillIter();
-            }
-
-            while (iter.hasNext())
-            {
-                UntypedResultSet.Row nextRow = iter.next();
-                if (!nextRow.getUUID("cf_id").equals(cfId))
+                AbstractBounds<RowPosition> bounds;
+                if (inclusive)
                 {
+                    bounds = new Bounds<RowPosition>(leftToken.minKeyBound(), right.maxKeyBound());
+                }
+                else
+                {
+                    bounds = new Range<RowPosition>(leftToken.maxKeyBound(), right.maxKeyBound());
+                }
+                List<Row> partitions = cfs.getRangeSlice(bounds,
+                                                         null,
+                                                         new IdentityQueryFilter(),
+                                                         limit,
+                                                         System.currentTimeMillis());
+
+                endReached = partitions.size() < limit;
+
+                String query = String.format("SELECT * FROM %s.%s", keyspace, table);
+
+                UntypedResultSet rows = QueryProcessor.resultify(query, partitions);
+
+
+                // in case we get a bunch of tombstones
+                if (rows.size() == 0 && !endReached)
+                {
+                    leftToken = DatabaseDescriptor.getPartitioner().getToken(partitions.get(partitions.size() - 1).key.getKey());
                     continue;
                 }
-                ByteBuffer key = nextRow.getBlob("row_key");
-                KeyState keyState = deserialize(nextRow.getBlob("data"));
-                next = Pair.create(key, keyState);
-                return;
+
+                return Iterables.filter(rows, new Predicate<UntypedResultSet.Row>()
+                {
+                    @Override
+                    public boolean apply(UntypedResultSet.Row row)
+                    {
+                        return row.getUUID("cf_id").equals(cfId);
+                    }
+                }).iterator();
+            }
+        }
+
+        void maybeSetNext()
+        {
+            if (next == null)
+            {
+                if (rowIterator == null)
+                {
+                    rowIterator = getRowIterator(currentRange.left, currentRange.right, inclusive);
+                    if (!rowIterator.hasNext())
+                    {
+                        endReached = true;
+                    }
+                    maybeSetNext();
+                }
+                else if (rowIterator.hasNext())
+                {
+                    next = rowIterator.next();
+                    lastKey = next.getBlob("row_key");
+                }
+                else if (!rowIterator.hasNext() && !endReached)
+                {
+                    Token lastToken = DatabaseDescriptor.getPartitioner().getToken(lastKey);
+                    if (lastToken.equals(currentRange.right))
+                    {
+                        endReached = true;
+                    }
+                    else
+                    {
+                        rowIterator = getRowIterator(lastToken, currentRange.right);
+                    }
+                    maybeSetNext();
+                }
+                else if (!rowIterator.hasNext() && rangeIterator.hasNext())
+                {
+                    currentRange = rangeIterator.next();
+                    rowIterator = null;
+                    lastKey = null;
+                    maybeSetNext();
+                }
             }
         }
 
@@ -633,26 +652,24 @@ public class KeyStateManager
         public boolean hasNext()
         {
             maybeSetNext();
+            maybeSetNext();
             return next != null;
         }
 
         @Override
-        public Pair<ByteBuffer, KeyState> next()
+        public UntypedResultSet.Row next()
         {
-            try
-            {
-                return next;
-            }
-            finally
-            {
-                next = null;
-            }
+            maybeSetNext();
+            maybeSetNext();
+            UntypedResultSet.Row row = next;
+            next = null;
+            return row;
         }
 
         @Override
         public void remove()
         {
-            throw new UnsupportedOperationException();
+
         }
     }
 }

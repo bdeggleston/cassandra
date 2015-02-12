@@ -8,6 +8,7 @@ import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
+import org.apache.cassandra.dht.BytesToken;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -83,8 +84,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         return cfKeyList;
     }
 
-    @Before
-    public void setUp() throws Exception
+    private void clearKeyStates()
     {
         String select = String.format("SELECT row_key FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
         String delete = String.format("DELETE FROM %s.%s WHERE row_key=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
@@ -98,6 +98,33 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             }
             result = QueryProcessor.executeInternal(select);
         }
+
+        Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
+    }
+
+    private void clearTokenStates()
+    {
+        String select = String.format("SELECT cf_id FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
+        String delete = String.format("DELETE FROM %s.%s WHERE cf_id=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
+        UntypedResultSet result = QueryProcessor.executeInternal(select);
+
+        while (result.size() > 0)
+        {
+            for (UntypedResultSet.Row row: result)
+            {
+                QueryProcessor.executeInternal(delete, row.getBlob("cf_id"));
+            }
+            result = QueryProcessor.executeInternal(select);
+        }
+
+        Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
+    }
+
+    @Before
+    public void setUp() throws Exception
+    {
+        clearKeyStates();
+        clearTokenStates();
     }
 
     @Test
@@ -180,7 +207,6 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         // check that the token instance has been added to each of the individual key states
         for (CfKey cfKey: cfKeys)
         {
-            // FIXME: only key states that match the cfId above should be changed
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
             if (cfKey.cfId.equals(cfId))
             {
@@ -191,8 +217,6 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
                 Assert.assertFalse(ks.getActiveInstanceIds().contains(instance.getId()));
             }
         }
-
-        // TODO: check token bounds
     }
 
     @Test
@@ -535,7 +559,6 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         for (CfKey cfKey: cfKeys)
         {
-            // FIXME: only the keystates with the correct cfid should be updated
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
             if (cfKey.cfId.equals(cfId))
             {
@@ -546,8 +569,6 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
                 Assert.assertEquals((long) 0, ks.getEpoch());
             }
         }
-
-        // TODO: check token bounds
     }
 
     @Test
@@ -654,5 +675,133 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         Assert.assertEquals(2, infos.size());
         Assert.assertEquals(tokenMap.get(tokens.get(1)), infos.get(0).left);
         Assert.assertEquals(tokenMap.get(tokens.get(2)), infos.get(1).left);
+    }
+
+    @Test
+    public void cfKeyIterator()
+    {
+        final BytesToken token1 = new BytesToken(ByteBufferUtil.bytes(100));
+        final BytesToken token2 = new BytesToken(ByteBufferUtil.bytes(200));
+        TokenStateManager tsm = new TokenStateManager() {
+            @Override
+            protected Set<Token> getReplicatedTokensForCf(UUID cfId)
+            {
+                return Sets.<Token>newHashSet(token1, token2);
+            }
+            {
+                setStarted();
+            }
+        };
+
+        KeyStateManager ksm = new KeyStateManager(tsm);
+
+        UUID cfid = UUIDGen.getTimeUUID();
+        UUID otherCfId = UUIDGen.getTimeUUID();
+        tsm.getOrInitManagedCf(cfid);
+
+        for (int i=50; i<=250; i+=10)
+        {
+            ksm.loadKeyState(ByteBufferUtil.bytes(i), cfid);
+            ksm.loadKeyState(ByteBufferUtil.bytes(i), otherCfId);
+        }
+
+        Iterator<CfKey> iterator = ksm.getCfKeyIterator(tsm.getExact(token2, cfid), 3);
+        int numReturned = 0;
+        List<Integer> keysReturned = new LinkedList<>();
+        while (iterator.hasNext())
+        {
+            CfKey cfKey = iterator.next();
+            int key = ByteBufferUtil.toInt(cfKey.key);
+            Assert.assertEquals(cfid, cfKey.cfId);
+            Assert.assertTrue(String.format("%s not > 100", key), key > 100);
+            Assert.assertTrue(String.format("%s not <= 200", key), key <= 200);
+            numReturned++;
+            keysReturned.add(key);
+        }
+        Assert.assertEquals(keysReturned.toString(), 10, numReturned);
+    }
+
+    @Test
+    public void cfKeyIteratorWrapAround()
+    {
+        final BytesToken token1 = new BytesToken(ByteBufferUtil.bytes(100));
+        final BytesToken token2 = new BytesToken(ByteBufferUtil.bytes(200));
+        TokenStateManager tsm = new TokenStateManager() {
+            @Override
+            protected Set<Token> getReplicatedTokensForCf(UUID cfId)
+            {
+                return Sets.<Token>newHashSet(token1, token2);
+            }
+            {
+                setStarted();
+            }
+        };
+
+        KeyStateManager ksm = new KeyStateManager(tsm);
+
+        UUID cfid = UUIDGen.getTimeUUID();
+        tsm.getOrInitManagedCf(cfid);
+
+        int keysCreated = 0;
+        for (int i=50; i<=250; i+=10)
+        {
+            ksm.loadKeyState(ByteBufferUtil.bytes(i), cfid);
+            keysCreated++;
+        }
+
+        Iterator<CfKey> iterator = ksm.getCfKeyIterator(tsm.getExact(token1, cfid), 5);
+        int numReturned = 0;
+        List<Integer> keysReturned = new LinkedList<>();
+        while (iterator.hasNext())
+        {
+            CfKey cfKey = iterator.next();
+            int key = ByteBufferUtil.toInt(cfKey.key);
+            Assert.assertTrue(String.format("%s not > 100", key), key <= 100 || key > 200);
+            numReturned++;
+            keysReturned.add(key);
+        }
+        Assert.assertEquals(11, keysCreated - 10);
+        Assert.assertEquals(keysReturned.toString(), 11, numReturned);
+    }
+
+    @Test
+    public void cfKeyIteratorSingleToken()
+    {
+        final BytesToken token1 = new BytesToken(ByteBufferUtil.bytes(100));
+        TokenStateManager tsm = new TokenStateManager() {
+            @Override
+            protected Set<Token> getReplicatedTokensForCf(UUID cfId)
+            {
+                return Sets.<Token>newHashSet(token1);
+            }
+            {
+                setStarted();
+            }
+        };
+
+        KeyStateManager ksm = new KeyStateManager(tsm);
+
+        UUID cfid = UUIDGen.getTimeUUID();
+        tsm.getOrInitManagedCf(cfid);
+
+        int keysCreated = 0;
+        for (int i=50; i<=250; i+=10)
+        {
+            ksm.loadKeyState(ByteBufferUtil.bytes(i), cfid);
+            keysCreated++;
+        }
+
+        Iterator<CfKey> iterator = ksm.getCfKeyIterator(tsm.getExact(token1, cfid), 5);
+        int numReturned = 0;
+        List<Integer> keysReturned = new LinkedList<>();
+        while (iterator.hasNext())
+        {
+            CfKey cfKey = iterator.next();
+            int key = ByteBufferUtil.toInt(cfKey.key);
+            numReturned++;
+            keysReturned.add(key);
+        }
+        Assert.assertEquals(21, keysCreated);
+        Assert.assertEquals(keysReturned.toString(), 21, numReturned);
     }
 }
