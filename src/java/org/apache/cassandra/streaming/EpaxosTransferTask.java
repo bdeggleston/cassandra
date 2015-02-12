@@ -11,7 +11,7 @@ public class EpaxosTransferTask extends EpaxosTask
 {
     public EpaxosTransferTask(StreamSession session, UUID taskId, UUID cfId, Range<Token> range)
     {
-        this(session, taskId, EpaxosState.instance, cfId, range);
+        this(session, taskId, EpaxosState.getInstance(), cfId, range);
     }
 
     public EpaxosTransferTask(StreamSession session, UUID taskId, EpaxosState state, UUID cfId, Range<Token> range)

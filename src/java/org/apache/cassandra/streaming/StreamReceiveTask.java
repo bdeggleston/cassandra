@@ -127,7 +127,7 @@ public class StreamReceiveTask extends StreamTask
             {
                 for (Map.Entry<ByteBuffer, ExecutionInfo> entry: task.session.getExpaxosCorrections().entrySet())
                 {
-                    EpaxosState.instance.reportFutureExecution(entry.getKey(), task.cfId, entry.getValue());
+                    EpaxosState.getInstance().reportFutureExecution(entry.getKey(), task.cfId, entry.getValue());
                 }
                 // add sstables and build secondary indexes
                 cfs.addSSTables(readers);

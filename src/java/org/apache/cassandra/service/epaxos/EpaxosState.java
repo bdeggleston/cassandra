@@ -42,7 +42,17 @@ import java.util.concurrent.locks.ReadWriteLock;
 
 public class EpaxosState
 {
-    public static final EpaxosState instance = new EpaxosState();
+    private static class Handle
+    {
+        private static final EpaxosState instance = new EpaxosState();
+    }
+
+    public static EpaxosState getInstance()
+    {
+        return Handle.instance;
+    }
+
+//    public static final EpaxosState instance = new EpaxosState();
 
     private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
 

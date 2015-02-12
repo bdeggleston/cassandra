@@ -159,7 +159,7 @@ public class StreamReader
     private void maybeReportEpaxosCorrection(ByteBuffer key)
     {
         ExecutionInfo info = epaxos.get(key);
-        if (info != null && !EpaxosState.instance.canApplyRepair(key, cfId, info.epoch, info.executed))
+        if (info != null && !EpaxosState.getInstance().canApplyRepair(key, cfId, info.epoch, info.executed))
         {
             logger.debug("Key has data from unexecuted epaxos instance {}: {}", key, info);
             session.addEpaxosCorrection(key, info);

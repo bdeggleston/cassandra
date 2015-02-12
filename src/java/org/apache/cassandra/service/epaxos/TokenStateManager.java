@@ -205,7 +205,6 @@ public class TokenStateManager
         }
 
         // TODO: check that there aren't any token instances in the INITIALIZING phase
-        // TODO: check that
         setStarted();
     }
 

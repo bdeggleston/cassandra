@@ -29,7 +29,7 @@ public class InstanceStreamWriter
 
     public InstanceStreamWriter(UUID cfId, Range<Token> range, InetAddress peer)
     {
-        this(EpaxosState.instance, cfId, range, peer);
+        this(EpaxosState.getInstance(), cfId, range, peer);
     }
 
     public InstanceStreamWriter(EpaxosState state, UUID cfId, Range<Token> range, InetAddress peer)

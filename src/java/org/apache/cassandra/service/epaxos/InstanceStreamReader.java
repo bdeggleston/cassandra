@@ -27,7 +27,7 @@ public class InstanceStreamReader
 
     public InstanceStreamReader(UUID cfId, Range<Token> range)
     {
-        this(EpaxosState.instance, cfId, range);
+        this(EpaxosState.getInstance(), cfId, range);
     }
 
     public InstanceStreamReader(EpaxosState state, UUID cfId, Range<Token> range)
