@@ -42,6 +42,7 @@ public class EpaxosMessage extends StreamMessage
             InstanceStreamReader reader = new InstanceStreamReader(message.cfId, message.range);
             reader.read(in);
 
+            // TODO: on stream session complete, set the affected token states to normal
             return message;
         }
 

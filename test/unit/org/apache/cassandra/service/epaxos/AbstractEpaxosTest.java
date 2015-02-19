@@ -47,7 +47,7 @@ public abstract class AbstractEpaxosTest
         SchemaLoader.prepareServer();
     }
 
-    protected static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
+    protected static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(0));
     protected static final UUID CFID = UUIDGen.getTimeUUID();
 
     @BeforeClass

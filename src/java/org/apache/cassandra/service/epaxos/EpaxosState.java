@@ -11,6 +11,7 @@ import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.*;
@@ -22,6 +23,7 @@ import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
+import org.apache.cassandra.service.IEndpointLifecycleSubscriber;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.streaming.messages.FileMessageHeader;
@@ -181,6 +183,11 @@ public class EpaxosState
         }
     }
 
+    public IEndpointLifecycleSubscriber getLifecycleSubscriber()
+    {
+        return new EndpointListener(this, tokenStateManager);
+    }
+
     protected KeyStateManager createKeyStateManager()
     {
         return new KeyStateManager(keyspace(), keyStateTable(), tokenStateManager);
@@ -232,6 +239,7 @@ public class EpaxosState
     protected long getQueryTimeout(long start)
     {
         return Math.max(1, DatabaseDescriptor.getRpcTimeout() - (System.currentTimeMillis() - start));
+//        return 60 * 1000 * 10;  // TODO: remove
     }
 
     /**
@@ -241,12 +249,17 @@ public class EpaxosState
     public <T> T query(SerializedRequest query)
             throws UnavailableException, WriteTimeoutException, ReadTimeoutException, InvalidRequestException
     {
-        long start = System.currentTimeMillis();
 
         query.getConsistencyLevel().validateForCas();
 
         Instance instance = createQueryInstance(query);
-        SettableFuture<T> resultFuture = SettableFuture.create();
+        return (T) process(instance, query.getConsistencyLevel());
+    }
+
+    public Object process(Instance instance, ConsistencyLevel cl) throws WriteTimeoutException
+    {
+        long start = System.currentTimeMillis();
+        SettableFuture resultFuture = SettableFuture.create();
         resultFutures.put(instance.getId(), resultFuture);
         try
         {
@@ -256,7 +269,7 @@ public class EpaxosState
         }
         catch (ExecutionException | TimeoutException e)
         {
-            throw new WriteTimeoutException(WriteType.CAS, query.getConsistencyLevel(), 0, 1);
+            throw new WriteTimeoutException(WriteType.CAS, cl, 0, 1);
         }
         catch (InterruptedException e)
         {
@@ -273,12 +286,23 @@ public class EpaxosState
      */
     protected QueryInstance createQueryInstance(SerializedRequest request)
     {
-        return new QueryInstance(request, getEndpoint());
+        QueryInstance instance = new QueryInstance(request, getEndpoint());
+        logger.debug("Created QueryInstance {} on token {}", instance.getId(), instance.getToken());
+        return instance;
     }
 
     protected EpochInstance createEpochInstance(Token token, UUID cfId, long epoch)
     {
-        return new EpochInstance(getEndpoint(), token, cfId, epoch);
+        EpochInstance instance = new EpochInstance(getEndpoint(), token, cfId, epoch);
+        logger.debug("Created EpochInstance {} for epoch {} on token {}", instance.getId(), instance.getEpoch(), instance.getToken());
+        return instance;
+    }
+
+    protected TokenInstance createTokenInstance(Token token, UUID cfId)
+    {
+        TokenInstance instance = new TokenInstance(getEndpoint(), cfId, token);
+        logger.debug("Created TokenInstance {} on token {}", instance.getId(), instance.getToken());
+        return instance;
     }
 
     // a blind instance delete
@@ -479,17 +503,22 @@ public class EpaxosState
         }
     }
 
+    private void maybeSetResultFuture(UUID id, Object result)
+    {
+        SettableFuture resultFuture = resultFutures.get(id);
+        if (resultFuture != null)
+        {
+            resultFuture.set(result);
+            resultFutures.remove(id);
+        }
+    }
+
     protected ReplayPosition executeQueryInstance(QueryInstance instance) throws ReadTimeoutException, WriteTimeoutException
     {
         logger.debug("Executing serialized request for {}", instance.getId());
 
         Pair<ColumnFamily, ReplayPosition> result = instance.getQuery().execute();
-        SettableFuture resultFuture = resultFutures.get(instance.getId());
-        if (resultFuture != null)
-        {
-            resultFuture.set(result.left);
-            resultFutures.remove(instance.getId());
-        }
+        maybeSetResultFuture(instance.getId(), result.left);
         return result.right;
     }
 
@@ -521,6 +550,7 @@ public class EpaxosState
         }
 
         //
+        maybeSetResultFuture(instance.getId(), null);
         startTokenStateGc(tokenState);
     }
 
@@ -532,18 +562,20 @@ public class EpaxosState
         UUID cfId = instance.getCfId();
         Token token = instance.getToken();
 
+        if (tokenStateManager.getExact(instance.getToken(), instance.getCfId()) != null)
+        {
+            logger.debug("Token State already exists for {} on {}", instance.getToken(), instance.getCfId());
+            maybeSetResultFuture(instance.getId(), null);
+            return;
+        }
+
+        // TODO: should the neighbor be part of the instance?
         TokenState neighbor = tokenStateManager.get(token, cfId);
 
         // token states for this node's replicated tokens
         // are initialized at epoch 0 the first time `get` is
         // called for a cfId
         assert neighbor != null;
-
-        if (neighbor.getToken().equals(token))
-        {
-            // this token has already been created, making this a no-op
-            return;
-        }
 
         neighbor.rwLock.writeLock().lock();
         try
@@ -556,6 +588,7 @@ public class EpaxosState
                 if (tokenStateManager.putState(tokenState) != tokenState)
                 {
                     logger.warn("Token state {} exists unexpectedly for {}", token, cfId);
+                    maybeSetResultFuture(instance.getId(), null);
                     return;
                 }
 
@@ -570,16 +603,13 @@ public class EpaxosState
                     }
                 }
                 tokenState.setEpoch(epoch + 1);
-                neighbor.setEpoch(epoch + 1);
 
                 // neighbor is saved after in case of failure. Double entries
                 // can be removed from the neighbor if initialization doesn't complete
                 tokenStateManager.save(tokenState);
-                tokenStateManager.save(neighbor);
 
 
                 keyStateManager.updateEpoch(tokenState);
-                keyStateManager.updateEpoch(neighbor);
             }
             finally
             {
@@ -590,6 +620,7 @@ public class EpaxosState
         {
             neighbor.rwLock.writeLock().unlock();
         }
+        maybeSetResultFuture(instance.getId(), null);
     }
 
     void startTokenStateGc(TokenState tokenState)
@@ -897,7 +928,7 @@ public class EpaxosState
 
     public boolean canExecute(Instance instance)
     {
-        if (instance instanceof QueryInstance)
+        if (instance.getType() == Instance.Type.QUERY)
         {
             QueryInstance queryInstance = (QueryInstance) instance;
             return keyStateManager.canExecute(queryInstance.getQuery().getCfKey());
@@ -1104,17 +1135,29 @@ public class EpaxosState
         }
     }
 
+    // TODO: factor out (rework integration tests)
     protected ParticipantInfo getQueryParticipants(QueryInstance instance)
     {
-        SerializedRequest query = instance.getQuery();
+        return getInstanceParticipants(instance, instance.getQuery().getConsistencyLevel());
+    }
 
-        Token tk = StorageService.getPartitioner().getToken(query.getKey());
-        List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(query.getKeyspaceName(), tk);
-        Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk, query.getKeyspaceName());
+    // TODO: factor out (rework integration tests)
+    protected ParticipantInfo getTokenParticipants(AbstractTokenInstance instance)
+    {
+        // FIXME: add support for LOCAL_SERIAL
+        return getInstanceParticipants(instance, ConsistencyLevel.SERIAL);
+    }
+
+    protected ParticipantInfo getInstanceParticipants(Instance instance, ConsistencyLevel cl)
+    {
+        String ks = Schema.instance.getCF(instance.getCfId()).left;
+
+        List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(ks, instance.getToken());
+        Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(instance.getToken(), ks);
 
         List<InetAddress> endpoints = ImmutableList.copyOf(Iterables.concat(naturalEndpoints, pendingEndpoints));
         List<InetAddress> remoteEndpoints = null;
-        if (query.getConsistencyLevel() == ConsistencyLevel.LOCAL_SERIAL)
+        if (cl == ConsistencyLevel.LOCAL_SERIAL)
         {
             // Restrict naturalEndpoints and pendingEndpoints to node in the local DC only
             String localDc = DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
@@ -1124,13 +1167,7 @@ public class EpaxosState
             remoteEndpoints = ImmutableList.copyOf(Iterables.filter(endpoints, notLocalDc));
             endpoints = ImmutableList.copyOf(Iterables.filter(endpoints, isLocalDc));
         }
-        return new ParticipantInfo(endpoints, remoteEndpoints, query.getConsistencyLevel());
-    }
-
-    protected ParticipantInfo getTokenParticipants(AbstractTokenInstance instance)
-    {
-        // TODO: this
-        throw new AssertionError();
+        return new ParticipantInfo(endpoints, remoteEndpoints, cl);
     }
 
     protected Predicate<InetAddress> dcPredicateFor(final String dc, final boolean equals)

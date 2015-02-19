@@ -721,6 +721,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
             HintedHandOffManager.instance.start();
             BatchlogManager.instance.start();
+
+            register(EpaxosState.getInstance().getLifecycleSubscriber());
+            EpaxosState.getInstance().start();
         }
     }
 

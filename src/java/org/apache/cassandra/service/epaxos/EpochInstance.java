@@ -111,6 +111,12 @@ public class EpochInstance extends AbstractTokenInstance
         this.vetoed = ((EpochInstance) remote).vetoed;
     }
 
+    @Override
+    protected String toStringExtra()
+    {
+        return super.toStringExtra() + ", epoch=" + epoch;
+    }
+
     private static final IVersionedSerializer<EpochInstance> commonSerializer = new IVersionedSerializer<EpochInstance>()
     {
         @Override

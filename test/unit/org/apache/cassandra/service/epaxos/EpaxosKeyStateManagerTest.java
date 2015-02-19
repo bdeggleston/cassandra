@@ -170,7 +170,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Test
     public void getCurrentTokenDependencies() throws Exception
     {
-        TokenStateManager tsm = new MockTokenStateManager();
+        MockTokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
 
         List<CfKey> cfKeys = getCfKeyList(9, 3);

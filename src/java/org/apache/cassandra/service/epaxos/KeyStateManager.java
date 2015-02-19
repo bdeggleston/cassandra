@@ -62,6 +62,14 @@ public class KeyStateManager
      */
     public Iterator<CfKey> getCfKeyIterator(final TokenState tokenState, final int limit)
     {
+        return getCfKeyIterator(tokenStateManager.rangeFor(tokenState), tokenState.getCfId(), limit);
+    }
+
+    /**
+     * Returns an iterator of CfKeys of all keys owned by the given token range
+     */
+    public Iterator<CfKey> getCfKeyIterator(Range<Token> range, UUID cfId, int limit)
+    {
         Function<UntypedResultSet.Row, CfKey> f = new Function<UntypedResultSet.Row, CfKey>()
         {
             public CfKey apply(UntypedResultSet.Row row)
@@ -69,7 +77,7 @@ public class KeyStateManager
                 return new CfKey(row.getBlob("row_key"), row.getUUID("cf_id"));
             }
         };
-        TableIterable i = new TableIterable(tokenState.getCfId(), tokenStateManager.rangeFor(tokenState), limit, false);
+        TableIterable i = new TableIterable(cfId, range, limit, false);
         return Iterables.transform(i, f).iterator();
     }
 
@@ -87,7 +95,13 @@ public class KeyStateManager
         {
             TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
             Set<UUID> deps = new HashSet<>(tokenStateManager.getCurrentDependencies((AbstractTokenInstance) instance));
-            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
+
+            // create a range using the left token as dictated by the current managed token ring for this cf, and the
+            // instance token as the right token. This prevents token instances from having dependencies on instances
+            // that some of it's  replicas don't replicate. If a node misses this split, it will find out about it the
+            // next time it touches one of the keys owned by the new token
+            Range<Token> tsRange = tokenStateManager.rangeFor(tokenState);
+            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(new Range<Token>(tsRange.left, instance.getToken()), tokenState.getCfId(), 10000);
             while (cfKeyIterator.hasNext())
             {
                 CfKey cfKey = cfKeyIterator.next();
@@ -124,25 +138,26 @@ public class KeyStateManager
 
     public void recordMissingInstance(Instance instance)
     {
-        if (instance instanceof QueryInstance)
+        CfKey cfKey;
+        switch (instance.getType())
         {
-            SerializedRequest request = ((QueryInstance) instance).getQuery();
-            CfKey cfKey = request.getCfKey();
-            recordMissingInstance(instance, cfKey);
-        }
-        else if (instance instanceof EpochInstance)
-        {
-            TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
-            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
-            while (cfKeyIterator.hasNext())
-            {
-                CfKey cfKey = cfKeyIterator.next();
+            case QUERY:
+                SerializedRequest request = ((QueryInstance) instance).getQuery();
+                cfKey = request.getCfKey();
                 recordMissingInstance(instance, cfKey);
-            }
-        }
-        else
-        {
-            throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
+                break;
+            case TOKEN:
+            case EPOCH:
+                TokenState tokenState = tokenStateManager.get(instance);
+                Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
+                while (cfKeyIterator.hasNext())
+                {
+                    cfKey = cfKeyIterator.next();
+                    recordMissingInstance(instance, cfKey);
+                }
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
         }
     }
 
@@ -181,7 +196,7 @@ public class KeyStateManager
                 break;
             case EPOCH:
             case TOKEN:
-                TokenState tokenState = tokenStateManager.get(instance); // FIXME: get from instance
+                TokenState tokenState = tokenStateManager.get(instance);
                 Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
                 while (cfKeyIterator.hasNext())
                 {
@@ -669,7 +684,7 @@ public class KeyStateManager
         @Override
         public void remove()
         {
-
+            throw new UnsupportedOperationException();
         }
     }
 }

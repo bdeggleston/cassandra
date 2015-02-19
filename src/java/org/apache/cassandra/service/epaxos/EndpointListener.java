@@ -8,12 +8,16 @@ import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.service.IEndpointLifecycleSubscriber;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.*;
 
 public class EndpointListener implements IEndpointLifecycleSubscriber
 {
+    private static final Logger logger = LoggerFactory.getLogger(EndpointListener.class);
+
     private final EpaxosState state;
     private final TokenStateManager tokenStateManager;
 
@@ -69,20 +73,29 @@ public class EndpointListener implements IEndpointLifecycleSubscriber
 
     public void onJoinCluster(InetAddress endpoint)
     {
+        logger.debug("onJoinCluster event for {}", endpoint);
         maybeUpdateTokenStates();
     }
 
     public void onLeaveCluster(InetAddress endpoint)
     {
+        logger.debug("onLeaveCluster event for {}", endpoint);
         maybeUpdateTokenStates();
     }
 
     public void onMove(InetAddress endpoint)
     {
+        logger.debug("onMove event for {}", endpoint);
         maybeUpdateTokenStates();
     }
 
-    public void onUp(InetAddress endpoint) {}
+    public void onUp(InetAddress endpoint)
+    {
+        logger.debug("onUp event for {}", endpoint);
+    }
 
-    public void onDown(InetAddress endpoint) {}
+    public void onDown(InetAddress endpoint)
+    {
+        logger.debug("onDown event for {}", endpoint);
+    }
 }

@@ -33,7 +33,7 @@ import java.util.concurrent.FutureTask;
  *      * key states for the given token range are read in from the other nodes.
  *      * instances from remote keystates are retrieved from other nodes
  * 3. Repair
- *      * token state is set to RECOVERING_DATE. It will now participate in epaxos instances, although
+ *      * token state is set to RECOVERING_DATA. It will now participate in epaxos instances, although
  *          it will not execute committed instances.
  *      * a repair session is started for the given token range and cfid
  *      * repair streams include epaxos header data that tells the local key states where the

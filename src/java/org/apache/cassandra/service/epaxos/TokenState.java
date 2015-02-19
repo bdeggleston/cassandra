@@ -47,6 +47,7 @@ public class TokenState
 
         INITIALIZING(false, false),
         NORMAL(true, true),
+        RECOVERY_REQUIRED(false, false),
         PRE_RECOVERY(false, false),
         RECOVERING_INSTANCES(false, false, true),
         RECOVERING_DATA(true, false);

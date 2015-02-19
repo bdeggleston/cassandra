@@ -43,6 +43,7 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
     @Override
     public synchronized void epochResponse(MessageIn<PreacceptResponse> msg)
     {
+        logger.debug("preaccept response received from {} for instance {}. {}", msg.from, id, msg.payload);
         if (completed)
         {
             logger.debug("ignoring preaccept response from {} for instance {}. preaccept messaging completed", msg.from, id);
@@ -51,12 +52,11 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
 
         if (endpointsReplied.contains(msg.from))
         {
-            logger.debug("ignoring duplicate accept response from {} for instance {}.", msg.from, id);
+            logger.debug("ignoring duplicate preaccept response from {} for instance {}.", msg.from, id);
             return;
         }
         endpointsReplied.add(msg.from);
 
-        logger.debug("preaccept response received from {} for instance {}", msg.from, id);
         PreacceptResponse response = msg.payload;
 
         // another replica has taken control of this instance

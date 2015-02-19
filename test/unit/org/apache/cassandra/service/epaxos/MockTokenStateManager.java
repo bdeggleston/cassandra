@@ -11,7 +11,9 @@ import java.util.UUID;
 
 public class MockTokenStateManager extends TokenStateManager
 {
-    public static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
+    public static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(0));
+
+    private volatile Token token = TOKEN;
 
     public MockTokenStateManager()
     {
@@ -24,16 +26,21 @@ public class MockTokenStateManager extends TokenStateManager
         start();
     }
 
+    public void setToken(Token token)
+    {
+        this.token = token;
+    }
+
     @Override
     protected Token getClosestToken(Token token)
     {
-        return TOKEN;
+        return token;
     }
 
     @Override
     protected Set<Token> getReplicatedTokensForCf(UUID cfId)
     {
-        return Sets.newHashSet(TOKEN);
+        return Sets.newHashSet(token);
     }
 
 

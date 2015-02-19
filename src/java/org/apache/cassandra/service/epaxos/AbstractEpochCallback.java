@@ -29,6 +29,7 @@ public abstract class AbstractEpochCallback<T extends IEpochMessage> implements 
             TokenState.State s = tokenState.getState();
             if (!s.isOkToParticipate())
             {
+                logger.debug("TokenState {} cannot process {} message", tokenState, getClass().getSimpleName());
                 return;
             }
             decision = tokenState.evaluateMessageEpoch(message.payload);

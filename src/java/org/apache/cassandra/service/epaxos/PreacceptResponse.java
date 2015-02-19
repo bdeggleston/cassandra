@@ -69,6 +69,18 @@ public class PreacceptResponse extends AbstractEpochMessage
         return new PreacceptResponse(token, cfId, epoch, false, localBallot, NO_DEPS, false, NO_INSTANCES);
     }
 
+    @Override
+    public String toString()
+    {
+        return "PreacceptResponse{" +
+                "success=" + success +
+                ", ballotFailure=" + ballotFailure +
+                ", dependencies=" + dependencies +
+                ", vetoed=" + vetoed +
+                ", missingInstances=" + missingInstances +
+                '}';
+    }
+
     public static class Serializer implements IVersionedSerializer<PreacceptResponse>
     {
         @Override

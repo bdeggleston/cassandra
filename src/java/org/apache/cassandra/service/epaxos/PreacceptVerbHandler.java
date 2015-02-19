@@ -54,7 +54,7 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
     }
 
     @Override
-    public void doEpochVerb(MessageIn<MessageEnvelope<Instance>> message, int id)
+    public void doEpochVerb(MessageIn<MessageEnvelope<Instance>> message, final int id)
     {
         Instance remoteInstance = message.payload.contents;
         logger.debug("Preaccept request received from {} for {}", message.from, remoteInstance.getId());

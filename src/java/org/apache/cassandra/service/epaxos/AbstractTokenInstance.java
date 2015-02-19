@@ -35,6 +35,12 @@ public abstract class AbstractTokenInstance extends Instance
     }
 
     @Override
+    protected String toStringExtra()
+    {
+        return ", token=" + token;
+    }
+
+    @Override
     public Token getToken()
     {
         return token;

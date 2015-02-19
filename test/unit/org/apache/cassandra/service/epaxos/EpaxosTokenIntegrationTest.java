@@ -16,10 +16,14 @@ import java.util.*;
 
 public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.SingleThread
 {
-
     private static BytesToken tokenFor(int i)
     {
-        return new BytesToken(ByteBufferUtil.bytes(i));
+        return tokenFor(ByteBufferUtil.bytes(i));
+    }
+
+    private static BytesToken tokenFor(ByteBuffer k)
+    {
+        return new BytesToken(k);
     }
 
     private static final Token TOKEN1 = tokenFor(100);
@@ -44,7 +48,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         @Override
         protected Set<Token> getReplicatedTokensForCf(UUID cfId)
         {
-            return replicatedTokens;
+            return replicatedTokens != null ? replicatedTokens : Collections.<Token>emptySet();
         }
     }
 
@@ -130,7 +134,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
             TokenState ts2 = node.tokenStateManager.get(TOKEN2, CFID);
             Assert.assertNotNull(ts2);
-            Assert.assertEquals(1, ts2.getEpoch());
+            Assert.assertEquals(0, ts2.getEpoch());
         }
 
         // check that duplicate token inserts are ignored
@@ -148,7 +152,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
             TokenState ts2 = node.tokenStateManager.get(TOKEN2, CFID);
             Assert.assertNotNull(ts2);
-            Assert.assertEquals(1, ts2.getEpoch());
+            Assert.assertEquals(0, ts2.getEpoch());
         }
     }
 
@@ -204,7 +208,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         Assert.assertEquals(TokenState.State.NORMAL, ts2.getState());
 
         // check first token state
-        Assert.assertEquals(1, ts.getEpoch());
+        Assert.assertEquals(0, ts.getEpoch());
         Set<UUID> deps = ts.getCurrentTokenInstances(TOKEN2);
         Assert.assertEquals(1, deps.size());
         Assert.assertEquals(fakeIds.get(tokenFor(150)), deps.iterator().next());
@@ -216,13 +220,17 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         Assert.assertEquals(fakeIds.get(tokenFor(50)), deps.iterator().next());
         Assert.assertEquals(Sets.newHashSet(instance.getId()), ts2.getCurrentEpochInstances());
 
+        Map<Token, Long> expectedEpochs = Maps.newHashMap();
+        expectedEpochs.put(TOKEN1, 1l);
+        expectedEpochs.put(TOKEN2, 0l);
         // check key states
         for (Map.Entry<Token, ByteBuffer> entry: fakeKeys.entrySet())
         {
             ByteBuffer key = entry.getValue();
+            long expectedEpoch = tokenFor(key).compareTo(TOKEN1) > 1 ? 0l : 1l;
 
             KeyState ks = ksm.loadKeyState(key, CFID);
-            Assert.assertEquals(1, ks.getEpoch());
+            Assert.assertEquals(expectedEpoch, ks.getEpoch());
         }
 
         // increment the epoch for just the first token state

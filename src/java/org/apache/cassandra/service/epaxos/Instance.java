@@ -617,11 +617,16 @@ public abstract class Instance
     public String toString()
     {
         return getClass().getSimpleName() + "{" +
-                "id=" + id +
+                "id=" + id + toStringExtra() +
                 ", leader=" + leader +
                 ", state=" + state +
                 ", dependencies=" + (dependencies != null ? dependencies.size() : null)  +
                 '}';
+    }
+
+    protected String toStringExtra()
+    {
+        return "";
     }
 
     static Predicate<Instance> skipPlaceholderPredicate = new Predicate<Instance>()

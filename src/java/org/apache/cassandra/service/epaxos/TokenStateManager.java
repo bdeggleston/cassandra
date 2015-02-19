@@ -85,6 +85,7 @@ public class TokenStateManager
 
         Range<Token> rangeFor(Token right)
         {
+            // FIXME: this will create a wrap around range if we don't merge with all other tokens
             lock.readLock().lock();
             try
             {
@@ -123,43 +124,6 @@ public class TokenStateManager
             {
                 lock.readLock().unlock();
             }
-        }
-
-        /**
-         * Adds the given token if a token state does not already exist for it.
-         * If it's a new token, it's neighbor is returned. null otherwise
-         */
-        Token addToken(Token token)
-        {
-            lock.writeLock().lock();
-            try
-            {
-                if (!states.containsKey(token))
-                {
-                    TokenState ts;
-                    if (states.size() == 0)
-                    {
-                        ts = new TokenState(token, cfid, 0, 0, 0);
-                        putIfAbsent(ts);
-                        save(ts);
-                        return token;
-                    }
-                    else
-                    {
-                        TokenState neighbor = states.get(firstToken(token));
-                        ts = new TokenState(token, cfid, neighbor.getEpoch(), neighbor.getEpoch(), 0);
-
-                        putIfAbsent(ts);
-                        save(ts);
-                        return neighbor.getToken();
-                    }
-                }
-            }
-            finally
-            {
-                lock.writeLock().unlock();
-            }
-            return null;
         }
     }
 
@@ -384,17 +348,16 @@ public class TokenStateManager
             Set<UUID> deps = ImmutableSet.copyOf(Iterables.concat(ts.getCurrentEpochInstances(),
                                                                   ts.getCurrentTokenInstances(instance.getToken())));
 
-            if (instance instanceof EpochInstance)
+            switch (instance.getType())
             {
-                ts.recordEpochInstance((EpochInstance) instance);
-            }
-            else if (instance instanceof TokenInstance)
-            {
-                ts.recordTokenInstance((TokenInstance) instance);
-            }
-            else
-            {
-                throw new AssertionError("Unsupported instance type " + instance.getClass().getName());
+                case EPOCH:
+                    ts.recordEpochInstance((EpochInstance) instance);
+                    break;
+                case TOKEN:
+                    ts.recordTokenInstance((TokenInstance) instance);
+                    break;
+                default:
+                    throw new AssertionError("Unsupported instance type " + instance.getClass().getName());
             }
             save(ts);
             return deps;
