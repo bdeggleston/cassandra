@@ -72,7 +72,6 @@ public class ExecuteTask implements Runnable
 
                     assert toExecute.getState() == Instance.State.COMMITTED;
 
-                    // TODO: maybe block flush
                     ReplayPosition position = null;
                     try
                     {

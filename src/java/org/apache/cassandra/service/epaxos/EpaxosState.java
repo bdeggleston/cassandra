@@ -561,9 +561,6 @@ public class EpaxosState
 
     protected synchronized void executeTokenInstance(TokenInstance instance)
     {
-        // TODO: Maybe create new token state, otherwise return
-        // TODO: transfer token instances to new state
-        // TODO: increment epoch for both states
         UUID cfId = instance.getCfId();
         Token token = instance.getToken();
 
@@ -828,7 +825,7 @@ public class EpaxosState
         }
         catch (IOException e)
         {
-            throw new AssertionError(e);  // TODO: propagate original exception?
+            throw new AssertionError(e);
         }
         long timestamp = System.currentTimeMillis();
         String instanceReq = "INSERT INTO %s.%s (id, data, version) VALUES (?, ?, ?) USING TIMESTAMP ?";
@@ -998,7 +995,6 @@ public class EpaxosState
         ReplayPosition position = ssTable.getReplayPosition();
         IFilter filter = ssTable.getBloomFilter();
 
-        // TODO: work out a better way of working out how many keys will be sent so we don't have to prefix each one with a flag
         Range<Token> sstableRange = new Range<>(ssTable.first.getToken(), ssTable.last.getToken());
         for (Range<Token> range: ranges)
         {
@@ -1028,7 +1024,6 @@ public class EpaxosState
         }
     }
 
-    // TODO: consider only sending a missing instance if it's older than some threshold. Should keep message size down
     protected void addMissingInstance(Instance remoteInstance)
     {
         logger.debug("Adding missing instance: {}", remoteInstance.getId());
@@ -1040,8 +1035,6 @@ public class EpaxosState
             if (instance != null)
                 return;
 
-
-            // TODO: guard against re-adding expired instances once we start gc'ing them
             instance = remoteInstance.copyRemote();
             // be careful if the instance is only preaccepted
             // if a preaccepted instance from another node is blindly added,

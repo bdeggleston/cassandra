@@ -10,6 +10,7 @@ import java.util.UUID;
  */
 public abstract class AbstractTokenInstance extends Instance
 {
+    // TODO: add support for SERIAL & LOCAL_SERIAL
     protected final UUID cfId;
     protected final Token token;
 

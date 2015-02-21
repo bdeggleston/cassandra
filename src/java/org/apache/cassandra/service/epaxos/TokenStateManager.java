@@ -259,7 +259,6 @@ public class TokenStateManager
         // TODO: how to deal with unknown tokens?
         assert started;
 
-//        Token ringToken = getClosestToken(token);
         ManagedCf cf = getOrInitManagedCf(cfId);
         Token managedToken = cf.firstToken(token);
         // TODO: shit the bed if the ring token < the managedToken?
@@ -423,9 +422,6 @@ public class TokenStateManager
 
         state.onSave();
     }
-
-    // TODO: handle changes to the token ring
-    // TODO: should there be something like prepare successors to prevent multiple nodes doing redundant increments?
 
     /**
      * Called when query instances are executed.

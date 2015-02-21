@@ -21,6 +21,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class TokenState
 {
+    // TODO: record if there are any SERIAL instances executed against this token state
 
     private final Token token;
     private final UUID cfId;

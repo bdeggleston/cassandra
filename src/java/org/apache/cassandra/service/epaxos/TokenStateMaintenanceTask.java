@@ -61,7 +61,6 @@ public class TokenStateMaintenanceTask implements Runnable
                 TokenState ts = tokenStateManager.getExact(token, cfId);
                 if (ts.getExecutions() >= state.getEpochIncrementThreshold())
                 {
-                    // TODO: check that another epoch increment instance hasn't been started yet
                     // TODO: check that a previously seen epoch instance isn't local serial from another dc
                     ts.rwLock.writeLock().lock();
                     try

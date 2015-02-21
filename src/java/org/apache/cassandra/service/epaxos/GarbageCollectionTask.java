@@ -47,7 +47,6 @@ public class GarbageCollectionTask implements Runnable
 
     private void gcForKey(CfKey cfKey, Long oldestEpoch)
     {
-        // TODO: we should be able to work with past epochs, it shouldn't be possible to mutate them once the epoch has advanced
         Map<Long, Set<UUID>> expiredEpochs;
         Lock lock = keyStateManager.getCfKeyLock(cfKey);
         lock.lock();
