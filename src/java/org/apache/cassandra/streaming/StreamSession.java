@@ -203,7 +203,11 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     public void start()
     {
-        if (requests.isEmpty() && transfers.isEmpty())
+        boolean completed = requests.isEmpty()
+                && transfers.isEmpty()
+                && epaxosRequests.isEmpty()
+                && epaxosTransfers.isEmpty();
+        if (completed)
         {
             logger.info("[Stream #{}] Session does not have any tasks.", planId());
             closeSession(State.COMPLETE);
@@ -507,15 +511,23 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         // send prepare message
         state(State.PREPARING);
         PrepareMessage prepare = new PrepareMessage();
+
         prepare.requests.addAll(requests);
-        prepare.epaxosRequests.addAll(epaxosRequests);
         for (StreamTransferTask task : transfers.values())
             prepare.summaries.add(task.getSummary());
+
+        prepare.epaxosRequests.addAll(epaxosRequests);
+        for (EpaxosTransferTask task: epaxosTransfers.values())
+            prepare.epaxosSummaries.add(task.getSummary());
+
         handler.sendMessage(prepare);
 
         // if we don't need to prepare for receiving stream, start sending files immediately
-        if (requests.isEmpty())
+        if (requests.isEmpty() && epaxosRequests.isEmpty())
+        {
+            startStreamingTokenStates();
             startStreamingFiles();
+        }
     }
 
     /**l

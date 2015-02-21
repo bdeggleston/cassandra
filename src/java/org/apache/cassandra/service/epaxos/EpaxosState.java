@@ -19,6 +19,7 @@ import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.exceptions.*;
+import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.IEndpointSnitch;
@@ -33,6 +34,7 @@ import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import java.io.DataInput;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -67,11 +69,12 @@ public class EpaxosState
     protected static long PREPARE_GRACE_MILLIS = DatabaseDescriptor.getMinRpcTimeout() / 2;
 
     // how often the TokenMaintenanceTask runs (seconds)
-    static final long TOKEN_MAINTENANCE_INTERVAL = 30;
+    static final long TOKEN_MAINTENANCE_INTERVAL = Integer.getInteger("cassandra.epaxos.token_state_maintenance_interval", 30);
 
     // how many instances should be executed under an
     // epoch before the epoch is incremented
-    protected static final int EPOCH_INCREMENT_THRESHOLD = 100;
+    // TODO: make configurable. Maybe should adapt to # of token states on node
+    protected static final int EPOCH_INCREMENT_THRESHOLD = Integer.getInteger("cassandra.epaxos.epoch_increment_threshold", 100);
 
     //    private static boolean CACHE = Boolean.getBoolean("cassandra.epaxos.cache");
     private static boolean CACHE = true;
@@ -542,6 +545,8 @@ public class EpaxosState
                 // TODO: consider moving keyspace.updateEpoch out of the critical section, creation of new key states are blocked while the token state lock is held
                 keyStateManager.updateEpoch(tokenState);
                 tokenStateManager.save(tokenState);
+
+                logger.info("Epoch set to {} for token {} on {}", instance.getEpoch(), instance.getToken(), instance.getCfId());
             }
         }
         finally
@@ -561,6 +566,8 @@ public class EpaxosState
         // TODO: increment epoch for both states
         UUID cfId = instance.getCfId();
         Token token = instance.getToken();
+
+        logger.debug("Executing token state instance: {}", instance);
 
         if (tokenStateManager.getExact(instance.getToken(), instance.getCfId()) != null)
         {
@@ -603,6 +610,11 @@ public class EpaxosState
                     }
                 }
                 tokenState.setEpoch(epoch + 1);
+
+                logger.info("Token state created at {} on epoch {} with instance {}",
+                            tokenState.getToken(),
+                            tokenState.getEpoch(),
+                            instance.getId());
 
                 // neighbor is saved after in case of failure. Double entries
                 // can be removed from the neighbor if initialization doesn't complete
@@ -858,22 +870,51 @@ public class EpaxosState
         return tokenStateManager.get(message.getToken(), message.getCfId());
     }
 
+    private final Set<FailureRecoveryTask> failureRecoveryTasks = new HashSet<>();
+
     /**
      * starts a new local failure recovery task for the given token.
      */
-    public void startLocalFailureRecovery(Token token, long epoch)
+    public void startLocalFailureRecovery(Token token, UUID cfId, long epoch)
     {
-        // TODO: track failure recoveries in-progress
-        throw new UnsupportedOperationException("implement");
+        FailureRecoveryTask task = new FailureRecoveryTask(this, token, cfId, epoch);
+        synchronized (failureRecoveryTasks)
+        {
+            if (failureRecoveryTasks.contains(task))
+            {
+                return;
+            }
+            getStage(Stage.MISC).submit(task);
+        }
+    }
+
+    // TODO: make this more tolerant of hung failure recovery tasks
+    public void failureRecoveryTaskCompleted(FailureRecoveryTask task)
+    {
+        synchronized (failureRecoveryTasks)
+        {
+            failureRecoveryTasks.remove(task);
+        }
     }
 
     /**
      * starts a new failure recovery task for the given endpoint and token.
      */
-    public void startRemoteFailureRecovery(InetAddress endpoint, Token token, long epoch)
+    public void startRemoteFailureRecovery(InetAddress endpoint, Token token, UUID cfId, long epoch)
     {
-        // TODO: track failure recoveries in-progress so we don't DOS the other node
-        throw new UnsupportedOperationException("implement");
+        if (FailureDetector.instance.isAlive(endpoint))
+        {
+            // TODO: track recently sent requests so we don't spam the other server
+            MessageOut<FailureRecoveryRequest> msg = new MessageOut<>(MessagingService.Verb.EPAXOS_FAILURE_RECOVERY,
+                                                                      new FailureRecoveryRequest(token, cfId, epoch),
+                                                                      FailureRecoveryRequest.serializer);
+            sendOneWay(msg, endpoint);
+        }
+    }
+
+    public IVerbHandler<FailureRecoveryRequest> getFailureRecoveryVerbHandler()
+    {
+        return new FailureRecoveryVerbHandler(this);
     }
 
     // repair / streaming support
@@ -1155,7 +1196,7 @@ public class EpaxosState
         List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(ks, instance.getToken());
         Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(instance.getToken(), ks);
 
-        List<InetAddress> endpoints = ImmutableList.copyOf(Iterables.concat(naturalEndpoints, pendingEndpoints));
+        List<InetAddress> endpoints = ImmutableList.copyOf(Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), duplicateFilter()));
         List<InetAddress> remoteEndpoints = null;
         if (cl == ConsistencyLevel.LOCAL_SERIAL)
         {
@@ -1179,6 +1220,26 @@ public class EpaxosState
             {
                 boolean equal = dc.equals(snitch.getDatacenter(host));
                 return equals ? equal : !equal;
+            }
+        };
+    }
+
+    private static <T> Predicate<T> duplicateFilter()
+    {
+        return new Predicate<T>()
+        {
+            Set<T> seen = new HashSet<>();
+            public boolean apply(T t)
+            {
+                if (seen.contains(t))
+                {
+                    return false;
+                }
+                else
+                {
+                    seen.add(t);
+                    return true;
+                }
             }
         };
     }

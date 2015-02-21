@@ -20,6 +20,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
@@ -28,6 +30,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
 {
@@ -91,7 +94,7 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
     {
         Instance instance = newInstance(state, k, ConsistencyLevel.SERIAL);
         instance.setDependencies(state.getCurrentDependencies(instance));
-        instance.setExecuted();
+        instance.setExecuted(epoch);
         state.saveInstance(instance);
 
         ByteBuffer key = ByteBufferUtil.bytes(k);
@@ -156,7 +159,6 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         Set<UUID> includedIds = Sets.newHashSet();
         Set<UUID> excludedIds = Sets.newHashSet();
 
-        // special inspections for key 250
         for (int k=50; k<=350; k+=50)
         {
             long epoch = k > 200 && k <= 300 ? 20 : 10;
@@ -261,8 +263,72 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
      * Test that nothing breaks when draining the instances stream
      */
     @Test
-    public void draining()
+    public void draining() throws Exception
     {
+        UUID cfId = cfm.cfId;
+        Node fromNode = nodes.get(0);
+        Node toNode = nodes.get(1);
 
+        Token token100 = partitioner.getToken(ByteBufferUtil.bytes(100));
+        Token token200 = partitioner.getToken(ByteBufferUtil.bytes(200));
+
+        TokenStateManager fTsm = fromNode.tokenStateManager;
+        TokenStateManager.ManagedCf fCf = fTsm.getOrInitManagedCf(cfId);
+        fCf.putIfAbsent(new TokenState(token200, cfId, 10, 0, 0));
+
+        KeyStateManager fKsm = fromNode.keyStateManager;
+
+        for (int k=150; k<=200; k+=50)
+        {
+            long epoch = 10;
+
+            ByteBuffer key = ByteBufferUtil.bytes(k);
+            KeyState ks = fKsm.loadKeyState(key, cfId);
+            TokenState ts = fTsm.get(key, cfId);
+
+            Assert.assertEquals(String.format("Key: %s", k), epoch, ks.getEpoch());
+            Assert.assertEquals(String.format("Key: %s", k), epoch, ts.getEpoch());
+
+            // execute and instance in epoch, epoch -1, and epoch -2
+            // and add an 'active' instance
+            executeInstance(k, epoch - 2, fromNode);
+            executeInstance(k, epoch - 1, fromNode);
+            executeInstance(k, epoch, fromNode);
+            activeInstance(k, fromNode);
+        }
+
+
+        // set the to-node token state to the same epoch as the from-node
+        TokenStateManager tTsm = toNode.tokenStateManager;
+        TokenStateManager.ManagedCf tCf = tTsm.getOrInitManagedCf(cfId);
+        tCf.putIfAbsent(new TokenState(token200, cfId, 10, 0, 0));
+
+        final Range<Token> range = new Range<>(token100, token200);
+
+        InstanceStreamWriter writer = new InstanceStreamWriter(fromNode, cfId, range, toNode.getEndpoint()) {
+            @Override
+            protected boolean replicates(Token token)
+            {
+                return range.contains(token);
+            }
+        };
+        final AtomicBoolean wasDrained = new AtomicBoolean(false);
+        InstanceStreamReader reader = new InstanceStreamReader(toNode, cfId, range) {
+            @Override
+            protected void drainInstanceStream(DataInputStream in) throws IOException
+            {
+                wasDrained.set(true);
+                super.drainInstanceStream(in);
+            }
+        };
+
+        DataOutputBuffer outputBuffer = new DataOutputBuffer();
+        WritableByteChannel outputChannel = Channels.newChannel(outputBuffer);
+        writer.write(outputChannel);
+
+        ReadableByteChannel inputChannel = Channels.newChannel(new ByteArrayInputStream(outputBuffer.getData()));
+        reader.read(inputChannel);
+
+        Assert.assertTrue(wasDrained.get());
     }
 }

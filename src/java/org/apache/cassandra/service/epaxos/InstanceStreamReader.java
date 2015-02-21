@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
@@ -48,35 +47,41 @@ public class InstanceStreamReader
         return state.tokenStateManager.getExact(token, cfId);
     }
 
-    protected TokenState getOrCreate(Token token)
+    protected int drainEpochKeyState(DataInputStream in) throws IOException
     {
-        TokenState ts = getExact(token);
-        if (ts == null)
+        int instancesDrained = 0;
+        int size = in.readInt();
+        for (int i=0; i<size; i++)
         {
-            ts = state.tokenStateManager.putState(new TokenState(token, cfId, 0, 0, 0, TokenState.State.RECOVERY_REQUIRED));
+            Instance.serializer.deserialize(in, MessagingService.current_version);
+            Serializers.uuidSets.deserialize(in, MessagingService.current_version);
+            instancesDrained++;
         }
-        return ts;
+        return instancesDrained;
     }
 
-    private void drainInstanceStream(DataInputStream in) throws IOException
+    protected void drainInstanceStream(DataInputStream in) throws IOException
     {
+        int instancesDrained = 0;
         while (in.readBoolean())
         {
+            ByteBufferUtil.readWithShortLength(in);
             boolean last = false;
             while (!last)
             {
-                in.readLong();  // epoch
-                in.readInt();  // executions
-                Instance.serializer.deserialize(in, MessagingService.current_version);
-                Serializers.uuidSets.deserialize(in, MessagingService.current_version);
+                long epoch = in.readLong();
+                last = epoch < 0;
+                instancesDrained += drainEpochKeyState(in);
             }
         }
+        logger.debug("Drained {} instances", instancesDrained);
     }
 
-    public synchronized void read(ReadableByteChannel channel) throws IOException
+    public void read(ReadableByteChannel channel) throws IOException
     {
         DataInputStream in = new DataInputStream(new LZFInputStream(Channels.newInputStream(channel)));
 
+        // TODO: create and put token states into recovery mode in the stream session prepare
         // TODO: think through concurrency problems with this
         while (in.readBoolean())
         {
@@ -138,8 +143,14 @@ public class InstanceStreamReader
                     {
                         long epoch = in.readLong();
                         last = epoch < 0;
-                        int size = in.readInt();
+                        long setEpoch = last ? currentEpoch : epoch;
+                        if (setEpoch < ks.getEpoch())
+                        {
+                            drainEpochKeyState(in);
+                            continue;
+                        }
                         ks.setEpoch(last ? currentEpoch : epoch);
+                        int size = in.readInt();
                         boolean ignoreEpoch = epoch < minEpoch && !last;
                         if (ignoreEpoch)
                         {
@@ -168,10 +179,6 @@ public class InstanceStreamReader
                                 // don't add the same instance multiple times
                                 if (!ks.contains(instance.getId()))
                                 {
-
-                                    // TODO: if last, add as per usual, including remoteCommit
-                                    // TODO: previous should all be considered ack'd?
-
                                     // TODO: do token and epoch instances require and special handling? previous epochs should be transmitted
                                     if (instance.getState().atLeast(Instance.State.ACCEPTED))
                                     {
@@ -180,7 +187,6 @@ public class InstanceStreamReader
                                             logger.warn("Got non-executed instance from previous epoch: {}", instance);
                                         }
 
-//                                        state.keyStateManager.recordMissingInstance(instance);
                                         ks.recordInstance(instance.getId());
                                         ks.markAcknowledged(instance.getDependencies(), instance.getId());
                                         if (instance.getState() == Instance.State.EXECUTED)
@@ -224,13 +230,12 @@ public class InstanceStreamReader
                 tokenState.rwLock.writeLock().lock();
                 try
                 {
-                    if (tokenState.getState() == TokenState.State.RECOVERY_REQUIRED)
+                    // if this isn't in a FailureRecoveryTask managed state, revert to normal
+                    if (tokenState.getState() != TokenState.State.RECOVERING_INSTANCES)
                     {
+                        // TODO: for all non-failures recovery streaming, token state should remain in recovery mode until parent session is completed
+                        // TODO: also, start a gc task for the token state once everything is done
                         tokenState.setState(TokenState.State.NORMAL);
-                    }
-                    else
-                    {
-                        throw new AssertionError("make this work with failure recovery, and existing token range recovery");
                     }
                     state.tokenStateManager.save(tokenState);
 

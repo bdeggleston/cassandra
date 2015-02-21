@@ -75,13 +75,13 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         }
 
         @Override
-        public void startRemoteFailureRecovery(InetAddress endpoint, Token token, long epoch)
+        public void startRemoteFailureRecovery(InetAddress endpoint, Token token, UUID cfId, long epoch)
         {
             remoteFailureCalls++;
         }
 
         @Override
-        public void startLocalFailureRecovery(Token token, long epoch)
+        public void startLocalFailureRecovery(Token token, UUID cfId, long epoch)
         {
             localFailureCalls++;
         }

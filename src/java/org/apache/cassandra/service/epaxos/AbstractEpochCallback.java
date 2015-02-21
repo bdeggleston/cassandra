@@ -24,6 +24,7 @@ public abstract class AbstractEpochCallback<T extends IEpochMessage> implements 
         TokenState tokenState = state.getTokenState(message.payload);
         tokenState.rwLock.readLock().lock();
         EpochDecision decision;
+        logger.debug("Epoch response received from {} regarding {}", message.from, tokenState);
         try
         {
             TokenState.State s = tokenState.getState();
@@ -43,11 +44,11 @@ public abstract class AbstractEpochCallback<T extends IEpochMessage> implements 
         {
             case LOCAL_FAILURE:
                 logger.debug("Unrecoverable local state", decision);
-                state.startLocalFailureRecovery(decision.token, decision.remoteEpoch);
+                state.startLocalFailureRecovery(decision.token, tokenState.getCfId(), decision.remoteEpoch);
                 break;
             case REMOTE_FAILURE:
                 logger.debug("Unrecoverable remote state", decision);
-                state.startRemoteFailureRecovery(message.from, decision.token, decision.localEpoch);
+                state.startRemoteFailureRecovery(message.from, decision.token, tokenState.getCfId(), decision.localEpoch);
                 break;
             case OK:
                 epochResponse(message);

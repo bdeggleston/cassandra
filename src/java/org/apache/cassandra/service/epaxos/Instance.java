@@ -92,6 +92,7 @@ public abstract class Instance
     protected final InetAddress leader;
     protected volatile State state = State.INITIALIZED;
     protected volatile int ballot = 0;
+    protected volatile long executionEpoch = -1;
     protected volatile boolean noop;
     protected volatile boolean fastPathImpossible; // TODO: remove
     protected volatile Set<UUID> dependencies = null;
@@ -180,7 +181,10 @@ public abstract class Instance
     public void checkBallot(int ballot) throws BallotException
     {
         if (ballot <= this.ballot)
+        {
+            logger.debug("Remote ballot failure for {}. {} <= {}", id, ballot, this.ballot);
             throw new BallotException(this, ballot);
+        }
         updateBallot(ballot);
     }
 
@@ -275,6 +279,11 @@ public abstract class Instance
         this.lastUpdated = lastUpdated;
     }
 
+    public long getExecutionEpoch()
+    {
+        return executionEpoch;
+    }
+
     @VisibleForTesting
     void setState(State state) throws InvalidInstanceStateChange
     {
@@ -349,11 +358,13 @@ public abstract class Instance
         }
     }
 
-    public void setExecuted()
+    public void setExecuted(long epoch)
     {
+        assert epoch >= 0;
         try
         {
             setState(State.EXECUTED);
+            executionEpoch = epoch;
         }
         catch (InvalidInstanceStateChange e)
         {
@@ -528,6 +539,7 @@ public abstract class Instance
             out.writeBoolean(instance.placeholder);
             out.writeLong(instance.lastUpdated);
             Serializers.uuidSets.serialize(instance.stronglyConnected, out, version);
+            out.writeLong(instance.executionEpoch);
         }
 
         @Override
@@ -537,6 +549,7 @@ public abstract class Instance
             instance.placeholder = in.readBoolean();
             instance.lastUpdated = in.readLong();
             instance.stronglyConnected = Serializers.uuidSets.deserialize(in, version);
+            instance.executionEpoch = in.readLong();
             return instance;
         }
 
@@ -547,6 +560,7 @@ public abstract class Instance
             size += 1;  // instance.placeholder
             size += 8;  // instance.lastUpdated
             size += Serializers.uuidSets.serializedSize(instance.stronglyConnected, version);
+            size += 8;  // instance.executionEpoch
             return size;
         }
     }
@@ -617,7 +631,9 @@ public abstract class Instance
     public String toString()
     {
         return getClass().getSimpleName() + "{" +
-                "id=" + id + toStringExtra() +
+                "id=" + id +
+                ", token=" + getToken() +
+                toStringExtra() +
                 ", leader=" + leader +
                 ", state=" + state +
                 ", dependencies=" + (dependencies != null ? dependencies.size() : null)  +

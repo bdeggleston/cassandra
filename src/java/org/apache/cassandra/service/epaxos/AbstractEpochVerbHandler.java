@@ -24,6 +24,7 @@ public abstract class AbstractEpochVerbHandler<T extends IEpochMessage> implemen
     {
 
         TokenState tokenState = state.getTokenState(message.payload);
+        logger.debug("Epoch message received from {} regarding {}", message.from, tokenState);
         tokenState.rwLock.readLock().lock();
         EpochDecision decision;
         try
@@ -48,11 +49,11 @@ public abstract class AbstractEpochVerbHandler<T extends IEpochMessage> implemen
         {
             case LOCAL_FAILURE:
                 logger.debug("Unrecoverable local state", decision);
-                state.startLocalFailureRecovery(decision.token, decision.remoteEpoch);
+                state.startLocalFailureRecovery(decision.token, tokenState.getCfId(), decision.remoteEpoch);
                 break;
             case REMOTE_FAILURE:
                 logger.debug("Unrecoverable remote state", decision);
-                state.startRemoteFailureRecovery(message.from, decision.token, decision.localEpoch);
+                state.startRemoteFailureRecovery(message.from, decision.token, tokenState.getCfId(), decision.localEpoch);
                 break;
             case OK:
                 doEpochVerb(message, id);

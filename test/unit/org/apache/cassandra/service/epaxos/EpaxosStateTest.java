@@ -53,7 +53,7 @@ public class EpaxosStateTest extends AbstractEpaxosTest
             }
         };
         QueryInstance extInstance = new QueryInstance(getSerializedCQLRequest(0, 1), InetAddress.getByAddress(new byte[] {127, 0, 0, 127}));
-        extInstance.setExecuted();
+        extInstance.setExecuted(0);
         extInstance.setSuccessors(Lists.newArrayList(InetAddress.getLocalHost()));
         extInstance.setDependencies(Sets.newHashSet(UUIDGen.getTimeUUID()));
 

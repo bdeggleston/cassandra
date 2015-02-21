@@ -71,7 +71,6 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
             {
                 if (instance == null)
                 {
-                    // TODO: add to deps
                     instance = remoteInstance.copyRemote();
                 }
                 else

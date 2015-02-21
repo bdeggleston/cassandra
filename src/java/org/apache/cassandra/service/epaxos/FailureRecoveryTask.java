@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
 /**
@@ -62,6 +63,30 @@ public class FailureRecoveryTask implements Runnable
         this.epoch = epoch;
     }
 
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        FailureRecoveryTask that = (FailureRecoveryTask) o;
+
+        if (epoch != that.epoch) return false;
+        if (!cfId.equals(that.cfId)) return false;
+        if (!token.equals(that.token)) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+        int result = token.hashCode();
+        result = 31 * result + cfId.hashCode();
+        result = 31 * result + (int) (epoch ^ (epoch >>> 32));
+        return result;
+    }
+
     protected TokenState getTokenState()
     {
         return state.tokenStateManager.get(token, cfId);
@@ -104,7 +129,7 @@ public class FailureRecoveryTask implements Runnable
         try
         {
             tokenState.setState(TokenState.State.PRE_RECOVERY);
-            tokenState.setEpoch(epoch);
+//            tokenState.setEpoch(epoch);
             state.tokenStateManager.save(tokenState);
         }
         finally
@@ -168,7 +193,7 @@ public class FailureRecoveryTask implements Runnable
 
             tokenState.setState(TokenState.State.RECOVERING_INSTANCES);
             state.tokenStateManager.save(tokenState);
-            range = tokenState.getRange();
+            range = state.tokenStateManager.rangeFor(tokenState);
         }
         finally
         {
@@ -180,6 +205,8 @@ public class FailureRecoveryTask implements Runnable
         // TODO: don't request data from ALL
         for (InetAddress endpoint: getEndpoints(range))
         {
+            if (endpoint.equals(state.getEndpoint()))
+                continue;
             streamPlan.requestEpaxosRange(endpoint, cfId, range);
         }
 
@@ -187,8 +214,9 @@ public class FailureRecoveryTask implements Runnable
         {
             private boolean submitted = false;
 
-            public void handleStreamEvent(StreamEvent event)
+            public synchronized void handleStreamEvent(StreamEvent event)
             {
+                // TODO: die on error
                 if (event.eventType == StreamEvent.Type.STREAM_COMPLETE && !submitted)
                 {
                     logger.debug("Instance stream complete. Submitting data recovery task");
@@ -210,6 +238,74 @@ public class FailureRecoveryTask implements Runnable
         });
         streamPlan.execute();
     }
+//
+//    /**
+//     * Start a repair task that repairs the affected range.
+//     * Replica can now participate in instances, but won't execute the instances
+//     */
+//    void recoverData()
+//    {
+//        TokenState tokenState = getTokenState();
+//        Range<Token> range;
+//        tokenState.rwLock.writeLock().lock();
+//        try
+//        {
+//            if (tokenState.getState() != TokenState.State.RECOVERING_INSTANCES)
+//            {
+//
+//                logger.info("Aborting instance recovery for {}. Status is {}, expected {}",
+//                            tokenState, tokenState.getState(), TokenState.State.PRE_RECOVERY);
+//                return;
+//            }
+//
+//            tokenState.setState(TokenState.State.RECOVERING_DATA);
+//            state.tokenStateManager.save(tokenState);
+//            range = state.tokenStateManager.rangeFor(tokenState);
+//        }
+//        finally
+//        {
+//            tokenState.rwLock.writeLock().unlock();
+//        }
+//
+//        final StreamPlan streamPlan = new StreamPlan(tokenState.toString() + "-Instance-Recovery");
+//
+//        // TODO: don't request data from ALL
+//        for (InetAddress endpoint: getEndpoints(range))
+//        {
+//            if (endpoint.equals(state.getEndpoint()))
+//                continue;
+//            Pair<String, String> table = Schema.instance.getCF(cfId);
+//            streamPlan.requestRanges(endpoint, table.left, Collections.singleton(range), table.right);
+//        }
+//
+//        streamPlan.listeners(new StreamEventHandler()
+//        {
+//            private boolean submitted = false;
+//
+//            public synchronized void handleStreamEvent(StreamEvent event)
+//            {
+//                // TODO: die on error
+//                if (event.eventType == StreamEvent.Type.STREAM_COMPLETE && !submitted)
+//                {
+//                    logger.debug("Instance stream complete. Submitting data recovery task");
+//                    state.getStage(Stage.MISC).submit(new Runnable()
+//                    {
+//                        @Override
+//                        public void run()
+//                        {
+//                            complete();
+//                        }
+//                    });
+//                    submitted = true;
+//                }
+//            }
+//
+//            public void onSuccess(@Nullable StreamState streamState) {}
+//
+//            public void onFailure(Throwable throwable) {}
+//        });
+//        streamPlan.execute();
+//    }
 
     /**
      * Start a repair task that repairs the affected range.
@@ -233,7 +329,7 @@ public class FailureRecoveryTask implements Runnable
 
             tokenState.setState(TokenState.State.RECOVERING_DATA);
             state.tokenStateManager.save(tokenState);
-            range = tokenState.getRange();
+            range = state.tokenStateManager.rangeFor(tokenState);
             localOnly = tokenState.localOnly();
         }
         finally
@@ -273,13 +369,16 @@ public class FailureRecoveryTask implements Runnable
         }
         finally
         {
+            state.failureRecoveryTaskCompleted(this);
             tokenState.rwLock.writeLock().unlock();
         }
+        logger.info("Epaxos failure recovery task for {} on {} to {} completed", token, cfId, epoch);
     }
 
     @Override
     public void run()
     {
+        logger.info("Beginning epaxos failure recovery task for {} on {} to {}", token, cfId, epoch);
         preRecover();
         recoverInstances();
     }

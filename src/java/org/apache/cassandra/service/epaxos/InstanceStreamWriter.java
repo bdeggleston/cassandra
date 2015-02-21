@@ -13,6 +13,7 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.DataOutputStreamPlus;
+import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.streaming.StreamManager;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -71,11 +72,12 @@ public class InstanceStreamWriter
 
     private Token getNext(Token last)
     {
+        final Range<Token> nextRange = new Range<Token>(last, range.right);
         Predicate<Token> covered = new Predicate<Token>()
         {
             public boolean apply(Token token)
             {
-                return range.contains(token);
+                return nextRange.contains(token);
             }
         };
 
@@ -83,18 +85,14 @@ public class InstanceStreamWriter
         tokenSet.add(range.left);
         tokenSet.add(range.right);
         ArrayList<Token> tokens = Lists.newArrayList(tokenSet);
+        Collections.sort(tokens);
         assert tokens.size() > 1;
 
         // rotate the list so the range start is at the head
-        while (!tokens.get(0).equals(range.left))
+        while (!tokens.get(0).equals(last))
             Collections.rotate(tokens, 1);
 
-        for (Token token: tokens)
-        {
-            if (token.compareTo(last) > 0)
-                return token;
-        }
-        throw new AssertionError("No tokens found");
+        return tokens.get(1);
     }
 
     /**
@@ -103,14 +101,6 @@ public class InstanceStreamWriter
      */
     public void write(WritableByteChannel channel) throws IOException
     {
-        // TODO: find all managed tokens in the given range.
-        // TODO: create a token state for the right token, if neccesary
-        // TODO: read-lock all token states to be streamed
-        // TODO: transmit poison pill token states if token states couldn't be created for the edges
-
-        // TODO: unwrap range
-        // TODO: handle multiple token states
-
         if (getExact(range.right) == null)
         {
             logger.debug("Creating token state for right token {}", range.right);
@@ -128,20 +118,7 @@ public class InstanceStreamWriter
             }
         }
 
-        if (getExact(range.left) == null && replicates(range.left))
-        {
-            logger.debug("Creating token state for left token {}", range.right);
-            TokenInstance leftTokenInstance = state.createTokenInstance(range.left, cfId);
-            try
-            {
-                state.process(leftTokenInstance, ConsistencyLevel.SERIAL);
-            }
-            catch (WriteTimeoutException e)
-            {
-                // TODO: Make a locally recovering token state and carry on
-                throw new IOException(e);
-            }
-        }
+        // TODO: should we make a token state for the left side as well?
 
         OutputStream outputStream = new LZFOutputStream(Channels.newOutputStream(channel));
         DataOutputPlus out = new DataOutputStreamPlus(outputStream);
@@ -151,7 +128,9 @@ public class InstanceStreamWriter
         // we iterate over the token states covering the given range from left to right.
         Token last = range.left;
 
-        while (last.compareTo(range.right) < 0)
+        // FIXME: craps out on wrap around ranges
+//        while (last.compareTo(range.right) < 0)
+        while (!last.equals(range.right))
         {
             // Token state has next
             Token token = getNext(last);
@@ -170,7 +149,7 @@ public class InstanceStreamWriter
             {
                 // if we don't have a token state for the given token, it means that we weren't
                 // able to create it. The to-node will create the token state, but mark it as
-                // needing a failure recover operation. This prevents larger availability from
+                // needing a failure recovery operation. This prevents epaxos quorum failures from
                 // interfering with bootstrapping nodes
                 //
                 // This shouldn't happen for tokens other than the requested ranges right token

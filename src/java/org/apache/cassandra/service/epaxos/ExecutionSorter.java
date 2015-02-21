@@ -60,11 +60,27 @@ public class ExecutionSorter
                 boolean connected = false;
                 for (UUID dep: instance.getDependencies())
                 {
-                    Instance depInstance = this.state.getInstanceCopy(dep);
-                    boolean notExecuted = (depInstance == null) || (depInstance.getState() != Instance.State.EXECUTED);
+
                     boolean targetDep = targetDeps.contains(dep);
                     boolean required = requiredInstances.contains(dep);
-                    connected |= notExecuted || targetDep || required;
+
+                    Instance depInstance = this.state.getInstanceCopy(dep);
+                    boolean notExecuted;
+                    if (depInstance == null)
+                    {
+                        // if the dependency instance is not on this node, and the parent was executed in a past
+                        // epoch AND it's not not connected to the target instance by dependency or strongly connected
+                        // component, it's been GC'd, and can be ignored
+                        long parentEpoch = instance.getExecutionEpoch();
+                        long currentEpoch = state.getCurrentEpoch(instance);
+                        notExecuted = parentEpoch >= currentEpoch;
+                    }
+                    else
+                    {
+                        notExecuted = depInstance.getState() != Instance.State.EXECUTED;
+                    }
+
+                    connected |= targetDep || required || notExecuted;
                     if (connected) break;
                 }
                 if (!connected)

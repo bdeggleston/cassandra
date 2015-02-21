@@ -144,7 +144,9 @@ public final class MessagingService implements MessagingServiceMBean
         EPAXOS_TRYPREPARE,
         EPAXOS_TRYPREACCEPT,
         //
-        EPAXOS_READ_REPAIR
+        EPAXOS_READ_REPAIR,
+        EPAXOS_FAILURE_RECOVERY
+
         ;
     }
 
@@ -238,6 +240,7 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.EPAXOS_TRYPREACCEPT, Stage.MUTATION);
 
         put(Verb.EPAXOS_READ_REPAIR, Stage.MUTATION);
+        put(Verb.EPAXOS_FAILURE_RECOVERY, Stage.MISC);
 
         put(Verb.UNUSED_1, Stage.INTERNAL_RESPONSE);
         put(Verb.UNUSED_2, Stage.INTERNAL_RESPONSE);
@@ -285,6 +288,7 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.EPAXOS_TRYPREACCEPT, TryPreacceptRequest.serializer);
 
         put(Verb.EPAXOS_READ_REPAIR, ReadRepairVerbHandler.Epaxos.serializer);
+        put(Verb.EPAXOS_FAILURE_RECOVERY, FailureRecoveryRequest.serializer);
     }};
 
     /**

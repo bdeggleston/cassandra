@@ -2,7 +2,6 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.*;
 import org.apache.cassandra.db.TypeSizes;
-import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -311,18 +310,14 @@ public class TokenState
                                  remoteEpoch);
     }
 
-    public Range<Token> getRange()
-    {
-        throw new AssertionError("Not Implemented!");
-    }
-
     /**
      * returns true if every instance for the current and last epoch used
      * the LOCAL_SERIAL consistency level
      */
     public boolean localOnly()
     {
-        throw new AssertionError("Not Implemented!");
+        // TODO: this
+        return false;
     }
 
     public static final IVersionedSerializer<TokenState> serializer = new IVersionedSerializer<TokenState>()
