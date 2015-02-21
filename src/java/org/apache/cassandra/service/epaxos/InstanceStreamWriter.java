@@ -82,8 +82,7 @@ public class InstanceStreamWriter
         };
 
         Set<Token> tokenSet = Sets.newHashSet(Iterables.filter(state.tokenStateManager.allTokenStatesForCf(cfId), covered));
-        tokenSet.add(range.left);
-        tokenSet.add(range.right);
+        Collections.addAll(tokenSet, range.left, range.right, last);
         ArrayList<Token> tokens = Lists.newArrayList(tokenSet);
         Collections.sort(tokens);
         assert tokens.size() > 1;
