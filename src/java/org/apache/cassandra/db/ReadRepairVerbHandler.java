@@ -23,12 +23,16 @@ import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.epaxos.EpaxosState;
 import org.apache.cassandra.service.epaxos.ExecutionInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.UUID;
 
 public abstract class ReadRepairVerbHandler <T> implements IVerbHandler<T>
 {
+    private static final Logger logger = LoggerFactory.getLogger(ReadRepairVerbHandler.class);
+
     protected void sendResponse(int id, InetAddress from)
     {
         WriteResponse response = new WriteResponse();
@@ -73,10 +77,12 @@ public abstract class ReadRepairVerbHandler <T> implements IVerbHandler<T>
 
             if (state.canApplyRepair(mutation.key(), cfId, info.epoch, info.executed))
             {
+                logger.debug("Allowing read repair message for epaxos managed table");
                 doRepair(mutation, id, message.from);
             }
             else
             {
+                logger.debug("Ignoring read repair message with data from a locally un-executed epaxos instance");
                 sendResponse(id, message.from);
             }
         }
