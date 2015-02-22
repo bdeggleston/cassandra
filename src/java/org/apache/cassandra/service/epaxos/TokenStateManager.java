@@ -364,8 +364,9 @@ public class TokenStateManager
         ts.rwLock.writeLock().lock();
         try
         {
+            Range<Token> range = new Range<>(rangeFor(ts).left, instance.getToken());
             Set<UUID> deps = ImmutableSet.copyOf(Iterables.concat(ts.getCurrentEpochInstances(),
-                                                                  ts.getCurrentTokenInstances(instance.getToken())));
+                                                                  ts.getCurrentTokenInstances(range)));
 
             switch (instance.getType())
             {

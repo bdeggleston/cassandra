@@ -3,6 +3,7 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.*;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.*;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.service.epaxos.integration.AbstractEpaxosIntegrationTest;
 import org.apache.cassandra.service.epaxos.integration.Messenger;
 import org.apache.cassandra.service.epaxos.integration.Node;
@@ -130,7 +131,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
             TokenState ts1 = node.tokenStateManager.get(TOKEN1, CFID);
             Assert.assertNotNull(ts1);
-            Assert.assertEquals(1, ts1.getEpoch());
+            Assert.assertEquals(0, ts1.getEpoch());
 
             TokenState ts2 = node.tokenStateManager.get(TOKEN2, CFID);
             Assert.assertNotNull(ts2);
@@ -148,7 +149,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
             TokenState ts1 = node.tokenStateManager.get(TOKEN1, CFID);
             Assert.assertNotNull(ts1);
-            Assert.assertEquals(1, ts1.getEpoch());
+            Assert.assertEquals(0, ts1.getEpoch());
 
             TokenState ts2 = node.tokenStateManager.get(TOKEN2, CFID);
             Assert.assertNotNull(ts2);
@@ -196,7 +197,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         instance.setDependencies(Collections.<UUID>emptySet());
         instance.setState(Instance.State.COMMITTED);
         node.saveInstance(instance);
-        Assert.assertTrue(ts.getCurrentTokenInstances(TOKEN2).contains(instance.getId()));
+        Assert.assertTrue(ts.getCurrentTokenInstances(new Range<Token>(TOKEN2, TOKEN1)).contains(instance.getId()));
 
         new ExecuteTask(node, instance.getId()).run();
 
@@ -209,13 +210,13 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
         // check first token state
         Assert.assertEquals(0, ts.getEpoch());
-        Set<UUID> deps = ts.getCurrentTokenInstances(TOKEN2);
+        Set<UUID> deps = ts.getCurrentTokenInstances(new Range<Token>(TOKEN1, TOKEN2));
         Assert.assertEquals(1, deps.size());
         Assert.assertEquals(fakeIds.get(tokenFor(150)), deps.iterator().next());
 
         // check second token state
-        Assert.assertEquals(1, ts2.getEpoch());
-        deps = ts2.getCurrentTokenInstances(TOKEN2);
+        Assert.assertEquals(0, ts2.getEpoch());
+        deps = ts2.getCurrentTokenInstances(new Range<Token>(TOKEN2, TOKEN1));
         Assert.assertEquals(1, deps.size());
         Assert.assertEquals(fakeIds.get(tokenFor(50)), deps.iterator().next());
         Assert.assertEquals(Sets.newHashSet(instance.getId()), ts2.getCurrentEpochInstances());
@@ -227,10 +228,9 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         for (Map.Entry<Token, ByteBuffer> entry: fakeKeys.entrySet())
         {
             ByteBuffer key = entry.getValue();
-            long expectedEpoch = tokenFor(key).compareTo(TOKEN1) > 1 ? 0l : 1l;
 
             KeyState ks = ksm.loadKeyState(key, CFID);
-            Assert.assertEquals(expectedEpoch, ks.getEpoch());
+            Assert.assertEquals(0l, ks.getEpoch());
         }
 
         // increment the epoch for just the first token state
@@ -242,7 +242,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         node.executeEpochInstance(epochInstance);
 
         Assert.assertEquals(2, ts.getEpoch());
-        Assert.assertEquals(1, ts2.getEpoch());
+        Assert.assertEquals(0, ts2.getEpoch());
 
         // keys with tokens TOKEN1 < t <= TOKEN2 should be at epoch 2
         for (Map.Entry<Token, ByteBuffer> entry: fakeKeys.entrySet())
@@ -251,7 +251,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             ByteBuffer key = entry.getValue();
 
             KeyState ks = ksm.loadKeyState(key, CFID);
-            long expectedEpoch = token.compareTo(TOKEN1) >= 1 ? 2 : 1;
+            long expectedEpoch = token.compareTo(TOKEN1) >= 1 ? 2 : 0;
             Assert.assertEquals(String.format("Token: " + token.toString()), expectedEpoch, ks.getEpoch());
         }
     }

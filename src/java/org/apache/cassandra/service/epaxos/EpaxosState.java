@@ -34,7 +34,6 @@ import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
 import java.io.DataInput;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -55,8 +54,6 @@ public class EpaxosState
     {
         return Handle.instance;
     }
-
-//    public static final EpaxosState instance = new EpaxosState();
 
     private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
 
@@ -597,18 +594,30 @@ public class EpaxosState
                     return;
                 }
 
+                Range<Token> neighborRange = new Range<>(token, neighbor.getToken());
                 // transfer token state uuid to new token state
                 // epoch instances aren't also recorded because those
                 // will only  affect the neighbor, not the new token instance
                 for (Map.Entry<Token, Set<UUID>> entry: neighbor.splitTokenInstances(token).entrySet())
                 {
-                    for (UUID id: entry.getValue())
+                    if (!neighborRange.contains(entry.getKey()))
                     {
-                        tokenState.recordTokenInstance(entry.getKey(), id);
+                        for (UUID id: entry.getValue())
+                        {
+                            tokenState.recordTokenInstance(entry.getKey(), id);
+                            neighbor.removeTokenInstance(entry.getKey(), id);
+                        }
                     }
                 }
 
-                tokenState.setEpoch(epoch + 1);
+//                tokenState.setEpoch(epoch + 1);
+//                neighbor.setEpoch(epoch + 1);
+
+                // the epoch for both this token state, and it's neighbor (the token it was split from)
+                // need to be greater than the epoch at the time of the split. This prevents new token
+                // owners from having blocking dependencies on instances it doesn't replicate.
+                tokenState.setMinStreamEpoch(tokenState.getEpoch() + 1);
+                neighbor.setMinStreamEpoch(neighbor.getEpoch() + 1);
 
                 logger.info("Token state created at {} on epoch {} with instance {}",
                             tokenState.getToken(),
@@ -618,8 +627,10 @@ public class EpaxosState
                 // neighbor is saved after in case of failure. Double entries
                 // can be removed from the neighbor if initialization doesn't complete
                 tokenStateManager.save(tokenState);
+                tokenStateManager.save(neighbor);
 
-                keyStateManager.updateEpoch(tokenState);
+//                keyStateManager.updateEpoch(tokenState);
+//                keyStateManager.updateEpoch(neighbor);
             }
             finally
             {

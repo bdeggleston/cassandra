@@ -17,6 +17,7 @@ import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.streaming.StreamManager;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,23 +118,17 @@ public class InstanceStreamWriter
             }
         }
 
-        // TODO: should we make a token state for the left side as well?
-
         OutputStream outputStream = new LZFOutputStream(Channels.newOutputStream(channel));
         DataOutputPlus out = new DataOutputStreamPlus(outputStream);
 
-        // TODO: while loop get ranges
-        // TODO: handle token states being added while we iterate
         // we iterate over the token states covering the given range from left to right.
         Token last = range.left;
 
-        // FIXME: craps out on wrap around ranges
-//        while (last.compareTo(range.right) < 0)
         while (!last.equals(range.right))
         {
             // Token state has next
             Token token = getNext(last);
-            Range<Token> tokenRange = new Range<Token>(last, token);
+            Range<Token> tokenRange = new Range<>(last, token);
             last = token;
             int instancesWritten = 0;
 
@@ -142,7 +137,6 @@ public class InstanceStreamWriter
             Token.serializer.serialize(token, out);
 
             TokenState tokenState = getExact(token);
-            out.writeBoolean(tokenState != null);
 
             if (tokenState == null)
             {
@@ -160,17 +154,41 @@ public class InstanceStreamWriter
                 {
                     logger.debug("missing token state for right token {}", token);
                 }
+                out.writeBoolean(false);
                 continue;
             }
             else
             {
-                logger.debug("Streaming out token state {} on {}. Range {}", token, cfId, tokenRange);
+                boolean success = true;
+                while (tokenState.getEpoch() < tokenState.getMinStreamEpoch())
+                {
+                    try
+                    {
+                        state.process(state.createEpochInstance(tokenState.getToken(), tokenState.getCfId(), tokenState.getEpoch() + 1), ConsistencyLevel.SERIAL);
+                        logger.debug("Incremented token state for streaming");
+                    }
+                    catch (WriteTimeoutException e)
+                    {
+                        success = false;
+                        break;
+                    }
+                }
+
+                out.writeBoolean(success);
+                if (!success)
+                {
+                    logger.warn("Unable to increment token state {} epoch from {} to minimum streaming epoch of {}",
+                                tokenState.getToken(), tokenState.getEpoch(), tokenState.getMinStreamEpoch());
+                    continue;
+                }
             }
 
             Iterator<CfKey> cfKeyIter = state.keyStateManager.getCfKeyIterator(tokenRange, cfId, CFKEY_ITER_CHUNK);
             tokenState.lockGc();
             try
             {
+                logger.debug("Streaming out token state {} on {}. Range {}, epoch {}",
+                             token, cfId, tokenRange, tokenState.getEpoch());
                 long currentEpoch = tokenState.getEpoch();
 
                 // it's possible that the epoch has been incremented, but all of the
@@ -239,6 +257,25 @@ public class InstanceStreamWriter
                         writeInstance(instance, out, outputStream);
                         instancesWritten++;
                     }
+//
+//                    // write out active token/epoch instances
+//                    tokenState.rwLock.readLock().lock();
+//                    try
+//                    {
+//                        Set<UUID> tokenInstances = tokenState.getCurrentEpochInstances();
+//                        tokenInstances.addAll(tokenState.getCurrentTokenInstances(tokenRange));
+//                        out.writeInt(tokenInstances.size());
+//                        for (UUID id: tokenInstances)
+//                        {
+//                            Instance instance = state.getInstanceCopy(id);
+//                            writeInstance(instance, out, outputStream);
+//                            instancesWritten++;
+//                        }
+//                    }
+//                    finally
+//                    {
+//                        tokenState.rwLock.readLock().unlock();
+//                    }
                 }
 
                 out.writeBoolean(false);

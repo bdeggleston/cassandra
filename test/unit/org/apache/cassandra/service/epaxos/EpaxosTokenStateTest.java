@@ -5,6 +5,7 @@ import com.google.common.io.ByteStreams;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.LongToken;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -22,6 +23,17 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
 {
     private static final IPartitioner partitioner = DatabaseDescriptor.getPartitioner();
     private static final UUID CFID = UUIDGen.getTimeUUID();
+    private static final LongToken ZERO_TOKEN = new LongToken(0l);
+
+    private static final Range<Token> rangeFor(long right)
+    {
+        return rangeFor(0l, right);
+    }
+
+    private static final Range<Token> rangeFor(long left, long right)
+    {
+        return new Range<Token>(new LongToken(left), new LongToken(right));
+    }
 
     @Test
     public void serialization() throws IOException
@@ -160,11 +172,11 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
         ts.recordTokenInstance(new LongToken(75l), tId0);
         ts.recordTokenInstance(new LongToken(150l), tId1);
 
-        Assert.assertEquals(Sets.newHashSet(tId0, tId1), ts.getCurrentTokenInstances(new LongToken(151l)));
-        Assert.assertEquals(Sets.newHashSet(tId0, tId1), ts.getCurrentTokenInstances(new LongToken(150l)));
-        Assert.assertEquals(Sets.newHashSet(tId0), ts.getCurrentTokenInstances(new LongToken(149l)));
-        Assert.assertEquals(Sets.newHashSet(tId0), ts.getCurrentTokenInstances(new LongToken(75l)));
-        Assert.assertEquals(Sets.<UUID>newHashSet(), ts.getCurrentTokenInstances(new LongToken(50l)));
+        Assert.assertEquals(Sets.newHashSet(tId0, tId1), ts.getCurrentTokenInstances(rangeFor(151l)));
+        Assert.assertEquals(Sets.newHashSet(tId0, tId1), ts.getCurrentTokenInstances(rangeFor(150l)));
+        Assert.assertEquals(Sets.newHashSet(tId0), ts.getCurrentTokenInstances(rangeFor(149l)));
+        Assert.assertEquals(Sets.newHashSet(tId0), ts.getCurrentTokenInstances(rangeFor(75l)));
+        Assert.assertEquals(Sets.<UUID>newHashSet(), ts.getCurrentTokenInstances(rangeFor(50l)));
     }
 
     /**
@@ -182,8 +194,8 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
         UUID t150Id = UUIDGen.getTimeUUID();
         ts.recordTokenInstance(new LongToken(150l), t150Id);
 
-        Assert.assertEquals(Sets.<UUID>newHashSet(), ts.getCurrentTokenInstances(new LongToken(0l)));
-        Assert.assertEquals(Sets.newHashSet(t50Id, t100Id, t150Id), ts.getCurrentTokenInstances(new LongToken(200l)));
+        Assert.assertEquals(Sets.<UUID>newHashSet(), ts.getCurrentTokenInstances(rangeFor(0l)));
+        Assert.assertEquals(Sets.newHashSet(t50Id, t100Id, t150Id), ts.getCurrentTokenInstances(rangeFor(200l)));
 
         Map<Token, Set<UUID>> expectedDeps = new HashMap<>();
         expectedDeps.put(new LongToken(50l), Sets.newHashSet(t50Id));
@@ -192,6 +204,6 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
 
         Assert.assertEquals(expectedDeps, actualDeps);
 
-        Assert.assertEquals(Sets.newHashSet(t150Id), ts.getCurrentTokenInstances(new LongToken(200l)));
+        Assert.assertEquals(Sets.newHashSet(t150Id), ts.getCurrentTokenInstances(rangeFor(200l)));
     }
 }

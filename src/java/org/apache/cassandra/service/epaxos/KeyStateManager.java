@@ -101,7 +101,8 @@ public class KeyStateManager
             // that some of it's  replicas don't replicate. If a node misses this split, it will find out about it the
             // next time it touches one of the keys owned by the new token
             Range<Token> tsRange = tokenStateManager.rangeFor(tokenState);
-            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(new Range<Token>(tsRange.left, instance.getToken()), tokenState.getCfId(), 10000);
+//            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(new Range<>(tsRange.left, instance.getToken()), tokenState.getCfId(), 10000);
+            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tsRange, tokenState.getCfId(), 10000);
             while (cfKeyIterator.hasNext())
             {
                 CfKey cfKey = cfKeyIterator.next();

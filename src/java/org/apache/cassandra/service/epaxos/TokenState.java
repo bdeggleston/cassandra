@@ -3,6 +3,7 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.*;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.UUIDSerializer;
@@ -29,7 +30,7 @@ public class TokenState
 
     // the current epoch used in recording
     // execution epochs
-    private long epoch;
+    private volatile long epoch;
 
     // the highest epoch instance seen so far
     // this is the epoch we expect new instances
@@ -48,6 +49,8 @@ public class TokenState
     // this is used to determine if epoch and token instances should be executed at
     // SERIAL or LOCAL_SERIAL
     private final AtomicBoolean localOnly = new AtomicBoolean(true);
+
+    private volatile long minStreamEpoch = 0;
 
     public static enum State {
 
@@ -254,6 +257,11 @@ public class TokenState
         tokenInstances.put(token, id);
     }
 
+    void removeTokenInstance(Token token, UUID id)
+    {
+        tokenInstances.remove(token, id);
+    }
+
     private void cleanEpochInstances()
     {
         Set<Long> keys = Sets.newHashSet(epochInstances.keySet());
@@ -279,21 +287,37 @@ public class TokenState
     {
         return ImmutableSet.copyOf(epochInstances.values());
     }
+//
+//    /**
+//     * return token instances for tokens that are > the given token
+//     * @param token
+//     * @return
+//     */
+//    public Set<UUID> getCurrentTokenInstances(Token token)
+//    {
+//        Set<UUID> ids = Sets.newHashSet();
+//        for (Token splitToken: tokenInstances.keySet())
+//        {
+//            // exclude greater tokens
+//            if (splitToken.compareTo(token) < 1)
+//            {
+//                ids.addAll(tokenInstances.get(splitToken));
+//            }
+//        }
+//        return ids;
+//    }
 
     /**
      * return token instances for tokens that are > the given token
-     * @param token
-     * @return
      */
-    public Set<UUID> getCurrentTokenInstances(Token token)
+    public Set<UUID> getCurrentTokenInstances(Range<Token> range)
     {
         Set<UUID> ids = Sets.newHashSet();
-        for (Token splitToken: tokenInstances.keySet())
+        for (Token t: tokenInstances.keySet())
         {
-            // exclude greater tokens
-            if (splitToken.compareTo(token) < 1)
+            if (range.contains(t))
             {
-                ids.addAll(tokenInstances.get(splitToken));
+                ids.addAll(tokenInstances.get(t));
             }
         }
         return ids;
@@ -336,6 +360,17 @@ public class TokenState
         return localOnly.get();
     }
 
+    public long getMinStreamEpoch()
+    {
+        return minStreamEpoch;
+    }
+
+    public synchronized void setMinStreamEpoch(long minStreamEpoch)
+    {
+        if (minStreamEpoch > this.minStreamEpoch)
+            this.minStreamEpoch = minStreamEpoch;
+    }
+
     public static final IVersionedSerializer<TokenState> serializer = new IVersionedSerializer<TokenState>()
     {
         @Override
@@ -348,6 +383,8 @@ public class TokenState
             out.writeInt(tokenState.executions.get());
             out.writeInt(tokenState.state.ordinal());
             out.writeBoolean(tokenState.localOnly.get());
+
+            out.writeLong(tokenState.minStreamEpoch);
 
             // epoch instances
             Set<Long> keys = tokenState.epochInstances.keySet();
@@ -370,6 +407,7 @@ public class TokenState
                                            State.values()[in.readInt()]);
 
             ts.localOnly.set(in.readBoolean());
+            ts.minStreamEpoch = in.readLong();
 
             int numEpochInstanceKeys = in.readInt();
             for (int i=0; i<numEpochInstanceKeys; i++)
@@ -386,7 +424,7 @@ public class TokenState
         {
             long size = Token.serializer.serializedSize(tokenState.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(tokenState.cfId, version);
-            size += 8 + 8 + 4 + 4 + 1;
+            size += 8 + 8 + 4 + 4 + 1 + 8;
 
             // epoch instances
             size += 4;

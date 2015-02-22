@@ -61,7 +61,8 @@ public class PrepareTask implements Runnable, ICommitCallback
         if (instance == null)
         {
             logger.debug("Single missing instance for prepare: ", id);
-            group.instanceCommitted(id);
+            // FIXME: uncomment
+//            group.instanceCommitted(id);
             return;
         }
 
