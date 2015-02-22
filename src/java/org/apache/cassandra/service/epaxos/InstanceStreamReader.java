@@ -1,10 +1,12 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.ning.compress.lzf.LZFInputStream;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +76,6 @@ public class InstanceStreamReader
                 instancesDrained += drainEpochKeyState(in);
             }
         }
-        logger.debug("Drained {} instances", instancesDrained);
         return instancesDrained;
     }
 
@@ -105,9 +106,8 @@ public class InstanceStreamReader
                 }
             }
             // TODO: work out which state we should handle in which ways
-//            assert tokenState.getState() != TokenState.State.NORMAL;
 
-            logger.info("Streaming in token state for {} on {}", token, cfId);
+            logger.info("Streaming in token state for {} on {} ({})", token, Schema.instance.getCF(cfId), cfId);
 
             // TODO: check that the token state locking/saving/state changes work with all instance stream applications
             tokenState.lockGc();
@@ -124,8 +124,10 @@ public class InstanceStreamReader
                 boolean ignore = !createdNew && currentEpoch <= tokenState.getEpoch();
                 if (ignore)
                 {
-                    logger.info("Remote epoch {} is <= to the local one {}. Ignoring instance stream for this token", currentEpoch, tokenState.getEpoch());
-                    instancesRead += drainInstanceStream(in);
+                    int instancesDrained = drainInstanceStream(in);
+                    logger.info("Remote epoch {} is <= to the local one {}. Ignoring {} from instance stream for this token",
+                                currentEpoch, tokenState.getEpoch(), instancesDrained);
+                    instancesRead += instancesDrained;
                     continue;
                 }
 
@@ -147,7 +149,10 @@ public class InstanceStreamReader
                         long setEpoch = last ? currentEpoch : epoch;
                         if (setEpoch < ks.getEpoch())
                         {
-                            instancesRead += drainEpochKeyState(in);
+                            int instancesDrained = drainEpochKeyState(in);
+                            instancesRead += instancesDrained;
+                            logger.info("Remote epoch for ks {} is < to the local one {}. Ignoring {} from instance stream for this token",
+                                        setEpoch, ks.getEpoch(), instancesDrained);
                             continue;
                         }
                         ks.setEpoch(last ? currentEpoch : epoch);
