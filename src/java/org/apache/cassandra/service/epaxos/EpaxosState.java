@@ -71,10 +71,6 @@ public class EpaxosState
     // how often the TokenMaintenanceTask runs (seconds)
     static final long TOKEN_MAINTENANCE_INTERVAL = Integer.getInteger("cassandra.epaxos.token_state_maintenance_interval", 30);
 
-    // how many instances should be executed under an
-    // epoch before the epoch is incremented
-    // TODO: make configurable. Maybe should adapt to # of token states on node
-    protected static final int EPOCH_INCREMENT_THRESHOLD = Integer.getInteger("cassandra.epaxos.epoch_increment_threshold", 100);
 
     //    private static boolean CACHE = Boolean.getBoolean("cassandra.epaxos.cache");
     private static boolean CACHE = true;
@@ -162,6 +158,11 @@ public class EpaxosState
             Collections.shuffle(successors, getRandom());
             return successors;
         }
+
+        public Set<InetAddress> allEndpoints()
+        {
+            return Sets.newHashSet(Iterables.concat(endpoints, remoteEndpoints));
+        }
     }
 
     public EpaxosState()
@@ -234,9 +235,9 @@ public class EpaxosState
         return random;
     }
 
-    public int getEpochIncrementThreshold()
+    public int getEpochIncrementThreshold(UUID cfId)
     {
-        return EPOCH_INCREMENT_THRESHOLD;
+        return tokenStateManager.getEpochIncrementThreshold(cfId);
     }
 
     protected long getQueryTimeout(long start)
@@ -606,6 +607,7 @@ public class EpaxosState
                         tokenState.recordTokenInstance(entry.getKey(), id);
                     }
                 }
+
                 tokenState.setEpoch(epoch + 1);
 
                 logger.info("Token state created at {} on epoch {} with instance {}",
@@ -616,7 +618,6 @@ public class EpaxosState
                 // neighbor is saved after in case of failure. Double entries
                 // can be removed from the neighbor if initialization doesn't complete
                 tokenStateManager.save(tokenState);
-
 
                 keyStateManager.updateEpoch(tokenState);
             }
@@ -1202,6 +1203,11 @@ public class EpaxosState
             endpoints = ImmutableList.copyOf(Iterables.filter(endpoints, isLocalDc));
         }
         return new ParticipantInfo(endpoints, remoteEndpoints, cl);
+    }
+
+    public boolean replicates(Instance instance)
+    {
+        return getParticipants(instance).allEndpoints().contains(getEndpoint());
     }
 
     protected Predicate<InetAddress> dcPredicateFor(final String dc, final boolean equals)
