@@ -250,7 +250,7 @@ public class InstanceStreamWriter
                 // in case we prevented any from running
                 state.startTokenStateGc(tokenState);
             }
-            logger.debug("Wrote out {} instances for token {} on {}", instancesWritten, token, cfId);
+            logger.info("Wrote {} instances for token {} on {}", instancesWritten, token, cfId);
         }
 
         // no more outgoing token states

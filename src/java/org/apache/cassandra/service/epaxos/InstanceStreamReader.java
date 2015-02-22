@@ -60,7 +60,7 @@ public class InstanceStreamReader
         return instancesDrained;
     }
 
-    protected void drainInstanceStream(DataInputStream in) throws IOException
+    protected int drainInstanceStream(DataInputStream in) throws IOException
     {
         int instancesDrained = 0;
         while (in.readBoolean())
@@ -75,6 +75,7 @@ public class InstanceStreamReader
             }
         }
         logger.debug("Drained {} instances", instancesDrained);
+        return instancesDrained;
     }
 
     public void read(ReadableByteChannel channel) throws IOException
@@ -124,7 +125,7 @@ public class InstanceStreamReader
                 if (ignore)
                 {
                     logger.info("Remote epoch {} is <= to the local one {}. Ignoring instance stream for this token", currentEpoch, tokenState.getEpoch());
-                    drainInstanceStream(in);
+                    instancesRead += drainInstanceStream(in);
                     continue;
                 }
 
@@ -146,7 +147,7 @@ public class InstanceStreamReader
                         long setEpoch = last ? currentEpoch : epoch;
                         if (setEpoch < ks.getEpoch())
                         {
-                            drainEpochKeyState(in);
+                            instancesRead += drainEpochKeyState(in);
                             continue;
                         }
                         ks.setEpoch(last ? currentEpoch : epoch);
@@ -250,7 +251,7 @@ public class InstanceStreamReader
                 tokenState.unlockGc();
             }
 
-            logger.debug("Read in {} instances for token {} on {}", instancesRead, token, cfId);
+            logger.info("Read in {} instances for token {} on {}", instancesRead, token, cfId);
             state.tokenStateManager.save(tokenState);
         }
     }

@@ -315,10 +315,10 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         final AtomicBoolean wasDrained = new AtomicBoolean(false);
         InstanceStreamReader reader = new InstanceStreamReader(toNode, cfId, range) {
             @Override
-            protected void drainInstanceStream(DataInputStream in) throws IOException
+            protected int drainInstanceStream(DataInputStream in) throws IOException
             {
                 wasDrained.set(true);
-                super.drainInstanceStream(in);
+                return super.drainInstanceStream(in);
             }
         };
 
