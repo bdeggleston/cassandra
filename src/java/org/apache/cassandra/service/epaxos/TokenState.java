@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -42,6 +43,11 @@ public class TokenState
     // the number of failure recovery streams are open
     // instances cannot be gc'd unless this is 0
     private final AtomicInteger recoveryStreams = new AtomicInteger(0);
+
+    // set to false if there were any SERIAL queries committed in the current epoch
+    // this is used to determine if epoch and token instances should be executed at
+    // SERIAL or LOCAL_SERIAL
+    private final AtomicBoolean localOnly = new AtomicBoolean(true);
 
     public static enum State {
 
@@ -136,6 +142,7 @@ public class TokenState
         recordHighEpoch(epoch);
 
         executions.set(0);
+        localOnly.set(false);
         resetUnrecordedExecutions();
         cleanEpochInstances();
     }
@@ -259,6 +266,15 @@ public class TokenState
         }
     }
 
+    /**
+     * records a serial commit. Returns true if this is the first serial commit
+     * seen in this epoch, and the token state needs to be saved
+     */
+    public boolean recordSerialCommit()
+    {
+        return localOnly.compareAndSet(true, false);
+    }
+
     public Set<UUID> getCurrentEpochInstances()
     {
         return ImmutableSet.copyOf(epochInstances.values());
@@ -317,8 +333,7 @@ public class TokenState
      */
     public boolean localOnly()
     {
-        // TODO: this
-        return false;
+        return localOnly.get();
     }
 
     public static final IVersionedSerializer<TokenState> serializer = new IVersionedSerializer<TokenState>()
@@ -332,6 +347,7 @@ public class TokenState
             out.writeLong(tokenState.highEpoch);
             out.writeInt(tokenState.executions.get());
             out.writeInt(tokenState.state.ordinal());
+            out.writeBoolean(tokenState.localOnly.get());
 
             // epoch instances
             Set<Long> keys = tokenState.epochInstances.keySet();
@@ -353,6 +369,8 @@ public class TokenState
                                            in.readInt(),
                                            State.values()[in.readInt()]);
 
+            ts.localOnly.set(in.readBoolean());
+
             int numEpochInstanceKeys = in.readInt();
             for (int i=0; i<numEpochInstanceKeys; i++)
             {
@@ -368,7 +386,7 @@ public class TokenState
         {
             long size = Token.serializer.serializedSize(tokenState.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(tokenState.cfId, version);
-            size += 8 + 8 + 4 + 4;
+            size += 8 + 8 + 4 + 4 + 1;
 
             // epoch instances
             size += 4;

@@ -439,8 +439,24 @@ public class TokenStateManager
             save(ts);
         }
         finally
+
+    public void maybeRecordSerialInstance(QueryInstance instance)
+    {
+        if (instance.getQuery().getConsistencyLevel() == ConsistencyLevel.SERIAL)
         {
-            ts.rwLock.writeLock().unlock();
+            TokenState ts = get(instance.getToken(), instance.getCfId());
+            if (ts.recordSerialCommit())
+            {
+                ts.rwLock.writeLock().lock();
+                try
+                {
+                    save(ts);
+                }
+                finally
+                {
+                    ts.rwLock.writeLock().unlock();
+                }
+            }
         }
     }
 
