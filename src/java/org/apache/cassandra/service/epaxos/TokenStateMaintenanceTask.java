@@ -59,13 +59,13 @@ public class TokenStateMaintenanceTask implements Runnable
                     continue;
 
                 TokenState ts = tokenStateManager.getExact(token, cfId);
-                if (ts.getExecutions() >= state.getEpochIncrementThreshold())
+                if (ts.getExecutions() >= state.getEpochIncrementThreshold(cfId))
                 {
                     // TODO: check that a previously seen epoch instance isn't local serial from another dc
                     ts.rwLock.writeLock().lock();
                     try
                     {
-                        if (ts.getExecutions() < state.getEpochIncrementThreshold())
+                        if (ts.getExecutions() < state.getEpochIncrementThreshold(cfId))
                         {
                             continue;
                         }

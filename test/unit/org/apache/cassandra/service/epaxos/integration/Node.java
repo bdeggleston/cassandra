@@ -44,8 +44,6 @@ public class Node extends EpaxosState
 
     public final int number;
 
-    private volatile int epochIncrementThreshold = EPOCH_INCREMENT_THRESHOLD;
-
     public Node(int number, Messenger messenger)
     {
         this.number = number;
@@ -243,18 +241,13 @@ public class Node extends EpaxosState
             {
                 return true;
             }
+
         };
     }
 
     public void setEpochIncrementThreshold(int threshold)
     {
-        epochIncrementThreshold = threshold;
-    }
-
-    @Override
-    public int getEpochIncrementThreshold()
-    {
-        return epochIncrementThreshold;
+        ((MockTokenStateManager) tokenStateManager).epochIncrementThreshold = threshold;
     }
 
     /**

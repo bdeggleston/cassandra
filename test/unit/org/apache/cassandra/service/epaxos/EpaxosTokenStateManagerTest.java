@@ -13,6 +13,7 @@ import org.junit.Test;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class EpaxosTokenStateManagerTest
 {
@@ -82,5 +83,25 @@ public class EpaxosTokenStateManagerTest
 
         Assert.assertEquals(token150, ts150.getToken());
         Assert.assertEquals(ts200.getEpoch(), ts150.getEpoch());
+    }
+
+    @Test
+    public void unsavedExecutionThreshold()
+    {
+        final AtomicBoolean wasSaved = new AtomicBoolean(false);
+        TokenStateManager tsm = new TokenStateManager() {
+            @Override
+            protected Set<Token> getReplicatedTokensForCf(UUID cfId)
+            {
+                return TOKEN_SET;
+            }
+
+            @Override
+            public void save(TokenState state)
+            {
+                wasSaved.set(true);
+                super.save(state);
+            }
+        };
     }
 }

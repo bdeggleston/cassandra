@@ -43,5 +43,10 @@ public class MockTokenStateManager extends TokenStateManager
         return Sets.newHashSet(token);
     }
 
-
+    public int epochIncrementThreshold = 100;
+    @Override
+    public int getEpochIncrementThreshold(UUID cfId)
+    {
+        return epochIncrementThreshold;
+    }
 }

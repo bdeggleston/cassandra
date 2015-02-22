@@ -6,6 +6,7 @@ import com.google.common.io.ByteStreams;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
+import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.TypeSizes;
@@ -32,6 +33,17 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class TokenStateManager
 {
+    // how many instances should be executed under an epoch before the epoch is incremented
+    // TODO: make configurable. Maybe should adapt to # of token states on node
+    protected static final int EPOCH_INCREMENT_THRESHOLD = Integer.getInteger("cassandra.epaxos.epoch_increment_threshold", 100);
+    protected static final int MIN_EPOCH_INCREMENT_THRESHOLD = 5;
+
+    // we don't save the token state every time an instance is executed.
+    // This sets the percentage of the increment threshold that can be executed
+    // before we must persist the execution count
+    // TODO: make configurable.
+    protected static final int EXECUTION_PERSISTENCE_PERCENT = Integer.getInteger("cassandra.epaxos.execution_persistence_percent", 100);
+
     private final String keyspace;
     private final String table;
     private volatile boolean started = false;
@@ -42,6 +54,8 @@ public class TokenStateManager
         ReadWriteLock lock = new ReentrantReadWriteLock();
         Map<Token, TokenState> states = new HashMap<>();
         ArrayList<Token> tokens = new ArrayList<>();
+        volatile int epochThreshold = -1;
+        volatile int unsavedExecutionThreshold = -1;
 
         private ManagedCf(UUID cfid)
         {
@@ -61,6 +75,12 @@ public class TokenStateManager
 
                 tokens = new ArrayList<>(states.keySet());
                 Collections.sort(tokens);
+
+                // recalculate the epoch increment threshold
+                epochThreshold = Math.max(EPOCH_INCREMENT_THRESHOLD / tokens.size(), MIN_EPOCH_INCREMENT_THRESHOLD);
+
+                double amount = ((double) EXECUTION_PERSISTENCE_PERCENT) / 100.0;
+                unsavedExecutionThreshold = (int) (((double) epochThreshold) * amount);
             }
             finally
             {
@@ -92,7 +112,7 @@ public class TokenStateManager
                 int rightIdx = TokenMetadata.firstTokenIndex(tokens, right, false);
                 int leftIdx = rightIdx > 0 ? rightIdx - 1 : tokens.size() - 1;
                 Token left = tokens.get(leftIdx);
-                return new Range<Token>(left, right);
+                return new Range<>(left, right);
             }
             finally
             {
@@ -432,13 +452,32 @@ public class TokenStateManager
     public void reportExecution(Token token, UUID cfId)
     {
         TokenState ts = get(token, cfId);
-        ts.rwLock.writeLock().lock();
-        try
+        ts.recordExecution();
+        int unsavedThreshold = getUnsavedExecutionThreshold(cfId);
+        if (ts.getNumUnrecordedExecutions() > unsavedThreshold)
         {
-            ts.recordExecution();
-            save(ts);
+            ts.rwLock.writeLock().lock();
+            try
+            {
+                if (ts.getNumUnrecordedExecutions() > unsavedThreshold)
+                    save(ts);
+            }
+            finally
+            {
+                ts.rwLock.writeLock().unlock();
+            }
         }
-        finally
+    }
+
+    public int getEpochIncrementThreshold(UUID cfId)
+    {
+        return  states.get(cfId).epochThreshold;
+    }
+
+    private int getUnsavedExecutionThreshold(UUID cfId)
+    {
+        return  states.get(cfId).unsavedExecutionThreshold;
+    }
 
     public void maybeRecordSerialInstance(QueryInstance instance)
     {
