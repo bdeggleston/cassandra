@@ -188,4 +188,15 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         // TODO: check not committed
         Assert.assertNull(lastCommit);
     }
+
+    // TODO: probably delete above tests, they're duplicated by the accept callback test
+
+    /**
+     * Check that the EpaxosState.accept uses the vetoed decision when working with EpochInstances
+     */
+    @Test
+    public void epochVetos()
+    {
+
+    }
 }

@@ -370,6 +370,12 @@ public class EpaxosState
 
         Instance instance = getInstanceCopy(iid);
         instance.setDependencies(decision.acceptDeps);
+
+        if (instance instanceof EpochInstance)
+        {
+            ((EpochInstance) instance).setVetoed(decision.vetoed);
+        }
+
         instance.incrementBallot();
 
         ParticipantInfo participantInfo;
@@ -504,7 +510,7 @@ public class EpaxosState
         }
     }
 
-    private void maybeSetResultFuture(UUID id, Object result)
+    void maybeSetResultFuture(UUID id, Object result)
     {
         SettableFuture resultFuture = resultFutures.get(id);
         if (resultFuture != null)
@@ -598,20 +604,24 @@ public class EpaxosState
                 // transfer token state uuid to new token state
                 // epoch instances aren't also recorded because those
                 // will only  affect the neighbor, not the new token instance
-                for (Map.Entry<Token, Set<UUID>> entry: neighbor.splitTokenInstances(token).entrySet())
+                for (Map.Entry<Token, Set<UUID>> entry: neighbor.allTokenInstances().entrySet())
                 {
                     if (!neighborRange.contains(entry.getKey()))
                     {
                         for (UUID id: entry.getValue())
                         {
                             tokenState.recordTokenInstance(entry.getKey(), id);
-                            neighbor.removeTokenInstance(entry.getKey(), id);
+                            if (!id.equals(instance.getId()))
+                            {
+                                neighbor.removeTokenInstance(entry.getKey(), id);
+                            }
                         }
                     }
                 }
+                tokenState.setCreatorToken(neighbor.getToken());
 
-//                tokenState.setEpoch(epoch + 1);
-//                neighbor.setEpoch(epoch + 1);
+                tokenState.setEpoch(epoch + 1);
+                neighbor.setEpoch(epoch + 1);
 
                 // the epoch for both this token state, and it's neighbor (the token it was split from)
                 // need to be greater than the epoch at the time of the split. This prevents new token
@@ -629,8 +639,8 @@ public class EpaxosState
                 tokenStateManager.save(tokenState);
                 tokenStateManager.save(neighbor);
 
-//                keyStateManager.updateEpoch(tokenState);
-//                keyStateManager.updateEpoch(neighbor);
+                keyStateManager.updateEpoch(tokenState);
+                keyStateManager.updateEpoch(neighbor);
             }
             finally
             {
@@ -913,9 +923,11 @@ public class EpaxosState
     {
         if (FailureDetector.instance.isAlive(endpoint))
         {
+            FailureRecoveryRequest request = new FailureRecoveryRequest(token, cfId, epoch);
+            logger.debug("Sending {} to {}", request, endpoint);
             // TODO: track recently sent requests so we don't spam the other server
             MessageOut<FailureRecoveryRequest> msg = new MessageOut<>(MessagingService.Verb.EPAXOS_FAILURE_RECOVERY,
-                                                                      new FailureRecoveryRequest(token, cfId, epoch),
+                                                                      request,
                                                                       FailureRecoveryRequest.serializer);
             sendOneWay(msg, endpoint);
         }
@@ -924,6 +936,53 @@ public class EpaxosState
     public IVerbHandler<FailureRecoveryRequest> getFailureRecoveryVerbHandler()
     {
         return new FailureRecoveryVerbHandler(this);
+    }
+
+    // duplicates a lot of the FailureRecoveryTask.preRecover
+    public boolean prepareForIncomingStream(Range<Token> range, UUID cfId)
+    {
+        // check that this isn't for an existing failure recovery task
+        synchronized (failureRecoveryTasks)
+        {
+            for (FailureRecoveryTask task: failureRecoveryTasks)
+            {
+                if (task.token.equals(range.right) && task.cfId.equals(cfId))
+                    return false;
+            }
+
+        }
+        tokenStateManager.prepareForIncomingStream(range, cfId);
+        Iterator<CfKey> cfKeys = keyStateManager.getCfKeyIterator(range, cfId, 10000);
+        while (cfKeys.hasNext())
+        {
+            Set<UUID> toDelete = new HashSet<>();
+            CfKey cfKey = cfKeys.next();
+            keyStateManager.getCfKeyLock(cfKey).lock();
+            try
+            {
+                KeyState ks = keyStateManager.loadKeyState(cfKey);
+
+                toDelete.addAll(ks.getActiveInstanceIds());
+                for (Set<UUID> ids: ks.getEpochExecutions().values())
+                {
+                    toDelete.addAll(ids);
+                }
+                keyStateManager.deleteKeyState(cfKey);
+            }
+            finally
+            {
+                keyStateManager.getCfKeyLock(cfKey).unlock();
+            }
+
+            // aquiring the instance lock after the key state lock can create
+            // a deadlock, so we get all the instance ids we want to delete,
+            // then delete them after we're done deleting the key state
+            for (UUID id: toDelete)
+            {
+                deleteInstance(id);
+            }
+        }
+        return true;
     }
 
     // repair / streaming support
@@ -1135,18 +1194,17 @@ public class EpaxosState
         tokenStateManager.reportExecution(instance.getToken(), instance.getCfId());
     }
 
-    // accessor methods
     public ReadWriteLock getInstanceLock(UUID iid)
     {
         return locks.get(iid);
     }
 
+    // wrapped for testing
     public TracingAwareExecutorService getStage(Stage stage)
     {
         return StageManager.getStage(stage);
     }
 
-    // wrapped for testing
     protected void sendReply(MessageOut message, int id, InetAddress to)
     {
         MessagingService.instance().sendReply(message, id, to);

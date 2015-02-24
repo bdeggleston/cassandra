@@ -51,6 +51,7 @@ public class TokenState
     private final AtomicBoolean localOnly = new AtomicBoolean(true);
 
     private volatile long minStreamEpoch = 0;
+    private volatile Token creatorToken = null;
 
     public static enum State {
 
@@ -216,13 +217,13 @@ public class TokenState
     /**
      * Moves the given token instance from the token instance collection, into
      * the epoch instances collection as part of the given epoch.
-     *
-     * TODO: is it possible for token instances to not be removed?
      */
-    public void recordTokenInstanceExecution(TokenInstance instance)
+    public boolean recordTokenInstanceExecution(TokenInstance instance)
     {
-        tokenInstances.remove(instance.getToken(), instance.getId());
-        recordEpochInstance(epoch, instance.getId());
+        boolean changed = tokenInstances.remove(instance.getToken(), instance.getId());
+        if (changed)
+            recordEpochInstance(epoch, instance.getId());
+        return changed;
     }
 
     public void lockGc()
@@ -287,25 +288,6 @@ public class TokenState
     {
         return ImmutableSet.copyOf(epochInstances.values());
     }
-//
-//    /**
-//     * return token instances for tokens that are > the given token
-//     * @param token
-//     * @return
-//     */
-//    public Set<UUID> getCurrentTokenInstances(Token token)
-//    {
-//        Set<UUID> ids = Sets.newHashSet();
-//        for (Token splitToken: tokenInstances.keySet())
-//        {
-//            // exclude greater tokens
-//            if (splitToken.compareTo(token) < 1)
-//            {
-//                ids.addAll(tokenInstances.get(splitToken));
-//            }
-//        }
-//        return ids;
-//    }
 
     /**
      * return token instances for tokens that are > the given token
@@ -323,21 +305,12 @@ public class TokenState
         return ids;
     }
 
-    /**
-     * If this is the token state for the given token, the token
-     * instance ids are moved into the current epoch instances. Otherwise,
-     * they're removed
-     * @return true if there are changes to be saved
-     */
-    public Map<Token, Set<UUID>> splitTokenInstances(Token splitToken)
+    public Map<Token, Set<UUID>> allTokenInstances()
     {
         Map<Token, Set<UUID>> deps = Maps.newHashMap();
         for (Token depToken: Sets.newHashSet(tokenInstances.keySet()))
         {
-            if (depToken.compareTo(splitToken) < 1)
-            {
-                deps.put(depToken, tokenInstances.removeAll(depToken));
-            }
+            deps.put(depToken, tokenInstances.get(depToken));
         }
         return deps;
     }
@@ -346,7 +319,7 @@ public class TokenState
     {
         long remoteEpoch = message.getEpoch();
         return new EpochDecision(EpochDecision.evaluate(epoch, remoteEpoch),
-                                 message.getToken(),
+                                 getToken(),
                                  epoch,
                                  remoteEpoch);
     }
@@ -371,6 +344,18 @@ public class TokenState
             this.minStreamEpoch = minStreamEpoch;
     }
 
+    public Token getCreatorToken()
+    {
+        return creatorToken;
+    }
+
+    public void setCreatorToken(Token creatorToken)
+    {
+        assert creatorToken != null;
+        assert this.creatorToken == null || this.creatorToken.equals(creatorToken);
+        this.creatorToken = creatorToken;
+    }
+
     public static final IVersionedSerializer<TokenState> serializer = new IVersionedSerializer<TokenState>()
     {
         @Override
@@ -383,8 +368,12 @@ public class TokenState
             out.writeInt(tokenState.executions.get());
             out.writeInt(tokenState.state.ordinal());
             out.writeBoolean(tokenState.localOnly.get());
-
             out.writeLong(tokenState.minStreamEpoch);
+            out.writeBoolean(tokenState.creatorToken != null);
+            if (tokenState.creatorToken != null)
+            {
+                Token.serializer.serialize(tokenState.creatorToken, out);
+            }
 
             // epoch instances
             Set<Long> keys = tokenState.epochInstances.keySet();
@@ -409,6 +398,11 @@ public class TokenState
             ts.localOnly.set(in.readBoolean());
             ts.minStreamEpoch = in.readLong();
 
+            if (in.readBoolean())
+            {
+                ts.creatorToken = Token.serializer.deserialize(in);
+            }
+
             int numEpochInstanceKeys = in.readInt();
             for (int i=0; i<numEpochInstanceKeys; i++)
             {
@@ -425,6 +419,12 @@ public class TokenState
             long size = Token.serializer.serializedSize(tokenState.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(tokenState.cfId, version);
             size += 8 + 8 + 4 + 4 + 1 + 8;
+
+            size += 1;
+            if (tokenState.creatorToken != null)
+            {
+                size += Token.serializer.serializedSize(tokenState.creatorToken, TypeSizes.NATIVE);
+            }
 
             // epoch instances
             size += 4;

@@ -48,9 +48,9 @@ public class FailureRecoveryTask implements Runnable
     // TODO: convert each method to a Runnable/StreamEventListener/RepairEventListener, etc
     private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
 
-    private final EpaxosState state;
-    private final Token token;
-    private final UUID cfId;
+    public final EpaxosState state;
+    public final Token token;
+    public final UUID cfId;
 
     // the remote epoch that caused the failure recovery
     private final long epoch;
@@ -129,7 +129,6 @@ public class FailureRecoveryTask implements Runnable
         try
         {
             tokenState.setState(TokenState.State.PRE_RECOVERY);
-//            tokenState.setEpoch(epoch);
             state.tokenStateManager.save(tokenState);
         }
         finally
@@ -322,8 +321,9 @@ public class FailureRecoveryTask implements Runnable
             if (tokenState.getState() != TokenState.State.RECOVERING_INSTANCES)
             {
 
+                // should be set by stream receiver
                 logger.info("Aborting instance recovery for {}. Status is {}, expected {}",
-                            tokenState, tokenState.getState(), TokenState.State.PRE_RECOVERY);
+                            tokenState, tokenState.getState(), TokenState.State.RECOVERING_INSTANCES);
                 return;
             }
 
@@ -373,6 +373,7 @@ public class FailureRecoveryTask implements Runnable
             tokenState.rwLock.writeLock().unlock();
         }
         logger.info("Epaxos failure recovery task for {} on {} to {} completed", token, cfId, epoch);
+        // TODO: execute all committed instances
     }
 
     @Override

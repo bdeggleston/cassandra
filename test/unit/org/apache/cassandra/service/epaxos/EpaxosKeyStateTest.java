@@ -463,5 +463,11 @@ public class EpaxosKeyStateTest
         KeyState deserialized = KeyState.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
         Assert.assertEquals(ks, deserialized);
     }
+
+    @Test
+    public void entrySerialization() throws Exception
+    {
+
+    }
 }
 

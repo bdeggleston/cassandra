@@ -13,11 +13,9 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.DataOutputStreamPlus;
-import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.streaming.StreamManager;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,11 +57,6 @@ public class InstanceStreamWriter
     protected TokenState getTokenState()
     {
         return state.tokenStateManager.get(range.left, cfId);
-    }
-
-    protected boolean replicates(Token token)
-    {
-        return Keyspace.open(Schema.instance.getCF(cfId).left).getReplicationStrategy().getCachedEndpoints(token).contains(state.getEndpoint());
     }
 
     private TokenState getExact(Token token)
@@ -157,30 +150,29 @@ public class InstanceStreamWriter
                 out.writeBoolean(false);
                 continue;
             }
-            else
-            {
-                boolean success = true;
-                while (tokenState.getEpoch() < tokenState.getMinStreamEpoch())
-                {
-                    try
-                    {
-                        state.process(state.createEpochInstance(tokenState.getToken(), tokenState.getCfId(), tokenState.getEpoch() + 1), ConsistencyLevel.SERIAL);
-                        logger.debug("Incremented token state for streaming");
-                    }
-                    catch (WriteTimeoutException e)
-                    {
-                        success = false;
-                        break;
-                    }
-                }
 
-                out.writeBoolean(success);
-                if (!success)
+            boolean success = true;
+            while (tokenState.getEpoch() < tokenState.getMinStreamEpoch())
+            {
+                try
                 {
-                    logger.warn("Unable to increment token state {} epoch from {} to minimum streaming epoch of {}",
-                                tokenState.getToken(), tokenState.getEpoch(), tokenState.getMinStreamEpoch());
-                    continue;
+                    state.process(state.createEpochInstance(tokenState.getToken(), tokenState.getCfId(), tokenState.getEpoch() + 1), ConsistencyLevel.SERIAL);
+                    logger.debug("Incremented token state for streaming");
                 }
+                catch (WriteTimeoutException e)
+                {
+                    logger.info("Error incrementing epoch: {}", e);
+                    success = false;
+                    break;
+                }
+            }
+
+            out.writeBoolean(success);
+            if (!success)
+            {
+                logger.warn("Unable to increment token state {} epoch from {} to minimum streaming epoch of {}",
+                            tokenState.getToken(), tokenState.getEpoch(), tokenState.getMinStreamEpoch());
+                continue;
             }
 
             Iterator<CfKey> cfKeyIter = state.keyStateManager.getCfKeyIterator(tokenRange, cfId, CFKEY_ITER_CHUNK);
@@ -257,25 +249,6 @@ public class InstanceStreamWriter
                         writeInstance(instance, out, outputStream);
                         instancesWritten++;
                     }
-//
-//                    // write out active token/epoch instances
-//                    tokenState.rwLock.readLock().lock();
-//                    try
-//                    {
-//                        Set<UUID> tokenInstances = tokenState.getCurrentEpochInstances();
-//                        tokenInstances.addAll(tokenState.getCurrentTokenInstances(tokenRange));
-//                        out.writeInt(tokenInstances.size());
-//                        for (UUID id: tokenInstances)
-//                        {
-//                            Instance instance = state.getInstanceCopy(id);
-//                            writeInstance(instance, out, outputStream);
-//                            instancesWritten++;
-//                        }
-//                    }
-//                    finally
-//                    {
-//                        tokenState.rwLock.readLock().unlock();
-//                    }
                 }
 
                 out.writeBoolean(false);

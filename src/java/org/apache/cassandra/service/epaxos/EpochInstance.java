@@ -114,7 +114,7 @@ public class EpochInstance extends AbstractTokenInstance
     @Override
     protected String toStringExtra()
     {
-        return ", epoch=" + epoch;
+        return ", epoch=" + epoch + ", vetoed=" + vetoed;
     }
 
     private static final IVersionedSerializer<EpochInstance> commonSerializer = new IVersionedSerializer<EpochInstance>()

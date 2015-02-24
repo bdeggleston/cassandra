@@ -5,11 +5,15 @@ import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.streaming.StreamEvent;
+import org.apache.cassandra.streaming.StreamEventHandler;
+import org.apache.cassandra.streaming.StreamSession;
+import org.apache.cassandra.streaming.StreamState;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -79,7 +83,7 @@ public class InstanceStreamReader
         return instancesDrained;
     }
 
-    public void read(ReadableByteChannel channel) throws IOException
+    public void read(ReadableByteChannel channel, StreamSession session) throws IOException
     {
         DataInputStream in = new DataInputStream(new LZFInputStream(Channels.newInputStream(channel)));
 
@@ -90,21 +94,39 @@ public class InstanceStreamReader
             Token token = Token.serializer.deserialize(in);
             int instancesRead = 0;
 
-            boolean createdNew = false;
-            TokenState tokenState = getExact(token);
-            if (tokenState == null)
+            boolean canSkip = true;
+            TokenState ts = getExact(token);
+            if (ts == null)
             {
-                tokenState = new TokenState(token, cfId, 0, 0, 0, TokenState.State.RECOVERY_REQUIRED);
-                TokenState previous = state.tokenStateManager.putState(tokenState);
-                if (previous == tokenState)
+                ts = new TokenState(token, cfId, 0, 0, 0, TokenState.State.RECOVERING_INSTANCES);
+                TokenState previous = state.tokenStateManager.putState(ts);
+                if (previous == ts)
                 {
-                    createdNew = true;
+                    canSkip = false;
                 }
                 else
                 {
-                    tokenState = previous;
+                    ts = previous;
                 }
             }
+            else
+            {
+                ts.rwLock.writeLock().lock();
+                try
+                {
+                    if (ts.getState() == TokenState.State.PRE_RECOVERY)
+                    {
+                        ts.setState(TokenState.State.RECOVERING_INSTANCES);
+                        state.tokenStateManager.save(ts);
+                        canSkip = false;
+                    }
+                }
+                finally
+                {
+                    ts.rwLock.writeLock().unlock();
+                }
+            }
+            final TokenState tokenState = ts;
             // TODO: work out which state we should handle in which ways
 
             logger.info("Streaming in token state for {} on {} ({})", token, Schema.instance.getCF(cfId), cfId);
@@ -121,7 +143,7 @@ public class InstanceStreamReader
 
                 long currentEpoch = in.readLong();
 
-                boolean ignore = !createdNew && currentEpoch <= tokenState.getEpoch();
+                boolean ignore = canSkip && currentEpoch <= tokenState.getEpoch();
                 if (ignore)
                 {
                     int instancesDrained = drainInstanceStream(in);
@@ -233,22 +255,49 @@ public class InstanceStreamReader
                     }
                 }
                 tokenState.setEpoch(currentEpoch);
-                tokenState.rwLock.writeLock().lock();
-                try
-                {
-                    // if this isn't in a FailureRecoveryTask managed state, revert to normal
-                    if (tokenState.getState() != TokenState.State.RECOVERING_INSTANCES)
-                    {
-                        // TODO: for all non-failures recovery streaming, token state should remain in recovery mode until parent session is completed
-                        // TODO: also, start a gc task for the token state once everything is done
-                        tokenState.setState(TokenState.State.NORMAL);
-                    }
-                    state.tokenStateManager.save(tokenState);
 
-                }
-                finally
+                // if this stream session is including data, it's not part of a failure recovery task, so
+                // we need to update the token state ourselves
+                // TODO: clean this up
+                if (session != null && session.streamingInData())
                 {
-                    tokenState.rwLock.writeLock().unlock();
+                    tokenState.rwLock.writeLock().lock();
+                    try
+                    {
+                        logger.debug("Setting token state to {}", TokenState.State.RECOVERING_DATA);
+                        tokenState.setState(TokenState.State.RECOVERING_DATA);
+                        state.tokenStateManager.save(tokenState);
+                    }
+                    finally
+                    {
+                        tokenState.rwLock.writeLock().unlock();
+                    }
+
+                    session.addListener(new StreamEventHandler()
+                    {
+                        @Override
+                        public void handleStreamEvent(StreamEvent event)
+                        {
+                            if (event.eventType == StreamEvent.Type.STREAM_COMPLETE)
+                            {
+                                logger.debug("Setting token state to {}", TokenState.State.NORMAL);
+                                tokenState.rwLock.writeLock().lock();
+                                try
+                                {
+                                    tokenState.setState(TokenState.State.NORMAL);
+                                    state.tokenStateManager.save(tokenState);
+                                }
+                                finally
+                                {
+                                    tokenState.rwLock.writeLock().unlock();
+                                }
+                            }
+                        }
+
+                        public void onSuccess(@Nullable StreamState streamState) {}
+
+                        public void onFailure(Throwable throwable) {}
+                    });
                 }
             }
             finally

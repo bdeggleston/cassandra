@@ -19,13 +19,14 @@ import java.util.UUID;
  */
 public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
 {
-    private static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
+    private static final Token MANAGED_TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(100));
+    private static final Token MESSAGE_TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(50));
     private static final UUID CFID = UUIDGen.getTimeUUID();
 
     private static MessageIn<Message> getMessage(long epoch) throws UnknownHostException
     {
         return MessageIn.create(InetAddress.getLocalHost(),
-                                new Message(TOKEN, CFID, epoch),
+                                new Message(MESSAGE_TOKEN, CFID, epoch),
                                 Collections.EMPTY_MAP,
                                 MessagingService.Verb.ECHO,
                                 0);
@@ -78,18 +79,20 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         public void startRemoteFailureRecovery(InetAddress endpoint, Token token, UUID cfId, long epoch)
         {
             remoteFailureCalls++;
+            Assert.assertEquals(MANAGED_TOKEN, token);
         }
 
         @Override
         public void startLocalFailureRecovery(Token token, UUID cfId, long epoch)
         {
             localFailureCalls++;
+            Assert.assertEquals(MANAGED_TOKEN, token);
         }
 
         @Override
         public TokenState getTokenState(IEpochMessage message)
         {
-            return new TokenState(message.getToken(), message.getCfId(), epoch, epoch, 0, state);
+            return new TokenState(MANAGED_TOKEN, message.getCfId(), epoch, epoch, 0, state);
         }
     }
 

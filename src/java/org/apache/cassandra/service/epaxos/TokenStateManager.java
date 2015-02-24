@@ -62,6 +62,18 @@ public class TokenStateManager
             this.cfid = cfid;
         }
 
+        private void updateInternalRing()
+        {
+            tokens = new ArrayList<>(states.keySet());
+            Collections.sort(tokens);
+
+            // recalculate the epoch increment threshold
+            epochThreshold = Math.max(EPOCH_INCREMENT_THRESHOLD / tokens.size(), MIN_EPOCH_INCREMENT_THRESHOLD);
+
+            double amount = ((double) EXECUTION_PERSISTENCE_PERCENT) / 100.0;
+            unsavedExecutionThreshold = (int) (((double) epochThreshold) * amount);
+        }
+
         TokenState putIfAbsent(TokenState state)
         {
             lock.writeLock().lock();
@@ -72,15 +84,7 @@ public class TokenStateManager
                     return states.get(state.getToken());
                 }
                 states.put(state.getToken(), state);
-
-                tokens = new ArrayList<>(states.keySet());
-                Collections.sort(tokens);
-
-                // recalculate the epoch increment threshold
-                epochThreshold = Math.max(EPOCH_INCREMENT_THRESHOLD / tokens.size(), MIN_EPOCH_INCREMENT_THRESHOLD);
-
-                double amount = ((double) EXECUTION_PERSISTENCE_PERCENT) / 100.0;
-                unsavedExecutionThreshold = (int) (((double) epochThreshold) * amount);
+                updateInternalRing();
             }
             finally
             {
@@ -143,6 +147,30 @@ public class TokenStateManager
             finally
             {
                 lock.readLock().unlock();
+            }
+        }
+
+        private void prepareForIncomingStream(Range<Token> range)
+        {
+            lock.writeLock().lock();
+            try
+            {
+                Set<Token> currentTokens = Sets.newHashSet(states.keySet());
+                for (Token token: currentTokens)
+                {
+                    if (range.contains(token))
+                    {
+                        TokenState state = states.remove(token);
+                        delete(state);
+                    }
+                }
+
+                putIfAbsent(new TokenState(range.right, cfid, 0, 0, 0, TokenState.State.PRE_RECOVERY));
+                updateInternalRing();
+            }
+            finally
+            {
+                lock.writeLock().unlock();
             }
         }
     }
@@ -409,17 +437,25 @@ public class TokenStateManager
      */
     public void recordExecutedTokenInstance(TokenInstance instance)
     {
-        TokenState ts = get(instance);
-        ts.rwLock.writeLock().lock();
-        try
+        for (Token token: states.get(instance.getCfId()).allTokens())
         {
-            ts.recordTokenInstanceExecution(instance);
-            save(ts);
+            TokenState ts = getExact(token, instance.getCfId());
+            ts.rwLock.writeLock().lock();
+            try
+            {
+                if (ts.recordTokenInstanceExecution(instance))
+                    save(ts);
+            }
+            finally
+            {
+                ts.rwLock.writeLock().unlock();
+            }
         }
-        finally
-        {
-            ts.rwLock.writeLock().unlock();
-        }
+    }
+
+    public void prepareForIncomingStream(Range<Token> range, UUID cfId)
+    {
+        getOrInitManagedCf(cfId).prepareForIncomingStream(range);
     }
 
     public void save(TokenState state)
@@ -442,6 +478,23 @@ public class TokenStateManager
                                        ByteBuffer.wrap(stateOut.getData()));
 
         state.onSave();
+    }
+
+    private void delete(TokenState state)
+    {
+        DataOutputBuffer tokenOut = new DataOutputBuffer((int) Token.serializer.serializedSize(state.getToken(), TypeSizes.NATIVE));
+        try
+        {
+            Token.serializer.serialize(state.getToken(), tokenOut);
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError(e);
+        }
+        String depsReq = "DELETE FROM %s.%s WHERE cf_id=? AND token_bytes=?";
+        QueryProcessor.executeInternal(String.format(depsReq, keyspace, table),
+                                       state.getCfId(),
+                                       ByteBuffer.wrap(tokenOut.getData()));
     }
 
     /**

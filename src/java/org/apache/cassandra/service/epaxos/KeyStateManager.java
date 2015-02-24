@@ -101,7 +101,6 @@ public class KeyStateManager
             // that some of it's  replicas don't replicate. If a node misses this split, it will find out about it the
             // next time it touches one of the keys owned by the new token
             Range<Token> tsRange = tokenStateManager.rangeFor(tokenState);
-//            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(new Range<>(tsRange.left, instance.getToken()), tokenState.getCfId(), 10000);
             Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tsRange, tokenState.getCfId(), 10000);
             while (cfKeyIterator.hasNext())
             {
@@ -188,6 +187,8 @@ public class KeyStateManager
     public void recordAcknowledgedDeps(Instance instance)
     {
         CfKey cfKey;
+        TokenState tokenState = tokenStateManager.get(instance);
+        Range<Token> tokenRange = tokenStateManager.rangeFor(tokenState);
         switch (instance.getType())
         {
             case QUERY:
@@ -195,10 +196,15 @@ public class KeyStateManager
                 cfKey = request.getCfKey();
                 recordAcknowledgedDeps(instance, cfKey);
                 break;
-            case EPOCH:
             case TOKEN:
-                TokenState tokenState = tokenStateManager.get(instance);
-                Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
+                // TODO: test
+                tokenStateManager.recordExecutedTokenInstance((TokenInstance) instance);
+                if (tokenState.getCreatorToken() != null)
+                {
+                    tokenRange = new Range<>(tokenRange.left, tokenState.getCreatorToken());
+                }
+            case EPOCH:
+                Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenRange, instance.getCfId(), 10000);
                 while (cfKeyIterator.hasNext())
                 {
                     cfKey = cfKeyIterator.next();
@@ -230,6 +236,7 @@ public class KeyStateManager
     {
         CfKey cfKey;
         TokenState tokenState = tokenStateManager.get(instance);
+        Range<Token> tokenRange = tokenStateManager.rangeFor(tokenState);
         switch (instance.getType())
         {
             case QUERY:
@@ -238,9 +245,14 @@ public class KeyStateManager
                 recordExecuted(instance, cfKey, position);
                 break;
             case TOKEN:
+                // TODO: test
                 tokenStateManager.recordExecutedTokenInstance((TokenInstance) instance);
+                if (tokenState.getCreatorToken() != null)
+                {
+                    tokenRange = new Range<>(tokenRange.left, tokenState.getCreatorToken());
+                }
             case EPOCH:
-                Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
+                Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenRange, instance.getCfId(), 10000);
                 while (cfKeyIterator.hasNext())
                 {
                     cfKey = cfKeyIterator.next();

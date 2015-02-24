@@ -189,15 +189,9 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
             }
         }
 
-        final Range<Token> range = new Range<Token>(token100, token300);
+        final Range<Token> range = new Range<>(token100, token300);
 
-        InstanceStreamWriter writer = new InstanceStreamWriter(fromNode, cfId, range, toNode.getEndpoint()) {
-            @Override
-            protected boolean replicates(Token token)
-            {
-                return range.contains(token);
-            }
-        };
+        InstanceStreamWriter writer = new InstanceStreamWriter(fromNode, cfId, range, toNode.getEndpoint());
         InstanceStreamReader reader = new InstanceStreamReader(toNode, cfId, range);
 
         DataOutputBuffer outputBuffer = new DataOutputBuffer();
@@ -205,7 +199,7 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         writer.write(outputChannel);
 
         ReadableByteChannel inputChannel = Channels.newChannel(new ByteArrayInputStream(outputBuffer.getData()));
-        reader.read(inputChannel);
+        reader.read(inputChannel, null);
 
         // TODO: check proper epochs and execution counts on to-node
         // TODO: token states at 200 & 300 should have been created, and populated with the appropriate instances
@@ -305,13 +299,7 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
 
         final Range<Token> range = new Range<>(token100, token200);
 
-        InstanceStreamWriter writer = new InstanceStreamWriter(fromNode, cfId, range, toNode.getEndpoint()) {
-            @Override
-            protected boolean replicates(Token token)
-            {
-                return range.contains(token);
-            }
-        };
+        InstanceStreamWriter writer = new InstanceStreamWriter(fromNode, cfId, range, toNode.getEndpoint());
         final AtomicBoolean wasDrained = new AtomicBoolean(false);
         InstanceStreamReader reader = new InstanceStreamReader(toNode, cfId, range) {
             @Override
@@ -327,8 +315,14 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         writer.write(outputChannel);
 
         ReadableByteChannel inputChannel = Channels.newChannel(new ByteArrayInputStream(outputBuffer.getData()));
-        reader.read(inputChannel);
+        reader.read(inputChannel, null);
 
         Assert.assertTrue(wasDrained.get());
+    }
+
+    @Test
+    public void tokenStatesAreIncremented()
+    {
+
     }
 }

@@ -48,6 +48,7 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
         }
         else if (!state.keyStateManager.canIncrementToEpoch(tokenState, instance.getEpoch()))
         {
+            state.keyStateManager.canIncrementToEpoch(tokenState, instance.getEpoch());
             logger.debug("KeyStateManager can't increment epoch to {}", instance.getEpoch());
             instance.setVetoed(true);
         }

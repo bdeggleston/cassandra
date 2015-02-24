@@ -134,7 +134,6 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     private final Map<UUID, EpaxosTransferTask> epaxosTransfers = new ConcurrentHashMap<>();
     private final Map<UUID, EpaxosReceiveTask> epaxosReceivers = new ConcurrentHashMap<>();
 
-
     private final StreamingMetrics metrics;
     /* can be null when session is created in remote */
     private final StreamConnectionFactory factory;
@@ -561,6 +560,8 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         for (EpaxosSummary summary: epaxosSummaries)
             prepareEpaxosReceiving(summary);
 
+        maybePrepareEpaxosState();
+
         // send back prepare message if prepare message contains stream request
         if (!requests.isEmpty() || !epaxosRequests.isEmpty())
         {
@@ -784,6 +785,27 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     {
         epaxosReceivers.put(summary.taskId, new EpaxosReceiveTask(this, summary.taskId, summary.cfId, summary.range));
         logger.debug("adding epaxos receive {} for {} on ", summary.taskId, summary.range, summary.cfId);
+    }
+
+    private void maybePrepareEpaxosState()
+    {
+        if (!epaxosReceivers.isEmpty() && streamingInData())
+        {
+            for (EpaxosReceiveTask receiveTask: epaxosReceivers.values())
+            {
+                EpaxosState.getInstance().prepareForIncomingStream(receiveTask.range, receiveTask.cfId);
+            }
+        }
+    }
+
+    public boolean streamingInData()
+    {
+        return !receivers.isEmpty();
+    }
+
+    public void addListener(StreamEventHandler listener)
+    {
+        streamResult.addEventListener(listener);
     }
 
     private void maybeSetStreamingState()

@@ -23,6 +23,16 @@ public class FailureRecoveryRequest
         this.epoch = epoch;
     }
 
+    @Override
+    public String toString()
+    {
+        return "FailureRecoveryRequest{" +
+                "token=" + token +
+                ", cfId=" + cfId +
+                ", epoch=" + epoch +
+                '}';
+    }
+
     public static final IVersionedSerializer<FailureRecoveryRequest> serializer = new IVersionedSerializer<FailureRecoveryRequest>()
     {
         @Override

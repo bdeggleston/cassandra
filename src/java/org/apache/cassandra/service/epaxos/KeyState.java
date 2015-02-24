@@ -66,6 +66,18 @@ public class KeyState
             this.executed = executed;
         }
 
+        @Override
+        public String toString()
+        {
+            return "Entry{" +
+                    "iid=" + iid +
+                    ", acknowledged=" + acknowledged +
+                    ", executed=" + executed +
+                    ", stronglyConnected=" + stronglyConnected +
+                    ", isSccTerminator=" + isSccTerminator +
+                    '}';
+        }
+
         // if an instance has been acknowledged by an instance that
         // isn't part of it's strongly connected component, we can evict
         private boolean canEvict()
@@ -75,6 +87,7 @@ public class KeyState
 
             if (isSccTerminator)
             {
+                // needs to have been ack'd by an instance outside of the scc
                 return Sets.difference(acknowledged, stronglyConnected).size() > 0;
             }
             else
@@ -87,7 +100,7 @@ public class KeyState
         {
             assert stronglyConnected == null || stronglyConnected.equals(scc);
 
-            stronglyConnected = scc != null ? Sets.newHashSet(scc) : Sets.<UUID>newHashSet();
+            stronglyConnected = scc != null ? Sets.newHashSet(scc) : Collections.<UUID>emptySet();
 
             if (stronglyConnected.size() > 0)
             {
@@ -139,6 +152,7 @@ public class KeyState
 
                 out.writeBoolean(entry.executed);
                 out.writeBoolean(entry.isSccTerminator);
+                Serializers.uuidSets.serialize(entry.stronglyConnected, out, version);
             }
 
             @Override
@@ -148,6 +162,7 @@ public class KeyState
                                         Serializers.uuidSets.deserialize(in, version),
                                         in.readBoolean());
                 entry.isSccTerminator = in.readBoolean();
+                entry.stronglyConnected = Serializers.uuidSets.deserialize(in, version);
                 return entry;
             }
 
@@ -157,7 +172,8 @@ public class KeyState
                 return UUIDSerializer.serializer.serializedSize(entry.iid, version)
                         + Serializers.uuidSets.serializedSize(entry.acknowledged, version)
                         + 1
-                        + 1;
+                        + 1
+                        + Serializers.uuidSets.serializedSize(entry.stronglyConnected, version);
             }
         };
 
@@ -244,7 +260,12 @@ public class KeyState
 
         if (entry.canEvict())
         {
+            logger.debug("evicting {}", entry);
             entries.remove(iid);
+        }
+        else
+        {
+            logger.debug("not evicting {}", entry);
         }
     }
 
@@ -549,6 +570,11 @@ public class KeyState
         {
             if (Sets.intersection(entries.keySet(), entry.getValue()).size() > 0)
             {
+                if (logger.isDebugEnabled())
+                {
+                    logger.debug("Can't increment epoch. These instances are still active -> {}",
+                                 Sets.intersection(entries.keySet(), entry.getValue()));
+                }
                 return false;
             }
 

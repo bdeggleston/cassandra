@@ -14,23 +14,19 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 public class EpaxosTokenStateTest extends AbstractEpaxosTest
 {
     private static final IPartitioner partitioner = DatabaseDescriptor.getPartitioner();
     private static final UUID CFID = UUIDGen.getTimeUUID();
-    private static final LongToken ZERO_TOKEN = new LongToken(0l);
 
-    private static final Range<Token> rangeFor(long right)
+    private static Range<Token> rangeFor(long right)
     {
         return rangeFor(0l, right);
     }
 
-    private static final Range<Token> rangeFor(long left, long right)
+    private static Range<Token> rangeFor(long left, long right)
     {
         return new Range<Token>(new LongToken(left), new LongToken(right));
     }
@@ -177,33 +173,5 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
         Assert.assertEquals(Sets.newHashSet(tId0), ts.getCurrentTokenInstances(rangeFor(149l)));
         Assert.assertEquals(Sets.newHashSet(tId0), ts.getCurrentTokenInstances(rangeFor(75l)));
         Assert.assertEquals(Sets.<UUID>newHashSet(), ts.getCurrentTokenInstances(rangeFor(50l)));
-    }
-
-    /**
-     * splitTokenInstances should return a map of all token instances less than or equal to the
-     * given token. These token instances should also be removed from the token state
-     */
-    @Test
-    public void tokenInstanceCleanup()
-    {
-        TokenState ts = new TokenState(new LongToken(200l), CFID, 0, 0, 0);
-        UUID t50Id = UUIDGen.getTimeUUID();
-        ts.recordTokenInstance(new LongToken(50l), t50Id);
-        UUID t100Id = UUIDGen.getTimeUUID();
-        ts.recordTokenInstance(new LongToken(100l), t100Id);
-        UUID t150Id = UUIDGen.getTimeUUID();
-        ts.recordTokenInstance(new LongToken(150l), t150Id);
-
-        Assert.assertEquals(Sets.<UUID>newHashSet(), ts.getCurrentTokenInstances(rangeFor(0l)));
-        Assert.assertEquals(Sets.newHashSet(t50Id, t100Id, t150Id), ts.getCurrentTokenInstances(rangeFor(200l)));
-
-        Map<Token, Set<UUID>> expectedDeps = new HashMap<>();
-        expectedDeps.put(new LongToken(50l), Sets.newHashSet(t50Id));
-        expectedDeps.put(new LongToken(100l), Sets.newHashSet(t100Id));
-        Map<Token, Set<UUID>> actualDeps = ts.splitTokenInstances(new LongToken(100l));
-
-        Assert.assertEquals(expectedDeps, actualDeps);
-
-        Assert.assertEquals(Sets.newHashSet(t150Id), ts.getCurrentTokenInstances(rangeFor(200l)));
     }
 }
