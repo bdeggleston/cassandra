@@ -60,14 +60,7 @@ public class ExecuteTask implements Runnable
                 {
                     if (toExecute.getState() == Instance.State.EXECUTED)
                     {
-                        if (toExecute.getId().equals(id))
-                        {
-                            return;
-                        }
-                        else
-                        {
-                            continue;
-                        }
+                        continue;
                     }
 
                     assert toExecute.getState() == Instance.State.COMMITTED;
@@ -96,10 +89,6 @@ public class ExecuteTask implements Runnable
                     toExecute.setExecuted(state.getCurrentEpoch(instance));
                     state.recordExecuted(toExecute, position);
                     state.saveInstance(toExecute);
-
-                    // TODO: why not just eagerly execute everything?
-                    if (toExecute.getId().equals(id))
-                        return;
 
                 }
                 finally
