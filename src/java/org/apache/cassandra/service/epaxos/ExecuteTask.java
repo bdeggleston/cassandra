@@ -41,7 +41,7 @@ public class ExecuteTask implements Runnable
         ExecutionSorter executionSorter = new ExecutionSorter(instance, state);
         executionSorter.buildGraph();
 
-        if (executionSorter.uncommitted.size() > 0)
+        if (!executionSorter.uncommitted.isEmpty())
         {
             logger.debug("Uncommitted ({}) instances found while attempting to execute {}:\n\t{}",
                          executionSorter.uncommitted.size(), id, executionSorter.uncommitted);
@@ -72,14 +72,15 @@ public class ExecuteTask implements Runnable
                         {
                             position = state.executeInstance(toExecute);
                         }
-                        else
+                        else if (instance.getType() != Instance.Type.QUERY)
                         {
-                            // FIXME: cleanup/test
-                            if (!(instance instanceof QueryInstance))
-                            {
-                                state.maybeSetResultFuture(instance.getId(), null);
-                            }
+                            state.maybeSetResultFuture(instance.getId(), null);
                             logger.debug("Skipping execution for {}.", instance);
+                        }
+
+                        if (instance.getType() == Instance.Type.QUERY)
+                        {
+                            state.tokenStateManager.maybeRecordSerialInstance((QueryInstance) instance);
                         }
                     }
                     catch (InvalidRequestException | WriteTimeoutException | ReadTimeoutException e)

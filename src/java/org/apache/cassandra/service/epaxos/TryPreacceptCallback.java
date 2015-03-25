@@ -1,12 +1,16 @@
 package org.apache.cassandra.service.epaxos;
 
-import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 
 public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResponse>
 {
@@ -20,11 +24,17 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
 
     private int responses = 0;
     private int convinced = 0;
-    private boolean vetoed = false;
+    private boolean vetoed;
     private boolean contended = false;
     private boolean completed = false;
+    private final HashSet<InetAddress> responded = Sets.newHashSet();
 
-    public TryPreacceptCallback(EpaxosState state, UUID id, TryPreacceptAttempt attempt, List<TryPreacceptAttempt> nextAttempts, EpaxosState.ParticipantInfo participantInfo, Runnable failureCallback)
+    public TryPreacceptCallback(EpaxosState state,
+                                UUID id,
+                                TryPreacceptAttempt attempt,
+                                List<TryPreacceptAttempt> nextAttempts,
+                                EpaxosState.ParticipantInfo participantInfo,
+                                Runnable failureCallback)
     {
         super(state);
         this.id = id;
@@ -32,13 +42,27 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
         this.nextAttempts = nextAttempts;
         this.participantInfo = participantInfo;
         this.failureCallback = failureCallback;
+        vetoed = attempt.vetoed;
     }
 
     @Override
     public synchronized void epochResponse(MessageIn<TryPreacceptResponse> msg)
     {
         if (completed)
+        {
+            logger.debug("ignoring response from {}, messaging completed", msg.from);
             return;
+        }
+        else if (!attempt.toConvince.contains(msg.from))
+        {
+            logger.warn("Ignoring response from uninvolved node {}", msg.from);
+            return;
+        }
+        else if (!responded.add(msg.from))
+        {
+            logger.info("Ignoring duplicate response from {}", msg.from);
+            return;
+        }
 
         logger.debug("preaccept response received from {} for instance {}", msg.from, id);
         TryPreacceptResponse response = msg.payload;
@@ -46,6 +70,12 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
         responses++;
         vetoed |= response.vetoed;
 
+        if (response.ballotFailure > 0)
+        {
+            completed = true;
+            state.updateBallot(id, response.ballotFailure, failureCallback);
+            return;
+        }
         if (response.decision == TryPreacceptDecision.ACCEPTED)
         {
             convinced++;
@@ -77,7 +107,7 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
             else
             {
                 // try-preaccept unsuccessful
-                if (nextAttempts.size() > 0)
+                if (!nextAttempts.isEmpty())
                 {
                     // start the next trypreaccept
                     state.tryPreaccept(id, nextAttempts, participantInfo, failureCallback);
@@ -95,5 +125,17 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
     public boolean isLatencyForSnitch()
     {
         return false;
+    }
+
+    @VisibleForTesting
+    List<TryPreacceptAttempt> getNextAttempts()
+    {
+        return nextAttempts;
+    }
+
+    @VisibleForTesting
+    boolean isCompleted()
+    {
+        return completed;
     }
 }

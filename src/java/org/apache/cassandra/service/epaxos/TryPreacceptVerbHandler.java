@@ -4,6 +4,7 @@ import com.google.common.collect.Sets;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,28 +26,55 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
     public void doEpochVerb(MessageIn<TryPreacceptRequest> message, int id)
     {
         logger.debug("TryPreaccept message received from {} for {}", message.from, message.payload.iid);
-        // TODO: check ballot
         ReadWriteLock lock = state.getInstanceLock(message.payload.iid);
         lock.writeLock().lock();
+        Instance instance = null;
+        TryPreacceptResponse response;
         try
         {
-            Instance instance = state.loadInstance(message.payload.iid);
+            instance = state.loadInstance(message.payload.iid);
+
+            if (instance == null || instance.isPlaceholder())
+            {
+                String msg = String.format("Instance for %s is null or placeholder", message.payload.iid);
+                throw new RuntimeException(msg);
+            }
+
+            instance.checkBallot(message.payload.ballot);
             Pair<TryPreacceptDecision, Boolean> decision = handleTryPreaccept(instance, message.payload.dependencies);
-            TryPreacceptResponse response = new TryPreacceptResponse(instance.getToken(),
-                                                                     instance.getCfId(),
-                                                                     state.getCurrentEpoch(instance),
-                                                                     instance.getId(),
-                                                                     decision.left,
-                                                                     decision.right);
-            MessageOut<TryPreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
-                                                                      response,
-                                                                      TryPreacceptResponse.serializer);
-            state.sendReply(reply, id, message.from);
+            response = new TryPreacceptResponse(instance.getToken(),
+                                                instance.getCfId(),
+                                                state.getCurrentEpoch(instance),
+                                                instance.getId(),
+                                                decision.left,
+                                                decision.right,
+                                                0);
+
+            // if the proposed deps weren't accepted, we still need to
+            // save the instance to record the higher ballot
+            if (response.decision != TryPreacceptDecision.ACCEPTED)
+            {
+                state.saveInstance(instance);
+            }
+        }
+        catch (BallotException e)
+        {
+            response = new TryPreacceptResponse(instance.getToken(),
+                                                instance.getCfId(),
+                                                state.getCurrentEpoch(instance),
+                                                instance.getId(),
+                                                TryPreacceptDecision.REJECTED,
+                                                false,
+                                                e.localBallot);
         }
         finally
         {
             lock.writeLock().unlock();
         }
+        MessageOut<TryPreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
+                                                                  response,
+                                                                  TryPreacceptResponse.serializer);
+        state.sendReply(reply, id, message.from);
     }
 
     private boolean maybeVetoEpoch(Instance inst)
@@ -59,6 +87,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
         EpochInstance instance = (EpochInstance) inst;
         long currentEpoch = state.tokenStateManager.getEpoch(instance);
 
+        // TODO: handle pre-vetoed instance
         if (instance.getEpoch() > currentEpoch + 1)
         {
             instance.setVetoed(true);
@@ -68,11 +97,15 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
 
     protected Pair<TryPreacceptDecision, Boolean> handleTryPreaccept(Instance instance, Set<UUID> dependencies)
     {
-        // TODO: reread the try preaccept stuff, dependency management may break it if we're not careful
         logger.debug("Attempting TryPreaccept for {} with deps {}", instance.getId(), dependencies);
 
+        if (instance.getState().atLeast(Instance.State.ACCEPTED))
+        {
+            boolean vetoed = instance instanceof EpochInstance && ((EpochInstance) instance).isVetoed();
+            return Pair.create(TryPreacceptDecision.REJECTED, vetoed);
+        }
+
         // get the ids of instances the the message instance doesn't have in it's dependencies
-        // TODO: use a different method to get deps, this one mutates the dependency manager
         Set<UUID> conflictIds = Sets.newHashSet(state.getCurrentDependencies(instance));
         conflictIds.removeAll(dependencies);
         conflictIds.remove(instance.getId());
@@ -85,6 +118,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
         {
             if (state.loadInstance(dep) == null)
             {
+                // TODO: is this the right thing to do? contested might make more sense
                 logger.debug("Missing dep for TryPreaccept for {}, rejecting ", instance.getId());
                 return Pair.create(TryPreacceptDecision.REJECTED, vetoed);
             }

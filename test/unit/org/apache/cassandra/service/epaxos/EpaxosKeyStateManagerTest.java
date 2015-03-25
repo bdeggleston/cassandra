@@ -8,6 +8,7 @@ import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
+import org.apache.cassandra.dht.ByteOrderedPartitioner;
 import org.apache.cassandra.dht.BytesToken;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -84,47 +85,12 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         return cfKeyList;
     }
 
-    private void clearKeyStates()
-    {
-        String select = String.format("SELECT row_key FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
-        String delete = String.format("DELETE FROM %s.%s WHERE row_key=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
-        UntypedResultSet result = QueryProcessor.executeInternal(select);
-
-        while (result.size() > 0)
-        {
-            for (UntypedResultSet.Row row: result)
-            {
-                QueryProcessor.executeInternal(delete, row.getBlob("row_key"));
-            }
-            result = QueryProcessor.executeInternal(select);
-        }
-
-        Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
-    }
-
-    private void clearTokenStates()
-    {
-        String select = String.format("SELECT cf_id FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
-        String delete = String.format("DELETE FROM %s.%s WHERE cf_id=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
-        UntypedResultSet result = QueryProcessor.executeInternal(select);
-
-        while (result.size() > 0)
-        {
-            for (UntypedResultSet.Row row: result)
-            {
-                QueryProcessor.executeInternal(delete, row.getBlob("cf_id"));
-            }
-            result = QueryProcessor.executeInternal(select);
-        }
-
-        Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
-    }
-
     @Before
     public void setUp() throws Exception
     {
         clearKeyStates();
         clearTokenStates();
+        Assert.assertTrue(DatabaseDescriptor.getPartitioner() instanceof ByteOrderedPartitioner);
     }
 
     @Test
@@ -166,7 +132,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     }
 
     @Test
-    public void getCurrentTokenDependencies() throws Exception
+    public void getCurrentEpochDependencies() throws Exception
     {
         MockTokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
@@ -197,7 +163,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             ksm.saveKeyState(cfKey.key, cfKey.cfId, ks);
         }
 
-        EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0);
+        EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0, false);
 
         Set<UUID> actualDeps = ksm.getCurrentDependencies(instance);
         Assert.assertEquals(expectedDeps, actualDeps);
@@ -260,7 +226,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         Token token = DatabaseDescriptor.getPartitioner().getToken(cfKeys.get(0).key);
         UUID cfId = cfKeys.get(0).cfId;
 
-        EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0);
+        EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0, false);
         ksm.recordMissingInstance(instance);
 
         // check that the token instance has been added to each of the individual key states
@@ -345,7 +311,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     }
 
     @Test
-    public void recordAcknowledgedTokenDeps() throws Exception
+    public void recordAcknowledgedEpochDeps() throws Exception
     {
         TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
@@ -366,7 +332,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         Token token = DatabaseDescriptor.getPartitioner().getToken(cfKeys.get(0).key);
         UUID cfId = cfKeys.get(0).cfId;
-        EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0);
+        EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0, false);
 
         Set<UUID> deps = ksm.getCurrentDependencies(instance);
         instance.preaccept(deps);
@@ -393,7 +359,6 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         expected = new HashSet<>(deps);
         for (CfKey cfKey: cfKeys)
         {
-            // FIXME: only keystates with the same cfid should be affected
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
             for (UUID id: ks.getActiveInstanceIds())
             {
@@ -406,7 +371,71 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     }
 
     @Test
-    public void recordExecutedQuery() throws Exception
+    public void recordAcknowledgedTokenDeps() throws Exception
+    {
+        MockTokenStateManager tsm = new MockTokenStateManager();
+
+        Token t100 = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(100));
+        Token t200 = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(200));
+        tsm.setTokens(t200);
+
+        KeyStateManager ksm = new KeyStateManager(tsm);
+
+        ByteBuffer k50 = ByteBufferUtil.bytes(50);
+        ByteBuffer k150 = ByteBufferUtil.bytes(150);
+
+        Set<UUID> expectedDeps = Sets.newHashSet();
+
+        // record keys on either side of the to-be-added token
+        KeyState ks;
+        ks = ksm.loadKeyState(k50, CFID);
+        UUID id50 = UUIDGen.getTimeUUID();
+
+        ks.recordInstance(id50);
+        expectedDeps.add(id50);
+        ksm.saveKeyState(k50, CFID, ks);
+        Assert.assertEquals(1, ks.getActiveInstanceIds().size());
+
+        ks = ksm.loadKeyState(k150, CFID);
+        UUID id150 = UUIDGen.getTimeUUID();
+
+        ks.recordInstance(id150);
+        expectedDeps.add(id150);
+        ksm.saveKeyState(k150, CFID, ks);
+        Assert.assertEquals(1, ks.getActiveInstanceIds().size());
+
+        TokenInstance instance = new TokenInstance(ADDRESS, CFID, t100, false);
+        Set<UUID> deps = ksm.getCurrentDependencies(instance);
+        Assert.assertEquals(expectedDeps, deps);
+        instance.preaccept(deps);
+
+        // add token state at 100, otherwise we won't
+        // excercise the range modification code
+        tsm.addToken(t100);
+        tsm.get(t100, CFID);
+        TokenState ts = new TokenState(t100, CFID, 0, 0);
+        ts.setCreatorToken(t200);
+        ts.recordTokenInstance(t100, instance.getId());
+        tsm.putState(ts);
+        Assert.assertEquals(2, tsm.getManagedTokensForCf(CFID).size());
+
+        // acknowledge instance
+        Assert.assertEquals(0, ts.getCurrentEpochInstances().size());
+        ksm.recordAcknowledgedDeps(instance);
+        Assert.assertEquals(1, ts.getCurrentEpochInstances().size());
+
+        KeyState.Entry entry;
+        ks = ksm.loadKeyState(k50, CFID);
+        entry = ks.get(id50);
+        Assert.assertTrue(entry.acknowledged.contains(instance.getId()));
+
+        ks = ksm.loadKeyState(k150, CFID);
+        entry = ks.get(id150);
+        Assert.assertTrue(entry.acknowledged.contains(instance.getId()));
+    }
+
+    @Test
+    public void recordExecutedQueryInstance() throws Exception
     {
         TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
@@ -471,7 +500,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     }
 
     @Test
-    public void recordExecutedToken() throws Exception
+    public void recordExecutedEpochInstance() throws Exception
     {
         TokenStateManager tsm = new MockTokenStateManager();
         KeyStateManager ksm = new KeyStateManager(tsm);
@@ -492,7 +521,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         Token token = DatabaseDescriptor.getPartitioner().getToken(cfKeys.get(0).key);
         UUID cfId = cfKeys.get(0).cfId;
-        EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0);
+        EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0, false);
 
         Set<UUID> deps = ksm.getCurrentDependencies(instance);
         instance.preaccept(deps);
@@ -530,6 +559,68 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     }
 
     @Test
+    public void recordExecutedTokenInstance() throws Exception
+    {
+        MockTokenStateManager tsm = new MockTokenStateManager();
+
+        Token t100 = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(100));
+        Token t200 = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(200));
+        tsm.setTokens(t200);
+
+        KeyStateManager ksm = new KeyStateManager(tsm);
+
+        ByteBuffer k50 = ByteBufferUtil.bytes(50);
+        ByteBuffer k150 = ByteBufferUtil.bytes(150);
+
+        Set<UUID> expectedDeps = Sets.newHashSet();
+
+        // record keys on either side of the to-be-added token
+        KeyState ks;
+        ks = ksm.loadKeyState(k50, CFID);
+        UUID id50 = UUIDGen.getTimeUUID();
+
+        ks.recordInstance(id50);
+        expectedDeps.add(id50);
+        ksm.saveKeyState(k50, CFID, ks);
+        Assert.assertEquals(1, ks.getActiveInstanceIds().size());
+
+        ks = ksm.loadKeyState(k150, CFID);
+        UUID id150 = UUIDGen.getTimeUUID();
+
+        ks.recordInstance(id150);
+        expectedDeps.add(id150);
+        ksm.saveKeyState(k150, CFID, ks);
+        Assert.assertEquals(1, ks.getActiveInstanceIds().size());
+
+        TokenInstance instance = new TokenInstance(ADDRESS, CFID, t100, false);
+        Set<UUID> deps = ksm.getCurrentDependencies(instance);
+        Assert.assertEquals(expectedDeps, deps);
+        instance.preaccept(deps);
+
+        // add token state at 100, otherwise we won't
+        // excercise the range modification code
+        tsm.addToken(t100);
+        tsm.get(t100, CFID);
+        TokenState ts = new TokenState(t100, CFID, 0, 0);
+        ts.setCreatorToken(t200);
+        ts.recordTokenInstance(t100, instance.getId());
+        tsm.putState(ts);
+        Assert.assertEquals(2, tsm.getManagedTokensForCf(CFID).size());
+
+        // acknowledge instance
+        Assert.assertEquals(0, ts.getCurrentEpochInstances().size());
+        ksm.recordExecuted(instance, null);
+        Assert.assertEquals(1, ts.getCurrentEpochInstances().size());
+
+        KeyState.Entry entry;
+        ks = ksm.loadKeyState(k50, CFID);
+        Assert.assertTrue(ks.get(instance.getId()).executed);
+
+        ks = ksm.loadKeyState(k150, CFID);
+        Assert.assertTrue(ks.get(instance.getId()).executed);
+    }
+
+    @Test
     public void updateEpoch() throws Exception
     {
         TokenStateManager tsm = new MockTokenStateManager();
@@ -552,8 +643,6 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         TokenState tokenState = tsm.get(ByteBufferUtil.bytes(1), cfId);
         Assert.assertEquals((long) 0, tokenState.getEpoch());
         tokenState.setEpoch(1);
-
-        ksm.updateEpoch(tokenState);
 
         for (CfKey cfKey: cfKeys)
         {
@@ -801,5 +890,31 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         }
         Assert.assertEquals(21, keysCreated);
         Assert.assertEquals(keysReturned.toString(), 21, numReturned);
+    }
+
+    /**
+     * Tests that if a key state's epoch is behind the token manager
+     * on key state load. Either because of processing time on the epoch
+     * increment, or because of a failure during the increment process,
+     * that it's incremented before being returned.
+     */
+    @Test
+    public void catchUpKeyStateEpoch()
+    {
+        TokenStateManager tsm = new MockTokenStateManager();
+        KeyStateManager ksm = new KeyStateManager(tsm);
+
+        ByteBuffer key = ByteBufferUtil.bytes(0);
+
+        TokenState ts = tsm.get(key, CFID);
+        ts.setEpoch(5);
+        tsm.save(ts);
+
+        KeyState ks = ksm.loadKeyState(key, CFID);
+        Assert.assertEquals(5, ks.getEpoch());
+
+        ts.setEpoch(6);
+        ks = ksm.loadKeyState(key, CFID);
+        Assert.assertEquals(6, ks.getEpoch());
     }
 }

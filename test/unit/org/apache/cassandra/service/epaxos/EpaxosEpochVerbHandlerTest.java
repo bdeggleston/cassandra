@@ -25,9 +25,9 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
 
     private static MessageIn<Message> getMessage(long epoch) throws UnknownHostException
     {
-        return MessageIn.create(InetAddress.getLocalHost(),
+        return MessageIn.create(LOCALHOST,
                                 new Message(MESSAGE_TOKEN, CFID, epoch),
-                                Collections.EMPTY_MAP,
+                                Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.ECHO,
                                 0);
     }
@@ -92,7 +92,7 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         @Override
         public TokenState getTokenState(IEpochMessage message)
         {
-            return new TokenState(MANAGED_TOKEN, message.getCfId(), epoch, epoch, 0, state);
+            return new TokenState(MANAGED_TOKEN, message.getCfId(), epoch, 0, state);
         }
     }
 
@@ -195,5 +195,14 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
 
         assertModeResponse(TokenState.State.RECOVERING_DATA, true, false);
         assertModeResponse(TokenState.State.RECOVERING_DATA, true, true);
+    }
+
+    @Test
+    public void recoveryRequiredTokenState() throws Exception
+    {
+        State state = new State(5, TokenState.State.RECOVERY_REQUIRED);
+        Handler handler = new Handler(state);
+        handler.doVerb(getMessage(5), 0);
+        Assert.assertEquals(1, state.localFailureCalls);
     }
 }

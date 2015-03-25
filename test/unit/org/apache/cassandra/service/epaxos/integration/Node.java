@@ -31,7 +31,10 @@ public class Node extends EpaxosState
 
     private final Map<MessagingService.Verb, IVerbHandler> verbHandlerMap = Maps.newEnumMap(MessagingService.Verb.class);
 
-    public static enum State {UP, NORESPONSE, DOWN}
+    public static enum State
+    {
+        UP, NORESPONSE, DOWN
+    }
 
     private volatile Instance lastCreatedInstance = null;
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
@@ -82,6 +85,12 @@ public class Node extends EpaxosState
     }
 
     @Override
+    protected void scheduleTokenStateMaintenanceTask()
+    {
+        // no-op
+    }
+
+    @Override
     public InetAddress getEndpoint()
     {
         return endpoint;
@@ -119,12 +128,11 @@ public class Node extends EpaxosState
         {
             SerializedRequest request = ((QueryInstance) instance).getQuery();
             return keyStateManager.loadKeyState(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
-        }
+    }
         else if (instance instanceof EpochInstance)
         {
             throw new AssertionError();
-        }
-        else
+        } else
         {
             throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
         }
@@ -180,15 +188,9 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected ParticipantInfo getQueryParticipants(QueryInstance instance)
+    protected ParticipantInfo getParticipants(Instance instance)
     {
-        return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, instance.getQuery().getConsistencyLevel());
-    }
-
-    @Override
-    protected ParticipantInfo getTokenParticipants(AbstractTokenInstance instance)
-    {
-        return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, ConsistencyLevel.SERIAL);
+        return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, instance.getConsistencyLevel());
     }
 
     @Override
@@ -209,6 +211,15 @@ public class Node extends EpaxosState
         messenger.sendReply(message, id, endpoint, to);
     }
 
+    /**
+     * number of messages missed by a 'down' node before it is considered down
+     * @return
+     */
+    protected int nodeDownThreshold()
+    {
+        return 3;
+    }
+
     @Override
     protected Predicate<InetAddress> livePredicate()
     {
@@ -217,7 +228,14 @@ public class Node extends EpaxosState
             @Override
             public boolean apply(InetAddress inetAddress)
             {
-                return true;
+                if (getEndpoint().equals(inetAddress))
+                {
+                    return true;
+                }
+                else
+                {
+                    return messenger.getMissedMessages(inetAddress) < nodeDownThreshold();
+                }
             }
         };
     }
@@ -242,6 +260,11 @@ public class Node extends EpaxosState
                 return true;
             }
 
+            @Override
+            protected boolean shouldRun()
+            {
+                return true;
+            }
         };
     }
 
@@ -253,38 +276,7 @@ public class Node extends EpaxosState
     /**
      * runs tasks in the order they're received
      */
-    public static TracingAwareExecutorService queuedExecutor = new AbstractExecutorService()
-    {
-        private Queue<Runnable> queue = new LinkedTransferQueue<>();
-
-        private synchronized void maybeRun(Runnable runnable)
-        {
-            boolean wasEmpty = queue.isEmpty();
-            queue.add(runnable);
-            if (wasEmpty)
-            {
-                while (!queue.isEmpty())
-                {
-                    queue.peek().run();  // prevents the next added task thinking it should run
-                    queue.remove();
-                }
-            }
-        }
-
-        @Override
-        public <T> Future<T> submit(Runnable task, T result)
-        {
-            maybeRun(task);
-            return null;
-        }
-
-        @Override
-        public Future<?> submit(Runnable task)
-        {
-            maybeRun(task);
-            return null;
-        }
-    };
+    public static QueuedExecutor queuedExecutor = new QueuedExecutor();
 
     public static class SingleThreaded extends Node
     {

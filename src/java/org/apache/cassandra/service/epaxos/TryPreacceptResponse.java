@@ -16,13 +16,15 @@ public class TryPreacceptResponse extends AbstractEpochMessage
     public final UUID iid;
     public final TryPreacceptDecision decision;
     public final boolean vetoed;
+    public final int ballotFailure;
 
-    public TryPreacceptResponse(Token token, UUID cfId, long epoch, UUID iid, TryPreacceptDecision decision, boolean vetoed)
+    public TryPreacceptResponse(Token token, UUID cfId, long epoch, UUID iid, TryPreacceptDecision decision, boolean vetoed, int ballotFailure)
     {
         super(token, cfId, epoch);
         this.iid = iid;
         this.decision = decision;
         this.vetoed = vetoed;
+        this.ballotFailure = ballotFailure;
     }
 
     private static class Serializer implements IVersionedSerializer<TryPreacceptResponse>
@@ -34,6 +36,7 @@ public class TryPreacceptResponse extends AbstractEpochMessage
             UUIDSerializer.serializer.serialize(response.iid, out, version);
             out.writeInt(response.decision.ordinal());
             out.writeBoolean(response.vetoed);
+            out.writeInt(response.ballotFailure);
         }
 
         @Override
@@ -46,14 +49,15 @@ public class TryPreacceptResponse extends AbstractEpochMessage
                     epochInfo.epoch,
                     UUIDSerializer.serializer.deserialize(in, version),
                     TryPreacceptDecision.values()[in.readInt()],
-                    in.readBoolean());
+                    in.readBoolean(),
+                    in.readInt());
         }
 
         @Override
         public long serializedSize(TryPreacceptResponse response, int version)
         {
             return AbstractEpochMessage.serializer.serializedSize(response, version)
-                    + UUIDSerializer.serializer.serializedSize(response.iid, version) + 4 + 1;
+                    + UUIDSerializer.serializer.serializedSize(response.iid, version) + 4 + 1 + 4;
         }
     }
 }

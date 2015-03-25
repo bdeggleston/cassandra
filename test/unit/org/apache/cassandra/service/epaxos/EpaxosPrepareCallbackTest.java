@@ -12,13 +12,16 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * The trypreaccept stuff is tested in EpaxosPrepareCallbackTryPreacceptTest
+ */
 public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
 {
-
     public PrepareCallback getCallback(EpaxosState state, Instance instance)
     {
         return new PrepareCallback(state,
-                                   instance,
+                                   instance.getId(),
+                                   instance.getBallot(),
                                    state.getParticipants(instance),
                                    new PrepareGroup(state, UUIDGen.getTimeUUID(), Sets.newHashSet(instance.getId())));
     }
@@ -38,6 +41,7 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         MockCallbackState state = new MockCallbackState(3, 0);
         Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
+        instance.updateBallot(1);
 
         PrepareCallback callback = getCallback(state, instance);
 
@@ -59,12 +63,6 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         Assert.assertEquals(expectedBallot, ballotCall.ballot);
         Assert.assertNotNull(ballotCall.callback);
         Assert.assertTrue(ballotCall.callback instanceof PrepareTask);
-    }
-
-    @Test
-    public void tryPreacceptDecision() throws Exception
-    {
-
     }
 
     @Test
@@ -334,5 +332,52 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         callback.response(createResponse(state.localEndpoints.get(2), instance.copy()));
         Assert.assertTrue(callback.isCompleted());
         Assert.assertEquals(2, callback.getNumResponses());
+    }
+
+    /**
+     * Tests that the callback correctly handles responses with
+     * instances it didn't have previously
+     */
+    @Test
+    public void addPreviouslyUnknownInstance() throws Exception
+    {
+        MockCallbackState state = new MockCallbackState(3, 0);
+
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
+        instance.incrementBallot();
+
+        PrepareGroup group = new PrepareGroup(state, UUIDGen.getTimeUUID(), Sets.newHashSet(instance.getId())) {
+            @Override
+            protected void submitExecuteTask()
+            {
+                // no-op
+            }
+        };
+        PrepareCallback callback = new PrepareCallback(state, instance.getId(), 0, state.getParticipants(instance), group);
+
+        Assert.assertTrue(callback.isInstanceUnknown());
+        Assert.assertFalse(callback.isCompleted());
+        Assert.assertNull(state.loadInstance(instance.getId()));
+        Assert.assertTrue(group.prepareIsOutstandingFor(instance.getId()));
+
+        callback.response(createResponse(state.localEndpoints.get(2), instance));
+        Assert.assertTrue(callback.isCompleted());
+        Assert.assertNotNull(state.loadInstance(instance.getId()));
+        Assert.assertFalse(group.prepareIsOutstandingFor(instance.getId()));
+    }
+
+    /**
+     * Tests that the callback correctly handles situations where
+     * none of the other nodes know about an instance it also doesn't
+     * have.
+     *
+     * Basically, it needs to run a noop instance for that id, the twist
+     * being that it doesn't know what kind of instance it is.
+     */
+    @Test
+    public void instanceUnknownByQuorum() throws Exception
+    {
+        // TODO: good luck
     }
 }

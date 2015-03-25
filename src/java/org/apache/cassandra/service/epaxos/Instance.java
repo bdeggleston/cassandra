@@ -5,6 +5,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -94,10 +95,8 @@ public abstract class Instance
     protected volatile int ballot = 0;
     protected volatile long executionEpoch = -1;
     protected volatile boolean noop;
-    protected volatile boolean fastPathImpossible; // TODO: remove
     protected volatile Set<UUID> dependencies = null;
     protected volatile boolean leaderAttrsMatch = false;
-    protected volatile List<InetAddress> successors = null;
 
     // fields not transmitted to other nodes
     private volatile boolean placeholder = false;
@@ -133,10 +132,8 @@ public abstract class Instance
         state = i.state;
         ballot = i.ballot;
         noop = i.noop;
-        fastPathImpossible = i.fastPathImpossible;
         dependencies = i.dependencies;
         leaderAttrsMatch = i.leaderAttrsMatch;
-        successors = i.successors;
         placeholder = i.placeholder;
         stronglyConnected = i.stronglyConnected;
         lastUpdated = i.lastUpdated;
@@ -193,16 +190,6 @@ public abstract class Instance
         return leader;
     }
 
-    public boolean isFastPathImpossible()
-    {
-        return fastPathImpossible;
-    }
-
-    public void setFastPathImpossible(boolean fastPathImpossible)
-    {
-        this.fastPathImpossible = fastPathImpossible;
-    }
-
     public void setNoop(boolean noop)
     {
         this.noop = noop;
@@ -231,7 +218,6 @@ public abstract class Instance
      * Setting them as a placeholder instance prevents them from being included in preaccept
      * dependencies, or prepare responses
      */
-    // TODO: are these added to the deps manager after coming out of placeholder mode?
     public void makePlacehoder()
     {
         placeholder = true;
@@ -242,16 +228,6 @@ public abstract class Instance
     public boolean isPlaceholder()
     {
         return (!state.atLeast(State.ACCEPTED)) && placeholder;
-    }
-
-    public void setSuccessors(List<InetAddress> successors)
-    {
-        this.successors = successors;
-    }
-
-    public List<InetAddress> getSuccessors()
-    {
-        return successors;
     }
 
     public Set<UUID> getStronglyConnected()
@@ -381,6 +357,7 @@ public abstract class Instance
     public abstract Type getType();
     public abstract Token getToken();
     public abstract UUID getCfId();
+    public abstract ConsistencyLevel getConsistencyLevel();
 
     /**
      * Applies mutable non-dependency attributes from remote instance copies
@@ -389,7 +366,6 @@ public abstract class Instance
     {
         assert remote.getId().equals(getId());
         this.noop = remote.noop;
-        this.fastPathImpossible = remote.fastPathImpossible;
     }
 
     public MessageOut<MessageEnvelope<Instance>> getMessage(MessagingService.Verb verb, long epoch)
@@ -413,7 +389,6 @@ public abstract class Instance
             out.writeInt(instance.state.ordinal());
             out.writeInt(instance.ballot);
             out.writeBoolean(instance.noop);
-            out.writeBoolean(instance.fastPathImpossible);
             out.writeBoolean(instance.dependencies != null);
             if (instance.dependencies != null)
             {
@@ -423,11 +398,6 @@ public abstract class Instance
                     UUIDSerializer.serializer.serialize(dep, out, version);
             }
             out.writeBoolean(instance.leaderAttrsMatch);
-
-            // there should never be a null successor list at this point
-            out.writeInt(instance.successors.size());
-            for (InetAddress endpoint: instance.successors)
-                CompactEndpointSerializationHelper.serialize(endpoint, out);
         }
 
         public Instance deserialize(Instance instance, DataInput in, int version) throws IOException
@@ -443,7 +413,6 @@ public abstract class Instance
 
             instance.ballot = in.readInt();
             instance.noop = in.readBoolean();
-            instance.fastPathImpossible = in.readBoolean();
 
             if (in.readBoolean())
             {
@@ -459,11 +428,6 @@ public abstract class Instance
 
             instance.leaderAttrsMatch = in.readBoolean();
 
-            InetAddress[] successors = new InetAddress[in.readInt()];
-            for (int i=0; i<successors.length; i++)
-                successors[i] = CompactEndpointSerializationHelper.deserialize(in);
-            instance.successors = Lists.newArrayList(successors);
-
             return instance;
         }
 
@@ -473,7 +437,6 @@ public abstract class Instance
             size += 4;  // instance.state.code
             size += 4;  // instance.ballot
             size += 1;  // instance.noop
-            size += 1;  // instance.fastPathImpossible
             size += 1;  // instance.dependencies != null
             if (instance.dependencies != null)
             {
@@ -482,10 +445,6 @@ public abstract class Instance
                     size += UUIDSerializer.serializer.serializedSize(dep, version);
             }
             size += 1;  // instance.leaderAttrsMatch
-
-            size += 4;  // instance.successors.size
-            for (InetAddress successor: instance.successors)
-                size += CompactEndpointSerializationHelper.serializedSize(successor);
 
             return size;
         }

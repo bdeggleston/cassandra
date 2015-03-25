@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
 /**
@@ -45,7 +44,6 @@ import java.util.concurrent.FutureTask;
  */
 public class FailureRecoveryTask implements Runnable
 {
-    // TODO: convert each method to a Runnable/StreamEventListener/RepairEventListener, etc
     private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
 
     public final EpaxosState state;
@@ -104,8 +102,6 @@ public class FailureRecoveryTask implements Runnable
 
     protected Collection<InetAddress> getEndpoints(Range<Token> range)
     {
-        // TODO: check that left token will return the correct endpoints
-        // TODO: perform some other checks to make sure the requested token state and token metadata are on the same page
         return StorageService.instance.getNaturalEndpoints(getKeyspace(), range.left);
     }
 
@@ -125,7 +121,7 @@ public class FailureRecoveryTask implements Runnable
             return;
         }
 
-        tokenState.rwLock.writeLock().lock();
+        tokenState.lock.writeLock().lock();
         try
         {
             tokenState.setState(TokenState.State.PRE_RECOVERY);
@@ -133,7 +129,7 @@ public class FailureRecoveryTask implements Runnable
         }
         finally
         {
-            tokenState.rwLock.writeLock().unlock();
+            tokenState.lock.writeLock().unlock();
         }
 
         // erase data for all keys owned by recovering token manager
@@ -176,10 +172,9 @@ public class FailureRecoveryTask implements Runnable
      */
     void recoverInstances()
     {
-        // TODO: only try one replica at a time
         TokenState tokenState = getTokenState();
         Range<Token> range;
-        tokenState.rwLock.writeLock().lock();
+        tokenState.lock.writeLock().lock();
         try
         {
             if (tokenState.getState() != TokenState.State.PRE_RECOVERY)
@@ -196,12 +191,11 @@ public class FailureRecoveryTask implements Runnable
         }
         finally
         {
-            tokenState.rwLock.writeLock().unlock();
+            tokenState.lock.writeLock().unlock();
         }
 
         final StreamPlan streamPlan = new StreamPlan(tokenState.toString() + "-Instance-Recovery");
 
-        // TODO: don't request data from ALL
         for (InetAddress endpoint: getEndpoints(range))
         {
             if (endpoint.equals(state.getEndpoint()))
@@ -215,7 +209,6 @@ public class FailureRecoveryTask implements Runnable
 
             public synchronized void handleStreamEvent(StreamEvent event)
             {
-                // TODO: die on error
                 if (event.eventType == StreamEvent.Type.STREAM_COMPLETE && !submitted)
                 {
                     logger.debug("Instance stream complete. Submitting data recovery task");
@@ -237,74 +230,6 @@ public class FailureRecoveryTask implements Runnable
         });
         streamPlan.execute();
     }
-//
-//    /**
-//     * Start a repair task that repairs the affected range.
-//     * Replica can now participate in instances, but won't execute the instances
-//     */
-//    void recoverData()
-//    {
-//        TokenState tokenState = getTokenState();
-//        Range<Token> range;
-//        tokenState.rwLock.writeLock().lock();
-//        try
-//        {
-//            if (tokenState.getState() != TokenState.State.RECOVERING_INSTANCES)
-//            {
-//
-//                logger.info("Aborting instance recovery for {}. Status is {}, expected {}",
-//                            tokenState, tokenState.getState(), TokenState.State.PRE_RECOVERY);
-//                return;
-//            }
-//
-//            tokenState.setState(TokenState.State.RECOVERING_DATA);
-//            state.tokenStateManager.save(tokenState);
-//            range = state.tokenStateManager.rangeFor(tokenState);
-//        }
-//        finally
-//        {
-//            tokenState.rwLock.writeLock().unlock();
-//        }
-//
-//        final StreamPlan streamPlan = new StreamPlan(tokenState.toString() + "-Instance-Recovery");
-//
-//        // TODO: don't request data from ALL
-//        for (InetAddress endpoint: getEndpoints(range))
-//        {
-//            if (endpoint.equals(state.getEndpoint()))
-//                continue;
-//            Pair<String, String> table = Schema.instance.getCF(cfId);
-//            streamPlan.requestRanges(endpoint, table.left, Collections.singleton(range), table.right);
-//        }
-//
-//        streamPlan.listeners(new StreamEventHandler()
-//        {
-//            private boolean submitted = false;
-//
-//            public synchronized void handleStreamEvent(StreamEvent event)
-//            {
-//                // TODO: die on error
-//                if (event.eventType == StreamEvent.Type.STREAM_COMPLETE && !submitted)
-//                {
-//                    logger.debug("Instance stream complete. Submitting data recovery task");
-//                    state.getStage(Stage.MISC).submit(new Runnable()
-//                    {
-//                        @Override
-//                        public void run()
-//                        {
-//                            complete();
-//                        }
-//                    });
-//                    submitted = true;
-//                }
-//            }
-//
-//            public void onSuccess(@Nullable StreamState streamState) {}
-//
-//            public void onFailure(Throwable throwable) {}
-//        });
-//        streamPlan.execute();
-//    }
 
     /**
      * Start a repair task that repairs the affected range.
@@ -315,7 +240,7 @@ public class FailureRecoveryTask implements Runnable
         TokenState tokenState = getTokenState();
         Range<Token> range;
         boolean localOnly;
-        tokenState.rwLock.writeLock().lock();
+        tokenState.lock.writeLock().lock();
         try
         {
             if (tokenState.getState() != TokenState.State.RECOVERING_INSTANCES)
@@ -334,7 +259,7 @@ public class FailureRecoveryTask implements Runnable
         }
         finally
         {
-            tokenState.rwLock.writeLock().unlock();
+            tokenState.lock.writeLock().unlock();
         }
 
         Pair<String, String> cfName = Schema.instance.getCF(cfId);
@@ -361,7 +286,7 @@ public class FailureRecoveryTask implements Runnable
     void complete()
     {
         TokenState tokenState = getTokenState();
-        tokenState.rwLock.writeLock().lock();
+        tokenState.lock.writeLock().lock();
         try
         {
             tokenState.setState(TokenState.State.NORMAL);
@@ -370,7 +295,7 @@ public class FailureRecoveryTask implements Runnable
         finally
         {
             state.failureRecoveryTaskCompleted(this);
-            tokenState.rwLock.writeLock().unlock();
+            tokenState.lock.writeLock().unlock();
         }
         logger.info("Epaxos failure recovery task for {} on {} to {} completed", token, cfId, epoch);
         // TODO: execute all committed instances

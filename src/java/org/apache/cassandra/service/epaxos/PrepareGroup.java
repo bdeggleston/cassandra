@@ -1,5 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.cassandra.concurrent.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,9 +15,8 @@ import java.util.concurrent.locks.ReadWriteLock;
  * execution task will be submitted. Just because a PrepareGroup has
  * 'completed' doesn't mean that all of it's instances were committed.
  *
- * If an prepare task couldn't find an instance, or a trypreaccept phase
- * needed to wait for other instances to commit, the prepare phase for
- * that instance will be considered completed, with the assumption that
+ * If a trypreaccept phase needs to wait for other instances to commit, the prepare
+ * phase for that instance will be considered completed, with the assumption that
  * the neccesary information will be available next time around.
  */
 public class PrepareGroup implements ICommitCallback
@@ -39,8 +39,9 @@ public class PrepareGroup implements ICommitCallback
 
     public synchronized void schedule()
     {
-        for (UUID toPrepare: uncommitted)
+        for (UUID toPrepare : uncommitted)
         {
+            logger.debug("Scheduling prepare for {}", toPrepare);
             ReadWriteLock lock = state.getInstanceLock(toPrepare);
             lock.readLock().lock();
             try
@@ -52,29 +53,26 @@ public class PrepareGroup implements ICommitCallback
                 }
                 else
                 {
-
                     state.registerCommitCallback(toPrepare, this);
-                    // if there's another prepare in progress for this instance, tell
-                    // it to rerun this one when it finishes. This prevents a single
-                    // node from running multiple concurrent prepare phases for the
-                    // same instance.
-                    // the api however, kinda sucks
-                    // TODO: make not suck
+                    // if there's another prepare in progress for this instance, tell it to rerun this one when it
+                    // finishes. This prevents a single node from running multiple concurrent prepare phases for the
+                    // same instance, which would most likely cause a livelock situation as each prepare job kept
+                    // upping it's ballot #.
                     while (true)
                     {
                         PrepareGroup previous = state.registerPrepareGroup(toPrepare, this);
                         if (previous == null)
                         {
+                            state.prepare(toPrepare, this);
                             break;
                         }
                         else if (previous.addCompleteGroup(toPrepare, this))
                         {
-                            logger.debug("prepare already in progress for {}. Waiting for it to finish", id);
-                            return;
+                            logger.debug("prepare already in progress for {} (parent {}). Waiting for it to finish", toPrepare, id);
+                            break;
                         }
-                        logger.debug("attempting to register prepare group for {} failed, trying again.", id);
+                        logger.debug("attempting to register prepare group for {} (parent {}) failed, trying again.", toPrepare, id);
                     }
-                    PrepareTask task = state.prepare(toPrepare, this);
                 }
             }
             finally
@@ -86,22 +84,33 @@ public class PrepareGroup implements ICommitCallback
 
     public synchronized void prepareComplete(UUID completedId)
     {
+        logger.debug("Prepare for {} completed", completedId);
         outstanding.remove(completedId);
         state.unregisterPrepareGroup(completedId);
 
         List<PrepareGroup> groupList = groupNotify.remove(completedId);
         if (groupList != null)
         {
-            for (PrepareGroup group: groupList)
+            for (PrepareGroup group : groupList)
             {
                 group.prepareComplete(completedId);
             }
         }
 
-        if (outstanding.size() == 0)
+        if (outstanding.isEmpty())
         {
-            state.getStage(Stage.MUTATION).submit(new ExecuteTask(state, id));
+            submitExecuteTask();
         }
+    }
+
+    public synchronized boolean prepareIsOutstandingFor(UUID id)
+    {
+        return outstanding.contains(id);
+    }
+
+    protected void submitExecuteTask()
+    {
+        state.getStage(Stage.MUTATION).submit(new ExecuteTask(state, id));
     }
 
     public synchronized boolean addCompleteGroup(UUID toPrepare, PrepareGroup group)
@@ -128,5 +137,19 @@ public class PrepareGroup implements ICommitCallback
     public int size()
     {
         return uncommitted.size();
+    }
+
+    /**
+     * Returns the id of the instance that initiated this prepare task
+     */
+    public UUID getParentId()
+    {
+        return id;
+    }
+
+    @VisibleForTesting
+    Set<UUID> getRegisteredGroupNotifies()
+    {
+        return groupNotify.keySet();
     }
 }

@@ -14,17 +14,17 @@ import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.UUID;
 
-public class EpaxosEpochCallbackTest
+public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
 {
     private static final Token MANAGED_TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(100));
     private static final Token MESSAGE_TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(50));
     private static final UUID CFID = UUIDGen.getTimeUUID();
 
-    private static MessageIn<Message> getMessage(long epoch) throws UnknownHostException
+    private static MessageIn<Message> getMessage(long epoch)
     {
-        return MessageIn.create(InetAddress.getLocalHost(),
+        return MessageIn.create(LOCALHOST,
                                 new Message(MESSAGE_TOKEN, CFID, epoch),
-                                Collections.EMPTY_MAP,
+                                Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.ECHO,
                                 0);
     }
@@ -89,7 +89,7 @@ public class EpaxosEpochCallbackTest
         @Override
         public TokenState getTokenState(IEpochMessage message)
         {
-            return new TokenState(MANAGED_TOKEN, message.getCfId(), epoch, epoch, 0, state);
+            return new TokenState(MANAGED_TOKEN, message.getCfId(), epoch, 0, state);
         }
     }
 
@@ -180,5 +180,14 @@ public class EpaxosEpochCallbackTest
         assertModeResponse(TokenState.State.PRE_RECOVERY, false);
         assertModeResponse(TokenState.State.RECOVERING_INSTANCES, false);
         assertModeResponse(TokenState.State.RECOVERING_DATA, true);
+    }
+
+    @Test
+    public void recoveryRequiredTokenState() throws Exception
+    {
+        State state = new State(5, TokenState.State.RECOVERY_REQUIRED);
+        Callback callback = new Callback(state);
+        callback.response(getMessage(5));
+        Assert.assertEquals(1, state.localFailureCalls);
     }
 }

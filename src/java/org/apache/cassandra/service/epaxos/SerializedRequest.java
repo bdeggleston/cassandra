@@ -105,8 +105,8 @@ public class SerializedRequest
         }
         else
         {
-            // TODO: see if the instance can be marked executed in the same commit log entry as this mutation
             // TODO: may need to examine the ts of any cells we're going to overwrite
+            // TODO: don't bother doing reads, store the last used ts in the key state, and increment it
             ReplayPosition rp;
             try
             {

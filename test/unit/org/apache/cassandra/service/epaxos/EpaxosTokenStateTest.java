@@ -34,7 +34,7 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
     @Test
     public void serialization() throws IOException
     {
-        TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 4, 5, 6);
+        TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 4, 6);
         DataOutputBuffer out = new DataOutputBuffer();
         TokenState.serializer.serialize(ts, out, 0);
 
@@ -44,38 +44,7 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
         TokenState deserialized = TokenState.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
         Assert.assertEquals(ts.getToken(), deserialized.getToken());
         Assert.assertEquals(ts.getEpoch(), deserialized.getEpoch());
-        Assert.assertEquals(ts.getHighEpoch(), deserialized.getHighEpoch());
         Assert.assertEquals(ts.getExecutions(), deserialized.getExecutions());
-    }
-
-    /**
-     * Tests setHighEpoch only returns true if the given
-     * value is higher than the current high epoch value
-     */
-    @Test
-    public void highEpoch()
-    {
-        TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 0, 0, 0);
-        Assert.assertEquals(0, ts.getHighEpoch());
-
-        Assert.assertTrue(ts.recordHighEpoch(1));
-        Assert.assertEquals(1, ts.getHighEpoch());
-
-        Assert.assertFalse(ts.recordHighEpoch(1));
-        Assert.assertEquals(1, ts.getHighEpoch());
-    }
-
-    /**
-     * Tests that the high epoch can't be decremented
-     */
-    @Test
-    public void highEpochDecrementFailure()
-    {
-        TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 0, 5, 0);
-        Assert.assertEquals(5, ts.getHighEpoch());
-
-        Assert.assertFalse(ts.recordHighEpoch(1));
-        Assert.assertEquals(5, ts.getHighEpoch());
     }
 
     /**
@@ -84,7 +53,7 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
     @Test
     public void recordExecutions()
     {
-        TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 0, 0, 0);
+        TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 0, 0);
         Assert.assertEquals(0, ts.getEpoch());
         Assert.assertEquals(0, ts.getExecutions());
         Assert.assertEquals(0, ts.getNumUnrecordedExecutions());
@@ -100,7 +69,7 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
     @Test
     public void setEpochResetsExecutions()
     {
-        TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 4, 5, 6);
+        TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 4, 6);
         Assert.assertEquals(4, ts.getEpoch());
         Assert.assertEquals(6, ts.getExecutions());
 
@@ -115,7 +84,7 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
     @Test
     public void onSave()
     {
-        TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 0, 0, 0);
+        TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 0, 0);
         Assert.assertEquals(0, ts.getEpoch());
         Assert.assertEquals(0, ts.getExecutions());
         Assert.assertEquals(0, ts.getNumUnrecordedExecutions());
@@ -136,7 +105,7 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
     @Test
     public void epochInstances()
     {
-        TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 0, 0, 0);
+        TokenState ts = new TokenState(partitioner.getToken(ByteBufferUtil.bytes(123)), CFID, 0, 0);
         UUID i0 = UUIDGen.getTimeUUID();
         UUID i1 = UUIDGen.getTimeUUID();
         UUID i2 = UUIDGen.getTimeUUID();
@@ -155,7 +124,7 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
     @Test
     public void tokenInstances()
     {
-        TokenState ts = new TokenState(new LongToken(200l), CFID, 0, 0, 0);
+        TokenState ts = new TokenState(new LongToken(200l), CFID, 0, 0);
         UUID tId0 = UUIDGen.getTimeUUID();
         UUID tId1 = UUIDGen.getTimeUUID();
         ts.recordTokenInstance(new LongToken(75l), tId0);
@@ -166,5 +135,32 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
         Assert.assertEquals(Sets.newHashSet(tId0), ts.getCurrentTokenInstances(rangeFor(149l)));
         Assert.assertEquals(Sets.newHashSet(tId0), ts.getCurrentTokenInstances(rangeFor(75l)));
         Assert.assertEquals(Sets.<UUID>newHashSet(), ts.getCurrentTokenInstances(rangeFor(50l)));
+    }
+
+    /**
+     * Test the behavior of local only
+     */
+    @Test
+    public void localOnly()
+    {
+        TokenState ts = new TokenState(new LongToken(200l), CFID, 0, 0);
+
+        // a brand new token state with no executions should default to serial
+        Assert.assertFalse(ts.localOnly());
+
+        // but if there have only been local serial instances, it should return true for localOnly
+        ts.recordExecution();
+        Assert.assertTrue(ts.localOnly());
+
+        // record a serial instance
+        ts.recordSerialCommit();
+        Assert.assertFalse(ts.localOnly());
+
+        // the non-localOnly state should carry over to the next epoch...
+        ts.setEpoch(1);
+
+        // ...unless only local-serial instances are recorded this time around
+        ts.recordExecution();
+        Assert.assertTrue(ts.localOnly());
     }
 }

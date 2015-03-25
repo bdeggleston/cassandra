@@ -75,13 +75,11 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
         Node node = nodes.get(0);
 
         Instance oldInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
-        oldInstance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
         oldInstance.commit(Sets.<UUID>newHashSet());
         for (Node n: nodes)
             n.addMissingInstance(oldInstance);
 
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
-        instance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
 
         node.preaccept(instance);
 
@@ -100,13 +98,11 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
         setState(nodes.subList(1, nodes.size()), Node.State.DOWN);
         Node node = nodes.get(0);
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
-        instance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
 
         node.preaccept(instance);
         Assert.assertNull(lastAcceptDecision);
 
         Assert.assertEquals(Sets.<UUID>newHashSet(), instance.getDependencies());
-        Assert.assertTrue(instance.isFastPathImpossible());
     }
 
     @Test
@@ -116,21 +112,18 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
 
         // add an instance the leader doesn't know about
         Instance oldInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
-        oldInstance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
         oldInstance.commit(Sets.<UUID>newHashSet());
         for (Node n: nodes.subList(1, nodes.size()))
             n.addMissingInstance(oldInstance);
 
         Assert.assertNull(node.getInstance(oldInstance.getId()));
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
-        instance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
         node.preaccept(instance);
 
         Assert.assertNotNull(lastAcceptDecision);
         AcceptDecision decision = lastAcceptDecision;
 
         Assert.assertEquals(Sets.<UUID>newHashSet(), instance.getDependencies());
-        Assert.assertTrue(instance.isFastPathImpossible());
         Assert.assertTrue(decision.acceptNeeded);
         Assert.assertEquals(Sets.newHashSet(oldInstance.getId()), decision.acceptDeps);
 

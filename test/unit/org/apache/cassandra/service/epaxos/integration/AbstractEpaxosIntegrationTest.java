@@ -22,11 +22,11 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
     public List<Node> nodes;
     public Messenger messenger;
 
-    protected String createTestKeyspace()
+    public static String createTestKeyspace(int rf)
     {
         String ksName = String.format("epaxos_%s", System.currentTimeMillis());
-        List<CFMetaData> cfDefs = Lists.newArrayListWithCapacity(getReplicationFactor() * 2);
-        for (int i=0; i<getReplicationFactor(); i++)
+        List<CFMetaData> cfDefs = Lists.newArrayListWithCapacity(rf * 2);
+        for (int i=0; i<rf; i++)
         {
             CFMetaData instanceTable = new CFMetaData(ksName,
                                                       String.format("%s_%s", SystemKeyspace.EPAXOS_INSTANCE, i + 1),
@@ -76,13 +76,13 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         return f + ((f + 1) / 2);
     }
 
-    public static void setState(List<Node> nodes, Node.State state)
+    public static void setState(Iterable<Node> nodes, Node.State state)
     {
         for (Node node: nodes)
             node.setState(state);
     }
 
-    public static void assertInstanceUnknown(UUID iid, List<Node> nodes)
+    public static void assertInstanceUnknown(UUID iid, Iterable<Node> nodes)
     {
         for (Node node: nodes)
         {
@@ -91,7 +91,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         }
     }
 
-    public static void assertInstanceDeps(UUID iid, List<Node> nodes, Set<UUID> expectedDeps)
+    public static void assertInstanceDeps(UUID iid, Iterable<Node> nodes, Set<UUID> expectedDeps)
     {
         for (Node node: nodes)
         {
@@ -101,7 +101,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         }
     }
 
-    public static void assertInstanceState(UUID iid, List<Node> nodes, Instance.State expectedState)
+    public static void assertInstanceState(UUID iid, Iterable<Node> nodes, Instance.State expectedState)
     {
         for (Node node: nodes)
         {
@@ -138,7 +138,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
     @Before
     public void setUp()
     {
-        String ksName = createTestKeyspace();
+        String ksName = createTestKeyspace(getReplicationFactor());
         messenger = createMessenger();
         nodes = Lists.newArrayListWithCapacity(getReplicationFactor());
         for (int i=0; i<getReplicationFactor(); i++)
@@ -157,6 +157,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
             return new Node.SingleThreaded(nodeNumber, messenger)
             {
 
+                // TODO: make using special keyspaces/tables less awkward
                 @Override
                 protected String keyspace()
                 {

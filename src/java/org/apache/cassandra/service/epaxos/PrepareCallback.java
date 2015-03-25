@@ -22,17 +22,24 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
     private final int ballot;
     private final EpaxosState.ParticipantInfo participantInfo;
     private final PrepareGroup group;
+    private final boolean instanceUnknown;
     private final Map<InetAddress, Instance> responses = Maps.newHashMap();
 
     private boolean completed = false;
 
-    public PrepareCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, PrepareGroup group)
+    public PrepareCallback(EpaxosState state, UUID id, int ballot, EpaxosState.ParticipantInfo participantInfo, PrepareGroup group)
     {
         super(state);
-        id = instance.getId();
-        ballot = instance.getBallot();
+        this.id = id;
+        this.ballot = ballot;
         this.participantInfo = participantInfo;
         this.group = group;
+        instanceUnknown = ballot == 0;
+
+        if (instanceUnknown)
+        {
+            assert state.loadInstance(id) == null;
+        }
     }
 
     @Override
@@ -55,12 +62,22 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
 
         Instance msgInstance = msg.payload.contents;
 
-        if (msgInstance != null && msgInstance.getBallot() > ballot)
+        if (msgInstance != null)
         {
-            // TODO: should we only try n times? if so start sending attempt # along
-            completed = true;
-            state.updateBallot(id, msgInstance.getBallot(), new PrepareTask(state, id, group));
-            return;
+            if (instanceUnknown)
+            {
+                completed = true;
+                group.prepareComplete(id);
+                state.addMissingInstance(msgInstance);
+                return;
+            }
+            else if (msgInstance.getBallot() > ballot)
+            {
+                // TODO: should we only try n times? if so start sending attempt # along
+                completed = true;
+                state.updateBallot(id, msgInstance.getBallot(), new PrepareTask(state, id, group));
+                return;
+            }
         }
 
         responses.put(msg.from, msgInstance);
@@ -71,12 +88,16 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
             PrepareDecision decision = getDecision();
             logger.debug("prepare decision for {}: {}", id, decision);
 
+            if (decision.commitNoop && instanceUnknown)
+            {
+                throw new AssertionError("noop required for unknown instance");
+            }
+
             // if any of the next steps fail, they should report
-            // the prepare phase as complete so the prepare is
-            // tried again
+            // the prepare phase as complete for this instance
+            // so the prepare is tried again
             Runnable failureCallback = new Runnable()
             {
-                @Override
                 public void run()
                 {
                     group.prepareComplete(id);
@@ -86,7 +107,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
             switch (decision.state)
             {
                 case PREACCEPTED:
-                    if (decision.tryPreacceptAttempts.size() > 0)
+                    if (!decision.tryPreacceptAttempts.isEmpty())
                     {
                         List<TryPreacceptAttempt> attempts = decision.tryPreacceptAttempts;
                         state.tryPreaccept(id, attempts, participantInfo, failureCallback);
@@ -108,7 +129,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
         }
     }
 
-    private Predicate<Instance> committedPredicate = new Predicate<Instance>()
+    private final Predicate<Instance> committedPredicate = new Predicate<Instance>()
     {
         @Override
         public boolean apply(@Nullable Instance instance)
@@ -120,7 +141,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
         }
     };
 
-    private Predicate<Instance> acceptedPredicate = new Predicate<Instance>()
+    private final Predicate<Instance> acceptedPredicate = new Predicate<Instance>()
     {
         @Override
         public boolean apply(@Nullable Instance instance)
@@ -132,7 +153,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
         }
     };
 
-    private Predicate<Instance> notNullPredicate = new Predicate<Instance>()
+    private final Predicate<Instance> notNullPredicate = new Predicate<Instance>()
     {
         @Override
         public boolean apply(@Nullable Instance instance)
@@ -158,16 +179,16 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
         }
 
         List<Instance> committed = Lists.newArrayList(Iterables.filter(responses.values(), committedPredicate));
-        if (committed.size() > 0)
+        if (!committed.isEmpty())
             return new PrepareDecision(Instance.State.COMMITTED, committed.get(0).getDependencies(), vetoed, ballot);
 
         List<Instance> accepted = Lists.newArrayList(Iterables.filter(responses.values(), acceptedPredicate));
-        if (accepted.size() > 0)
+        if (!accepted.isEmpty())
             return new PrepareDecision(Instance.State.ACCEPTED, accepted.get(0).getDependencies(), vetoed, ballot);
 
         // no other node knows about this instance, commit a noop
-        if (Lists.newArrayList(Iterables.filter(responses.values(), notNullPredicate)).size() == 0)
-            return new PrepareDecision(Instance.State.PREACCEPTED, null, vetoed, ballot, Collections.EMPTY_LIST, true);
+        if (Lists.newArrayList(Iterables.filter(responses.values(), notNullPredicate)).isEmpty())
+            return new PrepareDecision(Instance.State.PREACCEPTED, null, vetoed, ballot, Collections.<TryPreacceptAttempt>emptyList(), true);
 
         return new PrepareDecision(Instance.State.PREACCEPTED, null, vetoed, ballot, getTryPreacceptAttempts(), false);
     }
@@ -189,11 +210,11 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
         {
             if (entry.getValue() != null && entry.getKey().equals(entry.getValue().getLeader()))
             {
-                return Collections.EMPTY_LIST;
+                return Collections.emptyList();
             }
         }
 
-        // group common responses
+        // group and score common responses
         Set<InetAddress> replyingReplicas = Sets.newHashSet();
         Map<Set<UUID>, Set<InetAddress>> depGroups = Maps.newHashMap();
         final Map<Set<UUID>, Integer> scores = Maps.newHashMap();
@@ -228,8 +249,22 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
                 continue;
 
             Set<InetAddress> toConvince = Sets.difference(replyingReplicas, nodes);
+
+            boolean leaderAttrsMatch = true;
+            boolean vetoed = false;
+            for (InetAddress endpoint: entry.getValue())
+            {
+                Instance instance = responses.get(endpoint);
+                leaderAttrsMatch &= instance.getLeaderAttrsMatch();
+                vetoed |= ((instance instanceof EpochInstance) && ((EpochInstance) instance).isVetoed());
+            }
+
+            // only allow zero size attempts if all leader attrs match
+            if (toConvince.isEmpty() && !leaderAttrsMatch)
+                continue;
+
             int requiredConvinced = participantInfo.F + 1 - nodes.size();
-            TryPreacceptAttempt attempt = new TryPreacceptAttempt(deps, toConvince, requiredConvinced, nodes);
+            TryPreacceptAttempt attempt = new TryPreacceptAttempt(deps, toConvince, requiredConvinced, nodes, leaderAttrsMatch, vetoed);
             attempts.add(attempt);
         }
 
@@ -258,6 +293,12 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
     int getNumResponses()
     {
         return responses.size();
+    }
+
+    @VisibleForTesting
+    boolean isInstanceUnknown()
+    {
+        return instanceUnknown;
     }
 
     @Override

@@ -21,15 +21,15 @@ public class EpochInstance extends AbstractTokenInstance
     private final long epoch;
     private volatile boolean vetoed;
 
-    public EpochInstance(InetAddress leader, Token token, UUID cfId, long epoch)
+    public EpochInstance(InetAddress leader, Token token, UUID cfId, long epoch, boolean local)
     {
-        super(leader, cfId, token);
+        super(leader, cfId, token, local);
         this.epoch = epoch;
     }
 
-    public EpochInstance(UUID id, InetAddress leader, Token token, UUID cfId, long epoch)
+    public EpochInstance(UUID id, InetAddress leader, Token token, UUID cfId, long epoch, boolean local)
     {
-        super(id, leader, cfId, token);
+        super(id, leader, cfId, token, local);
         this.epoch = epoch;
     }
 
@@ -49,10 +49,9 @@ public class EpochInstance extends AbstractTokenInstance
     @Override
     public Instance copyRemote()
     {
-        Instance instance = new EpochInstance(this.id, this.leader, this.token, this.cfId, this.epoch);
+        Instance instance = new EpochInstance(this.id, this.leader, this.token, this.cfId, this.epoch, this.local);
         instance.ballot = ballot;
         instance.noop = noop;
-        instance.successors = successors;
         instance.state = state;
         instance.dependencies = dependencies;
         return instance;
@@ -127,6 +126,7 @@ public class EpochInstance extends AbstractTokenInstance
             Token.serializer.serialize(instance.token, out);
             UUIDSerializer.serializer.serialize(instance.cfId, out, version);
             out.writeLong(instance.epoch);
+            out.writeBoolean(instance.local);
             out.writeBoolean(instance.vetoed);
         }
 
@@ -137,7 +137,8 @@ public class EpochInstance extends AbstractTokenInstance
                                                        CompactEndpointSerializationHelper.deserialize(in),
                                                        Token.serializer.deserialize(in),
                                                        UUIDSerializer.serializer.deserialize(in, version),
-                                                       in.readLong());
+                                                       in.readLong(),
+                                                       in.readBoolean());
 
             instance.vetoed = in.readBoolean();
             return instance;
@@ -152,6 +153,7 @@ public class EpochInstance extends AbstractTokenInstance
             size += Token.serializer.serializedSize(instance.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(instance.cfId, version);
             size += 8;
+            size += 1;
             size += 1;
             return size;
         }

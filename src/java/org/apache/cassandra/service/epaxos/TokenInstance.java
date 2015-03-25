@@ -17,14 +17,14 @@ import java.util.UUID;
  */
 public class TokenInstance extends AbstractTokenInstance
 {
-    public TokenInstance(InetAddress leader, UUID cfId, Token token)
+    public TokenInstance(InetAddress leader, UUID cfId, Token token, boolean local)
     {
-        super(leader, cfId, token);
+        super(leader, cfId, token, local);
     }
 
-    public TokenInstance(UUID id, InetAddress leader, UUID cfId, Token token)
+    public TokenInstance(UUID id, InetAddress leader, UUID cfId, Token token, boolean local)
     {
-        super(id, leader, cfId, token);
+        super(id, leader, cfId, token, local);
     }
 
     public TokenInstance(AbstractTokenInstance i)
@@ -59,6 +59,7 @@ public class TokenInstance extends AbstractTokenInstance
             CompactEndpointSerializationHelper.serialize(instance.getLeader(), out);
             UUIDSerializer.serializer.serialize(instance.cfId, out, version);
             Token.serializer.serialize(instance.token, out);
+            out.writeBoolean(instance.local);
         }
 
         @Override
@@ -67,7 +68,8 @@ public class TokenInstance extends AbstractTokenInstance
             TokenInstance instance = new TokenInstance(UUIDSerializer.serializer.deserialize(in, version),
                                                        CompactEndpointSerializationHelper.deserialize(in),
                                                        UUIDSerializer.serializer.deserialize(in, version),
-                                                       Token.serializer.deserialize(in));
+                                                       Token.serializer.deserialize(in),
+                                                       in.readBoolean());
 
             return instance;
         }
@@ -80,6 +82,7 @@ public class TokenInstance extends AbstractTokenInstance
             size += CompactEndpointSerializationHelper.serializedSize(instance.getLeader());
             size += UUIDSerializer.serializer.serializedSize(instance.cfId, version);
             size += Token.serializer.serializedSize(instance.token, TypeSizes.NATIVE);
+            size += 1;
             return size;
         }
     };

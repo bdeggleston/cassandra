@@ -1,18 +1,15 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.base.Predicate;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.net.InetAddress;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
 {
@@ -24,6 +21,101 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     public MessageIn<PreacceptResponse> createResponse(InetAddress from, PreacceptResponse response)
     {
         return MessageIn.create(from, response, Collections.<String, byte[]>emptyMap(), null, 0);
+    }
+
+    /**
+     * Tests that, in larger replica counts, the callback will wait on a fast path of
+     * quorum responses before continuing, if enough replicas are live
+     */
+    @Test
+    public void fastQuorum() throws Exception
+    {
+        MockCallbackState state = new MockCallbackState(7, 0);
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        instance.setDependencies(Collections.<UUID>emptySet());
+
+        EpaxosState.ParticipantInfo participants = state.getParticipants(instance);
+        Assert.assertEquals(4, participants.quorumSize);
+        Assert.assertEquals(5, participants.fastQuorumSize);
+        Assert.assertTrue(participants.quorumExists());
+        Assert.assertTrue(participants.fastQuorumExists());
+
+        PreacceptCallback callback = new PreacceptCallback(state, instance, state.getParticipants(instance), null, false);
+
+        List<InetAddress> quorum = participants.liveEndpoints.subList(1, participants.quorumSize);
+        List<InetAddress> fastQuorum = participants.liveEndpoints.subList(participants.quorumSize, participants.fastQuorumSize);
+
+        // sanity checks
+        Assert.assertFalse(callback.isCompleted());
+        Assert.assertEquals(0, callback.getNumResponses());
+
+        callback.countLocal();
+        // quorum responds
+        for (InetAddress endpoint: quorum)
+        {
+            callback.response(createResponse(endpoint, PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
+        }
+
+        Assert.assertFalse(callback.isCompleted());
+        Assert.assertEquals(participants.quorumSize, callback.getNumResponses());
+
+        // fast quorum responses
+        for (InetAddress endpoint: fastQuorum)
+        {
+            callback.response(createResponse(endpoint, PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
+        }
+
+        Assert.assertTrue(callback.isCompleted());
+        Assert.assertEquals(participants.fastQuorumSize, callback.getNumResponses());
+
+        AcceptDecision decision = callback.getAcceptDecision();
+        Assert.assertFalse(decision.acceptNeeded);
+    }
+
+    @Test
+    public void quorumOnly() throws Exception
+    {
+        MockCallbackState state = new MockCallbackState(7, 0) {
+            protected Predicate<InetAddress> livePredicate()
+            {
+                return new Predicate<InetAddress>()
+                {
+                    public boolean apply(InetAddress address)
+                    {
+                        return localEndpoints.subList(0, 4).contains(address);
+                    }
+                };
+            }
+        };
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        instance.setDependencies(Collections.<UUID>emptySet());
+
+        EpaxosState.ParticipantInfo participants = state.getParticipants(instance);
+        Assert.assertEquals(4, participants.quorumSize);
+        Assert.assertEquals(5, participants.fastQuorumSize);
+        Assert.assertTrue(participants.quorumExists());
+        Assert.assertFalse(participants.fastQuorumExists());
+
+        PreacceptCallback callback = new PreacceptCallback(state, instance, state.getParticipants(instance), null, false);
+
+        List<InetAddress> quorum = participants.liveEndpoints.subList(1, participants.quorumSize);
+
+        // sanity checks
+        Assert.assertFalse(callback.isCompleted());
+        Assert.assertEquals(0, callback.getNumResponses());
+
+        callback.countLocal();
+        // quorum responds
+        for (InetAddress endpoint: quorum)
+        {
+            callback.response(createResponse(endpoint, PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
+        }
+
+        Assert.assertTrue(callback.isCompleted());
+        Assert.assertEquals(participants.quorumSize, callback.getNumResponses());
+
+        AcceptDecision decision = callback.getAcceptDecision();
+        Assert.assertTrue(decision.acceptNeeded);
     }
 
     @Test
@@ -226,7 +318,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void receiveMissingInstances() throws Exception
     {
-
+        // TODO: this
     }
 
     /**

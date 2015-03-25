@@ -43,12 +43,6 @@ public class MockVerbHandlerState extends EpaxosState
     }
 
     @Override
-    public void tryprepare(InetAddress endpoint, UUID iid)
-    {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void tryPreaccept(UUID iid, List<TryPreacceptAttempt> attempts, ParticipantInfo participantInfo, Runnable failureCallback)
     {
         throw new UnsupportedOperationException();
@@ -72,9 +66,12 @@ public class MockVerbHandlerState extends EpaxosState
 
     public final Set<UUID> currentDeps = Sets.newHashSet();
 
+    public final Set<UUID> getCurrentDeps = Sets.newHashSet();
+
     @Override
     public Set<UUID> getCurrentDependencies(Instance instance)
     {
+        getCurrentDeps.add(instance.getId());
         return Sets.newHashSet(currentDeps);
     }
 
@@ -100,6 +97,7 @@ public class MockVerbHandlerState extends EpaxosState
     public void recordMissingInstance(Instance instance)
     {
         missingRecoreded.add(instance.getId());
+        super.recordMissingInstance(instance);
     }
 
     public final Set<UUID> acknowledgedRecoreded = Sets.newHashSet();

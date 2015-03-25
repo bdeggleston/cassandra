@@ -19,6 +19,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
@@ -87,8 +89,6 @@ public class InstanceStreamReader
     {
         DataInputStream in = new DataInputStream(new LZFInputStream(Channels.newInputStream(channel)));
 
-        // TODO: create and put token states into recovery mode in the stream session prepare
-        // TODO: think through concurrency problems with this
         while (in.readBoolean())
         {
             Token token = Token.serializer.deserialize(in);
@@ -98,7 +98,7 @@ public class InstanceStreamReader
             TokenState ts = getExact(token);
             if (ts == null)
             {
-                ts = new TokenState(token, cfId, 0, 0, 0, TokenState.State.RECOVERING_INSTANCES);
+                ts = new TokenState(token, cfId, 0, 0, TokenState.State.RECOVERING_INSTANCES);
                 TokenState previous = state.tokenStateManager.putState(ts);
                 if (previous == ts)
                 {
@@ -111,7 +111,7 @@ public class InstanceStreamReader
             }
             else
             {
-                ts.rwLock.writeLock().lock();
+                ts.lock.writeLock().lock();
                 try
                 {
                     if (ts.getState() == TokenState.State.PRE_RECOVERY)
@@ -123,15 +123,13 @@ public class InstanceStreamReader
                 }
                 finally
                 {
-                    ts.rwLock.writeLock().unlock();
+                    ts.lock.writeLock().unlock();
                 }
             }
             final TokenState tokenState = ts;
-            // TODO: work out which state we should handle in which ways
 
             logger.info("Streaming in token state for {} on {} ({})", token, Schema.instance.getCF(cfId), cfId);
 
-            // TODO: check that the token state locking/saving/state changes work with all instance stream applications
             tokenState.lockGc();
             try
             {
@@ -207,7 +205,6 @@ public class InstanceStreamReader
                                 // don't add the same instance multiple times
                                 if (!ks.contains(instance.getId()))
                                 {
-                                    // TODO: do token and epoch instances require and special handling? previous epochs should be transmitted
                                     if (instance.getState().atLeast(Instance.State.ACCEPTED))
                                     {
                                         if (!last && instance.getState() != Instance.State.EXECUTED)
@@ -258,19 +255,18 @@ public class InstanceStreamReader
 
                 // if this stream session is including data, it's not part of a failure recovery task, so
                 // we need to update the token state ourselves
-                // TODO: clean this up
-                if (session != null && session.streamingInData())
+                if (session != null && session.isReceivingData())
                 {
-                    tokenState.rwLock.writeLock().lock();
+                    logger.debug("Non-recovery instance stream complete for {}", tokenState);
+                    tokenState.lock.writeLock().lock();
                     try
                     {
-                        logger.debug("Setting token state to {}", TokenState.State.RECOVERING_DATA);
                         tokenState.setState(TokenState.State.RECOVERING_DATA);
                         state.tokenStateManager.save(tokenState);
                     }
                     finally
                     {
-                        tokenState.rwLock.writeLock().unlock();
+                        tokenState.lock.writeLock().unlock();
                     }
 
                     session.addListener(new StreamEventHandler()
@@ -280,8 +276,8 @@ public class InstanceStreamReader
                         {
                             if (event.eventType == StreamEvent.Type.STREAM_COMPLETE)
                             {
-                                logger.debug("Setting token state to {}", TokenState.State.NORMAL);
-                                tokenState.rwLock.writeLock().lock();
+                                logger.debug("Non-recovery instance stream session complete for {}", tokenState);
+                                tokenState.lock.writeLock().lock();
                                 try
                                 {
                                     tokenState.setState(TokenState.State.NORMAL);
@@ -289,7 +285,7 @@ public class InstanceStreamReader
                                 }
                                 finally
                                 {
-                                    tokenState.rwLock.writeLock().unlock();
+                                    tokenState.lock.writeLock().unlock();
                                 }
                             }
                         }
@@ -298,6 +294,10 @@ public class InstanceStreamReader
 
                         public void onFailure(Throwable throwable) {}
                     });
+                }
+                else
+                {
+                    logger.debug("Not setting stream event handler for {} on {}", tokenState, session);
                 }
             }
             finally

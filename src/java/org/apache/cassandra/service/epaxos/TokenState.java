@@ -18,26 +18,22 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * The epoch state for a given token range
  */
 public class TokenState
 {
-    // TODO: record if there are any SERIAL instances executed against this token state
-
     private final Token token;
     private final UUID cfId;
+
+    private static final Logger logger = LoggerFactory.getLogger(InstanceStreamReader.class);
 
     // the current epoch used in recording
     // execution epochs
     private volatile long epoch;
-
-    // the highest epoch instance seen so far
-    // this is the epoch we expect new instances
-    // to be executed in
-    // determines whether an epoch increment is already in the works
-    // FIXME: this is currently being used to detect if an epoch increment is in progress. Will this work across DCs?
-    private long highEpoch;
 
     private final AtomicInteger executions;
 
@@ -49,13 +45,18 @@ public class TokenState
     // this is used to determine if epoch and token instances should be executed at
     // SERIAL or LOCAL_SERIAL
     private final AtomicBoolean localOnly = new AtomicBoolean(true);
+    private volatile boolean lastEpochLocalOnly = false;
 
+    // the minimum epoch this token state will need to be in to stream instances
+    // to a new node. After a token range is split, this prevents instances being
+    // transmitted to a node that doesn't replicate them
     private volatile long minStreamEpoch = 0;
+
+    // the token of the token state that was split to create this token state
     private volatile Token creatorToken = null;
 
     public static enum State {
 
-        INITIALIZING(false, false),
         NORMAL(true, true),
         RECOVERY_REQUIRED(false, false),
         PRE_RECOVERY(false, false),
@@ -99,26 +100,30 @@ public class TokenState
         }
     }
 
-    private volatile State state;  // local only
+    // the local state of the token state. This indicates
+    // if recovery is needed or in progress.
+    private volatile State state;
+
+    // When new key states are created after epoch 0, this map is used
+    // to seed them with an initial set of dependencies
     private final SetMultimap<Long, UUID> epochInstances = HashMultimap.create();
     private final SetMultimap<Token, UUID> tokenInstances = HashMultimap.create();
 
     private transient volatile int lastPersistedExecutionCount = 0;
 
     // fair to give priority to token mutations
-    public final ReadWriteLock rwLock = new ReentrantReadWriteLock(true);
+    public final ReadWriteLock lock = new ReentrantReadWriteLock(true);
 
-    public TokenState(Token token, UUID cfId, long epoch, long highEpoch, int executions)
+    public TokenState(Token token, UUID cfId, long epoch, int executions)
     {
-        this(token, cfId, epoch, highEpoch, executions, State.NORMAL);
+        this(token, cfId, epoch, executions, State.NORMAL);
     }
 
-    public TokenState(Token token, UUID cfId, long epoch, long highEpoch, int executions, State state)
+    public TokenState(Token token, UUID cfId, long epoch, int executions, State state)
     {
         this.token = token;
         this.cfId = cfId;
         this.epoch = epoch;
-        this.highEpoch = highEpoch;
         this.executions = new AtomicInteger(executions);
         lastPersistedExecutionCount = executions;
         this.state = state;
@@ -143,30 +148,12 @@ public class TokenState
     {
         assert epoch >= this.epoch;
         this.epoch = epoch;
-        recordHighEpoch(epoch);
 
         executions.set(0);
-        localOnly.set(false);
+        lastEpochLocalOnly = localOnly();
+        localOnly.set(true);
         resetUnrecordedExecutions();
         cleanEpochInstances();
-    }
-
-    public synchronized boolean recordHighEpoch(long epoch)
-    {
-        if (epoch > highEpoch)
-        {
-            highEpoch = epoch;
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    public long getHighEpoch()
-    {
-        return highEpoch;
     }
 
     public void recordExecution()
@@ -196,6 +183,7 @@ public class TokenState
 
     public void setState(State state)
     {
+        logger.debug("Setting token state to {} for {}", state, this);
         this.state = state;
     }
 
@@ -218,7 +206,7 @@ public class TokenState
      * Moves the given token instance from the token instance collection, into
      * the epoch instances collection as part of the given epoch.
      */
-    public boolean recordTokenInstanceExecution(TokenInstance instance)
+    public boolean bindTokenInstanceToEpoch(TokenInstance instance)
     {
         boolean changed = tokenInstances.remove(instance.getToken(), instance.getId());
         if (changed)
@@ -290,7 +278,7 @@ public class TokenState
     }
 
     /**
-     * return token instances for tokens that are > the given token
+     * return token instance ids for token instances covered by the given range
      */
     public Set<UUID> getCurrentTokenInstances(Range<Token> range)
     {
@@ -330,7 +318,15 @@ public class TokenState
      */
     public boolean localOnly()
     {
-        return localOnly.get();
+        if (executions.get() == 0)
+        {
+            // if we don't have any info, defer to the last epoch
+            return lastEpochLocalOnly;
+        }
+        else
+        {
+            return localOnly.get();
+        }
     }
 
     public long getMinStreamEpoch()
@@ -364,9 +360,9 @@ public class TokenState
             Token.serializer.serialize(tokenState.token, out);
             UUIDSerializer.serializer.serialize(tokenState.cfId, out, version);
             out.writeLong(tokenState.epoch);
-            out.writeLong(tokenState.highEpoch);
             out.writeInt(tokenState.executions.get());
             out.writeInt(tokenState.state.ordinal());
+            out.writeBoolean(tokenState.lastEpochLocalOnly);
             out.writeBoolean(tokenState.localOnly.get());
             out.writeLong(tokenState.minStreamEpoch);
             out.writeBoolean(tokenState.creatorToken != null);
@@ -383,6 +379,14 @@ public class TokenState
                 out.writeLong(epoch);
                 Serializers.uuidSets.serialize(tokenState.epochInstances.get(epoch), out, version);
             }
+
+            Set<Token> tKeys = tokenState.tokenInstances.keySet();
+            out.writeInt(tKeys.size());
+            for (Token token: tKeys)
+            {
+                Token.serializer.serialize(token, out);
+                Serializers.uuidSets.serialize(tokenState.tokenInstances.get(token), out, version);
+            }
         }
 
         @Override
@@ -391,10 +395,10 @@ public class TokenState
             TokenState ts = new TokenState(Token.serializer.deserialize(in),
                                            UUIDSerializer.serializer.deserialize(in, version),
                                            in.readLong(),
-                                           in.readLong(),
                                            in.readInt(),
                                            State.values()[in.readInt()]);
 
+            ts.lastEpochLocalOnly = in.readBoolean();
             ts.localOnly.set(in.readBoolean());
             ts.minStreamEpoch = in.readLong();
 
@@ -410,6 +414,13 @@ public class TokenState
                 ts.epochInstances.putAll(epoch, Serializers.uuidSets.deserialize(in, version));
             }
 
+            int numTokenInstanceKeys = in.readInt();
+            for (int i=0; i<numTokenInstanceKeys; i++)
+            {
+                Token token = Token.serializer.deserialize(in);
+                ts.tokenInstances.putAll(token, Serializers.uuidSets.deserialize(in, version));
+            }
+
             return ts;
         }
 
@@ -418,7 +429,7 @@ public class TokenState
         {
             long size = Token.serializer.serializedSize(tokenState.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(tokenState.cfId, version);
-            size += 8 + 8 + 4 + 4 + 1 + 8;
+            size += 8 + 4 + 4 + 1 + 1 + 8;
 
             size += 1;
             if (tokenState.creatorToken != null)
@@ -434,6 +445,14 @@ public class TokenState
                 size += Serializers.uuidSets.serializedSize(tokenState.epochInstances.get(epoch), version);
             }
 
+            // token instances
+            size += 4;
+            for (Token token: tokenState.tokenInstances.keySet())
+            {
+                size += Token.serializer.serializedSize(token, TypeSizes.NATIVE);
+                size += Serializers.uuidSets.serializedSize(tokenState.tokenInstances.get(token), version);
+            }
+
             return size;
         }
     };
@@ -445,7 +464,6 @@ public class TokenState
                 "token=" + token +
                 ", cfId=" + cfId +
                 ", epoch=" + epoch +
-                ", highEpoch=" + highEpoch +
                 ", executions=" + executions +
                 ", state=" + state +
                 '}';

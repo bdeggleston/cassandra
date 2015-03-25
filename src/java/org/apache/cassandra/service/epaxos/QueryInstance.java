@@ -2,6 +2,7 @@ package org.apache.cassandra.service.epaxos;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
@@ -55,7 +56,6 @@ public class QueryInstance extends Instance
         Instance instance = new QueryInstance(this.id, this.query, this.leader);
         instance.ballot = ballot;
         instance.noop = noop;
-        instance.successors = successors;
         instance.state = state;
         instance.dependencies = dependencies;
         return instance;
@@ -77,6 +77,12 @@ public class QueryInstance extends Instance
     public UUID getCfId()
     {
         return query.getCfKey().cfId;
+    }
+
+    @Override
+    public ConsistencyLevel getConsistencyLevel()
+    {
+        return query.getConsistencyLevel();
     }
 
     private static final IVersionedSerializer<QueryInstance> commonSerializer = new IVersionedSerializer<QueryInstance>()

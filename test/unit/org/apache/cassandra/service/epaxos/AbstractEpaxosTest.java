@@ -8,14 +8,18 @@ import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.cql3.statements.CQL3CasRequest;
 import org.apache.cassandra.cql3.statements.ModificationStatement;
 import org.apache.cassandra.cql3.statements.ParsedStatement;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.composites.CellNames;
 import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.dht.ByteOrderedPartitioner;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.net.MessagingService;
@@ -24,9 +28,13 @@ import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.service.ThriftCASRequest;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
+
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -39,16 +47,37 @@ public abstract class AbstractEpaxosTest
     protected static KSMetaData ksm;
     protected static CFMetaData cfm;
     protected static CFMetaData thriftcf;
+    protected static final InetAddress LOCALHOST;
 
     static
     {
+        DatabaseDescriptor.setPartitioner(new ByteOrderedPartitioner());
         DatabaseDescriptor.getConcurrentWriters();
         MessagingService.instance();
         SchemaLoader.prepareServer();
+        try
+        {
+            LOCALHOST = InetAddress.getByName("127.0.0.1");
+        }
+        catch (UnknownHostException e)
+        {
+            throw new AssertionError(e);
+        }
     }
 
     protected static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(0));
     protected static final UUID CFID = UUIDGen.getTimeUUID();
+
+    static class DoNothing implements Runnable
+    {
+        public volatile int timesRun = 0;
+        @Override
+        public void run()
+        {
+            // not doing anything
+            timesRun++;
+        }
+    }
 
     @BeforeClass
     public static void setUpClass() throws Exception
@@ -61,6 +90,42 @@ public abstract class AbstractEpaxosTest
         Schema.instance.load(ksm);
     }
 
+    protected void clearKeyStates()
+    {
+        String select = String.format("SELECT row_key FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
+        String delete = String.format("DELETE FROM %s.%s WHERE row_key=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
+        UntypedResultSet result = QueryProcessor.executeInternal(select);
+
+        while (!result.isEmpty())
+        {
+            for (UntypedResultSet.Row row: result)
+            {
+                QueryProcessor.executeInternal(delete, row.getBlob("row_key"));
+            }
+            result = QueryProcessor.executeInternal(select);
+        }
+
+        Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
+    }
+
+    protected void clearTokenStates()
+    {
+        String select = String.format("SELECT cf_id FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
+        String delete = String.format("DELETE FROM %s.%s WHERE cf_id=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
+        UntypedResultSet result = QueryProcessor.executeInternal(select);
+
+        while (!result.isEmpty())
+        {
+            for (UntypedResultSet.Row row: result)
+            {
+                QueryProcessor.executeInternal(delete, row.getBlob("cf_id"));
+            }
+            result = QueryProcessor.executeInternal(select);
+        }
+
+        Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
+    }
+
     protected MessageEnvelope<Instance> wrapInstance(Instance instance)
     {
         return wrapInstance(instance, 0);
@@ -71,7 +136,7 @@ public abstract class AbstractEpaxosTest
         return new MessageEnvelope<>(instance.getToken(), instance.getCfId(), epoch, instance);
     }
 
-    protected ThriftCASRequest getThriftCasRequest()
+    protected static ThriftCASRequest getThriftCasRequest()
     {
         ColumnFamily expected = ArrayBackedSortedColumns.factory.create("ks", thriftcf.cfName);
         expected.addColumn(CellNames.simpleDense(ByteBufferUtil.bytes("v")), ByteBufferUtil.bytes(2), 3L);
@@ -82,7 +147,7 @@ public abstract class AbstractEpaxosTest
         return new ThriftCASRequest(expected, updates);
     }
 
-    protected CQL3CasRequest getCqlCasRequest(int k, int v, ConsistencyLevel consistencyLevel)
+    protected static CQL3CasRequest getCqlCasRequest(int k, int v, ConsistencyLevel consistencyLevel)
     {
         try
         {
@@ -107,17 +172,17 @@ public abstract class AbstractEpaxosTest
             throw new AssertionError(e);
         }
     }
-    protected SerializedRequest newSerializedRequest(CASRequest request)
+    protected static SerializedRequest newSerializedRequest(CASRequest request)
     {
         return newSerializedRequest(request, ConsistencyLevel.SERIAL);
     }
 
-    protected SerializedRequest newSerializedRequest(CASRequest request, ConsistencyLevel consistencyLevel)
+    protected static SerializedRequest newSerializedRequest(CASRequest request, ConsistencyLevel consistencyLevel)
     {
         return newSerializedRequest(request, ByteBufferUtil.bytes(7), consistencyLevel);
     }
 
-    protected SerializedRequest newSerializedRequest(CASRequest request, ByteBuffer key, ConsistencyLevel consistencyLevel)
+    protected static SerializedRequest newSerializedRequest(CASRequest request, ByteBuffer key, ConsistencyLevel consistencyLevel)
     {
         SerializedRequest.Builder builder = SerializedRequest.builder();
         builder.casRequest(request);
@@ -128,18 +193,18 @@ public abstract class AbstractEpaxosTest
         return builder.build();
     }
 
-    protected SerializedRequest getSerializedThriftRequest()
+    protected static SerializedRequest getSerializedThriftRequest()
     {
         ThriftCASRequest casRequest = getThriftCasRequest();
         return newSerializedRequest(casRequest);
     }
 
-    protected SerializedRequest getSerializedCQLRequest(int k, int v)
+    protected static SerializedRequest getSerializedCQLRequest(int k, int v)
     {
         return getSerializedCQLRequest(k, v, ConsistencyLevel.SERIAL);
     }
 
-    protected SerializedRequest getSerializedCQLRequest(int k, int v, ConsistencyLevel cl)
+    protected static SerializedRequest getSerializedCQLRequest(int k, int v, ConsistencyLevel cl)
     {
         CQL3CasRequest casRequest = getCqlCasRequest(k, v, cl);
         return newSerializedRequest(casRequest, casRequest.getKey(), cl);

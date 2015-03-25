@@ -6,6 +6,8 @@ import com.google.common.io.ByteStreams;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.net.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -17,10 +19,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Messenger
 {
+    private static final Logger logger = LoggerFactory.getLogger(Messenger.class);
+
     private final int VERSION = 0;
     private final AtomicInteger nextMsgNumber = new AtomicInteger(0);
 
     private final Map<InetAddress, Node> nodes = Maps.newConcurrentMap();
+    private final Map<InetAddress, Integer> missedMessage = Maps.newConcurrentMap();
     private final Map<InetAddress, Map<MessagingService.Verb, IVerbHandler>> verbHandlers = Maps.newConcurrentMap();
     private final Map<Integer, IAsyncCallback> callbackMap = Maps.newConcurrentMap();
 
@@ -48,6 +53,7 @@ public class Messenger
         handlers.put(MessagingService.Verb.EPAXOS_TRYPREACCEPT, node.getTryPreacceptVerbHandler());
 
         verbHandlers.put(node.getEndpoint(), handlers);
+        missedMessage.put(node.getEndpoint(), 0);
     }
 
     public List<InetAddress> getEndpoints(final InetAddress forNode)
@@ -95,10 +101,59 @@ public class Messenger
         }
     }
 
+    private void maybeResetNodes()
+    {
+        for (Map.Entry<InetAddress, Node> entry: nodes.entrySet())
+        {
+            InetAddress address = entry.getKey();
+            Node node = entry.getValue();
+            if (node.getState() == Node.State.UP)
+            {
+                missedMessage.put(address, 0);
+            }
+        }
+    }
+
+    private void maybeRecordMissedMessage(InetAddress address)
+    {
+        if (nodes.get(address).getState() != Node.State.UP)
+        {
+            int missed = missedMessage.get(address);
+            missed++;
+            missedMessage.put(address, missed);
+        }
+        else
+        {
+            missedMessage.put(address, 0);
+        }
+    }
+
+    public int getMissedMessages(InetAddress address)
+    {
+        return missedMessage.get(address);
+    }
+
     public <T> void sendReply(MessageOut<T> msg, final int id, InetAddress from, InetAddress to)
     {
-        if (nodes.get(from).getState() != Node.State.UP)
-            return;
+        if (!from.equals(to))
+        {
+            if (nodes.get(from).getState() != Node.State.UP)
+            {
+                logger.info("Aborting sendReply {} from {}. Node: {}",
+                            msg.payload.getClass().getSimpleName(),
+                            from,
+                            nodes.get(from).getState());
+                return;
+            }
+            else if (nodes.get(to).getState() == Node.State.DOWN)
+            {
+                logger.info("Aborting sendReply {} to {}. Node: {}",
+                            msg.payload.getClass().getSimpleName(),
+                            to,
+                            Node.State.DOWN);
+                return;
+            }
+        }
 
         final MessageIn<T> messageIn;
         DataOutputBuffer out = new DataOutputBuffer();
@@ -114,6 +169,8 @@ public class Messenger
         {
             throw new AssertionError(e);
         }
+
+        maybeResetNodes();
 
         submit(new Runnable()
         {
@@ -134,8 +191,25 @@ public class Messenger
     public <T> int sendRR(MessageOut<T> msg, InetAddress from, final InetAddress to, IAsyncCallback cb)
     {
         final int msgId = nextMsgNumber.getAndIncrement();
-        if (nodes.get(to).getState() == Node.State.DOWN)
-            return msgId;
+        if (!from.equals(to))
+        {
+            if (nodes.get(from).getState() == Node.State.DOWN)
+            {
+                logger.info("Aborting sendRR {} from {}. Node: {}",
+                            msg.payload.getClass().getSimpleName(),
+                            from,
+                            Node.State.DOWN);
+                return msgId;
+            }
+            else if (nodes.get(to).getState() == Node.State.DOWN)
+            {
+                logger.info("Aborting sendRR {} to {}. Node: {}",
+                            msg.payload.getClass().getSimpleName(),
+                            to,
+                            Node.State.DOWN);
+                return msgId;
+            }
+        }
 
         MessagingService.instance().setCallbackForTests(msgId, new CallbackInfo(to,
                                                                                 cb,
@@ -157,6 +231,8 @@ public class Messenger
             throw new AssertionError(e);
         }
 
+        maybeRecordMissedMessage(to);
+
         submit(new Runnable()
         {
             @Override
@@ -173,8 +249,25 @@ public class Messenger
     public <T> void sendOneWay(MessageOut<T> msg, InetAddress from, final InetAddress to)
     {
         final int msgId = nextMsgNumber.getAndIncrement();
-        if (nodes.get(to).getState() == Node.State.DOWN)
-            return;
+        if (!from.equals(to))
+        {
+            if (nodes.get(from).getState() == Node.State.DOWN)
+            {
+                logger.info("Aborting sendOneWay {} from {}. Node: {}",
+                            msg.payload.getClass().getSimpleName(),
+                            from,
+                            Node.State.DOWN);
+                return;
+            }
+            else if (nodes.get(to).getState() == Node.State.DOWN)
+            {
+                logger.info("Aborting sendOneWay {} to {}. Node: {}",
+                            msg.payload.getClass().getSimpleName(),
+                            to,
+                            Node.State.DOWN);
+                return;
+            }
+        }
 
         final MessageIn<T> messageIn;
         DataOutputBuffer out = new DataOutputBuffer();
@@ -188,6 +281,8 @@ public class Messenger
         {
             throw new AssertionError(e);
         }
+
+        maybeResetNodes();
 
         submit(new Runnable()
         {

@@ -53,14 +53,12 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         Node node = nodes.get(0);
         Instance firstInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         firstInstance.commit(Sets.<UUID>newHashSet());
-        firstInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         node.addMissingInstance(firstInstance);
 
 
         // send node 0 a preaccept message that doesn't include the missing instance
         Instance newInstance = new QueryInstance(getSerializedCQLRequest(0, 0), nodes.get(1).getEndpoint());
         newInstance.preaccept(Sets.newHashSet(firstInstance.getId()));
-        newInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
 
         MessageIn<MessageEnvelope<Instance>> request = MessageIn.create(nodes.get(1).getEndpoint(),
                                                                         wrapInstance(newInstance),
@@ -103,14 +101,12 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         Node node = nodes.get(0);
         Instance firstInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         firstInstance.commit(Sets.<UUID>newHashSet());
-        firstInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         node.addMissingInstance(firstInstance);
 
 
         // send node 0 a preaccept message that doesn't include the missing instance
         Instance newInstance = new QueryInstance(getSerializedCQLRequest(0, 0), nodes.get(1).getEndpoint());
         newInstance.preaccept(Sets.newHashSet(firstInstance.getId(), UUIDGen.getTimeUUID()));
-        newInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
 
         MessageIn<MessageEnvelope<Instance>> request = MessageIn.create(nodes.get(1).getEndpoint(),
                                                                         wrapInstance(newInstance),
@@ -148,14 +144,12 @@ public class EpaxosPreacceptReplicaTest extends AbstractEpaxosIntegrationTest.Si
         Node node = nodes.get(0);
         Instance missingInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         missingInstance.commit(Sets.<UUID>newHashSet());
-        missingInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
         node.addMissingInstance(missingInstance);
 
 
         // send node 0 a preaccept message that doesn't include the missing instance
         Instance newInstance = new QueryInstance(getSerializedCQLRequest(0, 0), nodes.get(1).getEndpoint());
         newInstance.preaccept(Sets.<UUID>newHashSet());
-        newInstance.setSuccessors(Lists.newArrayList(node.getEndpoint()));
 
         MessageIn<MessageEnvelope<Instance>> request = MessageIn.create(nodes.get(1).getEndpoint(),
                                                                         wrapInstance(newInstance),

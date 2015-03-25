@@ -1,10 +1,10 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.*;
-import com.google.common.io.ByteStreams;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.Striped;
 import org.apache.cassandra.concurrent.Stage;
@@ -135,6 +135,11 @@ public class EpaxosState
             return liveEndpoints.size() >= quorumSize;
         }
 
+        public boolean fastQuorumExists()
+        {
+            return liveEndpoints.size() >= fastQuorumSize;
+        }
+
         /**
          * Throws an UnavailableException if a quorum isn't present
          *
@@ -144,13 +149,6 @@ public class EpaxosState
         {
             if (!quorumExists())
                 throw new UnavailableException(consistencyLevel, quorumSize, liveEndpoints.size());
-        }
-
-        public List<InetAddress> getSuccessors()
-        {
-            List<InetAddress> successors = Lists.newArrayList(Iterables.filter(endpoints, nonLocalPredicate));
-            Collections.shuffle(successors, getRandom());
-            return successors;
         }
 
         public Set<InetAddress> allEndpoints()
@@ -237,7 +235,6 @@ public class EpaxosState
     /**
      * Initiates an epaxos instance and waits for the result to become available
      */
-    // TODO: eventually, the type parameter will let this take read and cas requests
     public <T> T query(SerializedRequest query)
             throws UnavailableException, WriteTimeoutException, ReadTimeoutException, InvalidRequestException
     {
@@ -285,14 +282,14 @@ public class EpaxosState
 
     protected EpochInstance createEpochInstance(Token token, UUID cfId, long epoch)
     {
-        EpochInstance instance = new EpochInstance(getEndpoint(), token, cfId, epoch);
+        EpochInstance instance = new EpochInstance(getEndpoint(), token, cfId, epoch, tokenStateManager.isLocalOnly(token, cfId));
         logger.debug("Created EpochInstance {} for epoch {} on token {}", instance.getId(), instance.getEpoch(), instance.getToken());
         return instance;
     }
 
     protected TokenInstance createTokenInstance(Token token, UUID cfId)
     {
-        TokenInstance instance = new TokenInstance(getEndpoint(), cfId, token);
+        TokenInstance instance = new TokenInstance(getEndpoint(), cfId, token, tokenStateManager.isLocalOnly(token, cfId));
         logger.debug("Created TokenInstance {} on token {}", instance.getId(), instance.getToken());
         return instance;
     }
@@ -412,6 +409,7 @@ public class EpaxosState
      */
     public void notifyCommit(UUID id)
     {
+        logger.debug("notifying commit listener of commit for {}", id);
         List<ICommitCallback> callbacks = commitCallbacks.get(id);
         if (callbacks != null)
         {
@@ -441,6 +439,12 @@ public class EpaxosState
         callbacks.add(callback);
     }
 
+    @VisibleForTesting
+    Set<UUID> registeredCommitCallbacks()
+    {
+        return commitCallbacks.keySet();
+    }
+
     public void commit(UUID iid, Set<UUID> dependencies)
     {
         logger.debug("committing instance {}", iid);
@@ -451,12 +455,12 @@ public class EpaxosState
             if (instance.getState() == Instance.State.EXECUTED)
             {
                 assert instance.getDependencies().equals(dependencies);
-            } else
+            }
+            else
             {
                 instance.commit(dependencies);
             }
 
-            // FIXME: unavailable exception shouldn't be thrown by getParticipants. It will prevent instances from being committed locally
             ParticipantInfo participantInfo = getParticipants(instance);
             MessageOut<MessageEnvelope<Instance>> message = instance.getMessage(MessagingService.Verb.EPAXOS_COMMIT,
                                                                                 tokenStateManager.getEpoch(instance));
@@ -537,7 +541,7 @@ public class EpaxosState
     {
         TokenState tokenState = tokenStateManager.getExact(instance.getToken(), instance.getCfId());
 
-        tokenState.rwLock.writeLock().lock();
+        tokenState.lock.writeLock().lock();
         try
         {
             // no use iterating over all key states if this is effectively a noop
@@ -551,12 +555,9 @@ public class EpaxosState
         }
         finally
         {
-            tokenState.rwLock.writeLock().unlock();
+            tokenState.lock.writeLock().unlock();
         }
 
-        keyStateManager.updateEpoch(tokenState);
-
-        //
         maybeSetResultFuture(instance.getId(), null);
         startTokenStateGc(tokenState);
     }
@@ -575,7 +576,9 @@ public class EpaxosState
             return;
         }
 
-        // TODO: should the neighbor be part of the instance?
+        // TODO: make neighbor part of instance
+        //      * if the token ring changes between preaccept and execution, there will be keys that never mark the token instance as committed
+        //      * we should probably have the 'expected' range be part of the preaccept, and be something that requires an accept if different between nodes
         TokenState neighbor = tokenStateManager.get(token, cfId);
 
         // token states for this node's replicated tokens
@@ -583,12 +586,12 @@ public class EpaxosState
         // called for a cfId
         assert neighbor != null;
 
-        neighbor.rwLock.writeLock().lock();
+        neighbor.lock.writeLock().lock();
         try
         {
             long epoch = neighbor.getEpoch();
-            TokenState tokenState = new TokenState(token, cfId, neighbor.getEpoch(), neighbor.getEpoch(), 0);
-            tokenState.rwLock.writeLock().lock();
+            TokenState tokenState = new TokenState(token, cfId, neighbor.getEpoch(), 0);
+            tokenState.lock.writeLock().lock();
             try
             {
                 if (tokenStateManager.putState(tokenState) != tokenState)
@@ -636,18 +639,15 @@ public class EpaxosState
                 // can be removed from the neighbor if initialization doesn't complete
                 tokenStateManager.save(tokenState);
                 tokenStateManager.save(neighbor);
-
-                keyStateManager.updateEpoch(tokenState);
-                keyStateManager.updateEpoch(neighbor);
             }
             finally
             {
-                tokenState.rwLock.writeLock().unlock();
+                tokenState.lock.writeLock().unlock();
             }
         }
         finally
         {
-            neighbor.rwLock.writeLock().unlock();
+            neighbor.lock.writeLock().unlock();
         }
         maybeSetResultFuture(instance.getId(), null);
     }
@@ -657,9 +657,9 @@ public class EpaxosState
         getStage(Stage.MUTATION).submit(new GarbageCollectionTask(this, tokenState, keyStateManager));
     }
 
-    protected PrepareCallback getPrepareCallback(Instance instance, ParticipantInfo participantInfo, PrepareGroup group)
+    protected PrepareCallback getPrepareCallback(UUID id, int ballot, ParticipantInfo participantInfo, PrepareGroup group)
     {
-        return new PrepareCallback(this, instance, participantInfo, group);
+        return new PrepareCallback(this, id, ballot, participantInfo, group);
     }
 
     public PrepareTask prepare(UUID id, PrepareGroup group)
@@ -690,28 +690,11 @@ public class EpaxosState
         prepareGroups.remove(id);
     }
 
-    protected TryPrepareCallback getTryPrepareCallback()
+    @VisibleForTesting
+    Set<UUID> registeredPrepareGroups()
     {
-        return new TryPrepareCallback();
+        return prepareGroups.keySet();
     }
-
-    /**
-     * If we rely only on a timeout to determine when a node should prepare an instance,
-     * they'll all start trying to prepare at once, usually causing a period of livelock.
-     * To prevent this, an ordered list of successors are specified at instance creation.
-     * When a node thinks an instance needs to be prepared, it first asks a successor instance
-     * to prepare it, then waits for it to prepare the instance
-     */
-    public void tryprepare(InetAddress endpoint, UUID iid)
-    {
-
-    }
-
-    protected TryPrepareVerbHandler getTryPrepareVerbHandler()
-    {
-        return new TryPrepareVerbHandler(this);
-    }
-
 
     protected TryPreacceptCallback getTryPreacceptCallback(UUID iid, TryPreacceptAttempt attempt, List<TryPreacceptAttempt> nextAttempts, ParticipantInfo participantInfo, Runnable failureCallback)
     {
@@ -738,16 +721,27 @@ public class EpaxosState
      */
     public void tryPreaccept(UUID iid, List<TryPreacceptAttempt> attempts, ParticipantInfo participantInfo, Runnable failureCallback)
     {
-        assert attempts.size() > 0;
+        assert !attempts.isEmpty();
         TryPreacceptAttempt attempt = attempts.get(0);
         List<TryPreacceptAttempt> nextAttempts = attempts.subList(1, attempts.size());
 
         logger.debug("running trypreaccept prepare for {}: {}", iid, attempt);
 
+        // if all replicas have the same deps, and they all agree with the leader,
+        // then we can jump right to the accept phase
+        if (attempt.requiredConvinced == 0)
+        {
+            assert attempt.agreedWithLeader;
+            accept(iid, attempt.dependencies, attempt.vetoed, failureCallback);
+            return;
+        }
+
         Token token;
         UUID cfId;
         long epoch;
-        Lock lock = getInstanceLock(iid).readLock();
+        int ballot;
+        boolean localAttempt = attempt.toConvince.contains(getEndpoint());
+        Lock lock = localAttempt ? getInstanceLock(iid).readLock() : getInstanceLock(iid).writeLock();
         lock.lock();
         try
         {
@@ -755,13 +749,22 @@ public class EpaxosState
             token = instance.getToken();
             cfId = instance.getCfId();
             epoch = getCurrentEpoch(instance);
+            ballot = instance.getBallot() + 1;
+
+            // if the prepare leader isn't being sent a trypreaccept message, update
+            // it's ballot locally so follow on requests don't fail
+            if (!localAttempt)
+            {
+                instance.updateBallot(ballot);
+                saveInstance(instance);
+            }
         }
         finally
         {
             lock.unlock();
         }
 
-        TryPreacceptRequest request = new TryPreacceptRequest(token, cfId, epoch, iid, attempt.dependencies);
+        TryPreacceptRequest request = new TryPreacceptRequest(token, cfId, epoch, iid, attempt.dependencies, ballot);
         MessageOut<TryPreacceptRequest> message = request.getMessage();
 
         TryPreacceptCallback callback = getTryPreacceptCallback(iid, attempt, nextAttempts, participantInfo, failureCallback);
@@ -1135,7 +1138,7 @@ public class EpaxosState
     public List<Instance> getInstanceCopies(Set<UUID> iids)
     {
         if (iids == null || iids.size() == 0)
-            return Collections.EMPTY_LIST;
+            return Collections.<Instance>emptyList();
 
         List<Instance> instances = Lists.newArrayListWithCapacity(iids.size());
         for (UUID iid: iids)
@@ -1161,7 +1164,7 @@ public class EpaxosState
 
     public UUID addToken(UUID cfId, Token token)
     {
-        TokenInstance instance = new TokenInstance(getEndpoint(), cfId, token);
+        TokenInstance instance = new TokenInstance(getEndpoint(), cfId, token, tokenStateManager.isLocalOnly(token, cfId));
         preaccept(instance);
         return instance.getId();
     }
@@ -1221,33 +1224,6 @@ public class EpaxosState
 
     protected ParticipantInfo getParticipants(Instance instance)
     {
-        switch (instance.getType())
-        {
-            case QUERY:
-                return getQueryParticipants((QueryInstance) instance);
-            case TOKEN:
-            case EPOCH:
-                return getTokenParticipants((AbstractTokenInstance) instance);
-            default:
-                throw new IllegalArgumentException("Unsupported instance type: " + instance.getType());
-        }
-    }
-
-    // TODO: factor out (rework integration tests)
-    protected ParticipantInfo getQueryParticipants(QueryInstance instance)
-    {
-        return getInstanceParticipants(instance, instance.getQuery().getConsistencyLevel());
-    }
-
-    // TODO: factor out (rework integration tests)
-    protected ParticipantInfo getTokenParticipants(AbstractTokenInstance instance)
-    {
-        // FIXME: add support for LOCAL_SERIAL
-        return getInstanceParticipants(instance, ConsistencyLevel.SERIAL);
-    }
-
-    protected ParticipantInfo getInstanceParticipants(Instance instance, ConsistencyLevel cl)
-    {
         String ks = Schema.instance.getCF(instance.getCfId()).left;
 
         List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(ks, instance.getToken());
@@ -1255,17 +1231,22 @@ public class EpaxosState
 
         List<InetAddress> endpoints = ImmutableList.copyOf(Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), duplicateFilter()));
         List<InetAddress> remoteEndpoints = null;
-        if (cl == ConsistencyLevel.LOCAL_SERIAL)
+        if (instance.getConsistencyLevel() == ConsistencyLevel.LOCAL_SERIAL)
         {
             // Restrict naturalEndpoints and pendingEndpoints to node in the local DC only
             String localDc = DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
-            Predicate<InetAddress> isLocalDc = dcPredicateFor(localDc, false);
-            Predicate<InetAddress> notLocalDc = dcPredicateFor(localDc, true);
+            Predicate<InetAddress> isLocalDc = dcPredicateFor(localDc, true);
+            Predicate<InetAddress> notLocalDc = dcPredicateFor(localDc, false);
 
             remoteEndpoints = ImmutableList.copyOf(Iterables.filter(endpoints, notLocalDc));
             endpoints = ImmutableList.copyOf(Iterables.filter(endpoints, isLocalDc));
         }
-        return new ParticipantInfo(endpoints, remoteEndpoints, cl);
+        if (endpoints.isEmpty())
+        {
+            logger.warn("no endpoints found for instance: {} at {}, natural: {}, pending: {}, remote: {}",
+                        instance, instance.getConsistencyLevel(), naturalEndpoints, pendingEndpoints, remoteEndpoints);
+        }
+        return new ParticipantInfo(endpoints, remoteEndpoints, instance.getConsistencyLevel());
     }
 
     protected boolean isAlive(InetAddress endpoint)

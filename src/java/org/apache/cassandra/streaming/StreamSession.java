@@ -129,6 +129,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     private final Map<UUID, StreamTransferTask> transfers = new ConcurrentHashMap<>();
     // data receivers, filled after receiving prepare message
     private final Map<UUID, StreamReceiveTask> receivers = new ConcurrentHashMap<>();
+    private volatile boolean receivingData = false;
 
     private final Set<EpaxosRequest> epaxosRequests = Sets.newConcurrentHashSet();
     private final Map<UUID, EpaxosTransferTask> epaxosTransfers = new ConcurrentHashMap<>();
@@ -778,7 +779,10 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     private void prepareReceiving(StreamSummary summary)
     {
         if (summary.files > 0)
+        {
             receivers.put(summary.cfId, new StreamReceiveTask(this, summary.cfId, summary.files, summary.totalSize));
+            receivingData = true;
+        }
     }
 
     private void prepareEpaxosReceiving(EpaxosSummary summary)
@@ -789,7 +793,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     private void maybePrepareEpaxosState()
     {
-        if (!epaxosReceivers.isEmpty() && streamingInData())
+        if (!epaxosReceivers.isEmpty() && isReceivingData())
         {
             for (EpaxosReceiveTask receiveTask: epaxosReceivers.values())
             {
@@ -798,9 +802,9 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         }
     }
 
-    public boolean streamingInData()
+    public boolean isReceivingData()
     {
-        return !receivers.isEmpty();
+        return receivingData;
     }
 
     public void addListener(StreamEventHandler listener)

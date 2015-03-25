@@ -58,7 +58,7 @@ public class EpaxosEpochInstanceTest
     @Test
     public void vetoed() throws Exception
     {
-        EpochInstance instance = new EpochInstance(LEADER, TOKEN, CFID, 5);
+        EpochInstance instance = new EpochInstance(LEADER, TOKEN, CFID, 5, false);
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
 

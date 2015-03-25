@@ -23,7 +23,7 @@ public class AcceptVerbHandler extends AbstractEpochVerbHandler<AcceptRequest>
         Instance remoteInstance = message.payload.instance;
         logger.debug("Accept request received from {} for {}", message.from, remoteInstance.getId());
 
-        if (message.payload.missingInstances.size() > 0)
+        if (!message.payload.missingInstances.isEmpty())
         {
             logger.debug("Adding {} missing instances from {}", message.payload.missingInstances.size(), message.from);
             for (Instance missing: message.payload.missingInstances)
@@ -41,12 +41,16 @@ public class AcceptVerbHandler extends AbstractEpochVerbHandler<AcceptRequest>
         try
         {
             instance = state.loadInstance(remoteInstance.getId());
+            boolean recordDeps;
             if (instance == null)
             {
                 instance = remoteInstance.copyRemote();
                 state.recordMissingInstance(instance);
-            } else
+                recordDeps = true;
+            }
+            else
             {
+                recordDeps = instance.isPlaceholder();
                 instance.checkBallot(remoteInstance.getBallot());
                 instance.applyRemote(remoteInstance);
             }
@@ -57,6 +61,10 @@ public class AcceptVerbHandler extends AbstractEpochVerbHandler<AcceptRequest>
             AcceptResponse response = new AcceptResponse(instance.getToken(), instance.getCfId(), state.getCurrentEpoch(instance), true, 0);
             state.sendReply(response.getMessage(), id, message.from);
 
+            if (recordDeps)
+            {
+                state.getCurrentDependencies(instance);
+            }
             state.recordAcknowledgedDeps(instance);
         }
         catch (BallotException e)

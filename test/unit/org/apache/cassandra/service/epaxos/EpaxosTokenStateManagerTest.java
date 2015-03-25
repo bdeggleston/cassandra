@@ -55,7 +55,6 @@ public class EpaxosTokenStateManagerTest
             TokenState ts = cf.get(token);
             Assert.assertEquals(token, ts.getToken());
             Assert.assertEquals(0, ts.getEpoch());
-            Assert.assertEquals(0, ts.getHighEpoch());
             Assert.assertEquals(0, ts.getExecutions());
         }
     }
@@ -78,7 +77,7 @@ public class EpaxosTokenStateManagerTest
 
         Assert.assertEquals(ts200, tsm.get(token150, CFID));
 
-        TokenState ts150 = new TokenState(token150, CFID, ts200.getEpoch(), 0, 0);
+        TokenState ts150 = new TokenState(token150, CFID, ts200.getEpoch(), 0);
         tsm.putState(ts150);
 
         Assert.assertEquals(token150, ts150.getToken());
@@ -103,5 +102,30 @@ public class EpaxosTokenStateManagerTest
                 super.save(state);
             }
         };
+    }
+
+    /**
+     * When the token state manager starts up, if it encounters any token states
+     * in a non-normal state, it means that C* was shut down while they were in
+     * the process of recovering. In this case, the tsm should set their state to
+     * recovery required.
+     */
+    @Test
+    public void nonNormalStartupState()
+    {
+        // create token state and save it in with a non-normal state
+        TokenStateManager tsm = getTokenStateManager();
+        tsm.start();
+
+        TokenState ts = tsm.get(TOKEN100, CFID);
+        ts.setState(TokenState.State.PRE_RECOVERY);
+        tsm.save(ts);
+
+        // start another, and check that it changed the state on startup
+        tsm = getTokenStateManager();
+        tsm.start();
+
+        ts = tsm.get(TOKEN100, CFID);
+        Assert.assertEquals(TokenState.State.RECOVERY_REQUIRED, ts.getState());
     }
 }

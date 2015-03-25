@@ -12,59 +12,11 @@ import java.util.*;
 /**
  * Mocked state for testing the behavior of callback classes
  */
-public class MockCallbackState extends EpaxosState
+public class MockCallbackState extends MockMessengerState
 {
-    private final InetAddress endpoint;
-    public final List<InetAddress> localReplicas;
-    public final List<InetAddress> localEndpoints;
-    public final List<InetAddress> remoteEndpoints;
-
     public MockCallbackState(int numLocal, int numRemote)
     {
-        numLocal = Math.max(1, numLocal);
-        numRemote = Math.max(0, numRemote);
-
-        try
-        {
-            endpoint = InetAddress.getByAddress(ByteBufferUtil.bytes(1).array());
-            localReplicas = new ArrayList<>(numLocal - 1);
-            localEndpoints = new ArrayList<>(numLocal);
-            localEndpoints.add(endpoint);
-            for (int i=1; i<numLocal; i++)
-            {
-                InetAddress replicaEndpoint = InetAddress.getByAddress(ByteBufferUtil.bytes(i + 1).array());
-                localReplicas.add(replicaEndpoint);
-                localEndpoints.add(replicaEndpoint);
-            }
-
-            remoteEndpoints = new ArrayList<>(numRemote);
-            for (int i=0; i<numRemote; i++)
-            {
-                remoteEndpoints.add(InetAddress.getByAddress(ByteBufferUtil.bytes(i + 1 + numLocal).array()));
-            }
-        }
-        catch (UnknownHostException e)
-        {
-            throw new AssertionError();
-        }
-    }
-
-    @Override
-    protected TokenStateManager createTokenStateManager()
-    {
-        return new MockTokenStateManager();
-    }
-
-    @Override
-    protected InetAddress getEndpoint()
-    {
-        return endpoint;
-    }
-
-    @Override
-    protected ParticipantInfo getQueryParticipants(QueryInstance instance)
-    {
-        return new ParticipantInfo(localEndpoints, remoteEndpoints, instance.getQuery().getConsistencyLevel());
+        super(numLocal, numRemote);
     }
 
     public static class PreacceptPrepareCall
@@ -178,56 +130,27 @@ public class MockCallbackState extends EpaxosState
         ballotUpdates.add(new UpdateBallotCall(id, ballot, callback));
     }
 
-    @Override
-    protected Predicate<InetAddress> livePredicate()
+    public static class TryPreacceptCall
     {
-        return new Predicate<InetAddress>()
+        public final UUID iid;
+        public final List<TryPreacceptAttempt> attempts;
+        public final ParticipantInfo participantInfo;
+        public final Runnable failureCallback;
+
+        public TryPreacceptCall(UUID iid, List<TryPreacceptAttempt> attempts, ParticipantInfo participantInfo, Runnable failureCallback)
         {
-            @Override
-            public boolean apply(InetAddress inetAddress)
-            {
-                return true;
-            }
-        };
-    }
-
-    protected void sendReply(MessageOut message, int id, InetAddress to)
-    {
-        throw new UnsupportedOperationException();
-    }
-
-    public static class SentMessage
-    {
-        public final MessageOut message;
-        public final InetAddress to;
-        public final IAsyncCallback cb;  // will be null for one way messages
-
-        public SentMessage(MessageOut message, InetAddress to, IAsyncCallback cb)
-        {
-            this.message = message;
-            this.to = to;
-            this.cb = cb;
+            this.iid = iid;
+            this.attempts = attempts;
+            this.participantInfo = participantInfo;
+            this.failureCallback = failureCallback;
         }
     }
 
-    List<SentMessage> sentMessages = new LinkedList<>();
+    public final List<TryPreacceptCall> tryPreacceptCalls = new LinkedList<>();
 
     @Override
-    protected int sendRR(MessageOut message, InetAddress to, IAsyncCallback cb)
+    public void tryPreaccept(UUID iid, List<TryPreacceptAttempt> attempts, ParticipantInfo participantInfo, Runnable failureCallback)
     {
-        sentMessages.add(new SentMessage(message, to, cb));
-        return -1;
-    }
-
-    @Override
-    protected void sendOneWay(MessageOut message, InetAddress to)
-    {
-        sentMessages.add(new SentMessage(message, to, null));
-    }
-
-    @Override
-    protected void scheduleTokenStateMaintenanceTask()
-    {
-        // no-op
+        tryPreacceptCalls.add(new TryPreacceptCall(iid, attempts, participantInfo, failureCallback));
     }
 }

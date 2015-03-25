@@ -28,16 +28,24 @@ public class CommitVerbHandler extends AbstractEpochVerbHandler<MessageEnvelope<
         try
         {
             instance = state.loadInstance(remoteInstance.getId());
+            boolean recordDeps;
             if (instance == null)
             {
                 instance = remoteInstance.copyRemote();
                 state.recordMissingInstance(instance);
-            } else
+                recordDeps = true;
+            }
+            else
             {
+                recordDeps = instance.isPlaceholder();
                 instance.applyRemote(remoteInstance);
             }
             instance.commit(remoteInstance.getDependencies());
             state.saveInstance(instance);
+            if (recordDeps)
+            {
+                state.getCurrentDependencies(instance);
+            }
             state.recordAcknowledgedDeps(instance);
             state.notifyCommit(remoteInstance.getId());
         }

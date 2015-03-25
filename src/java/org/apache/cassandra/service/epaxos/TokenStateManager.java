@@ -2,7 +2,7 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
-import com.google.common.io.ByteStreams;
+
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
@@ -109,7 +109,6 @@ public class TokenStateManager
 
         Range<Token> rangeFor(Token right)
         {
-            // FIXME: this will create a wrap around range if we don't merge with all other tokens
             lock.readLock().lock();
             try
             {
@@ -165,7 +164,7 @@ public class TokenStateManager
                     }
                 }
 
-                putIfAbsent(new TokenState(range.right, cfid, 0, 0, 0, TokenState.State.PRE_RECOVERY));
+                putIfAbsent(new TokenState(range.right, cfid, 0, 0, TokenState.State.PRE_RECOVERY));
                 updateInternalRing();
             }
             finally
@@ -208,6 +207,15 @@ public class TokenStateManager
                 }
                 TokenState prev = cf.putIfAbsent(ts);
                 assert prev == ts;
+
+                // we haven't joined the ring yet, so it doesn't make sense to start failure recovery. The token
+                // state will start failure recovery the next time it's encountered by a maintenance task, or the
+                // verb handler/callbacks
+                if (ts.getState() != TokenState.State.NORMAL)
+                {
+                    ts.setState(TokenState.State.RECOVERY_REQUIRED);
+                    save(ts);
+                }
             }
             catch (IOException e)
             {
@@ -215,7 +223,6 @@ public class TokenStateManager
             }
         }
 
-        // TODO: check that there aren't any token instances in the INITIALIZING phase
         setStarted();
     }
 
@@ -265,7 +272,7 @@ public class TokenStateManager
 
                 for (Token token: getReplicatedTokensForCf(cfId))
                 {
-                    TokenState ts = new TokenState(token, cfId, 0, 0, 0);
+                    TokenState ts = new TokenState(token, cfId, 0, 0);
                     TokenState prevTs = cf.putIfAbsent(ts);
                     assert prevTs == ts;
                     save(ts);
@@ -346,38 +353,35 @@ public class TokenStateManager
     public long getEpoch(Token token, UUID cfId)
     {
         TokenState ts = get(token, cfId);
-        ts.rwLock.readLock().lock();
+        ts.lock.readLock().lock();
         try
         {
             return ts.getEpoch();
         }
         finally
         {
-            ts.rwLock.readLock().unlock();
+            ts.lock.readLock().unlock();
         }
     }
 
-    public void recordHighEpoch(EpochInstance instance)
+    public boolean isLocalOnly(Token token, UUID cfId)
     {
-        TokenState ts = get(instance.getToken(), instance.getCfId());
-        ts.rwLock.writeLock().lock();
+        TokenState ts = get(token, cfId);
+        ts.lock.readLock().lock();
         try
         {
-            if (ts.recordHighEpoch(instance.getEpoch()))
-            {
-                save(ts);
-            }
+            return ts.localOnly();
         }
         finally
         {
-            ts.rwLock.writeLock().unlock();
+            ts.lock.readLock().unlock();
         }
     }
 
     public Set<UUID> getCurrentDependencies(AbstractTokenInstance instance)
     {
         TokenState ts = get(instance.getToken(), instance.getCfId());
-        ts.rwLock.writeLock().lock();
+        ts.lock.writeLock().lock();
         try
         {
             Range<Token> range = new Range<>(rangeFor(ts).left, instance.getToken());
@@ -400,21 +404,21 @@ public class TokenStateManager
         }
         finally
         {
-            ts.rwLock.writeLock().unlock();
+            ts.lock.writeLock().unlock();
         }
     }
 
     public Set<UUID> getCurrentTokenDependencies(CfKey cfKey)
     {
         TokenState ts = get(cfKey);
-        ts.rwLock.writeLock().lock();
+        ts.lock.writeLock().lock();
         try
         {
             return ts.getCurrentEpochInstances();
         }
         finally
         {
-            ts.rwLock.writeLock().unlock();
+            ts.lock.writeLock().unlock();
         }
     }
 
@@ -423,20 +427,20 @@ public class TokenStateManager
      * This saves us from having to commit a token instance to an epoch on instantiation, while
      * still ensuring that the correct dependency chain is used for it.
      */
-    public void recordExecutedTokenInstance(TokenInstance instance)
+    public void bindTokenInstanceToEpoch(TokenInstance instance)
     {
         for (Token token: states.get(instance.getCfId()).allTokens())
         {
             TokenState ts = getExact(token, instance.getCfId());
-            ts.rwLock.writeLock().lock();
+            ts.lock.writeLock().lock();
             try
             {
-                if (ts.recordTokenInstanceExecution(instance))
+                if (ts.bindTokenInstanceToEpoch(instance))
                     save(ts);
             }
             finally
             {
-                ts.rwLock.writeLock().unlock();
+                ts.lock.writeLock().unlock();
             }
         }
     }
@@ -444,7 +448,7 @@ public class TokenStateManager
     public TokenState recordMissingInstance(AbstractTokenInstance instance)
     {
         TokenState tokenState = get(instance);
-        tokenState.rwLock.writeLock().lock();
+        tokenState.lock.writeLock().lock();
         try
         {
             if (instance instanceof EpochInstance)
@@ -463,7 +467,7 @@ public class TokenStateManager
         }
         finally
         {
-            tokenState.rwLock.writeLock().unlock();
+            tokenState.lock.writeLock().unlock();
         }
     }
 
@@ -524,7 +528,7 @@ public class TokenStateManager
         int unsavedThreshold = getUnsavedExecutionThreshold(cfId);
         if (ts.getNumUnrecordedExecutions() > unsavedThreshold)
         {
-            ts.rwLock.writeLock().lock();
+            ts.lock.writeLock().lock();
             try
             {
                 if (ts.getNumUnrecordedExecutions() > unsavedThreshold)
@@ -532,7 +536,7 @@ public class TokenStateManager
             }
             finally
             {
-                ts.rwLock.writeLock().unlock();
+                ts.lock.writeLock().unlock();
             }
         }
     }
@@ -554,14 +558,14 @@ public class TokenStateManager
             TokenState ts = get(instance.getToken(), instance.getCfId());
             if (ts.recordSerialCommit())
             {
-                ts.rwLock.writeLock().lock();
+                ts.lock.writeLock().lock();
                 try
                 {
                     save(ts);
                 }
                 finally
                 {
-                    ts.rwLock.writeLock().unlock();
+                    ts.lock.writeLock().unlock();
                 }
             }
         }
