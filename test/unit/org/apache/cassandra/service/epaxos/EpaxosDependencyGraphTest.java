@@ -193,9 +193,8 @@ public class EpaxosDependencyGraphTest
     }
 
     /**
-     * tests that a strongly connected graph, where components have
-     * to get through previously visited components to get to the
-     * graph root, works properly
+     * tests that a strongly connected graph, where strongly connected components
+     * can only be discovered through >1 traversal
      */
     @Test
     public void stronglyConnected4()

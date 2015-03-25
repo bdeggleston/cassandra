@@ -16,6 +16,7 @@ import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.composites.CellNames;
 import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.dht.ByteOrderedPartitioner;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.net.MessagingService;
@@ -42,6 +43,7 @@ public abstract class AbstractEpaxosTest
 
     static
     {
+        DatabaseDescriptor.setPartitioner(new ByteOrderedPartitioner());
         DatabaseDescriptor.getConcurrentWriters();
         MessagingService.instance();
         SchemaLoader.prepareServer();

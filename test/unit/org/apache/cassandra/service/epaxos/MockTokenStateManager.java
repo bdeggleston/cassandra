@@ -15,6 +15,8 @@ public class MockTokenStateManager extends TokenStateManager
 
     private volatile Token token = TOKEN;
 
+    private volatile boolean persist = true;
+
     public MockTokenStateManager()
     {
         start();
@@ -26,9 +28,23 @@ public class MockTokenStateManager extends TokenStateManager
         start();
     }
 
+    public void dontPersist()
+    {
+        persist = false;
+    }
+
     public void setToken(Token token)
     {
         this.token = token;
+    }
+
+    @Override
+    public void save(TokenState state)
+    {
+        if (persist)
+        {
+            super.save(state);
+        }
     }
 
     @Override
@@ -38,6 +54,7 @@ public class MockTokenStateManager extends TokenStateManager
     }
 
     public int epochIncrementThreshold = 100;
+
     @Override
     public int getEpochIncrementThreshold(UUID cfId)
     {
