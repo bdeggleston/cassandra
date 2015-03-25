@@ -1095,7 +1095,9 @@ public class EpaxosState
         {
             Instance instance = loadInstance(remoteInstance.getId());
             if (instance != null)
+            {
                 return;
+            }
 
             instance = remoteInstance.copyRemote();
             // be careful if the instance is only preaccepted
@@ -1115,12 +1117,13 @@ public class EpaxosState
 
             saveInstance(instance);
 
-            if (instance.getState().atLeast(Instance.State.COMMITTED))
-                notifyCommit(instance.getId());
-
             keyStateManager.recordMissingInstance(instance);
 
-            // TODO: execute if committed
+            if (instance.getState().atLeast(Instance.State.COMMITTED))
+            {
+                notifyCommit(instance.getId());
+                execute(instance.getId());
+            }
 
         }
         finally

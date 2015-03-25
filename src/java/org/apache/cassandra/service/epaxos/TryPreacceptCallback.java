@@ -42,7 +42,6 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
 
         logger.debug("preaccept response received from {} for instance {}", msg.from, id);
         TryPreacceptResponse response = msg.payload;
-        // TODO: should wait for more than `targets`? Or should a single negative response abort the attempt?
 
         responses++;
         vetoed |= response.vetoed;

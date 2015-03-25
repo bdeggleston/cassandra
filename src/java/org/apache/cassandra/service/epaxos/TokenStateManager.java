@@ -36,14 +36,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class TokenStateManager
 {
     // how many instances should be executed under an epoch before the epoch is incremented
-    // TODO: make configurable. Maybe should adapt to # of token states on node
     protected static final int EPOCH_INCREMENT_THRESHOLD = Integer.getInteger("cassandra.epaxos.epoch_increment_threshold", 100);
     protected static final int MIN_EPOCH_INCREMENT_THRESHOLD = 5;
 
     // we don't save the token state every time an instance is executed.
     // This sets the percentage of the increment threshold that can be executed
     // before we must persist the execution count
-    // TODO: make configurable.
     protected static final int EXECUTION_PERSISTENCE_PERCENT = Integer.getInteger("cassandra.epaxos.execution_persistence_percent", 100);
 
     private final String keyspace;
@@ -292,8 +290,6 @@ public class TokenStateManager
         return get(instance.getToken(), instance.getCfId());
     }
 
-    // TODO: all token operations should quantize tokens to the proper token state, and token states should be inclusive of their own tokens
-    // FIXME: only using a single state for now
     public TokenState get(ByteBuffer key, UUID cfId)
     {
         return get(StorageService.getPartitioner().getToken(key), cfId);

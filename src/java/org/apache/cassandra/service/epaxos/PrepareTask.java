@@ -58,6 +58,7 @@ public class PrepareTask implements Runnable, ICommitCallback
         // group prepare was completed for this id. It should get picked
         // up while preparing the other instances, and another prepare
         // task will be started if it's not committed
+        // FIXME: false, this will cause a deadlock in some cases. This node needs to proactively get this instance.
         if (instance == null)
         {
             logger.debug("Single missing instance for prepare: {}", id);
