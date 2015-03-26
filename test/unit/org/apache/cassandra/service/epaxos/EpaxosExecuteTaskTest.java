@@ -2,13 +2,18 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.utils.FBUtilities;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.net.InetAddress;
@@ -18,6 +23,26 @@ import java.util.UUID;
 
 public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
 {
+
+    @Before
+    public void clearTables()
+    {
+        for (UntypedResultSet.Row row: QueryProcessor.executeInternal(String.format("SELECT id from %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE)))
+        {
+            QueryProcessor.executeInternal(String.format("DELETE FROM %s.%s WHERE id=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE),
+                                           row.getUUID("id"));
+        }
+        for (UntypedResultSet.Row row: QueryProcessor.executeInternal(String.format("SELECT row_key from %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE)))
+        {
+            QueryProcessor.executeInternal(String.format("DELETE FROM %s.%s WHERE row_key=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE),
+                                           row.getBlob("row_key"));
+        }
+        for (UntypedResultSet.Row row: QueryProcessor.executeInternal(String.format("SELECT cf_id from %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE)))
+        {
+            QueryProcessor.executeInternal(String.format("DELETE FROM %s.%s WHERE cf_id=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE),
+                                           row.getUUID("cf_id"));
+        }
+    }
 
     static class MockExecutionState extends EpaxosState
     {
@@ -39,9 +64,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         @Override
         protected TokenStateManager createTokenStateManager()
         {
-            MockTokenStateManager tsm = new MockTokenStateManager();
-            tsm.dontPersist();
-            return tsm;
+            return new MockTokenStateManager();
         }
 
         @Override
