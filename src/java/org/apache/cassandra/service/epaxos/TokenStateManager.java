@@ -357,6 +357,20 @@ public class TokenStateManager
         }
     }
 
+    public boolean isLocalOnly(Token token, UUID cfId)
+    {
+        TokenState ts = get(token, cfId);
+        ts.rwLock.readLock().lock();
+        try
+        {
+            return ts.localOnly();
+        }
+        finally
+        {
+            ts.rwLock.readLock().unlock();
+        }
+    }
+
     public void recordHighEpoch(EpochInstance instance)
     {
         TokenState ts = get(instance.getToken(), instance.getCfId());

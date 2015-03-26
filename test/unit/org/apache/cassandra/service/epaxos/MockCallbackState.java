@@ -62,9 +62,9 @@ public class MockCallbackState extends EpaxosState
     }
 
     @Override
-    protected ParticipantInfo getQueryParticipants(QueryInstance instance)
+    protected ParticipantInfo getParticipants(Instance instance)
     {
-        return new ParticipantInfo(localEndpoints, remoteEndpoints, instance.getQuery().getConsistencyLevel());
+        return new ParticipantInfo(localEndpoints, remoteEndpoints, instance.getConsistencyLevel());
     }
 
     public static class PreacceptPrepareCall

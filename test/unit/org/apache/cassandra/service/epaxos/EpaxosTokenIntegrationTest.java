@@ -191,7 +191,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             }
         }
 
-        TokenInstance instance = new TokenInstance(node.getEndpoint(), CFID, TOKEN1);
+        TokenInstance instance = new TokenInstance(node.getEndpoint(), CFID, TOKEN1, false);
         instance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
         node.getCurrentDependencies(instance);
         instance.setDependencies(Collections.<UUID>emptySet());

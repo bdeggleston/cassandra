@@ -285,14 +285,14 @@ public class EpaxosState
 
     protected EpochInstance createEpochInstance(Token token, UUID cfId, long epoch)
     {
-        EpochInstance instance = new EpochInstance(getEndpoint(), token, cfId, epoch);
+        EpochInstance instance = new EpochInstance(getEndpoint(), token, cfId, epoch, tokenStateManager.isLocalOnly(token, cfId));
         logger.debug("Created EpochInstance {} for epoch {} on token {}", instance.getId(), instance.getEpoch(), instance.getToken());
         return instance;
     }
 
     protected TokenInstance createTokenInstance(Token token, UUID cfId)
     {
-        TokenInstance instance = new TokenInstance(getEndpoint(), cfId, token);
+        TokenInstance instance = new TokenInstance(getEndpoint(), cfId, token, tokenStateManager.isLocalOnly(token, cfId));
         logger.debug("Created TokenInstance {} on token {}", instance.getId(), instance.getToken());
         return instance;
     }
@@ -1162,7 +1162,7 @@ public class EpaxosState
 
     public UUID addToken(UUID cfId, Token token)
     {
-        TokenInstance instance = new TokenInstance(getEndpoint(), cfId, token);
+        TokenInstance instance = new TokenInstance(getEndpoint(), cfId, token, tokenStateManager.isLocalOnly(token, cfId));
         preaccept(instance);
         return instance.getId();
     }
@@ -1222,33 +1222,6 @@ public class EpaxosState
 
     protected ParticipantInfo getParticipants(Instance instance)
     {
-        switch (instance.getType())
-        {
-            case QUERY:
-                return getQueryParticipants((QueryInstance) instance);
-            case TOKEN:
-            case EPOCH:
-                return getTokenParticipants((AbstractTokenInstance) instance);
-            default:
-                throw new IllegalArgumentException("Unsupported instance type: " + instance.getType());
-        }
-    }
-
-    // TODO: factor out (rework integration tests)
-    protected ParticipantInfo getQueryParticipants(QueryInstance instance)
-    {
-        return getInstanceParticipants(instance, instance.getQuery().getConsistencyLevel());
-    }
-
-    // TODO: factor out (rework integration tests)
-    protected ParticipantInfo getTokenParticipants(AbstractTokenInstance instance)
-    {
-        // FIXME: add support for LOCAL_SERIAL
-        return getInstanceParticipants(instance, ConsistencyLevel.SERIAL);
-    }
-
-    protected ParticipantInfo getInstanceParticipants(Instance instance, ConsistencyLevel cl)
-    {
         String ks = Schema.instance.getCF(instance.getCfId()).left;
 
         List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(ks, instance.getToken());
@@ -1256,7 +1229,7 @@ public class EpaxosState
 
         List<InetAddress> endpoints = ImmutableList.copyOf(Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), duplicateFilter()));
         List<InetAddress> remoteEndpoints = null;
-        if (cl == ConsistencyLevel.LOCAL_SERIAL)
+        if (instance.getConsistencyLevel() == ConsistencyLevel.LOCAL_SERIAL)
         {
             // Restrict naturalEndpoints and pendingEndpoints to node in the local DC only
             String localDc = DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
@@ -1266,7 +1239,7 @@ public class EpaxosState
             remoteEndpoints = ImmutableList.copyOf(Iterables.filter(endpoints, notLocalDc));
             endpoints = ImmutableList.copyOf(Iterables.filter(endpoints, isLocalDc));
         }
-        return new ParticipantInfo(endpoints, remoteEndpoints, cl);
+        return new ParticipantInfo(endpoints, remoteEndpoints, instance.getConsistencyLevel());
     }
 
     protected boolean isAlive(InetAddress endpoint)

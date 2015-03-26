@@ -217,7 +217,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         tokenState.setEpoch(currentEpoch);
         state.tokenStateManager.save(tokenState);
 
-        EpochInstance instance = new EpochInstance(LEADER, token, cfId, proposedEpoch);
+        EpochInstance instance = new EpochInstance(LEADER, token, cfId, proposedEpoch, false);
         instance.preaccept(Collections.EMPTY_SET);
         handler.doVerb(createMessage(instance, remoteEpoch), 0);
 

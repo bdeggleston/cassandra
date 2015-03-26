@@ -5,6 +5,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -381,6 +382,7 @@ public abstract class Instance
     public abstract Type getType();
     public abstract Token getToken();
     public abstract UUID getCfId();
+    public abstract ConsistencyLevel getConsistencyLevel();
 
     /**
      * Applies mutable non-dependency attributes from remote instance copies

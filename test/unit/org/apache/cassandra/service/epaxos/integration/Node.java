@@ -180,15 +180,9 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected ParticipantInfo getQueryParticipants(QueryInstance instance)
+    protected ParticipantInfo getParticipants(Instance instance)
     {
-        return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, instance.getQuery().getConsistencyLevel());
-    }
-
-    @Override
-    protected ParticipantInfo getTokenParticipants(AbstractTokenInstance instance)
-    {
-        return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, ConsistencyLevel.SERIAL);
+        return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, instance.getConsistencyLevel());
     }
 
     @Override
