@@ -57,6 +57,8 @@ public abstract class PreacceptTask implements Runnable
             assert participantInfo.endpoints.contains(state.getEndpoint()):
                     "Implement query forwarding: " + instance.getToken().toString() + " -> " + participantInfo.endpoints.toString();
 
+            // new instances (not prepared) will not have been saved yet, so we
+            // won't have initialized instances floating around
             participantInfo.quorumExistsOrDie();
 
             instance.preaccept(state.getCurrentDependencies(instance));
@@ -70,6 +72,10 @@ public abstract class PreacceptTask implements Runnable
         }
         catch (UnavailableException | InvalidInstanceStateChange e)
         {
+            if (failureCallback != null)
+            {
+                failureCallback.run();
+            }
             throw new RuntimeException(e);
         }
         finally
@@ -107,7 +113,12 @@ public abstract class PreacceptTask implements Runnable
 
         public Leader(EpaxosState state, Instance target)
         {
-            super(state, target.getId(), null);
+            this(state, target, null);
+        }
+
+        public Leader(EpaxosState state, Instance target, Runnable failureCallback)
+        {
+            super(state, target.getId(), failureCallback);
             this.target = target;
         }
 

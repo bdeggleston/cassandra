@@ -135,6 +135,11 @@ public class EpaxosState
             return liveEndpoints.size() >= quorumSize;
         }
 
+        public boolean fastQuorumExists()
+        {
+            return liveEndpoints.size() >= fastQuorumSize;
+        }
+
         /**
          * Throws an UnavailableException if a quorum isn't present
          *

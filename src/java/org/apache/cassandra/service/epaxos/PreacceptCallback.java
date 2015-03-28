@@ -25,6 +25,7 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
     private final Map<InetAddress, PreacceptResponse> responses = Maps.newHashMap();
     private final boolean forceAccept;
     private final Set<InetAddress> endpointsReplied = Sets.newHashSet();
+    private final int expectedResponses;
 
     private boolean completed = false;
     private boolean localResponse = false;
@@ -38,6 +39,7 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
         this.participantInfo = participantInfo;
         this.failureCallback = failureCallback;
         this.forceAccept = forceAccept;
+        expectedResponses = participantInfo.fastQuorumExists() ? participantInfo.fastQuorumSize : participantInfo.quorumSize;
     }
 
     @Override
@@ -83,8 +85,7 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
 
     protected void maybeDecideResult()
     {
-        // TODO: maybe wait for fast path to be satisfied? multi-DC SERIAL requests with >5 nodes will always run an accept
-        if (numResponses >= participantInfo.quorumSize && localResponse)
+        if (numResponses >= expectedResponses && localResponse)
         {
             completed = true;
             AcceptDecision decision = getAcceptDecision();
