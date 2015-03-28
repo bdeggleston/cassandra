@@ -553,8 +553,6 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         Assert.assertEquals((long) 0, tokenState.getEpoch());
         tokenState.setEpoch(1);
 
-        ksm.updateEpoch(tokenState);
-
         for (CfKey cfKey: cfKeys)
         {
             KeyState ks = ksm.loadKeyState(cfKey.key, cfKey.cfId);
@@ -801,5 +799,31 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         }
         Assert.assertEquals(21, keysCreated);
         Assert.assertEquals(keysReturned.toString(), 21, numReturned);
+    }
+
+    /**
+     * Tests that if a key state's epoch is behind the token manager
+     * on key state load. Either because of processing time on the epoch
+     * increment, or because of a failure during the increment process,
+     * that it's incremented before being returned.
+     */
+    @Test
+    public void catchUpKeyStateEpoch()
+    {
+        TokenStateManager tsm = new MockTokenStateManager();
+        KeyStateManager ksm = new KeyStateManager(tsm);
+
+        ByteBuffer key = ByteBufferUtil.bytes(0);
+
+        TokenState ts = tsm.get(key, CFID);
+        ts.setEpoch(5);
+        tsm.save(ts);
+
+        KeyState ks = ksm.loadKeyState(key, CFID);
+        Assert.assertEquals(5, ks.getEpoch());
+
+        ts.setEpoch(6);
+        ks = ksm.loadKeyState(key, CFID);
+        Assert.assertEquals(6, ks.getEpoch());
     }
 }

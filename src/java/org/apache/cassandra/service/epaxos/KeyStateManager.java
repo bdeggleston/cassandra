@@ -334,6 +334,15 @@ public class KeyStateManager
         return cache.getIfPresent(cfKey) != null || !QueryProcessor.executeInternal(String.format(query, keyspace, table), cfKey.key, cfKey.cfId).isEmpty();
     }
 
+    void maybeRepairKeyStateEpoch(ByteBuffer key, UUID cfId, KeyState ks)
+    {
+        long tsEpoch = tokenStateManager.getEpoch(key, cfId);
+        if (tsEpoch > ks.getEpoch())
+        {
+            ks.setEpoch(tsEpoch);
+        }
+    }
+
     /**
      * loads a dependency manager. Must be called within a lock held for this key & cfid pair
      */
@@ -341,32 +350,32 @@ public class KeyStateManager
     public KeyState loadKeyState(ByteBuffer key, UUID cfId)
     {
         CfKey cfKey = new CfKey(key, cfId);
-        KeyState dm = cache.getIfPresent(cfKey);
-        if (dm != null)
-            return dm;
-
-        String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=?";
-        UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace, table), key, cfId);
-
-        if (results.isEmpty())
+        KeyState ks = cache.getIfPresent(cfKey);
+        if (ks == null)
         {
-            dm = new KeyState(tokenStateManager.getEpoch(key, cfId));
+            String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=?";
+            UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace, table), key, cfId);
 
-            // add the current epoch dependencies if this is a new key
-            addTokenDeps(cfKey, dm);
-            saveKeyState(cfKey, dm);
+            if (results.isEmpty())
+            {
+                ks = new KeyState(tokenStateManager.getEpoch(key, cfId));
 
-            cache.put(cfKey, dm);
-            return dm;
+                // add the current epoch dependencies if this is a new key
+                addTokenDeps(cfKey, ks);
+                saveKeyState(cfKey, ks);
+            }
+            else
+            {
+                UntypedResultSet.Row row = results.one();
+
+                ByteBuffer data = row.getBlob("data");
+                ks = deserialize(data);
+            }
+
+            cache.put(cfKey, ks);
         }
-
-        UntypedResultSet.Row row = results.one();
-
-        ByteBuffer data = row.getBlob("data");
-        dm = deserialize(data);
-        cache.put(cfKey, dm);
-        // TODO: check keyState epoch against expected tokenState epoch
-        return dm;
+        maybeRepairKeyStateEpoch(key, cfId, ks);
+        return ks;
     }
 
     @VisibleForTesting
@@ -445,32 +454,6 @@ public class KeyStateManager
             }
         }
         return true;
-    }
-
-    public void updateEpoch(TokenState tokenState)
-    {
-        Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenState, 10000);
-        while (cfKeyIterator.hasNext())
-        {
-            CfKey cfKey = cfKeyIterator.next();
-            updateEpoch(cfKey, tokenState.getEpoch());
-        }
-    }
-
-    private void updateEpoch(CfKey cfKey, long epoch)
-    {
-        Lock lock = getCfKeyLock(cfKey);
-        lock.lock();
-        try
-        {
-            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
-            dm.setEpoch(epoch);
-            saveKeyState(cfKey, dm);
-        }
-        finally
-        {
-            lock.unlock();
-        }
     }
 
     /**

@@ -4,7 +4,6 @@ import com.google.common.base.Predicate;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.*;
-import com.google.common.io.ByteStreams;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.Striped;
 import org.apache.cassandra.concurrent.Stage;
@@ -560,9 +559,6 @@ public class EpaxosState
             tokenState.rwLock.writeLock().unlock();
         }
 
-        keyStateManager.updateEpoch(tokenState);
-
-        //
         maybeSetResultFuture(instance.getId(), null);
         startTokenStateGc(tokenState);
     }
@@ -642,9 +638,6 @@ public class EpaxosState
                 // can be removed from the neighbor if initialization doesn't complete
                 tokenStateManager.save(tokenState);
                 tokenStateManager.save(neighbor);
-
-                keyStateManager.updateEpoch(tokenState);
-                keyStateManager.updateEpoch(neighbor);
             }
             finally
             {
