@@ -232,7 +232,7 @@ public abstract class Instance
      * Setting them as a placeholder instance prevents them from being included in preaccept
      * dependencies, or prepare responses
      */
-    // TODO: are these added to the deps manager after coming out of placeholder mode?
+    // TODO: are these added to the key manager after coming out of placeholder mode?
     public void makePlacehoder()
     {
         placeholder = true;

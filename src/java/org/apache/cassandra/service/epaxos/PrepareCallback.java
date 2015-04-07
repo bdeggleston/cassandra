@@ -22,17 +22,24 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
     private final int ballot;
     private final EpaxosState.ParticipantInfo participantInfo;
     private final PrepareGroup group;
+    private final boolean instanceUnknown;
     private final Map<InetAddress, Instance> responses = Maps.newHashMap();
 
     private boolean completed = false;
 
-    public PrepareCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, PrepareGroup group)
+    public PrepareCallback(EpaxosState state, UUID id, int ballot, EpaxosState.ParticipantInfo participantInfo, PrepareGroup group)
     {
         super(state);
-        id = instance.getId();
-        ballot = instance.getBallot();
+        this.id = id;
+        this.ballot = ballot;
         this.participantInfo = participantInfo;
         this.group = group;
+        instanceUnknown = ballot == 0;
+
+        if (instanceUnknown)
+        {
+            assert state.loadInstance(id) == null;
+        }
     }
 
     @Override
@@ -55,12 +62,21 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
 
         Instance msgInstance = msg.payload.contents;
 
-        if (msgInstance != null && msgInstance.getBallot() > ballot)
+        if (msgInstance != null)
         {
-            // TODO: should we only try n times? if so start sending attempt # along
-            completed = true;
-            state.updateBallot(id, msgInstance.getBallot(), new PrepareTask(state, id, group));
-            return;
+            if (instanceUnknown)
+            {
+                completed = true;
+                state.addMissingInstance(msgInstance);
+                return;
+            }
+            else if (msgInstance.getBallot() > ballot)
+            {
+                // TODO: should we only try n times? if so start sending attempt # along
+                completed = true;
+                state.updateBallot(id, msgInstance.getBallot(), new PrepareTask(state, id, group));
+                return;
+            }
         }
 
         responses.put(msg.from, msgInstance);
@@ -71,12 +87,16 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
             PrepareDecision decision = getDecision();
             logger.debug("prepare decision for {}: {}", id, decision);
 
+            if (decision.commitNoop && instanceUnknown)
+            {
+                throw new AssertionError("noop required for unknown instance");
+            }
+
             // if any of the next steps fail, they should report
-            // the prepare phase as complete so the prepare is
-            // tried again
+            // the prepare phase as complete for this instance
+            // so the prepare is tried again
             Runnable failureCallback = new Runnable()
             {
-                @Override
                 public void run()
                 {
                     group.prepareComplete(id);
@@ -258,6 +278,12 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
     int getNumResponses()
     {
         return responses.size();
+    }
+
+    @VisibleForTesting
+    boolean isInstanceUnknown()
+    {
+        return instanceUnknown;
     }
 
     @Override

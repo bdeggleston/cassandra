@@ -1,8 +1,8 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
@@ -54,46 +54,59 @@ public class PrepareTask implements Runnable, ICommitCallback
 
         Instance instance = state.getInstanceCopy(id);
 
-        // if we don't have a copy of the instance yet, tell the prepare
-        // group prepare was completed for this id. It should get picked
-        // up while preparing the other instances, and another prepare
-        // task will be started if it's not committed
-        // FIXME: false, this will cause a deadlock in some cases. This node needs to proactively get this instance.
-        if (instance == null)
-        {
-            logger.debug("Single missing instance for prepare: {}", id);
-            group.instanceCommitted(id);
-            return;
-        }
-
-        if (!shouldPrepare(instance))
-        {
-            group.instanceCommitted(id);
-            return;
-        }
-
-        // maybe wait for grace period to end
-        long wait = state.getPrepareWaitTime(instance.getLastUpdated());
-
-        if (wait > 0)
-        {
-            logger.debug("Delaying {} prepare task for {} ms", id, wait);
-            StorageService.optionalTasks.schedule(new DelayedPrepare(this), wait, TimeUnit.MILLISECONDS);
-            return;
-        }
-
-        instance.incrementBallot();
+        PrepareRequest request;
+        PrepareCallback callback;
         EpaxosState.ParticipantInfo participantInfo;
-        participantInfo = state.getParticipants(instance);
 
-        PrepareRequest request = new PrepareRequest(instance.getToken(), instance.getCfId(), state.getCurrentEpoch(instance), instance);
-        PrepareCallback callback = state.getPrepareCallback(instance, participantInfo, group);
+        if (instance != null)
+        {
+            if (!shouldPrepare(instance))
+            {
+                group.instanceCommitted(id);
+                return;
+            }
+
+            // maybe wait for grace period to end
+            long wait = state.getPrepareWaitTime(instance.getLastUpdated());
+            if (wait > 0)
+            {
+                logger.debug("Delaying {} prepare task for {} ms", id, wait);
+                scheduledDelayedPrepare(wait);
+                return;
+            }
+
+            instance.incrementBallot();
+            participantInfo = state.getParticipants(instance);
+
+            request = new PrepareRequest(instance.getToken(), instance.getCfId(), state.getCurrentEpoch(instance), instance);
+            callback = state.getPrepareCallback(instance.getId(), instance.getBallot(), participantInfo, group);
+        }
+        else
+        {
+            // if we haven't seen a dependency for a committed instance, we run a prepare phase with a ballot
+            // of 0 to the replicas of the parent instance. This will definitely fail to take control
+            // of the instance, since instances are created with a ballot of 0. This will get
+            // a copy of the instance saved locally though so we can make a more informed prepare attempt next
+            // time around, or commit a noop if no one else has heard of it either.
+            logger.debug("running prepare for unknown instance {}, with parent", id, group.getParentId());
+
+            Instance pInstance = state.getInstanceCopy(group.getParentId());
+            participantInfo = state.getParticipants(pInstance);
+            request = new PrepareRequest(pInstance.getToken(), pInstance.getCfId(), state.getCurrentEpoch(pInstance), id, 0);
+            callback = state.getPrepareCallback(id, 0, participantInfo, group);
+        }
+
         MessageOut<PrepareRequest> message = request.getMessage();
         for (InetAddress endpoint: participantInfo.liveEndpoints)
         {
-            logger.debug("sending prepare request to {} for instance {}", endpoint, instance.getId());
+            logger.debug("sending prepare request to {} for instance {}", endpoint, id);
             state.sendRR(message, endpoint, callback);
         }
+    }
+
+    protected void scheduledDelayedPrepare(long wait)
+    {
+        StorageService.optionalTasks.schedule(new DelayedPrepare(this), wait, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -106,13 +119,15 @@ public class PrepareTask implements Runnable, ICommitCallback
         }
     }
 
-    private static class DelayedPrepare implements Runnable
+    @VisibleForTesting
+    static class DelayedPrepare implements Runnable
     {
 
         private final PrepareTask task;
 
-        private DelayedPrepare(PrepareTask task)
+        DelayedPrepare(PrepareTask task)
         {
+            assert task != null;
             this.task = task;
         }
 

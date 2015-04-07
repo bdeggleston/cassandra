@@ -1,5 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -445,6 +446,12 @@ public class EpaxosState
         callbacks.add(callback);
     }
 
+    @VisibleForTesting
+    Set<UUID> registeredCommitCallbacks()
+    {
+        return commitCallbacks.keySet();
+    }
+
     public void commit(UUID iid, Set<UUID> dependencies)
     {
         logger.debug("committing instance {}", iid);
@@ -656,9 +663,9 @@ public class EpaxosState
         getStage(Stage.MUTATION).submit(new GarbageCollectionTask(this, tokenState, keyStateManager));
     }
 
-    protected PrepareCallback getPrepareCallback(Instance instance, ParticipantInfo participantInfo, PrepareGroup group)
+    protected PrepareCallback getPrepareCallback(UUID id, int ballot, ParticipantInfo participantInfo, PrepareGroup group)
     {
-        return new PrepareCallback(this, instance, participantInfo, group);
+        return new PrepareCallback(this, id, ballot, participantInfo, group);
     }
 
     public PrepareTask prepare(UUID id, PrepareGroup group)
@@ -687,6 +694,12 @@ public class EpaxosState
     public void unregisterPrepareGroup(UUID id)
     {
         prepareGroups.remove(id);
+    }
+
+    @VisibleForTesting
+    Set<UUID> registeredPrepareGroups()
+    {
+        return prepareGroups.keySet();
     }
 
     protected TryPrepareCallback getTryPrepareCallback()
@@ -1134,7 +1147,7 @@ public class EpaxosState
     public List<Instance> getInstanceCopies(Set<UUID> iids)
     {
         if (iids == null || iids.size() == 0)
-            return Collections.EMPTY_LIST;
+            return Collections.<Instance>emptyList();
 
         List<Instance> instances = Lists.newArrayListWithCapacity(iids.size());
         for (UUID iid: iids)
