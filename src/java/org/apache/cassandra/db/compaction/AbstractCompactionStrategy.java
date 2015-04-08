@@ -24,7 +24,14 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.RateLimiter;
+import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.io.sstable.format.SSTableWriter;
+import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -500,5 +507,16 @@ public abstract class AbstractCompactionStrategy
         if (currGroup.size() != 0)
             groupedSSTables.add(currGroup);
         return groupedSSTables;
+    }
+
+    public SSTableWriter createSSTableWriter(Descriptor descriptor, Long keyCount, Long repairedAt, MetadataCollector metadataCollector)
+    {
+        return SSTableWriter.create(descriptor, keyCount, repairedAt, cfs.metadata, cfs.partitioner, metadataCollector);
+    }
+
+    public SSTableWriter createSSTableWriter(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel)
+    {
+        MetadataCollector collector = new MetadataCollector(cfs.metadata.comparator).sstableLevel(sstableLevel);
+        return createSSTableWriter(descriptor, keyCount, repairedAt, collector);
     }
 }

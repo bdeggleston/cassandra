@@ -174,7 +174,7 @@ public class Directories
      *
      * @param metadata metadata of ColumnFamily
      */
-    public Directories(CFMetaData metadata)
+    public Directories(CFMetaData metadata, DataDirectory[] paths)
     {
         this.metadata = metadata;
 
@@ -191,13 +191,13 @@ public class Directories
              directoryName = metadata.cfName + "-" + cfId;
         }
 
-        this.dataPaths = new File[dataDirectories.length];
+        this.dataPaths = new File[paths.length];
         // If upgraded from version less than 2.1, use existing directories
         String oldSSTableRelativePath = join(metadata.ksName, metadata.cfName);
-        for (int i = 0; i < dataDirectories.length; ++i)
+        for (int i = 0; i < paths.length; ++i)
         {
             // check if old SSTable directory exists
-            dataPaths[i] = new File(dataDirectories[i].location, oldSSTableRelativePath);
+            dataPaths[i] = new File(paths[i].location, oldSSTableRelativePath);
         }
         boolean olderDirectoryExists = Iterables.any(Arrays.asList(dataPaths), new Predicate<File>()
         {
@@ -211,8 +211,8 @@ public class Directories
             // use 2.1-style path names
         	
         	String newSSTableRelativePath = join(metadata.ksName, directoryName);
-            for (int i = 0; i < dataDirectories.length; ++i)
-                dataPaths[i] = new File(dataDirectories[i].location, newSSTableRelativePath);
+            for (int i = 0; i < paths.length; ++i)
+                dataPaths[i] = new File(paths[i].location, newSSTableRelativePath);
         }
 
         for (File dir : dataPaths)
@@ -228,6 +228,11 @@ public class Directories
                 FileUtils.handleFSError(e);
             }
         }
+    }
+
+    public Directories(CFMetaData metadata)
+    {
+        this(metadata, dataDirectories);
     }
 
     /**

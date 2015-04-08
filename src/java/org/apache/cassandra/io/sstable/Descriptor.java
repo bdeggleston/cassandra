@@ -111,6 +111,11 @@ public class Descriptor
         return new Descriptor(newType.info.getLatestVersion(), directory, ksname, cfname, generation, type, newType);
     }
 
+    public Descriptor withDirectory(File newDirectory)
+    {
+        return new Descriptor(version, newDirectory, ksname, cfname, generation, type, formatType);
+    }
+
     public String filenameFor(Component component)
     {
         return filenameFor(component.name());

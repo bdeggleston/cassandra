@@ -401,7 +401,10 @@ public class Memtable
         {
             MetadataCollector sstableMetadataCollector = new MetadataCollector(cfs.metadata.comparator).replayPosition(context);
 
-            return SSTableWriter.create(Descriptor.fromFilename(filename), (long) rows.size(), ActiveRepairService.UNREPAIRED_SSTABLE, cfs.metadata, cfs.partitioner, sstableMetadataCollector);
+            return cfs.getCompactionStrategy().createSSTableWriter(Descriptor.fromFilename(filename),
+                                                                   (long) rows.size(),
+                                                                   ActiveRepairService.UNREPAIRED_SSTABLE,
+                                                                   sstableMetadataCollector);
         }
     }
 
