@@ -22,7 +22,7 @@ public abstract class AbstractEpochCallback<T extends IEpochMessage> implements 
         // TODO: consider the null instance behavior of PrepareVerbHandler when evaluating tokens (probably shouldn't quantize them to token boundaries)
 
         TokenState tokenState = state.getTokenState(message.payload);
-        tokenState.rwLock.readLock().lock();
+        tokenState.lock.readLock().lock();
         EpochDecision decision;
         logger.debug("Epoch response received from {} regarding {}", message.from, tokenState);
         try
@@ -42,7 +42,7 @@ public abstract class AbstractEpochCallback<T extends IEpochMessage> implements 
         }
         finally
         {
-            tokenState.rwLock.readLock().unlock();
+            tokenState.lock.readLock().unlock();
         }
 
         switch (decision.outcome)

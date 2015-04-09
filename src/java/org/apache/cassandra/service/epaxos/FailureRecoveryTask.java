@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
 /**
@@ -125,7 +124,7 @@ public class FailureRecoveryTask implements Runnable
             return;
         }
 
-        tokenState.rwLock.writeLock().lock();
+        tokenState.lock.writeLock().lock();
         try
         {
             tokenState.setState(TokenState.State.PRE_RECOVERY);
@@ -133,7 +132,7 @@ public class FailureRecoveryTask implements Runnable
         }
         finally
         {
-            tokenState.rwLock.writeLock().unlock();
+            tokenState.lock.writeLock().unlock();
         }
 
         // erase data for all keys owned by recovering token manager
@@ -179,7 +178,7 @@ public class FailureRecoveryTask implements Runnable
         // TODO: only try one replica at a time
         TokenState tokenState = getTokenState();
         Range<Token> range;
-        tokenState.rwLock.writeLock().lock();
+        tokenState.lock.writeLock().lock();
         try
         {
             if (tokenState.getState() != TokenState.State.PRE_RECOVERY)
@@ -196,7 +195,7 @@ public class FailureRecoveryTask implements Runnable
         }
         finally
         {
-            tokenState.rwLock.writeLock().unlock();
+            tokenState.lock.writeLock().unlock();
         }
 
         final StreamPlan streamPlan = new StreamPlan(tokenState.toString() + "-Instance-Recovery");
@@ -246,7 +245,7 @@ public class FailureRecoveryTask implements Runnable
 //    {
 //        TokenState tokenState = getTokenState();
 //        Range<Token> range;
-//        tokenState.rwLock.writeLock().lock();
+//        tokenState.lock.writeLock().lock();
 //        try
 //        {
 //            if (tokenState.getState() != TokenState.State.RECOVERING_INSTANCES)
@@ -263,7 +262,7 @@ public class FailureRecoveryTask implements Runnable
 //        }
 //        finally
 //        {
-//            tokenState.rwLock.writeLock().unlock();
+//            tokenState.lock.writeLock().unlock();
 //        }
 //
 //        final StreamPlan streamPlan = new StreamPlan(tokenState.toString() + "-Instance-Recovery");
@@ -315,7 +314,7 @@ public class FailureRecoveryTask implements Runnable
         TokenState tokenState = getTokenState();
         Range<Token> range;
         boolean localOnly;
-        tokenState.rwLock.writeLock().lock();
+        tokenState.lock.writeLock().lock();
         try
         {
             if (tokenState.getState() != TokenState.State.RECOVERING_INSTANCES)
@@ -334,7 +333,7 @@ public class FailureRecoveryTask implements Runnable
         }
         finally
         {
-            tokenState.rwLock.writeLock().unlock();
+            tokenState.lock.writeLock().unlock();
         }
 
         Pair<String, String> cfName = Schema.instance.getCF(cfId);
@@ -361,7 +360,7 @@ public class FailureRecoveryTask implements Runnable
     void complete()
     {
         TokenState tokenState = getTokenState();
-        tokenState.rwLock.writeLock().lock();
+        tokenState.lock.writeLock().lock();
         try
         {
             tokenState.setState(TokenState.State.NORMAL);
@@ -370,7 +369,7 @@ public class FailureRecoveryTask implements Runnable
         finally
         {
             state.failureRecoveryTaskCompleted(this);
-            tokenState.rwLock.writeLock().unlock();
+            tokenState.lock.writeLock().unlock();
         }
         logger.info("Epaxos failure recovery task for {} on {} to {} completed", token, cfId, epoch);
         // TODO: execute all committed instances

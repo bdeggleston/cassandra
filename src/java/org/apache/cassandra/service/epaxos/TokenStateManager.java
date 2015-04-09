@@ -2,7 +2,7 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
-import com.google.common.io.ByteStreams;
+
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
@@ -355,35 +355,35 @@ public class TokenStateManager
     public long getEpoch(Token token, UUID cfId)
     {
         TokenState ts = get(token, cfId);
-        ts.rwLock.readLock().lock();
+        ts.lock.readLock().lock();
         try
         {
             return ts.getEpoch();
         }
         finally
         {
-            ts.rwLock.readLock().unlock();
+            ts.lock.readLock().unlock();
         }
     }
 
     public boolean isLocalOnly(Token token, UUID cfId)
     {
         TokenState ts = get(token, cfId);
-        ts.rwLock.readLock().lock();
+        ts.lock.readLock().lock();
         try
         {
             return ts.localOnly();
         }
         finally
         {
-            ts.rwLock.readLock().unlock();
+            ts.lock.readLock().unlock();
         }
     }
 
     public Set<UUID> getCurrentDependencies(AbstractTokenInstance instance)
     {
         TokenState ts = get(instance.getToken(), instance.getCfId());
-        ts.rwLock.writeLock().lock();
+        ts.lock.writeLock().lock();
         try
         {
             Range<Token> range = new Range<>(rangeFor(ts).left, instance.getToken());
@@ -406,21 +406,21 @@ public class TokenStateManager
         }
         finally
         {
-            ts.rwLock.writeLock().unlock();
+            ts.lock.writeLock().unlock();
         }
     }
 
     public Set<UUID> getCurrentTokenDependencies(CfKey cfKey)
     {
         TokenState ts = get(cfKey);
-        ts.rwLock.writeLock().lock();
+        ts.lock.writeLock().lock();
         try
         {
             return ts.getCurrentEpochInstances();
         }
         finally
         {
-            ts.rwLock.writeLock().unlock();
+            ts.lock.writeLock().unlock();
         }
     }
 
@@ -434,7 +434,7 @@ public class TokenStateManager
         for (Token token: states.get(instance.getCfId()).allTokens())
         {
             TokenState ts = getExact(token, instance.getCfId());
-            ts.rwLock.writeLock().lock();
+            ts.lock.writeLock().lock();
             try
             {
                 if (ts.recordTokenInstanceExecution(instance))
@@ -442,7 +442,7 @@ public class TokenStateManager
             }
             finally
             {
-                ts.rwLock.writeLock().unlock();
+                ts.lock.writeLock().unlock();
             }
         }
     }
@@ -450,7 +450,7 @@ public class TokenStateManager
     public TokenState recordMissingInstance(AbstractTokenInstance instance)
     {
         TokenState tokenState = get(instance);
-        tokenState.rwLock.writeLock().lock();
+        tokenState.lock.writeLock().lock();
         try
         {
             if (instance instanceof EpochInstance)
@@ -469,7 +469,7 @@ public class TokenStateManager
         }
         finally
         {
-            tokenState.rwLock.writeLock().unlock();
+            tokenState.lock.writeLock().unlock();
         }
     }
 
@@ -530,7 +530,7 @@ public class TokenStateManager
         int unsavedThreshold = getUnsavedExecutionThreshold(cfId);
         if (ts.getNumUnrecordedExecutions() > unsavedThreshold)
         {
-            ts.rwLock.writeLock().lock();
+            ts.lock.writeLock().lock();
             try
             {
                 if (ts.getNumUnrecordedExecutions() > unsavedThreshold)
@@ -538,7 +538,7 @@ public class TokenStateManager
             }
             finally
             {
-                ts.rwLock.writeLock().unlock();
+                ts.lock.writeLock().unlock();
             }
         }
     }
@@ -560,14 +560,14 @@ public class TokenStateManager
             TokenState ts = get(instance.getToken(), instance.getCfId());
             if (ts.recordSerialCommit())
             {
-                ts.rwLock.writeLock().lock();
+                ts.lock.writeLock().lock();
                 try
                 {
                     save(ts);
                 }
                 finally
                 {
-                    ts.rwLock.writeLock().unlock();
+                    ts.lock.writeLock().unlock();
                 }
             }
         }

@@ -98,7 +98,7 @@ public class TokenState
     private transient volatile int lastPersistedExecutionCount = 0;
 
     // fair to give priority to token mutations
-    public final ReadWriteLock rwLock = new ReentrantReadWriteLock(true);
+    public final ReadWriteLock lock = new ReentrantReadWriteLock(true);
 
     public TokenState(Token token, UUID cfId, long epoch, int executions)
     {

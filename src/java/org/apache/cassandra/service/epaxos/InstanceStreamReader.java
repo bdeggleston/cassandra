@@ -111,7 +111,7 @@ public class InstanceStreamReader
             }
             else
             {
-                ts.rwLock.writeLock().lock();
+                ts.lock.writeLock().lock();
                 try
                 {
                     if (ts.getState() == TokenState.State.PRE_RECOVERY)
@@ -123,7 +123,7 @@ public class InstanceStreamReader
                 }
                 finally
                 {
-                    ts.rwLock.writeLock().unlock();
+                    ts.lock.writeLock().unlock();
                 }
             }
             final TokenState tokenState = ts;
@@ -261,7 +261,7 @@ public class InstanceStreamReader
                 // TODO: clean this up
                 if (session != null && session.streamingInData())
                 {
-                    tokenState.rwLock.writeLock().lock();
+                    tokenState.lock.writeLock().lock();
                     try
                     {
                         logger.debug("Setting token state to {}", TokenState.State.RECOVERING_DATA);
@@ -270,7 +270,7 @@ public class InstanceStreamReader
                     }
                     finally
                     {
-                        tokenState.rwLock.writeLock().unlock();
+                        tokenState.lock.writeLock().unlock();
                     }
 
                     session.addListener(new StreamEventHandler()
@@ -281,7 +281,7 @@ public class InstanceStreamReader
                             if (event.eventType == StreamEvent.Type.STREAM_COMPLETE)
                             {
                                 logger.debug("Setting token state to {}", TokenState.State.NORMAL);
-                                tokenState.rwLock.writeLock().lock();
+                                tokenState.lock.writeLock().lock();
                                 try
                                 {
                                     tokenState.setState(TokenState.State.NORMAL);
@@ -289,7 +289,7 @@ public class InstanceStreamReader
                                 }
                                 finally
                                 {
-                                    tokenState.rwLock.writeLock().unlock();
+                                    tokenState.lock.writeLock().unlock();
                                 }
                             }
                         }

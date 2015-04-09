@@ -25,7 +25,7 @@ public abstract class AbstractEpochVerbHandler<T extends IEpochMessage> implemen
 
         TokenState tokenState = state.getTokenState(message.payload);
         logger.debug("Epoch message received from {} regarding {}", message.from, tokenState);
-        tokenState.rwLock.readLock().lock();
+        tokenState.lock.readLock().lock();
         EpochDecision decision;
         try
         {
@@ -47,7 +47,7 @@ public abstract class AbstractEpochVerbHandler<T extends IEpochMessage> implemen
         }
         finally
         {
-            tokenState.rwLock.readLock().unlock();
+            tokenState.lock.readLock().unlock();
         }
 
         switch (decision.outcome)

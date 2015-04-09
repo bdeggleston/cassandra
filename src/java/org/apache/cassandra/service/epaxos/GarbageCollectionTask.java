@@ -39,14 +39,14 @@ public class GarbageCollectionTask implements Runnable
         logger.debug("Running GC task for {}", tokenState);
 
         Long oldestEpoch;
-        tokenState.rwLock.readLock().lock();
+        tokenState.lock.readLock().lock();
         try
         {
             oldestEpoch = tokenState.getEpoch() - 1;
         }
         finally
         {
-            tokenState.rwLock.readLock().unlock();
+            tokenState.lock.readLock().unlock();
         }
 
         logger.debug("Running GC task for {} with oldest epoch", tokenState, oldestEpoch);

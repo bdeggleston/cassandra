@@ -549,7 +549,7 @@ public class EpaxosState
     {
         TokenState tokenState = tokenStateManager.getExact(instance.getToken(), instance.getCfId());
 
-        tokenState.rwLock.writeLock().lock();
+        tokenState.lock.writeLock().lock();
         try
         {
             // no use iterating over all key states if this is effectively a noop
@@ -563,7 +563,7 @@ public class EpaxosState
         }
         finally
         {
-            tokenState.rwLock.writeLock().unlock();
+            tokenState.lock.writeLock().unlock();
         }
 
         maybeSetResultFuture(instance.getId(), null);
@@ -592,12 +592,12 @@ public class EpaxosState
         // called for a cfId
         assert neighbor != null;
 
-        neighbor.rwLock.writeLock().lock();
+        neighbor.lock.writeLock().lock();
         try
         {
             long epoch = neighbor.getEpoch();
             TokenState tokenState = new TokenState(token, cfId, neighbor.getEpoch(), 0);
-            tokenState.rwLock.writeLock().lock();
+            tokenState.lock.writeLock().lock();
             try
             {
                 if (tokenStateManager.putState(tokenState) != tokenState)
@@ -648,12 +648,12 @@ public class EpaxosState
             }
             finally
             {
-                tokenState.rwLock.writeLock().unlock();
+                tokenState.lock.writeLock().unlock();
             }
         }
         finally
         {
-            neighbor.rwLock.writeLock().unlock();
+            neighbor.lock.writeLock().unlock();
         }
         maybeSetResultFuture(instance.getId(), null);
     }

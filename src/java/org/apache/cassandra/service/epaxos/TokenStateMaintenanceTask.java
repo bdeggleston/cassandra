@@ -60,7 +60,7 @@ public class TokenStateMaintenanceTask implements Runnable
 
                 TokenState ts = tokenStateManager.getExact(token, cfId);
 
-                ts.rwLock.readLock().lock();
+                ts.lock.readLock().lock();
                 long currentEpoch;
                 try
                 {
@@ -75,7 +75,7 @@ public class TokenStateMaintenanceTask implements Runnable
                 }
                 finally
                 {
-                    ts.rwLock.readLock().unlock();
+                    ts.lock.readLock().unlock();
                 }
 
                 if (ts.getExecutions() >= state.getEpochIncrementThreshold(cfId))
@@ -92,7 +92,7 @@ public class TokenStateMaintenanceTask implements Runnable
                 }
                 else if (ts.getNumUnrecordedExecutions() > 0)
                 {
-                    ts.rwLock.writeLock().lock();
+                    ts.lock.writeLock().lock();
                     try
                     {
                         logger.debug("Persisting execution data for {}", ts);
@@ -100,7 +100,7 @@ public class TokenStateMaintenanceTask implements Runnable
                     }
                     finally
                     {
-                        ts.rwLock.writeLock().unlock();
+                        ts.lock.writeLock().unlock();
                     }
                 }
                 else
