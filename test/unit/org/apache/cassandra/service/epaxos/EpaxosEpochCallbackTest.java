@@ -181,4 +181,13 @@ public class EpaxosEpochCallbackTest
         assertModeResponse(TokenState.State.RECOVERING_INSTANCES, false);
         assertModeResponse(TokenState.State.RECOVERING_DATA, true);
     }
+
+    @Test
+    public void recoveryRequiredTokenState() throws Exception
+    {
+        State state = new State(5, TokenState.State.RECOVERY_REQUIRED);
+        Callback callback = new Callback(state);
+        callback.response(getMessage(5));
+        Assert.assertEquals(1, state.localFailureCalls);
+    }
 }

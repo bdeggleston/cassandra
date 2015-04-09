@@ -196,4 +196,13 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         assertModeResponse(TokenState.State.RECOVERING_DATA, true, false);
         assertModeResponse(TokenState.State.RECOVERING_DATA, true, true);
     }
+
+    @Test
+    public void recoveryRequiredTokenState() throws Exception
+    {
+        State state = new State(5, TokenState.State.RECOVERY_REQUIRED);
+        Handler handler = new Handler(state);
+        handler.doVerb(getMessage(5), 0);
+        Assert.assertEquals(1, state.localFailureCalls);
+    }
 }

@@ -5,6 +5,7 @@ import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -13,6 +14,13 @@ import java.util.UUID;
 
 public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
 {
+    @Before
+    public void setUp()
+    {
+        clearKeyStates();
+        clearTokenStates();
+    }
+
     @Test
     public void preRecover() throws Exception
     {
@@ -91,7 +99,29 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     @Test
     public void preRecoverBailsIfNotBehindRemoteEpoch()
     {
+        EpaxosState state = new MockVerbHandlerState();
+        TokenState tokenState = state.tokenStateManager.get(TOKEN, CFID);
+        tokenState.setEpoch(2);
+        state.tokenStateManager.save(tokenState);
+        Assert.assertEquals(TokenState.State.NORMAL, tokenState.getState());
+        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN, CFID, 2);
 
+        task.preRecover();
+        Assert.assertEquals(TokenState.State.NORMAL, tokenState.getState());
     }
 
+
+    @Test
+    public void preRecoverAlwaysContinuesIfTokenStateIsNotNormal()
+    {
+
+        EpaxosState state = new MockVerbHandlerState();
+        TokenState tokenState = state.tokenStateManager.get(TOKEN, CFID);
+        tokenState.setEpoch(2);
+        tokenState.setState(TokenState.State.RECOVERY_REQUIRED);
+        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN, CFID, 0);
+
+        task.preRecover();
+        Assert.assertEquals(TokenState.State.PRE_RECOVERY, tokenState.getState());
+    }
 }

@@ -208,6 +208,15 @@ public class TokenStateManager
                 }
                 TokenState prev = cf.putIfAbsent(ts);
                 assert prev == ts;
+
+                // we haven't joined the ring yet, so it doesn't make sense to start failure recovery. The token
+                // state will start failure recovery the next time it's encountered by a maintenance task, or the
+                // verb handler/callbacks
+                if (ts.getState() != TokenState.State.NORMAL)
+                {
+                    ts.setState(TokenState.State.RECOVERY_REQUIRED);
+                    save(ts);
+                }
             }
             catch (IOException e)
             {

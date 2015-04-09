@@ -84,42 +84,6 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         return cfKeyList;
     }
 
-    private void clearKeyStates()
-    {
-        String select = String.format("SELECT row_key FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
-        String delete = String.format("DELETE FROM %s.%s WHERE row_key=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
-        UntypedResultSet result = QueryProcessor.executeInternal(select);
-
-        while (result.size() > 0)
-        {
-            for (UntypedResultSet.Row row: result)
-            {
-                QueryProcessor.executeInternal(delete, row.getBlob("row_key"));
-            }
-            result = QueryProcessor.executeInternal(select);
-        }
-
-        Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
-    }
-
-    private void clearTokenStates()
-    {
-        String select = String.format("SELECT cf_id FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
-        String delete = String.format("DELETE FROM %s.%s WHERE cf_id=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
-        UntypedResultSet result = QueryProcessor.executeInternal(select);
-
-        while (result.size() > 0)
-        {
-            for (UntypedResultSet.Row row: result)
-            {
-                QueryProcessor.executeInternal(delete, row.getBlob("cf_id"));
-            }
-            result = QueryProcessor.executeInternal(select);
-        }
-
-        Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
-    }
-
     @Before
     public void setUp() throws Exception
     {

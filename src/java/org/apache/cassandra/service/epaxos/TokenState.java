@@ -55,7 +55,6 @@ public class TokenState
 
     public static enum State {
 
-        INITIALIZING(false, false),
         NORMAL(true, true),
         RECOVERY_REQUIRED(false, false),
         PRE_RECOVERY(false, false),

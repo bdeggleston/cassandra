@@ -30,7 +30,12 @@ public abstract class AbstractEpochVerbHandler<T extends IEpochMessage> implemen
         try
         {
             TokenState.State s = tokenState.getState();
-            if (!s.isOkToParticipate())
+            if (s == TokenState.State.RECOVERY_REQUIRED)
+            {
+                state.startLocalFailureRecovery(tokenState.getToken(), tokenState.getCfId(), 0);
+                return;
+            }
+            else if (!s.isOkToParticipate())
             {
                 if (!(s.isPassiveRecord() && canPassiveRecord()))
                 {

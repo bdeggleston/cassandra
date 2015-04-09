@@ -65,6 +65,12 @@ public class TokenStateMaintenanceTask implements Runnable
                     ts.rwLock.writeLock().lock();
                     try
                     {
+                        if (ts.getState() == TokenState.State.RECOVERY_REQUIRED)
+                        {
+                            state.startLocalFailureRecovery(ts.getToken(), ts.getCfId(), 0);
+                            continue;
+                        }
+
                         if (ts.getExecutions() < state.getEpochIncrementThreshold(cfId))
                         {
                             continue;

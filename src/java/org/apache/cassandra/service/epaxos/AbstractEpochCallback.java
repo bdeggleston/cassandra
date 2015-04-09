@@ -28,7 +28,12 @@ public abstract class AbstractEpochCallback<T extends IEpochMessage> implements 
         try
         {
             TokenState.State s = tokenState.getState();
-            if (!s.isOkToParticipate())
+            if (s == TokenState.State.RECOVERY_REQUIRED)
+            {
+                state.startLocalFailureRecovery(tokenState.getToken(), tokenState.getCfId(), 0);
+                return;
+            }
+            else if (!s.isOkToParticipate())
             {
                 logger.debug("TokenState {} cannot process {} message", tokenState, getClass().getSimpleName());
                 return;
