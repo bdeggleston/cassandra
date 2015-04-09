@@ -35,7 +35,7 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
             }
         };
 
-        final TokenState tokenState = new TokenState(TOKEN, CFID, 2, 2, 5);
+        final TokenState tokenState = new TokenState(TOKEN, CFID, 2, 5);
         Assert.assertEquals(TokenState.State.NORMAL, tokenState.getState());
         Assert.assertFalse(state.managesCfId(CFID));
 

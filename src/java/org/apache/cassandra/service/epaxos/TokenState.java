@@ -32,13 +32,6 @@ public class TokenState
     // execution epochs
     private volatile long epoch;
 
-    // the highest epoch instance seen so far
-    // this is the epoch we expect new instances
-    // to be executed in
-    // determines whether an epoch increment is already in the works
-    // FIXME: this is currently being used to detect if an epoch increment is in progress. Will this work across DCs?
-    private long highEpoch;
-
     private final AtomicInteger executions;
 
     // the number of failure recovery streams are open
@@ -107,17 +100,16 @@ public class TokenState
     // fair to give priority to token mutations
     public final ReadWriteLock rwLock = new ReentrantReadWriteLock(true);
 
-    public TokenState(Token token, UUID cfId, long epoch, long highEpoch, int executions)
+    public TokenState(Token token, UUID cfId, long epoch, int executions)
     {
-        this(token, cfId, epoch, highEpoch, executions, State.NORMAL);
+        this(token, cfId, epoch, executions, State.NORMAL);
     }
 
-    public TokenState(Token token, UUID cfId, long epoch, long highEpoch, int executions, State state)
+    public TokenState(Token token, UUID cfId, long epoch, int executions, State state)
     {
         this.token = token;
         this.cfId = cfId;
         this.epoch = epoch;
-        this.highEpoch = highEpoch;
         this.executions = new AtomicInteger(executions);
         lastPersistedExecutionCount = executions;
         this.state = state;
@@ -142,30 +134,11 @@ public class TokenState
     {
         assert epoch >= this.epoch;
         this.epoch = epoch;
-        recordHighEpoch(epoch);
 
         executions.set(0);
         localOnly.set(false);
         resetUnrecordedExecutions();
         cleanEpochInstances();
-    }
-
-    public synchronized boolean recordHighEpoch(long epoch)
-    {
-        if (epoch > highEpoch)
-        {
-            highEpoch = epoch;
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    public long getHighEpoch()
-    {
-        return highEpoch;
     }
 
     public void recordExecution()
@@ -363,7 +336,6 @@ public class TokenState
             Token.serializer.serialize(tokenState.token, out);
             UUIDSerializer.serializer.serialize(tokenState.cfId, out, version);
             out.writeLong(tokenState.epoch);
-            out.writeLong(tokenState.highEpoch);
             out.writeInt(tokenState.executions.get());
             out.writeInt(tokenState.state.ordinal());
             out.writeBoolean(tokenState.localOnly.get());
@@ -389,7 +361,6 @@ public class TokenState
         {
             TokenState ts = new TokenState(Token.serializer.deserialize(in),
                                            UUIDSerializer.serializer.deserialize(in, version),
-                                           in.readLong(),
                                            in.readLong(),
                                            in.readInt(),
                                            State.values()[in.readInt()]);
@@ -417,7 +388,7 @@ public class TokenState
         {
             long size = Token.serializer.serializedSize(tokenState.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(tokenState.cfId, version);
-            size += 8 + 8 + 4 + 4 + 1 + 8;
+            size += 8 + 4 + 4 + 1 + 8;
 
             size += 1;
             if (tokenState.creatorToken != null)
@@ -444,7 +415,6 @@ public class TokenState
                 "token=" + token +
                 ", cfId=" + cfId +
                 ", epoch=" + epoch +
-                ", highEpoch=" + highEpoch +
                 ", executions=" + executions +
                 ", state=" + state +
                 '}';

@@ -37,7 +37,9 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     {
         MockCallbackState state = new MockCallbackState(3, 0);
         Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        instance.setSuccessors(Collections.<InetAddress>emptyList());
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
+        instance.updateBallot(1);
 
         PrepareCallback callback = getCallback(state, instance);
 

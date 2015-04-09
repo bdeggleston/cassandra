@@ -92,7 +92,7 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         @Override
         public TokenState getTokenState(IEpochMessage message)
         {
-            return new TokenState(MANAGED_TOKEN, message.getCfId(), epoch, epoch, 0, state);
+            return new TokenState(MANAGED_TOKEN, message.getCfId(), epoch, 0, state);
         }
     }
 

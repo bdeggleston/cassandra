@@ -98,7 +98,7 @@ public class InstanceStreamReader
             TokenState ts = getExact(token);
             if (ts == null)
             {
-                ts = new TokenState(token, cfId, 0, 0, 0, TokenState.State.RECOVERING_INSTANCES);
+                ts = new TokenState(token, cfId, 0, 0, TokenState.State.RECOVERING_INSTANCES);
                 TokenState previous = state.tokenStateManager.putState(ts);
                 if (previous == ts)
                 {

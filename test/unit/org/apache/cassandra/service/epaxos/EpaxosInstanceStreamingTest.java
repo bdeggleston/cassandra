@@ -152,8 +152,8 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
 
         TokenStateManager fTsm = fromNode.tokenStateManager;
         TokenStateManager.ManagedCf fCf = fTsm.getOrInitManagedCf(cfId);
-        fCf.putIfAbsent(new TokenState(token200, cfId, 10, 0, 0));
-        fCf.putIfAbsent(new TokenState(token300, cfId, 20, 0, 0));
+        fCf.putIfAbsent(new TokenState(token200, cfId, 10, 0));
+        fCf.putIfAbsent(new TokenState(token300, cfId, 20, 0));
 
         KeyStateManager fKsm = fromNode.keyStateManager;
         Set<UUID> includedIds = Sets.newHashSet();
@@ -266,7 +266,7 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
 
         TokenStateManager fTsm = fromNode.tokenStateManager;
         TokenStateManager.ManagedCf fCf = fTsm.getOrInitManagedCf(cfId);
-        fCf.putIfAbsent(new TokenState(token200, cfId, 10, 0, 0));
+        fCf.putIfAbsent(new TokenState(token200, cfId, 10, 0));
 
         KeyStateManager fKsm = fromNode.keyStateManager;
 
@@ -293,7 +293,7 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         // set the to-node token state to the same epoch as the from-node
         TokenStateManager tTsm = toNode.tokenStateManager;
         TokenStateManager.ManagedCf tCf = tTsm.getOrInitManagedCf(cfId);
-        tCf.putIfAbsent(new TokenState(token200, cfId, 10, 0, 0));
+        tCf.putIfAbsent(new TokenState(token200, cfId, 10, 0));
 
         final Range<Token> range = new Range<>(token100, token200);
 

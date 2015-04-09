@@ -22,12 +22,20 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import org.apache.cassandra.dht.Token;
 
 public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
 {
+
+    @Before
+    public void setUp()
+    {
+        clearTokenStates();
+        clearKeyStates();
+    }
 
     private static class AlwaysReplicatingMaintenanceTask extends TokenStateMaintenanceTask
     {
@@ -104,6 +112,7 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
 
         final AtomicReference<FRCall> call = new AtomicReference<>();
         MockCallbackState state = new MockCallbackState(3, 0) {
+            @Override
             public void startLocalFailureRecovery(Token token, UUID cfId, long epoch)
             {
                 call.set(new FRCall(token, cfId, epoch));
@@ -117,6 +126,7 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
         Assert.assertNull(call.get());
         new AlwaysReplicatingMaintenanceTask(state, state.tokenStateManager).run();
         FRCall frCall = call.get();
+        Assert.assertNotNull(frCall);
         Assert.assertEquals(ts.getToken(), frCall.token);
         Assert.assertEquals(ts.getCfId(), frCall.cfId);
         Assert.assertEquals(0, frCall.epoch);

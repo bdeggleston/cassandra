@@ -596,7 +596,7 @@ public class EpaxosState
         try
         {
             long epoch = neighbor.getEpoch();
-            TokenState tokenState = new TokenState(token, cfId, neighbor.getEpoch(), neighbor.getEpoch(), 0);
+            TokenState tokenState = new TokenState(token, cfId, neighbor.getEpoch(), 0);
             tokenState.rwLock.writeLock().lock();
             try
             {

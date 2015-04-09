@@ -165,7 +165,7 @@ public class TokenStateManager
                     }
                 }
 
-                putIfAbsent(new TokenState(range.right, cfid, 0, 0, 0, TokenState.State.PRE_RECOVERY));
+                putIfAbsent(new TokenState(range.right, cfid, 0, 0, TokenState.State.PRE_RECOVERY));
                 updateInternalRing();
             }
             finally
@@ -274,7 +274,7 @@ public class TokenStateManager
 
                 for (Token token: getReplicatedTokensForCf(cfId))
                 {
-                    TokenState ts = new TokenState(token, cfId, 0, 0, 0);
+                    TokenState ts = new TokenState(token, cfId, 0, 0);
                     TokenState prevTs = cf.putIfAbsent(ts);
                     assert prevTs == ts;
                     save(ts);
@@ -377,23 +377,6 @@ public class TokenStateManager
         finally
         {
             ts.rwLock.readLock().unlock();
-        }
-    }
-
-    public void recordHighEpoch(EpochInstance instance)
-    {
-        TokenState ts = get(instance.getToken(), instance.getCfId());
-        ts.rwLock.writeLock().lock();
-        try
-        {
-            if (ts.recordHighEpoch(instance.getEpoch()))
-            {
-                save(ts);
-            }
-        }
-        finally
-        {
-            ts.rwLock.writeLock().unlock();
         }
     }
 

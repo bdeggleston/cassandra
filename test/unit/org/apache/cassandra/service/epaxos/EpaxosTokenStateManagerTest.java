@@ -55,7 +55,6 @@ public class EpaxosTokenStateManagerTest
             TokenState ts = cf.get(token);
             Assert.assertEquals(token, ts.getToken());
             Assert.assertEquals(0, ts.getEpoch());
-            Assert.assertEquals(0, ts.getHighEpoch());
             Assert.assertEquals(0, ts.getExecutions());
         }
     }
@@ -78,7 +77,7 @@ public class EpaxosTokenStateManagerTest
 
         Assert.assertEquals(ts200, tsm.get(token150, CFID));
 
-        TokenState ts150 = new TokenState(token150, CFID, ts200.getEpoch(), 0, 0);
+        TokenState ts150 = new TokenState(token150, CFID, ts200.getEpoch(), 0);
         tsm.putState(ts150);
 
         Assert.assertEquals(token150, ts150.getToken());

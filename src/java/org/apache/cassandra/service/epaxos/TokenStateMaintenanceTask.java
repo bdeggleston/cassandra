@@ -59,41 +59,36 @@ public class TokenStateMaintenanceTask implements Runnable
                     continue;
 
                 TokenState ts = tokenStateManager.getExact(token, cfId);
+
+                ts.rwLock.readLock().lock();
+                long currentEpoch;
+                try
+                {
+                    currentEpoch = ts.getEpoch();
+                    // if this token state is expecting recovery to resume, schedule
+                    // a recovery and continue
+                    if (ts.getState() == TokenState.State.RECOVERY_REQUIRED)
+                    {
+                        state.startLocalFailureRecovery(ts.getToken(), ts.getCfId(), 0);
+                        continue;
+                    }
+                }
+                finally
+                {
+                    ts.rwLock.readLock().unlock();
+                }
+
                 if (ts.getExecutions() >= state.getEpochIncrementThreshold(cfId))
                 {
-                    // TODO: check that a previously seen epoch instance isn't local serial from another dc
-                    ts.rwLock.writeLock().lock();
-                    try
+                    if (ts.getExecutions() < state.getEpochIncrementThreshold(cfId))
                     {
-                        if (ts.getState() == TokenState.State.RECOVERY_REQUIRED)
-                        {
-                            state.startLocalFailureRecovery(ts.getToken(), ts.getCfId(), 0);
-                            continue;
-                        }
-
-                        if (ts.getExecutions() < state.getEpochIncrementThreshold(cfId))
-                        {
-                            continue;
-                        }
-
-                        // if the high epoch is greater than the current epoch, then an
-                        // epoch increment is already in the works
-                        if (ts.getHighEpoch() > ts.getEpoch())
-                        {
-                            continue;
-                        }
-
-                        logger.debug("Incrementing epoch for {}", ts);
-
-                        EpochInstance instance = state.createEpochInstance(ts.getToken(), ts.getCfId(), ts.getEpoch() + 1);
-                        state.preaccept(instance);
-                        ts.recordHighEpoch(instance.getEpoch());
-                        tokenStateManager.save(ts);
+                        continue;
                     }
-                    finally
-                    {
-                        ts.rwLock.writeLock().unlock();
-                    }
+
+                    logger.debug("Incrementing epoch for {}", ts);
+
+                    EpochInstance instance = state.createEpochInstance(ts.getToken(), ts.getCfId(), currentEpoch + 1);
+                    state.preaccept(instance);
                 }
                 else if (ts.getNumUnrecordedExecutions() > 0)
                 {
