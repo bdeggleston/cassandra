@@ -37,7 +37,6 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     {
         MockCallbackState state = new MockCallbackState(3, 0);
         Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        instance.setSuccessors(Collections.<InetAddress>emptyList());
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
         instance.updateBallot(1);
 
@@ -349,7 +348,6 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
 
         Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
-        instance.setSuccessors(Collections.<InetAddress>emptyList());
         instance.incrementBallot();
 
         PrepareGroup group = new PrepareGroup(state, UUIDGen.getTimeUUID(), Sets.newHashSet(instance.getId()));

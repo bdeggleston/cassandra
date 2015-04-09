@@ -96,13 +96,11 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         Node node = nodes.get(0);
 
         Instance oldInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
-        oldInstance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
         oldInstance.commit(Sets.<UUID>newHashSet());
         for (Node n: nodes)
             n.addMissingInstance(oldInstance);
 
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
-        instance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
         node.preaccept(instance);
 
         Set<UUID> newDeps = Sets.newHashSet(instance.getDependencies());
@@ -124,7 +122,6 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
 
         // node 2 is unaware of this instance
         Instance oldInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
-        oldInstance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
         oldInstance.commit(Sets.<UUID>newHashSet());
 
         node.addMissingInstance(oldInstance);
@@ -134,7 +131,6 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         Assert.assertNull(nodes.get(1).getInstance(oldInstance.getId()));
 
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
-        instance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
         node.preaccept(instance);
 
         Map<InetAddress, Set<UUID>> missingInstances = new HashMap<>();
@@ -157,7 +153,6 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         Node node = nodes.get(0);
 
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
-        instance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
         node.preaccept(instance);
 
         setState(nodes.subList(1, nodes.size()), Node.State.DOWN);
@@ -174,7 +169,6 @@ public class EpaxosAcceptLeaderTest extends AbstractEpaxosIntegrationTest.Single
         Node node = nodes.get(0);
 
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
-        instance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
         node.preaccept(instance);
 
         for (Node n: nodes.subList(1, nodes.size()))

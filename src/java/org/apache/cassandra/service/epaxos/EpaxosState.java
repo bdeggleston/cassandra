@@ -151,13 +151,6 @@ public class EpaxosState
                 throw new UnavailableException(consistencyLevel, quorumSize, liveEndpoints.size());
         }
 
-        public List<InetAddress> getSuccessors()
-        {
-            List<InetAddress> successors = Lists.newArrayList(Iterables.filter(endpoints, nonLocalPredicate));
-            Collections.shuffle(successors, getRandom());
-            return successors;
-        }
-
         public Set<InetAddress> allEndpoints()
         {
             return Sets.newHashSet(Iterables.concat(endpoints, remoteEndpoints));
@@ -701,29 +694,6 @@ public class EpaxosState
     {
         return prepareGroups.keySet();
     }
-
-    protected TryPrepareCallback getTryPrepareCallback()
-    {
-        return new TryPrepareCallback();
-    }
-
-    /**
-     * If we rely only on a timeout to determine when a node should prepare an instance,
-     * they'll all start trying to prepare at once, usually causing a period of livelock.
-     * To prevent this, an ordered list of successors are specified at instance creation.
-     * When a node thinks an instance needs to be prepared, it first asks a successor instance
-     * to prepare it, then waits for it to prepare the instance
-     */
-    public void tryprepare(InetAddress endpoint, UUID iid)
-    {
-
-    }
-
-    protected TryPrepareVerbHandler getTryPrepareVerbHandler()
-    {
-        return new TryPrepareVerbHandler(this);
-    }
-
 
     protected TryPreacceptCallback getTryPreacceptCallback(UUID iid, TryPreacceptAttempt attempt, List<TryPreacceptAttempt> nextAttempts, ParticipantInfo participantInfo, Runnable failureCallback)
     {

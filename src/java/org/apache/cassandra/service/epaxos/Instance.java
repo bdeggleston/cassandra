@@ -98,7 +98,6 @@ public abstract class Instance
     protected volatile boolean fastPathImpossible; // TODO: remove
     protected volatile Set<UUID> dependencies = null;
     protected volatile boolean leaderAttrsMatch = false;
-    protected volatile List<InetAddress> successors = null;
 
     // fields not transmitted to other nodes
     private volatile boolean placeholder = false;
@@ -137,7 +136,6 @@ public abstract class Instance
         fastPathImpossible = i.fastPathImpossible;
         dependencies = i.dependencies;
         leaderAttrsMatch = i.leaderAttrsMatch;
-        successors = i.successors;
         placeholder = i.placeholder;
         stronglyConnected = i.stronglyConnected;
         lastUpdated = i.lastUpdated;
@@ -243,16 +241,6 @@ public abstract class Instance
     public boolean isPlaceholder()
     {
         return (!state.atLeast(State.ACCEPTED)) && placeholder;
-    }
-
-    public void setSuccessors(List<InetAddress> successors)
-    {
-        this.successors = successors;
-    }
-
-    public List<InetAddress> getSuccessors()
-    {
-        return successors;
     }
 
     public Set<UUID> getStronglyConnected()
@@ -425,11 +413,6 @@ public abstract class Instance
                     UUIDSerializer.serializer.serialize(dep, out, version);
             }
             out.writeBoolean(instance.leaderAttrsMatch);
-
-            // there should never be a null successor list at this point
-            out.writeInt(instance.successors.size());
-            for (InetAddress endpoint: instance.successors)
-                CompactEndpointSerializationHelper.serialize(endpoint, out);
         }
 
         public Instance deserialize(Instance instance, DataInput in, int version) throws IOException
@@ -461,11 +444,6 @@ public abstract class Instance
 
             instance.leaderAttrsMatch = in.readBoolean();
 
-            InetAddress[] successors = new InetAddress[in.readInt()];
-            for (int i=0; i<successors.length; i++)
-                successors[i] = CompactEndpointSerializationHelper.deserialize(in);
-            instance.successors = Lists.newArrayList(successors);
-
             return instance;
         }
 
@@ -484,10 +462,6 @@ public abstract class Instance
                     size += UUIDSerializer.serializer.serializedSize(dep, version);
             }
             size += 1;  // instance.leaderAttrsMatch
-
-            size += 4;  // instance.successors.size
-            for (InetAddress successor: instance.successors)
-                size += CompactEndpointSerializationHelper.serializedSize(successor);
 
             return size;
         }

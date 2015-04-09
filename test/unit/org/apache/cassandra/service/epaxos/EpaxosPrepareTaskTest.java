@@ -71,7 +71,6 @@ public class EpaxosPrepareTaskTest extends AbstractEpaxosTest
         MockPrepareState state = new MockPrepareState(3, 0);
         Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Collections.<UUID>emptySet());
-        instance.setSuccessors(Collections.<InetAddress>emptyList());
         instance.updateBallot(1);
         state.saveInstance(instance);
 
@@ -103,7 +102,6 @@ public class EpaxosPrepareTaskTest extends AbstractEpaxosTest
         MockPrepareState state = new MockPrepareState(3, 0);
         Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.commit(Collections.<UUID>emptySet());
-        instance.setSuccessors(Collections.<InetAddress>emptyList());
         instance.updateBallot(1);
         state.saveInstance(instance);
 
@@ -131,7 +129,6 @@ public class EpaxosPrepareTaskTest extends AbstractEpaxosTest
 
         Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Collections.<UUID>emptySet());
-        instance.setSuccessors(Collections.<InetAddress>emptyList());
         instance.updateBallot(1);
         state.saveInstance(instance);
 
@@ -204,7 +201,6 @@ public class EpaxosPrepareTaskTest extends AbstractEpaxosTest
         MockPrepareState state = new MockPrepareState(3, 0);
         Instance parentInstance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
         parentInstance.preaccept(Collections.<UUID>emptySet());
-        parentInstance.setSuccessors(Collections.<InetAddress>emptyList());
         parentInstance.updateBallot(1);
         state.saveInstance(parentInstance);
 

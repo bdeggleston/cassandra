@@ -85,7 +85,6 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
     {
         QueryInstance instance = state.createQueryInstance(getSerializedCQLRequest(key, key, cl));
         instance.setDependencies(EMPTY);
-        instance.setSuccessors(Lists.newArrayList(state.getEndpoint()));
         return instance;
     }
 

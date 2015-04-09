@@ -192,7 +192,6 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         }
 
         TokenInstance instance = new TokenInstance(node.getEndpoint(), CFID, TOKEN1, false);
-        instance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
         node.getCurrentDependencies(instance);
         instance.setDependencies(Collections.<UUID>emptySet());
         instance.setState(Instance.State.COMMITTED);
@@ -235,7 +234,6 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
         // increment the epoch for just the first token state
         EpochInstance epochInstance = node.createEpochInstance(TOKEN2, CFID, 2);
-        epochInstance.setSuccessors(Lists.newArrayList(nodes.get(1).getEndpoint()));
         epochInstance.setDependencies(node.getCurrentDependencies(epochInstance));
         epochInstance.setState(Instance.State.COMMITTED);
         node.saveInstance(epochInstance);

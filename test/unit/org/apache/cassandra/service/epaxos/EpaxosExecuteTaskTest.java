@@ -81,13 +81,11 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
 
         QueryInstance instance1 = new QueryInstance(getSerializedCQLRequest(0, 1),
                                                    FBUtilities.getBroadcastAddress());
-        instance1.setSuccessors(Lists.<InetAddress>newArrayList());
         instance1.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance1);
 
         QueryInstance instance2 = new QueryInstance(getSerializedCQLRequest(0, 1),
                                                    FBUtilities.getBroadcastAddress());
-        instance2.setSuccessors(Lists.<InetAddress>newArrayList());
         instance2.commit(Sets.newHashSet(instance1.getId()));
         state.saveInstance(instance2);
 
@@ -107,7 +105,6 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         MockExecutionState state = new MockExecutionState();
         QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1),
                                                    FBUtilities.getBroadcastAddress());
-        instance.setSuccessors(Lists.<InetAddress>newArrayList());
         instance.commit(Collections.<UUID>emptySet());
         instance.setNoop(true);
         state.saveInstance(instance);
@@ -128,7 +125,6 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         MockExecutionState state = new MockExecutionState();
         QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1),
                                                    FBUtilities.getBroadcastAddress());
-        instance.setSuccessors(Lists.<InetAddress>newArrayList());
         instance.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance);
 
@@ -152,7 +148,6 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         MockExecutionState state = new MockExecutionState();
         QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1, ConsistencyLevel.SERIAL),
                                                    FBUtilities.getBroadcastAddress());
-        instance.setSuccessors(Lists.<InetAddress>newArrayList());
         instance.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance);
 
@@ -176,7 +171,6 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         MockExecutionState state = new MockExecutionState();
         QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1),
                                                    FBUtilities.getBroadcastAddress());
-        instance.setSuccessors(Lists.<InetAddress>newArrayList());
         instance.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance);
 

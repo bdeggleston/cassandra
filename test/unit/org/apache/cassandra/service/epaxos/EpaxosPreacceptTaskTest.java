@@ -90,7 +90,6 @@ public class EpaxosPreacceptTaskTest extends AbstractEpaxosTest
     {
         MockCallbackState state = new MockCallbackState(3, 0);
         Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        instance.setSuccessors(Collections.<InetAddress>emptyList());
         instance.accept(Collections.<UUID>emptySet());
         instance.checkBallot(1);
         state.saveInstance(instance);
@@ -115,7 +114,6 @@ public class EpaxosPreacceptTaskTest extends AbstractEpaxosTest
     {
         MockCallbackState state = new MockCallbackState(3, 0);
         Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        instance.setSuccessors(Collections.<InetAddress>emptyList());
         instance.preaccept(Collections.<UUID>emptySet());
         state.saveInstance(instance);
 

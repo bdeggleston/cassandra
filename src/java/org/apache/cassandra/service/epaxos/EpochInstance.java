@@ -52,7 +52,6 @@ public class EpochInstance extends AbstractTokenInstance
         Instance instance = new EpochInstance(this.id, this.leader, this.token, this.cfId, this.epoch, this.local);
         instance.ballot = ballot;
         instance.noop = noop;
-        instance.successors = successors;
         instance.state = state;
         instance.dependencies = dependencies;
         return instance;

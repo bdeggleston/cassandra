@@ -43,12 +43,6 @@ public class MockVerbHandlerState extends EpaxosState
     }
 
     @Override
-    public void tryprepare(InetAddress endpoint, UUID iid)
-    {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void tryPreaccept(UUID iid, List<TryPreacceptAttempt> attempts, ParticipantInfo participantInfo, Runnable failureCallback)
     {
         throw new UnsupportedOperationException();

@@ -202,7 +202,6 @@ public class EpaxosSerializationTest
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
         instance.updateBallot(5);
-        instance.setSuccessors(Lists.newArrayList(InetAddress.getLocalHost()));
 
         // shouldn't be serialized
         instance.setStronglyConnected(Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()));
@@ -219,7 +218,6 @@ public class EpaxosSerializationTest
         Assert.assertEquals(instance.getDependencies(), deserialized.getDependencies());
         Assert.assertEquals(instance.getLeaderAttrsMatch(), deserialized.getLeaderAttrsMatch());
         Assert.assertEquals(instance.getBallot(), deserialized.getBallot());
-        Assert.assertEquals(instance.getSuccessors(), deserialized.getSuccessors());
 
         // check unserialized attributes
         Assert.assertNotNull(instance.getStronglyConnected());
@@ -233,7 +231,6 @@ public class EpaxosSerializationTest
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
         instance.updateBallot(5);
-        instance.setSuccessors(Lists.newArrayList(InetAddress.getLocalHost()));
 
         // should cause serialization to fail
         instance.setPlaceholder(true);
@@ -249,7 +246,6 @@ public class EpaxosSerializationTest
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
         instance.updateBallot(5);
-        instance.setSuccessors(Lists.newArrayList(InetAddress.getLocalHost()));
 
         // shouldn't be serialized
         instance.setStronglyConnected(Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()));
@@ -267,7 +263,6 @@ public class EpaxosSerializationTest
         Assert.assertEquals(instance.getDependencies(), deserialized.getDependencies());
         Assert.assertEquals(instance.getLeaderAttrsMatch(), deserialized.getLeaderAttrsMatch());
         Assert.assertEquals(instance.getBallot(), deserialized.getBallot());
-        Assert.assertEquals(instance.getSuccessors(), deserialized.getSuccessors());
 
         // check unserialized attributes
         Assert.assertEquals(instance.getStronglyConnected(), deserialized.getStronglyConnected());

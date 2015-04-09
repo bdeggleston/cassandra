@@ -56,7 +56,6 @@ public class QueryInstance extends Instance
         Instance instance = new QueryInstance(this.id, this.query, this.leader);
         instance.ballot = ballot;
         instance.noop = noop;
-        instance.successors = successors;
         instance.state = state;
         instance.dependencies = dependencies;
         return instance;

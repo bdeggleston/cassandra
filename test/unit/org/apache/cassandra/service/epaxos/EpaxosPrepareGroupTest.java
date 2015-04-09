@@ -36,7 +36,6 @@ public class EpaxosPrepareGroupTest extends AbstractEpaxosTest
         {
             QueryInstance instance = state.createQueryInstance(getSerializedCQLRequest(i, i));
             instance.setDependencies(Collections.<UUID>emptySet());
-            instance.setSuccessors(Collections.<InetAddress>emptyList());
             instance.setState(targetState);
             state.saveInstance(instance);
             instances.add(instance);
