@@ -19,6 +19,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
@@ -259,12 +261,12 @@ public class InstanceStreamReader
                 // if this stream session is including data, it's not part of a failure recovery task, so
                 // we need to update the token state ourselves
                 // TODO: clean this up
-                if (session != null && session.streamingInData())
+                if (session != null && session.isReceivingData())
                 {
+                    logger.debug("Non-recovery instance stream complete for {}", tokenState);
                     tokenState.lock.writeLock().lock();
                     try
                     {
-                        logger.debug("Setting token state to {}", TokenState.State.RECOVERING_DATA);
                         tokenState.setState(TokenState.State.RECOVERING_DATA);
                         state.tokenStateManager.save(tokenState);
                     }
@@ -280,7 +282,7 @@ public class InstanceStreamReader
                         {
                             if (event.eventType == StreamEvent.Type.STREAM_COMPLETE)
                             {
-                                logger.debug("Setting token state to {}", TokenState.State.NORMAL);
+                                logger.debug("Non-recovery instance stream session complete for {}", tokenState);
                                 tokenState.lock.writeLock().lock();
                                 try
                                 {
@@ -298,6 +300,10 @@ public class InstanceStreamReader
 
                         public void onFailure(Throwable throwable) {}
                     });
+                }
+                else
+                {
+                    logger.debug("Not setting stream event handler for {} on {}", tokenState, session);
                 }
             }
             finally

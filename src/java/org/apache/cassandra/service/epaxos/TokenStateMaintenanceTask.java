@@ -49,7 +49,7 @@ public class TokenStateMaintenanceTask implements Runnable
     @Override
     public void run()
     {
-        logger.debug("TokenStateManager running");
+        logger.debug("TokenStateMaintenanceTask running");
         for (UUID cfId: tokenStateManager.getAllManagedCfIds())
         {
             for (Token token: tokenStateManager.allTokenStatesForCf(cfId))
