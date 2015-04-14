@@ -18,15 +18,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * The epoch state for a given token range
  */
 public class TokenState
 {
-    // TODO: record if there are any SERIAL instances executed against this token state
-
     private final Token token;
     private final UUID cfId;
+
+    private static final Logger logger = LoggerFactory.getLogger(InstanceStreamReader.class);
 
     // the current epoch used in recording
     // execution epochs
@@ -43,7 +46,12 @@ public class TokenState
     // SERIAL or LOCAL_SERIAL
     private final AtomicBoolean localOnly = new AtomicBoolean(true);
 
+    // the minimum epoch this token state will need to be in to stream instances
+    // to a new node. After a token range is split, this prevents instances being
+    // transmitted to a node that doesn't replicate them
     private volatile long minStreamEpoch = 0;
+
+    // the token of the token state that was split to create this token state
     private volatile Token creatorToken = null;
 
     public static enum State {
@@ -91,7 +99,12 @@ public class TokenState
         }
     }
 
-    private volatile State state;  // local only
+    // the local state of the token state. This indicates
+    // if recovery is needed or in progress.
+    private volatile State state;
+
+    // When new key states are created after epoch 0, this map is used
+    // to seed them with an initial set of dependencies
     private final SetMultimap<Long, UUID> epochInstances = HashMultimap.create();
     private final SetMultimap<Token, UUID> tokenInstances = HashMultimap.create();
 
@@ -168,6 +181,7 @@ public class TokenState
 
     public void setState(State state)
     {
+        logger.debug("Setting token state to {} for {}", state, this);
         this.state = state;
     }
 
@@ -190,7 +204,7 @@ public class TokenState
      * Moves the given token instance from the token instance collection, into
      * the epoch instances collection as part of the given epoch.
      */
-    public boolean recordTokenInstanceExecution(TokenInstance instance)
+    public boolean bindTokenInstanceToEpoch(TokenInstance instance)
     {
         boolean changed = tokenInstances.remove(instance.getToken(), instance.getId());
         if (changed)
@@ -262,7 +276,7 @@ public class TokenState
     }
 
     /**
-     * return token instances for tokens that are > the given token
+     * return token instance ids for token instances covered by the given range
      */
     public Set<UUID> getCurrentTokenInstances(Range<Token> range)
     {
@@ -354,6 +368,14 @@ public class TokenState
                 out.writeLong(epoch);
                 Serializers.uuidSets.serialize(tokenState.epochInstances.get(epoch), out, version);
             }
+
+            Set<Token> tKeys = tokenState.tokenInstances.keySet();
+            out.writeInt(tKeys.size());
+            for (Token token: tKeys)
+            {
+                Token.serializer.serialize(token, out);
+                Serializers.uuidSets.serialize(tokenState.tokenInstances.get(token), out, version);
+            }
         }
 
         @Override
@@ -380,6 +402,13 @@ public class TokenState
                 ts.epochInstances.putAll(epoch, Serializers.uuidSets.deserialize(in, version));
             }
 
+            int numTokenInstanceKeys = in.readInt();
+            for (int i=0; i<numTokenInstanceKeys; i++)
+            {
+                Token token = Token.serializer.deserialize(in);
+                ts.tokenInstances.putAll(token, Serializers.uuidSets.deserialize(in, version));
+            }
+
             return ts;
         }
 
@@ -402,6 +431,14 @@ public class TokenState
             {
                 size += 8;
                 size += Serializers.uuidSets.serializedSize(tokenState.epochInstances.get(epoch), version);
+            }
+
+            // token instances
+            size += 4;
+            for (Token token: tokenState.tokenInstances.keySet())
+            {
+                size += Token.serializer.serializedSize(token, TypeSizes.NATIVE);
+                size += Serializers.uuidSets.serializedSize(tokenState.tokenInstances.get(token), version);
             }
 
             return size;

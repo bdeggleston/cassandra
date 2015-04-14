@@ -196,8 +196,12 @@ public class KeyStateManager
                 recordAcknowledgedDeps(instance, cfKey);
                 break;
             case TOKEN:
-                // TODO: test
-                tokenStateManager.recordExecutedTokenInstance((TokenInstance) instance);
+                // since another instance has acknowledged this instance, it needs to be
+                // kept around in the current epoch for failure recovery
+                tokenStateManager.bindTokenInstanceToEpoch((TokenInstance) instance);
+
+                // the token range is extended here to include the token of the creating token state
+                // since it's instances will also have dependencies on the token instance
                 if (tokenState.getCreatorToken() != null)
                 {
                     tokenRange = new Range<>(tokenRange.left, tokenState.getCreatorToken());
@@ -244,8 +248,10 @@ public class KeyStateManager
                 recordExecuted(instance, cfKey, position);
                 break;
             case TOKEN:
-                // TODO: test
-                tokenStateManager.recordExecutedTokenInstance((TokenInstance) instance);
+                tokenStateManager.bindTokenInstanceToEpoch((TokenInstance) instance);
+
+                // the token range is extended here to include the token of the creating token state
+                // since it's instances will also have dependencies on the token instance
                 if (tokenState.getCreatorToken() != null)
                 {
                     tokenRange = new Range<>(tokenRange.left, tokenState.getCreatorToken());

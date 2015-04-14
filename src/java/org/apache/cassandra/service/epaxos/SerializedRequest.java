@@ -105,7 +105,6 @@ public class SerializedRequest
         }
         else
         {
-            // TODO: see if the instance can be marked executed in the same commit log entry as this mutation
             // TODO: may need to examine the ts of any cells we're going to overwrite
             ReplayPosition rp;
             try

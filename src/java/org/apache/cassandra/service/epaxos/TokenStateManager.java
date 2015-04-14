@@ -429,7 +429,7 @@ public class TokenStateManager
      * This saves us from having to commit a token instance to an epoch on instantiation, while
      * still ensuring that the correct dependency chain is used for it.
      */
-    public void recordExecutedTokenInstance(TokenInstance instance)
+    public void bindTokenInstanceToEpoch(TokenInstance instance)
     {
         for (Token token: states.get(instance.getCfId()).allTokens())
         {
@@ -437,7 +437,7 @@ public class TokenStateManager
             ts.lock.writeLock().lock();
             try
             {
-                if (ts.recordTokenInstanceExecution(instance))
+                if (ts.bindTokenInstanceToEpoch(instance))
                     save(ts);
             }
             finally

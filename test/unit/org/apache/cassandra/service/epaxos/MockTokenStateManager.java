@@ -13,7 +13,7 @@ public class MockTokenStateManager extends TokenStateManager
 {
     public static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(0));
 
-    private volatile Token token = TOKEN;
+    private volatile Set<Token> tokens = Sets.newHashSet(TOKEN);
 
     public MockTokenStateManager()
     {
@@ -28,13 +28,23 @@ public class MockTokenStateManager extends TokenStateManager
 
     public void setToken(Token token)
     {
-        this.token = token;
+        tokens = Sets.newHashSet(token);
+    }
+
+    public void setTokens(Token... tokens)
+    {
+        this.tokens = Sets.newHashSet(tokens);
+    }
+
+    public void addToken(Token token)
+    {
+        tokens.add(token);
     }
 
     @Override
     protected Set<Token> getReplicatedTokensForCf(UUID cfId)
     {
-        return Sets.newHashSet(token);
+        return Sets.newHashSet(tokens);
     }
 
     public int epochIncrementThreshold = 100;
