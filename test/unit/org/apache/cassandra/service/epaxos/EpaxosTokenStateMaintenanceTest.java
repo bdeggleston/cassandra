@@ -61,6 +61,12 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
         {
             // no-op
         }
+
+        @Override
+        protected boolean shouldRun()
+        {
+            return true;
+        }
     }
 
     private static class TokenCoverageMaintenanceTask extends TokenStateMaintenanceTask
@@ -96,6 +102,12 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
         protected String getKsName(UUID cfId)
         {
             return "ks";
+        }
+
+        @Override
+        protected boolean shouldRun()
+        {
+            return true;
         }
     }
 

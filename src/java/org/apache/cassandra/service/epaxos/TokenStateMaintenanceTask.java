@@ -183,10 +183,20 @@ public class TokenStateMaintenanceTask implements Runnable
         }
     }
 
+    protected boolean shouldRun()
+    {
+        return StorageService.instance.inNormalMode();
+    }
+
     @Override
     public void run()
     {
         logger.debug("TokenStateMaintenanceTask running");
+        if (!shouldRun())
+        {
+            logger.debug("Skipping TokenStateMaintenanceTask, node is not in normal mode");
+            return;
+        }
         checkTokenCoverage();
         updateEpochs();
     }
