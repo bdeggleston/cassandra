@@ -460,7 +460,6 @@ public class EpaxosState
                 instance.commit(dependencies);
             }
 
-            // FIXME: unavailable exception shouldn't be thrown by getParticipants. It will prevent instances from being committed locally
             ParticipantInfo participantInfo = getParticipants(instance);
             MessageOut<MessageEnvelope<Instance>> message = instance.getMessage(MessagingService.Verb.EPAXOS_COMMIT,
                                                                                 tokenStateManager.getEpoch(instance));

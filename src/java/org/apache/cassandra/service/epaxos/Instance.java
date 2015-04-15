@@ -95,7 +95,6 @@ public abstract class Instance
     protected volatile int ballot = 0;
     protected volatile long executionEpoch = -1;
     protected volatile boolean noop;
-    protected volatile boolean fastPathImpossible; // TODO: remove
     protected volatile Set<UUID> dependencies = null;
     protected volatile boolean leaderAttrsMatch = false;
 
@@ -133,7 +132,6 @@ public abstract class Instance
         state = i.state;
         ballot = i.ballot;
         noop = i.noop;
-        fastPathImpossible = i.fastPathImpossible;
         dependencies = i.dependencies;
         leaderAttrsMatch = i.leaderAttrsMatch;
         placeholder = i.placeholder;
@@ -190,16 +188,6 @@ public abstract class Instance
     public InetAddress getLeader()
     {
         return leader;
-    }
-
-    public boolean isFastPathImpossible()
-    {
-        return fastPathImpossible;
-    }
-
-    public void setFastPathImpossible(boolean fastPathImpossible)
-    {
-        this.fastPathImpossible = fastPathImpossible;
     }
 
     public void setNoop(boolean noop)
@@ -379,7 +367,6 @@ public abstract class Instance
     {
         assert remote.getId().equals(getId());
         this.noop = remote.noop;
-        this.fastPathImpossible = remote.fastPathImpossible;
     }
 
     public MessageOut<MessageEnvelope<Instance>> getMessage(MessagingService.Verb verb, long epoch)
@@ -403,7 +390,6 @@ public abstract class Instance
             out.writeInt(instance.state.ordinal());
             out.writeInt(instance.ballot);
             out.writeBoolean(instance.noop);
-            out.writeBoolean(instance.fastPathImpossible);
             out.writeBoolean(instance.dependencies != null);
             if (instance.dependencies != null)
             {
@@ -428,7 +414,6 @@ public abstract class Instance
 
             instance.ballot = in.readInt();
             instance.noop = in.readBoolean();
-            instance.fastPathImpossible = in.readBoolean();
 
             if (in.readBoolean())
             {
@@ -453,7 +438,6 @@ public abstract class Instance
             size += 4;  // instance.state.code
             size += 4;  // instance.ballot
             size += 1;  // instance.noop
-            size += 1;  // instance.fastPathImpossible
             size += 1;  // instance.dependencies != null
             if (instance.dependencies != null)
             {

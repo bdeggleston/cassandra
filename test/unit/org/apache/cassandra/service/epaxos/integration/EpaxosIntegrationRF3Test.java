@@ -151,7 +151,6 @@ public class EpaxosIntegrationRF3Test extends AbstractEpaxosIntegrationTest.Sing
         }
         Instance instance1 = leader1.getLastCreatedInstance();
 
-        Assert.assertTrue(instance1.isFastPathImpossible());
         assertInstanceUnknown(instance1.getId(), nodes.subList(0, fastPathQuorumSize()));
         Set<UUID> expectedDeps = Sets.newHashSet();
         assertInstanceDeps(instance1.getId(), nodes.subList(fastPathQuorumSize(), nodes.size()), expectedDeps);

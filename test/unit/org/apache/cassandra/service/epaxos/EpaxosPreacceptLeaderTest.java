@@ -103,7 +103,6 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
         Assert.assertNull(lastAcceptDecision);
 
         Assert.assertEquals(Sets.<UUID>newHashSet(), instance.getDependencies());
-        Assert.assertTrue(instance.isFastPathImpossible());
     }
 
     @Test
@@ -125,7 +124,6 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
         AcceptDecision decision = lastAcceptDecision;
 
         Assert.assertEquals(Sets.<UUID>newHashSet(), instance.getDependencies());
-        Assert.assertTrue(instance.isFastPathImpossible());
         Assert.assertTrue(decision.acceptNeeded);
         Assert.assertEquals(Sets.newHashSet(oldInstance.getId()), decision.acceptDeps);
 

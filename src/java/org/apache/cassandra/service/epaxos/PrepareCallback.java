@@ -106,7 +106,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
             switch (decision.state)
             {
                 case PREACCEPTED:
-                    if (decision.tryPreacceptAttempts.size() > 0)
+                    if (!decision.tryPreacceptAttempts.isEmpty())
                     {
                         List<TryPreacceptAttempt> attempts = decision.tryPreacceptAttempts;
                         state.tryPreaccept(id, attempts, participantInfo, failureCallback);
@@ -128,7 +128,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
         }
     }
 
-    private Predicate<Instance> committedPredicate = new Predicate<Instance>()
+    private final Predicate<Instance> committedPredicate = new Predicate<Instance>()
     {
         @Override
         public boolean apply(@Nullable Instance instance)
@@ -140,7 +140,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
         }
     };
 
-    private Predicate<Instance> acceptedPredicate = new Predicate<Instance>()
+    private final Predicate<Instance> acceptedPredicate = new Predicate<Instance>()
     {
         @Override
         public boolean apply(@Nullable Instance instance)
@@ -152,7 +152,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
         }
     };
 
-    private Predicate<Instance> notNullPredicate = new Predicate<Instance>()
+    private final Predicate<Instance> notNullPredicate = new Predicate<Instance>()
     {
         @Override
         public boolean apply(@Nullable Instance instance)
@@ -178,16 +178,16 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
         }
 
         List<Instance> committed = Lists.newArrayList(Iterables.filter(responses.values(), committedPredicate));
-        if (committed.size() > 0)
+        if (!committed.isEmpty())
             return new PrepareDecision(Instance.State.COMMITTED, committed.get(0).getDependencies(), vetoed, ballot);
 
         List<Instance> accepted = Lists.newArrayList(Iterables.filter(responses.values(), acceptedPredicate));
-        if (accepted.size() > 0)
+        if (!accepted.isEmpty())
             return new PrepareDecision(Instance.State.ACCEPTED, accepted.get(0).getDependencies(), vetoed, ballot);
 
         // no other node knows about this instance, commit a noop
-        if (Lists.newArrayList(Iterables.filter(responses.values(), notNullPredicate)).size() == 0)
-            return new PrepareDecision(Instance.State.PREACCEPTED, null, vetoed, ballot, Collections.EMPTY_LIST, true);
+        if (Lists.newArrayList(Iterables.filter(responses.values(), notNullPredicate)).isEmpty())
+            return new PrepareDecision(Instance.State.PREACCEPTED, null, vetoed, ballot, Collections.<TryPreacceptAttempt>emptyList(), true);
 
         return new PrepareDecision(Instance.State.PREACCEPTED, null, vetoed, ballot, getTryPreacceptAttempts(), false);
     }
@@ -209,7 +209,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
         {
             if (entry.getValue() != null && entry.getKey().equals(entry.getValue().getLeader()))
             {
-                return Collections.EMPTY_LIST;
+                return Collections.emptyList();
             }
         }
 

@@ -62,7 +62,6 @@ public abstract class PreacceptTask implements Runnable
             participantInfo.quorumExistsOrDie();
 
             instance.preaccept(state.getCurrentDependencies(instance));
-            instance.setFastPathImpossible(true);
             instance.incrementBallot();
             state.saveInstance(instance);
 
