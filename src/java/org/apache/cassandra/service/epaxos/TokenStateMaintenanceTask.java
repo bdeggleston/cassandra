@@ -1,9 +1,13 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
@@ -12,6 +16,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -46,16 +54,13 @@ public class TokenStateMaintenanceTask implements Runnable
         return replicas.contains(FBUtilities.getLocalAddress());
     }
 
-    @Override
-    public void run()
+    protected void updateEpochs()
     {
-        logger.debug("TokenStateMaintenanceTask running");
         for (UUID cfId: tokenStateManager.getAllManagedCfIds())
         {
             for (Token token: tokenStateManager.allTokenStatesForCf(cfId))
             {
                 if (!replicatesTokenForKeyspace(token, cfId))
-                    // TODO: is it safe to remove then?
                     continue;
 
                 TokenState ts = tokenStateManager.getExact(token, cfId);
@@ -109,5 +114,80 @@ public class TokenStateMaintenanceTask implements Runnable
                 }
             }
         }
+    }
+
+    protected Set<Token> getReplicatedTokens(String ksName)
+    {
+        Set<Token> tokens = Sets.newHashSet();
+        for (Map.Entry<Range<Token>, List<InetAddress>> entry: StorageService.instance.getRangeToAddressMap(ksName).entrySet())
+        {
+            if (entry.getValue().contains(state.getEndpoint()))
+            {
+                tokens.add(entry.getKey().right);
+            }
+        }
+        return tokens;
+    }
+
+    protected Set<Token> getPendingReplicatedTokens(String ksName)
+    {
+        Set<Token> tokens = Sets.newHashSet();
+        Map<Range<Token>, Collection<InetAddress>> rangeMap = StorageService.instance.getTokenMetadata().getPendingRanges(ksName);
+        for (Map.Entry<Range<Token>, Collection<InetAddress>> entry: rangeMap.entrySet())
+        {
+            if (entry.getValue().contains(state.getEndpoint()))
+            {
+                tokens.add(entry.getKey().right);
+            }
+        }
+        return tokens;
+    }
+
+    protected String getKsName(UUID cfId)
+    {
+        return Schema.instance.getCF(cfId).left;
+    }
+
+    /**
+     * check that we have token states for all of the tokens we replicate
+     */
+    protected void checkTokenCoverage()
+    {
+        for (UUID cfId: tokenStateManager.getAllManagedCfIds())
+        {
+            String ksName = getKsName(cfId);
+            Set<Token> replicatedTokens = getReplicatedTokens(ksName);
+            replicatedTokens.addAll(getPendingReplicatedTokens(ksName));
+
+            List<Token> tokens = Lists.newArrayList(replicatedTokens);
+            Collections.sort(tokens);
+
+            for (Token token: tokens)
+            {
+                if (state.tokenStateManager.getExact(token, cfId) == null)
+                {
+                    logger.info("Running instance for missing token state for token {} on {}", token, cfId);
+                    TokenState parentState = state.tokenStateManager.get(token, cfId);
+                    TokenInstance instance = state.createTokenInstance(token, cfId);
+                    ConsistencyLevel cl = parentState.localOnly() ? ConsistencyLevel.LOCAL_SERIAL : ConsistencyLevel.SERIAL;
+                    try
+                    {
+                        state.process(instance, cl);
+                    }
+                    catch (WriteTimeoutException e)
+                    {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void run()
+    {
+        logger.debug("TokenStateMaintenanceTask running");
+        checkTokenCoverage();
+        updateEpochs();
     }
 }

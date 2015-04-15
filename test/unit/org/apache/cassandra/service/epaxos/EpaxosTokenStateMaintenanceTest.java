@@ -18,14 +18,20 @@
 
 package org.apache.cassandra.service.epaxos;
 
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.collect.Sets;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.exceptions.WriteTimeoutException;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
 {
@@ -37,9 +43,9 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
         clearKeyStates();
     }
 
-    private static class AlwaysReplicatingMaintenanceTask extends TokenStateMaintenanceTask
+    private static class EpochMaintenanceTask extends TokenStateMaintenanceTask
     {
-        private AlwaysReplicatingMaintenanceTask(EpaxosState state, TokenStateManager tokenStateManager)
+        private EpochMaintenanceTask(EpaxosState state, TokenStateManager tokenStateManager)
         {
             super(state, tokenStateManager);
         }
@@ -49,7 +55,50 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
         {
             return true;
         }
+
+        @Override
+        protected void checkTokenCoverage()
+        {
+            // no-op
+        }
     }
+
+    private static class TokenCoverageMaintenanceTask extends TokenStateMaintenanceTask
+    {
+        private TokenCoverageMaintenanceTask(EpaxosState state, TokenStateManager tokenStateManager)
+        {
+            super(state, tokenStateManager);
+        }
+
+        @Override
+        protected void updateEpochs()
+        {
+            // no-op
+        }
+
+        Set<Token> normalTokens = Sets.newHashSet();
+
+        @Override
+        protected Set<Token> getReplicatedTokens(String ksName)
+        {
+            return normalTokens;
+        }
+
+        Set<Token> pendingTokens = Sets.newHashSet();
+
+        @Override
+        protected Set<Token> getPendingReplicatedTokens(String ksName)
+        {
+            return pendingTokens;
+        }
+
+        @Override
+        protected String getKsName(UUID cfId)
+        {
+            return "ks";
+        }
+    }
+
     /**
      * Epoch should be incremented for a token state if it's executions
      * for it's currect epoch exceed the state's threshold
@@ -75,12 +124,12 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
         int threshold = state.getEpochIncrementThreshold(CFID);
         while (ts.getExecutions() < threshold)
         {
-            new AlwaysReplicatingMaintenanceTask(state, state.tokenStateManager).run();
+            new EpochMaintenanceTask(state, state.tokenStateManager).run();
             Assert.assertNull(preaccepted.get());
             ts.recordExecution();
         }
         Assert.assertEquals(threshold, ts.getExecutions());
-        new AlwaysReplicatingMaintenanceTask(state, state.tokenStateManager).run();
+        new EpochMaintenanceTask(state, state.tokenStateManager).run();
 
         EpochInstance instance = preaccepted.get();
         Assert.assertNotNull(instance);
@@ -124,11 +173,40 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
         ts.setState(TokenState.State.RECOVERY_REQUIRED);
 
         Assert.assertNull(call.get());
-        new AlwaysReplicatingMaintenanceTask(state, state.tokenStateManager).run();
+        new EpochMaintenanceTask(state, state.tokenStateManager).run();
         FRCall frCall = call.get();
         Assert.assertNotNull(frCall);
         Assert.assertEquals(ts.getToken(), frCall.token);
         Assert.assertEquals(ts.getCfId(), frCall.cfId);
         Assert.assertEquals(0, frCall.epoch);
+    }
+
+    @Test
+    public void tokenCoverageNewToken()
+    {
+        final AtomicReference<TokenInstance> preaccepted = new AtomicReference<>();
+        MockCallbackState state = new MockCallbackState(3, 0) {
+            @Override
+            public Object process(Instance instance, ConsistencyLevel cl) throws WriteTimeoutException
+            {
+                preaccepted.set((TokenInstance) instance);
+                return null;
+            }
+        };
+
+        state.tokenStateManager.get(MockTokenStateManager.TOKEN, CFID);
+        Token newToken = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(5));
+
+        TokenCoverageMaintenanceTask task = new TokenCoverageMaintenanceTask(state, state.tokenStateManager);
+        task.normalTokens.add(MockTokenStateManager.TOKEN);
+        task.normalTokens.add(newToken);
+
+        Assert.assertNull(preaccepted.get());
+        task.run();
+        TokenInstance instance = preaccepted.get();
+        Assert.assertNotNull(instance);
+        Assert.assertEquals(CFID, instance.getCfId());
+        Assert.assertEquals(newToken, instance.getToken());
+
     }
 }

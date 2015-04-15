@@ -109,7 +109,6 @@ public class TokenStateManager
 
         Range<Token> rangeFor(Token right)
         {
-            // FIXME: this will create a wrap around range if we don't merge with all other tokens
             lock.readLock().lock();
             try
             {
@@ -224,7 +223,6 @@ public class TokenStateManager
             }
         }
 
-        // TODO: check that there aren't any token instances in the INITIALIZING phase
         setStarted();
     }
 

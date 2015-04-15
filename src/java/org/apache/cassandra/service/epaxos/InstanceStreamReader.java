@@ -89,8 +89,6 @@ public class InstanceStreamReader
     {
         DataInputStream in = new DataInputStream(new LZFInputStream(Channels.newInputStream(channel)));
 
-        // TODO: create and put token states into recovery mode in the stream session prepare
-        // TODO: think through concurrency problems with this
         while (in.readBoolean())
         {
             Token token = Token.serializer.deserialize(in);
@@ -129,11 +127,9 @@ public class InstanceStreamReader
                 }
             }
             final TokenState tokenState = ts;
-            // TODO: work out which state we should handle in which ways
 
             logger.info("Streaming in token state for {} on {} ({})", token, Schema.instance.getCF(cfId), cfId);
 
-            // TODO: check that the token state locking/saving/state changes work with all instance stream applications
             tokenState.lockGc();
             try
             {
@@ -209,7 +205,6 @@ public class InstanceStreamReader
                                 // don't add the same instance multiple times
                                 if (!ks.contains(instance.getId()))
                                 {
-                                    // TODO: do token and epoch instances require and special handling? previous epochs should be transmitted
                                     if (instance.getState().atLeast(Instance.State.ACCEPTED))
                                     {
                                         if (!last && instance.getState() != Instance.State.EXECUTED)
@@ -260,7 +255,6 @@ public class InstanceStreamReader
 
                 // if this stream session is including data, it's not part of a failure recovery task, so
                 // we need to update the token state ourselves
-                // TODO: clean this up
                 if (session != null && session.isReceivingData())
                 {
                     logger.debug("Non-recovery instance stream complete for {}", tokenState);

@@ -175,7 +175,6 @@ public class FailureRecoveryTask implements Runnable
      */
     void recoverInstances()
     {
-        // TODO: only try one replica at a time
         TokenState tokenState = getTokenState();
         Range<Token> range;
         tokenState.lock.writeLock().lock();
@@ -200,7 +199,6 @@ public class FailureRecoveryTask implements Runnable
 
         final StreamPlan streamPlan = new StreamPlan(tokenState.toString() + "-Instance-Recovery");
 
-        // TODO: don't request data from ALL
         for (InetAddress endpoint: getEndpoints(range))
         {
             if (endpoint.equals(state.getEndpoint()))
