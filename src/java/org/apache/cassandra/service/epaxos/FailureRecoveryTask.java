@@ -44,7 +44,6 @@ import java.util.concurrent.FutureTask;
  */
 public class FailureRecoveryTask implements Runnable
 {
-    // TODO: convert each method to a Runnable/StreamEventListener/RepairEventListener, etc
     private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
 
     public final EpaxosState state;

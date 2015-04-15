@@ -76,13 +76,13 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         return f + ((f + 1) / 2);
     }
 
-    public static void setState(List<Node> nodes, Node.State state)
+    public static void setState(Iterable<Node> nodes, Node.State state)
     {
         for (Node node: nodes)
             node.setState(state);
     }
 
-    public static void assertInstanceUnknown(UUID iid, List<Node> nodes)
+    public static void assertInstanceUnknown(UUID iid, Iterable<Node> nodes)
     {
         for (Node node: nodes)
         {
@@ -91,7 +91,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         }
     }
 
-    public static void assertInstanceDeps(UUID iid, List<Node> nodes, Set<UUID> expectedDeps)
+    public static void assertInstanceDeps(UUID iid, Iterable<Node> nodes, Set<UUID> expectedDeps)
     {
         for (Node node: nodes)
         {
@@ -101,7 +101,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         }
     }
 
-    public static void assertInstanceState(UUID iid, List<Node> nodes, Instance.State expectedState)
+    public static void assertInstanceState(UUID iid, Iterable<Node> nodes, Instance.State expectedState)
     {
         for (Node node: nodes)
         {

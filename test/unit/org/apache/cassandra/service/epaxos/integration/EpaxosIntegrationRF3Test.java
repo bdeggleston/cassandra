@@ -114,6 +114,33 @@ public class EpaxosIntegrationRF3Test extends AbstractEpaxosIntegrationTest.Sing
     }
 
     /**
+     * Tests an accept is sent if the leader get's different deps back
+     */
+    @Test
+    public void accept() throws Exception
+    {
+        Node leader = nodes.get(0);
+        setState(Collections.singleton(leader), Node.State.DOWN);
+
+        Node missedLeader = nodes.get(nodes.size() - 1);
+        missedLeader.query(getSerializedCQLRequest(0, 0));
+        Instance missedInstance = missedLeader.getLastCreatedInstance();
+
+        assertInstanceState(missedInstance.getId(), nodes.subList(1, nodes.size()), Instance.State.EXECUTED);
+        assertInstanceDeps(missedInstance.getId(), nodes.subList(1, nodes.size()), Sets.<UUID>newHashSet());
+        Assert.assertEquals(0, missedLeader.accepted.size());
+
+        setState(Collections.singleton(leader), Node.State.UP);
+        assertInstanceUnknown(missedInstance.getId(), Collections.singleton(leader));
+
+        leader.query(getSerializedCQLRequest(0, 0));
+        Instance instance = leader.getLastCreatedInstance();
+        assertInstanceState(instance.getId(), nodes, Instance.State.EXECUTED);
+        assertInstanceDeps(instance.getId(), nodes, Sets.newHashSet(missedInstance.getId()));
+        Assert.assertTrue(leader.accepted.contains(instance.getId()));
+    }
+
+    /**
      * Tests failure recovery in the following scenario
      *
      * 1: Assuming a cluster with replicas numbered 0-N. Replica N attempts to run an instance
