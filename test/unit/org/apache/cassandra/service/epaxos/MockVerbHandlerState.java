@@ -66,9 +66,12 @@ public class MockVerbHandlerState extends EpaxosState
 
     public final Set<UUID> currentDeps = Sets.newHashSet();
 
+    public final Set<UUID> getCurrentDeps = Sets.newHashSet();
+
     @Override
     public Set<UUID> getCurrentDependencies(Instance instance)
     {
+        getCurrentDeps.add(instance.getId());
         return Sets.newHashSet(currentDeps);
     }
 

@@ -212,7 +212,6 @@ public class FailureRecoveryTask implements Runnable
 
             public synchronized void handleStreamEvent(StreamEvent event)
             {
-                // TODO: die on error
                 if (event.eventType == StreamEvent.Type.STREAM_COMPLETE && !submitted)
                 {
                     logger.debug("Instance stream complete. Submitting data recovery task");

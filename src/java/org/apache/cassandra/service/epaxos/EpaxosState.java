@@ -455,7 +455,8 @@ public class EpaxosState
             if (instance.getState() == Instance.State.EXECUTED)
             {
                 assert instance.getDependencies().equals(dependencies);
-            } else
+            }
+            else
             {
                 instance.commit(dependencies);
             }
@@ -577,6 +578,8 @@ public class EpaxosState
         }
 
         // TODO: should the neighbor be part of the instance?
+        //      * if the token ring changes between preaccept and execution, there will be keys that never mark the token instance as committed
+        //      * we should probably have the 'expected' range be part of the preaccept, and be something that requires an accept if different between nodes
         TokenState neighbor = tokenStateManager.get(token, cfId);
 
         // token states for this node's replicated tokens
