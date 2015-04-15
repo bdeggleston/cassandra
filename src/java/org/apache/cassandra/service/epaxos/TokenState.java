@@ -45,6 +45,7 @@ public class TokenState
     // this is used to determine if epoch and token instances should be executed at
     // SERIAL or LOCAL_SERIAL
     private final AtomicBoolean localOnly = new AtomicBoolean(true);
+    private volatile boolean lastEpochLocalOnly = false;
 
     // the minimum epoch this token state will need to be in to stream instances
     // to a new node. After a token range is split, this prevents instances being
@@ -149,7 +150,8 @@ public class TokenState
         this.epoch = epoch;
 
         executions.set(0);
-        localOnly.set(false);
+        lastEpochLocalOnly = localOnly();
+        localOnly.set(true);
         resetUnrecordedExecutions();
         cleanEpochInstances();
     }
@@ -316,7 +318,15 @@ public class TokenState
      */
     public boolean localOnly()
     {
-        return localOnly.get();
+        if (executions.get() == 0)
+        {
+            // if we don't have any info, defer to the last epoch
+            return lastEpochLocalOnly;
+        }
+        else
+        {
+            return localOnly.get();
+        }
     }
 
     public long getMinStreamEpoch()
@@ -352,6 +362,7 @@ public class TokenState
             out.writeLong(tokenState.epoch);
             out.writeInt(tokenState.executions.get());
             out.writeInt(tokenState.state.ordinal());
+            out.writeBoolean(tokenState.lastEpochLocalOnly);
             out.writeBoolean(tokenState.localOnly.get());
             out.writeLong(tokenState.minStreamEpoch);
             out.writeBoolean(tokenState.creatorToken != null);
@@ -387,6 +398,7 @@ public class TokenState
                                            in.readInt(),
                                            State.values()[in.readInt()]);
 
+            ts.lastEpochLocalOnly = in.readBoolean();
             ts.localOnly.set(in.readBoolean());
             ts.minStreamEpoch = in.readLong();
 
@@ -417,7 +429,7 @@ public class TokenState
         {
             long size = Token.serializer.serializedSize(tokenState.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(tokenState.cfId, version);
-            size += 8 + 4 + 4 + 1 + 8;
+            size += 8 + 4 + 4 + 1 + 1 + 8;
 
             size += 1;
             if (tokenState.creatorToken != null)
