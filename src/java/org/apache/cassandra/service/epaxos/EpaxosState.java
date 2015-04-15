@@ -1216,11 +1216,16 @@ public class EpaxosState
         {
             // Restrict naturalEndpoints and pendingEndpoints to node in the local DC only
             String localDc = DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
-            Predicate<InetAddress> isLocalDc = dcPredicateFor(localDc, false);
-            Predicate<InetAddress> notLocalDc = dcPredicateFor(localDc, true);
+            Predicate<InetAddress> isLocalDc = dcPredicateFor(localDc, true);
+            Predicate<InetAddress> notLocalDc = dcPredicateFor(localDc, false);
 
             remoteEndpoints = ImmutableList.copyOf(Iterables.filter(endpoints, notLocalDc));
             endpoints = ImmutableList.copyOf(Iterables.filter(endpoints, isLocalDc));
+        }
+        if (endpoints.isEmpty())
+        {
+            logger.warn("no endpoints found for instance: {} at {}, natural: {}, pending: {}, remote: {}",
+                        instance, instance.getConsistencyLevel(), naturalEndpoints, pendingEndpoints, remoteEndpoints);
         }
         return new ParticipantInfo(endpoints, remoteEndpoints, instance.getConsistencyLevel());
     }
