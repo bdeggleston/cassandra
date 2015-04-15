@@ -235,7 +235,6 @@ public class EpaxosState
     /**
      * Initiates an epaxos instance and waits for the result to become available
      */
-    // TODO: eventually, the type parameter will let this take read and cas requests
     public <T> T query(SerializedRequest query)
             throws UnavailableException, WriteTimeoutException, ReadTimeoutException, InvalidRequestException
     {
@@ -577,7 +576,7 @@ public class EpaxosState
             return;
         }
 
-        // TODO: should the neighbor be part of the instance?
+        // TODO: make neighbor part of instance
         //      * if the token ring changes between preaccept and execution, there will be keys that never mark the token instance as committed
         //      * we should probably have the 'expected' range be part of the preaccept, and be something that requires an accept if different between nodes
         TokenState neighbor = tokenStateManager.get(token, cfId);

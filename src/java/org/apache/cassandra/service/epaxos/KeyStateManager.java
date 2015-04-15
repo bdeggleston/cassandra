@@ -202,6 +202,7 @@ public class KeyStateManager
 
                 // the token range is extended here to include the token of the creating token state
                 // since it's instances will also have dependencies on the token instance
+                // TODO: add range to instance and use it here
                 if (tokenState.getCreatorToken() != null)
                 {
                     tokenRange = new Range<>(tokenRange.left, tokenState.getCreatorToken());
@@ -252,6 +253,7 @@ public class KeyStateManager
 
                 // the token range is extended here to include the token of the creating token state
                 // since it's instances will also have dependencies on the token instance
+                // TODO: add range to instance and use it here
                 if (tokenState.getCreatorToken() != null)
                 {
                     tokenRange = new Range<>(tokenRange.left, tokenState.getCreatorToken());
