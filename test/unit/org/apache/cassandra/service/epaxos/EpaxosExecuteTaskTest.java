@@ -152,6 +152,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         state.saveInstance(instance);
 
         TokenState ts = state.tokenStateManager.get(instance);
+        ts.recordExecution();
         Assert.assertTrue(ts.localOnly());
 
         ExecuteTask task = new ExecuteTask(state, instance.getId());

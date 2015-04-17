@@ -27,21 +27,16 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-public class EpaxosSerializationTest
+public class EpaxosSerializationTest extends AbstractEpaxosTest
 {
 
     private static KSMetaData ksm;
     private static CFMetaData cqlcf;
     private static CFMetaData thriftcf;
-
-    static
-    {
-        DatabaseDescriptor.getConcurrentWriters();
-        MessagingService.instance();
-    }
 
     @BeforeClass
     public static void setUpClass() throws Exception
@@ -198,7 +193,7 @@ public class EpaxosSerializationTest
     @Test
     public void checkInstance() throws Exception
     {
-        Instance instance = new QueryInstance(getSerializedRequest(), InetAddress.getLocalHost());
+        Instance instance = new QueryInstance(getSerializedRequest(), LOCALHOST);
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
         instance.updateBallot(5);
@@ -227,7 +222,7 @@ public class EpaxosSerializationTest
     @Test(expected=AssertionError.class)
     public void checkPlaceholderInstanceFailure() throws Exception
     {
-        Instance instance = new QueryInstance(getSerializedRequest(), InetAddress.getLocalHost());
+        Instance instance = new QueryInstance(getSerializedRequest(), LOCALHOST);
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
         instance.updateBallot(5);
@@ -242,7 +237,7 @@ public class EpaxosSerializationTest
     @Test
     public void checkInstanceInternal() throws Exception
     {
-        Instance instance = new QueryInstance(getSerializedRequest(), InetAddress.getLocalHost());
+        Instance instance = new QueryInstance(getSerializedRequest(), LOCALHOST);
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
         instance.updateBallot(5);

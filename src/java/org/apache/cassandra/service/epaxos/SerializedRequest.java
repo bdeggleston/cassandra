@@ -106,6 +106,7 @@ public class SerializedRequest
         else
         {
             // TODO: may need to examine the ts of any cells we're going to overwrite
+            // TODO: don't bother doing reads, store the last used ts in the key state, and increment it
             ReplayPosition rp;
             try
             {

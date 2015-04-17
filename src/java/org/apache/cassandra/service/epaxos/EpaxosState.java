@@ -527,7 +527,6 @@ public class EpaxosState
         logger.debug("Executing serialized request for {}", instance.getId());
 
         Pair<ColumnFamily, ReplayPosition> result = instance.getQuery().execute();
-        tokenStateManager.maybeRecordSerialInstance(instance);
         maybeSetResultFuture(instance.getId(), result.left);
         return result.right;
     }

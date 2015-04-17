@@ -33,6 +33,8 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -45,6 +47,7 @@ public abstract class AbstractEpaxosTest
     protected static KSMetaData ksm;
     protected static CFMetaData cfm;
     protected static CFMetaData thriftcf;
+    protected static final InetAddress LOCALHOST;
 
     static
     {
@@ -52,6 +55,14 @@ public abstract class AbstractEpaxosTest
         DatabaseDescriptor.getConcurrentWriters();
         MessagingService.instance();
         SchemaLoader.prepareServer();
+        try
+        {
+            LOCALHOST = InetAddress.getByName("127.0.0.1");
+        }
+        catch (UnknownHostException e)
+        {
+            throw new AssertionError(e);
+        }
     }
 
     protected static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(0));

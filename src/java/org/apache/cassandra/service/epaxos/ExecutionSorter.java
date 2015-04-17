@@ -1,13 +1,9 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.*;
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetAddress;
 import java.util.*;
 
 /**

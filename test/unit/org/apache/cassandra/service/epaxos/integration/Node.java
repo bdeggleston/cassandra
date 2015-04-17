@@ -236,6 +236,11 @@ public class Node extends EpaxosState
                 return true;
             }
 
+            @Override
+            protected boolean shouldRun()
+            {
+                return true;
+            }
         };
     }
 

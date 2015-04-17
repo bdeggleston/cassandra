@@ -19,8 +19,6 @@ public abstract class AbstractEpochCallback<T extends IEpochMessage> implements 
     @Override
     public final void response(MessageIn<T> message)
     {
-        // TODO: consider the null instance behavior of PrepareVerbHandler when evaluating tokens (probably shouldn't quantize them to token boundaries)
-
         TokenState tokenState = state.getTokenState(message.payload);
         tokenState.lock.readLock().lock();
         EpochDecision decision;
