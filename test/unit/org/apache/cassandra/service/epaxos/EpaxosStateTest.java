@@ -73,4 +73,10 @@ public class EpaxosStateTest extends AbstractEpaxosTest
         Assert.assertEquals(Instance.State.COMMITTED, localInstance.getState());
         Assert.assertEquals(localInstance.getId(), executed.get());
     }
+
+    @Test
+    public void addMissingInstanceFiresInstanceCommitted() throws Exception
+    {
+
+    }
 }

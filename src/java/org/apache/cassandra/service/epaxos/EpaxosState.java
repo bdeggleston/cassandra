@@ -409,6 +409,7 @@ public class EpaxosState
      */
     public void notifyCommit(UUID id)
     {
+        logger.debug("notifying commit listener of commit for {}", id);
         List<ICommitCallback> callbacks = commitCallbacks.get(id);
         if (callbacks != null)
         {

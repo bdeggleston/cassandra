@@ -39,7 +39,7 @@ public class PrepareGroup implements ICommitCallback
 
     public synchronized void schedule()
     {
-        for (UUID toPrepare: uncommitted)
+        for (UUID toPrepare : uncommitted)
         {
             ReadWriteLock lock = state.getInstanceLock(toPrepare);
             lock.readLock().lock();
@@ -83,22 +83,28 @@ public class PrepareGroup implements ICommitCallback
 
     public synchronized void prepareComplete(UUID completedId)
     {
+        logger.debug("Prepare for {} completed", completedId);
         outstanding.remove(completedId);
         state.unregisterPrepareGroup(completedId);
 
         List<PrepareGroup> groupList = groupNotify.remove(completedId);
         if (groupList != null)
         {
-            for (PrepareGroup group: groupList)
+            for (PrepareGroup group : groupList)
             {
                 group.prepareComplete(completedId);
             }
         }
 
-        if (outstanding.size() == 0)
+        if (outstanding.isEmpty())
         {
             submitExecuteTask();
         }
+    }
+
+    public synchronized boolean prepareIsOutstandingFor(UUID id)
+    {
+        return outstanding.contains(id);
     }
 
     protected void submitExecuteTask()

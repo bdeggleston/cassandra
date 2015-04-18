@@ -350,16 +350,24 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
         instance.incrementBallot();
 
-        PrepareGroup group = new PrepareGroup(state, UUIDGen.getTimeUUID(), Sets.newHashSet(instance.getId()));
+        PrepareGroup group = new PrepareGroup(state, UUIDGen.getTimeUUID(), Sets.newHashSet(instance.getId())) {
+            @Override
+            protected void submitExecuteTask()
+            {
+                // no-op
+            }
+        };
         PrepareCallback callback = new PrepareCallback(state, instance.getId(), 0, state.getParticipants(instance), group);
 
         Assert.assertTrue(callback.isInstanceUnknown());
         Assert.assertFalse(callback.isCompleted());
         Assert.assertNull(state.loadInstance(instance.getId()));
+        Assert.assertTrue(group.prepareIsOutstandingFor(instance.getId()));
 
         callback.response(createResponse(state.localEndpoints.get(2), instance));
         Assert.assertTrue(callback.isCompleted());
         Assert.assertNotNull(state.loadInstance(instance.getId()));
+        Assert.assertFalse(group.prepareIsOutstandingFor(instance.getId()));
     }
 
     /**

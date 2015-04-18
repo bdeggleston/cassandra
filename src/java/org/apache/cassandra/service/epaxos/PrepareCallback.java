@@ -67,6 +67,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
             if (instanceUnknown)
             {
                 completed = true;
+                group.prepareComplete(id);
                 state.addMissingInstance(msgInstance);
                 return;
             }
