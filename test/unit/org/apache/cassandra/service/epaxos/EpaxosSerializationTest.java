@@ -31,12 +31,27 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-public class EpaxosSerializationTest extends AbstractEpaxosTest
+public class EpaxosSerializationTest
 {
 
     private static KSMetaData ksm;
     private static CFMetaData cqlcf;
     private static CFMetaData thriftcf;
+    protected static final InetAddress LOCALHOST;
+
+    static
+    {
+        DatabaseDescriptor.getConcurrentWriters();
+        MessagingService.instance();
+        try
+        {
+            LOCALHOST = InetAddress.getByName("127.0.0.1");
+        }
+        catch (UnknownHostException e)
+        {
+            throw new AssertionError(e);
+        }
+    }
 
     @BeforeClass
     public static void setUpClass() throws Exception

@@ -41,7 +41,7 @@ public class ExecuteTask implements Runnable
         ExecutionSorter executionSorter = new ExecutionSorter(instance, state);
         executionSorter.buildGraph();
 
-        if (executionSorter.uncommitted.size() > 0)
+        if (!executionSorter.uncommitted.isEmpty())
         {
             logger.debug("Uncommitted ({}) instances found while attempting to execute {}:\n\t{}",
                          executionSorter.uncommitted.size(), id, executionSorter.uncommitted);
