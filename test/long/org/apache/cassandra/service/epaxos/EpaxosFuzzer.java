@@ -5,6 +5,8 @@ import com.google.common.collect.LinkedListMultimap;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.db.commitlog.ReplayPosition;
+import org.apache.cassandra.dht.ByteOrderedPartitioner;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.UnavailableException;
@@ -24,6 +26,7 @@ import org.slf4j.MDC;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Simulates a cluster running an epaxos workload.
@@ -39,6 +42,7 @@ public class EpaxosFuzzer
     static
     {
         DatabaseDescriptor.getConcurrentWriters();
+        DatabaseDescriptor.setPartitioner(new ByteOrderedPartitioner());
         MessagingService.instance();
         SchemaLoader.prepareServer();
         SystemKeyspace.finishStartup();
@@ -188,7 +192,7 @@ public class EpaxosFuzzer
 
         try
         {
-            while (work.size() > 0)
+            while (!work.isEmpty())
             {
                 executor.submit(new Runnable()
                 {
@@ -202,7 +206,7 @@ public class EpaxosFuzzer
                     }
                 });
 
-                if (work.size() > 0)
+                if (!work.isEmpty())
                 {
                     logger.warn("executor finished with {} of {} left in the work queue", work.size(), options.queries);
                     for (Client client: clients)
@@ -390,8 +394,10 @@ public class EpaxosFuzzer
             waitingClients.remove(id);
         }
 
+        AtomicLong replayCounter = new AtomicLong(0);
+
         @Override
-        protected void executeQueryInstance(QueryInstance instance) throws ReadTimeoutException, WriteTimeoutException
+        protected ReplayPosition executeQueryInstance(QueryInstance instance) throws ReadTimeoutException, WriteTimeoutException
         {
             UUID id = instance.getId();
 
@@ -403,6 +409,10 @@ public class EpaxosFuzzer
                 waitingClients.get(id).instanceExecuted(id);
                 waitingClients.remove(id);
             }
+
+            long next = replayCounter.getAndIncrement();
+            ReplayPosition rp = new ReplayPosition(next / 100, (int) next % 100);
+            return rp;
         }
     }
 
@@ -567,7 +577,7 @@ public class EpaxosFuzzer
 
         public void recoverNode()
         {
-            if (problems.size() > 0)
+            if (!problems.isEmpty())
             {
                 Node problemNode = problems.remove(Math.abs(random.nextInt() % problems.size()));
                 problemNode.setState(Node.State.UP);
