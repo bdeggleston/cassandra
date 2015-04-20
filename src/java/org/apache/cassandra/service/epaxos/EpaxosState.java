@@ -721,11 +721,20 @@ public class EpaxosState
      */
     public void tryPreaccept(UUID iid, List<TryPreacceptAttempt> attempts, ParticipantInfo participantInfo, Runnable failureCallback)
     {
-        assert attempts.size() > 0;
+        assert !attempts.isEmpty();
         TryPreacceptAttempt attempt = attempts.get(0);
         List<TryPreacceptAttempt> nextAttempts = attempts.subList(1, attempts.size());
 
         logger.debug("running trypreaccept prepare for {}: {}", iid, attempt);
+
+        // if all replicas have the same deps, and they all agree with the leader,
+        // then we can jump right to the accept phase
+        if (attempt.requiredConvinced == 0)
+        {
+            assert attempt.agreedWithLeader;
+            accept(iid, attempt.dependencies, attempt.vetoed, failureCallback);
+            return;
+        }
 
         Token token;
         UUID cfId;

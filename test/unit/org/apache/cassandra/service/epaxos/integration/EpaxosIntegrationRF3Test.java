@@ -213,7 +213,6 @@ public class EpaxosIntegrationRF3Test extends AbstractEpaxosIntegrationTest.Sing
         assertInstanceDeps(instance2.getId(), nodes.subList(fastPathQuorumSize(), nodes.size()), Sets.newHashSet(instance1.getId()));
         assertInstanceLeaderDepsMatch(instance2.getId(), nodes.subList(fastPathQuorumSize(), nodes.size()), false);
 
-
         // third, switch the partition, so all nodes that contributed to the second commit are down, with
         // the exception of one which didn't commit, and run an instance. When this instance is executed,
         // the uncommitted instance from the previous run will be prepared, and the prepare stage should be
@@ -238,5 +237,40 @@ public class EpaxosIntegrationRF3Test extends AbstractEpaxosIntegrationTest.Sing
 
         List<UUID> expectedOrder = Lists.newArrayList(instance2.getId(), instance1.getId(), instance3.getId());
         assertExecutionOrder(nodes.subList(fastPathQuorumSize() - 1, nodes.size()), expectedOrder);
+    }
+
+    /**
+     * Tests the leader getting positive responses from all nodes, but going down before sending
+     * commit requests. The other nodes should be able to work out that the leader would have
+     * committed;
+     */
+    @Test
+    public void inferredFastPathFailedLeaderRecovery2() throws Exception
+    {
+        // first preaccept an instance, but kill the leader before it can notify
+        // the other nodes of success
+        final Node leader1 = nodes.get(0);
+        leader1.preCommitHook = new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                leader1.setState(Node.State.DOWN);
+            }
+        };
+        leader1.query(getSerializedThriftRequest());
+        Instance instance1 = leader1.getLastCreatedInstance();
+        List<Node> upNodes = nodes.subList(1, nodes.size());
+
+        assertInstanceState(instance1.getId(), Collections.singleton(leader1), Instance.State.EXECUTED);
+        assertInstanceState(instance1.getId(), upNodes, Instance.State.PREACCEPTED);
+        assertInstanceDeps(instance1.getId(), nodes, Collections.<UUID>emptySet());
+
+        // next, run an instance on one of the other nodes, the original instance should
+        // be prepared and have the same dependencies as the leader
+        Node leader2 = nodes.get(nodes.size() - 1);
+        leader2.query(getSerializedThriftRequest());
+        assertInstanceState(instance1.getId(), upNodes, Instance.State.EXECUTED);
+        assertInstanceDeps(instance1.getId(), upNodes, Collections.<UUID>emptySet());
     }
 }

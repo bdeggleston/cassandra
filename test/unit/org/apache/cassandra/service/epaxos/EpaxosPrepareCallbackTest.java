@@ -12,6 +12,9 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * The trypreaccept stuff is tested in EpaxosPrepareCallbackTryPreacceptTest
+ */
 public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
 {
     public PrepareCallback getCallback(EpaxosState state, Instance instance)
@@ -60,12 +63,6 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         Assert.assertEquals(expectedBallot, ballotCall.ballot);
         Assert.assertNotNull(ballotCall.callback);
         Assert.assertTrue(ballotCall.callback instanceof PrepareTask);
-    }
-
-    @Test
-    public void tryPreacceptDecision() throws Exception
-    {
-
     }
 
     @Test

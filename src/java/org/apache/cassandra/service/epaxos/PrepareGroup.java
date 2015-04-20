@@ -41,6 +41,7 @@ public class PrepareGroup implements ICommitCallback
     {
         for (UUID toPrepare : uncommitted)
         {
+            logger.debug("Scheduling prepare for {}", toPrepare);
             ReadWriteLock lock = state.getInstanceLock(toPrepare);
             lock.readLock().lock();
             try
@@ -67,10 +68,10 @@ public class PrepareGroup implements ICommitCallback
                         }
                         else if (previous.addCompleteGroup(toPrepare, this))
                         {
-                            logger.debug("prepare already in progress for {}. Waiting for it to finish", id);
+                            logger.debug("prepare already in progress for {} (parent {}). Waiting for it to finish", toPrepare, id);
                             break;
                         }
-                        logger.debug("attempting to register prepare group for {} failed, trying again.", id);
+                        logger.debug("attempting to register prepare group for {} (parent {}) failed, trying again.", toPrepare, id);
                     }
                 }
             }

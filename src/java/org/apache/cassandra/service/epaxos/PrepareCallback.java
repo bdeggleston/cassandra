@@ -214,7 +214,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
             }
         }
 
-        // group common responses
+        // group and score common responses
         Set<InetAddress> replyingReplicas = Sets.newHashSet();
         Map<Set<UUID>, Set<InetAddress>> depGroups = Maps.newHashMap();
         final Map<Set<UUID>, Integer> scores = Maps.newHashMap();
@@ -249,8 +249,22 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
                 continue;
 
             Set<InetAddress> toConvince = Sets.difference(replyingReplicas, nodes);
+
+            boolean leaderAttrsMatch = true;
+            boolean vetoed = false;
+            for (InetAddress endpoint: entry.getValue())
+            {
+                Instance instance = responses.get(endpoint);
+                leaderAttrsMatch &= instance.getLeaderAttrsMatch();
+                vetoed |= ((instance instanceof EpochInstance) && ((EpochInstance) instance).isVetoed());
+            }
+
+            // only allow zero size attempts if all leader attrs match
+            if (toConvince.isEmpty() && !leaderAttrsMatch)
+                continue;
+
             int requiredConvinced = participantInfo.F + 1 - nodes.size();
-            TryPreacceptAttempt attempt = new TryPreacceptAttempt(deps, toConvince, requiredConvinced, nodes);
+            TryPreacceptAttempt attempt = new TryPreacceptAttempt(deps, toConvince, requiredConvinced, nodes, leaderAttrsMatch, vetoed);
             attempts.add(attempt);
         }
 

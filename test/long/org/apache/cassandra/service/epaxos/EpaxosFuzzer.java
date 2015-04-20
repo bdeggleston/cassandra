@@ -214,6 +214,7 @@ public class EpaxosFuzzer
                         client.forceTimeout();
                     }
                     troublemaker.recoverNode();
+//                    System.exit(1);
                 }
             }
         }
@@ -495,6 +496,11 @@ public class EpaxosFuzzer
         public boolean isTimedOut()
         {
             int currentIdx = executor.getExecuted();
+            if (pendingNode != null && pendingNode.getState() == Node.State.DOWN)
+            {
+                // bail out if the node running our query is down
+                return true;
+            }
             if (pendingQuery != null)
             {
                 if (currentIdx > startIdx + MAX_QUERY_TASKS && !quorumExists())

@@ -135,21 +135,24 @@ public class Messenger
 
     public <T> void sendReply(MessageOut<T> msg, final int id, InetAddress from, InetAddress to)
     {
-        if (nodes.get(from).getState() != Node.State.UP)
+        if (!from.equals(to))
         {
-            logger.info("Aborting sendReply {} from {}. Node: {}",
-                        msg.payload.getClass().getSimpleName(),
-                        from,
-                        nodes.get(from).getState());
-            return;
-        }
-        else if (nodes.get(to).getState() == Node.State.DOWN)
-        {
-            logger.info("Aborting sendReply {} to {}. Node: {}",
-                        msg.payload.getClass().getSimpleName(),
-                        to,
-                        Node.State.DOWN);
-            return;
+            if (nodes.get(from).getState() != Node.State.UP)
+            {
+                logger.info("Aborting sendReply {} from {}. Node: {}",
+                            msg.payload.getClass().getSimpleName(),
+                            from,
+                            nodes.get(from).getState());
+                return;
+            }
+            else if (nodes.get(to).getState() == Node.State.DOWN)
+            {
+                logger.info("Aborting sendReply {} to {}. Node: {}",
+                            msg.payload.getClass().getSimpleName(),
+                            to,
+                            Node.State.DOWN);
+                return;
+            }
         }
 
         final MessageIn<T> messageIn;
@@ -188,13 +191,24 @@ public class Messenger
     public <T> int sendRR(MessageOut<T> msg, InetAddress from, final InetAddress to, IAsyncCallback cb)
     {
         final int msgId = nextMsgNumber.getAndIncrement();
-        if (nodes.get(to).getState() == Node.State.DOWN)
+        if (!from.equals(to))
         {
-            logger.info("Aborting sendRR {} to {}. Node: {}",
-                        msg.payload.getClass().getSimpleName(),
-                        to,
-                        Node.State.DOWN);
-            return msgId;
+            if (nodes.get(from).getState() == Node.State.DOWN)
+            {
+                logger.info("Aborting sendRR {} from {}. Node: {}",
+                            msg.payload.getClass().getSimpleName(),
+                            from,
+                            Node.State.DOWN);
+                return msgId;
+            }
+            else if (nodes.get(to).getState() == Node.State.DOWN)
+            {
+                logger.info("Aborting sendRR {} to {}. Node: {}",
+                            msg.payload.getClass().getSimpleName(),
+                            to,
+                            Node.State.DOWN);
+                return msgId;
+            }
         }
 
         MessagingService.instance().setCallbackForTests(msgId, new CallbackInfo(to,
@@ -235,13 +249,24 @@ public class Messenger
     public <T> void sendOneWay(MessageOut<T> msg, InetAddress from, final InetAddress to)
     {
         final int msgId = nextMsgNumber.getAndIncrement();
-        if (nodes.get(to).getState() == Node.State.DOWN)
+        if (!from.equals(to))
         {
-            logger.info("Aborting sendOneWay {} to {}. Node: {}",
-                        msg.payload.getClass().getSimpleName(),
-                        to,
-                        Node.State.DOWN);
-            return;
+            if (nodes.get(from).getState() == Node.State.DOWN)
+            {
+                logger.info("Aborting sendOneWay {} from {}. Node: {}",
+                            msg.payload.getClass().getSimpleName(),
+                            from,
+                            Node.State.DOWN);
+                return;
+            }
+            else if (nodes.get(to).getState() == Node.State.DOWN)
+            {
+                logger.info("Aborting sendOneWay {} to {}. Node: {}",
+                            msg.payload.getClass().getSimpleName(),
+                            to,
+                            Node.State.DOWN);
+                return;
+            }
         }
 
         final MessageIn<T> messageIn;

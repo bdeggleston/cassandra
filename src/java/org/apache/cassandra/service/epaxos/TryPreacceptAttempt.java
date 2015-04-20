@@ -10,12 +10,16 @@ public class TryPreacceptAttempt
     public final Set<InetAddress> toConvince;
     public final int requiredConvinced;
     public final Set<InetAddress> agreeingEndpoints;
+    public final boolean agreedWithLeader;
+    public final boolean vetoed;
 
-    public TryPreacceptAttempt(Set<UUID> dependencies, Set<InetAddress> toConvince, int requiredConvinced, Set<InetAddress> agreeingEndpoints)
+    public TryPreacceptAttempt(Set<UUID> dependencies, Set<InetAddress> toConvince, int requiredConvinced, Set<InetAddress> agreeingEndpoints, boolean agreedWithLeader, boolean vetoed)
     {
         this.dependencies = dependencies;
         this.toConvince = toConvince;
         this.requiredConvinced = requiredConvinced;
         this.agreeingEndpoints = agreeingEndpoints;
+        this.agreedWithLeader = agreedWithLeader;
+        this.vetoed = vetoed;
     }
 }

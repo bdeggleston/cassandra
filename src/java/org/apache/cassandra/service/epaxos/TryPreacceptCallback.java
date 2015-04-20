@@ -1,6 +1,5 @@
 package org.apache.cassandra.service.epaxos;
 
-import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +76,7 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
             else
             {
                 // try-preaccept unsuccessful
-                if (nextAttempts.size() > 0)
+                if (!nextAttempts.isEmpty())
                 {
                     // start the next trypreaccept
                     state.tryPreaccept(id, nextAttempts, participantInfo, failureCallback);

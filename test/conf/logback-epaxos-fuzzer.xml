@@ -27,7 +27,7 @@
     </rollingPolicy>
 
     <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-      <maxFileSize>20MB</maxFileSize>
+      <maxFileSize>500MB</maxFileSize>
     </triggeringPolicy>
     <encoder>
       <pattern>S:%X{seed} E:%X{executed} Q:%X{queueSize} N:%X{nodesDown} %-5level %msg%n</pattern>
