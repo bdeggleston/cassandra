@@ -68,6 +68,17 @@ public abstract class AbstractEpaxosTest
     protected static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(0));
     protected static final UUID CFID = UUIDGen.getTimeUUID();
 
+    static class DoNothing implements Runnable
+    {
+        public volatile int timesRun = 0;
+        @Override
+        public void run()
+        {
+            // not doing anything
+            timesRun++;
+        }
+    }
+
     @BeforeClass
     public static void setUpClass() throws Exception
     {

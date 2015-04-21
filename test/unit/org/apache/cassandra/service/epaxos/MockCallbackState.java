@@ -129,4 +129,28 @@ public class MockCallbackState extends MockMessengerState
     {
         ballotUpdates.add(new UpdateBallotCall(id, ballot, callback));
     }
+
+    public static class TryPreacceptCall
+    {
+        public final UUID iid;
+        public final List<TryPreacceptAttempt> attempts;
+        public final ParticipantInfo participantInfo;
+        public final Runnable failureCallback;
+
+        public TryPreacceptCall(UUID iid, List<TryPreacceptAttempt> attempts, ParticipantInfo participantInfo, Runnable failureCallback)
+        {
+            this.iid = iid;
+            this.attempts = attempts;
+            this.participantInfo = participantInfo;
+            this.failureCallback = failureCallback;
+        }
+    }
+
+    public final List<TryPreacceptCall> tryPreacceptCalls = new LinkedList<>();
+
+    @Override
+    public void tryPreaccept(UUID iid, List<TryPreacceptAttempt> attempts, ParticipantInfo participantInfo, Runnable failureCallback)
+    {
+        tryPreacceptCalls.add(new TryPreacceptCall(iid, attempts, participantInfo, failureCallback));
+    }
 }
