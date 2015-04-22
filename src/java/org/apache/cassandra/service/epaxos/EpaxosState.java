@@ -739,7 +739,9 @@ public class EpaxosState
         Token token;
         UUID cfId;
         long epoch;
-        Lock lock = getInstanceLock(iid).readLock();
+        int ballot;
+        boolean localAttempt = attempt.toConvince.contains(getEndpoint());
+        Lock lock = localAttempt ? getInstanceLock(iid).readLock() : getInstanceLock(iid).writeLock();
         lock.lock();
         try
         {
@@ -747,13 +749,22 @@ public class EpaxosState
             token = instance.getToken();
             cfId = instance.getCfId();
             epoch = getCurrentEpoch(instance);
+            ballot = instance.getBallot() + 1;
+
+            // if the prepare leader isn't being sent a trypreaccept message, update
+            // it's ballot locally so follow on requests don't fail
+            if (!localAttempt)
+            {
+                instance.updateBallot(ballot);
+                saveInstance(instance);
+            }
         }
         finally
         {
             lock.unlock();
         }
 
-        TryPreacceptRequest request = new TryPreacceptRequest(token, cfId, epoch, iid, attempt.dependencies);
+        TryPreacceptRequest request = new TryPreacceptRequest(token, cfId, epoch, iid, attempt.dependencies, ballot);
         MessageOut<TryPreacceptRequest> message = request.getMessage();
 
         TryPreacceptCallback callback = getTryPreacceptCallback(iid, attempt, nextAttempts, participantInfo, failureCallback);

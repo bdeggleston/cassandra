@@ -97,6 +97,7 @@ public class MockVerbHandlerState extends EpaxosState
     public void recordMissingInstance(Instance instance)
     {
         missingRecoreded.add(instance.getId());
+        super.recordMissingInstance(instance);
     }
 
     public final Set<UUID> acknowledgedRecoreded = Sets.newHashSet();

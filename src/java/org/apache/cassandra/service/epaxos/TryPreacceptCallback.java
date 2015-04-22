@@ -70,6 +70,12 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
         responses++;
         vetoed |= response.vetoed;
 
+        if (response.ballotFailure > 0)
+        {
+            completed = true;
+            state.updateBallot(id, response.ballotFailure, failureCallback);
+            return;
+        }
         if (response.decision == TryPreacceptDecision.ACCEPTED)
         {
             convinced++;
