@@ -18,6 +18,8 @@ import org.apache.cassandra.service.epaxos.integration.Node;
 
 import org.apache.cassandra.service.epaxos.integration.QueuedExecutor;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.Pair;
+
 import org.apache.commons.cli.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -398,7 +400,7 @@ public class EpaxosFuzzer
         AtomicLong replayCounter = new AtomicLong(0);
 
         @Override
-        protected ReplayPosition executeQueryInstance(QueryInstance instance) throws ReadTimeoutException, WriteTimeoutException
+        protected Pair<ReplayPosition, Long> executeQueryInstance(QueryInstance instance) throws ReadTimeoutException, WriteTimeoutException
         {
             UUID id = instance.getId();
 
@@ -412,7 +414,7 @@ public class EpaxosFuzzer
             }
 
             long next = replayCounter.getAndIncrement();
-            ReplayPosition rp = new ReplayPosition(next / 100, (int) next % 100);
+            Pair<ReplayPosition, Long> rp = Pair.create(new ReplayPosition(next / 100, (int) next % 100), next);
             return rp;
         }
     }

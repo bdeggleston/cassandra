@@ -1,6 +1,5 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
@@ -76,6 +75,12 @@ public class EpaxosStateTest extends AbstractEpaxosTest
 
     @Test
     public void addMissingInstanceFiresInstanceCommitted() throws Exception
+    {
+
+    }
+
+    @Test
+    public void maxTimestamp()
     {
 
     }

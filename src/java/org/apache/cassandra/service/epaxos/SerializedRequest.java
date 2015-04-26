@@ -33,6 +33,21 @@ public class SerializedRequest
     private final ByteBuffer key;
     private final ConsistencyLevel consistencyLevel;
 
+    public static class ExecutionMetaData
+    {
+        public final ColumnFamily cf;
+        public final ReplayPosition replayPosition;
+        public final long maxTimestamp;
+
+        public ExecutionMetaData(ColumnFamily cf, ReplayPosition replayPosition, long maxTimestamp)
+        {
+            this.cf = cf;
+            this.replayPosition = replayPosition;
+            this.maxTimestamp = maxTimestamp;
+        }
+    }
+
+
     private SerializedRequest(Builder builder)
     {
         keyspaceName = builder.keyspaceName;
@@ -72,18 +87,39 @@ public class SerializedRequest
         return consistencyLevel;
     }
 
-    public Pair<ColumnFamily, ReplayPosition> execute() throws ReadTimeoutException, WriteTimeoutException
+    /**
+     * increases the timestamps in the given column family to be at least
+     * the min timestamp given
+     */
+    static long applyMinTimestamp(ColumnFamily cf, long minTs)
+    {
+        long delta = minTs - cf.minTimestamp();
+
+        if (delta > 0)
+        {
+            for (Cell cell: cf)
+            {
+                cf.addColumn(cell.withUpdatedTimestamp(cell.timestamp() + delta));
+            }
+
+            cf.deletionInfo().applyTimestampDelta(delta);
+        }
+
+        return cf.maxTimestamp();
+    }
+
+    public ExecutionMetaData execute(long minTimestamp) throws ReadTimeoutException, WriteTimeoutException
     {
         Tracing.trace("Reading existing values for CAS precondition");
         CFMetaData metadata = Schema.instance.getCFMetaData(keyspaceName, cfName);
 
-        long timestamp = System.currentTimeMillis();
-        final ReadCommand command = ReadCommand.create(keyspaceName, key, cfName, timestamp, request.readFilter());
+        // the read timestamp needs to be the same across nodes
+        ReadCommand command = ReadCommand.create(keyspaceName, key, cfName, minTimestamp, request.readFilter());
 
         Keyspace keyspace = Keyspace.open(command.ksName);
         Row row = command.getRow(keyspace);
 
-        final ColumnFamily current = row.cf;
+        ColumnFamily current = row.cf;
 
         boolean applies;
         try
@@ -101,24 +137,24 @@ public class SerializedRequest
             logger.debug("CAS precondition does not match current values {}", current);
             // We should not return null as this means success
             ColumnFamily rCF = current == null ? ArrayBackedSortedColumns.factory.create(metadata) : current;
-            return Pair.create(rCF, null);
+            return new ExecutionMetaData(rCF, null, 0);
         }
         else
         {
-            // TODO: may need to examine the ts of any cells we're going to overwrite
-            // TODO: don't bother doing reads, store the last used ts in the key state, and increment it
             ReplayPosition rp;
             try
             {
-                Mutation mutation = new Mutation(key, request.makeUpdates(current));
+                ColumnFamily cf = request.makeUpdates(current);
+                long maxTimestamp = applyMinTimestamp(cf, minTimestamp);
+                Mutation mutation = new Mutation(key, cf);
                 rp = Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
                 logger.debug("Applying mutation {} at {}", mutation, current);
+                return new ExecutionMetaData(null, rp, maxTimestamp);
             }
             catch (InvalidRequestException e)
             {
                 throw new RuntimeException(e);
             }
-            return Pair.create(null, rp);
         }
     }
 

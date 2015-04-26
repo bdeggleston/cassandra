@@ -58,7 +58,7 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
                 switch (j%3)
                 {
                     case 2:
-                        ks.markExecuted(id, null, new ReplayPosition(0, 0));
+                        ks.markExecuted(id, null, new ReplayPosition(0, 0), 0);
                     case 1:
                         ks.markAcknowledged(Sets.newHashSet(id), prev);
                 }

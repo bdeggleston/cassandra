@@ -16,6 +16,7 @@ public class EpaxosKeyStateTest
 {
     private static final Set<UUID> EMPTY = Sets.newHashSet();
     private static final ReplayPosition REPLAY_POS = new ReplayPosition(1, 2);
+    private static final long MAX_TIMESTAMP = 0;
 
     /**
      * Tests that dependencies are evicted once they've
@@ -41,7 +42,7 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(expected, dm.getDepsAndAdd(dep2));
 
         UUID dep3 = UUIDGen.getTimeUUID();
-        dm.markExecuted(dep0, EMPTY, REPLAY_POS);
+        dm.markExecuted(dep0, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
         Assert.assertNull(dm.get(dep0));
 
         expected.add(dep2);
@@ -63,7 +64,7 @@ public class EpaxosKeyStateTest
         UUID dep1 = UUIDGen.getTimeUUID();
 
         KeyState.Entry entry = dm.recordInstance(dep0);
-        dm.markExecuted(dep0, Sets.newHashSet(dep0, dep1), REPLAY_POS);
+        dm.markExecuted(dep0, Sets.newHashSet(dep0, dep1), REPLAY_POS, MAX_TIMESTAMP);
         Assert.assertEquals(Sets.newHashSet(dep1), entry.stronglyConnected);
     }
 
@@ -86,7 +87,7 @@ public class EpaxosKeyStateTest
         {
             dm.recordInstance(id);
             Assert.assertNotNull(dm.get(id));
-            dm.markExecuted(id, Sets.newHashSet(ids), REPLAY_POS);
+            dm.markExecuted(id, Sets.newHashSet(ids), REPLAY_POS, MAX_TIMESTAMP);
             dm.markAcknowledged(Sets.newHashSet(ids), id);
         }
 
@@ -108,7 +109,7 @@ public class EpaxosKeyStateTest
         dm.recordInstance(dep0);
         Assert.assertNotNull(dm.get(dep0));
 
-        dm.markExecuted(dep0, Sets.newHashSet(dep0, dep1), REPLAY_POS);
+        dm.markExecuted(dep0, Sets.newHashSet(dep0, dep1), REPLAY_POS, MAX_TIMESTAMP);
         dm.markAcknowledged(Sets.newHashSet(dep0), dep2);
 
         Assert.assertNull(dm.get(dep0));
@@ -137,8 +138,8 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(1, entry.acknowledged.size());
         Assert.assertTrue(entry.acknowledged.contains(dep2));
 
-        dm.markExecuted(dep0, EMPTY, null);
-        dm.markExecuted(dep1, EMPTY, REPLAY_POS);
+        dm.markExecuted(dep0, EMPTY, null, MAX_TIMESTAMP);
+        dm.markExecuted(dep1, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
 
         Assert.assertNull(dm.get(dep0));
         Assert.assertNull(dm.get(dep1));
@@ -196,7 +197,7 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(0, dm.getEpoch());
         Assert.assertEquals(0, dm.getExecutionCount());
 
-        dm.markExecuted(dep, EMPTY, REPLAY_POS);
+        dm.markExecuted(dep, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
         Assert.assertEquals(1, dm.getExecutionCount());
     }
 
@@ -212,7 +213,7 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(0, dm.getEpoch());
         Assert.assertEquals(0, dm.getExecutionCount());
 
-        dm.markExecuted(dep, EMPTY, REPLAY_POS);
+        dm.markExecuted(dep, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
         Assert.assertEquals(1, dm.getExecutionCount());
 
         dm.setEpoch(1);
@@ -239,11 +240,11 @@ public class EpaxosKeyStateTest
         UUID dep3 = UUIDGen.getTimeUUID();
 
         dm.setEpoch(1);
-        dm.markExecuted(dep1, EMPTY, REPLAY_POS);
+        dm.markExecuted(dep1, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
 
         dm.setEpoch(2);
-        dm.markExecuted(dep2, EMPTY, REPLAY_POS);
-        dm.markExecuted(dep3, EMPTY, REPLAY_POS);
+        dm.markExecuted(dep2, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
+        dm.markExecuted(dep3, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
 
         Map<Long, Set<UUID>> executions = dm.getEpochExecutions();
         Assert.assertNull(executions.get((long) 0));
@@ -259,9 +260,9 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(2, dm.getExecutionCount());
 
         UUID dep = UUIDGen.getTimeUUID();
-        dm.markExecuted(dep, EMPTY, REPLAY_POS);
+        dm.markExecuted(dep, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
         Assert.assertEquals(3, dm.getExecutionCount());
-        dm.markExecuted(dep, EMPTY, REPLAY_POS);
+        dm.markExecuted(dep, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
         Assert.assertEquals(3, dm.getExecutionCount());
     }
 
@@ -276,7 +277,7 @@ public class EpaxosKeyStateTest
         Assert.assertEquals(0, dm.getEpoch());
         Assert.assertEquals(0, dm.getExecutionCount());
 
-        dm.markExecuted(dep, EMPTY, REPLAY_POS);
+        dm.markExecuted(dep, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
         Assert.assertEquals(1, dm.getExecutionCount());
     }
 
@@ -294,7 +295,7 @@ public class EpaxosKeyStateTest
             assert keyState.getEpoch() == i;
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id, EMPTY, REPLAY_POS);
+                keyState.markExecuted(id, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
                 ids.add(id);
             }
             assert keyState.getExecutionCount() == 2;
@@ -323,7 +324,7 @@ public class EpaxosKeyStateTest
             assert keyState.getEpoch() == i;
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id, EMPTY, REPLAY_POS);
+                keyState.markExecuted(id, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
             }
             assert keyState.getExecutionCount() == 2;
         }
@@ -345,7 +346,7 @@ public class EpaxosKeyStateTest
             assert keyState.getEpoch() == i;
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id, EMPTY, REPLAY_POS);
+                keyState.markExecuted(id, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
                 if (i == currentEpoch)
                 {
                     // if this is the 'current' or previous epoch, set the dependency as active
@@ -370,7 +371,7 @@ public class EpaxosKeyStateTest
             keyState.setEpoch(i);
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id, EMPTY, REPLAY_POS);
+                keyState.markExecuted(id, EMPTY, REPLAY_POS, MAX_TIMESTAMP);
                 if (i == currentEpoch - 1)
                 {
                     // if this is the 'current' epoch, set the dependency as active
@@ -392,14 +393,14 @@ public class EpaxosKeyStateTest
 
         Assert.assertEquals(0, dm.getEpoch());
 
-        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, new ReplayPosition(0, 1));
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, new ReplayPosition(0, 1), MAX_TIMESTAMP);
 
         dm.setEpoch(1);
-        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null);
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null, MAX_TIMESTAMP);
 
         dm.setEpoch(2);
-        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, new ReplayPosition(1, 0));
-        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, new ReplayPosition(1, 5));
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, new ReplayPosition(1, 0), MAX_TIMESTAMP);
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, new ReplayPosition(1, 5), MAX_TIMESTAMP);
 
         Assert.assertEquals(new ExecutionInfo(0, 0), dm.getExecutionInfoAtPosition(new ReplayPosition(0, 0)));
         Assert.assertEquals(new ExecutionInfo(0, 1), dm.getExecutionInfoAtPosition(new ReplayPosition(0, 1)));
@@ -425,15 +426,15 @@ public class EpaxosKeyStateTest
         // this execution info should be rejected, since it's before the first one
         Assert.assertFalse(dm.setFutureExecution(new ExecutionInfo(1, 2)));
 
-        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null);
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null, MAX_TIMESTAMP);
         Assert.assertEquals(1, dm.getExecutionCount());
         Assert.assertFalse(dm.canExecute());
 
-        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null);
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null, MAX_TIMESTAMP);
         Assert.assertEquals(2, dm.getExecutionCount());
         Assert.assertTrue(dm.canExecute());
 
-        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null);
+        dm.markExecuted(UUIDGen.getTimeUUID(), EMPTY, null, MAX_TIMESTAMP);
         Assert.assertEquals(3, dm.getExecutionCount());
         Assert.assertTrue(dm.canExecute());
     }

@@ -2,6 +2,8 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.SettableFuture;
+
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.ConsistencyLevel;
@@ -12,13 +14,17 @@ import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.Pair;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.net.InetAddress;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
@@ -49,7 +55,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         List<UUID> executedIds = Lists.newArrayList();
 
         @Override
-        protected ReplayPosition executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
+        protected Pair<ReplayPosition, Long> executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
         {
             executedIds.add(instance.getId());
             return super.executeInstance(instance);
@@ -187,6 +193,62 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
 
         ts = state.tokenStateManager.get(instance);
         Assert.assertEquals(0, state.executedIds.size());
-
     }
+
+    private SerializedRequest adHocCqlRequest(String query)
+    {
+        return newSerializedRequest(getCqlCasRequest(query, Collections.<ByteBuffer>emptyList(), ConsistencyLevel.SERIAL));
+    }
+
+    @Test
+    public void conflictingTimestamps() throws Exception
+    {
+        int k = new Random(System.currentTimeMillis()).nextInt();
+        MockExecutionState state = new MockExecutionState();
+
+        SerializedRequest r3 = adHocCqlRequest("UPDATE ks.tbl SET v=2 WHERE k=" + k + " IF v=1");
+        QueryInstance instance3 = state.createQueryInstance(r3);
+        Thread.sleep(5);
+        SerializedRequest r2 = adHocCqlRequest("UPDATE ks.tbl SET v=1 WHERE k=" + k + " IF v=0");
+        QueryInstance instance2 = state.createQueryInstance(r2);
+        Thread.sleep(5);
+        SerializedRequest r1 = adHocCqlRequest("INSERT INTO ks.tbl (k, v) VALUES (" + k + ", 0) IF NOT EXISTS");
+        QueryInstance instance1 = state.createQueryInstance(r1);
+
+
+        SettableFuture future;
+        instance1.commit(Sets.<UUID>newHashSet());
+        state.saveInstance(instance1);
+        future = state.setFuture(instance1);
+        new ExecuteTask(state, instance1.getId()).run();
+        Assert.assertTrue(future.isDone());
+        Assert.assertNull(future.get());
+        Thread.sleep(5);
+
+        CfKey cfKey = instance1.getQuery().getCfKey();
+        long firstTs = state.keyStateManager.getMaxTimestamp(cfKey);
+        Assert.assertNotSame(KeyState.MIN_TIMESTAMP, firstTs);
+
+        instance2.commit(Sets.newHashSet(instance1.getId()));
+        state.saveInstance(instance2);
+        future = state.setFuture(instance2);
+        new ExecuteTask(state, instance2.getId()).run();
+        Assert.assertTrue(future.isDone());
+        Assert.assertNull(future.get());
+        Thread.sleep(5);
+
+        // since the timestamp we supplied was less than the previously executed
+        // one the timestamp actually executed should be lastTs + 1
+        Assert.assertEquals(firstTs + 1, state.keyStateManager.getMaxTimestamp(cfKey));
+
+        instance3.commit(Sets.newHashSet(instance2.getId()));
+        state.saveInstance(instance3);
+        future = state.setFuture(instance3);
+        new ExecuteTask(state, instance3.getId()).run();
+        Assert.assertTrue(future.isDone());
+        Assert.assertNull(future.get());
+
+        Assert.assertEquals(firstTs + 2, state.keyStateManager.getMaxTimestamp(cfKey));
+    }
+
 }

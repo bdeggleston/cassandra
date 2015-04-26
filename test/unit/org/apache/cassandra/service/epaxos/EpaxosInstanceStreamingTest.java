@@ -1,6 +1,5 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
@@ -99,7 +98,7 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         ByteBuffer key = ByteBufferUtil.bytes(k);
 
         KeyState ks = state.keyStateManager.loadKeyState(key, cfm.cfId);
-        ks.markExecuted(instance.getId(), EMPTY, epoch, null);
+        ks.markExecuted(instance.getId(), EMPTY, epoch, null, 0);
         ks.markAcknowledged(instance.getDependencies(), instance.getId());
         state.keyStateManager.saveKeyState(key, cfm.cfId, ks);
         return instance.getId();

@@ -42,6 +42,7 @@ import java.util.*;
  */
 public class KeyState
 {
+    public static final long MIN_TIMESTAMP = 0l;
     private static final Logger logger = LoggerFactory.getLogger(KeyState.class);
 
     static class Entry
@@ -82,17 +83,17 @@ public class KeyState
         // isn't part of it's strongly connected component, we can evict
         boolean canEvict()
         {
-            if (acknowledged.size() == 0 || stronglyConnected == null)
+            if (acknowledged.isEmpty() || stronglyConnected == null)
                 return false;
 
             if (isSccTerminator)
             {
                 // needs to have been ack'd by an instance outside of the scc
-                return Sets.difference(acknowledged, stronglyConnected).size() > 0;
+                return !Sets.difference(acknowledged, stronglyConnected).isEmpty();
             }
             else
             {
-                return acknowledged.size() > 0;
+                return !acknowledged.isEmpty();
             }
         }
 
@@ -102,7 +103,7 @@ public class KeyState
 
             stronglyConnected = scc != null ? Sets.newHashSet(scc) : Collections.<UUID>emptySet();
 
-            if (stronglyConnected.size() > 0)
+            if (!stronglyConnected.isEmpty())
             {
                 List<UUID> sorted = Lists.newArrayList(stronglyConnected);
                 Collections.sort(sorted, DependencyGraph.comparator);
@@ -190,6 +191,15 @@ public class KeyState
     private long executionCount;
 
     /**
+     * Since epaxos can reorder mutations, it's possible that a mutation will
+     * have a lower timestamp than the previously written mutation, making an
+     * otherwise successful mutation appear to have not happened. To prevent
+     * this confusing behavior, we record the max timestamps of applied query
+     * instances, and adjust the timestamps of future mutations that are lower
+     */
+    private long maxTimestamp = MIN_TIMESTAMP;
+
+    /**
      * If a row was streamed to this node containing a mutation from an instance
      * that wasn't yet locally executed, the execution position of the remote node
      * will be recorded here, and all instances up to and including this position
@@ -227,6 +237,7 @@ public class KeyState
 
         if (epoch != keyState.epoch) return false;
         if (executionCount != keyState.executionCount) return false;
+        if (maxTimestamp != keyState.maxTimestamp) return false;
         if (!entries.equals(keyState.entries)) return false;
         if (!epochs.equals(keyState.epochs)) return false;
         if (futureExecution != null ? !futureExecution.equals(keyState.futureExecution) : keyState.futureExecution != null)
@@ -244,6 +255,7 @@ public class KeyState
         result = 31 * result + epochs.hashCode();
         result = 31 * result + (int) (epoch ^ (epoch >>> 32));
         result = 31 * result + (int) (executionCount ^ (executionCount >>> 32));
+        result = 31 * result + (int) (maxTimestamp ^ (maxTimestamp >>> 32));
         result = 31 * result + (futureExecution != null ? futureExecution.hashCode() : 0);
         result = 31 * result + pendingAcknowledgements.hashCode();
         result = 31 * result + pendingEpochAcknowledgements.hashCode();
@@ -323,12 +335,12 @@ public class KeyState
             maybeEvict(iid);
         }
     }
-    public void markExecuted(UUID iid, Set<UUID> stronglyConnected, ReplayPosition position)
+    public void markExecuted(UUID iid, Set<UUID> stronglyConnected, ReplayPosition position, long maxTimestamp)
     {
-        markExecuted(iid, stronglyConnected, epoch, position);
+        markExecuted(iid, stronglyConnected, epoch, position, maxTimestamp);
     }
 
-    void markExecuted(UUID iid, Set<UUID> stronglyConnected, long execEpoch, ReplayPosition position)
+    void markExecuted(UUID iid, Set<UUID> stronglyConnected, long execEpoch, ReplayPosition position, long maxTimestamp)
     {
         Entry entry = get(iid);
         if (entry != null)
@@ -363,7 +375,17 @@ public class KeyState
             }
         }
 
+        if (maxTimestamp > this.maxTimestamp)
+        {
+            this.maxTimestamp = maxTimestamp;
+        }
+
         logger.debug("Instance {} marked executed at rp={}, epoch={}, execNum={}", iid, position, execEpoch, executionCount);
+    }
+
+    public long getMaxTimestamp()
+    {
+        return maxTimestamp;
     }
 
     /**
@@ -568,7 +590,7 @@ public class KeyState
 
         for (Map.Entry<Long, Set<UUID>> entry: getEpochsOlderThanUnsafe(epoch).entrySet())
         {
-            if (Sets.intersection(entries.keySet(), entry.getValue()).size() > 0)
+            if (!Sets.intersection(entries.keySet(), entry.getValue()).isEmpty())
             {
                 if (logger.isDebugEnabled())
                 {
@@ -585,7 +607,7 @@ public class KeyState
     public void removeEpoch(Long e)
     {
         EpochExecutionInfo ids = epochs.get(e);
-        assert ids == null || Sets.intersection(entries.keySet(), ids.idSet).size() == 0;
+        assert ids == null || Sets.intersection(entries.keySet(), ids.idSet).isEmpty();
         epochs.remove(e);
 
         // clean up pending acks
@@ -678,6 +700,7 @@ public class KeyState
         {
             out.writeLong(deps.epoch);
             out.writeLong(deps.executionCount);
+            out.writeLong(deps.maxTimestamp);
 
             out.writeInt(deps.entries.size());
             for (Entry entry: deps.entries.values())
@@ -721,6 +744,7 @@ public class KeyState
         public KeyState deserialize(DataInput in, int version) throws IOException
         {
             KeyState deps = new KeyState(in.readLong(), in.readLong());
+            deps.maxTimestamp = in.readLong();
             int size = in.readInt();
             for (int i=0; i<size; i++)
             {
@@ -761,7 +785,7 @@ public class KeyState
         @Override
         public long serializedSize(KeyState deps, int version)
         {
-            long size = 8 + 8 + 4;
+            long size = 8 + 8 + 8 + 4;
             for (Entry entry: deps.entries.values())
                 size += Entry.serializer.serializedSize(entry, version);
 

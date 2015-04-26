@@ -38,6 +38,7 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -147,18 +148,17 @@ public abstract class AbstractEpaxosTest
         return new ThriftCASRequest(expected, updates);
     }
 
-    protected static CQL3CasRequest getCqlCasRequest(int k, int v, ConsistencyLevel consistencyLevel)
+    protected static CQL3CasRequest getCqlCasRequest(String query, List<ByteBuffer> bindings, ConsistencyLevel consistencyLevel)
     {
         try
         {
-            String query = "INSERT INTO ks.tbl (k, v) VALUES (?, ?) IF NOT EXISTS";
             ModificationStatement.Parsed parsed = (ModificationStatement.Parsed) QueryProcessor.parseStatement(query);
             parsed.prepareKeyspace("ks");
             parsed.setQueryString(query);
             ParsedStatement.Prepared prepared = parsed.prepare();
 
             QueryOptions options = QueryOptions.create(consistencyLevel,
-                                                       Lists.newArrayList(ByteBufferUtil.bytes(k), ByteBufferUtil.bytes(v)),
+                                                       bindings,
                                                        false, 1, null, ConsistencyLevel.QUORUM);
             options.prepare(prepared.boundNames);
             QueryState state = QueryState.forInternalCalls();
@@ -172,6 +172,14 @@ public abstract class AbstractEpaxosTest
             throw new AssertionError(e);
         }
     }
+    protected static CQL3CasRequest getCqlCasRequest(int k, int v, ConsistencyLevel consistencyLevel)
+    {
+        String query = "INSERT INTO ks.tbl (k, v) VALUES (?, ?) IF NOT EXISTS";
+        List<ByteBuffer> bindings = Lists.newArrayList(ByteBufferUtil.bytes(k), ByteBufferUtil.bytes(v));
+        return getCqlCasRequest(query, bindings, consistencyLevel);
+
+    }
+
     protected static SerializedRequest newSerializedRequest(CASRequest request)
     {
         return newSerializedRequest(request, ConsistencyLevel.SERIAL);

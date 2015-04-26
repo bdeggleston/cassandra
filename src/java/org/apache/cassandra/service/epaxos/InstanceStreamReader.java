@@ -222,7 +222,7 @@ public class InstanceStreamReader
                                             {
                                                 instance.setStronglyConnected(stronglyConnected);
                                             }
-                                            ks.markExecuted(instance.getId(), stronglyConnected, null);
+                                            ks.markExecuted(instance.getId(), stronglyConnected, null, ks.getMaxTimestamp());
                                         }
                                         state.keyStateManager.saveKeyState(cfKey, ks);
                                         // the instance is persisted after the keystate is, so if this bootstrap/recovery

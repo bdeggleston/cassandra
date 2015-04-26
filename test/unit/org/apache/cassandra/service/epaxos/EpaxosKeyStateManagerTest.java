@@ -481,7 +481,9 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             }
         }
 
-        ksm.recordExecuted(instance, REPLAY_POS);
+        Assert.assertEquals(KeyState.MIN_TIMESTAMP, ksm.getMaxTimestamp(instance.getQuery().getCfKey()));
+        ksm.recordExecuted(instance, REPLAY_POS, 5);
+        Assert.assertEquals(5, ksm.getMaxTimestamp(instance.getQuery().getCfKey()));
 
         for (CfKey cfKey: cfKeys)
         {
@@ -541,7 +543,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             }
         }
 
-        ksm.recordExecuted(instance, REPLAY_POS);
+        ksm.recordExecuted(instance, REPLAY_POS, KeyState.MIN_TIMESTAMP);
 
         for (CfKey cfKey: cfKeys)
         {
@@ -609,7 +611,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         // acknowledge instance
         Assert.assertEquals(0, ts.getCurrentEpochInstances().size());
-        ksm.recordExecuted(instance, null);
+        ksm.recordExecuted(instance, null, KeyState.MIN_TIMESTAMP);
         Assert.assertEquals(1, ts.getCurrentEpochInstances().size());
 
         KeyState.Entry entry;
@@ -676,7 +678,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             assert keyState.getEpoch() == i;
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id, new HashSet<UUID>(), REPLAY_POS);
+                keyState.markExecuted(id, new HashSet<UUID>(), REPLAY_POS, KeyState.MIN_TIMESTAMP);
                 if (i == currentEpoch)
                 {
                     // if this is the 'current' or previous epoch, set the dependency as active
@@ -708,7 +710,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             keyState.setEpoch(i);
             for (UUID id: Lists.newArrayList(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()))
             {
-                keyState.markExecuted(id, new HashSet<UUID>(), REPLAY_POS);
+                keyState.markExecuted(id, new HashSet<UUID>(), REPLAY_POS, KeyState.MIN_TIMESTAMP);
                 if (i == currentEpoch - 1)
                 {
                     // if this is the 'current' epoch, set the dependency as active
@@ -745,7 +747,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
             tokenMap.put(token, key);
 
             KeyState ks = ksm.loadKeyState(key, cfId);
-            ks.markExecuted(UUIDGen.getTimeUUID(), null, null);
+            ks.markExecuted(UUIDGen.getTimeUUID(), null, null, KeyState.MIN_TIMESTAMP);
             ksm.saveKeyState(key, cfId, ks);
         }
 
