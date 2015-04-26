@@ -111,7 +111,7 @@ public class MockVerbHandlerState extends EpaxosState
     public final Set<UUID> executedRecorded = Sets.newHashSet();
 
     @Override
-    public void recordExecuted(Instance instance, ReplayPosition position)
+    public void recordExecuted(Instance instance, ReplayPosition position, long maxTimestamp)
     {
         executedRecorded.add(instance.getId());
     }

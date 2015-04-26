@@ -236,7 +236,7 @@ public class KeyStateManager
         }
     }
 
-    public void recordExecuted(Instance instance, ReplayPosition position)
+    public void recordExecuted(Instance instance, ReplayPosition position, long maxTimestamp)
     {
         CfKey cfKey;
         TokenState tokenState = tokenStateManager.get(instance);
@@ -246,7 +246,7 @@ public class KeyStateManager
             case QUERY:
                 SerializedRequest request = ((QueryInstance) instance).getQuery();
                 cfKey = request.getCfKey();
-                recordExecuted(instance, cfKey, position);
+                recordExecuted(instance, cfKey, position, maxTimestamp);
                 break;
             case TOKEN:
                 tokenStateManager.bindTokenInstanceToEpoch((TokenInstance) instance);
@@ -263,7 +263,7 @@ public class KeyStateManager
                 while (cfKeyIterator.hasNext())
                 {
                     cfKey = cfKeyIterator.next();
-                    recordExecuted(instance, cfKey, position);
+                    recordExecuted(instance, cfKey, position, maxTimestamp);
                 }
                 break;
             default:
@@ -271,7 +271,7 @@ public class KeyStateManager
         }
     }
 
-    private void recordExecuted(Instance instance, CfKey cfKey, ReplayPosition position)
+    private void recordExecuted(Instance instance, CfKey cfKey, ReplayPosition position, long maxTimestamp)
     {
 
         Lock lock = getCfKeyLock(cfKey);
@@ -279,8 +279,23 @@ public class KeyStateManager
         try
         {
             KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
-            dm.markExecuted(instance.getId(), instance.getStronglyConnected(), position);
+            dm.markExecuted(instance.getId(), instance.getStronglyConnected(), position, maxTimestamp);
             saveKeyState(cfKey, dm);
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
+    public long getMaxTimestamp(CfKey cfKey)
+    {
+        Lock lock = getCfKeyLock(cfKey);
+        lock.lock();
+        try
+        {
+            KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
+            return dm.getMaxTimestamp();
         }
         finally
         {
@@ -298,8 +313,7 @@ public class KeyStateManager
 
     private KeyState deserialize(ByteBuffer data)
     {
-        DataInput in = new DataInputStream(ByteBufferUtil.inputStream(data));
-        try
+        try(DataInputStream in = new DataInputStream(ByteBufferUtil.inputStream(data)))
         {
             return KeyState.serializer.deserialize(in, 0);
         }
@@ -606,7 +620,7 @@ public class KeyStateManager
 
 
                 // in case we get a bunch of tombstones
-                if (rows.size() == 0 && !endReached)
+                if (rows.isEmpty() && !endReached)
                 {
                     leftToken = DatabaseDescriptor.getPartitioner().getToken(partitions.get(partitions.size() - 1).key.getKey());
                     continue;

@@ -31,6 +31,8 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.IFilter;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.UUIDGen;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -245,11 +247,17 @@ public class EpaxosState
         return (T) process(instance, query.getConsistencyLevel());
     }
 
+    SettableFuture setFuture(Instance instance)
+    {
+        SettableFuture future = SettableFuture.create();
+        resultFutures.put(instance.getId(), future);
+        return future;
+    }
+
     public Object process(Instance instance, ConsistencyLevel cl) throws WriteTimeoutException
     {
         long start = System.currentTimeMillis();
-        SettableFuture resultFuture = SettableFuture.create();
-        resultFutures.put(instance.getId(), resultFuture);
+        SettableFuture resultFuture = setFuture(instance);
         try
         {
             preaccept(instance);
@@ -496,7 +504,7 @@ public class EpaxosState
         getStage(Stage.MUTATION).submit(new ExecuteTask(this, instanceId));
     }
 
-    protected ReplayPosition executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
+    protected Pair<ReplayPosition, Long> executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
     {
         switch (instance.getType())
         {
@@ -523,13 +531,17 @@ public class EpaxosState
         }
     }
 
-    protected ReplayPosition executeQueryInstance(QueryInstance instance) throws ReadTimeoutException, WriteTimeoutException
+    protected Pair<ReplayPosition, Long> executeQueryInstance(QueryInstance instance) throws ReadTimeoutException, WriteTimeoutException
     {
         logger.debug("Executing serialized request for {}", instance.getId());
 
-        Pair<ColumnFamily, ReplayPosition> result = instance.getQuery().execute();
-        maybeSetResultFuture(instance.getId(), result.left);
-        return result.right;
+        SerializedRequest request = instance.getQuery();
+
+        long maxTimestamp = keyStateManager.getMaxTimestamp(request.getCfKey());
+        long minTimestamp = maxTimestamp = Math.max(maxTimestamp + 1, UUIDGen.unixTimestamp(instance.getId()) * 1000);
+        SerializedRequest.ExecutionMetaData metaData = request.execute(minTimestamp);
+        maybeSetResultFuture(instance.getId(), metaData.cf);
+        return Pair.create(metaData.replayPosition, metaData.maxTimestamp);
     }
 
     /**
@@ -1185,9 +1197,9 @@ public class EpaxosState
         keyStateManager.recordAcknowledgedDeps(instance);
     }
 
-    public void recordExecuted(Instance instance, ReplayPosition position)
+    public void recordExecuted(Instance instance, ReplayPosition position, long maxTimestamp)
     {
-        keyStateManager.recordExecuted(instance, position);
+        keyStateManager.recordExecuted(instance, position, maxTimestamp);
         tokenStateManager.reportExecution(instance.getToken(), instance.getCfId());
     }
 

@@ -17,6 +17,7 @@ import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.epaxos.*;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.Pair;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -180,9 +181,9 @@ public class Node extends EpaxosState
     }
 
     @Override
-    public ReplayPosition executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
+    public Pair<ReplayPosition, Long> executeInstance(Instance instance) throws InvalidRequestException, ReadTimeoutException, WriteTimeoutException
     {
-        ReplayPosition rp = super.executeInstance(instance);
+        Pair<ReplayPosition, Long> rp = super.executeInstance(instance);
         executionOrder.add(instance.getId());
         return rp;
     }

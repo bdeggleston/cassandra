@@ -4,6 +4,8 @@ import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
+import org.apache.cassandra.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,11 +68,17 @@ public class ExecuteTask implements Runnable
                     assert toExecute.getState() == Instance.State.COMMITTED;
 
                     ReplayPosition position = null;
+                    long maxTimestamp = 0;
                     try
                     {
                         if (!instance.skipExecution() && state.canExecute(instance))
                         {
-                            position = state.executeInstance(toExecute);
+                            Pair<ReplayPosition, Long> result = state.executeInstance(toExecute);
+                            if (result != null)
+                            {
+                                position = result.left;
+                                maxTimestamp = result.right;
+                            }
                         }
                         else if (instance.getType() != Instance.Type.QUERY)
                         {
@@ -88,7 +96,7 @@ public class ExecuteTask implements Runnable
                         throw new RuntimeException(e);
                     }
                     toExecute.setExecuted(state.getCurrentEpoch(instance));
-                    state.recordExecuted(toExecute, position);
+                    state.recordExecuted(toExecute, position, maxTimestamp);
                     state.saveInstance(toExecute);
 
                 }
