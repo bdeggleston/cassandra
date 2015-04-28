@@ -62,11 +62,10 @@ public class EpaxosState
 
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
 
-    // TODO: put these in DatabaseDescriptor
-
     // the amount of time the prepare phase will wait for the leader to commit an instance before
     // attempting a prepare phase. This is multiplied by a replica's position in the successor list
-    protected static long PREPARE_GRACE_MILLIS = DatabaseDescriptor.getMinRpcTimeout() / 2;
+    protected static long PREPARE_GRACE_MILLIS = Long.getLong("cassandra.epaxos.prepare_grace_millis",
+                                                              DatabaseDescriptor.getMinRpcTimeout() / 2);
 
     // how often the TokenMaintenanceTask runs (seconds)
     static final long TOKEN_MAINTENANCE_INTERVAL = Integer.getInteger("cassandra.epaxos.token_state_maintenance_interval", 30);
@@ -118,7 +117,7 @@ public class EpaxosState
             this.liveEndpoints = ImmutableList.copyOf(Iterables.filter(endpoints, livePredicate()));
             this.consistencyLevel = cl;
 
-            if (cl == ConsistencyLevel.SERIAL && (remoteEndpoints != null && remoteEndpoints.size() > 0))
+            if (cl == ConsistencyLevel.SERIAL && (remoteEndpoints != null && !remoteEndpoints.isEmpty()))
                 throw new AssertionError("SERIAL consistency must include all endpoints");
             this.remoteEndpoints = remoteEndpoints != null ? remoteEndpoints : NO_ENDPOINTS;
 
@@ -435,7 +434,6 @@ public class EpaxosState
      */
     public void registerCommitCallback(UUID id, ICommitCallback callback)
     {
-        // TODO: should we check instance status, and bail out / call the callback if the instance is committed?
         List<ICommitCallback> callbacks = commitCallbacks.get(id);
         if (callbacks == null)
         {
@@ -1099,6 +1097,11 @@ public class EpaxosState
 
             }
         }
+    }
+
+    public void addMissingInstances(Collection<Instance> instances)
+    {
+        getStage(Stage.MUTATION).submit(new AddMissingInstances(this, instances));
     }
 
     protected void addMissingInstance(Instance remoteInstance)

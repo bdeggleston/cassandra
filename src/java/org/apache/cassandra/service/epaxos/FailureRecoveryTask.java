@@ -194,7 +194,7 @@ public class FailureRecoveryTask implements Runnable
             tokenState.lock.writeLock().unlock();
         }
 
-        final StreamPlan streamPlan = new StreamPlan(tokenState.toString() + "-Instance-Recovery");
+        StreamPlan streamPlan = new StreamPlan(tokenState.toString() + "-Instance-Recovery");
 
         for (InetAddress endpoint: getEndpoints(range))
         {
@@ -245,7 +245,6 @@ public class FailureRecoveryTask implements Runnable
         {
             if (tokenState.getState() != TokenState.State.RECOVERING_INSTANCES)
             {
-
                 // should be set by stream receiver
                 logger.info("Aborting instance recovery for {}. Status is {}, expected {}",
                             tokenState, tokenState.getState(), TokenState.State.RECOVERING_INSTANCES);

@@ -19,8 +19,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
@@ -228,7 +226,6 @@ public class InstanceStreamReader
                                         // the instance is persisted after the keystate is, so if this bootstrap/recovery
                                         // fails, and another failure recovery starts, we know to delete the instance
                                         state.saveInstance(instance);
-
                                     }
                                     else
                                     {

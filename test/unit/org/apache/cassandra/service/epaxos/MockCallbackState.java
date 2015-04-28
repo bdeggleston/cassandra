@@ -153,4 +153,12 @@ public class MockCallbackState extends MockMessengerState
     {
         tryPreacceptCalls.add(new TryPreacceptCall(iid, attempts, participantInfo, failureCallback));
     }
+
+    public final List<Collection<Instance>> missingInstancesAdded = new LinkedList<>();
+
+    @Override
+    public void addMissingInstances(Collection<Instance> instances)
+    {
+        missingInstancesAdded.add(instances);
+    }
 }

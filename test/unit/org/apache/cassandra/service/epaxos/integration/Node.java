@@ -254,7 +254,6 @@ public class Node extends EpaxosState
     public TokenStateMaintenanceTask newTokenStateMaintenanceTask()
     {
         return new TokenStateMaintenanceTask(this, tokenStateManager) {
-            // TODO: de-override for token splitting tests
             @Override
             protected boolean replicatesTokenForKeyspace(Token token, UUID cfId)
             {

@@ -156,8 +156,6 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         {
             return new Node.SingleThreaded(nodeNumber, messenger)
             {
-
-                // TODO: make using special keyspaces/tables less awkward
                 @Override
                 protected String keyspace()
                 {

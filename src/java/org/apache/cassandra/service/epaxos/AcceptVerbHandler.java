@@ -55,6 +55,7 @@ public class AcceptVerbHandler extends AbstractEpochVerbHandler<AcceptRequest>
                 instance.applyRemote(remoteInstance);
             }
             instance.accept(remoteInstance.getDependencies());
+            // TODO: new instance ids should be added to the key state
             state.saveInstance(instance);
 
             logger.debug("Accept request from {} successful for {}", message.from, remoteInstance.getId());
