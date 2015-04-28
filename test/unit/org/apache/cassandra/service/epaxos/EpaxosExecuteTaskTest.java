@@ -195,9 +195,9 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         Assert.assertEquals(0, state.executedIds.size());
     }
 
-    private SerializedRequest adHocCqlRequest(String query)
+    private SerializedRequest adHocCqlRequest(String query, ByteBuffer key)
     {
-        return newSerializedRequest(getCqlCasRequest(query, Collections.<ByteBuffer>emptyList(), ConsistencyLevel.SERIAL));
+        return newSerializedRequest(getCqlCasRequest(query, Collections.<ByteBuffer>emptyList(), ConsistencyLevel.SERIAL), key);
     }
 
     @Test
@@ -206,13 +206,13 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         int k = new Random(System.currentTimeMillis()).nextInt();
         MockExecutionState state = new MockExecutionState();
 
-        SerializedRequest r3 = adHocCqlRequest("UPDATE ks.tbl SET v=2 WHERE k=" + k + " IF v=1");
+        SerializedRequest r3 = adHocCqlRequest("UPDATE ks.tbl SET v=2 WHERE k=" + k + " IF v=1", key(k));
         QueryInstance instance3 = state.createQueryInstance(r3);
         Thread.sleep(5);
-        SerializedRequest r2 = adHocCqlRequest("UPDATE ks.tbl SET v=1 WHERE k=" + k + " IF v=0");
+        SerializedRequest r2 = adHocCqlRequest("UPDATE ks.tbl SET v=1 WHERE k=" + k + " IF v=0", key(k));
         QueryInstance instance2 = state.createQueryInstance(r2);
         Thread.sleep(5);
-        SerializedRequest r1 = adHocCqlRequest("INSERT INTO ks.tbl (k, v) VALUES (" + k + ", 0) IF NOT EXISTS");
+        SerializedRequest r1 = adHocCqlRequest("INSERT INTO ks.tbl (k, v) VALUES (" + k + ", 0) IF NOT EXISTS", key(k));
         QueryInstance instance1 = state.createQueryInstance(r1);
 
 

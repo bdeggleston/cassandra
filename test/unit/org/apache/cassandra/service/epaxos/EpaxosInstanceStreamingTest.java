@@ -37,47 +37,30 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
     private static final IPartitioner partitioner = DatabaseDescriptor.getPartitioner();
     private static final Set<UUID> EMPTY = Collections.emptySet();
 
-    public Node createNode(final int nodeNumber, final String ksName, Messenger messenger)
+    private static class State extends Node.SingleThreaded
     {
-        return new Node.SingleThreaded(nodeNumber, messenger)
+        private State(int number, Messenger messenger, String ksName)
         {
+            super(number, messenger, ksName);
+        }
 
-            @Override
-            protected String keyspace()
-            {
-                return ksName;
-            }
+        @Override
+        protected void scheduleTokenStateMaintenanceTask()
+        {
+            // no-op
+        }
 
-            @Override
-            protected String instanceTable()
-            {
-                return String.format("%s_%s", SystemKeyspace.EPAXOS_INSTANCE, nodeNumber);
-            }
+        @Override
+        protected TokenStateManager createTokenStateManager()
+        {
+            return new EpaxosTokenIntegrationTest.IntegrationTokenStateManager(getKeyspace(), getTokenStateTable());
+        }
+    }
 
-            @Override
-            protected String keyStateTable()
-            {
-                return String.format("%s_%s", SystemKeyspace.EPAXOS_KEY_STATE, nodeNumber);
-            }
-
-            @Override
-            protected String tokenStateTable()
-            {
-                return String.format("%s_%s", SystemKeyspace.EPAXOS_TOKEN_STATE, nodeNumber);
-            }
-
-            @Override
-            protected void scheduleTokenStateMaintenanceTask()
-            {
-                // no-op
-            }
-
-            @Override
-            protected TokenStateManager createTokenStateManager()
-            {
-                return new EpaxosTokenIntegrationTest.IntegrationTokenStateManager(keyspace(), tokenStateTable());
-            }
-        };
+    @Override
+    public Node createNode(int number, Messenger messenger, String ks)
+    {
+        return new State(number, messenger, ks);
     }
 
     private QueryInstance newInstance(EpaxosState state, int key, ConsistencyLevel cl)
@@ -122,8 +105,8 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
     private Set<UUID> getAllInstanceIds(EpaxosState state)
     {
         UntypedResultSet results = QueryProcessor.executeInternal(String.format("SELECT id FROM %s.%s",
-                                                                                state.keyspace(),
-                                                                                state.instanceTable()));
+                                                                                state.getKeyspace(),
+                                                                                state.getInstanceTable()));
         Set<UUID> ids = Sets.newHashSet();
         for (UntypedResultSet.Row row: results)
         {

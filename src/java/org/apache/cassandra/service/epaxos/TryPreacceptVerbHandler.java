@@ -87,8 +87,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
         EpochInstance instance = (EpochInstance) inst;
         long currentEpoch = state.tokenStateManager.getEpoch(instance);
 
-        // TODO: handle pre-vetoed instance
-        if (instance.getEpoch() > currentEpoch + 1)
+        if (!instance.isVetoed() && instance.getEpoch() > currentEpoch + 1)
         {
             instance.setVetoed(true);
         }
@@ -111,16 +110,15 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
         conflictIds.remove(instance.getId());
 
         boolean vetoed = maybeVetoEpoch(instance);
-
-
         // if this node hasn't seen some of the proposed dependencies, don't preaccept them
         for (UUID dep: dependencies)
         {
             if (state.loadInstance(dep) == null)
             {
-                // TODO: is this the right thing to do? contested might make more sense
-                logger.debug("Missing dep for TryPreaccept for {}, rejecting ", instance.getId());
-                return Pair.create(TryPreacceptDecision.REJECTED, vetoed);
+                // TODO: double check this is the right thing to do, then test
+                logger.debug("Missing dep for TryPreaccept for {}, contesting ", instance.getId());
+                // a missing instance is equivalent to an uncommitted one
+                return Pair.create(TryPreacceptDecision.CONTENDED, vetoed);
             }
         }
 

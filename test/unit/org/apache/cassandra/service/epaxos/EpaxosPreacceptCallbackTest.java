@@ -1,6 +1,7 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.base.Predicate;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.net.MessageIn;
@@ -174,8 +175,12 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         // respond with a failure, missing the expected dep, and replying with another
         Instance responseInstance = instance.copy();
         responseInstance.setDependencies(Sets.newHashSet(dep2));
-        callback.response(createResponse(state.localEndpoints.get(1),
-                                         PreacceptResponse.failure(instance.getToken(), 0, responseInstance)));
+        PreacceptResponse response = PreacceptResponse.failure(instance.getToken(), 0, responseInstance);
+        // add a missing instance to the response
+        response.missingInstances = Lists.newArrayList((Instance) new QueryInstance(dep2,
+                                                                                    getSerializedCQLRequest(0, 1),
+                                                                                    InetAddress.getByName("127.0.0.100")));
+        callback.response(createResponse(state.localEndpoints.get(1), response));
         Assert.assertEquals(1, state.accepts.size());
         Assert.assertEquals(0, state.commits.size());
         Assert.assertTrue(callback.isCompleted());
@@ -183,6 +188,9 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         AcceptDecision decision = callback.getAcceptDecision();
         Assert.assertTrue(decision.acceptNeeded);
         Assert.assertEquals(expectedDeps, decision.acceptDeps);
+        // check that the missing instance was submitted
+        Assert.assertEquals(1, state.missingInstancesAdded.size());
+        Assert.assertEquals(dep2, state.missingInstancesAdded.get(0).iterator().next().getId());
     }
 
     @Test
@@ -309,16 +317,6 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
                                          PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
         Assert.assertEquals(1, callback.getNumResponses());
         Assert.assertFalse(callback.isCompleted());
-    }
-
-    /**
-     * Tests that addMissingInstance is called when missing
-     * instances are received
-     */
-    @Test
-    public void receiveMissingInstances() throws Exception
-    {
-        // TODO: this
     }
 
     /**

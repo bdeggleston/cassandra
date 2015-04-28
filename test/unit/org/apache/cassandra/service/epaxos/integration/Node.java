@@ -8,7 +8,8 @@ import com.google.common.collect.Sets;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.InvalidRequestException;
@@ -22,7 +23,6 @@ import org.apache.cassandra.utils.Pair;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
-import java.util.concurrent.*;
 
 public class Node extends EpaxosState
 {
@@ -48,8 +48,29 @@ public class Node extends EpaxosState
 
     public final int number;
 
-    public Node(int number, Messenger messenger)
+    private static String numberName(String name, int number)
     {
+        return String.format("%s_%s", name, number);
+    }
+
+    public static String nInstanceTable(int number)
+    {
+        return numberName(SystemKeyspace.EPAXOS_INSTANCE, number);
+    }
+
+    public static String nKeyStateTable(int number)
+    {
+        return numberName(SystemKeyspace.EPAXOS_KEY_STATE, number);
+    }
+
+    public static String nTokenStateTable(int number)
+    {
+        return numberName(SystemKeyspace.EPAXOS_TOKEN_STATE, number);
+    }
+
+    public Node(int number, Messenger messenger, String ksName)
+    {
+        super(ksName, nInstanceTable(number), nKeyStateTable(number), nTokenStateTable(number));
         this.number = number;
         try
         {
@@ -72,7 +93,7 @@ public class Node extends EpaxosState
     @Override
     protected TokenStateManager createTokenStateManager()
     {
-        return new MockTokenStateManager(keyspace(), tokenStateTable());
+        return new MockTokenStateManager(getKeyspace(), getTokenStateTable());
     }
 
     public State getState()
@@ -113,6 +134,14 @@ public class Node extends EpaxosState
         return instance;
     }
 
+    @Override
+    protected TokenInstance createTokenInstance(Token token, UUID cfId)
+    {
+        TokenInstance instance = super.createTokenInstance(token, cfId);
+        lastCreatedInstance = instance;
+        return instance;
+    }
+
     public Instance getLastCreatedInstance()
     {
         return lastCreatedInstance;
@@ -137,30 +166,6 @@ public class Node extends EpaxosState
         {
             throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
         }
-    }
-
-    @Override
-    protected String keyspace()
-    {
-        throw new UnsupportedOperationException("override in concrete implementation");
-    }
-
-    @Override
-    protected String instanceTable()
-    {
-        throw new UnsupportedOperationException("override in concrete implementation");
-    }
-
-    @Override
-    protected String keyStateTable()
-    {
-        throw new UnsupportedOperationException("override in concrete implementation");
-    }
-
-    @Override
-    protected String tokenStateTable()
-    {
-        return String.format("%s_%s", super.tokenStateTable(), number);
     }
 
     @Override
@@ -254,7 +259,6 @@ public class Node extends EpaxosState
     public TokenStateMaintenanceTask newTokenStateMaintenanceTask()
     {
         return new TokenStateMaintenanceTask(this, tokenStateManager) {
-            // TODO: de-override for token splitting tests
             @Override
             protected boolean replicatesTokenForKeyspace(Token token, UUID cfId)
             {
@@ -281,9 +285,9 @@ public class Node extends EpaxosState
 
     public static class SingleThreaded extends Node
     {
-        public SingleThreaded(int number, Messenger messenger)
+        public SingleThreaded(int number, Messenger messenger, String ksName)
         {
-            super(number, messenger);
+            super(number, messenger, ksName);
         }
 
         @Override
@@ -302,6 +306,12 @@ public class Node extends EpaxosState
         public TracingAwareExecutorService getStage(Stage stage)
         {
             return queuedExecutor;
+        }
+
+        @Override
+        protected void scheduleTokenStateMaintenanceTask()
+        {
+            // no-op
         }
     }
 }

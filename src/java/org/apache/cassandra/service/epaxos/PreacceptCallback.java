@@ -74,9 +74,9 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
         remoteDependencies.addAll(response.dependencies);
         vetoed |= response.vetoed;
 
-        if (response.missingInstances.size() > 0)
+        if (!response.missingInstances.isEmpty())
         {
-            state.getStage(Stage.MUTATION).submit(new AddMissingInstances(state, response.missingInstances));
+            state.addMissingInstances(response.missingInstances);
         }
 
         numResponses++;
@@ -132,7 +132,7 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
             for (Map.Entry<InetAddress, PreacceptResponse> entry: responses.entrySet())
             {
                 Set<UUID> diff = Sets.difference(unifiedDeps, entry.getValue().dependencies);
-                if (diff.size() > 0)
+                if (!diff.isEmpty())
                 {
                     diff.remove(id);
                     missingIds.put(entry.getKey(), diff);

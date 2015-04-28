@@ -42,9 +42,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Ignore
 public abstract class AbstractEpaxosTest
 {
+    protected static final Logger logger = LoggerFactory.getLogger(AbstractEpaxosTest.class);
     protected static KSMetaData ksm;
     protected static CFMetaData cfm;
     protected static CFMetaData thriftcf;
@@ -66,7 +70,29 @@ public abstract class AbstractEpaxosTest
         }
     }
 
-    protected static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(0));
+    protected static ByteBuffer key(int k)
+    {
+        return ByteBufferUtil.bytes(k);
+    }
+
+    protected static Token token(int v)
+    {
+        return DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(v));
+    }
+
+    protected static void printInstance(Instance instance)
+    {
+        printInstance(instance, null);
+    }
+
+    protected static void printInstance(Instance instance, String name)
+    {
+        name = name != null ? name + ": " : "";
+        System.out.println(">>> " + name + instance.toString());
+
+    }
+
+    protected static final Token TOKEN = token(0);
     protected static final UUID CFID = UUIDGen.getTimeUUID();
 
     static class DoNothing implements Runnable
@@ -172,6 +198,7 @@ public abstract class AbstractEpaxosTest
             throw new AssertionError(e);
         }
     }
+
     protected static CQL3CasRequest getCqlCasRequest(int k, int v, ConsistencyLevel consistencyLevel)
     {
         String query = "INSERT INTO ks.tbl (k, v) VALUES (?, ?) IF NOT EXISTS";
@@ -180,14 +207,9 @@ public abstract class AbstractEpaxosTest
 
     }
 
-    protected static SerializedRequest newSerializedRequest(CASRequest request)
+    protected static SerializedRequest newSerializedRequest(CASRequest request, ByteBuffer key)
     {
-        return newSerializedRequest(request, ConsistencyLevel.SERIAL);
-    }
-
-    protected static SerializedRequest newSerializedRequest(CASRequest request, ConsistencyLevel consistencyLevel)
-    {
-        return newSerializedRequest(request, ByteBufferUtil.bytes(7), consistencyLevel);
+        return newSerializedRequest(request, key, ConsistencyLevel.SERIAL);
     }
 
     protected static SerializedRequest newSerializedRequest(CASRequest request, ByteBuffer key, ConsistencyLevel consistencyLevel)
@@ -204,7 +226,7 @@ public abstract class AbstractEpaxosTest
     protected static SerializedRequest getSerializedThriftRequest()
     {
         ThriftCASRequest casRequest = getThriftCasRequest();
-        return newSerializedRequest(casRequest);
+        return newSerializedRequest(casRequest, key(7));
     }
 
     protected static SerializedRequest getSerializedCQLRequest(int k, int v)

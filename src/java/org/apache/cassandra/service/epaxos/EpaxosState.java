@@ -62,11 +62,10 @@ public class EpaxosState
 
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
 
-    // TODO: put these in DatabaseDescriptor
-
     // the amount of time the prepare phase will wait for the leader to commit an instance before
     // attempting a prepare phase. This is multiplied by a replica's position in the successor list
-    protected static long PREPARE_GRACE_MILLIS = DatabaseDescriptor.getMinRpcTimeout() / 2;
+    protected static long PREPARE_GRACE_MILLIS = Long.getLong("cassandra.epaxos.prepare_grace_millis",
+                                                              DatabaseDescriptor.getMinRpcTimeout() / 2);
 
     // how often the TokenMaintenanceTask runs (seconds)
     static final long TOKEN_MAINTENANCE_INTERVAL = Integer.getInteger("cassandra.epaxos.token_state_maintenance_interval", 30);
@@ -118,7 +117,7 @@ public class EpaxosState
             this.liveEndpoints = ImmutableList.copyOf(Iterables.filter(endpoints, livePredicate()));
             this.consistencyLevel = cl;
 
-            if (cl == ConsistencyLevel.SERIAL && (remoteEndpoints != null && remoteEndpoints.size() > 0))
+            if (cl == ConsistencyLevel.SERIAL && (remoteEndpoints != null && !remoteEndpoints.isEmpty()))
                 throw new AssertionError("SERIAL consistency must include all endpoints");
             this.remoteEndpoints = remoteEndpoints != null ? remoteEndpoints : NO_ENDPOINTS;
 
@@ -159,8 +158,23 @@ public class EpaxosState
         }
     }
 
+    private final String keyspace;
+    private final String instanceTable;
+    private final String keyStateTable;
+    private final String tokenStateTable;
+
     public EpaxosState()
     {
+        this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE, SystemKeyspace.EPAXOS_KEY_STATE, SystemKeyspace.EPAXOS_TOKEN_STATE);
+    }
+
+    public EpaxosState(String keyspace, String instanceTable, String keyStateTable, String tokenStateTable)
+    {
+        this.keyspace = keyspace;
+        this.instanceTable = instanceTable;
+        this.keyStateTable = keyStateTable;
+        this.tokenStateTable = tokenStateTable;
+
         instanceCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(10000).build();
         tokenStateManager = createTokenStateManager();
         keyStateManager = createKeyStateManager();
@@ -183,12 +197,12 @@ public class EpaxosState
 
     protected KeyStateManager createKeyStateManager()
     {
-        return new KeyStateManager(keyspace(), keyStateTable(), tokenStateManager);
+        return new KeyStateManager(getKeyspace(), getKeyStateTable(), tokenStateManager);
     }
 
     protected TokenStateManager createTokenStateManager()
     {
-        return new TokenStateManager(keyspace(), tokenStateTable());
+        return new TokenStateManager(getKeyspace(), getTokenStateTable());
     }
 
     protected void scheduleTokenStateMaintenanceTask()
@@ -199,24 +213,24 @@ public class EpaxosState
                                                           TimeUnit.SECONDS);
     }
 
-    protected String keyspace()
+    protected String getKeyspace()
     {
-        return Keyspace.SYSTEM_KS;
+        return keyspace;
     }
 
-    protected String instanceTable()
+    protected String getInstanceTable()
     {
-        return SystemKeyspace.EPAXOS_INSTANCE;
+        return instanceTable;
     }
 
-    protected String keyStateTable()
+    protected String getKeyStateTable()
     {
-        return SystemKeyspace.EPAXOS_KEY_STATE;
+        return keyStateTable;
     }
 
-    protected String tokenStateTable()
+    protected String getTokenStateTable()
     {
-        return SystemKeyspace.EPAXOS_TOKEN_STATE;
+        return tokenStateTable;
     }
 
     protected Random getRandom()
@@ -309,7 +323,7 @@ public class EpaxosState
         lock.lock();
         try
         {
-            String delete = String.format("DELETE FROM %s.%s WHERE id=?", keyspace(), instanceTable());
+            String delete = String.format("DELETE FROM %s.%s WHERE id=?", getKeyspace(), getInstanceTable());
             QueryProcessor.executeInternal(delete, id);
             instanceCache.invalidate(id);
         }
@@ -435,7 +449,6 @@ public class EpaxosState
      */
     public void registerCommitCallback(UUID id, ICommitCallback callback)
     {
-        // TODO: should we check instance status, and bail out / call the callback if the instance is committed?
         List<ICommitCallback> callbacks = commitCallbacks.get(id);
         if (callbacks == null)
         {
@@ -823,7 +836,7 @@ public class EpaxosState
         logger.trace("Loading instance {} from disk", instanceId);
         // read from table
         String query = "SELECT * FROM %s.%s WHERE id=?";
-        UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace(), instanceTable()),
+        UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, getKeyspace(), getInstanceTable()),
                                                                   instanceId);
         if (results.isEmpty())
             return null;
@@ -860,7 +873,7 @@ public class EpaxosState
         }
         long timestamp = System.currentTimeMillis();
         String instanceReq = "INSERT INTO %s.%s (id, data, version) VALUES (?, ?, ?) USING TIMESTAMP ?";
-        QueryProcessor.executeInternal(String.format(instanceReq, keyspace(), instanceTable()),
+        QueryProcessor.executeInternal(String.format(instanceReq, getKeyspace(), getInstanceTable()),
                                        instance.getId(),
                                        ByteBuffer.wrap(out.getData()),
                                        0,
@@ -1101,6 +1114,11 @@ public class EpaxosState
         }
     }
 
+    public void addMissingInstances(Collection<Instance> instances)
+    {
+        getStage(Stage.MUTATION).submit(new AddMissingInstances(this, instances));
+    }
+
     protected void addMissingInstance(Instance remoteInstance)
     {
         logger.debug("Adding missing instance: {}", remoteInstance.getId());
@@ -1176,7 +1194,7 @@ public class EpaxosState
 
     public UUID addToken(UUID cfId, Token token)
     {
-        TokenInstance instance = new TokenInstance(getEndpoint(), cfId, token, tokenStateManager.isLocalOnly(token, cfId));
+        TokenInstance instance = createTokenInstance(token, cfId);
         preaccept(instance);
         return instance.getId();
     }

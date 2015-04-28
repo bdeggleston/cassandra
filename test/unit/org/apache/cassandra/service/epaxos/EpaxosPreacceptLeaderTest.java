@@ -1,8 +1,6 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.service.epaxos.integration.AbstractEpaxosIntegrationTest;
 import org.apache.cassandra.service.epaxos.integration.Messenger;
 import org.apache.cassandra.service.epaxos.integration.Node;
@@ -17,49 +15,31 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
 
     private volatile AcceptDecision lastAcceptDecision = null;
 
-    @Override
-    public Node createNode(final int nodeNumber, final String ksName, Messenger messenger)
+    private class State extends Node.SingleThreaded
     {
-        return new Node.SingleThreaded(nodeNumber, messenger)
+        private State(int number, Messenger messenger, String ksName)
         {
-            @Override
-            protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
+            super(number, messenger, ksName);
+        }
+
+        @Override
+        protected PreacceptCallback getPreacceptCallback(Instance instance, ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
+        {
+            return new PreacceptCallback(this, instance, participantInfo, failureCallback, forceAccept)
             {
-                return new PreacceptCallback(this, instance, participantInfo, failureCallback, forceAccept)
+                @Override
+                protected void processDecision(AcceptDecision decision)
                 {
-                    @Override
-                    protected void processDecision(AcceptDecision decision)
-                    {
-                        lastAcceptDecision = decision;
-                    }
-                };
-            }
+                    lastAcceptDecision = decision;
+                }
+            };
+        }
+    }
 
-            @Override
-            protected String keyspace()
-            {
-                return ksName;
-            }
-
-            @Override
-            protected String instanceTable()
-            {
-                return String.format("%s_%s", SystemKeyspace.EPAXOS_INSTANCE, nodeNumber);
-            }
-
-            @Override
-            protected String keyStateTable()
-            {
-                return String.format("%s_%s", SystemKeyspace.EPAXOS_KEY_STATE, nodeNumber);
-            }
-
-            @Override
-            protected String tokenStateTable()
-            {
-                return String.format("%s_%s", SystemKeyspace.EPAXOS_TOKEN_STATE, nodeNumber);
-            }
-
-        };
+    @Override
+    public Node createNode(int nodeNumber, Messenger messenger, String ks)
+    {
+        return new State(nodeNumber, messenger, ks);
     }
 
     @Override
