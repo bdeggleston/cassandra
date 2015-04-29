@@ -158,8 +158,23 @@ public class EpaxosState
         }
     }
 
+    private final String keyspace;
+    private final String instanceTable;
+    private final String keyStateTable;
+    private final String tokenStateTable;
+
     public EpaxosState()
     {
+        this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE, SystemKeyspace.EPAXOS_KEY_STATE, SystemKeyspace.EPAXOS_TOKEN_STATE);
+    }
+
+    public EpaxosState(String keyspace, String instanceTable, String keyStateTable, String tokenStateTable)
+    {
+        this.keyspace = keyspace;
+        this.instanceTable = instanceTable;
+        this.keyStateTable = keyStateTable;
+        this.tokenStateTable = tokenStateTable;
+
         instanceCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(10000).build();
         tokenStateManager = createTokenStateManager();
         keyStateManager = createKeyStateManager();
@@ -182,12 +197,12 @@ public class EpaxosState
 
     protected KeyStateManager createKeyStateManager()
     {
-        return new KeyStateManager(keyspace(), keyStateTable(), tokenStateManager);
+        return new KeyStateManager(getKeyspace(), getKeyStateTable(), tokenStateManager);
     }
 
     protected TokenStateManager createTokenStateManager()
     {
-        return new TokenStateManager(keyspace(), tokenStateTable());
+        return new TokenStateManager(getKeyspace(), getTokenStateTable());
     }
 
     protected void scheduleTokenStateMaintenanceTask()
@@ -198,24 +213,24 @@ public class EpaxosState
                                                           TimeUnit.SECONDS);
     }
 
-    protected String keyspace()
+    protected String getKeyspace()
     {
-        return Keyspace.SYSTEM_KS;
+        return keyspace;
     }
 
-    protected String instanceTable()
+    protected String getInstanceTable()
     {
-        return SystemKeyspace.EPAXOS_INSTANCE;
+        return instanceTable;
     }
 
-    protected String keyStateTable()
+    protected String getKeyStateTable()
     {
-        return SystemKeyspace.EPAXOS_KEY_STATE;
+        return keyStateTable;
     }
 
-    protected String tokenStateTable()
+    protected String getTokenStateTable()
     {
-        return SystemKeyspace.EPAXOS_TOKEN_STATE;
+        return tokenStateTable;
     }
 
     protected Random getRandom()
@@ -308,7 +323,7 @@ public class EpaxosState
         lock.lock();
         try
         {
-            String delete = String.format("DELETE FROM %s.%s WHERE id=?", keyspace(), instanceTable());
+            String delete = String.format("DELETE FROM %s.%s WHERE id=?", getKeyspace(), getInstanceTable());
             QueryProcessor.executeInternal(delete, id);
             instanceCache.invalidate(id);
         }
@@ -821,7 +836,7 @@ public class EpaxosState
         logger.trace("Loading instance {} from disk", instanceId);
         // read from table
         String query = "SELECT * FROM %s.%s WHERE id=?";
-        UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace(), instanceTable()),
+        UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, getKeyspace(), getInstanceTable()),
                                                                   instanceId);
         if (results.isEmpty())
             return null;
@@ -858,7 +873,7 @@ public class EpaxosState
         }
         long timestamp = System.currentTimeMillis();
         String instanceReq = "INSERT INTO %s.%s (id, data, version) VALUES (?, ?, ?) USING TIMESTAMP ?";
-        QueryProcessor.executeInternal(String.format(instanceReq, keyspace(), instanceTable()),
+        QueryProcessor.executeInternal(String.format(instanceReq, getKeyspace(), getInstanceTable()),
                                        instance.getId(),
                                        ByteBuffer.wrap(out.getData()),
                                        0,

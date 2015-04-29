@@ -96,39 +96,13 @@ public class EpaxosFuzzer
     public static Random random = new Random();
     public static int MAX_QUERY_TASKS = -1;
 
-    public static List<FuzzNode> createNodes(final String ksName, FuzzerOptions options, Messenger messenger)
+    public static List<FuzzNode> createNodes(String ksName, FuzzerOptions options, Messenger messenger)
     {
         List<FuzzNode> nodes = new ArrayList<>(options.nodes);
         for (int i=0; i<options.nodes; i++)
         {
             final int nodeNumber = i + 1;
-            FuzzNode node = new FuzzNode(nodeNumber, messenger){
-
-                @Override
-                protected String keyspace()
-                {
-                    return ksName;
-                }
-
-                @Override
-                protected String instanceTable()
-                {
-                    return String.format("%s_%s", SystemKeyspace.EPAXOS_INSTANCE, nodeNumber);
-                }
-
-                @Override
-                protected String keyStateTable()
-                {
-                    return String.format("%s_%s", SystemKeyspace.EPAXOS_KEY_STATE, nodeNumber);
-                }
-
-                @Override
-                protected String tokenStateTable()
-                {
-                    return String.format("%s_%s", SystemKeyspace.EPAXOS_TOKEN_STATE, nodeNumber);
-                }
-            };
-
+            FuzzNode node = new FuzzNode(nodeNumber, messenger, ksName);
             nodes.add(node);
             messenger.registerNode(node);
         }
@@ -372,9 +346,9 @@ public class EpaxosFuzzer
 
         private final Map<UUID, Client> waitingClients = new HashMap<>();
 
-        public FuzzNode(int number, Messenger messenger)
+        public FuzzNode(int number, Messenger messenger, String ksName)
         {
-            super(number, messenger);
+            super(number, messenger, ksName);
         }
 
         @Override

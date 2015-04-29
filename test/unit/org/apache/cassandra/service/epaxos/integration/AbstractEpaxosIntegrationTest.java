@@ -4,12 +4,9 @@ import com.google.common.collect.Lists;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.locator.LocalStrategy;
 import org.apache.cassandra.service.epaxos.AbstractEpaxosTest;
 import org.apache.cassandra.service.epaxos.Instance;
-import org.apache.cassandra.service.epaxos.MockTokenStateManager;
-import org.apache.cassandra.service.epaxos.TokenStateManager;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -28,15 +25,16 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         List<CFMetaData> cfDefs = Lists.newArrayListWithCapacity(rf * 2);
         for (int i=0; i<rf; i++)
         {
+            int n = i + 1;
             CFMetaData instanceTable = new CFMetaData(ksName,
-                                                      String.format("%s_%s", SystemKeyspace.EPAXOS_INSTANCE, i + 1),
+                                                      Node.nInstanceTable(n),
                                                       CFMetaData.EpaxosInstanceCf.cfType,
                                                       CFMetaData.EpaxosInstanceCf.comparator);
             instanceTable = CFMetaData.copyOpts(instanceTable, CFMetaData.EpaxosInstanceCf);
             cfDefs.add(instanceTable);
 
             CFMetaData dependencyTable = new CFMetaData(ksName,
-                                                        String.format("%s_%s", SystemKeyspace.EPAXOS_KEY_STATE, i + 1),
+                                                        Node.nKeyStateTable(n),
                                                         CFMetaData.EpaxosKeyStateCF.cfType,
                                                         CFMetaData.EpaxosKeyStateCF.comparator);
             dependencyTable = CFMetaData.copyOpts(dependencyTable, CFMetaData.EpaxosKeyStateCF);
@@ -44,7 +42,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
             cfDefs.add(dependencyTable);
 
             CFMetaData tokenStateTable = new CFMetaData(ksName,
-                                                        String.format("%s_%s", SystemKeyspace.EPAXOS_TOKEN_STATE, i + 1),
+                                                        Node.nTokenStateTable(n),
                                                         CFMetaData.EpaxosTokenStateCF.cfType,
                                                         CFMetaData.EpaxosTokenStateCF.comparator);
             tokenStateTable = CFMetaData.copyOpts(tokenStateTable, CFMetaData.EpaxosTokenStateCF);
@@ -52,7 +50,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
             cfDefs.add(tokenStateTable);
         }
 
-        KSMetaData ks = KSMetaData.newKeyspace(ksName, LocalStrategy.class, Collections.EMPTY_MAP, true, cfDefs);
+        KSMetaData ks = KSMetaData.newKeyspace(ksName, LocalStrategy.class, Collections.<String, String>emptyMap(), true, cfDefs);
         Schema.instance.load(ks);
         return ksName;
     }
@@ -62,7 +60,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         return 3;
     }
 
-    public abstract Node createNode(int number, String ksName, Messenger messenger);
+    public abstract Node createNode(int number, Messenger messenger, String ks);
 
     public int quorumSize()
     {
@@ -143,7 +141,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         nodes = Lists.newArrayListWithCapacity(getReplicationFactor());
         for (int i=0; i<getReplicationFactor(); i++)
         {
-            Node node = createNode(i + 1, ksName, messenger);
+            Node node = createNode(i + 1, messenger, ksName);
             messenger.registerNode(node);
             nodes.add(node);
         }
@@ -152,40 +150,9 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
     public abstract static class SingleThread extends AbstractEpaxosIntegrationTest
     {
         @Override
-        public Node createNode(final int nodeNumber, final String ksName, Messenger messenger)
+        public Node createNode(int nodeNumber, Messenger messenger, String ks)
         {
-            return new Node.SingleThreaded(nodeNumber, messenger)
-            {
-                @Override
-                protected String keyspace()
-                {
-                    return ksName;
-                }
-
-                @Override
-                protected String instanceTable()
-                {
-                    return String.format("%s_%s", SystemKeyspace.EPAXOS_INSTANCE, nodeNumber);
-                }
-
-                @Override
-                protected String keyStateTable()
-                {
-                    return String.format("%s_%s", SystemKeyspace.EPAXOS_KEY_STATE, nodeNumber);
-                }
-
-                @Override
-                protected String tokenStateTable()
-                {
-                    return String.format("%s_%s", SystemKeyspace.EPAXOS_TOKEN_STATE, nodeNumber);
-                }
-
-                @Override
-                protected void scheduleTokenStateMaintenanceTask()
-                {
-                    // no-op
-                }
-            };
+            return new Node.SingleThreaded(nodeNumber, messenger, ks);
         }
     }
 }

@@ -66,7 +66,12 @@ public abstract class AbstractEpaxosTest
         }
     }
 
-    protected static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(0));
+    protected static Token token(int v)
+    {
+        return DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(v));
+    }
+
+    protected static final Token TOKEN = token(0);
     protected static final UUID CFID = UUIDGen.getTimeUUID();
 
     static class DoNothing implements Runnable

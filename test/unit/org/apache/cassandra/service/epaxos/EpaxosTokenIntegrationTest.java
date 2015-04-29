@@ -53,47 +53,29 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         }
     }
 
-    public Node createNode(final int nodeNumber, final String ksName, Messenger messenger)
+    private static class State extends Node.SingleThreaded
     {
-        return new Node.SingleThreaded(nodeNumber, messenger)
+        State(int number, Messenger messenger, String ksName)
         {
+            super(number, messenger, ksName);
+        }
 
-            @Override
-            protected String keyspace()
-            {
-                return ksName;
-            }
+        @Override
+        protected void scheduleTokenStateMaintenanceTask()
+        {
+            // no-op
+        }
 
-            @Override
-            protected String instanceTable()
-            {
-                return String.format("%s_%s", SystemKeyspace.EPAXOS_INSTANCE, nodeNumber);
-            }
+        @Override
+        protected TokenStateManager createTokenStateManager()
+        {
+            return new IntegrationTokenStateManager(getKeyspace(), getTokenStateTable());
+        }
+    }
 
-            @Override
-            protected String keyStateTable()
-            {
-                return String.format("%s_%s", SystemKeyspace.EPAXOS_KEY_STATE, nodeNumber);
-            }
-
-            @Override
-            protected String tokenStateTable()
-            {
-                return String.format("%s_%s", SystemKeyspace.EPAXOS_TOKEN_STATE, nodeNumber);
-            }
-
-            @Override
-            protected void scheduleTokenStateMaintenanceTask()
-            {
-                // no-op
-            }
-
-            @Override
-            protected TokenStateManager createTokenStateManager()
-            {
-                return new IntegrationTokenStateManager(keyspace(), tokenStateTable());
-            }
-        };
+    public Node createNode(int nodeNumber, Messenger messenger, String ks)
+    {
+        return new State(nodeNumber, messenger, ks);
     }
 
     @Test
