@@ -1194,7 +1194,7 @@ public class EpaxosState
 
     public UUID addToken(UUID cfId, Token token)
     {
-        TokenInstance instance = new TokenInstance(getEndpoint(), cfId, token, tokenStateManager.isLocalOnly(token, cfId));
+        TokenInstance instance = createTokenInstance(token, cfId);
         preaccept(instance);
         return instance.getId();
     }

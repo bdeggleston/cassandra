@@ -1,9 +1,15 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.*;
+
+import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.exceptions.ReadTimeoutException;
+import org.apache.cassandra.exceptions.UnavailableException;
+import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.service.epaxos.integration.AbstractEpaxosIntegrationTest;
 import org.apache.cassandra.service.epaxos.integration.Messenger;
 import org.apache.cassandra.service.epaxos.integration.Node;
@@ -14,6 +20,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.SingleThread
 {
@@ -234,5 +241,99 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             long expectedEpoch = token.compareTo(TOKEN1) >= 1 ? 2 : 1;
             Assert.assertEquals(String.format("Token: " + token.toString()), expectedEpoch, ks.getEpoch());
         }
+    }
+
+    /**
+     * Tests that, given a range (0, 300] and existing keys at 50, 150, & 250 , running concurrent instances
+     * for (0, 100] and (0, 200] will end up with the ranges (0, 100], (100, 200], and (200, 300], all of the
+     * dependencies for both instances are acknowledged, and the token state manager reports these ranges
+     * as replicated
+     */
+    @Test
+    public void overlappingInstances() throws Exception
+    {
+        final Token token100 = token(100);
+        final Token token200 = token(100);
+        Token token300 = token(100);
+
+        for (Node node: nodes)
+        {
+            IntegrationTokenStateManager tsm = (IntegrationTokenStateManager) node.tokenStateManager;
+            tsm.setReplicatedTokens(Sets.newHashSet(token300));
+            tsm.getOrInitManagedCf(cfm.cfId);
+
+            TokenState ts = tsm.getExact(token300, cfm.cfId);
+            Assert.assertNotNull(ts);
+        }
+
+        Iterator<Node> iterator = nodes.iterator();
+
+        final Node node1 = iterator.next();
+        final Node node2 = iterator.next();
+        final Node node3 = iterator.next();
+
+        node1.query(newSerializedRequest(getCqlCasRequest(50, 0, ConsistencyLevel.SERIAL), key(50)));
+        Instance instance050 = node1.getLastCreatedInstance();
+        printInstance(instance050, "instance050");
+        Assert.assertEquals(Instance.State.EXECUTED, instance050.getState());
+        Assert.assertEquals(Collections.<UUID>emptySet(), instance050.getDependencies());
+
+        node2.query(newSerializedRequest(getCqlCasRequest(150, 0, ConsistencyLevel.SERIAL), key(150)));
+        Instance instance150 = node2.getLastCreatedInstance();
+        printInstance(instance150, "instance150");
+        Assert.assertEquals(Instance.State.EXECUTED, instance150.getState());
+        Assert.assertEquals(Collections.<UUID>emptySet(), instance150.getDependencies());
+
+        node3.query(newSerializedRequest(getCqlCasRequest(250, 0, ConsistencyLevel.SERIAL), key(250)));
+        Instance instance250 = node3.getLastCreatedInstance();
+        printInstance(instance250, "instance250");
+        Assert.assertEquals(Instance.State.EXECUTED, instance250.getState());
+        Assert.assertEquals(Collections.<UUID>emptySet(), instance250.getDependencies());
+
+        Node.queuedExecutor.submit(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                // setting node2 down will force an accept because node 1 & 3
+                // are guaranteed to have different deps
+                node2.setState(Node.State.DOWN);
+                node1.addToken(cfm.cfId, token100);
+                node3.addToken(cfm.cfId, token200);
+            }
+        });
+
+        Set<UUID> globalDeps = Sets.newHashSet(instance050.getId(), instance150.getId(), instance250.getId());
+
+        TokenInstance tokenInstance100 = (TokenInstance) node1.getLastCreatedInstance();
+        printInstance(tokenInstance100, "tokenInstance100");
+        TokenInstance tokenInstance200 = (TokenInstance) node3.getLastCreatedInstance();
+        printInstance(tokenInstance200, "tokenInstance200");
+
+        Assert.assertEquals(Sets.union(globalDeps, Sets.newHashSet(tokenInstance200.getId())), tokenInstance100.getDependencies());
+        Assert.assertEquals(Sets.union(globalDeps, Sets.newHashSet(tokenInstance100.getId())), tokenInstance200.getDependencies());
+
+        // run a new set of instances for the previous key states, they should only point to the token instances
+        Set<UUID> expectedDeps = Sets.newHashSet(tokenInstance200.getId());
+
+        node2.setState(Node.State.UP);
+
+        node1.query(newSerializedRequest(getCqlCasRequest(50, 0, ConsistencyLevel.SERIAL), key(50)));
+        instance050 = node1.getLastCreatedInstance();
+        printInstance(instance050, "instance050");
+        Assert.assertEquals(Instance.State.EXECUTED, instance050.getState());
+        Assert.assertEquals(expectedDeps, instance050.getDependencies());
+
+        node2.query(newSerializedRequest(getCqlCasRequest(150, 0, ConsistencyLevel.SERIAL), key(150)));
+        instance150 = node2.getLastCreatedInstance();
+        printInstance(instance150, "instance150");
+        Assert.assertEquals(Instance.State.EXECUTED, instance150.getState());
+        Assert.assertEquals(expectedDeps, instance150.getDependencies());
+
+        node3.query(newSerializedRequest(getCqlCasRequest(250, 0, ConsistencyLevel.SERIAL), key(250)));
+        instance250 = node3.getLastCreatedInstance();
+        printInstance(instance250, "instance250");
+        Assert.assertEquals(Instance.State.EXECUTED, instance250.getState());
+        Assert.assertEquals(expectedDeps, instance250.getDependencies());
     }
 }
