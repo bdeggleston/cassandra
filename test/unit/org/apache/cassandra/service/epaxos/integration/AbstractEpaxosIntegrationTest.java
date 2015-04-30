@@ -154,5 +154,11 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         {
             return new Node.SingleThreaded(nodeNumber, messenger, ks);
         }
+
+        @Override
+        protected Messenger createMessenger()
+        {
+            return new Messenger(Node.queuedExecutor);
+        }
     }
 }

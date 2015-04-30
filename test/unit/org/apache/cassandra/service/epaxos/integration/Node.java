@@ -134,6 +134,14 @@ public class Node extends EpaxosState
         return instance;
     }
 
+    @Override
+    protected TokenInstance createTokenInstance(Token token, UUID cfId)
+    {
+        TokenInstance instance = super.createTokenInstance(token, cfId);
+        lastCreatedInstance = instance;
+        return instance;
+    }
+
     public Instance getLastCreatedInstance()
     {
         return lastCreatedInstance;
