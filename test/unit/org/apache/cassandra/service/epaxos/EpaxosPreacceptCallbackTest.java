@@ -355,4 +355,90 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         missingInstances.put(state.localEndpoints.get(1), Sets.newHashSet(dep1));
         Assert.assertEquals(missingInstances, decision.missingInstances);
     }
+
+    /**
+     * Even if the dependencies from the preaccespt responses merge to be the same
+     * as the leader, if any individual response is different, an accept should be run
+     */
+    @Test
+    public void convergingDisagreeingDeps() throws Exception
+    {
+        MockCallbackState state = new MockCallbackState(5, 0);
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        UUID dep1 = UUIDGen.getTimeUUID();
+        UUID dep2 = UUIDGen.getTimeUUID();
+        UUID dep3 = UUIDGen.getTimeUUID();
+        instance.setDependencies(Sets.newHashSet(dep1, dep2, dep3));
+
+        PreacceptCallback callback = getCallback(state, instance, null, false);
+
+        // sanity checks
+        Assert.assertFalse(callback.isCompleted());
+        Assert.assertEquals(0, callback.getNumResponses());
+
+        callback.countLocal();
+        Assert.assertFalse(callback.isCompleted());
+
+        // failure 1
+        Instance responseInstance;
+        responseInstance = instance.copy();
+        responseInstance.setDependencies(Sets.newHashSet(dep1, dep2));
+        callback.response(createResponse(state.localEndpoints.get(1),
+                                         PreacceptResponse.failure(instance.getToken(), 0, responseInstance)));
+        Assert.assertFalse(callback.isCompleted());
+
+        // failure 2
+        responseInstance = instance.copy();
+        responseInstance.setDependencies(Sets.newHashSet(dep2, dep3));
+        callback.response(createResponse(state.localEndpoints.get(2),
+                                         PreacceptResponse.failure(instance.getToken(), 0, responseInstance)));
+        Assert.assertTrue(callback.isCompleted());
+        // check that an accept is required, even though the responses resolve to match the leader
+        AcceptDecision decision = callback.getAcceptDecision();
+        Assert.assertTrue(decision.acceptNeeded);
+        Assert.assertEquals(Sets.newHashSet(dep1, dep2, dep3), decision.acceptDeps);
+    }
+
+    /**
+     * Even if the dependencies from the preaccespt responses merge to be the same
+     * as the leader, if any individual response is different, an accept should be run
+     */
+    @Test
+    public void convergingDisagreeingRanges() throws Exception
+    {
+        MockCallbackState state = new MockCallbackState(5, 0);
+        TokenInstance instance = new TokenInstance(LOCALHOST, CFID, token(50), range(0, 100), false);
+        UUID dep1 = UUIDGen.getTimeUUID();
+        UUID dep2 = UUIDGen.getTimeUUID();
+        UUID dep3 = UUIDGen.getTimeUUID();
+        instance.setDependencies(Sets.newHashSet(dep1, dep2, dep3));
+
+        PreacceptCallback callback = getCallback(state, instance, null, false);
+
+        // sanity checks
+        Assert.assertFalse(callback.isCompleted());
+        Assert.assertEquals(0, callback.getNumResponses());
+
+        callback.countLocal();
+        Assert.assertFalse(callback.isCompleted());
+
+        // failure 1
+        TokenInstance responseInstance;
+        responseInstance = (TokenInstance) instance.copy();
+        responseInstance.setSplitRange(range(0, 75));
+        callback.response(createResponse(state.localEndpoints.get(1),
+                                         PreacceptResponse.failure(instance.getToken(), 0, responseInstance)));
+        Assert.assertFalse(callback.isCompleted());
+
+        // failure 2
+        responseInstance = (TokenInstance) instance.copy();
+        responseInstance.setSplitRange(range(25, 100));
+        callback.response(createResponse(state.localEndpoints.get(2),
+                                         PreacceptResponse.failure(instance.getToken(), 0, responseInstance)));
+        Assert.assertTrue(callback.isCompleted());
+        // check that an accept is required, even though the responses resolve to match the leader
+        AcceptDecision decision = callback.getAcceptDecision();
+        Assert.assertTrue(decision.acceptNeeded);
+        Assert.assertEquals(range(0, 100), decision.splitRange);
+    }
 }

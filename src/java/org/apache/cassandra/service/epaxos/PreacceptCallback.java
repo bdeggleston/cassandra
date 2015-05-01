@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -33,14 +34,20 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
     private boolean localResponse = false;
     private int numResponses = 0;
     private volatile Range<Token> mergedRange;
+    private final Set<UUID> mergedDeps;
+    private volatile boolean acceptRequired = false;
 
     public PreacceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
     {
         super(state);
         this.id = instance.getId();
-        this.dependencies = instance.getDependencies();
+
+        dependencies = ImmutableSet.copyOf(instance.getDependencies());
+        mergedDeps = new HashSet<>(dependencies);
+
         splitRange = instance instanceof TokenInstance ? ((TokenInstance) instance).getSplitRange() : null;
         mergedRange = splitRange;
+
         this.participantInfo = participantInfo;
         this.failureCallback = failureCallback;
         this.forceAccept = forceAccept;
@@ -84,9 +91,12 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
             state.addMissingInstances(response.missingInstances);
         }
 
+        acceptRequired |= !dependencies.equals(response.dependencies);
+
         if (response.splitRange != null)
         {
             assert mergedRange != null;
+            acceptRequired |= !splitRange.equals(response.splitRange);
             mergedRange = TokenInstance.mergeRanges(mergedRange, response.splitRange);
         }
 
@@ -135,7 +145,7 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
 
         Set<UUID> unifiedDeps = ImmutableSet.copyOf(Iterables.concat(dependencies, remoteDependencies));
 
-        boolean acceptRequired = !depsMatch || !fpQuorum || vetoed;
+        acceptRequired |= !depsMatch || !fpQuorum || vetoed;
 
         if (splitRange != null)
         {
