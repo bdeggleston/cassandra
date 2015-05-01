@@ -95,7 +95,7 @@ public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
         Assert.assertTrue(instance.getLeaderAttrsMatch());
 
         EpaxosState.ParticipantInfo info = state.getParticipants(instance);
-        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null);
+        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null, 1);
 
         int minIdentical = (info.F + 1) / 2;
 
@@ -131,7 +131,7 @@ public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
         Assert.assertFalse(instance.getLeaderAttrsMatch());
 
         EpaxosState.ParticipantInfo info = state.getParticipants(instance);
-        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null);
+        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null, 1);
 
         callback.response(createResponse(state.localEndpoints.get(1), instance));
         Assert.assertFalse(callback.isCompleted());
@@ -156,7 +156,7 @@ public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
         Assert.assertTrue(instance.getLeaderAttrsMatch());
 
         EpaxosState.ParticipantInfo info = state.getParticipants(instance);
-        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null);
+        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null, 1);
 
         Assert.assertEquals(state.localEndpoints.get(0), instance.getLeader());
         callback.response(createResponse(state.localEndpoints.get(0), instance));
@@ -182,7 +182,7 @@ public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
         Assert.assertTrue(instance.getLeaderAttrsMatch());
 
         EpaxosState.ParticipantInfo info = state.getParticipants(instance);
-        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null);
+        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null, 1);
 
         int minIdentical = (info.F + 1) / 2;
 
@@ -231,7 +231,7 @@ public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
         instance.preaccept(deps, deps);
 
         EpaxosState.ParticipantInfo info = state.getParticipants(instance);
-        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null);
+        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null, 1);
 
         TokenInstance i2 = (TokenInstance) instance.copy();
         i2.mergeLocalSplitRange(range(1, 100));

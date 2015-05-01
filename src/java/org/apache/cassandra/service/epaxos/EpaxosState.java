@@ -70,6 +70,9 @@ public class EpaxosState
     // how often the TokenMaintenanceTask runs (seconds)
     static final long TOKEN_MAINTENANCE_INTERVAL = Integer.getInteger("cassandra.epaxos.token_state_maintenance_interval", 30);
 
+    // how long we wait between sending the same failure recovery messgae to a node
+    static final long FAILURE_RECOVERY_MESSAGE_INTERVAL = Integer.getInteger("cassandra.epaxos.failure_recovery_message_interval", 30);
+
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
     private final Cache<UUID, Instance> instanceCache;
 
@@ -575,6 +578,10 @@ public class EpaxosState
     protected void executeEpochInstance(EpochInstance instance)
     {
         TokenState tokenState = tokenStateManager.getExact(instance.getToken(), instance.getCfId());
+        if (tokenState == null)
+        {
+            throw new AssertionError(String.format("No token state exists for %s", instance));
+        }
 
         tokenState.lock.writeLock().lock();
         try
@@ -611,9 +618,6 @@ public class EpaxosState
             return;
         }
 
-        // TODO: make neighbor part of instance
-        //      * if the token ring changes between preaccept and execution, there will be keys that never mark the token instance as committed
-        //      * we should probably have the 'expected' range be part of the preaccept, and be something that requires an accept if different between nodes
         TokenState neighbor = tokenStateManager.get(token, cfId);
 
         // token states for this node's replicated tokens
@@ -695,9 +699,9 @@ public class EpaxosState
         getStage(Stage.MUTATION).submit(new GarbageCollectionTask(this, tokenState, keyStateManager));
     }
 
-    protected PrepareCallback getPrepareCallback(UUID id, int ballot, ParticipantInfo participantInfo, PrepareGroup group)
+    protected PrepareCallback getPrepareCallback(UUID id, int ballot, ParticipantInfo participantInfo, PrepareGroup group, int attempt)
     {
-        return new PrepareCallback(this, id, ballot, participantInfo, group);
+        return new PrepareCallback(this, id, ballot, participantInfo, group, attempt);
     }
 
     public PrepareTask prepare(UUID id, PrepareGroup group)
@@ -870,6 +874,17 @@ public class EpaxosState
         }
     }
 
+    @VisibleForTesting
+    void clearInstanceCache()
+    {
+        instanceCache.invalidateAll();
+    }
+
+    boolean cacheContains(UUID id)
+    {
+        return instanceCache.getIfPresent(id) != null;
+    }
+
     protected void saveInstance(Instance instance)
     {
         logger.trace("Saving instance {}", instance.getId());
@@ -939,13 +954,32 @@ public class EpaxosState
         }
     }
 
-    // TODO: make this more tolerant of hung failure recovery tasks
     public void failureRecoveryTaskCompleted(FailureRecoveryTask task)
     {
         synchronized (failureRecoveryTasks)
         {
             failureRecoveryTasks.remove(task);
         }
+    }
+
+    private final Map<Pair<FailureRecoveryRequest, InetAddress>, Long> lastFailureMessageTime = Maps.newHashMap();
+
+    protected boolean shouldSendFailureRecoverMessage(FailureRecoveryRequest request, InetAddress endpoint)
+    {
+        long now = System.currentTimeMillis();
+        Pair<FailureRecoveryRequest, InetAddress> key = Pair.create(request, endpoint);
+        synchronized (lastFailureMessageTime)
+        {
+            if (lastFailureMessageTime.containsKey(key))
+            {
+                long then = lastFailureMessageTime.get(key);
+                if (now - then < FAILURE_RECOVERY_MESSAGE_INTERVAL * 1000)
+                    return false;
+            }
+
+            lastFailureMessageTime.put(key, now);
+        }
+        return true;
     }
 
     /**
@@ -957,11 +991,13 @@ public class EpaxosState
         {
             FailureRecoveryRequest request = new FailureRecoveryRequest(token, cfId, epoch);
             logger.debug("Sending {} to {}", request, endpoint);
-            // TODO: track recently sent requests so we don't spam the other server
-            MessageOut<FailureRecoveryRequest> msg = new MessageOut<>(MessagingService.Verb.EPAXOS_FAILURE_RECOVERY,
-                                                                      request,
-                                                                      FailureRecoveryRequest.serializer);
-            sendOneWay(msg, endpoint);
+            if (shouldSendFailureRecoverMessage(request, endpoint))
+            {
+                MessageOut<FailureRecoveryRequest> msg = new MessageOut<>(MessagingService.Verb.EPAXOS_FAILURE_RECOVERY,
+                                                                          request,
+                                                                          FailureRecoveryRequest.serializer);
+                sendOneWay(msg, endpoint);
+            }
         }
     }
 
@@ -1080,7 +1116,6 @@ public class EpaxosState
 
     public boolean reportFutureExecution(ByteBuffer key, UUID cfId, ExecutionInfo info)
     {
-        // TODO: check epoch and maybe start recovery
         return keyStateManager.reportFutureRepair(new CfKey(key, cfId), info);
     }
 

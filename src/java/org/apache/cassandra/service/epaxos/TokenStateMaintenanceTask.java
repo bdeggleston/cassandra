@@ -49,7 +49,6 @@ public class TokenStateMaintenanceTask implements Runnable
         Keyspace keyspace = Keyspace.open(cfName.left);
         AbstractReplicationStrategy replicationStrategy = keyspace.getReplicationStrategy();
         Set<InetAddress> replicas = Sets.newHashSet(replicationStrategy.getNaturalEndpoints(token));
-        replicas.addAll(StorageService.instance.getTokenMetadata().pendingEndpointsFor(token, cfName.left));
 
         return replicas.contains(FBUtilities.getLocalAddress());
     }
@@ -129,20 +128,6 @@ public class TokenStateMaintenanceTask implements Runnable
         return tokens;
     }
 
-    protected Set<Token> getPendingReplicatedTokens(String ksName)
-    {
-        Set<Token> tokens = Sets.newHashSet();
-        Map<Range<Token>, Collection<InetAddress>> rangeMap = StorageService.instance.getTokenMetadata().getPendingRanges(ksName);
-        for (Map.Entry<Range<Token>, Collection<InetAddress>> entry: rangeMap.entrySet())
-        {
-            if (entry.getValue().contains(state.getEndpoint()))
-            {
-                tokens.add(entry.getKey().right);
-            }
-        }
-        return tokens;
-    }
-
     protected String getKsName(UUID cfId)
     {
         return Schema.instance.getCF(cfId).left;
@@ -157,7 +142,6 @@ public class TokenStateMaintenanceTask implements Runnable
         {
             String ksName = getKsName(cfId);
             Set<Token> replicatedTokens = getReplicatedTokens(ksName);
-            replicatedTokens.addAll(getPendingReplicatedTokens(ksName));
 
             List<Token> tokens = Lists.newArrayList(replicatedTokens);
             Collections.sort(tokens);

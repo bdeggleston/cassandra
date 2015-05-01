@@ -112,17 +112,4 @@ public class EpaxosInstanceTest
         Assert.assertEquals(Instance.State.EXECUTED, instance.getState());
         Assert.assertEquals(5, instance.getExecutionEpoch());
     }
-
-    @Test
-    public void copyRemote() throws Exception
-    {
-        // TODO: test that remotely copied instances have all the important things copied
-    }
-
-    @Test
-    public void testMakePlaceholder() throws Exception
-    {
-
-    }
-
 }

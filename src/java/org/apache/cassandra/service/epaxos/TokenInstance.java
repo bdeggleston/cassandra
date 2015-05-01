@@ -59,7 +59,10 @@ public class TokenInstance extends AbstractTokenInstance
 
     static Range<Token> mergeRanges(Range<Token> r1, Range<Token> r2)
     {
-        assert r1.intersects(r2);
+        if (!r1.intersects(r2))
+        {
+            throw new AssertionError(String.format("Ranges %s and %s do not intersect", r1, r2));
+        }
 
         if (r1.equals(r2))
         {

@@ -10,7 +10,6 @@ import com.google.common.collect.Sets;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessageIn;
-import org.apache.cassandra.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,22 +22,26 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
 {
     private static final Logger logger = LoggerFactory.getLogger(PreacceptCallback.class);
 
+    public static final int RETRY_LIMIT = 5;
+
     private final UUID id;
     private final int ballot;
     private final EpaxosState.ParticipantInfo participantInfo;
     private final PrepareGroup group;
+    private final int attempt;
     private final boolean instanceUnknown;
     private final Map<InetAddress, Instance> responses = Maps.newHashMap();
 
     private boolean completed = false;
 
-    public PrepareCallback(EpaxosState state, UUID id, int ballot, EpaxosState.ParticipantInfo participantInfo, PrepareGroup group)
+    public PrepareCallback(EpaxosState state, UUID id, int ballot, EpaxosState.ParticipantInfo participantInfo, PrepareGroup group, int attempt)
     {
         super(state);
         this.id = id;
         this.ballot = ballot;
         this.participantInfo = participantInfo;
         this.group = group;
+        this.attempt = attempt;
         instanceUnknown = ballot == 0;
 
         if (instanceUnknown)
@@ -78,9 +81,15 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
             }
             else if (msgInstance.getBallot() > ballot)
             {
-                // TODO: should we only try n times? if so start sending attempt # along
                 completed = true;
-                state.updateBallot(id, msgInstance.getBallot(), new PrepareTask(state, id, group));
+                if (attempt < RETRY_LIMIT)
+                {
+                    state.updateBallot(id, msgInstance.getBallot(), new PrepareTask(state, id, group, attempt + 1));
+                }
+                else
+                {
+                    logger.debug("there have been {} prepare attempts for {}. Aborting", attempt, id);
+                }
                 return;
             }
         }

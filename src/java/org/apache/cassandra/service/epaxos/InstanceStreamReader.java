@@ -112,7 +112,6 @@ public class InstanceStreamReader
             else
             {
                 ts.lock.writeLock().lock();
-                // TODO: what to do if the range doesn't match?
                 try
                 {
                     if (ts.getState() == TokenState.State.PRE_RECOVERY)

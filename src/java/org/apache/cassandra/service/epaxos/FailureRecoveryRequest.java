@@ -24,6 +24,30 @@ public class FailureRecoveryRequest
     }
 
     @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        FailureRecoveryRequest request = (FailureRecoveryRequest) o;
+
+        if (epoch != request.epoch) return false;
+        if (!cfId.equals(request.cfId)) return false;
+        if (!token.equals(request.token)) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+        int result = token.hashCode();
+        result = 31 * result + cfId.hashCode();
+        result = 31 * result + (int) (epoch ^ (epoch >>> 32));
+        return result;
+    }
+
+    @Override
     public String toString()
     {
         return "FailureRecoveryRequest{" +

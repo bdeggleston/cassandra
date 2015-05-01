@@ -128,6 +128,24 @@ public abstract class AbstractEpaxosTest
         Schema.instance.load(ksm);
     }
 
+    protected void clearInstances()
+    {
+        String select = String.format("SELECT id FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE);
+        String delete = String.format("DELETE FROM %s.%s WHERE id=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE);
+        UntypedResultSet result = QueryProcessor.executeInternal(select);
+
+        while (!result.isEmpty())
+        {
+            for (UntypedResultSet.Row row: result)
+            {
+                QueryProcessor.executeInternal(delete, row.getUUID("id"));
+            }
+            result = QueryProcessor.executeInternal(select);
+        }
+
+        Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
+    }
+
     protected void clearKeyStates()
     {
         String select = String.format("SELECT row_key FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
