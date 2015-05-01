@@ -260,7 +260,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         };
 
         // initially preaccept with no deps
-        Instance missed = state.createEpochInstance(TOKEN, CFID, 2);
+        Instance missed = state.createEpochInstance(TOKEN0, CFID, 2);
         missed.preaccept(state.getCurrentDependencies(missed));
         state.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());

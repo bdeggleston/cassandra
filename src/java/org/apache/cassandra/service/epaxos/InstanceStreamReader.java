@@ -90,13 +90,15 @@ public class InstanceStreamReader
         while (in.readBoolean())
         {
             Token token = Token.serializer.deserialize(in);
+            Token predecessor = Token.serializer.deserialize(in);
+            Range<Token> range = new Range<>(predecessor, token);
             int instancesRead = 0;
 
             boolean canSkip = true;
             TokenState ts = getExact(token);
             if (ts == null)
             {
-                ts = new TokenState(token, cfId, 0, 0, TokenState.State.RECOVERING_INSTANCES);
+                ts = new TokenState(range, cfId, 0, 0, TokenState.State.RECOVERING_INSTANCES);
                 TokenState previous = state.tokenStateManager.putState(ts);
                 if (previous == ts)
                 {
@@ -110,6 +112,7 @@ public class InstanceStreamReader
             else
             {
                 ts.lock.writeLock().lock();
+                // TODO: what to do if the range doesn't match?
                 try
                 {
                     if (ts.getState() == TokenState.State.PRE_RECOVERY)

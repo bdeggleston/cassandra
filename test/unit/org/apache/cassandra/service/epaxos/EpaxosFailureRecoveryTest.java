@@ -35,7 +35,7 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
             }
         };
 
-        final TokenState tokenState = new TokenState(TOKEN, CFID, 2, 5);
+        final TokenState tokenState = new TokenState(range(TOKEN0, TOKEN0), CFID, 2, 5);
         Assert.assertEquals(TokenState.State.NORMAL, tokenState.getState());
         Assert.assertFalse(state.managesCfId(CFID));
 
@@ -69,7 +69,7 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
             Assert.assertTrue(ks.getEpochExecutions().size() > 0);
         }
 
-        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN, CFID, 3)
+        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN0, CFID, 3)
         {
             @Override
             protected TokenState getTokenState()
@@ -100,11 +100,11 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     public void preRecoverBailsIfNotBehindRemoteEpoch()
     {
         EpaxosState state = new MockVerbHandlerState();
-        TokenState tokenState = state.tokenStateManager.get(TOKEN, CFID);
+        TokenState tokenState = state.tokenStateManager.get(TOKEN0, CFID);
         tokenState.setEpoch(2);
         state.tokenStateManager.save(tokenState);
         Assert.assertEquals(TokenState.State.NORMAL, tokenState.getState());
-        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN, CFID, 2);
+        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN0, CFID, 2);
 
         task.preRecover();
         Assert.assertEquals(TokenState.State.NORMAL, tokenState.getState());
@@ -116,10 +116,10 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     {
 
         EpaxosState state = new MockVerbHandlerState();
-        TokenState tokenState = state.tokenStateManager.get(TOKEN, CFID);
+        TokenState tokenState = state.tokenStateManager.get(TOKEN0, CFID);
         tokenState.setEpoch(2);
         tokenState.setState(TokenState.State.RECOVERY_REQUIRED);
-        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN, CFID, 0);
+        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN0, CFID, 0);
 
         task.preRecover();
         Assert.assertEquals(TokenState.State.PRE_RECOVERY, tokenState.getState());

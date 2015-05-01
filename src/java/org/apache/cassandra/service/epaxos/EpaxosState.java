@@ -615,7 +615,9 @@ public class EpaxosState
         try
         {
             long epoch = neighbor.getEpoch();
-            TokenState tokenState = new TokenState(token, cfId, neighbor.getEpoch(), 0);
+            Range<Token> range = new Range<>(neighbor.getPredecessor(), token);
+            TokenState tokenState = new TokenState(range, cfId, neighbor.getEpoch(), 0);
+            neighbor.setPredecessor(token);
             tokenState.lock.writeLock().lock();
             try
             {
@@ -664,6 +666,7 @@ public class EpaxosState
                 // can be removed from the neighbor if initialization doesn't complete
                 tokenStateManager.save(tokenState);
                 tokenStateManager.save(neighbor);
+                // TODO: have the token state manager check for inconsistencies introduced here
             }
             finally
             {

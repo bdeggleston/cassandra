@@ -20,6 +20,7 @@ import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.composites.CellNames;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.dht.ByteOrderedPartitioner;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.net.MessagingService;
@@ -80,6 +81,11 @@ public abstract class AbstractEpaxosTest
         return DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(v));
     }
 
+    protected static Range<Token> range(Token left, Token right)
+    {
+        return new Range<>(left, right);
+    }
+
     protected static void printInstance(Instance instance)
     {
         printInstance(instance, null);
@@ -92,7 +98,7 @@ public abstract class AbstractEpaxosTest
 
     }
 
-    protected static final Token TOKEN = token(0);
+    protected static final Token TOKEN0 = token(0);
     protected static final UUID CFID = UUIDGen.getTimeUUID();
 
     static class DoNothing implements Runnable

@@ -89,7 +89,7 @@ public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
         @Override
         public TokenState getTokenState(IEpochMessage message)
         {
-            return new TokenState(MANAGED_TOKEN, message.getCfId(), epoch, 0, state);
+            return new TokenState(range(TOKEN0, MANAGED_TOKEN), message.getCfId(), epoch, 0, state);
         }
     }
 

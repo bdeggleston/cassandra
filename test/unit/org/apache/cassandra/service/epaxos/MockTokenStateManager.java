@@ -2,6 +2,7 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Sets;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
@@ -11,9 +12,9 @@ import java.util.UUID;
 
 public class MockTokenStateManager extends TokenStateManager
 {
-    public static final Token TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(0));
+    public static final Token TOKEN0 = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(0));
 
-    private volatile Set<Token> tokens = Sets.newHashSet(TOKEN);
+    private volatile Set<Range<Token>> ranges = Sets.newHashSet(new Range<Token>(TOKEN0, TOKEN0));
 
     public MockTokenStateManager()
     {
@@ -26,25 +27,23 @@ public class MockTokenStateManager extends TokenStateManager
         start();
     }
 
-    public void setToken(Token token)
+    public void setTokens(Token t1, Token t2, Token... tokens)
     {
-        tokens = Sets.newHashSet(token);
-    }
+        this.ranges = Sets.newHashSet();
+        ranges.add(new Range<>(t1, t2));
 
-    public void setTokens(Token... tokens)
-    {
-        this.tokens = Sets.newHashSet(tokens);
-    }
-
-    public void addToken(Token token)
-    {
-        tokens.add(token);
+        Token last = t2;
+        for (Token t: tokens)
+        {
+            ranges.add(new Range<>(last, t));
+            last = t;
+        }
     }
 
     @Override
-    protected Set<Token> getReplicatedTokensForCf(UUID cfId)
+    protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
     {
-        return Sets.newHashSet(tokens);
+        return Sets.newHashSet(ranges);
     }
 
     public int epochIncrementThreshold = 100;

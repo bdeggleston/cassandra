@@ -107,15 +107,12 @@ public class TokenStateManager
             }
         }
 
-        Range<Token> rangeFor(Token right)
+        Range<Token> rangeFor(Token token)
         {
             lock.readLock().lock();
             try
             {
-                int rightIdx = TokenMetadata.firstTokenIndex(tokens, right, false);
-                int leftIdx = rightIdx > 0 ? rightIdx - 1 : tokens.size() - 1;
-                Token left = tokens.get(leftIdx);
-                return new Range<>(left, right);
+                return states.get(firstToken(token)).getRange();
             }
             finally
             {
@@ -164,7 +161,7 @@ public class TokenStateManager
                     }
                 }
 
-                putIfAbsent(new TokenState(range.right, cfid, 0, 0, TokenState.State.PRE_RECOVERY));
+                putIfAbsent(new TokenState(range, cfid, 0, 0, TokenState.State.PRE_RECOVERY));
                 updateInternalRing();
             }
             finally
@@ -232,20 +229,21 @@ public class TokenStateManager
         started = true;
     }
 
-    protected Set<Token> getReplicatedTokensForCf(UUID cfId)
+    protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
     {
-        ArrayList<Token> tokens = StorageService.instance.getTokenMetadata().sortedTokens();
+        TokenMetadata tkm = StorageService.instance.getTokenMetadata();
+        ArrayList<Token> tokens = tkm.sortedTokens();
         InetAddress localEndpoint = FBUtilities.getLocalAddress();
 
         Keyspace keyspace = Keyspace.open(Schema.instance.getCF(cfId).left);
         AbstractReplicationStrategy rs = keyspace.getReplicationStrategy();
 
-        Set<Token> replicated = new HashSet<>();
+        Set<Range<Token>> replicated = new HashSet<>();
         for (Token token: tokens)
         {
             if (rs.getNaturalEndpoints(token).contains(localEndpoint))
             {
-                replicated.add(token);
+                replicated.add(new Range<Token>(tkm.getPredecessor(token), token));
             }
         }
         return replicated;
@@ -270,9 +268,9 @@ public class TokenStateManager
                 ManagedCf prev = states.putIfAbsent(cfId, cf);
                 assert prev == null;
 
-                for (Token token: getReplicatedTokensForCf(cfId))
+                for (Range<Token> range: getReplicatedRangesForCf(cfId))
                 {
-                    TokenState ts = new TokenState(token, cfId, 0, 0);
+                    TokenState ts = new TokenState(range, cfId, 0, 0);
                     TokenState prevTs = cf.putIfAbsent(ts);
                     assert prevTs == ts;
                     save(ts);

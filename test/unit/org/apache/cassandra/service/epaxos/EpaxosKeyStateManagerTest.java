@@ -3,10 +3,6 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.cql3.QueryProcessor;
-import org.apache.cassandra.cql3.UntypedResultSet;
-import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.dht.ByteOrderedPartitioner;
 import org.apache.cassandra.dht.BytesToken;
@@ -377,7 +373,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         Token t100 = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(100));
         Token t200 = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(200));
-        tsm.setTokens(t200);
+        tsm.setTokens(TOKEN0, t200);
 
         KeyStateManager ksm = new KeyStateManager(tsm);
 
@@ -411,9 +407,9 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         // add token state at 100, otherwise we won't
         // excercise the range modification code
-        tsm.addToken(t100);
+        tsm.setTokens(TOKEN0, t100, t200);
         tsm.get(t100, CFID);
-        TokenState ts = new TokenState(t100, CFID, 0, 0);
+        TokenState ts = new TokenState(range(TOKEN0, t100), CFID, 0, 0);
         ts.setCreatorToken(t200);
         ts.recordTokenInstance(t100, instance.getId());
         tsm.putState(ts);
@@ -567,7 +563,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         Token t100 = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(100));
         Token t200 = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(200));
-        tsm.setTokens(t200);
+        tsm.setTokens(TOKEN0, t200);
 
         KeyStateManager ksm = new KeyStateManager(tsm);
 
@@ -601,9 +597,9 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         // add token state at 100, otherwise we won't
         // excercise the range modification code
-        tsm.addToken(t100);
+        tsm.setTokens(TOKEN0, t100, t200);
         tsm.get(t100, CFID);
-        TokenState ts = new TokenState(t100, CFID, 0, 0);
+        TokenState ts = new TokenState(range(TOKEN0, t100), CFID, 0, 0);
         ts.setCreatorToken(t200);
         ts.recordTokenInstance(t100, instance.getId());
         tsm.putState(ts);
@@ -773,9 +769,12 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         final BytesToken token2 = new BytesToken(ByteBufferUtil.bytes(200));
         TokenStateManager tsm = new TokenStateManager() {
             @Override
-            protected Set<Token> getReplicatedTokensForCf(UUID cfId)
+            protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
             {
-                return Sets.<Token>newHashSet(token1, token2);
+                Set<Range<Token>> ranges = new HashSet<>();
+                ranges.add(range(TOKEN0, token1));
+                ranges.add(range(token1, token2));
+                return ranges;
             }
             {
                 setStarted();
@@ -817,10 +816,13 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         final BytesToken token2 = new BytesToken(ByteBufferUtil.bytes(200));
         TokenStateManager tsm = new TokenStateManager() {
             @Override
-            protected Set<Token> getReplicatedTokensForCf(UUID cfId)
+            protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
             {
-                return Sets.<Token>newHashSet(token1, token2);
+                Set<Range<Token>> ranges = new HashSet<>();
+                ranges.add(range(token2, token1));
+                return ranges;
             }
+
             {
                 setStarted();
             }
@@ -859,9 +861,11 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         final BytesToken token1 = new BytesToken(ByteBufferUtil.bytes(100));
         TokenStateManager tsm = new TokenStateManager() {
             @Override
-            protected Set<Token> getReplicatedTokensForCf(UUID cfId)
+            protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
             {
-                return Sets.<Token>newHashSet(token1);
+                Set<Range<Token>> ranges = new HashSet<>();
+                ranges.add(range(token1, token1));
+                return ranges;
             }
             {
                 setStarted();

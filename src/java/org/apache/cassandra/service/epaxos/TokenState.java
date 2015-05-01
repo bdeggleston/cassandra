@@ -27,6 +27,8 @@ import org.slf4j.LoggerFactory;
 public class TokenState
 {
     private final Token token;
+    private volatile Token predecessor = null;
+    private volatile Range<Token> range = null;
     private final UUID cfId;
 
     private static final Logger logger = LoggerFactory.getLogger(InstanceStreamReader.class);
@@ -114,14 +116,18 @@ public class TokenState
     // fair to give priority to token mutations
     public final ReadWriteLock lock = new ReentrantReadWriteLock(true);
 
-    public TokenState(Token token, UUID cfId, long epoch, int executions)
+    public TokenState(Range<Token> range, UUID cfId, long epoch, int executions)
     {
-        this(token, cfId, epoch, executions, State.NORMAL);
+        this(range, cfId, epoch, executions, State.NORMAL);
     }
 
-    public TokenState(Token token, UUID cfId, long epoch, int executions, State state)
+    public TokenState(Range<Token> range, UUID cfId, long epoch, int executions, State state)
     {
-        this.token = token;
+        this.token = range.right;
+        setPredecessor(range.left);
+        assert this.predecessor != null;
+        assert this.range != null;
+
         this.cfId = cfId;
         this.epoch = epoch;
         this.executions = new AtomicInteger(executions);
@@ -132,6 +138,22 @@ public class TokenState
     public Token getToken()
     {
         return token;
+    }
+
+    public Token getPredecessor()
+    {
+        return predecessor;
+    }
+
+    public void setPredecessor(Token predecessor)
+    {
+        this.predecessor = predecessor;
+        range = new Range<>(predecessor, token);
+    }
+
+    public Range<Token> getRange()
+    {
+        return range;
     }
 
     public UUID getCfId()
@@ -357,6 +379,7 @@ public class TokenState
         @Override
         public void serialize(TokenState tokenState, DataOutputPlus out, int version) throws IOException
         {
+            Token.serializer.serialize(tokenState.predecessor, out);
             Token.serializer.serialize(tokenState.token, out);
             UUIDSerializer.serializer.serialize(tokenState.cfId, out, version);
             out.writeLong(tokenState.epoch);
@@ -392,7 +415,7 @@ public class TokenState
         @Override
         public TokenState deserialize(DataInput in, int version) throws IOException
         {
-            TokenState ts = new TokenState(Token.serializer.deserialize(in),
+            TokenState ts = new TokenState(new Range<>(Token.serializer.deserialize(in), Token.serializer.deserialize(in)),
                                            UUIDSerializer.serializer.deserialize(in, version),
                                            in.readLong(),
                                            in.readInt(),
@@ -427,7 +450,8 @@ public class TokenState
         @Override
         public long serializedSize(TokenState tokenState, int version)
         {
-            long size = Token.serializer.serializedSize(tokenState.token, TypeSizes.NATIVE);
+            long size = Token.serializer.serializedSize(tokenState.predecessor, TypeSizes.NATIVE);
+            size += Token.serializer.serializedSize(tokenState.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(tokenState.cfId, version);
             size += 8 + 4 + 4 + 1 + 1 + 8;
 
