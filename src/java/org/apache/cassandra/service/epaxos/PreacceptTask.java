@@ -1,13 +1,18 @@
 package org.apache.cassandra.service.epaxos;
 
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
+import org.apache.cassandra.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 
@@ -61,7 +66,14 @@ public abstract class PreacceptTask implements Runnable
             // won't have initialized instances floating around
             participantInfo.quorumExistsOrDie();
 
-            instance.preaccept(state.getCurrentDependencies(instance));
+            Pair<Set<UUID>, Range<Token>> attrs = state.getCurrentDependencies(instance);
+            instance.preaccept(attrs.left);
+
+            if (instance instanceof TokenInstance)
+            {
+                ((TokenInstance) instance).setSplitRange(attrs.right);
+            }
+
             instance.incrementBallot();
             state.saveInstance(instance);
 

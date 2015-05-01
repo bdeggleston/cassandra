@@ -3,11 +3,16 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.epaxos.exceptions.BallotException;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
+import org.apache.cassandra.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +59,16 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
         }
     }
 
+    private void maybeMergeTokenRange(Instance inst, Range<Token> range)
+    {
+        if (!(inst instanceof TokenInstance))
+            return;
+
+        assert range != null;
+        TokenInstance instance = (TokenInstance) inst;
+        instance.mergeLocalSplitRange(range);
+    }
+
     @Override
     public void doEpochVerb(MessageIn<MessageEnvelope<Instance>> message, final int id)
     {
@@ -79,8 +94,10 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
                     instance.checkBallot(remoteInstance.getBallot());
                     instance.applyRemote(remoteInstance);
                 }
-                instance.preaccept(state.getCurrentDependencies(instance), remoteInstance.getDependencies());
+                Pair<Set<UUID>, Range<Token>> attrs = state.getCurrentDependencies(instance);
+                instance.preaccept(attrs.left, remoteInstance.getDependencies());
                 maybeVetoEpoch(instance);
+                maybeMergeTokenRange(instance, attrs.right);
                 state.saveInstance(instance);
 
                 if (instance.getLeaderAttrsMatch())

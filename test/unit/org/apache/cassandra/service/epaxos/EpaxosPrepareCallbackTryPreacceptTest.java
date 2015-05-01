@@ -217,4 +217,35 @@ public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
         Assert.assertEquals(alternateDeps, otherAttempt.dependencies);
         Assert.assertEquals(Sets.newHashSet(state.localEndpoints.subList(1, 3)), otherAttempt.toConvince);
     }
+
+    /**
+     * inconsistent split ranges among instances with the same
+     * dependencies should not be considered as part of the same group
+     */
+    @Test
+    public void differentSplitRanges() throws InvalidInstanceStateChange
+    {
+        TryPreacceptOnlyState state = new TryPreacceptOnlyState(3, 0);
+        TokenInstance instance = new TokenInstance(state.getEndpoint(), CFID, token(50), range(0, 100), false);
+        Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID());
+        instance.preaccept(deps, deps);
+
+        EpaxosState.ParticipantInfo info = state.getParticipants(instance);
+        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null);
+
+        TokenInstance i2 = (TokenInstance) instance.copy();
+        i2.mergeLocalSplitRange(range(1, 100));
+        Assert.assertFalse(i2.getLeaderAttrsMatch());
+        callback.response(createResponse(state.localEndpoints.get(1), i2));
+        Assert.assertFalse(callback.isCompleted());
+
+        TokenInstance i3 = (TokenInstance) instance.copy();
+        i3.mergeLocalSplitRange(range(0, 99));
+        Assert.assertFalse(i3.getLeaderAttrsMatch());
+        callback.response(createResponse(state.localEndpoints.get(2), instance));
+        Assert.assertTrue(callback.isCompleted());
+
+        Assert.assertEquals(1, state.preacceptPrepares.size());
+        Assert.assertEquals(0, state.tryPreacceptCalls.size());
+    }
 }

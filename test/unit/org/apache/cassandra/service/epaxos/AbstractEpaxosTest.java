@@ -81,6 +81,11 @@ public abstract class AbstractEpaxosTest
         return DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(v));
     }
 
+    protected static Range<Token> range(int left, int right)
+    {
+        return range(token(left), token(right));
+    }
+
     protected static Range<Token> range(Token left, Token right)
     {
         return new Range<>(left, right);

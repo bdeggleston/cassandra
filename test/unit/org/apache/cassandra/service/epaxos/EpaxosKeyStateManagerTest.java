@@ -117,7 +117,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         Set<UUID> expectedDeps = keyDeps.get(request1.getCfKey());
         QueryInstance instance = new QueryInstance(request1, ADDRESS);
 
-        Set<UUID> actualDeps = ksm.getCurrentDependencies(instance);
+        Set<UUID> actualDeps = ksm.getCurrentDependencies(instance).left;
         Assert.assertEquals(expectedDeps, actualDeps);
 
         // check that the instance has been added to it's own key state, but not the other
@@ -161,7 +161,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0, false);
 
-        Set<UUID> actualDeps = ksm.getCurrentDependencies(instance);
+        Set<UUID> actualDeps = ksm.getCurrentDependencies(instance).left;
         Assert.assertEquals(expectedDeps, actualDeps);
 
         // check that the token instance has been added to each of the individual key states
@@ -269,7 +269,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         //
         QueryInstance instance = new QueryInstance(request1, ADDRESS);
-        Set<UUID> deps = ksm.getCurrentDependencies(instance);
+        Set<UUID> deps = ksm.getCurrentDependencies(instance).left;
         instance.preaccept(deps);
 
         // check that we visit all deps
@@ -330,7 +330,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         UUID cfId = cfKeys.get(0).cfId;
         EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0, false);
 
-        Set<UUID> deps = ksm.getCurrentDependencies(instance);
+        Set<UUID> deps = ksm.getCurrentDependencies(instance).left;
         instance.preaccept(deps);
 
         // check that we visit all deps
@@ -400,8 +400,8 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         ksm.saveKeyState(k150, CFID, ks);
         Assert.assertEquals(1, ks.getActiveInstanceIds().size());
 
-        TokenInstance instance = new TokenInstance(ADDRESS, CFID, t100, false);
-        Set<UUID> deps = ksm.getCurrentDependencies(instance);
+        TokenInstance instance = new TokenInstance(ADDRESS, CFID, t100, range(TOKEN0, t200), false);
+        Set<UUID> deps = ksm.getCurrentDependencies(instance).left;
         Assert.assertEquals(expectedDeps, deps);
         instance.preaccept(deps);
 
@@ -458,7 +458,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
 
         //
         QueryInstance instance = new QueryInstance(request1, ADDRESS);
-        Set<UUID> deps = ksm.getCurrentDependencies(instance);
+        Set<UUID> deps = ksm.getCurrentDependencies(instance).left;
         instance.preaccept(deps);
 
         // check that none of the deps are ack'd
@@ -521,7 +521,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         UUID cfId = cfKeys.get(0).cfId;
         EpochInstance instance = new EpochInstance(ADDRESS, token, cfId, 0, false);
 
-        Set<UUID> deps = ksm.getCurrentDependencies(instance);
+        Set<UUID> deps = ksm.getCurrentDependencies(instance).left;
         instance.preaccept(deps);
 
         // check that none of the deps are ack'd
@@ -590,8 +590,8 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         ksm.saveKeyState(k150, CFID, ks);
         Assert.assertEquals(1, ks.getActiveInstanceIds().size());
 
-        TokenInstance instance = new TokenInstance(ADDRESS, CFID, t100, false);
-        Set<UUID> deps = ksm.getCurrentDependencies(instance);
+        TokenInstance instance = new TokenInstance(ADDRESS, CFID, t100, range(TOKEN0, t200), false);
+        Set<UUID> deps = ksm.getCurrentDependencies(instance).left;
         Assert.assertEquals(expectedDeps, deps);
         instance.preaccept(deps);
 

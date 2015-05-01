@@ -1,6 +1,9 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.Sets;
+
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
@@ -105,7 +108,8 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
         }
 
         // get the ids of instances the the message instance doesn't have in it's dependencies
-        Set<UUID> conflictIds = Sets.newHashSet(state.getCurrentDependencies(instance));
+        Pair<Set<UUID>, Range<Token>> attrs = state.getCurrentDependencies(instance);
+        Set<UUID> conflictIds = Sets.newHashSet(attrs.left);
         conflictIds.removeAll(dependencies);
         conflictIds.remove(instance.getId());
 

@@ -6,7 +6,12 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessageIn;
+import org.apache.cassandra.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,7 +123,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
                     }
                     break;
                 case ACCEPTED:
-                    state.accept(id, decision.deps, decision.vetoed, failureCallback);
+                    state.accept(id, decision.deps, decision.vetoed, decision.splitRange, failureCallback);
                     break;
                 case COMMITTED:
                     state.commit(id, decision.deps);
@@ -162,6 +167,11 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
         }
     };
 
+    private static Range<Token> getSplitRange(Instance instance)
+    {
+        return instance instanceof TokenInstance ? ((TokenInstance) instance).getSplitRange() : null;
+    }
+
     public synchronized PrepareDecision getDecision()
     {
         int ballot = 0;
@@ -180,17 +190,62 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
 
         List<Instance> committed = Lists.newArrayList(Iterables.filter(responses.values(), committedPredicate));
         if (!committed.isEmpty())
-            return new PrepareDecision(Instance.State.COMMITTED, committed.get(0).getDependencies(), vetoed, ballot);
+            return new PrepareDecision(Instance.State.COMMITTED, committed.get(0).getDependencies(), vetoed, getSplitRange(committed.get(0)), ballot);
 
         List<Instance> accepted = Lists.newArrayList(Iterables.filter(responses.values(), acceptedPredicate));
         if (!accepted.isEmpty())
-            return new PrepareDecision(Instance.State.ACCEPTED, accepted.get(0).getDependencies(), vetoed, ballot);
+            return new PrepareDecision(Instance.State.ACCEPTED, accepted.get(0).getDependencies(), vetoed, getSplitRange(accepted.get(0)), ballot);
 
         // no other node knows about this instance, commit a noop
         if (Lists.newArrayList(Iterables.filter(responses.values(), notNullPredicate)).isEmpty())
-            return new PrepareDecision(Instance.State.PREACCEPTED, null, vetoed, ballot, Collections.<TryPreacceptAttempt>emptyList(), true);
+            return new PrepareDecision(Instance.State.PREACCEPTED, null, vetoed, null, ballot, Collections.<TryPreacceptAttempt>emptyList(), true);
 
-        return new PrepareDecision(Instance.State.PREACCEPTED, null, vetoed, ballot, getTryPreacceptAttempts(), false);
+        return new PrepareDecision(Instance.State.PREACCEPTED, null, vetoed, null, ballot, getTryPreacceptAttempts(), false);
+    }
+
+    private static class DepRange
+    {
+        public final Set<UUID> deps;
+        public final Range<Token> range;
+
+        private DepRange(Set<UUID> deps, Range<Token> range)
+        {
+            this.deps = deps;
+            this.range = range;
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            DepRange depRange = (DepRange) o;
+
+            if (!deps.equals(depRange.deps)) return false;
+            if (range != null ? !range.equals(depRange.range) : depRange.range != null) return false;
+
+            return true;
+        }
+
+        @Override
+        public int hashCode()
+        {
+            int result = deps.hashCode();
+            result = 31 * result + (range != null ? range.hashCode() : 0);
+            return result;
+        }
+
+        public static DepRange fromInstance(Instance instance)
+        {
+            return new DepRange(instance.getDependencies(),
+                                instance instanceof TokenInstance ? ((TokenInstance) instance).getSplitRange() : null);
+        }
+
+        public static DepRange fromAttempt(TryPreacceptAttempt attempt)
+        {
+            return new DepRange(attempt.dependencies, attempt.splitRange);
+        }
     }
 
     /**
@@ -216,8 +271,8 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
 
         // group and score common responses
         Set<InetAddress> replyingReplicas = Sets.newHashSet();
-        Map<Set<UUID>, Set<InetAddress>> depGroups = Maps.newHashMap();
-        final Map<Set<UUID>, Integer> scores = Maps.newHashMap();
+        Map<DepRange, Set<InetAddress>> depGroups = Maps.newHashMap();
+        final Map<DepRange, Integer> scores = Maps.newHashMap();
         for (Map.Entry<InetAddress, Instance> entry: responses.entrySet())
         {
             if (entry.getValue() == null)
@@ -225,24 +280,24 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
                 continue;
             }
 
-            Set<UUID> deps = entry.getValue().getDependencies();
-            if (!depGroups.containsKey(deps))
+            DepRange dr = DepRange.fromInstance(entry.getValue());
+            if (!depGroups.containsKey(dr))
             {
-                depGroups.put(deps, Sets.<InetAddress>newHashSet());
-                scores.put(deps, 0);
+                depGroups.put(dr, Sets.<InetAddress>newHashSet());
+                scores.put(dr, 0);
             }
-            depGroups.get(deps).add(entry.getKey());
+            depGroups.get(dr).add(entry.getKey());
             replyingReplicas.add(entry.getKey());
 
-            scores.put(deps, (scores.get(deps) + (entry.getValue().getLeaderAttrsMatch() ? 2 : 1)));
+            scores.put(dr, (scores.get(dr) + (entry.getValue().getLeaderAttrsMatch() ? 2 : 1)));
         }
 
         // min # of identical preaccepts
         int minIdentical = (participantInfo.F + 1) / 2;
         List<TryPreacceptAttempt> attempts = Lists.newArrayListWithCapacity(depGroups.size());
-        for (Map.Entry<Set<UUID>, Set<InetAddress>> entry: depGroups.entrySet())
+        for (Map.Entry<DepRange, Set<InetAddress>> entry: depGroups.entrySet())
         {
-            Set<UUID> deps = entry.getKey();
+            DepRange dr = entry.getKey();
             Set<InetAddress> nodes = entry.getValue();
 
             if (nodes.size() < minIdentical)
@@ -264,7 +319,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
                 continue;
 
             int requiredConvinced = participantInfo.F + 1 - nodes.size();
-            TryPreacceptAttempt attempt = new TryPreacceptAttempt(deps, toConvince, requiredConvinced, nodes, leaderAttrsMatch, vetoed);
+            TryPreacceptAttempt attempt = new TryPreacceptAttempt(dr.deps, toConvince, requiredConvinced, nodes, leaderAttrsMatch, vetoed, dr.range);
             attempts.add(attempt);
         }
 
@@ -275,7 +330,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
             @Override
             public int compare(TryPreacceptAttempt o1, TryPreacceptAttempt o2)
             {
-                return scores.get(o2.dependencies) - scores.get(o1.dependencies);
+                return scores.get(DepRange.fromAttempt(o2)) - scores.get(DepRange.fromAttempt(o1));
             }
         };
         Collections.sort(attempts, attemptComparator);

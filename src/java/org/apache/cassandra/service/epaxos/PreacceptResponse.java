@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -23,6 +24,7 @@ public class PreacceptResponse extends AbstractEpochMessage
     public final int ballotFailure;
     public final Set<UUID> dependencies;
     public final boolean vetoed;
+    public final Range<Token> splitRange;
     public volatile List<Instance> missingInstances;
 
     private static final List<Instance> NO_INSTANCES = ImmutableList.of();
@@ -35,6 +37,7 @@ public class PreacceptResponse extends AbstractEpochMessage
                              int ballotFailure,
                              Set<UUID> dependencies,
                              boolean vetoed,
+                             Range<Token> splitRange,
                              List<Instance> missingInstances)
     {
         super(token, cfId, epoch);
@@ -42,6 +45,7 @@ public class PreacceptResponse extends AbstractEpochMessage
         this.ballotFailure = ballotFailure;
         this.dependencies = dependencies;
         this.vetoed = vetoed;
+        this.splitRange = splitRange;
         this.missingInstances = missingInstances;
     }
 
@@ -54,31 +58,41 @@ public class PreacceptResponse extends AbstractEpochMessage
         return false;
     }
 
+    private static Range<Token> getSplitRange(Instance instance)
+    {
+        if (instance instanceof TokenInstance)
+        {
+            return ((TokenInstance) instance).getSplitRange();
+        }
+        return null;
+    }
+
     public static PreacceptResponse success(Token token, long epoch, Instance instance)
     {
-        return new PreacceptResponse(token, instance.getCfId(), epoch, instance.getLeaderAttrsMatch(), 0, instance.getDependencies(), getVetoed(instance), NO_INSTANCES);
+        return new PreacceptResponse(token, instance.getCfId(), epoch, instance.getLeaderAttrsMatch(), 0, instance.getDependencies(), getVetoed(instance), getSplitRange(instance), NO_INSTANCES);
     }
 
     public static PreacceptResponse failure(Token token, long epoch, Instance instance)
     {
-        return new PreacceptResponse(token, instance.getCfId(), epoch, false, 0, instance.getDependencies(), getVetoed(instance), NO_INSTANCES);
+        return new PreacceptResponse(token, instance.getCfId(), epoch, false, 0, instance.getDependencies(), getVetoed(instance), getSplitRange(instance), NO_INSTANCES);
     }
 
     public static PreacceptResponse ballotFailure(Token token, UUID cfId, long epoch, int localBallot)
     {
-        return new PreacceptResponse(token, cfId, epoch, false, localBallot, NO_DEPS, false, NO_INSTANCES);
+        return new PreacceptResponse(token, cfId, epoch, false, localBallot, NO_DEPS, false, null, NO_INSTANCES);
     }
 
     @Override
     public String toString()
     {
         return "PreacceptResponse{" +
-                "success=" + success +
-                ", ballotFailure=" + ballotFailure +
-                ", dependencies=" + dependencies +
-                ", vetoed=" + vetoed +
-                ", missingInstances=" + missingInstances +
-                '}';
+               "success=" + success +
+               ", ballotFailure=" + ballotFailure +
+               ", dependencies=" + dependencies +
+               ", vetoed=" + vetoed +
+               ", splitRange=" + splitRange +
+               ", missingInstances=" + missingInstances.size() +
+               '}';
     }
 
     public static class Serializer implements IVersionedSerializer<PreacceptResponse>
@@ -101,6 +115,7 @@ public class PreacceptResponse extends AbstractEpochMessage
             }
 
             out.writeBoolean(response.vetoed);
+            Serializers.nullableTokenRange.serialize(response.splitRange, out, version);
 
             out.writeInt(response.missingInstances.size());
             for (Instance instance: response.missingInstances)
@@ -126,6 +141,7 @@ public class PreacceptResponse extends AbstractEpochMessage
             }
 
             boolean vetoed = in.readBoolean();
+            Range<Token> splitRange = Serializers.nullableTokenRange.deserialize(in, version);
 
             Instance[] missing = new Instance[in.readInt()];
             for (int i=0; i<missing.length; i++)
@@ -140,6 +156,7 @@ public class PreacceptResponse extends AbstractEpochMessage
                                          ballotFailure,
                                          ImmutableSet.copyOf(deps),
                                          vetoed,
+                                         splitRange,
                                          Lists.newArrayList(missing));
         }
 
@@ -160,6 +177,7 @@ public class PreacceptResponse extends AbstractEpochMessage
             }
 
             size += 1;  //out.writeBoolean(response.vetoed);
+            size += Serializers.nullableTokenRange.serializedSize(response.splitRange, version);
 
             size += 4;  //out.writeInt(response.missingInstances.size());
             for (Instance instance: response.missingInstances)

@@ -49,7 +49,8 @@ public class EpaxosTryPreacceptTest extends AbstractEpaxosTest
                                                               0,
                                                               Sets.newHashSet(InetAddress.getAllByName("127.0.0.1")),
                                                               true,
-                                                              true);
+                                                              true,
+                                                              range(token(1000), token(2000)));
 
         Assert.assertNull(acceptedId.get());
         Assert.assertNull(acceptedDecision.get());
@@ -62,6 +63,7 @@ public class EpaxosTryPreacceptTest extends AbstractEpaxosTest
         Assert.assertNotNull(acceptDecision);
         Assert.assertEquals(attempt.dependencies, acceptDecision.acceptDeps);
         Assert.assertEquals(attempt.vetoed, acceptDecision.vetoed);
+        Assert.assertEquals(attempt.splitRange, acceptDecision.splitRange);
     }
 
     @Test
@@ -94,14 +96,16 @@ public class EpaxosTryPreacceptTest extends AbstractEpaxosTest
                                                                2,
                                                                Sets.newHashSet(state.localEndpoints.get(2)),
                                                                true,
-                                                               true);
+                                                               true,
+                                                               null);
 
         TryPreacceptAttempt attempt2 = new TryPreacceptAttempt(Sets.newHashSet(UUIDGen.getTimeUUID()),
                                                                Sets.newHashSet(state.localEndpoints.get(2)),
                                                                1,
                                                                Sets.newHashSet(state.localEndpoints.get(0), state.localEndpoints.get(1)),
                                                                true,
-                                                               true);
+                                                               true,
+                                                               null);
 
         List<TryPreacceptAttempt> attempts = Lists.newArrayList(attempt1, attempt2);
 

@@ -3,25 +3,18 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.*;
 
 import org.apache.cassandra.db.ConsistencyLevel;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.dht.Range;
-import org.apache.cassandra.exceptions.InvalidRequestException;
-import org.apache.cassandra.exceptions.ReadTimeoutException;
-import org.apache.cassandra.exceptions.UnavailableException;
-import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.service.epaxos.integration.AbstractEpaxosIntegrationTest;
 import org.apache.cassandra.service.epaxos.integration.Messenger;
 import org.apache.cassandra.service.epaxos.integration.Node;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.SingleThread
 {
@@ -106,7 +99,6 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             for (int i=0; i<4; i++)
             {
                 ByteBuffer key = ByteBufferUtil.bytes(i);
-                Token token = new LongToken((long) (i * 50) + 50);
                 ksm.loadKeyState(key, CFID);
             }
         }
@@ -182,7 +174,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             }
         }
 
-        TokenInstance instance = new TokenInstance(node.getEndpoint(), CFID, TOKEN1, false);
+        TokenInstance instance = new TokenInstance(node.getEndpoint(), CFID, TOKEN1, ts.getRange(), false);
         node.getCurrentDependencies(instance);
         instance.setDependencies(Collections.<UUID>emptySet());
         instance.setState(Instance.State.COMMITTED);
@@ -200,7 +192,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
         // check first token state
         Assert.assertEquals(1, ts.getEpoch());
-        Set<UUID> deps = ts.getCurrentTokenInstances(new Range<Token>(TOKEN1, TOKEN2));
+        Set<UUID> deps = ts.getCurrentTokenInstances(new Range<>(TOKEN1, TOKEN2));
         Assert.assertEquals(1, deps.size());
         Assert.assertEquals(fakeIds.get(tokenFor(150)), deps.iterator().next());
 
@@ -225,7 +217,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
         // increment the epoch for just the first token state
         EpochInstance epochInstance = node.createEpochInstance(TOKEN2, CFID, 2);
-        epochInstance.setDependencies(node.getCurrentDependencies(epochInstance));
+        epochInstance.setDependencies(node.getCurrentDependencies(epochInstance).left);
         epochInstance.setState(Instance.State.COMMITTED);
         node.saveInstance(epochInstance);
         node.executeEpochInstance(epochInstance);
@@ -251,13 +243,12 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
      * dependencies for both instances are acknowledged, and the token state manager reports these ranges
      * as replicated
      */
-    @Ignore
     @Test
     public void overlappingInstances() throws Exception
     {
         final Token token100 = token(100);
-        final Token token200 = token(100);
-        Token token300 = token(100);
+        final Token token200 = token(200);
+        Token token300 = token(300);
 
         for (Node node: nodes)
         {
@@ -319,7 +310,9 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         // run a new set of instances for the previous key states, they should only point to the token instances
         Set<UUID> expectedDeps = Sets.newHashSet(tokenInstance200.getId());
 
-        node2.setState(Node.State.UP);
+        // not bringing node2 back up because it's out of date, and will introduce the original key(50) instance
+        // as a dependency. The goal of this test, however, is to check the behavior of the key state manager when
+        // there are multiple token instances (with different tokens) in flight for the same token range
 
         node1.query(newSerializedRequest(getCqlCasRequest(50, 0, ConsistencyLevel.SERIAL), key(50)));
         instance050 = node1.getLastCreatedInstance();
@@ -327,14 +320,14 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         Assert.assertEquals(Instance.State.EXECUTED, instance050.getState());
         Assert.assertEquals(expectedDeps, instance050.getDependencies());
 
-        node2.query(newSerializedRequest(getCqlCasRequest(150, 0, ConsistencyLevel.SERIAL), key(150)));
-        instance150 = node2.getLastCreatedInstance();
+        node1.query(newSerializedRequest(getCqlCasRequest(150, 0, ConsistencyLevel.SERIAL), key(150)));
+        instance150 = node1.getLastCreatedInstance();
         printInstance(instance150, "instance150");
         Assert.assertEquals(Instance.State.EXECUTED, instance150.getState());
         Assert.assertEquals(expectedDeps, instance150.getDependencies());
 
-        node3.query(newSerializedRequest(getCqlCasRequest(250, 0, ConsistencyLevel.SERIAL), key(250)));
-        instance250 = node3.getLastCreatedInstance();
+        node1.query(newSerializedRequest(getCqlCasRequest(250, 0, ConsistencyLevel.SERIAL), key(250)));
+        instance250 = node1.getLastCreatedInstance();
         printInstance(instance250, "instance250");
         Assert.assertEquals(Instance.State.EXECUTED, instance250.getState());
         Assert.assertEquals(expectedDeps, instance250.getDependencies());

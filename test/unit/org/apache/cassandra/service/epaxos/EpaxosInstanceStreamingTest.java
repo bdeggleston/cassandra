@@ -74,7 +74,7 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
     private UUID executeInstance(int k, long epoch, EpaxosState state)
     {
         Instance instance = newInstance(state, k, ConsistencyLevel.SERIAL);
-        instance.setDependencies(state.getCurrentDependencies(instance));
+        instance.setDependencies(state.getCurrentDependencies(instance).left);
         instance.setExecuted(epoch);
         state.saveInstance(instance);
 
@@ -90,7 +90,7 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
     private UUID activeInstance(int k, EpaxosState state) throws InvalidInstanceStateChange
     {
         Instance instance = newInstance(state, k, ConsistencyLevel.SERIAL);
-        instance.commit(state.getCurrentDependencies(instance));
+        instance.commit(state.getCurrentDependencies(instance).left);
         state.saveInstance(instance);
 
         ByteBuffer key = ByteBufferUtil.bytes(k);

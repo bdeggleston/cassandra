@@ -57,7 +57,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
 
         // initially preaccept with no deps
         Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.preaccept(state.getCurrentDependencies(missed));
+        missed.preaccept(state.getCurrentDependencies(missed).left);
         state.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
@@ -68,12 +68,12 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
         Instance after1 = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        after1.commit(state.getCurrentDependencies(after1));
+        after1.commit(state.getCurrentDependencies(after1).left);
         Assert.assertEquals(Sets.newHashSet(missed.getId(), previous.getId()), after1.getDependencies());
         state.saveInstance(after1);
 
         Instance after2 = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        after2.commit(state.getCurrentDependencies(after2));
+        after2.commit(state.getCurrentDependencies(after2).left);
         Assert.assertEquals(Sets.newHashSet(missed.getId(), previous.getId(), after1.getId()), after2.getDependencies());
         state.saveInstance(after2);
 
@@ -105,7 +105,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
 
         // initially preaccept with no deps
         Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.preaccept(state.getCurrentDependencies(missed));
+        missed.preaccept(state.getCurrentDependencies(missed).left);
         state.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
@@ -116,7 +116,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
         Instance after = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        Set<UUID> afterDeps = state.getCurrentDependencies(after);
+        Set<UUID> afterDeps = state.getCurrentDependencies(after).left;
         afterDeps.remove(missed.getId());
         after.commit(afterDeps);
         Assert.assertEquals(Sets.newHashSet(previous.getId()), after.getDependencies());
@@ -150,7 +150,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
 
         // initially preaccept with no deps
         Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.preaccept(state.getCurrentDependencies(missed));
+        missed.preaccept(state.getCurrentDependencies(missed).left);
         state.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
@@ -161,7 +161,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
         Instance after = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        after.accept(state.getCurrentDependencies(after));
+        after.accept(state.getCurrentDependencies(after).left);
         Assert.assertEquals(Sets.newHashSet(missed.getId(), previous.getId()), after.getDependencies());
         state.saveInstance(after);
 
@@ -193,7 +193,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
 
         // initially preaccept with no deps
         Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.accept(state.getCurrentDependencies(missed));
+        missed.accept(state.getCurrentDependencies(missed).left);
         state.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
@@ -225,7 +225,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
 
         // initially preaccept with no deps
         Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.preaccept(state.getCurrentDependencies(missed));
+        missed.preaccept(state.getCurrentDependencies(missed).left);
         missed.updateBallot(5);
         state.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
@@ -261,7 +261,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
 
         // initially preaccept with no deps
         Instance missed = state.createEpochInstance(TOKEN0, CFID, 2);
-        missed.preaccept(state.getCurrentDependencies(missed));
+        missed.preaccept(state.getCurrentDependencies(missed).left);
         state.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
@@ -298,7 +298,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(state);
 
         Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.preaccept(state.getCurrentDependencies(missed));
+        missed.preaccept(state.getCurrentDependencies(missed).left);
         handler.doEpochVerb(createMessage(missed, Collections.<UUID>emptySet()), 0);
     }
 
@@ -313,7 +313,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(state);
 
         Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.preaccept(state.getCurrentDependencies(missed));
+        missed.preaccept(state.getCurrentDependencies(missed).left);
         missed.makePlacehoder();
         state.saveInstance(missed);
         handler.doEpochVerb(createMessage(missed, Collections.<UUID>emptySet()), 0);
