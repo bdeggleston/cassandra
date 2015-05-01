@@ -47,7 +47,8 @@ public class EpaxosTryPreacceptCallbackTest extends AbstractEpaxosTest
                                                               2,
                                                               Sets.newHashSet(state.localEndpoints.get(2)),
                                                               true, // test veto is applied
-                                                              false);
+                                                              false,
+                                                              null);
 
         List<TryPreacceptAttempt> next = Lists.newArrayList();
         EpaxosState.ParticipantInfo pi = state.getParticipants(instance);
@@ -86,14 +87,16 @@ public class EpaxosTryPreacceptCallbackTest extends AbstractEpaxosTest
                                                               2,
                                                               Sets.newHashSet(state.localEndpoints.get(2)),
                                                               true,
-                                                              true);
+                                                              true,
+                                                              null);
 
         TryPreacceptAttempt attempt2 = new TryPreacceptAttempt(Sets.newHashSet(UUIDGen.getTimeUUID()),
                                                                Sets.newHashSet(state.localEndpoints.get(2)),
                                                                1,
                                                                Sets.newHashSet(state.localEndpoints.get(0), state.localEndpoints.get(1)),
                                                                true,
-                                                               true);
+                                                               true,
+                                                               null);
 
         EpaxosState.ParticipantInfo pi = state.getParticipants(instance);
         List<TryPreacceptAttempt> nextAttempts = Lists.newArrayList(attempt2);
@@ -132,7 +135,8 @@ public class EpaxosTryPreacceptCallbackTest extends AbstractEpaxosTest
                                                               2,
                                                               Sets.newHashSet(state.localEndpoints.get(2)),
                                                               true,
-                                                              false);
+                                                              false,
+                                                              null);
 
         List<TryPreacceptAttempt> next = Lists.newArrayList();
         EpaxosState.ParticipantInfo pi = state.getParticipants(instance);
@@ -170,7 +174,8 @@ public class EpaxosTryPreacceptCallbackTest extends AbstractEpaxosTest
                                                               2,
                                                               Sets.newHashSet(state.localEndpoints.get(2)),
                                                               true,
-                                                              false);
+                                                              false,
+                                                              null);
 
         List<TryPreacceptAttempt> next = Lists.newArrayList();
         EpaxosState.ParticipantInfo pi = state.getParticipants(instance);
@@ -198,7 +203,8 @@ public class EpaxosTryPreacceptCallbackTest extends AbstractEpaxosTest
                                                               2,
                                                               Sets.newHashSet(state.localEndpoints.get(2)),
                                                               true,
-                                                              true);
+                                                              true,
+                                                              null);
 
         List<TryPreacceptAttempt> next = Lists.newArrayList();
         EpaxosState.ParticipantInfo pi = state.getParticipants(instance);
@@ -225,7 +231,8 @@ public class EpaxosTryPreacceptCallbackTest extends AbstractEpaxosTest
                                                               2,
                                                               Sets.newHashSet(state.localEndpoints.get(2)),
                                                               true,
-                                                              false);
+                                                              false,
+                                                              null);
 
         List<TryPreacceptAttempt> next = Lists.newArrayList();
         EpaxosState.ParticipantInfo pi = state.getParticipants(instance);
@@ -255,7 +262,8 @@ public class EpaxosTryPreacceptCallbackTest extends AbstractEpaxosTest
                                                               2,
                                                               Sets.newHashSet(state.localEndpoints.get(2)),
                                                               true,
-                                                              true);
+                                                              true,
+                                                              null);
 
         List<TryPreacceptAttempt> next = Lists.newArrayList();
         EpaxosState.ParticipantInfo pi = state.getParticipants(instance);
@@ -285,7 +293,8 @@ public class EpaxosTryPreacceptCallbackTest extends AbstractEpaxosTest
                                                               2,
                                                               Sets.newHashSet(state.localEndpoints.get(2)),
                                                               true, // test veto is applied
-                                                              false);
+                                                              false,
+                                                              null);
 
         List<TryPreacceptAttempt> next = Lists.newArrayList();
         EpaxosState.ParticipantInfo pi = state.getParticipants(instance);

@@ -311,7 +311,17 @@ public class EpaxosState
 
     protected TokenInstance createTokenInstance(Token token, UUID cfId)
     {
-        TokenInstance instance = new TokenInstance(getEndpoint(), cfId, token, tokenStateManager.isLocalOnly(token, cfId));
+        TokenInstance instance;
+        TokenState ts = tokenStateManager.get(token, cfId);
+        ts.lock.readLock().lock();
+        try
+        {
+            instance = new TokenInstance(getEndpoint(), cfId, token, ts.getRange(), ts.localOnly());
+        }
+        finally
+        {
+            ts.lock.readLock().unlock();
+        }
         logger.debug("Created TokenInstance {} on token {}", instance.getId(), instance.getToken());
         return instance;
     }
@@ -361,9 +371,9 @@ public class EpaxosState
         return new AcceptCallback(this, instance, participantInfo, failureCallback);
     }
 
-    public void accept(UUID id, Set<UUID> dependencies, boolean vetoed, Runnable failureCallback)
+    public void accept(UUID id, Set<UUID> dependencies, boolean vetoed, Range<Token> splitRange, Runnable failureCallback)
     {
-        accept(id, new AcceptDecision(true, dependencies, vetoed, Collections.<InetAddress, Set<UUID>>emptyMap()), failureCallback);
+        accept(id, new AcceptDecision(true, dependencies, vetoed, splitRange, Collections.<InetAddress, Set<UUID>>emptyMap()), failureCallback);
     }
 
     public void accept(UUID iid, AcceptDecision decision, Runnable failureCallback)
@@ -615,7 +625,9 @@ public class EpaxosState
         try
         {
             long epoch = neighbor.getEpoch();
-            TokenState tokenState = new TokenState(token, cfId, neighbor.getEpoch(), 0);
+            Range<Token> range = new Range<>(neighbor.getPredecessor(), token);
+            TokenState tokenState = new TokenState(range, cfId, neighbor.getEpoch(), 0);
+            neighbor.setPredecessor(token);
             tokenState.lock.writeLock().lock();
             try
             {
@@ -664,6 +676,7 @@ public class EpaxosState
                 // can be removed from the neighbor if initialization doesn't complete
                 tokenStateManager.save(tokenState);
                 tokenStateManager.save(neighbor);
+                // TODO: have the token state manager check for inconsistencies introduced here
             }
             finally
             {
@@ -757,7 +770,7 @@ public class EpaxosState
         if (attempt.requiredConvinced == 0)
         {
             assert attempt.agreedWithLeader;
-            accept(iid, attempt.dependencies, attempt.vetoed, failureCallback);
+            accept(iid, attempt.dependencies, attempt.vetoed, attempt.splitRange, failureCallback);
             return;
         }
 
@@ -1200,7 +1213,7 @@ public class EpaxosState
     }
 
     // key state methods
-    public Set<UUID> getCurrentDependencies(Instance instance)
+    public Pair<Set<UUID>, Range<Token>> getCurrentDependencies(Instance instance)
     {
         return keyStateManager.getCurrentDependencies(instance);
     }

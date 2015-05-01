@@ -3,8 +3,11 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageOut;
+import org.apache.cassandra.utils.Pair;
 
 import java.net.InetAddress;
 import java.util.*;
@@ -65,14 +68,16 @@ public class MockVerbHandlerState extends EpaxosState
     }
 
     public final Set<UUID> currentDeps = Sets.newHashSet();
+    public volatile Range<Token> splitRange = null;
 
     public final Set<UUID> getCurrentDeps = Sets.newHashSet();
 
     @Override
-    public Set<UUID> getCurrentDependencies(Instance instance)
+    public Pair<Set<UUID>, Range<Token>> getCurrentDependencies(Instance instance)
     {
         getCurrentDeps.add(instance.getId());
-        return Sets.newHashSet(currentDeps);
+        Set<UUID> deps = Sets.newHashSet(currentDeps);
+        return Pair.create(deps, splitRange);
     }
 
     public final Map<UUID, Instance> instanceMap = Maps.newHashMap();

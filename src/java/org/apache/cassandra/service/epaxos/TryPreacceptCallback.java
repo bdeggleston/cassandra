@@ -93,7 +93,7 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
             if (convinced >= attempt.requiredConvinced)
             {
                 // try-preaccept successful
-                state.accept(id, attempt.dependencies, vetoed, failureCallback);
+                state.accept(id, attempt.dependencies, vetoed, attempt.splitRange, failureCallback);
             }
             else if (contended)
             {

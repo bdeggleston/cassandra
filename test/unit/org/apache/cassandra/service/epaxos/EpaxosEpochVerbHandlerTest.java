@@ -1,10 +1,9 @@
 package org.apache.cassandra.service.epaxos;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
@@ -19,8 +18,9 @@ import java.util.UUID;
  */
 public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
 {
-    private static final Token MANAGED_TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(100));
-    private static final Token MESSAGE_TOKEN = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(50));
+    private static final Token MANAGED_TOKEN = token(100);
+    private static final Range<Token> MANAGED_RANGE = range(TOKEN0, MANAGED_TOKEN);
+    private static final Token MESSAGE_TOKEN = token(50);
     private static final UUID CFID = UUIDGen.getTimeUUID();
 
     private static MessageIn<Message> getMessage(long epoch) throws UnknownHostException
@@ -92,7 +92,7 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         @Override
         public TokenState getTokenState(IEpochMessage message)
         {
-            return new TokenState(MANAGED_TOKEN, message.getCfId(), epoch, 0, state);
+            return new TokenState(MANAGED_RANGE, message.getCfId(), epoch, 0, state);
         }
     }
 

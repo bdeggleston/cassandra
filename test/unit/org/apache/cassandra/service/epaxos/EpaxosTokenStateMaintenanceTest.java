@@ -129,7 +129,7 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
             }
         };
 
-        TokenState ts = state.tokenStateManager.get(TOKEN, CFID);
+        TokenState ts = state.tokenStateManager.get(TOKEN0, CFID);
         ts.setEpoch(5);
         Assert.assertNotNull(ts);
 
@@ -180,7 +180,7 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
             }
         };
 
-        TokenState ts = state.tokenStateManager.get(TOKEN, CFID);
+        TokenState ts = state.tokenStateManager.get(TOKEN0, CFID);
         Assert.assertNotNull(ts);
         ts.setState(TokenState.State.RECOVERY_REQUIRED);
 
@@ -206,11 +206,11 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
             }
         };
 
-        state.tokenStateManager.get(MockTokenStateManager.TOKEN, CFID);
+        state.tokenStateManager.get(MockTokenStateManager.TOKEN0, CFID);
         Token newToken = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(5));
 
         TokenCoverageMaintenanceTask task = new TokenCoverageMaintenanceTask(state, state.tokenStateManager);
-        task.normalTokens.add(MockTokenStateManager.TOKEN);
+        task.normalTokens.add(MockTokenStateManager.TOKEN0);
         task.normalTokens.add(newToken);
 
         Assert.assertNull(preaccepted.get());

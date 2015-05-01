@@ -81,7 +81,7 @@ public class KeyStateManager
         return Iterables.transform(i, f).iterator();
     }
 
-    public Set<UUID> getCurrentDependencies(Instance instance)
+    public Pair<Set<UUID>, Range<Token>> getCurrentDependencies(Instance instance)
     {
         if (instance.getType() == Instance.Type.QUERY)
         {
@@ -89,19 +89,31 @@ public class KeyStateManager
             CfKey cfKey = request.getCfKey();
             Set<UUID> deps = getCurrentDependencies(instance, cfKey);
             deps.remove(instance.getId());
-            return deps;
+            return Pair.create(deps, null);
         }
         else if (instance.getType() == Instance.Type.EPOCH || instance.getType() == Instance.Type.TOKEN)
         {
-            TokenState tokenState = tokenStateManager.get(instance);
-            Set<UUID> deps = new HashSet<>(tokenStateManager.getCurrentDependencies((AbstractTokenInstance) instance));
+            Set<UUID> deps;
+            Range<Token> range;
 
-            // create a range using the left token as dictated by the current managed token ring for this cf, and the
-            // instance token as the right token. This prevents token instances from having dependencies on instances
-            // that some of it's  replicas don't replicate. If a node misses this split, it will find out about it the
-            // next time it touches one of the keys owned by the new token
-            Range<Token> tsRange = tokenStateManager.rangeFor(tokenState);
-            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tsRange, tokenState.getCfId(), 10000);
+            TokenState tokenState = tokenStateManager.get(instance);
+            tokenState.lock.writeLock().lock();
+            try
+            {
+                deps = new HashSet<>(tokenStateManager.getCurrentDependencies((AbstractTokenInstance) instance));
+
+                // create a range using the left token as dictated by the current managed token ring for this cf, and the
+                // instance token as the right token. This prevents token instances from having dependencies on instances
+                // that some of it's  replicas don't replicate. If a node misses this split, it will find out about it the
+                // next time it touches one of the keys owned by the new token
+                range = tokenState.getRange();
+            }
+            finally
+            {
+                tokenState.lock.writeLock().unlock();
+            }
+
+            Iterator<CfKey> cfKeyIterator = getCfKeyIterator(range, tokenState.getCfId(), 10000);
             while (cfKeyIterator.hasNext())
             {
                 CfKey cfKey = cfKeyIterator.next();
@@ -110,7 +122,7 @@ public class KeyStateManager
 
             deps.remove(instance.getId());
 
-            return deps;
+            return Pair.create(deps, range);
         }
         else
         {
@@ -199,14 +211,7 @@ public class KeyStateManager
                 // since another instance has acknowledged this instance, it needs to be
                 // kept around in the current epoch for failure recovery
                 tokenStateManager.bindTokenInstanceToEpoch((TokenInstance) instance);
-
-                // the token range is extended here to include the token of the creating token state
-                // since it's instances will also have dependencies on the token instance
-                // TODO: add range to instance and use it here
-                if (tokenState.getCreatorToken() != null)
-                {
-                    tokenRange = new Range<>(tokenRange.left, tokenState.getCreatorToken());
-                }
+                tokenRange = ((TokenInstance) instance).getSplitRange();
             case EPOCH:
                 Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenRange, instance.getCfId(), 10000);
                 while (cfKeyIterator.hasNext())
@@ -250,14 +255,7 @@ public class KeyStateManager
                 break;
             case TOKEN:
                 tokenStateManager.bindTokenInstanceToEpoch((TokenInstance) instance);
-
-                // the token range is extended here to include the token of the creating token state
-                // since it's instances will also have dependencies on the token instance
-                // TODO: add range to instance and use it here
-                if (tokenState.getCreatorToken() != null)
-                {
-                    tokenRange = new Range<>(tokenRange.left, tokenState.getCreatorToken());
-                }
+                tokenRange = ((TokenInstance) instance).getSplitRange();
             case EPOCH:
                 Iterator<CfKey> cfKeyIterator = getCfKeyIterator(tokenRange, instance.getCfId(), 10000);
                 while (cfKeyIterator.hasNext())

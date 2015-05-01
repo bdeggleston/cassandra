@@ -2,7 +2,8 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
-import org.apache.cassandra.concurrent.Stage;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessageIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
 
     private final UUID id;
     private final Set<UUID> dependencies;
+    private final Range<Token> splitRange;
     private final EpaxosState.ParticipantInfo participantInfo;
     private final Runnable failureCallback;
     private final Set<UUID> remoteDependencies = Sets.newHashSet();
@@ -30,12 +32,15 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
     private boolean completed = false;
     private boolean localResponse = false;
     private int numResponses = 0;
+    private volatile Range<Token> mergedRange;
 
     public PreacceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
     {
         super(state);
         this.id = instance.getId();
         this.dependencies = instance.getDependencies();
+        splitRange = instance instanceof TokenInstance ? ((TokenInstance) instance).getSplitRange() : null;
+        mergedRange = splitRange;
         this.participantInfo = participantInfo;
         this.failureCallback = failureCallback;
         this.forceAccept = forceAccept;
@@ -77,6 +82,12 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
         if (!response.missingInstances.isEmpty())
         {
             state.addMissingInstances(response.missingInstances);
+        }
+
+        if (response.splitRange != null)
+        {
+            assert mergedRange != null;
+            mergedRange = TokenInstance.mergeRanges(mergedRange, response.splitRange);
         }
 
         numResponses++;
@@ -126,12 +137,18 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
 
         boolean acceptRequired = !depsMatch || !fpQuorum || vetoed;
 
+        if (splitRange != null)
+        {
+            acceptRequired |= !splitRange.equals(mergedRange);
+        }
+
         Map<InetAddress, Set<UUID>> missingIds = Maps.newHashMap();
         if (acceptRequired)
         {
             for (Map.Entry<InetAddress, PreacceptResponse> entry: responses.entrySet())
             {
-                Set<UUID> diff = Sets.difference(unifiedDeps, entry.getValue().dependencies);
+                PreacceptResponse response = entry.getValue();
+                Set<UUID> diff = Sets.difference(unifiedDeps, response.dependencies);
                 if (!diff.isEmpty())
                 {
                     diff.remove(id);
@@ -140,7 +157,7 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
             }
         }
 
-        AcceptDecision decision = new AcceptDecision(acceptRequired, unifiedDeps, vetoed, missingIds);
+        AcceptDecision decision = new AcceptDecision(acceptRequired, unifiedDeps, vetoed, mergedRange, missingIds);
         logger.debug("preaccept accept decision for {}: {}", id, decision);
         return decision;
     }
