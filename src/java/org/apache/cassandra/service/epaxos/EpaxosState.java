@@ -578,6 +578,10 @@ public class EpaxosState
     protected void executeEpochInstance(EpochInstance instance)
     {
         TokenState tokenState = tokenStateManager.getExact(instance.getToken(), instance.getCfId());
+        if (tokenState == null)
+        {
+            throw new AssertionError(String.format("No token state exists for %s", instance));
+        }
 
         tokenState.lock.writeLock().lock();
         try

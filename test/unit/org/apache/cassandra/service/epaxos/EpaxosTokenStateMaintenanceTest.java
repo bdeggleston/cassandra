@@ -93,12 +93,6 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
         Set<Token> pendingTokens = Sets.newHashSet();
 
         @Override
-        protected Set<Token> getPendingReplicatedTokens(String ksName)
-        {
-            return pendingTokens;
-        }
-
-        @Override
         protected String getKsName(UUID cfId)
         {
             return "ks";
