@@ -692,9 +692,9 @@ public class EpaxosState
         getStage(Stage.MUTATION).submit(new GarbageCollectionTask(this, tokenState, keyStateManager));
     }
 
-    protected PrepareCallback getPrepareCallback(UUID id, int ballot, ParticipantInfo participantInfo, PrepareGroup group)
+    protected PrepareCallback getPrepareCallback(UUID id, int ballot, ParticipantInfo participantInfo, PrepareGroup group, int attempt)
     {
-        return new PrepareCallback(this, id, ballot, participantInfo, group);
+        return new PrepareCallback(this, id, ballot, participantInfo, group, attempt);
     }
 
     public PrepareTask prepare(UUID id, PrepareGroup group)

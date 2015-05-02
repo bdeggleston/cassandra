@@ -3,6 +3,7 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.MessageIn;
+import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
@@ -19,11 +20,17 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
 {
     public PrepareCallback getCallback(EpaxosState state, Instance instance)
     {
+        return getCallback(state, instance, 1);
+    }
+
+    public PrepareCallback getCallback(EpaxosState state, Instance instance, int attempt)
+    {
         return new PrepareCallback(state,
                                    instance.getId(),
                                    instance.getBallot(),
                                    state.getParticipants(instance),
-                                   new PrepareGroup(state, UUIDGen.getTimeUUID(), Sets.newHashSet(instance.getId())));
+                                   new PrepareGroup(state, UUIDGen.getTimeUUID(), Sets.newHashSet(instance.getId())),
+                                   attempt);
     }
     public MessageIn<MessageEnvelope<Instance>> createResponse(InetAddress from, Instance instance)
     {
@@ -354,7 +361,7 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
                 // no-op
             }
         };
-        PrepareCallback callback = new PrepareCallback(state, instance.getId(), 0, state.getParticipants(instance), group);
+        PrepareCallback callback = new PrepareCallback(state, instance.getId(), 0, state.getParticipants(instance), group, 1);
 
         Assert.assertTrue(callback.isInstanceUnknown());
         Assert.assertFalse(callback.isCompleted());
@@ -365,6 +372,32 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         Assert.assertTrue(callback.isCompleted());
         Assert.assertNotNull(state.loadInstance(instance.getId()));
         Assert.assertFalse(group.prepareIsOutstandingFor(instance.getId()));
+    }
+
+    @Test
+    public void retryLimitReached() throws InvalidInstanceStateChange
+    {
+        MockCallbackState state = new MockCallbackState(3, 0);
+        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
+        instance.updateBallot(1);
+
+        PrepareCallback callback = getCallback(state, instance, PrepareCallback.RETRY_LIMIT);
+
+        Assert.assertFalse(callback.isCompleted());
+        Assert.assertEquals(0, callback.getNumResponses());
+
+        int expectedBallot = 10;
+        Instance responseCopy = instance.copy();
+        responseCopy.updateBallot(expectedBallot);
+
+        callback.response(createResponse(state.localEndpoints.get(1), responseCopy));
+
+        Assert.assertTrue(callback.isCompleted());
+
+        Assert.assertEquals(0, state.ballotUpdates.size());
+        Assert.assertEquals(0, state.accepts.size());
+        Assert.assertEquals(0, state.commits.size());
     }
 
     /**

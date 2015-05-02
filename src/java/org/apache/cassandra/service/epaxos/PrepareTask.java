@@ -23,17 +23,26 @@ public class PrepareTask implements Runnable, ICommitCallback
     // attempting a prepare phase. This is multiplied by a replica's position in the successor list
     protected static long PREPARE_GRACE_MILLIS = DatabaseDescriptor.getMinRpcTimeout();
 
+    public static int RETRY_LIMIT = 5;
+
     private final EpaxosState state;
     private final UUID id;
     private final PrepareGroup group;
+    private final int attempt;
 
     private volatile boolean committed;
 
     public PrepareTask(EpaxosState state, UUID id, PrepareGroup group)
     {
+        this(state, id, group, 1);
+    }
+
+    public PrepareTask(EpaxosState state, UUID id, PrepareGroup group, int attempt)
+    {
         this.state = state;
         this.id = id;
         this.group = group;
+        this.attempt = attempt;
     }
 
     private boolean shouldPrepare(Instance instance)
@@ -79,7 +88,7 @@ public class PrepareTask implements Runnable, ICommitCallback
             participantInfo = state.getParticipants(instance);
 
             request = new PrepareRequest(instance.getToken(), instance.getCfId(), state.getCurrentEpoch(instance), instance);
-            callback = state.getPrepareCallback(instance.getId(), instance.getBallot(), participantInfo, group);
+            callback = state.getPrepareCallback(instance.getId(), instance.getBallot(), participantInfo, group, attempt);
         }
         else
         {
@@ -93,7 +102,7 @@ public class PrepareTask implements Runnable, ICommitCallback
             Instance pInstance = state.getInstanceCopy(group.getParentId());
             participantInfo = state.getParticipants(pInstance);
             request = new PrepareRequest(pInstance.getToken(), pInstance.getCfId(), state.getCurrentEpoch(pInstance), id, 0);
-            callback = state.getPrepareCallback(id, 0, participantInfo, group);
+            callback = state.getPrepareCallback(id, 0, participantInfo, group, attempt);
         }
 
         MessageOut<PrepareRequest> message = request.getMessage();
