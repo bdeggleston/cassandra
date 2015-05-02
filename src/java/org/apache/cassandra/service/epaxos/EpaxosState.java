@@ -611,9 +611,6 @@ public class EpaxosState
             return;
         }
 
-        // TODO: make neighbor part of instance
-        //      * if the token ring changes between preaccept and execution, there will be keys that never mark the token instance as committed
-        //      * we should probably have the 'expected' range be part of the preaccept, and be something that requires an accept if different between nodes
         TokenState neighbor = tokenStateManager.get(token, cfId);
 
         // token states for this node's replicated tokens
@@ -870,6 +867,17 @@ public class EpaxosState
         }
     }
 
+    @VisibleForTesting
+    void clearInstanceCache()
+    {
+        instanceCache.invalidateAll();
+    }
+
+    boolean cacheContains(UUID id)
+    {
+        return instanceCache.getIfPresent(id) != null;
+    }
+
     protected void saveInstance(Instance instance)
     {
         logger.trace("Saving instance {}", instance.getId());
@@ -939,7 +947,6 @@ public class EpaxosState
         }
     }
 
-    // TODO: make this more tolerant of hung failure recovery tasks
     public void failureRecoveryTaskCompleted(FailureRecoveryTask task)
     {
         synchronized (failureRecoveryTasks)

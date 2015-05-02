@@ -151,7 +151,6 @@ public class InstanceStreamWriter
                 out.writeBoolean(false);
                 continue;
             }
-            // TODO: else what to do if the range is incorrect?
 
             boolean success = true;
             while (tokenState.getEpoch() < tokenState.getMinStreamEpoch())
