@@ -27,11 +27,24 @@ public class SerializedRequest
 
     public static final IVersionedSerializer<SerializedRequest> serializer = new Serializer();
 
+    private static enum Type
+    {
+        CAS(Serializers.casResult), READ(Serializers.readResult);
+
+        private final IVersionedSerializer serializer;
+
+        Type(IVersionedSerializer serializer)
+        {
+            this.serializer = serializer;
+        }
+    }
+
     private final String keyspaceName;
     private final String cfName;
     private final CASRequest request;
     private final ByteBuffer key;
     private final ConsistencyLevel consistencyLevel;
+    private final Type type;
 
     public static class ExecutionMetaData
     {
@@ -55,6 +68,7 @@ public class SerializedRequest
         request = builder.casRequest;
         key = builder.key;
         consistencyLevel = builder.consistencyLevel;
+        type = builder.type;
     }
 
     public String getKeyspaceName()
@@ -85,6 +99,11 @@ public class SerializedRequest
     public ConsistencyLevel getConsistencyLevel()
     {
         return consistencyLevel;
+    }
+
+    public IVersionedSerializer getSerializer()
+    {
+        return type.serializer;
     }
 
     /**
@@ -158,6 +177,11 @@ public class SerializedRequest
         }
     }
 
+    public Response wrapResponse(Object response)
+    {
+        return new Response(type, response);
+    }
+
     public static class Serializer implements IVersionedSerializer<SerializedRequest>
     {
         @Override
@@ -167,7 +191,15 @@ public class SerializedRequest
             out.writeUTF(request.cfName);
             ByteBufferUtil.writeWithShortLength(request.key, out);
             out.writeShort(request.consistencyLevel.code);
-            CASRequest.serializer.serialize(request.request, out, version);
+            out.writeByte(request.type.ordinal());
+            switch (request.type)
+            {
+                case CAS:
+                    CASRequest.serializer.serialize(request.request, out, version);
+                    break;
+                default:
+                    throw new IllegalStateException("Unsupported request type: " + request.type);
+            }
         }
 
         @Override
@@ -179,7 +211,15 @@ public class SerializedRequest
             builder.cfName(in.readUTF());
             builder.key(ByteBufferUtil.readWithShortLength(in));
             builder.consistencyLevel(ConsistencyLevel.fromCode(in.readShort()));
-            builder.casRequest(CASRequest.serializer.deserialize(in, version));
+            Type type = Type.values()[in.readByte()];
+            switch (type)
+            {
+                case CAS:
+                    builder.casRequest(CASRequest.serializer.deserialize(in, version));
+                    break;
+                default:
+                    throw new IllegalStateException("Unsupported request type: " + type);
+            }
             builder.isRemoteQuery();
 
             return builder.build();
@@ -193,7 +233,16 @@ public class SerializedRequest
             size += TypeSizes.NATIVE.sizeof(request.cfName);
             size += TypeSizes.NATIVE.sizeofWithShortLength(request.key);
             size += 2;
-            size += CASRequest.serializer.serializedSize(request.request, version);
+            size += 1;
+            switch (request.type)
+            {
+                case CAS:
+                    size += CASRequest.serializer.serializedSize(request.request, version);
+                    break;
+                default:
+                    throw new IllegalStateException("Unsupported request type: " + request.type);
+            }
+
             return size;
         }
     }
@@ -213,6 +262,7 @@ public class SerializedRequest
         private CASRequest casRequest;
         private List<ReadCommand> readCommands;
         private boolean isRemote;
+        private Type type = null;
 
         // indicates that a future doesn't need to be created
         private Builder isRemoteQuery()
@@ -247,15 +297,27 @@ public class SerializedRequest
             return this;
         }
 
+        private void checkTypeNotSet()
+        {
+            if (type != null)
+            {
+                throw new IllegalArgumentException("the type has already been set to " + type);
+            }
+        }
+
         public Builder casRequest(CASRequest request)
         {
+            checkTypeNotSet();
             this.casRequest = request;
+            type = Type.CAS;
             return this;
         }
 
         public Builder readCommands(List<ReadCommand> readCommands)
         {
+            checkTypeNotSet();
             this.readCommands = readCommands;
+            type = Type.READ;
             return this;
         }
 
@@ -291,5 +353,45 @@ public class SerializedRequest
         result = 31 * result + key.hashCode();
         result = 31 * result + consistencyLevel.hashCode();
         return result;
+    }
+
+    public static class Response
+    {
+        private final Type type;
+        private final Object response;
+
+        public Response(Type type, Object response)
+        {
+            this.type = type;
+            this.response = response;
+        }
+
+        public Object getResponse()
+        {
+            return response;
+        }
+
+        public static final IVersionedSerializer<Response> serializer = new IVersionedSerializer<Response>()
+        {
+            @Override
+            public void serialize(Response response, DataOutputPlus out, int version) throws IOException
+            {
+                out.writeByte(response.type.ordinal());
+                response.type.serializer.serialize(response.response, out, version);
+            }
+
+            @Override
+            public Response deserialize(DataInput in, int version) throws IOException
+            {
+                Type type = Type.values()[in.readByte()];
+                return new Response(type, type.serializer.deserialize(in, version));
+            }
+
+            @Override
+            public long serializedSize(Response response, int version)
+            {
+                return 1 + response.type.serializer.serializedSize(response.response, version);
+            }
+        };
     }
 }

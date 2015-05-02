@@ -1,5 +1,7 @@
 package org.apache.cassandra.service.epaxos;
 
+import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -9,7 +11,9 @@ import org.apache.cassandra.utils.UUIDSerializer;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -105,6 +109,43 @@ public class Serializers
         public long serializedSize(Range<Token> range, int version)
         {
             return 1 + (range != null ? tokenRange.serializedSize(range, version) : 0);
+        }
+    };
+
+    public static final IVersionedSerializer<ColumnFamily> casResult = ColumnFamily.serializer;  // handles null values
+    public static final IVersionedSerializer<List<Row>> readResult = new IVersionedSerializer<List<Row>>()
+    {
+        @Override
+        public void serialize(List<Row> rows, DataOutputPlus out, int version) throws IOException
+        {
+            out.writeInt(rows.size());
+            for (Row row: rows)
+            {
+                Row.serializer.serialize(row, out, version);
+            }
+        }
+
+        @Override
+        public List<Row> deserialize(DataInput in, int version) throws IOException
+        {
+            int numRows = in.readInt();
+            List<Row> rows = new ArrayList<>(numRows);
+            for (int i=0; i<numRows; i++)
+            {
+                rows.add(Row.serializer.deserialize(in, version));
+            }
+            return rows;
+        }
+
+        @Override
+        public long serializedSize(List<Row> rows, int version)
+        {
+            long size = 4;
+            for (Row row: rows)
+            {
+                size += Row.serializer.serializedSize(row, version);
+            }
+            return size;
         }
     };
 }

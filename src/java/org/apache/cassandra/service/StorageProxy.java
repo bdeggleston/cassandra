@@ -158,6 +158,8 @@ public class StorageProxy implements StorageProxyMBean
         };
     }
 
+    private static final boolean USE_EPAXOS = Boolean.getBoolean("cassandra.use_epaxos");
+
     /**
      * Apply @param updates if and only if the current values in the row for @param key
      * match the provided @param conditions.  The algorithm is "raw" Paxos: that is, Paxos
@@ -212,7 +214,7 @@ public class StorageProxy implements StorageProxyMBean
 
         CFMetaData metadata = Schema.instance.getCFMetaData(keyspaceName, cfName);
 
-        if (Boolean.getBoolean("cassandra.use_epaxos"))
+        if (USE_EPAXOS)
         {
             SerializedRequest.Builder builder = SerializedRequest.builder();
             builder.keyspaceName(keyspaceName);
@@ -222,7 +224,6 @@ public class StorageProxy implements StorageProxyMBean
             builder.consistencyLevel(consistencyForPaxos);
 
             SerializedRequest serializedRequest = builder.build();
-            // TODO: don't do this in this thread
             return EpaxosState.getInstance().query(serializedRequest);
         }
 

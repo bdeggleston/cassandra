@@ -57,6 +57,7 @@ import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.locator.ILatencySubscriber;
 import org.apache.cassandra.metrics.ConnectionMetrics;
 import org.apache.cassandra.metrics.DroppedMessageMetrics;
+import org.apache.cassandra.service.epaxos.SerializedRequest;
 import org.apache.cassandra.sink.SinkManager;
 import org.apache.cassandra.repair.messages.RepairMessage;
 import org.apache.cassandra.security.SSLFactory;
@@ -143,6 +144,7 @@ public final class MessagingService implements MessagingServiceMBean
         EPAXOS_PREPARE,
         EPAXOS_TRYPREPARE,
         EPAXOS_TRYPREACCEPT,
+        EPAXOS_FORWARD_QUERY,
         //
         EPAXOS_READ_REPAIR,
         EPAXOS_FAILURE_RECOVERY
@@ -238,6 +240,7 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.EPAXOS_COMMIT, Stage.MUTATION);
         put(Verb.EPAXOS_PREPARE, Stage.MUTATION);
         put(Verb.EPAXOS_TRYPREACCEPT, Stage.MUTATION);
+        put(Verb.EPAXOS_FORWARD_QUERY, Stage.MISC);
 
         put(Verb.EPAXOS_READ_REPAIR, Stage.MUTATION);
         put(Verb.EPAXOS_FAILURE_RECOVERY, Stage.MISC);
@@ -286,6 +289,7 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.EPAXOS_COMMIT, MessageEnvelope.getSerializer(Instance.serializer));
         put(Verb.EPAXOS_PREPARE, PrepareRequest.serializer);
         put(Verb.EPAXOS_TRYPREACCEPT, TryPreacceptRequest.serializer);
+        put(Verb.EPAXOS_FORWARD_QUERY, SerializedRequest.serializer);
 
         put(Verb.EPAXOS_READ_REPAIR, ReadRepairVerbHandler.Epaxos.serializer);
         put(Verb.EPAXOS_FAILURE_RECOVERY, FailureRecoveryRequest.serializer);
@@ -317,6 +321,7 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.EPAXOS_ACCEPT, AcceptResponse.serializer);
         put(Verb.EPAXOS_PREPARE, MessageEnvelope.getSerializer(Instance.serializer));
         put(Verb.EPAXOS_TRYPREACCEPT, TryPreacceptResponse.serializer);
+        put(Verb.EPAXOS_FORWARD_QUERY, SerializedRequest.Response.serializer);
 
         put(Verb.EPAXOS_READ_REPAIR, WriteResponse.serializer);
     }};
