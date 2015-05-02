@@ -70,6 +70,9 @@ public class EpaxosState
     // how often the TokenMaintenanceTask runs (seconds)
     static final long TOKEN_MAINTENANCE_INTERVAL = Integer.getInteger("cassandra.epaxos.token_state_maintenance_interval", 30);
 
+    // how long we wait between sending the same failure recovery messgae to a node
+    static final long FAILURE_RECOVERY_MESSAGE_INTERVAL = Integer.getInteger("cassandra.epaxos.failure_recovery_message_interval", 30);
+
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
     private final Cache<UUID, Instance> instanceCache;
 
@@ -955,6 +958,26 @@ public class EpaxosState
         }
     }
 
+    private final Map<Pair<FailureRecoveryRequest, InetAddress>, Long> lastFailureMessageTime = Maps.newHashMap();
+
+    protected boolean shouldSendFailureRecoverMessage(FailureRecoveryRequest request, InetAddress endpoint)
+    {
+        long now = System.currentTimeMillis();
+        Pair<FailureRecoveryRequest, InetAddress> key = Pair.create(request, endpoint);
+        synchronized (lastFailureMessageTime)
+        {
+            if (lastFailureMessageTime.containsKey(key))
+            {
+                long then = lastFailureMessageTime.get(key);
+                if (now - then < FAILURE_RECOVERY_MESSAGE_INTERVAL * 1000)
+                    return false;
+            }
+
+            lastFailureMessageTime.put(key, now);
+        }
+        return true;
+    }
+
     /**
      * starts a new failure recovery task for the given endpoint and token.
      */
@@ -964,11 +987,13 @@ public class EpaxosState
         {
             FailureRecoveryRequest request = new FailureRecoveryRequest(token, cfId, epoch);
             logger.debug("Sending {} to {}", request, endpoint);
-            // TODO: track recently sent requests so we don't spam the other server
-            MessageOut<FailureRecoveryRequest> msg = new MessageOut<>(MessagingService.Verb.EPAXOS_FAILURE_RECOVERY,
-                                                                      request,
-                                                                      FailureRecoveryRequest.serializer);
-            sendOneWay(msg, endpoint);
+            if (shouldSendFailureRecoverMessage(request, endpoint))
+            {
+                MessageOut<FailureRecoveryRequest> msg = new MessageOut<>(MessagingService.Verb.EPAXOS_FAILURE_RECOVERY,
+                                                                          request,
+                                                                          FailureRecoveryRequest.serializer);
+                sendOneWay(msg, endpoint);
+            }
         }
     }
 
@@ -1087,7 +1112,6 @@ public class EpaxosState
 
     public boolean reportFutureExecution(ByteBuffer key, UUID cfId, ExecutionInfo info)
     {
-        // TODO: check epoch and maybe start recovery
         return keyStateManager.reportFutureRepair(new CfKey(key, cfId), info);
     }
 
