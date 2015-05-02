@@ -73,6 +73,9 @@ public class EpaxosState
     // how long we wait between sending the same failure recovery messgae to a node
     static final long FAILURE_RECOVERY_MESSAGE_INTERVAL = Integer.getInteger("cassandra.epaxos.failure_recovery_message_interval", 30);
 
+    // for testing only
+    static final boolean QUERY_FORWARDING_DISABLED = Boolean.getBoolean("cassandra.epaxos.disable_query_forwarding");
+
     private final Striped<ReadWriteLock> locks = Striped.readWriteLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
     private final Cache<UUID, Instance> instanceCache;
 
@@ -259,9 +262,24 @@ public class EpaxosState
     {
 
         query.getConsistencyLevel().validateForCas();
-
         Instance instance = createQueryInstance(query);
-        return (T) process(instance, query.getConsistencyLevel());
+
+        ParticipantInfo pi = getParticipants(instance);
+        if (!pi.endpoints.contains(getEndpoint()))
+        {
+            if (!QUERY_FORWARDING_DISABLED)
+            {
+                return (T) forwardQuery(query, pi);
+            }
+            else
+            {
+                throw new InvalidRequestException("Query forwarding disabled");
+            }
+        }
+        else
+        {
+            return (T) process(instance, query.getConsistencyLevel());
+        }
     }
 
     SettableFuture setFuture(Instance instance)
@@ -293,6 +311,42 @@ public class EpaxosState
         {
             resultFutures.remove(instance.getId());
         }
+    }
+
+    public Object forwardQuery(SerializedRequest query, ParticipantInfo pi) throws UnavailableException, WriteTimeoutException
+    {
+        Predicate<InetAddress> isLive = livePredicate();
+        for (InetAddress endpoint: pi.endpoints)
+        {
+            if (isLive.apply(endpoint))
+            {
+                long start = System.currentTimeMillis();
+                ForwardedQueryCallback cb = new ForwardedQueryCallback();
+                MessageOut<SerializedRequest> msg = new MessageOut<>(MessagingService.Verb.EPAXOS_FORWARD_QUERY,
+                                                                     query, SerializedRequest.serializer);
+                sendRR(msg, endpoint, cb);
+
+                try
+                {
+                    return cb.future.get(getQueryTimeout(start), TimeUnit.MILLISECONDS);
+                }
+                catch (ExecutionException | TimeoutException e)
+                {
+                    throw new WriteTimeoutException(WriteType.CAS, query.getConsistencyLevel(), 0, 1);
+                }
+                catch (InterruptedException e)
+                {
+                    throw new AssertionError(e);
+                }
+            }
+        }
+        throw new UnavailableException(query.getConsistencyLevel(), 1, 0);
+    }
+
+    public IVerbHandler<SerializedRequest> getForwardQueryVerbHandler()
+    {
+        return new ForwardedQueryVerbHandler(this);
+
     }
 
     /**

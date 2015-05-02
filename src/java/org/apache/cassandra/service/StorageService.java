@@ -271,6 +271,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_COMMIT, EpaxosState.getInstance().getCommitVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREPARE, EpaxosState.getInstance().getPrepareVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_TRYPREACCEPT, EpaxosState.getInstance().getTryPreacceptVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_FORWARD_QUERY, EpaxosState.getInstance().getForwardQueryVerbHandler());
 
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_READ_REPAIR, new ReadRepairVerbHandler.Epaxos(EpaxosState.getInstance()));
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_FAILURE_RECOVERY, EpaxosState.getInstance().getFailureRecoveryVerbHandler());
