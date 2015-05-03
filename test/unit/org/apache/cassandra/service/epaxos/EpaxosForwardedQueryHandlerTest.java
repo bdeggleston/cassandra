@@ -94,6 +94,6 @@ public class EpaxosForwardedQueryHandlerTest extends AbstractEpaxosTest
 
         Pair<MessageOut, InetAddress> reply = response.get();
         Assert.assertEquals(from, reply.right);
-        Assert.assertEquals(6, ((SerializedRequest.Response)reply.left.payload).getResponse());
+        Assert.assertEquals(6, ((SerializedRequest.Result)reply.left.payload).getValue());
     }
 }

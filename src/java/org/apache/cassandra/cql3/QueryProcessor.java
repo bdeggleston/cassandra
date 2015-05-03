@@ -472,6 +472,9 @@ public class QueryProcessor implements QueryHandler
         if (statement instanceof ModificationStatement.Parsed)
             ((ModificationStatement.Parsed) statement).setQueryString(queryStr);
 
+        if (statement instanceof BatchStatement.Parsed)
+            ((BatchStatement.Parsed) statement).setQueryString(queryStr);
+
         Tracing.trace("Preparing statement");
         return statement.prepare();
     }

@@ -151,12 +151,10 @@ public class TokenStateMaintenanceTask implements Runnable
                 if (state.tokenStateManager.getExact(token, cfId) == null)
                 {
                     logger.info("Running instance for missing token state for token {} on {}", token, cfId);
-                    TokenState parentState = state.tokenStateManager.get(token, cfId);
                     TokenInstance instance = state.createTokenInstance(token, cfId);
-                    ConsistencyLevel cl = parentState.localOnly() ? ConsistencyLevel.LOCAL_SERIAL : ConsistencyLevel.SERIAL;
                     try
                     {
-                        state.process(instance, cl);
+                        state.process(instance);
                     }
                     catch (WriteTimeoutException e)
                     {

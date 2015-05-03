@@ -321,7 +321,7 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.EPAXOS_ACCEPT, AcceptResponse.serializer);
         put(Verb.EPAXOS_PREPARE, MessageEnvelope.getSerializer(Instance.serializer));
         put(Verb.EPAXOS_TRYPREACCEPT, TryPreacceptResponse.serializer);
-        put(Verb.EPAXOS_FORWARD_QUERY, SerializedRequest.Response.serializer);
+        put(Verb.EPAXOS_FORWARD_QUERY, SerializedRequest.Result.serializer);
 
         put(Verb.EPAXOS_READ_REPAIR, WriteResponse.serializer);
     }};

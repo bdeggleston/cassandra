@@ -278,7 +278,7 @@ public class EpaxosState
         }
         else
         {
-            return (T) process(instance, query.getConsistencyLevel());
+            return (T) process(instance);
         }
     }
 
@@ -289,7 +289,12 @@ public class EpaxosState
         return future;
     }
 
-    public Object process(Instance instance, ConsistencyLevel cl) throws WriteTimeoutException
+    private int blockFor(Instance instance)
+    {
+        return instance.getConsistencyLevel().blockFor(Keyspace.open(Schema.instance.getCF(instance.getCfId()).left));
+    }
+
+    public Object process(Instance instance) throws WriteTimeoutException
     {
         long start = System.currentTimeMillis();
         SettableFuture resultFuture = setFuture(instance);
@@ -301,7 +306,7 @@ public class EpaxosState
         }
         catch (ExecutionException | TimeoutException e)
         {
-            throw new WriteTimeoutException(WriteType.CAS, cl, 0, 1);
+            throw new WriteTimeoutException(WriteType.CAS, instance.getConsistencyLevel(), 0, blockFor(instance));
         }
         catch (InterruptedException e)
         {
@@ -618,9 +623,9 @@ public class EpaxosState
         SerializedRequest request = instance.getQuery();
 
         long maxTimestamp = keyStateManager.getMaxTimestamp(request.getCfKey());
-        long minTimestamp = maxTimestamp = Math.max(maxTimestamp + 1, UUIDGen.unixTimestamp(instance.getId()) * 1000);
+        long minTimestamp = Math.max(maxTimestamp + 1, UUIDGen.unixTimestamp(instance.getId()) * 1000);
         SerializedRequest.ExecutionMetaData metaData = request.execute(minTimestamp);
-        maybeSetResultFuture(instance.getId(), metaData.cf);
+        maybeSetResultFuture(instance.getId(), metaData.result);
         return Pair.create(metaData.replayPosition, metaData.maxTimestamp);
     }
 

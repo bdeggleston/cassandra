@@ -22,6 +22,8 @@ import java.util.*;
 
 import com.google.common.base.Function;
 import com.google.common.collect.*;
+
+import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.tracing.Tracing;
 import org.github.jamm.MemoryMeter;
@@ -308,12 +310,26 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         StorageProxy.mutateWithTriggers(mutations, cl, mutateAtomic);
     }
 
-    private ResultMessage executeWithConditions(BatchQueryOptions options, long now)
-    throws RequestExecutionException, RequestValidationException
+    public static class Attrs
+    {
+        public final String query;
+        public final BatchQueryOptions options;
+        public final long ts;
+        public final Type type;
+
+
+        public Attrs(String query, BatchQueryOptions options, long ts, Type type)
+        {
+            this.query = query;
+            this.options = options;
+            this.ts = ts;
+            this.type = type;
+        }
+    }
+
+    public CQL3CasRequest getCasRequest(BatchQueryOptions options, long now) throws InvalidRequestException
     {
         ByteBuffer key = null;
-        String ksName = null;
-        String cfName = null;
         CQL3CasRequest casRequest = null;
         Set<ColumnDefinition> columnsWithConditions = new LinkedHashSet<>();
 
@@ -328,9 +344,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
             if (key == null)
             {
                 key = pks.get(0);
-                ksName = statement.cfm.ksName;
-                cfName = statement.cfm.cfName;
-                casRequest = new CQL3CasRequest(statement.cfm, key, true);
+                casRequest = new CQL3CasRequest(statement.cfm, key, new Attrs(queryString, options, now, type));
             }
             else if (!key.equals(pks.get(0)))
             {
@@ -350,9 +364,33 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
             casRequest.addRowUpdate(clusteringPrefix, statement, statementOptions, timestamp);
         }
 
-        ColumnFamily result = StorageProxy.cas(ksName, cfName, key, casRequest, options.getSerialConsistency(), options.getConsistency());
+        return casRequest;
+    }
 
-        return new ResultMessage.Rows(ModificationStatement.buildCasResultSet(ksName, key, cfName, result, columnsWithConditions, true, options.forStatement(0)));
+    private Set<ColumnDefinition> getColumnsWithConditions()
+    {
+        Set<ColumnDefinition> columnsWithConditions = new LinkedHashSet<>();
+        for (ModificationStatement statement : statements)
+        {
+            if (statement.hasConditions())
+            {
+                // As soon as we have a ifNotExists, we set columnsWithConditions to null so that everything is in the resultSet
+                if (statement.hasIfNotExistCondition() || statement.hasIfExistCondition())
+                    columnsWithConditions = null;
+                else if (columnsWithConditions != null)
+                    Iterables.addAll(columnsWithConditions, statement.getColumnsWithConditions());
+            }
+        }
+        return columnsWithConditions;
+    }
+
+    private ResultMessage executeWithConditions(BatchQueryOptions options, long now)
+    throws RequestExecutionException, RequestValidationException
+    {
+        CQL3CasRequest casRequest = getCasRequest(options, now);
+        CFMetaData cfm = casRequest.getCfm();
+        ColumnFamily result = StorageProxy.cas(cfm.ksName, cfm.cfName, casRequest.getKey(), casRequest, options.getSerialConsistency(), options.getConsistency());
+        return new ResultMessage.Rows(ModificationStatement.buildCasResultSet(cfm.ksName, casRequest.getKey(), cfm.cfName, result, getColumnsWithConditions(), true, options.forStatement(0)));
     }
 
     public ResultMessage executeInternal(QueryState queryState, QueryOptions options) throws RequestValidationException, RequestExecutionException
@@ -398,6 +436,13 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
                 statement.prepareKeyspace(state);
         }
 
+        private volatile String queryString = null;
+
+        public void setQueryString(String queryString)
+        {
+            this.queryString = queryString;
+        }
+
         public ParsedStatement.Prepared prepare() throws InvalidRequestException
         {
             VariableSpecifications boundNames = getBoundVariables();
@@ -411,8 +456,21 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
 
             BatchStatement batchStatement = new BatchStatement(boundNames.size(), type, statements, prepAttrs);
             batchStatement.validate();
+            batchStatement.setQueryString(queryString);
 
             return new ParsedStatement.Prepared(batchStatement, boundNames);
         }
+    }
+
+    private volatile String queryString = null;
+
+    public void setQueryString(String queryString)
+    {
+        this.queryString = queryString;
+    }
+
+    public String getQueryString()
+    {
+        return queryString;
     }
 }

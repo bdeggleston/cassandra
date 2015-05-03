@@ -1140,7 +1140,30 @@ public class StorageProxy implements StorageProxyMBean
         List<Row> rows = null;
         try
         {
-            if (consistency_level.isSerialConsistency())
+            if (consistency_level.isSerialConsistency() && USE_EPAXOS)
+            {
+                if (commands.size() != 1)
+                    throw new InvalidRequestException("SERIAL/LOCAL_SERIAL consistency may only be requested for one row at a time");
+
+                ReadCommand command = commands.get(0);
+                SerializedRequest.Builder builder = SerializedRequest.builder();
+                builder.keyspaceName(command.ksName);
+                builder.cfName(command.cfName);
+                builder.key(command.key);
+                builder.consistencyLevel(consistency_level);
+                builder.readCommand(command);
+
+                SerializedRequest request = builder.build();
+                try
+                {
+                    rows = EpaxosState.getInstance().query(request);
+                }
+                catch (WriteTimeoutException e)
+                {
+                    throw new ReadTimeoutException(consistency_level, 0, consistency_level.blockFor(Keyspace.open(command.ksName)), false);
+                }
+            }
+            else if (consistency_level.isSerialConsistency())
             {
                 // make sure any in-progress paxos writes are done (i.e., committed to a majority of replicas), before performing a quorum read
                 if (commands.size() > 1)
