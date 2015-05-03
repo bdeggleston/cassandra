@@ -23,14 +23,14 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
 
-public class ForwardedQueryCallback<T> implements IAsyncCallback<SerializedRequest.Response>
+public class ForwardedQueryCallback<T> implements IAsyncCallback<SerializedRequest.Result>
 {
     SettableFuture<T> future = SettableFuture.create();
 
     @Override
-    public void response(MessageIn<SerializedRequest.Response> msg)
+    public void response(MessageIn<SerializedRequest.Result> msg)
     {
-        future.set((T) msg.payload.getResponse());
+        future.set((T) msg.payload.getValue());
     }
 
     @Override

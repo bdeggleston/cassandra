@@ -56,9 +56,9 @@ public class ForwardedQueryVerbHandler implements IVerbHandler<SerializedRequest
             @Override
             public void onSuccess(@Nullable Object result)
             {
-                MessageOut<SerializedRequest.Response> msg = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
-                                                                              request.wrapResponse(result),
-                                                                              SerializedRequest.Response.serializer);
+                MessageOut<SerializedRequest.Result> msg = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
+                                                                              request.wrapResult(result),
+                                                                              SerializedRequest.Result.serializer);
                 state.sendReply(msg, id, message.from);
             }
 

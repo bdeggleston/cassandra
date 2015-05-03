@@ -618,9 +618,9 @@ public class EpaxosState
         SerializedRequest request = instance.getQuery();
 
         long maxTimestamp = keyStateManager.getMaxTimestamp(request.getCfKey());
-        long minTimestamp = maxTimestamp = Math.max(maxTimestamp + 1, UUIDGen.unixTimestamp(instance.getId()) * 1000);
+        long minTimestamp = Math.max(maxTimestamp + 1, UUIDGen.unixTimestamp(instance.getId()) * 1000);
         SerializedRequest.ExecutionMetaData metaData = request.execute(minTimestamp);
-        maybeSetResultFuture(instance.getId(), metaData.cf);
+        maybeSetResultFuture(instance.getId(), metaData.result);
         return Pair.create(metaData.replayPosition, metaData.maxTimestamp);
     }
 
