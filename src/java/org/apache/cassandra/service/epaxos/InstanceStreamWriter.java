@@ -100,7 +100,7 @@ public class InstanceStreamWriter
             TokenInstance leftTokenInstance = state.createTokenInstance(range.right, cfId);
             try
             {
-                state.process(leftTokenInstance, ConsistencyLevel.SERIAL);
+                state.process(leftTokenInstance);
             }
             catch (WriteTimeoutException e)
             {
@@ -157,7 +157,7 @@ public class InstanceStreamWriter
             {
                 try
                 {
-                    state.process(state.createEpochInstance(tokenState.getToken(), tokenState.getCfId(), tokenState.getEpoch() + 1), ConsistencyLevel.SERIAL);
+                    state.process(state.createEpochInstance(tokenState.getToken(), tokenState.getCfId(), tokenState.getEpoch() + 1));
                     logger.debug("Incremented token state for streaming");
                 }
                 catch (WriteTimeoutException e)

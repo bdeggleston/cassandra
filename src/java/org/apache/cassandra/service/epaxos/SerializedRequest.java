@@ -19,7 +19,10 @@ import org.slf4j.LoggerFactory;
 import java.io.DataInput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
+
+import com.google.common.collect.Lists;
 
 public abstract class SerializedRequest <T>
 {
@@ -112,7 +115,7 @@ public abstract class SerializedRequest <T>
         return type.serializer;
     }
 
-    public abstract ExecutionMetaData execute(long minTimestamp) throws ReadTimeoutException, WriteTimeoutException;
+    public abstract ExecutionMetaData<T> execute(long minTimestamp) throws ReadTimeoutException, WriteTimeoutException;
 
     public Result<T> wrapResult(T value)
     {
@@ -176,7 +179,7 @@ public abstract class SerializedRequest <T>
         }
 
 
-        public ExecutionMetaData execute(long minTimestamp) throws ReadTimeoutException, WriteTimeoutException
+        public ExecutionMetaData<ColumnFamily> execute(long minTimestamp) throws ReadTimeoutException, WriteTimeoutException
         {
             Tracing.trace("Reading existing values for CAS precondition");
             CFMetaData metadata = Schema.instance.getCFMetaData(keyspaceName, cfName);
@@ -205,7 +208,7 @@ public abstract class SerializedRequest <T>
                 logger.debug("CAS precondition does not match current values {}", current);
                 // We should not return null as this means success
                 ColumnFamily rCF = current == null ? ArrayBackedSortedColumns.factory.create(metadata) : current;
-                return new ExecutionMetaData(rCF, null, 0);
+                return new ExecutionMetaData<>(rCF, null, 0);
             }
             else
             {
@@ -217,7 +220,7 @@ public abstract class SerializedRequest <T>
                     Mutation mutation = new Mutation(key, cf);
                     rp = Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
                     logger.debug("Applying mutation {} at {}", mutation, current);
-                    return new ExecutionMetaData(null, rp, maxTimestamp);
+                    return new ExecutionMetaData<>(null, rp, maxTimestamp);
                 }
                 catch (InvalidRequestException e)
                 {
@@ -229,20 +232,30 @@ public abstract class SerializedRequest <T>
 
     private static class Read extends SerializedRequest<List<Row>>
     {
-        private final List<ReadCommand> readCommands;
+        private final ReadCommand command;
 
         private Read(Builder builder)
         {
             super(builder);
             assert builder.type == Type.READ;
-            assert builder.readCommands != null;
-            readCommands = builder.readCommands;
+            assert builder.readCommand != null;
+            command = builder.readCommand;
+        }
+
+        private static ReadCommand withTs(ReadCommand command, long ts)
+        {
+            return ReadCommand.create(command.ksName, command.key, command.cfName, ts, command.filter());
         }
 
         @Override
-        public ExecutionMetaData execute(long minTimestamp) throws ReadTimeoutException, WriteTimeoutException
+        public ExecutionMetaData<List<Row>> execute(long minTimestamp) throws ReadTimeoutException, WriteTimeoutException
         {
-            throw new AssertionError("implement");
+            Tracing.trace("Executing serialized read");
+            logger.debug("Executing serialized read");
+            Keyspace keyspace = Keyspace.open(command.ksName);
+            Row row = withTs(command, minTimestamp).getRow(keyspace);
+            List<Row> result = Lists.newArrayList(row);
+            return new ExecutionMetaData<>(result, null, minTimestamp);
         }
     }
 
@@ -315,6 +328,9 @@ public abstract class SerializedRequest <T>
                 case CAS:
                     CASRequest.serializer.serialize(((CAS) request).casRequest, out, version);
                     break;
+                case READ:
+                    ReadCommand.serializer.serialize(((Read) request).command, out, version);
+                    break;
                 default:
                     throw new IllegalStateException("Unsupported request type: " + request.type);
             }
@@ -334,6 +350,9 @@ public abstract class SerializedRequest <T>
             {
                 case CAS:
                     builder.casRequest(CASRequest.serializer.deserialize(in, version));
+                    break;
+                case READ:
+                    builder.readCommand(ReadCommand.serializer.deserialize(in, version));
                     break;
                 default:
                     throw new IllegalStateException("Unsupported request type: " + type);
@@ -356,6 +375,9 @@ public abstract class SerializedRequest <T>
                 case CAS:
                     size += CASRequest.serializer.serializedSize(((CAS) request).casRequest, version);
                     break;
+                case READ:
+                    size += ReadCommand.serializer.serializedSize(((Read) request).command, version);
+                    break;
                 default:
                     throw new IllegalStateException("Unsupported request type: " + request.type);
             }
@@ -376,7 +398,7 @@ public abstract class SerializedRequest <T>
         private ByteBuffer key;
         private ConsistencyLevel consistencyLevel;
         private CASRequest casRequest;
-        private List<ReadCommand> readCommands;
+        private ReadCommand readCommand;
         private Type type = null;
 
         public Builder keyspaceName(String keyspaceName)
@@ -421,10 +443,10 @@ public abstract class SerializedRequest <T>
             return this;
         }
 
-        public Builder readCommands(List<ReadCommand> readCommands)
+        public Builder readCommand(ReadCommand readCommand)
         {
             checkTypeNotSet();
-            this.readCommands = readCommands;
+            this.readCommand = readCommand;
             type = Type.READ;
             return this;
         }
@@ -435,12 +457,11 @@ public abstract class SerializedRequest <T>
             {
                 case CAS:
                     return new CAS(this);
+                case READ:
+                    return new Read(this);
                 default:
                     throw new IllegalStateException("unsupported request type: " + type);
             }
         }
     }
-
-
-
 }

@@ -193,7 +193,7 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
         final AtomicReference<TokenInstance> preaccepted = new AtomicReference<>();
         MockCallbackState state = new MockCallbackState(3, 0) {
             @Override
-            public Object process(Instance instance, ConsistencyLevel cl) throws WriteTimeoutException
+            public Object process(Instance instance) throws WriteTimeoutException
             {
                 preaccepted.set((TokenInstance) instance);
                 return null;
