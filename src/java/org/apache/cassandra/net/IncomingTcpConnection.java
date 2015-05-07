@@ -21,6 +21,7 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,21 +31,23 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.UnknownColumnFamilyException;
 import org.apache.cassandra.gms.Gossiper;
 
-public class IncomingTcpConnection extends Thread
+public class IncomingTcpConnection extends Thread implements Closeable
 {
     private static final Logger logger = LoggerFactory.getLogger(IncomingTcpConnection.class);
 
     private final int version;
     private final boolean compressed;
     private final Socket socket;
+    private final Set<Closeable> group;
     public InetAddress from;
 
-    public IncomingTcpConnection(int version, boolean compressed, Socket socket)
+    public IncomingTcpConnection(int version, boolean compressed, Socket socket, Set<Closeable> group)
     {
-        assert socket != null;
+        super("MessagingService-Incoming-" + socket.getInetAddress());
         this.version = version;
         this.compressed = compressed;
         this.socket = socket;
+        this.group = group;
         if (DatabaseDescriptor.getInternodeRecvBufferSize() != null)
         {
             try
@@ -69,9 +72,9 @@ public class IncomingTcpConnection extends Thread
         try
         {
             if (version < MessagingService.VERSION_12)
-                handleLegacyVersion();
-            else
-                handleModernVersion();
+                throw new UnsupportedOperationException("Unable to read obsolete message version " + version + "; the earliest version supported is 1.2.0");
+
+            receiveMessages();
         }
         catch (EOFException e)
         {
@@ -91,16 +94,40 @@ public class IncomingTcpConnection extends Thread
             close();
         }
     }
-
-    private void handleModernVersion() throws IOException
+    
+    @Override
+    public void close()
     {
+        try
+        {
+            if (!socket.isClosed())
+            {
+                socket.close();
+            }
+        }
+        catch (IOException e)
+        {
+            logger.debug("Error closing socket", e);
+        }
+        finally
+        {
+            group.remove(this);
+        }
+    }
+
+    private void receiveMessages() throws IOException
+    {
+        // handshake (true) endpoint versions
         DataOutputStream out = new DataOutputStream(socket.getOutputStream());
         out.writeInt(MessagingService.current_version);
         out.flush();
-
         DataInputStream in = new DataInputStream(socket.getInputStream());
         int maxVersion = in.readInt();
+
         from = CompactEndpointSerializationHelper.deserialize(in);
+        // record the (true) version of the endpoint
+        MessagingService.instance().setVersion(from, maxVersion);
+        logger.debug("Set version for {} to {} (will use {})", from, maxVersion, MessagingService.instance().getVersion(from));
 
         if (compressed)
         {
@@ -112,7 +139,6 @@ public class IncomingTcpConnection extends Thread
             in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), 4096));
         }
 
-        logger.debug("Max version for {} is {}", from, maxVersion);
         if (version > MessagingService.current_version)
         {
             // save the endpoint so gossip will reconnect to it
@@ -120,8 +146,6 @@ public class IncomingTcpConnection extends Thread
             logger.info("Received messages from newer protocol version {}. Ignoring", version);
             return;
         }
-        MessagingService.instance().setVersion(from, maxVersion);
-        logger.debug("Set version for {} to {} (will use {})", from, maxVersion, Math.min(MessagingService.current_version, maxVersion));
         // outbound side will reconnect if necessary to upgrade version
 
         while (true)
@@ -129,11 +153,6 @@ public class IncomingTcpConnection extends Thread
             MessagingService.validateMagic(in.readInt());
             receiveMessage(in, version);
         }
-    }
-
-    private void handleLegacyVersion()
-    {
-        throw new UnsupportedOperationException("Unable to read obsolete message version " + version + "; the earliest version supported is 1.2.0");
     }
 
     private InetAddress receiveMessage(DataInputStream input, int version) throws IOException
@@ -165,21 +184,5 @@ public class IncomingTcpConnection extends Thread
             logger.debug("Received connection from newer protocol version {}. Ignoring message", version);
         }
         return message.from;
-    }
-
-    private void close()
-    {
-        // reset version here, since we set when starting an incoming socket
-        if (from != null)
-            MessagingService.instance().resetVersion(from);
-        try
-        {
-            socket.close();
-        }
-        catch (IOException e)
-        {
-            if (logger.isDebugEnabled())
-                logger.debug("error closing socket", e);
-        }
     }
 }

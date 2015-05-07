@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import re
-from warnings import warn
 from .cqlhandling import CqlParsingRuleSet, Hint
 from cql.cqltypes import (cql_types, lookup_casstype, CompositeType, UTF8Type,
                           ColumnToCollectionType, CounterColumnType, DateType)
@@ -479,6 +478,10 @@ def cf_prop_val_mapkey_completer(ctxt, cass):
             opts.add('cold_reads_to_omit')
         elif csc == 'LeveledCompactionStrategy':
             opts.add('sstable_size_in_mb')
+        elif csc == 'DateTieredCompactionStrategy':
+            opts.add('base_time_seconds')
+            opts.add('max_sstable_age_days')
+            opts.add('timestamp_resolution')
         return map(escape_value, opts)
     return ()
 
@@ -711,6 +714,7 @@ syntax_rules += r'''
                                   ( "AND" [updateopt]=<usingOption> )* )?
                         "SET" <assignment> ( "," <assignment> )*
                         "WHERE" <whereClause>
+                        ( "IF" "EXISTS" )?
                     ;
 <assignment> ::= updatecol=<cident>
                     ( "=" update_rhs=( <value> | <cident> )
@@ -993,7 +997,7 @@ def alter_table_col_completer(ctxt, cass):
 explain_completion('alterInstructions', 'newcol', '<new_column_name>')
 
 syntax_rules += r'''
-<alterKeyspaceStatement> ::= "ALTER" ( "KEYSPACE" | "SCHEMA" ) ks=<alterableKeyspaceName>
+<alterKeyspaceStatement> ::= "ALTER" wat=( "KEYSPACE" | "SCHEMA" ) ks=<alterableKeyspaceName>
                                  "WITH" <property> ( "AND" <property> )*
                            ;
 '''

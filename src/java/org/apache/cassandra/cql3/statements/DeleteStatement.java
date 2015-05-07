@@ -20,6 +20,8 @@ package org.apache.cassandra.cql3.statements;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import com.google.common.collect.Iterators;
+
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.*;
@@ -92,6 +94,23 @@ public class DeleteStatement extends ModificationStatement
         }
     }
 
+    protected void validateWhereClauseForConditions() throws InvalidRequestException
+    {
+        Iterator<CFDefinition.Name> iterator = Iterators.concat(cfm.getCfDef().partitionKeys().iterator(), cfm.getCfDef().clusteringColumns().iterator());
+        while (iterator.hasNext())
+        {
+            CFDefinition.Name name = iterator.next();
+            Restriction restriction = processedKeys.get(name.name);
+            if (restriction == null || !(restriction.isEQ() || restriction.isIN()))
+            {
+                throw new InvalidRequestException(
+                        String.format("DELETE statements must restrict all PRIMARY KEY columns with equality relations in order " +
+                                      "to use IF conditions, but column '%s' is not restricted", name.name));
+            }
+        }
+
+    }
+
     public static class Parsed extends ModificationStatement.Parsed
     {
         private final List<Operation.RawDeletion> deletions;
@@ -101,7 +120,7 @@ public class DeleteStatement extends ModificationStatement
                       Attributes.Raw attrs,
                       List<Operation.RawDeletion> deletions,
                       List<Relation> whereClause,
-                      List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions,
+                      List<Pair<ColumnIdentifier.Raw, ColumnCondition.Raw>> conditions,
                       boolean ifExists)
         {
             super(name, attrs, conditions, false, ifExists);
@@ -115,16 +134,17 @@ public class DeleteStatement extends ModificationStatement
 
             for (Operation.RawDeletion deletion : deletions)
             {
-                CFDefinition.Name name = cfDef.get(deletion.affectedColumn());
+                ColumnIdentifier id = deletion.affectedColumn().prepare(cfDef.cfm);
+                CFDefinition.Name name = cfDef.get(id);
                 if (name == null)
-                    throw new InvalidRequestException(String.format("Unknown identifier %s", deletion.affectedColumn()));
+                    throw new InvalidRequestException(String.format("Unknown identifier %s", id));
 
                 // For compact, we only have one value except the key, so the only form of DELETE that make sense is without a column
                 // list. However, we support having the value name for coherence with the static/sparse case
                 if (name.isPrimaryKeyColumn())
                     throw new InvalidRequestException(String.format("Invalid identifier %s for deletion (should not be a PRIMARY KEY part)", name));
 
-                Operation op = deletion.prepare(name);
+                Operation op = deletion.prepare(name, cfDef.cfm);
                 op.collectMarkerSpecification(boundNames);
                 stmt.addOperation(op);
             }

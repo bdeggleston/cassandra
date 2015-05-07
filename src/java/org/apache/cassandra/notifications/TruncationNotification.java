@@ -15,14 +15,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.cassandra.db;
+package org.apache.cassandra.notifications;
 
-import org.apache.cassandra.thrift.InvalidRequestException;
-
-public class ColumnFamilyNotDefinedException extends InvalidRequestException
+/**
+ * Fired during truncate, after the memtable has been flushed but before any
+ * snapshot is taken and SSTables are discarded
+ */
+public class TruncationNotification implements INotification
 {
-    public ColumnFamilyNotDefinedException(String message)
+    public final long truncatedAt;
+
+    public TruncationNotification(long truncatedAt)
     {
-        super(message);
+        this.truncatedAt = truncatedAt;
     }
 }

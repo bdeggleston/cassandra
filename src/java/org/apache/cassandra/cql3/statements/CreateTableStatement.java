@@ -36,7 +36,6 @@ import org.apache.cassandra.exceptions.AlreadyExistsException;
 import org.apache.cassandra.io.compress.CompressionParameters;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.MigrationManager;
-import org.apache.cassandra.thrift.CqlResult;
 import org.apache.cassandra.transport.messages.ResultMessage;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
@@ -158,7 +157,7 @@ public class CreateTableStatement extends SchemaAlteringStatement
         cfmd.defaultValidator(defaultValidator)
             .keyValidator(keyValidator)
             .columnMetadata(getColumns())
-            .setDense(isDense);
+            .isDense(isDense);
 
         cfmd.addColumnMetadataFromAliases(keyAliases, keyValidator, ColumnDefinition.Type.PARTITION_KEY);
         cfmd.addColumnMetadataFromAliases(columnAliases, comparator, ColumnDefinition.Type.CLUSTERING_KEY);
@@ -208,6 +207,7 @@ public class CreateTableStatement extends SchemaAlteringStatement
 
             CreateTableStatement stmt = new CreateTableStatement(cfName, properties, ifNotExists, staticColumns);
 
+            boolean hasCounters = false;
             Map<ByteBuffer, CollectionType> definedCollections = null;
             for (Map.Entry<ColumnIdentifier, CQL3Type> entry : definitions.entrySet())
             {
@@ -219,6 +219,9 @@ public class CreateTableStatement extends SchemaAlteringStatement
                         definedCollections = new HashMap<ByteBuffer, CollectionType>();
                     definedCollections.put(id.key, (CollectionType)pt.getType());
                 }
+                else if (entry.getValue().isCounter())
+                    hasCounters = true;
+
                 stmt.columns.put(id, pt.getType()); // we'll remove what is not a column below
             }
 
@@ -226,6 +229,8 @@ public class CreateTableStatement extends SchemaAlteringStatement
                 throw new InvalidRequestException("No PRIMARY KEY specifed (exactly one required)");
             else if (keyAliases.size() > 1)
                 throw new InvalidRequestException("Multiple PRIMARY KEYs specifed (exactly one required)");
+            else if (hasCounters && properties.getDefaultTimeToLive() > 0)
+                throw new InvalidRequestException("Cannot set default_time_to_live on a table with counters");
 
             List<ColumnIdentifier> kAliases = keyAliases.get(0);
 
@@ -431,16 +436,6 @@ public class CreateTableStatement extends SchemaAlteringStatement
         public void setCompactStorage()
         {
             useCompactStorage = true;
-        }
-
-        public void checkAccess(ClientState state)
-        {
-            throw new UnsupportedOperationException();
-        }
-
-        public CqlResult execute(ClientState state, List<ByteBuffer> variables)
-        {
-            throw new UnsupportedOperationException();
         }
     }
 }

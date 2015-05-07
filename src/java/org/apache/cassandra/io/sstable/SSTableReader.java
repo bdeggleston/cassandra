@@ -593,7 +593,10 @@ public class SSTableReader extends SSTable implements Closeable
     private void validate()
     {
         if (this.first.compareTo(this.last) > 0)
+        {
+            releaseReference();
             throw new IllegalStateException(String.format("SSTable first key %s > last key %s", this.first, this.last));
+        }
     }
 
     /** get the position in the index file to start scanning to find the given key (at most indexInterval keys away) */
@@ -624,7 +627,25 @@ public class SSTableReader extends SSTable implements Closeable
         if (!compression)
             throw new IllegalStateException(this + " is not compressed");
 
-        return ((ICompressedFile) dfile).getMetadata();
+        CompressionMetadata cmd = ((ICompressedFile) dfile).getMetadata();
+
+        //We need the parent cf metadata
+        String cfName = metadata.isSecondaryIndex() ? metadata.getParentColumnFamilyName() : metadata.cfName;
+        cmd.parameters.setLiveMetadata(Schema.instance.getCFMetaData(metadata.ksName, cfName));
+
+        return cmd;
+    }
+
+    /**
+     * Returns the amount of memory in bytes used off heap by the compression meta-data.
+     * @return the amount of memory in bytes used off heap by the compression meta-data
+     */
+    public long getCompressionMetadataOffHeapSize()
+    {
+        if (!compression)
+            return 0;
+
+        return getCompressionMetadata().offHeapSize();
     }
 
     /**
@@ -643,6 +664,24 @@ public class SSTableReader extends SSTable implements Closeable
     public long getBloomFilterSerializedSize()
     {
         return bf.serializedSize();
+    }
+
+    /**
+     * Returns the amount of memory in bytes used off heap by the bloom filter.
+     * @return the amount of memory in bytes used off heap by the bloom filter
+     */
+    public long getBloomFilterOffHeapSize()
+    {
+        return bf.offHeapSize();
+    }
+
+    /**
+     * Returns the amount of memory in bytes used off heap by the index summary.
+     * @return the amount of memory in bytes used off heap by the index summary
+     */
+    public long getIndexSummaryOffHeapSize()
+    {
+        return indexSummary.offHeapSize();
     }
 
     /**
@@ -851,7 +890,10 @@ public class SSTableReader extends SSTable implements Closeable
                 RowIndexEntry cachedEntry = keyCache.get(unifiedKey);
                 keyCacheRequest.incrementAndGet();
                 if (cachedEntry != null)
+                {
                     keyCacheHit.incrementAndGet();
+                    bloomFilterTracker.addTruePositive();
+                }
                 return cachedEntry;
             }
             else
@@ -1122,6 +1164,11 @@ public class SSTableReader extends SSTable implements Closeable
             logger.debug("Marking " + getFilename() + " compacted");
 
         return !isCompacted.getAndSet(true);
+    }
+
+    public boolean isMarkedCompacted()
+    {
+        return isCompacted.get();
     }
 
     public void markSuspect()

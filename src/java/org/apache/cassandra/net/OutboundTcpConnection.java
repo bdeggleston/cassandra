@@ -55,7 +55,7 @@ public class OutboundTcpConnection extends Thread
     private volatile boolean isStopped = false;
 
     private static final int OPEN_RETRY_DELAY = 100; // ms between retries
-    private static final int WAIT_FOR_VERSION_MAX_TIME = 5000;
+    public static final int WAIT_FOR_VERSION_MAX_TIME = 5000;
     private static final int NO_VERSION = Integer.MIN_VALUE;
 
     // sending thread reads from "active" (one of queue1, queue2) until it is empty.
@@ -73,7 +73,7 @@ public class OutboundTcpConnection extends Thread
 
     public OutboundTcpConnection(OutboundTcpConnectionPool pool)
     {
-        super("WRITE-" + pool.endPoint());
+        super("MessagingService-Outgoing-" + pool.endPoint());
         this.poolReference = pool;
     }
 
@@ -334,10 +334,14 @@ public class OutboundTcpConnection extends Thread
                     disconnect();
                     continue;
                 }
+                else
+                {
+                    MessagingService.instance().setVersion(poolReference.endPoint(), maxTargetVersion);
+                }
+
                 if (targetVersion > maxTargetVersion)
                 {
                     logger.debug("Target max version is {}; will reconnect with that version", maxTargetVersion);
-                    MessagingService.instance().setVersion(poolReference.endPoint(), maxTargetVersion);
                     disconnect();
                     return false;
                 }
@@ -346,7 +350,6 @@ public class OutboundTcpConnection extends Thread
                 {
                     logger.trace("Detected higher max version {} (using {}); will reconnect when queued messages are done",
                                  maxTargetVersion, targetVersion);
-                    MessagingService.instance().setVersion(poolReference.endPoint(), Math.min(MessagingService.current_version, maxTargetVersion));
                     softCloseSocket();
                 }
 

@@ -44,22 +44,22 @@ public class AlterTableStatement extends SchemaAlteringStatement
 
     public final Type oType;
     public final CQL3Type validator;
-    public final ColumnIdentifier columnName;
+    public final ColumnIdentifier.Raw rawColumnName;
     private final CFPropDefs cfProps;
-    private final Map<ColumnIdentifier, ColumnIdentifier> renames;
+    private final Map<ColumnIdentifier.Raw, ColumnIdentifier.Raw> renames;
     private final boolean isStatic; // Only for ALTER ADD
 
     public AlterTableStatement(CFName name,
                                Type type,
-                               ColumnIdentifier columnName,
+                               ColumnIdentifier.Raw columnName,
                                CQL3Type validator,
                                CFPropDefs cfProps,
-                               Map<ColumnIdentifier, ColumnIdentifier> renames,
+                               Map<ColumnIdentifier.Raw, ColumnIdentifier.Raw> renames,
                                boolean isStatic)
     {
         super(name);
         this.oType = type;
-        this.columnName = columnName;
+        this.rawColumnName = columnName;
         this.validator = validator; // used only for ADD/ALTER commands
         this.cfProps = cfProps;
         this.renames = renames;
@@ -82,10 +82,19 @@ public class AlterTableStatement extends SchemaAlteringStatement
         CFMetaData cfm = meta.clone();
 
         CFDefinition cfDef = meta.getCfDef();
-        CFDefinition.Name name = columnName == null ? null : cfDef.get(columnName);
+
+        ColumnIdentifier columnName = null;
+        CFDefinition.Name name = null;
+        if (rawColumnName != null)
+        {
+            columnName = rawColumnName.prepare(cfm);
+            name = cfDef.get(columnName);
+        }
+
         switch (oType)
         {
             case ADD:
+                assert columnName != null;
                 if (cfDef.isCompact)
                     throw new InvalidRequestException("Cannot add new column to a COMPACT STORAGE table");
 
@@ -108,6 +117,10 @@ public class AlterTableStatement extends SchemaAlteringStatement
                             throw new InvalidRequestException(String.format("Invalid column name %s because it conflicts with an existing column", columnName));
                     }
                 }
+
+                // Cannot re-add a dropped counter column. See #7831.
+                if (meta.getDefaultValidator().isCommutative() && meta.getDroppedColumns().containsKey(columnName.key))
+                    throw new InvalidRequestException(String.format("Cannot re-add previously dropped counter column %s", columnName));
 
                 AbstractType<?> type = validator.getType();
                 if (type instanceof CollectionType)
@@ -148,6 +161,7 @@ public class AlterTableStatement extends SchemaAlteringStatement
                 break;
 
             case ALTER:
+                assert columnName != null;
                 if (name == null)
                     throw new InvalidRequestException(String.format("Column %s was not found in table %s", columnName, columnFamily()));
 
@@ -224,6 +238,7 @@ public class AlterTableStatement extends SchemaAlteringStatement
                 break;
 
             case DROP:
+                assert columnName != null;
                 if (cfDef.isCompact || !cfDef.isComposite)
                     throw new InvalidRequestException("Cannot drop columns from a COMPACT STORAGE table");
                 if (name == null)
@@ -253,13 +268,17 @@ public class AlterTableStatement extends SchemaAlteringStatement
                     throw new InvalidRequestException(String.format("ALTER COLUMNFAMILY WITH invoked, but no parameters found"));
 
                 cfProps.validate();
+
+                if (meta.isCounter() && cfProps.getDefaultTimeToLive() > 0)
+                    throw new InvalidRequestException("Cannot set default_time_to_live on a table with counters");
+
                 cfProps.applyToCFMetadata(cfm);
                 break;
             case RENAME:
-                for (Map.Entry<ColumnIdentifier, ColumnIdentifier> entry : renames.entrySet())
+                for (Map.Entry<ColumnIdentifier.Raw, ColumnIdentifier.Raw> entry : renames.entrySet())
                 {
-                    ColumnIdentifier from = entry.getKey();
-                    ColumnIdentifier to = entry.getValue();
+                    ColumnIdentifier from = entry.getKey().prepare(cfm);
+                    ColumnIdentifier to = entry.getValue().prepare(cfm);
                     cfm.renameColumn(from.key, from.toString(), to.key, to.toString());
                 }
                 break;
@@ -274,7 +293,7 @@ public class AlterTableStatement extends SchemaAlteringStatement
         return String.format("AlterTableStatement(name=%s, type=%s, column=%s, validator=%s)",
                              cfName,
                              oType,
-                             columnName,
+                             rawColumnName,
                              validator);
     }
 

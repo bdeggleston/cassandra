@@ -13,8 +13,47 @@ restore snapshots created with the previous major version using the
 'sstableloader' tool. You can upgrade the file format of your snapshots
 using the provided 'sstableupgrade' tool.
 
+2.0.14
+======
+    The default JMX config now listens to localhost only. You must enable 
+the other JMX flags in cassandra-env.sh manually.
+
+2.0.13
+======
+
+Upgrading
+---------
+    - Prepending a list to a list collection was erroneously resulting in
+      the prepended list being reversed upon insertion.  If you were depending
+      on this buggy behavior, note that it has been corrected.
+
+2.0.12
+======
+
+Upgrading
+---------
+    - Nothing specific to this release, but refer to previous entries if you
+      are upgrading from a previous version.
+
+
+2.0.11
+======
+
+Upgrading
+---------
+    - Nothing specific to this release, but refer to previous entries if you
+      are upgrading from a previous version.
+
+New features
+------------
+    - DateTieredCompactionStrategy added, optimized for time series data and groups
+      data that is written closely in time (CASSANDRA-6602 for details). Consider
+      this experimental for now.
+
+
 2.0.10
 ======
+
 New features
 ------------
     - CqlPaginRecordReader and CqlPagingInputFormat have both been removed.

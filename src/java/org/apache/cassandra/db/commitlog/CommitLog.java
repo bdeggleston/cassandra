@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -106,9 +107,7 @@ public class CommitLog implements CommitLogMBean
      */
     public int recover() throws IOException
     {
-        archiver.maybeRestoreArchive();
-
-        File[] files = new File(DatabaseDescriptor.getCommitLogLocation()).listFiles(new FilenameFilter()
+        FilenameFilter unmanagedFilesFilter = new FilenameFilter()
         {
             public boolean accept(File dir, String name)
             {
@@ -117,8 +116,19 @@ public class CommitLog implements CommitLogMBean
                 // ahead and allow writes before recover(), and just skip active segments when we do.
                 return CommitLogDescriptor.isValid(name) && !instance.allocator.manages(name);
             }
-        });
+        };
 
+        // submit all existing files in the commit log dir for archiving prior to recovery - CASSANDRA-6904
+        for (File file : new File(DatabaseDescriptor.getCommitLogLocation()).listFiles(unmanagedFilesFilter))
+        {
+            archiver.maybeArchive(file.getPath(), file.getName());
+            archiver.maybeWaitForArchiving(file.getName());
+        }
+
+        assert archiver.archivePending.isEmpty() : "Not all commit log archive tasks were completed before restore";
+        archiver.maybeRestoreArchive();
+
+        File[] files = new File(DatabaseDescriptor.getCommitLogLocation()).listFiles(unmanagedFilesFilter);
         int replayed = 0;
         if (files.length == 0)
         {
@@ -289,6 +299,36 @@ public class CommitLog implements CommitLogMBean
         return metrics.totalCommitLogSize.value();
     }
 
+    @Override
+    public String getArchiveCommand()
+    {
+        return archiver.archiveCommand;
+    }
+
+    @Override
+    public String getRestoreCommand()
+    {
+        return archiver.restoreCommand;
+    }
+
+    @Override
+    public String getRestoreDirectories()
+    {
+        return archiver.restoreDirectories;
+    }
+
+    @Override
+    public long getRestorePointInTime()
+    {
+        return archiver.restorePointInTime;
+    }
+
+    @Override
+    public String getRestorePrecision()
+    {
+        return archiver.precision.toString();
+    }
+
     /**
      * Fetches a new segment file from the allocator and activates it.
      *
@@ -369,7 +409,8 @@ public class CommitLog implements CommitLogMBean
         }
     }
 
-    static boolean handleCommitError(String message, Throwable t)
+    @VisibleForTesting
+    public static boolean handleCommitError(String message, Throwable t)
     {
         switch (DatabaseDescriptor.getCommitFailurePolicy())
         {

@@ -217,7 +217,7 @@ public final class CFMetaData
                                                              + "started_at timestamp,"
                                                              + "parameters map<text, text>,"
                                                              + "duration int"
-                                                             + ") WITH COMMENT='traced sessions'",
+                                                             + ") WITH COMMENT='traced sessions' AND default_time_to_live=86400",
                                                              Tracing.TRACE_KS);
 
     public static final CFMetaData TraceEventsCf = compile("CREATE TABLE " + Tracing.EVENTS_CF + " ("
@@ -228,7 +228,7 @@ public final class CFMetaData
                                                            + "activity text,"
                                                            + "source_elapsed int,"
                                                            + "PRIMARY KEY (session_id, event_id)"
-                                                           + ")",
+                                                           + ") WITH default_time_to_live=86400",
                                                            Tracing.TRACE_KS);
 
     public static final CFMetaData BatchlogCf = compile("CREATE TABLE " + SystemKeyspace.BATCHLOG_CF + " ("
@@ -390,7 +390,7 @@ public final class CFMetaData
     private volatile Double bloomFilterFpChance = null;
     private volatile Caching caching = DEFAULT_CACHING_STRATEGY;
     private volatile int indexInterval = DEFAULT_INDEX_INTERVAL;
-    private int memtableFlushPeriod = 0;
+    private volatile int memtableFlushPeriod = 0;
     private volatile int defaultTimeToLive = DEFAULT_DEFAULT_TIME_TO_LIVE;
     private volatile SpeculativeRetry speculativeRetry = DEFAULT_SPECULATIVE_RETRY;
     private volatile boolean populateIoCacheOnFlush = DEFAULT_POPULATE_IO_CACHE_ON_FLUSH;
@@ -452,7 +452,7 @@ public final class CFMetaData
     public CFMetaData populateIoCacheOnFlush(boolean prop) {populateIoCacheOnFlush = prop; return this;}
     public CFMetaData droppedColumns(Map<ByteBuffer, Long> cols) {droppedColumns = cols; return this;}
     public CFMetaData triggers(Map<String, TriggerDefinition> prop) {triggers = prop; return this;}
-    public CFMetaData setDense(Boolean prop) {isDense = prop; return this;}
+    public CFMetaData isDense(Boolean prop) {isDense = prop; return this;}
 
     public CFMetaData(String keyspace, String name, ColumnFamilyType type, AbstractType<?> comp, AbstractType<?> subcc)
     {
@@ -605,7 +605,7 @@ public final class CFMetaData
                       .populateIoCacheOnFlush(oldCFMD.populateIoCacheOnFlush)
                       .droppedColumns(new HashMap<>(oldCFMD.droppedColumns))
                       .triggers(new HashMap<>(oldCFMD.triggers))
-                      .setDense(oldCFMD.isDense)
+                      .isDense(oldCFMD.isDense)
                       .rebuild();
     }
 
@@ -631,6 +631,23 @@ public final class CFMetaData
     public boolean isSuper()
     {
         return cfType == ColumnFamilyType.Super;
+    }
+
+    /**
+      * The '.' char is the only way to identify if the CFMetadata is for a secondary index
+      */
+    public boolean isSecondaryIndex()
+    {
+        return cfName.contains(".");
+    }
+
+    /**
+     *
+     * @return The name of the parent cf if this is a seconday index
+     */
+    public String getParentColumnFamilyName()
+    {
+       return isSecondaryIndex() ? cfName.substring(0, cfName.indexOf('.')) : null;
     }
 
     public double getReadRepairChance()
@@ -784,6 +801,11 @@ public final class CFMetaData
     public Map<ByteBuffer, Long> getDroppedColumns()
     {
         return droppedColumns;
+    }
+
+    public Boolean getIsDense()
+    {
+        return isDense;
     }
 
     public boolean equals(Object obj)
@@ -1089,6 +1111,7 @@ public final class CFMetaData
         memtableFlushPeriod = cfm.memtableFlushPeriod;
         caching = cfm.caching;
         defaultTimeToLive = cfm.defaultTimeToLive;
+        indexInterval = cfm.indexInterval;
         speculativeRetry = cfm.speculativeRetry;
         populateIoCacheOnFlush = cfm.populateIoCacheOnFlush;
 
@@ -1117,7 +1140,7 @@ public final class CFMetaData
 
         triggers = cfm.triggers;
 
-        setDense(cfm.isDense);
+        isDense(cfm.isDense);
 
         rebuild();
         logger.debug("application result is {}", this);
@@ -1712,7 +1735,7 @@ public final class CFMetaData
                 cfm.populateIoCacheOnFlush(result.getBoolean("populate_io_cache_on_flush"));
 
             if (result.has("is_dense"))
-                cfm.setDense(result.getBoolean("is_dense"));
+                cfm.isDense(result.getBoolean("is_dense"));
 
             /*
              * The info previously hold by key_aliases, column_aliases and value_alias is now stored in column_metadata (because 1) this
@@ -1964,7 +1987,7 @@ public final class CFMetaData
     {
         List<ColumnDefinition> pkCols = nullInitializedList(keyValidator.componentsCount());
         if (isDense == null)
-            setDense(isDense(comparator, column_metadata.values()));
+            isDense(calculateIsDense(comparator, column_metadata.values()));
         int nbCkCols = isDense
                      ? comparator.componentsCount()
                      : comparator.componentsCount() - (hasCollection() ? 2 : 1);
@@ -2087,7 +2110,7 @@ public final class CFMetaData
      * information for table just created through thrift, nor for table prior to CASSANDRA-7744, so this
      * method does its best to infer whether the table is dense or not based on other elements.
      */
-    private static boolean isDense(AbstractType<?> comparator, Collection<ColumnDefinition> defs)
+    private static boolean calculateIsDense(AbstractType<?> comparator, Collection<ColumnDefinition> defs)
     {
         /*
          * As said above, this method is only here because we need to deal with thrift upgrades.
@@ -2168,6 +2191,11 @@ public final class CFMetaData
             return false;
 
         return true;
+    }
+
+    public boolean isCounter()
+    {
+        return defaultValidator.isCounter();
     }
 
     public boolean hasStaticColumns()

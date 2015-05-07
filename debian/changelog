@@ -1,3 +1,30 @@
+<<<<<<< HEAD
+=======
+cassandra (2.0.14) unstable; urgency=medium
+
+  * New release
+
+ -- Jake Luciani <jake@apache.org>  Thu, 26 Mar 2015 14:57:39 -0400
+
+>>>>>>> cassandra-2.0.14-build
+cassandra (2.0.13) unstable; urgency=medium
+
+  * New release
+
+ -- Jake Luciani <jake@apache.org>  Thu, 12 Mar 2015 21:00:06 -0400
+
+cassandra (2.0.12) unstable; urgency=medium
+
+  * New release 
+
+ -- Jake Luciani <jake@apache.org>  Fri, 09 Jan 2015 15:20:30 -0500
+
+cassandra (2.0.11) unstable; urgency=medium
+
+  * New release
+
+ -- Sylvain Lebresne <slebresne@apache.org>  Fri, 17 Oct 2014 13:01:02 +0200
+
 cassandra (2.0.10) unstable; urgency=medium
 
   * New release

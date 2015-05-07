@@ -60,6 +60,11 @@ public class SchemaLoader
 
     public static void loadSchema(boolean withOldCfIds) throws IOException, ConfigurationException
     {
+        loadSchema(withOldCfIds, null);
+    }
+
+    public static void loadSchema(boolean withOldCfIds, Integer compressionChunkLength) throws IOException, ConfigurationException
+    {
         // Cleanup first
         cleanupAndLeaveDirs();
 
@@ -78,7 +83,7 @@ public class SchemaLoader
         startGossiper();
         // if you're messing with low-level sstable stuff, it can be useful to inject the schema directly
         // Schema.instance.load(schemaDefinition(withOldCfIds));
-        for (KSMetaData ksm : schemaDefinition(withOldCfIds))
+        for (KSMetaData ksm : schemaDefinition(withOldCfIds, compressionChunkLength))
             MigrationManager.announceNewKeyspace(ksm);
     }
 
@@ -93,7 +98,7 @@ public class SchemaLoader
         Gossiper.instance.stop();
     }
 
-    public static Collection<KSMetaData> schemaDefinition(boolean withOldCfIds) throws ConfigurationException
+    public static Collection<KSMetaData> schemaDefinition(boolean withOldCfIds, Integer compressionChunkLength) throws ConfigurationException
     {
         List<KSMetaData> schema = new ArrayList<KSMetaData>();
 
@@ -126,6 +131,8 @@ public class SchemaLoader
         Map<Byte, AbstractType<?>> aliases = new HashMap<Byte, AbstractType<?>>();
         aliases.put((byte)'b', BytesType.instance);
         aliases.put((byte)'t', TimeUUIDType.instance);
+        aliases.put((byte)'B', ReversedType.getInstance(BytesType.instance));
+        aliases.put((byte)'T', ReversedType.getInstance(TimeUUIDType.instance));
         AbstractType<?> dynamicComposite = DynamicCompositeType.getInstance(aliases);
 
         // these column definitions will will be applied to the jdbc utf and integer column familes respectively.
@@ -342,7 +349,7 @@ public class SchemaLoader
 
 
         if (Boolean.parseBoolean(System.getProperty("cassandra.test.compression", "false")))
-            useCompression(schema);
+            useCompression(schema, compressionChunkLength);
 
         return schema;
     }
@@ -366,13 +373,15 @@ public class SchemaLoader
                 }});
     }
 
-    private static void useCompression(List<KSMetaData> schema)
+    private static void useCompression(List<KSMetaData> schema, Integer chunkLength) throws ConfigurationException
     {
         for (KSMetaData ksm : schema)
         {
             for (CFMetaData cfm : ksm.cfMetaData().values())
             {
-                cfm.compressionParameters(new CompressionParameters(SnappyCompressor.instance));
+                cfm.compressionParameters(new CompressionParameters(SnappyCompressor.instance,
+                                                                    chunkLength,
+                                                                    Collections.<String, String>emptyMap()));
             }
         }
     }

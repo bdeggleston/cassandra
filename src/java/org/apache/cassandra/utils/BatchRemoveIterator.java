@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,18 +15,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.cassandra.cli.transport;
+package org.apache.cassandra.utils;
 
-import org.apache.thrift.transport.TFramedTransport;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportFactory;
+import java.util.Iterator;
 
-public class FramedTransportFactory extends TTransportFactory
+/**
+ * Iterator that allows us to more efficiently remove many items
+ */
+public interface BatchRemoveIterator<T> extends Iterator<T>
 {
-    public static final int DEFAULT_MAX_FRAME_SIZE = 15 * 1024 * 1024; // 15 MiB
-
-    public TTransport getTransport(TTransport base)
-    {
-        return new TFramedTransport(base, DEFAULT_MAX_FRAME_SIZE);
-    }
+    /**
+     * Commits the remove operations in this batch iterator. After this no more
+     * deletes can be made. Any further calls to remove() or commit() will throw IllegalStateException.
+     */
+    void commit();
 }

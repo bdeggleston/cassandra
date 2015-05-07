@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -43,6 +44,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
     protected ColumnFamily columnFamily;
     protected ByteBuffer currentSuperColumn;
     protected final CounterId counterid = CounterId.generate();
+    protected static AtomicInteger generation = new AtomicInteger(0);
 
     public AbstractSSTableSimpleWriter(File directory, CFMetaData metadata, IPartitioner partitioner)
     {
@@ -80,9 +82,15 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
                 return false;
             }
         });
-        int maxGen = 0;
+        int maxGen = generation.getAndIncrement();
         for (Descriptor desc : existing)
-            maxGen = Math.max(maxGen, desc.generation);
+        {
+            while (desc.generation > maxGen)
+            {
+                maxGen = generation.getAndIncrement();
+            }
+        }
+
         return new Descriptor(directory, keyspace, columnFamily, maxGen + 1, true).filenameFor(Component.DATA);
     }
 
@@ -111,7 +119,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
         currentSuperColumn = name;
     }
 
-    private void addColumn(Column column)
+    protected void addColumn(Column column) throws IOException
     {
         if (columnFamily.metadata().isSuper())
         {
@@ -129,7 +137,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
      * @param value the column value
      * @param timestamp the column timestamp
      */
-    public void addColumn(ByteBuffer name, ByteBuffer value, long timestamp)
+    public void addColumn(ByteBuffer name, ByteBuffer value, long timestamp) throws IOException
     {
         addColumn(new Column(name, value, timestamp));
     }
@@ -144,7 +152,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
      * expiring the column, and as a consequence should be synchronized with the cassandra servers time. If {@code timestamp} represents
      * the insertion time in microseconds (which is not required), this should be {@code (timestamp / 1000) + (ttl * 1000)}.
      */
-    public void addExpiringColumn(ByteBuffer name, ByteBuffer value, long timestamp, int ttl, long expirationTimestampMS)
+    public void addExpiringColumn(ByteBuffer name, ByteBuffer value, long timestamp, int ttl, long expirationTimestampMS) throws IOException
     {
         addColumn(new ExpiringColumn(name, value, timestamp, ttl, (int)(expirationTimestampMS / 1000)));
     }
@@ -154,7 +162,7 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
      * @param name the column name
      * @param value the value of the counter
      */
-    public void addCounterColumn(ByteBuffer name, long value)
+    public void addCounterColumn(ByteBuffer name, long value) throws IOException
     {
         addColumn(new CounterColumn(name,
                                     CounterContext.instance().createRemote(counterid, 1L, value, HeapAllocator.instance),
@@ -179,8 +187,16 @@ public abstract class AbstractSSTableSimpleWriter implements Closeable
         return currentKey;
     }
 
+    /**
+     * Package protected for use by AbstractCQLSSTableWriter.
+     * Not meant to be exposed publicly.
+     */
+    boolean shouldStartNewRow() throws IOException
+    {
+        return currentKey == null;
+    }
 
     protected abstract void writeRow(DecoratedKey key, ColumnFamily columnFamily) throws IOException;
 
-    protected abstract ColumnFamily getColumnFamily();
+    protected abstract ColumnFamily getColumnFamily() throws IOException;
 }

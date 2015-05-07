@@ -28,18 +28,21 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 
 import org.apache.cassandra.cql3.statements.*;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.*;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Murmur3Partitioner;
+import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.RequestValidationException;
-import org.apache.cassandra.io.compress.CompressionParameters;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.utils.Allocator;
 import org.apache.cassandra.utils.Pair;
 
 /**
@@ -74,6 +77,11 @@ import org.apache.cassandra.utils.Pair;
  */
 public class CQLSSTableWriter implements Closeable
 {
+    static
+    {
+        Config.setClientMode(true);
+    }
+
     private final AbstractSSTableSimpleWriter writer;
     private final UpdateStatement insert;
     private final List<ColumnSpecification> boundNames;
@@ -206,13 +214,22 @@ public class CQLSSTableWriter implements Closeable
                                                        insert.getTimeToLive(values),
                                                        Collections.<ByteBuffer, ColumnGroupMap>emptyMap());
 
-        for (ByteBuffer key: keys)
+        try
         {
-            if (writer.currentKey() == null || !key.equals(writer.currentKey().key))
-                writer.newRow(key);
-            insert.addUpdateForKey(writer.currentColumnFamily(), key, clusteringPrefix, params);
+            for (ByteBuffer key: keys)
+            {
+                if (writer.shouldStartNewRow() || !key.equals(writer.currentKey().key))
+                    writer.newRow(key);
+                insert.addUpdateForKey(writer.currentColumnFamily(), key, clusteringPrefix, params, false);
+            }
+            return this;
         }
-        return this;
+        catch (BufferedWriter.SyncException e)
+        {
+            // If we use a BufferedWriter and had a problem writing to disk, the IOException has been
+            // wrapped in a SyncException (see BufferedWriter below). We want to extract that IOE.
+            throw (IOException)e.getCause();
+        }
     }
 
     /**
@@ -324,23 +341,57 @@ public class CQLSSTableWriter implements Closeable
         {
             try
             {
-                this.schema = getStatement(schema, CreateTableStatement.class, "CREATE TABLE").left.getCFMetaData().rebuild();
+                synchronized (CQLSSTableWriter.class)
+                {
+                    this.schema = getStatement(schema, CreateTableStatement.class, "CREATE TABLE").left.getCFMetaData().rebuild();
 
-                // We need to register the keyspace/table metadata through Schema, otherwise we won't be able to properly
-                // build the insert statement in using().
-                KSMetaData ksm = KSMetaData.newKeyspace(this.schema.ksName,
-                                                        AbstractReplicationStrategy.getClass("org.apache.cassandra.locator.SimpleStrategy"),
-                                                        ImmutableMap.of("replication_factor", "1"),
-                                                        true,
-                                                        Collections.singleton(this.schema));
-
-                Schema.instance.load(ksm);
-                return this;
+                    // We need to register the keyspace/table metadata through Schema, otherwise we won't be able to properly
+                    // build the insert statement in using().
+                    KSMetaData ksm = Schema.instance.getKSMetaData(this.schema.ksName);
+                    if (ksm == null)
+                    {
+                        createKeyspaceWithColumnFamily(this.schema);
+                    }
+                    else if (Schema.instance.getCFMetaData(this.schema.ksName, this.schema.cfName) == null)
+                    {
+                        addColumnFamilyToKeyspace(ksm, this.schema);
+                    }
+                    return this;
+                }
             }
             catch (RequestValidationException e)
             {
                 throw new IllegalArgumentException(e.getMessage(), e);
             }
+        }
+
+        /**
+         * Adds the specified column family to the specified keyspace.
+         *
+         * @param ksm the keyspace meta data
+         * @param cfm the column family meta data
+         */
+        private static void addColumnFamilyToKeyspace(KSMetaData ksm, CFMetaData cfm)
+        {
+            ksm = KSMetaData.cloneWith(ksm, Iterables.concat(ksm.cfMetaData().values(), Collections.singleton(cfm)));
+            Schema.instance.load(cfm);
+            Schema.instance.setKeyspaceDefinition(ksm);
+        }
+
+        /**
+         * Creates a keyspace for the specified column family.
+         *
+         * @param cfm the column family
+         * @throws ConfigurationException if a problem occurs while creating the keyspace.
+         */
+        private static void createKeyspaceWithColumnFamily(CFMetaData cfm) throws ConfigurationException
+        {
+            KSMetaData ksm = KSMetaData.newKeyspace(cfm.ksName,
+                                                    AbstractReplicationStrategy.getClass("org.apache.cassandra.locator.SimpleStrategy"),
+                                                    ImmutableMap.of("replication_factor", "1"),
+                                                    true,
+                                                    Collections.singleton(cfm));
+            Schema.instance.load(ksm);
         }
 
         /**
@@ -463,21 +514,87 @@ public class CQLSSTableWriter implements Closeable
             if (insert == null)
                 throw new IllegalStateException("No insert statement specified, you should provide an insert statement through using()");
 
-            AbstractSSTableSimpleWriter writer;
-            if (sorted)
-            {
-                writer = new SSTableSimpleWriter(directory,
-                                                 schema,
-                                                 partitioner);
-            }
-            else
-            {
-                writer = new SSTableSimpleUnsortedWriter(directory,
-                                                         schema,
-                                                         partitioner,
-                                                         bufferSizeInMB);
-            }
+            AbstractSSTableSimpleWriter writer = sorted
+                                               ? new SSTableSimpleWriter(directory, schema, partitioner)
+                                               : new BufferedWriter(directory, schema, partitioner, bufferSizeInMB);
             return new CQLSSTableWriter(writer, insert, boundNames);
+        }
+    }
+
+    /**
+     * CQLSSTableWriter doesn't use the method addColumn() from AbstractSSTableSimpleWriter.
+     * Instead, it adds cells directly to the ColumnFamily the latter exposes. But this means
+     * that the sync() method of SSTableSimpleUnsortedWriter is not called (at least not for
+     * each CQL row, so adding many rows to the same partition can buffer too much data in
+     * memory - #7360). So we create a slightly modified SSTableSimpleUnsortedWriter that uses
+     * a tweaked ColumnFamily object that calls back the proper method after each added cell
+     * so we sync when we should.
+     */
+    private static class BufferedWriter extends SSTableSimpleUnsortedWriter
+    {
+        private boolean needsSync = false;
+
+        public BufferedWriter(File directory, CFMetaData metadata, IPartitioner partitioner, long bufferSizeInMB)
+        {
+            super(directory, metadata, partitioner, bufferSizeInMB);
+        }
+
+        @Override
+        protected ColumnFamily createColumnFamily()
+        {
+            return new TreeMapBackedSortedColumns(metadata)
+            {
+                @Override
+                public void addColumn(Column column, Allocator allocator)
+                {
+                    super.addColumn(column, allocator);
+                    try
+                    {
+                        countColumn(column);
+                    }
+                    catch (IOException e)
+                    {
+                        // addColumn does not throw IOException but we want to report this to the user,
+                        // so wrap it in a temporary RuntimeException that we'll catch in rawAddRow above.
+                        throw new SyncException(e);
+                    }
+                }
+            };
+        }
+
+        @Override
+        protected void replaceColumnFamily() throws IOException
+        {
+            needsSync = true;
+        }
+
+        @Override
+        /**
+         * If we have marked that the column family is being replaced, when we start the next row,
+         * we should sync out the previous partition and create a new row based on the current value.
+         */
+        boolean shouldStartNewRow() throws IOException
+        {
+            if (needsSync)
+            {
+                needsSync = false;
+                super.sync();
+                return true;
+            }
+            return super.shouldStartNewRow();
+        }
+
+        protected void addColumn(Column column) throws IOException
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        static class SyncException extends RuntimeException
+        {
+            SyncException(IOException ioe)
+            {
+                super(ioe);
+            }
         }
     }
 }

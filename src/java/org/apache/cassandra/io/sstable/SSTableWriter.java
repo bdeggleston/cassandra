@@ -36,6 +36,7 @@ import org.apache.cassandra.io.compress.CompressedSequentialWriter;
 import org.apache.cassandra.io.util.*;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.FilterFactory;
 import org.apache.cassandra.utils.IFilter;
 import org.apache.cassandra.utils.Pair;
@@ -181,6 +182,14 @@ public class SSTableWriter extends SSTable
 
     public void append(DecoratedKey decoratedKey, ColumnFamily cf)
     {
+        if (decoratedKey.key.remaining() > FBUtilities.MAX_UNSIGNED_SHORT)
+        {
+            logger.error("Key size {} exceeds maximum of {}, skipping row",
+                         decoratedKey.key.remaining(),
+                         FBUtilities.MAX_UNSIGNED_SHORT);
+            return;
+        }
+
         long startPosition = beforeAppend(decoratedKey);
         try
         {
@@ -213,10 +222,9 @@ public class SSTableWriter extends SSTable
     {
         long currentPosition = beforeAppend(key);
 
-        // deserialize each column to obtain maxTimestamp and immediately serialize it.
-        long minTimestamp = Long.MAX_VALUE;
-        long maxTimestamp = Long.MIN_VALUE;
-        int maxLocalDeletionTime = Integer.MIN_VALUE;
+        ColumnStats.MaxTracker<Long> maxTimestampTracker = new ColumnStats.MaxTracker<>(Long.MAX_VALUE);
+        ColumnStats.MinTracker<Long> minTimestampTracker = new ColumnStats.MinTracker<>(Long.MIN_VALUE);
+        ColumnStats.MaxTracker<Integer> maxDeletionTimeTracker = new ColumnStats.MaxTracker<>(Integer.MAX_VALUE);
         List<ByteBuffer> minColumnNames = Collections.emptyList();
         List<ByteBuffer> maxColumnNames = Collections.emptyList();
         StreamingHistogram tombstones = new StreamingHistogram(TOMBSTONE_HISTOGRAM_BIN_SIZE);
@@ -236,16 +244,21 @@ public class SSTableWriter extends SSTable
             columnCount = in.readInt();
 
         if (cf.deletionInfo().getTopLevelDeletion().localDeletionTime < Integer.MAX_VALUE)
+        {
             tombstones.update(cf.deletionInfo().getTopLevelDeletion().localDeletionTime);
+            maxDeletionTimeTracker.update(cf.deletionInfo().getTopLevelDeletion().localDeletionTime);
+            minTimestampTracker.update(cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt);
+            maxTimestampTracker.update(cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt);
+        }
 
         Iterator<RangeTombstone> rangeTombstoneIterator = cf.deletionInfo().rangeIterator();
         while (rangeTombstoneIterator.hasNext())
         {
             RangeTombstone rangeTombstone = rangeTombstoneIterator.next();
             tombstones.update(rangeTombstone.getLocalDeletionTime());
-            minTimestamp = Math.min(minTimestamp, rangeTombstone.minTimestamp());
-            maxTimestamp = Math.max(maxTimestamp, rangeTombstone.maxTimestamp());
-
+            minTimestampTracker.update(rangeTombstone.minTimestamp());
+            maxTimestampTracker.update(rangeTombstone.maxTimestamp());
+            maxDeletionTimeTracker.update(rangeTombstone.getLocalDeletionTime());
             minColumnNames = ColumnNameHelper.minComponents(minColumnNames, rangeTombstone.min, metadata.comparator);
             maxColumnNames = ColumnNameHelper.maxComponents(maxColumnNames, rangeTombstone.max, metadata.comparator);
         }
@@ -255,8 +268,6 @@ public class SSTableWriter extends SSTable
         {
             while (iter.hasNext())
             {
-                // deserialize column with PRESERVE_SIZE because we've written the dataSize based on the
-                // data size received, so we must reserialize the exact same data
                 OnDiskAtom atom = iter.next();
                 if (atom == null)
                     break;
@@ -268,11 +279,11 @@ public class SSTableWriter extends SSTable
                 {
                     tombstones.update(deletionTime);
                 }
-                minTimestamp = Math.min(minTimestamp, atom.minTimestamp());
-                maxTimestamp = Math.max(maxTimestamp, atom.maxTimestamp());
+                minTimestampTracker.update(atom.minTimestamp());
+                maxTimestampTracker.update(atom.maxTimestamp());
                 minColumnNames = ColumnNameHelper.minComponents(minColumnNames, atom.name(), metadata.comparator);
                 maxColumnNames = ColumnNameHelper.maxComponents(maxColumnNames, atom.name(), metadata.comparator);
-                maxLocalDeletionTime = Math.max(maxLocalDeletionTime, atom.getLocalDeletionTime());
+                maxDeletionTimeTracker.update(atom.getLocalDeletionTime());
 
                 columnIndexer.add(atom); // This write the atom on disk too
             }
@@ -285,9 +296,9 @@ public class SSTableWriter extends SSTable
             throw new FSWriteError(e, dataFile.getPath());
         }
 
-        sstableMetadataCollector.updateMinTimestamp(minTimestamp);
-        sstableMetadataCollector.updateMaxTimestamp(maxTimestamp);
-        sstableMetadataCollector.updateMaxLocalDeletionTime(maxLocalDeletionTime);
+        sstableMetadataCollector.updateMinTimestamp(minTimestampTracker.get());
+        sstableMetadataCollector.updateMaxTimestamp(maxTimestampTracker.get());
+        sstableMetadataCollector.updateMaxLocalDeletionTime(maxDeletionTimeTracker.get());
         sstableMetadataCollector.addRowSize(dataFile.getFilePointer() - currentPosition);
         sstableMetadataCollector.addColumnCount(columnIndexer.writtenAtomCount());
         sstableMetadataCollector.mergeTombstoneHistogram(tombstones);
@@ -303,8 +314,8 @@ public class SSTableWriter extends SSTable
     public void abort()
     {
         assert descriptor.temporary;
-        FileUtils.closeQuietly(iwriter);
-        FileUtils.closeQuietly(dataFile);
+        iwriter.abort();
+        dataFile.abort();
 
         Set<Component> components = SSTable.componentsFor(descriptor);
         try
@@ -352,11 +363,18 @@ public class SSTableWriter extends SSTable
         return sstable;
     }
 
-    // Close the writer and return the descriptor to the new sstable and it's metadata
     public Pair<Descriptor, SSTableMetadata> close()
+    {
+        return close(false);
+    }
+
+    // Close the writer and return the descriptor to the new sstable and it's metadata
+    public Pair<Descriptor, SSTableMetadata> close(boolean closeBf)
     {
         // index and filter
         iwriter.close();
+        if (closeBf)
+            iwriter.bf.close();
         // main data, close will truncate if necessary
         dataFile.close();
         // write sstable statistics
@@ -380,6 +398,7 @@ public class SSTableWriter extends SSTable
         }
         catch (IOException e)
         {
+            out.abort();
             throw new FSWriteError(e, out.getPath());
         }
         out.close();
@@ -485,6 +504,12 @@ public class SSTableWriter extends SSTable
             long position = indexFile.getFilePointer();
             indexFile.close(); // calls force
             FileUtils.truncate(indexFile.getPath(), position);
+        }
+
+        public void abort()
+        {
+            indexFile.abort();
+            bf.close();
         }
 
         public void mark()
