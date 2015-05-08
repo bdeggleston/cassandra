@@ -102,7 +102,7 @@ public class EpaxosFuzzer
         for (int i=0; i<options.nodes; i++)
         {
             final int nodeNumber = i + 1;
-            FuzzNode node = new FuzzNode(nodeNumber, messenger, ksName);
+            FuzzNode node = new FuzzNode(nodeNumber, messenger, "DC1", ksName);
             nodes.add(node);
             messenger.registerNode(node);
         }
@@ -346,9 +346,9 @@ public class EpaxosFuzzer
 
         private final Map<UUID, Client> waitingClients = new HashMap<>();
 
-        public FuzzNode(int number, Messenger messenger, String ksName)
+        public FuzzNode(int number, Messenger messenger, String dc, String ksName)
         {
-            super(number, messenger, ksName);
+            super(number, messenger, dc, ksName);
         }
 
         @Override

@@ -28,14 +28,19 @@ public class Node extends EpaxosState
 {
     private final InetAddress endpoint;
     private final Messenger messenger;
-    private volatile State state;
+    private final String dc;
 
     private final Map<MessagingService.Verb, IVerbHandler> verbHandlerMap = Maps.newEnumMap(MessagingService.Verb.class);
 
+
+
     public static enum State
     {
-        UP, NORESPONSE, DOWN
+        UP, NORESPONSE, DOWN;
     }
+
+    private volatile State state = State.UP;
+    private volatile int networkZone = 0;
 
     private volatile Instance lastCreatedInstance = null;
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
@@ -68,7 +73,7 @@ public class Node extends EpaxosState
         return numberName(SystemKeyspace.EPAXOS_TOKEN_STATE, number);
     }
 
-    public Node(int number, Messenger messenger, String ksName)
+    public Node(int number, Messenger messenger, String dc, String ksName)
     {
         super(ksName, nInstanceTable(number), nKeyStateTable(number), nTokenStateTable(number));
         this.number = number;
@@ -81,6 +86,7 @@ public class Node extends EpaxosState
             throw new AssertionError(e);
         }
         this.messenger = messenger;
+        this.dc = dc;
         state = State.UP;
 
         verbHandlerMap.put(MessagingService.Verb.EPAXOS_PREACCEPT, getPreacceptVerbHandler());
@@ -104,6 +110,16 @@ public class Node extends EpaxosState
     public void setState(State state)
     {
         this.state = state;
+    }
+
+    public int getNetworkZone()
+    {
+        return networkZone;
+    }
+
+    public void setNetworkZone(int networkZone)
+    {
+        this.networkZone = networkZone;
     }
 
     @Override
@@ -285,9 +301,9 @@ public class Node extends EpaxosState
 
     public static class SingleThreaded extends Node
     {
-        public SingleThreaded(int number, Messenger messenger, String ksName)
+        public SingleThreaded(int number, Messenger messenger, String dc, String ksName)
         {
-            super(number, messenger, ksName);
+            super(number, messenger, dc, ksName);
         }
 
         @Override

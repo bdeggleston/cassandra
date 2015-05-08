@@ -60,7 +60,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         return 3;
     }
 
-    public abstract Node createNode(int number, Messenger messenger, String ks);
+    public abstract Node createNode(int number, Messenger messenger, String dc, String ks);
 
     public int quorumSize()
     {
@@ -141,7 +141,7 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
         nodes = Lists.newArrayListWithCapacity(getReplicationFactor());
         for (int i=0; i<getReplicationFactor(); i++)
         {
-            Node node = createNode(i + 1, messenger, ksName);
+            Node node = createNode(i + 1, messenger, "DC1", ksName);
             messenger.registerNode(node);
             nodes.add(node);
         }
@@ -150,9 +150,9 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
     public abstract static class SingleThread extends AbstractEpaxosIntegrationTest
     {
         @Override
-        public Node createNode(int nodeNumber, Messenger messenger, String ks)
+        public Node createNode(int nodeNumber, Messenger messenger, String dc, String ks)
         {
-            return new Node.SingleThreaded(nodeNumber, messenger, ks);
+            return new Node.SingleThreaded(nodeNumber, messenger, dc, ks);
         }
 
         @Override

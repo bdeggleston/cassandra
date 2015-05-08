@@ -57,9 +57,9 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
     private static class State extends Node.SingleThreaded
     {
-        State(int number, Messenger messenger, String ksName)
+        State(int number, Messenger messenger, String dc, String ksName)
         {
-            super(number, messenger, ksName);
+            super(number, messenger, dc, ksName);
         }
 
         @Override
@@ -75,9 +75,10 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         }
     }
 
-    public Node createNode(int nodeNumber, Messenger messenger, String ks)
+    @Override
+    public Node createNode(int nodeNumber, Messenger messenger, String dc, String ks)
     {
-        return new State(nodeNumber, messenger, ks);
+        return new State(nodeNumber, messenger, dc, ks);
     }
 
     @Test
