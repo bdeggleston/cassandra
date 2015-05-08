@@ -133,6 +133,11 @@ public class Messenger
         return missedMessage.get(address);
     }
 
+    public Node getNode(InetAddress endpoint)
+    {
+        return nodes.get(endpoint);
+    }
+
     public <T> void sendReply(MessageOut<T> msg, final int id, InetAddress from, InetAddress to)
     {
         if (!from.equals(to))

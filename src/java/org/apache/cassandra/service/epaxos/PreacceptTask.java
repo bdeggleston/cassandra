@@ -59,8 +59,12 @@ public abstract class PreacceptTask implements Runnable
             }
 
             participantInfo = state.getParticipants(instance);
-            assert participantInfo.endpoints.contains(state.getEndpoint()):
-                    "Implement query forwarding: " + instance.getToken().toString() + " -> " + participantInfo.endpoints.toString();
+            if (!participantInfo.endpoints.contains(state.getEndpoint()))
+            {
+                throw new AssertionError("Query should have been forwarded"
+                                         + instance.getToken().toString() + " -> "
+                                         + participantInfo.endpoints.toString());
+            }
 
             // new instances (not prepared) will not have been saved yet, so we
             // won't have initialized instances floating around

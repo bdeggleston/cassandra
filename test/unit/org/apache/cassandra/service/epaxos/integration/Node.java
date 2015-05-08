@@ -23,6 +23,7 @@ import org.apache.cassandra.utils.Pair;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
+import javax.annotation.Nullable;
 
 public class Node extends EpaxosState
 {
@@ -210,12 +211,6 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected ParticipantInfo getParticipants(Instance instance)
-    {
-        return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, instance.getConsistencyLevel());
-    }
-
-    @Override
     protected void sendOneWay(MessageOut message, InetAddress to)
     {
         messenger.sendOneWay(message, endpoint, to);
@@ -298,6 +293,44 @@ public class Node extends EpaxosState
      * runs tasks in the order they're received
      */
     public static QueuedExecutor queuedExecutor = new QueuedExecutor();
+
+    @Override
+    protected String getDc()
+    {
+        return dc;
+    }
+
+    @Override
+    protected String getInstanceKeyspace(Instance instance)
+    {
+        return "ks";
+    }
+
+    @Override
+    protected List<InetAddress> getNaturalEndpoints(String ks, Token token)
+    {
+        return messenger.getEndpoints(getEndpoint());
+    }
+
+    @Override
+    protected Collection<InetAddress> getPendingEndpoints(String ks, Token token)
+    {
+        return NO_ENDPOINTS;
+    }
+
+    @Override
+    protected Predicate<InetAddress> dcPredicateFor(final String dc, final boolean equals)
+    {
+        return new Predicate<InetAddress>()
+        {
+            @Override
+            public boolean apply(@Nullable InetAddress address)
+            {
+                boolean equal = dc.equals(messenger.getNode(address).getDc());
+                return equals ? equal : !equal;
+            }
+        };
+    }
 
     public static class SingleThreaded extends Node
     {
