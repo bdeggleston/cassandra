@@ -1359,19 +1359,39 @@ public class EpaxosState
         return FBUtilities.getBroadcastAddress();
     }
 
+    protected List<InetAddress> getNaturalEndpoints(String ks, Token token)
+    {
+        return StorageService.instance.getNaturalEndpoints(ks, token);
+    }
+
+    protected Collection<InetAddress> getPendingEndpoints(String ks, Token token)
+    {
+        return StorageService.instance.getTokenMetadata().pendingEndpointsFor(token, ks);
+    }
+
+    protected String getDc()
+    {
+        return DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+    }
+
+    protected String getInstanceKeyspace(Instance instance)
+    {
+        return Schema.instance.getCF(instance.getCfId()).left;
+    }
+
     protected ParticipantInfo getParticipants(Instance instance)
     {
-        String ks = Schema.instance.getCF(instance.getCfId()).left;
+        String ks = getInstanceKeyspace(instance);
 
-        List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(ks, instance.getToken());
-        Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(instance.getToken(), ks);
+        List<InetAddress> naturalEndpoints = getNaturalEndpoints(ks, instance.getToken());
+        Collection<InetAddress> pendingEndpoints = getPendingEndpoints(ks, instance.getToken());
 
         List<InetAddress> endpoints = ImmutableList.copyOf(Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), duplicateFilter()));
         List<InetAddress> remoteEndpoints = null;
         if (instance.getConsistencyLevel() == ConsistencyLevel.LOCAL_SERIAL)
         {
             // Restrict naturalEndpoints and pendingEndpoints to node in the local DC only
-            String localDc = DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+            String localDc = getDc();
             Predicate<InetAddress> isLocalDc = dcPredicateFor(localDc, true);
             Predicate<InetAddress> notLocalDc = dcPredicateFor(localDc, false);
 

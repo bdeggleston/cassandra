@@ -39,9 +39,10 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
 
     private static class State extends Node.SingleThreaded
     {
-        private State(int number, Messenger messenger, String ksName)
+
+        private State(int number, Messenger messenger, String dc, String ksName)
         {
-            super(number, messenger, ksName);
+            super(number, messenger, dc, ksName);
         }
 
         @Override
@@ -58,9 +59,9 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
     }
 
     @Override
-    public Node createNode(int number, Messenger messenger, String ks)
+    public Node createNode(int number, Messenger messenger, String dc, String ks)
     {
-        return new State(number, messenger, ks);
+        return new State(number, messenger, dc, ks);
     }
 
     private QueryInstance newInstance(EpaxosState state, int key, ConsistencyLevel cl)

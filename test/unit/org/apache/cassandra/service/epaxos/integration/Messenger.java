@@ -133,10 +133,23 @@ public class Messenger
         return missedMessage.get(address);
     }
 
+    public Node getNode(InetAddress endpoint)
+    {
+        return nodes.get(endpoint);
+    }
+
     public <T> void sendReply(MessageOut<T> msg, final int id, InetAddress from, InetAddress to)
     {
         if (!from.equals(to))
         {
+            if (nodes.get(from).getNetworkZone() != nodes.get(to).getNetworkZone())
+            {
+                logger.info("Aborting partitioned sendRR {} from {} ({}). To {} ({})",
+                            msg.payload.getClass().getSimpleName(),
+                            from, nodes.get(from).getNetworkZone(),
+                            to, nodes.get(to).getNetworkZone() );
+                return;
+            }
             if (nodes.get(from).getState() != Node.State.UP)
             {
                 logger.info("Aborting sendReply {} from {}. Node: {}",
@@ -193,6 +206,14 @@ public class Messenger
         final int msgId = nextMsgNumber.getAndIncrement();
         if (!from.equals(to))
         {
+            if (nodes.get(from).getNetworkZone() != nodes.get(to).getNetworkZone())
+            {
+                logger.info("Aborting partitioned sendRR {} from {} ({}). To {} ({})",
+                            msg.payload.getClass().getSimpleName(),
+                            from, nodes.get(from).getNetworkZone(),
+                            to, nodes.get(to).getNetworkZone() );
+                return msgId;
+            }
             if (nodes.get(from).getState() == Node.State.DOWN)
             {
                 logger.info("Aborting sendRR {} from {}. Node: {}",
@@ -251,6 +272,14 @@ public class Messenger
         final int msgId = nextMsgNumber.getAndIncrement();
         if (!from.equals(to))
         {
+            if (nodes.get(from).getNetworkZone() != nodes.get(to).getNetworkZone())
+            {
+                logger.info("Aborting partitioned sendOneWay {} from {} ({}). To {} ({})",
+                            msg.payload.getClass().getSimpleName(),
+                            from, nodes.get(from).getNetworkZone(),
+                            to, nodes.get(to).getNetworkZone() );
+                return;
+            }
             if (nodes.get(from).getState() == Node.State.DOWN)
             {
                 logger.info("Aborting sendOneWay {} from {}. Node: {}",

@@ -23,19 +23,25 @@ import org.apache.cassandra.utils.Pair;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
+import javax.annotation.Nullable;
 
 public class Node extends EpaxosState
 {
     private final InetAddress endpoint;
     private final Messenger messenger;
-    private volatile State state;
+    private final String dc;
 
     private final Map<MessagingService.Verb, IVerbHandler> verbHandlerMap = Maps.newEnumMap(MessagingService.Verb.class);
 
+
+
     public static enum State
     {
-        UP, NORESPONSE, DOWN
+        UP, NORESPONSE, DOWN;
     }
+
+    private volatile State state = State.UP;
+    private volatile int networkZone = 0;
 
     private volatile Instance lastCreatedInstance = null;
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
@@ -68,7 +74,7 @@ public class Node extends EpaxosState
         return numberName(SystemKeyspace.EPAXOS_TOKEN_STATE, number);
     }
 
-    public Node(int number, Messenger messenger, String ksName)
+    public Node(int number, Messenger messenger, String dc, String ksName)
     {
         super(ksName, nInstanceTable(number), nKeyStateTable(number), nTokenStateTable(number));
         this.number = number;
@@ -81,6 +87,7 @@ public class Node extends EpaxosState
             throw new AssertionError(e);
         }
         this.messenger = messenger;
+        this.dc = dc;
         state = State.UP;
 
         verbHandlerMap.put(MessagingService.Verb.EPAXOS_PREACCEPT, getPreacceptVerbHandler());
@@ -104,6 +111,16 @@ public class Node extends EpaxosState
     public void setState(State state)
     {
         this.state = state;
+    }
+
+    public int getNetworkZone()
+    {
+        return networkZone;
+    }
+
+    public void setNetworkZone(int networkZone)
+    {
+        this.networkZone = networkZone;
     }
 
     @Override
@@ -194,12 +211,6 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected ParticipantInfo getParticipants(Instance instance)
-    {
-        return new ParticipantInfo(messenger.getEndpoints(getEndpoint()), NO_ENDPOINTS, instance.getConsistencyLevel());
-    }
-
-    @Override
     protected void sendOneWay(MessageOut message, InetAddress to)
     {
         messenger.sendOneWay(message, endpoint, to);
@@ -283,11 +294,49 @@ public class Node extends EpaxosState
      */
     public static QueuedExecutor queuedExecutor = new QueuedExecutor();
 
+    @Override
+    protected String getDc()
+    {
+        return dc;
+    }
+
+    @Override
+    protected String getInstanceKeyspace(Instance instance)
+    {
+        return "ks";
+    }
+
+    @Override
+    protected List<InetAddress> getNaturalEndpoints(String ks, Token token)
+    {
+        return messenger.getEndpoints(getEndpoint());
+    }
+
+    @Override
+    protected Collection<InetAddress> getPendingEndpoints(String ks, Token token)
+    {
+        return NO_ENDPOINTS;
+    }
+
+    @Override
+    protected Predicate<InetAddress> dcPredicateFor(final String dc, final boolean equals)
+    {
+        return new Predicate<InetAddress>()
+        {
+            @Override
+            public boolean apply(@Nullable InetAddress address)
+            {
+                boolean equal = dc.equals(messenger.getNode(address).getDc());
+                return equals ? equal : !equal;
+            }
+        };
+    }
+
     public static class SingleThreaded extends Node
     {
-        public SingleThreaded(int number, Messenger messenger, String ksName)
+        public SingleThreaded(int number, Messenger messenger, String dc, String ksName)
         {
-            super(number, messenger, ksName);
+            super(number, messenger, dc, ksName);
         }
 
         @Override
