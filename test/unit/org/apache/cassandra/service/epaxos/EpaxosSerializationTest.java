@@ -16,7 +16,10 @@ import org.apache.cassandra.cql3.statements.ParsedStatement;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.composites.CellNames;
+import org.apache.cassandra.db.filter.ColumnSlice;
+import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.io.util.DataOutputBuffer;
@@ -31,6 +34,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -340,9 +344,27 @@ public class EpaxosSerializationTest
     }
 
     @Test
-    public void serializedReadRequest()
+    public void serializedReadRequest() throws IOException
     {
-        // TODO: this
+        ReadCommand readCommand = ReadCommand.create(cqlcf.ksName, ByteBufferUtil.bytes(1), cqlcf.cfName, 100,
+                                                     new SliceQueryFilter(ColumnSlice.ALL_COLUMNS, false, 10));
+
+        SerializedRequest.Builder builder = SerializedRequest.builder();
+        builder.readCommand(readCommand);
+        builder.cfName(readCommand.cfName);
+        builder.keyspaceName(readCommand.ksName);
+        builder.key(readCommand.key);
+        builder.consistencyLevel(ConsistencyLevel.SERIAL);
+        SerializedRequest request = builder.build();
+
+        DataOutputBuffer out = new DataOutputBuffer();
+        SerializedRequest.serializer.serialize(request, out, 0);
+        int expectedSize = out.getLength();
+        Assert.assertEquals(expectedSize, SerializedRequest.serializer.serializedSize(request, 0));
+
+        SerializedRequest deserialized = SerializedRequest.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
+
+        Assert.assertEquals(request, deserialized);
     }
 
     private SerializedRequest getSerializedRequest()
