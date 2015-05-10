@@ -1,11 +1,15 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.ByteStreams;
 import org.apache.cassandra.config.*;
+import org.apache.cassandra.cql3.Attributes;
+import org.apache.cassandra.cql3.BatchQueryOptions;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.cql3.statements.BatchStatement;
 import org.apache.cassandra.cql3.statements.CQL3CasRequest;
 import org.apache.cassandra.cql3.statements.ModificationStatement;
 import org.apache.cassandra.cql3.statements.ParsedStatement;
@@ -14,6 +18,7 @@ import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.composites.CellNames;
 import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.net.MessagingService;
@@ -176,6 +181,168 @@ public class EpaxosSerializationTest
         CASRequest deserialized = CASRequest.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
 
 //        Assert.assertEquals(request, deserialized);
+    }
+
+    @Test
+    public void batchQueryCasRequest() throws Exception
+    {
+        String q = "BEGIN BATCH\n" +
+                   "INSERT INTO ks.tbl (k, v) VALUES (0, 0);\n" +
+                   "UPDATE ks.tbl SET v = ? WHERE k = 0 IF v = ?;\n" +
+                   "UPDATE ks.tbl SET v = ? WHERE k = 0 IF v = ?;\n" +
+                   "APPLY BATCH";
+        BatchStatement.Parsed parsed = (BatchStatement.Parsed) QueryProcessor.parseStatement(q);
+        parsed.setQueryString(q);
+
+        ParsedStatement.Prepared prepared = parsed.prepare();
+        List<ByteBuffer> values = Lists.newArrayList(ByteBufferUtil.bytes(1), ByteBufferUtil.bytes(0),
+                                                     ByteBufferUtil.bytes(2), ByteBufferUtil.bytes(1));
+
+        QueryOptions options = QueryOptions.create(ConsistencyLevel.SERIAL,
+                                                   values,
+                                                   false, 1, null, ConsistencyLevel.QUORUM);
+        options.prepare(prepared.boundNames);
+        BatchStatement statement = (BatchStatement) prepared.statement;
+        BatchQueryOptions batchOptions = BatchQueryOptions.withoutPerStatementVariables(options);
+        long now = System.currentTimeMillis();
+
+        CQL3CasRequest request = statement.getCasRequest(batchOptions, now);
+
+        DataOutputBuffer out = new DataOutputBuffer();
+        CASRequest.serializer.serialize(request, out, 0);
+        int expectedSize = out.getLength();
+        Assert.assertEquals(expectedSize, CASRequest.serializer.serializedSize(request, 0));
+
+        CASRequest deserialized = CASRequest.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
+    }
+
+    @Test
+    public void batchQueryCasRequestNoOpts() throws Exception
+    {
+        String q = "BEGIN BATCH\n" +
+                   "INSERT INTO ks.tbl (k, v) VALUES (0, 0);\n" +
+                   "UPDATE ks.tbl SET v = 1 WHERE k = 0 IF v = 0;\n" +
+                   "UPDATE ks.tbl SET v = 2 WHERE k = 0 IF v = 1;\n" +
+                   "APPLY BATCH";
+        BatchStatement.Parsed parsed = (BatchStatement.Parsed) QueryProcessor.parseStatement(q);
+        parsed.setQueryString(q);
+
+        ParsedStatement.Prepared prepared = parsed.prepare();
+        List<ByteBuffer> values = Lists.newArrayList();
+
+        QueryOptions options = QueryOptions.create(ConsistencyLevel.SERIAL,
+                                                   values,
+                                                   false, 1, null, ConsistencyLevel.QUORUM);
+        options.prepare(prepared.boundNames);
+        BatchStatement statement = (BatchStatement) prepared.statement;
+        BatchQueryOptions batchOptions = BatchQueryOptions.withoutPerStatementVariables(options);
+        long now = System.currentTimeMillis();
+
+        CQL3CasRequest request = statement.getCasRequest(batchOptions, now);
+
+        DataOutputBuffer out = new DataOutputBuffer();
+        CASRequest.serializer.serialize(request, out, 0);
+        int expectedSize = out.getLength();
+        Assert.assertEquals(expectedSize, CASRequest.serializer.serializedSize(request, 0));
+
+        CASRequest deserialized = CASRequest.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
+    }
+
+    private ModificationStatement getStatement(String ks, String query) throws Exception
+    {
+        ModificationStatement.Parsed parsed = (ModificationStatement.Parsed) QueryProcessor.parseStatement(query);
+        parsed.prepareKeyspace(ks);
+        parsed.setQueryString(query);
+        ParsedStatement.Prepared prepared = parsed.prepare();
+
+        return (ModificationStatement) prepared.statement;
+    }
+
+    private static ByteBuffer bb(int b)
+    {
+        return ByteBufferUtil.bytes(b);
+    }
+
+    @Test
+    public void batchMessageCasRequest() throws Exception
+    {
+        List<ModificationStatement> statements = new ArrayList<>(3);
+        List<List<ByteBuffer>> variables = new ArrayList<>(3);
+
+        statements.add(getStatement("ks", "INSERT INTO ks.tbl (k, v) VALUES (?, ?);"));
+        variables.add(Lists.newArrayList(bb(0), bb(0)));
+
+        statements.add(getStatement("ks", "UPDATE ks.tbl SET v = ? WHERE k = ? IF v = ?;"));
+        variables.add(Lists.newArrayList(bb(1), bb(0), bb(0)));
+
+        statements.add(getStatement("ks", "UPDATE ks.tbl SET v = ? WHERE k = ? IF v = ?;"));
+        variables.add(Lists.newArrayList(bb(2), bb(0), bb(1)));
+
+        QueryOptions options = QueryOptions.create(ConsistencyLevel.SERIAL,
+                                                   Lists.<ByteBuffer>newArrayList(),
+                                                   false, 1, null, ConsistencyLevel.QUORUM);
+
+        List<Object> queryOrIdList = new ArrayList<>(3);
+        for (ModificationStatement statement: statements)
+        {
+            queryOrIdList.add(statement.getQueryString());
+        }
+
+        BatchQueryOptions batchOptions = BatchQueryOptions.withPerStatementVariables(options, variables, queryOrIdList);
+        BatchStatement statement = new BatchStatement(-1, BatchStatement.Type.LOGGED, statements, Attributes.none());
+
+        CQL3CasRequest request = statement.getCasRequest(batchOptions, System.currentTimeMillis());
+        DataOutputBuffer out = new DataOutputBuffer();
+        CASRequest.serializer.serialize(request, out, 0);
+        int expectedSize = out.getLength();
+        Assert.assertEquals(expectedSize, CASRequest.serializer.serializedSize(request, 0));
+
+        CASRequest deserialized = CASRequest.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
+    }
+
+    @Test
+    public void batchMessageCasRequestNoOpts() throws Exception
+    {
+        List<ByteBuffer> NONE = ImmutableList.of();
+
+        List<ModificationStatement> statements = new ArrayList<>(3);
+        List<List<ByteBuffer>> variables = new ArrayList<>(3);
+
+        statements.add(getStatement("ks", "INSERT INTO ks.tbl (k, v) VALUES (0, 0);"));
+        variables.add(NONE);
+
+        statements.add(getStatement("ks", "UPDATE ks.tbl SET v = 1 WHERE k = 0 IF v = 0;"));
+        variables.add(NONE);
+
+        statements.add(getStatement("ks", "UPDATE ks.tbl SET v = 2 WHERE k = 0 IF v = 1;"));
+        variables.add(NONE);
+
+        QueryOptions options = QueryOptions.create(ConsistencyLevel.SERIAL,
+                                                   Lists.<ByteBuffer>newArrayList(),
+                                                   false, 1, null, ConsistencyLevel.QUORUM);
+
+        List<Object> queryOrIdList = new ArrayList<>(3);
+        for (ModificationStatement statement: statements)
+        {
+            queryOrIdList.add(statement.getQueryString());
+        }
+
+        BatchQueryOptions batchOptions = BatchQueryOptions.withPerStatementVariables(options, variables, queryOrIdList);
+        BatchStatement statement = new BatchStatement(-1, BatchStatement.Type.LOGGED, statements, Attributes.none());
+
+        CQL3CasRequest request = statement.getCasRequest(batchOptions, System.currentTimeMillis());
+        DataOutputBuffer out = new DataOutputBuffer();
+        CASRequest.serializer.serialize(request, out, 0);
+        int expectedSize = out.getLength();
+        Assert.assertEquals(expectedSize, CASRequest.serializer.serializedSize(request, 0));
+
+        CASRequest deserialized = CASRequest.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
+    }
+
+    @Test
+    public void serializedReadRequest()
+    {
+        // TODO: this
     }
 
     private SerializedRequest getSerializedRequest()

@@ -50,6 +50,11 @@ public abstract class BatchQueryOptions
 
     public abstract QueryOptions forStatement(int i);
 
+    public QueryOptions getWrapped()
+    {
+        return wrapped;
+    }
+
     public ConsistencyLevel getConsistency()
     {
         return wrapped.getConsistency();
