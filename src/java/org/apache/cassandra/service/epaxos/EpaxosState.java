@@ -446,8 +446,7 @@ public class EpaxosState
         Map<InetAddress, List<Instance>> missingInstances = new HashMap<>();
         for (Map.Entry<InetAddress, Set<UUID>> entry : decision.missingInstances.entrySet())
         {
-            missingInstances.put(entry.getKey(), Lists.newArrayList(Iterables.filter(getInstanceCopies(entry.getValue()),
-                                                                                     Instance.skipPlaceholderPredicate)));
+            missingInstances.put(entry.getKey(), getInstanceCopies(entry.getValue()));
         }
 
         Instance instance = getInstanceCopy(iid);
@@ -1274,7 +1273,7 @@ public class EpaxosState
 
     public List<Instance> getInstanceCopies(Set<UUID> iids)
     {
-        if (iids == null || iids.size() == 0)
+        if (iids == null || iids.isEmpty())
             return Collections.<Instance>emptyList();
 
         List<Instance> instances = Lists.newArrayListWithCapacity(iids.size());

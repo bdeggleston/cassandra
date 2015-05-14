@@ -30,10 +30,13 @@ public class PrepareVerbHandler extends AbstractEpochVerbHandler<PrepareRequest>
         {
             Instance instance = state.loadInstance(message.payload.iid);
 
-            // we can't participate in the prepare phase if our
-            // local copy of the instance is a placeholder
-            if (instance != null && instance.isPlaceholder())
+            // generally, we don't want to send placeholder instances back from prepare requests, since
+            // they complicate the prepare callback logic. If the ballot is 0, however, it means that the
+            // requesting node doesn't have a copy of this instance, so we want to send it back
+            if (instance != null && instance.isPlaceholder() && message.payload.ballot > 0)
+            {
                 instance = null;
+            }
 
             if (instance != null)
             {
@@ -45,13 +48,17 @@ public class PrepareVerbHandler extends AbstractEpochVerbHandler<PrepareRequest>
                 catch (BallotException e)
                 {
                     // don't die if the message has an old ballot value, just don't
-                    // update the instance. This instance will still be useful to the requestor
+                    // update the instance. This instance will still be useful to the requester
                     logger.debug("Prepare request from {} for {} ballot failure. {} >= {}",
                                  message.from,
                                  message.payload.iid,
                                  instance.getBallot(),
                                  message.payload.ballot);
                 }
+            }
+            else
+            {
+                logger.debug("Skipping ballot check for unknown or placeholder instances");
             }
 
             Token token = instance != null ? instance.getToken() : message.payload.getToken();

@@ -389,15 +389,9 @@ public abstract class Instance
             out.writeInt(instance.state.ordinal());
             out.writeInt(instance.ballot);
             out.writeBoolean(instance.noop);
-            out.writeBoolean(instance.dependencies != null);
-            if (instance.dependencies != null)
-            {
-                Set<UUID> deps = instance.dependencies;
-                out.writeInt(deps.size());
-                for (UUID dep : deps)
-                    UUIDSerializer.serializer.serialize(dep, out, version);
-            }
+            Serializers.uuidSets.serialize(instance.dependencies, out, version);
             out.writeBoolean(instance.leaderAttrsMatch);
+            out.writeBoolean(instance.placeholder);
         }
 
         public Instance deserialize(Instance instance, DataInput in, int version) throws IOException
@@ -413,20 +407,9 @@ public abstract class Instance
 
             instance.ballot = in.readInt();
             instance.noop = in.readBoolean();
-
-            if (in.readBoolean())
-            {
-                UUID[] deps = new UUID[in.readInt()];
-                for (int i=0; i<deps.length; i++)
-                    deps[i] = UUIDSerializer.serializer.deserialize(in, version);
-                instance.dependencies = ImmutableSet.copyOf(deps);
-            }
-            else
-            {
-                instance.dependencies = null;
-            }
-
+            instance.dependencies = Serializers.uuidSets.deserialize(in, version);
             instance.leaderAttrsMatch = in.readBoolean();
+            instance.placeholder = in.readBoolean();
 
             return instance;
         }
@@ -437,14 +420,9 @@ public abstract class Instance
             size += 4;  // instance.state.code
             size += 4;  // instance.ballot
             size += 1;  // instance.noop
-            size += 1;  // instance.dependencies != null
-            if (instance.dependencies != null)
-            {
-                size += 4;  // deps.size
-                for (UUID dep : instance.dependencies)
-                    size += UUIDSerializer.serializer.serializedSize(dep, version);
-            }
+            size += Serializers.uuidSets.serializedSize(instance.dependencies, version);  // instance.dependencies
             size += 1;  // instance.leaderAttrsMatch
+            size += 1;  // instance.placeholder
 
             return size;
         }
@@ -461,8 +439,6 @@ public abstract class Instance
             out.writeBoolean(instance != null);
             if (instance != null)
             {
-                if (instance.dependencies == null || instance.isPlaceholder())
-                    throw new AssertionError("cannot transmit placeholder instances");
                 super.serialize(instance, out, version);
             }
         }
@@ -480,8 +456,6 @@ public abstract class Instance
         {
             if (instance == null)
                 return 1;
-            if (instance.dependencies == null || instance.isPlaceholder())
-                throw new AssertionError("cannot transmit placeholder instances");
             return super.serializedSize(instance, version) + 1;
         }
     }
@@ -495,7 +469,6 @@ public abstract class Instance
         public void serialize(Instance instance, DataOutputPlus out, int version) throws IOException
         {
             super.serialize(instance, out, version);
-            out.writeBoolean(instance.placeholder);
             out.writeLong(instance.lastUpdated);
             Serializers.uuidSets.serialize(instance.stronglyConnected, out, version);
             out.writeLong(instance.executionEpoch);
@@ -505,7 +478,6 @@ public abstract class Instance
         public Instance deserialize(Instance instance, DataInput in, int version) throws IOException
         {
             super.deserialize(instance, in, version);
-            instance.placeholder = in.readBoolean();
             instance.lastUpdated = in.readLong();
             instance.stronglyConnected = Serializers.uuidSets.deserialize(in, version);
             instance.executionEpoch = in.readLong();
@@ -516,7 +488,6 @@ public abstract class Instance
         public long serializedSize(Instance instance, int version)
         {
             long size = super.serializedSize(instance, version);
-            size += 1;  // instance.placeholder
             size += 8;  // instance.lastUpdated
             size += Serializers.uuidSets.serializedSize(instance.stronglyConnected, version);
             size += 8;  // instance.executionEpoch
@@ -532,9 +503,6 @@ public abstract class Instance
             out.writeBoolean(instance != null);
             if (instance != null)
             {
-                if (instance.dependencies == null || instance.isPlaceholder())
-                    throw new AssertionError("cannot transmit placeholder instances");
-
                 Type type = instance.getType();
                 out.writeInt(type.ordinal());
                 type.serializer.serialize(instance, out, version);
@@ -555,8 +523,6 @@ public abstract class Instance
         {
             if (instance == null)
                 return 1;
-            if (instance.dependencies == null || instance.isPlaceholder())
-                throw new AssertionError("cannot transmit placeholder instances");
             return instance.getType().serializer.serializedSize(instance, version) + 1 + 4;
         }
     };
@@ -603,13 +569,4 @@ public abstract class Instance
     {
         return "";
     }
-
-    static Predicate<Instance> skipPlaceholderPredicate = new Predicate<Instance>()
-    {
-        @Override
-        public boolean apply(Instance instance)
-        {
-            return !instance.isPlaceholder();
-        }
-    };
 }

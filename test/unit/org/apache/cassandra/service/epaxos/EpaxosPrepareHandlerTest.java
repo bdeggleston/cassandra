@@ -107,7 +107,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
     }
 
     @Test
-    public void placeholderInstancesArentReturned() throws Exception
+    public void placeholderInstancesArentReturnedWithNonZeroBallot() throws Exception
     {
         MockVerbHandlerState state = new MockVerbHandlerState();
         PrepareVerbHandler handler = new PrepareVerbHandler(state);
@@ -126,6 +126,28 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
 
         MessageOut<MessageEnvelope<Instance>> message = state.replies.get(0);
         Assert.assertNull(message.payload.contents);
+    }
+
+    @Test
+    public void placeholderInstancesAreReturnedWithZeroBallot() throws Exception
+    {
+        MockVerbHandlerState state = new MockVerbHandlerState();
+        PrepareVerbHandler handler = new PrepareVerbHandler(state);
+
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
+
+        state.instanceMap.put(instance.getId(), instance.copy());
+        state.instanceMap.get(instance.getId()).setPlaceholder(true);
+
+        instance.ballot = 0;
+        handler.doVerb(createMessage(instance), 0);
+
+        Assert.assertEquals(0, state.savedInstances.size());
+        Assert.assertEquals(1, state.replies.size());
+
+        MessageOut<MessageEnvelope<Instance>> message = state.replies.get(0);
+        Assert.assertNotNull(message.payload.contents);
     }
 
     @Test

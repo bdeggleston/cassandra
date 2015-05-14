@@ -399,18 +399,4 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         Assert.assertEquals(0, state.accepts.size());
         Assert.assertEquals(0, state.commits.size());
     }
-
-    /**
-     * Tests that the callback correctly handles situations where
-     * none of the other nodes know about an instance it also doesn't
-     * have.
-     *
-     * Basically, it needs to run a noop instance for that id, the twist
-     * being that it doesn't know what kind of instance it is.
-     */
-    @Test
-    public void instanceUnknownByQuorum() throws Exception
-    {
-        // TODO: good luck
-    }
 }
