@@ -140,8 +140,7 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
         {
             lock.writeLock().unlock();
         }
-        response.missingInstances = Lists.newArrayList(Iterables.filter(state.getInstanceCopies(missingInstanceIds),
-                                                                        Instance.skipPlaceholderPredicate));
+        response.missingInstances = state.getInstanceCopies(missingInstanceIds);
         MessageOut<PreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                response,
                                                                PreacceptResponse.serializer);

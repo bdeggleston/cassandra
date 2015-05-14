@@ -140,6 +140,7 @@ public class Messenger
 
     public <T> void sendReply(MessageOut<T> msg, final int id, InetAddress from, InetAddress to)
     {
+        assert msg != null;
         if (!from.equals(to))
         {
             if (nodes.get(from).getNetworkZone() != nodes.get(to).getNetworkZone())

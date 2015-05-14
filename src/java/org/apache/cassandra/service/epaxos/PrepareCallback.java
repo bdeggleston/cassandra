@@ -70,6 +70,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
 
         Instance msgInstance = msg.payload.contents;
 
+
         if (msgInstance != null)
         {
             if (instanceUnknown)
@@ -79,7 +80,10 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
                 state.addMissingInstance(msgInstance);
                 return;
             }
-            else if (msgInstance.getBallot() > ballot)
+
+            assert !msgInstance.isPlaceholder();
+
+            if (msgInstance.getBallot() > ballot)
             {
                 completed = true;
                 if (attempt < RETRY_LIMIT)
@@ -99,13 +103,14 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
         if (responses.size() >= participantInfo.quorumSize)
         {
             completed = true;
+
+            if (instanceUnknown)
+            {
+                throw new AssertionError("shouldn't be possible to complete prepare round with unknown instance: " + id);
+            }
+
             PrepareDecision decision = getDecision();
             logger.debug("prepare decision for {}: {}", id, decision);
-
-            if (decision.commitNoop && instanceUnknown)
-            {
-                throw new AssertionError("noop required for unknown instance");
-            }
 
             // if any of the next steps fail, they should report
             // the prepare phase as complete for this instance

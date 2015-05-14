@@ -423,21 +423,6 @@ public class EpaxosSerializationTest
         Assert.assertNull(deserialized.getStronglyConnected());
     }
 
-    @Test(expected=AssertionError.class)
-    public void checkPlaceholderInstanceFailure() throws Exception
-    {
-        Instance instance = new QueryInstance(getSerializedRequest(), LOCALHOST);
-        Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
-        instance.preaccept(deps, deps);
-        instance.updateBallot(5);
-
-        // should cause serialization to fail
-        instance.setPlaceholder(true);
-
-        DataOutputBuffer out = new DataOutputBuffer();
-        Instance.serializer.serialize(instance, out, 0);
-    }
-
     @Test
     public void checkInstanceInternal() throws Exception
     {
