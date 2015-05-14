@@ -98,9 +98,9 @@ public class Node extends EpaxosState
     }
 
     @Override
-    protected TokenStateManager createTokenStateManager()
+    protected TokenStateManager createTokenStateManager(Scope scope)
     {
-        return new MockTokenStateManager(getKeyspace(), getTokenStateTable());
+        return new MockTokenStateManager(getKeyspace(), getTokenStateTable(), scope);
     }
 
     public State getState()
@@ -144,17 +144,17 @@ public class Node extends EpaxosState
     }
 
     @Override
-    public EpochInstance createEpochInstance(Token token, UUID cfId, long epoch)
+    public EpochInstance createEpochInstance(Token token, UUID cfId, long epoch, Scope scope)
     {
-        EpochInstance instance = super.createEpochInstance(token, cfId, epoch);
+        EpochInstance instance = super.createEpochInstance(token, cfId, epoch, scope);
         lastCreatedInstance = instance;
         return instance;
     }
 
     @Override
-    protected TokenInstance createTokenInstance(Token token, UUID cfId)
+    protected TokenInstance createTokenInstance(Token token, UUID cfId, Scope scope)
     {
-        TokenInstance instance = super.createTokenInstance(token, cfId);
+        TokenInstance instance = super.createTokenInstance(token, cfId, scope);
         lastCreatedInstance = instance;
         return instance;
     }
@@ -174,12 +174,14 @@ public class Node extends EpaxosState
         if (instance instanceof QueryInstance)
         {
             SerializedRequest request = ((QueryInstance) instance).getQuery();
-            return keyStateManager.loadKeyState(request.getKey(), Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
-    }
+            return getKeyStateManager(instance).loadKeyState(request.getKey(),
+                                                             Schema.instance.getId(request.getKeyspaceName(), request.getCfName()));
+        }
         else if (instance instanceof EpochInstance)
         {
             throw new AssertionError();
-        } else
+        }
+        else
         {
             throw new IllegalArgumentException("Unsupported instance type: " + instance.getClass().getName());
         }
@@ -269,7 +271,7 @@ public class Node extends EpaxosState
 
     public TokenStateMaintenanceTask newTokenStateMaintenanceTask()
     {
-        return new TokenStateMaintenanceTask(this, tokenStateManager) {
+        return new TokenStateMaintenanceTask(this, tokenStateManagers.values()) {
             @Override
             protected boolean replicatesTokenForKeyspace(Token token, UUID cfId)
             {
@@ -284,9 +286,9 @@ public class Node extends EpaxosState
         };
     }
 
-    public void setEpochIncrementThreshold(int threshold)
+    public void setEpochIncrementThreshold(int threshold, Scope scope)
     {
-        ((MockTokenStateManager) tokenStateManager).epochIncrementThreshold = threshold;
+        ((MockTokenStateManager) getTokenStateManager(scope)).epochIncrementThreshold = threshold;
     }
 
     /**
@@ -295,7 +297,7 @@ public class Node extends EpaxosState
     public static QueuedExecutor queuedExecutor = new QueuedExecutor();
 
     @Override
-    protected String getDc()
+    public String getDc()
     {
         return dc;
     }

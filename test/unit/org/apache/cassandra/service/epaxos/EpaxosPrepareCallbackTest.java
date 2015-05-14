@@ -34,12 +34,13 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     }
     public MessageIn<MessageEnvelope<Instance>> createResponse(InetAddress from, Instance instance)
     {
-        return createResponse(from, instance, instance.getToken(), instance.getCfId());
+        return createResponse(from, instance, instance.getToken(), instance.getCfId(), instance.getScope());
     }
 
-    public MessageIn<MessageEnvelope<Instance>> createResponse(InetAddress from, Instance instance, Token token, UUID cfId)
+    public MessageIn<MessageEnvelope<Instance>> createResponse(InetAddress from, Instance instance, Token token, UUID cfId, Scope scope)
     {
-        return MessageIn.create(from, new MessageEnvelope<>(token, cfId, 0, instance), Collections.<String, byte[]>emptyMap(), null, 0);
+        return MessageIn.create(from,  new MessageEnvelope<>(token, cfId, 0, scope, instance),
+                                Collections.<String, byte[]>emptyMap(), null, 0);
     }
 
     @Test
@@ -251,12 +252,12 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         Assert.assertEquals(0, callback.getNumResponses());
 
         // send a preaccepted response from the leader to prevent trypreaccept
-        callback.response(createResponse(state.localEndpoints.get(1), null, instance.getToken(), instance.getCfId()));
+        callback.response(createResponse(state.localEndpoints.get(1), null, instance.getToken(), instance.getCfId(), instance.getScope()));
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(1, callback.getNumResponses());
 
         // send a null responses for the second reply
-        callback.response(createResponse(state.localEndpoints.get(2), null, instance.getToken(), instance.getCfId()));
+        callback.response(createResponse(state.localEndpoints.get(2), null, instance.getToken(), instance.getCfId(), instance.getScope()));
         Assert.assertTrue(callback.isCompleted());
         Assert.assertEquals(2, callback.getNumResponses());
 

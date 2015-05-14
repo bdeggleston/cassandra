@@ -30,7 +30,7 @@ import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
-public class MockMessengerState extends EpaxosState
+public class MockMessengerState extends MockMultiDcState
 {
     public final InetAddress endpoint;
     public final List<InetAddress> localReplicas;
@@ -68,9 +68,9 @@ public class MockMessengerState extends EpaxosState
     }
 
     @Override
-    protected TokenStateManager createTokenStateManager()
+    protected TokenStateManager createTokenStateManager(Scope scope)
     {
-        return new MockTokenStateManager();
+        return new MockTokenStateManager(scope);
     }
 
     @Override

@@ -8,6 +8,7 @@ import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.exceptions.InvalidRequestException;
@@ -22,6 +23,7 @@ import org.junit.Test;
 
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -29,25 +31,13 @@ import java.util.UUID;
 
 public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
 {
+    static final InetAddress LEADER = FBUtilities.getBroadcastAddress();
+    static final String LEADER_DC = "DC1";
 
     @Before
     public void clearTables()
     {
-        for (UntypedResultSet.Row row: QueryProcessor.executeInternal(String.format("SELECT id from %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE)))
-        {
-            QueryProcessor.executeInternal(String.format("DELETE FROM %s.%s WHERE id=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE),
-                                           row.getUUID("id"));
-        }
-        for (UntypedResultSet.Row row: QueryProcessor.executeInternal(String.format("SELECT row_key from %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE)))
-        {
-            QueryProcessor.executeInternal(String.format("DELETE FROM %s.%s WHERE row_key=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE),
-                                           row.getBlob("row_key"));
-        }
-        for (UntypedResultSet.Row row: QueryProcessor.executeInternal(String.format("SELECT cf_id from %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE)))
-        {
-            QueryProcessor.executeInternal(String.format("DELETE FROM %s.%s WHERE cf_id=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE),
-                                           row.getUUID("cf_id"));
-        }
+        clearAll();
     }
 
     static class MockExecutionState extends EpaxosState
@@ -68,15 +58,22 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         }
 
         @Override
-        protected TokenStateManager createTokenStateManager()
+        protected TokenStateManager createTokenStateManager(Scope scope)
         {
-            return new MockTokenStateManager();
+            return new MockTokenStateManager(scope);
         }
 
         @Override
         public boolean replicates(Instance instance)
         {
             return true;
+        }
+
+        Collection<InetAddress> disseminatedEndpoints = null;
+        @Override
+        protected void sendToHintedEndpoints(Mutation mutation, Collection<InetAddress> endpoints)
+        {
+            disseminatedEndpoints = endpoints;
         }
     }
 
@@ -85,13 +82,11 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
     {
         MockExecutionState state = new MockExecutionState();
 
-        QueryInstance instance1 = new QueryInstance(getSerializedCQLRequest(0, 1),
-                                                   FBUtilities.getBroadcastAddress());
+        QueryInstance instance1 = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER);
         instance1.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance1);
 
-        QueryInstance instance2 = new QueryInstance(getSerializedCQLRequest(0, 1),
-                                                   FBUtilities.getBroadcastAddress());
+        QueryInstance instance2 = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER);
         instance2.commit(Sets.newHashSet(instance1.getId()));
         state.saveInstance(instance2);
 
@@ -109,8 +104,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
     public void skipExecution() throws Exception
     {
         MockExecutionState state = new MockExecutionState();
-        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1),
-                                                   FBUtilities.getBroadcastAddress());
+        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER);
         instance.commit(Collections.<UUID>emptySet());
         instance.setNoop(true);
         state.saveInstance(instance);
@@ -122,53 +116,6 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
     }
 
     /**
-     * tests that the execution was reported
-     * to the token state
-     */
-    @Test
-    public void tokenStateReport() throws Exception
-    {
-        MockExecutionState state = new MockExecutionState();
-        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1),
-                                                   FBUtilities.getBroadcastAddress());
-        instance.commit(Collections.<UUID>emptySet());
-        state.saveInstance(instance);
-
-        TokenState ts = state.tokenStateManager.get(instance);
-        Assert.assertEquals(0, ts.getExecutions());
-
-        ExecuteTask task = new ExecuteTask(state, instance.getId());
-        task.run();
-
-        ts = state.tokenStateManager.get(instance);
-        Assert.assertEquals(1, ts.getExecutions());
-    }
-
-    /**
-     * Tests that a QueryInstance's token state
-     * is notified if a SERIAL query is executed.
-     */
-    @Test
-    public void serialQueryReport() throws Exception
-    {
-        MockExecutionState state = new MockExecutionState();
-        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1, ConsistencyLevel.SERIAL),
-                                                   FBUtilities.getBroadcastAddress());
-        instance.commit(Collections.<UUID>emptySet());
-        state.saveInstance(instance);
-
-        TokenState ts = state.tokenStateManager.get(instance);
-        ts.recordExecution();
-        Assert.assertTrue(ts.localOnly());
-
-        ExecuteTask task = new ExecuteTask(state, instance.getId());
-        task.run();
-
-        ts = state.tokenStateManager.get(instance);
-        Assert.assertFalse(ts.localOnly());
-    }
-
-    /**
      * tests that execution is skipped if the keystate prevents it
      * because it has repair data from unexecuted instances
      */
@@ -176,13 +123,12 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
     public void keyStateCantExecute() throws Exception
     {
         MockExecutionState state = new MockExecutionState();
-        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1),
-                                                   FBUtilities.getBroadcastAddress());
+        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER);
         instance.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance);
 
-        TokenState ts = state.tokenStateManager.get(instance);
-        KeyState ks = state.keyStateManager.loadKeyState(instance.getQuery().getCfKey());
+        TokenState ts = state.getTokenStateManager(DEFAULT_SCOPE).get(instance);
+        KeyState ks = state.getKeyStateManager(DEFAULT_SCOPE).loadKeyState(instance.getQuery().getCfKey());
 
         Assert.assertEquals(0, ts.getEpoch());
         Assert.assertEquals(0, ks.getEpoch());
@@ -191,7 +137,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         ExecuteTask task = new ExecuteTask(state, instance.getId());
         task.run();
 
-        ts = state.tokenStateManager.get(instance);
+        ts = state.getTokenStateManager(DEFAULT_SCOPE).get(instance);
         Assert.assertEquals(0, state.executedIds.size());
     }
 
@@ -226,7 +172,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         Thread.sleep(5);
 
         CfKey cfKey = instance1.getQuery().getCfKey();
-        long firstTs = state.keyStateManager.getMaxTimestamp(cfKey);
+        long firstTs = state.getKeyStateManager(DEFAULT_SCOPE).getMaxTimestamp(cfKey);
         Assert.assertNotSame(KeyState.MIN_TIMESTAMP, firstTs);
 
         instance2.commit(Sets.newHashSet(instance1.getId()));
@@ -239,7 +185,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
 
         // since the timestamp we supplied was less than the previously executed
         // one the timestamp actually executed should be lastTs + 1
-        Assert.assertEquals(firstTs + 1, state.keyStateManager.getMaxTimestamp(cfKey));
+        Assert.assertEquals(firstTs + 1, state.getKeyStateManager(DEFAULT_SCOPE).getMaxTimestamp(cfKey));
 
         instance3.commit(Sets.newHashSet(instance2.getId()));
         state.saveInstance(instance3);
@@ -248,7 +194,61 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         Assert.assertTrue(future.isDone());
         Assert.assertNull(future.get());
 
-        Assert.assertEquals(firstTs + 2, state.keyStateManager.getMaxTimestamp(cfKey));
+        Assert.assertEquals(firstTs + 2, state.getKeyStateManager(DEFAULT_SCOPE).getMaxTimestamp(cfKey));
     }
 
+    @Test
+    public void localSerialMutationDissemination() throws Exception
+    {
+
+        final List<InetAddress> local = Lists.newArrayList(InetAddress.getByName("127.0.0.2"), InetAddress.getByName("127.0.0.3"));
+        final List<InetAddress> remote = Lists.newArrayList(InetAddress.getByName("126.0.0.2"), InetAddress.getByName("126.0.0.3"));
+
+        MockExecutionState state = new MockExecutionState() {
+            @Override
+            protected ParticipantInfo getParticipants(Instance instance)
+            {
+                return new ParticipantInfo(local, remote, instance.getConsistencyLevel());
+            }
+        };
+
+        QueryInstance instance = state.createQueryInstance(getSerializedCQLRequest(100, 100, ConsistencyLevel.LOCAL_SERIAL));
+        EpaxosState.ParticipantInfo pi = state.getParticipants(instance);
+
+        // sanity check
+        Assert.assertEquals(local, pi.endpoints);
+        Assert.assertEquals(remote, pi.remoteEndpoints);
+        Assert.assertNull(state.disseminatedEndpoints);
+
+        state.executeQueryInstance(instance);
+        Assert.assertEquals(remote, state.disseminatedEndpoints);
+    }
+
+    @Test
+    public void noSerialMutationDissemination() throws Exception
+    {
+
+        final List<InetAddress> local = Lists.newArrayList(InetAddress.getByName("127.0.0.2"), InetAddress.getByName("127.0.0.3"));
+        final List<InetAddress> remote = Lists.newArrayList();
+
+        MockExecutionState state = new MockExecutionState() {
+            @Override
+            protected ParticipantInfo getParticipants(Instance instance)
+            {
+                return new ParticipantInfo(local, remote, instance.getConsistencyLevel());
+            }
+        };
+
+        QueryInstance instance = state.createQueryInstance(getSerializedCQLRequest(200, 200, ConsistencyLevel.SERIAL));
+        EpaxosState.ParticipantInfo pi = state.getParticipants(instance);
+
+        // sanity check
+        Assert.assertEquals(local, pi.endpoints);
+        Assert.assertEquals(remote, pi.remoteEndpoints);
+        Assert.assertNull(state.disseminatedEndpoints);
+
+        state.executeQueryInstance(instance);
+        // should still be null
+        Assert.assertNull(state.disseminatedEndpoints);
+    }
 }

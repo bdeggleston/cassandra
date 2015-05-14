@@ -19,6 +19,13 @@ public abstract class AbstractEpochCallback<T extends IEpochMessage> implements 
     @Override
     public final void response(MessageIn<T> message)
     {
+        Scope scope = message.payload.getScope();
+        if (scope == Scope.LOCAL && !state.isInSameDC(message.from))
+        {
+            logger.warn("Received message with LOCAL scope from other dc");
+            // ignore completely
+            return;
+        }
         TokenState tokenState = state.getTokenState(message.payload);
         tokenState.lock.readLock().lock();
         EpochDecision decision;
@@ -28,7 +35,7 @@ public abstract class AbstractEpochCallback<T extends IEpochMessage> implements 
             TokenState.State s = tokenState.getState();
             if (s == TokenState.State.RECOVERY_REQUIRED)
             {
-                state.startLocalFailureRecovery(tokenState.getToken(), tokenState.getCfId(), 0);
+                state.startLocalFailureRecovery(tokenState.getToken(), tokenState.getCfId(), 0, scope);
                 return;
             }
             else if (!s.isOkToParticipate())
@@ -47,11 +54,11 @@ public abstract class AbstractEpochCallback<T extends IEpochMessage> implements 
         {
             case LOCAL_FAILURE:
                 logger.debug("Unrecoverable local state", decision);
-                state.startLocalFailureRecovery(decision.token, tokenState.getCfId(), decision.remoteEpoch);
+                state.startLocalFailureRecovery(decision.token, tokenState.getCfId(), decision.remoteEpoch, message.payload.getScope());
                 break;
             case REMOTE_FAILURE:
                 logger.debug("Unrecoverable remote state", decision);
-                state.startRemoteFailureRecovery(message.from, decision.token, tokenState.getCfId(), decision.localEpoch);
+                state.startRemoteFailureRecovery(message.from, decision.token, tokenState.getCfId(), decision.localEpoch, scope);
                 break;
             case OK:
                 epochResponse(message);

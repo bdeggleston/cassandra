@@ -238,7 +238,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         /* register the verb handlers */
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.MUTATION, new MutationVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.READ_REPAIR, new ReadRepairVerbHandler.Normal());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.READ_REPAIR, new ReadRepairVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.READ, new ReadVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.RANGE_SLICE, new RangeSliceVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.PAGED_RANGE, new RangeSliceVerbHandler());
@@ -272,8 +272,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREPARE, EpaxosState.getInstance().getPrepareVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_TRYPREACCEPT, EpaxosState.getInstance().getTryPreacceptVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_FORWARD_QUERY, EpaxosState.getInstance().getForwardQueryVerbHandler());
-
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_READ_REPAIR, new ReadRepairVerbHandler.Epaxos(EpaxosState.getInstance()));
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_FAILURE_RECOVERY, EpaxosState.getInstance().getFailureRecoveryVerbHandler());
     }
 
@@ -3379,8 +3377,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
                             for (Range<Token> range: endpointRanges.get(address))
                             {
-                                // TODO: should remote instances and token ranges be deleted first?
-                                streamPlan.transferEpaxosRange(address, cf.cfId, range);
+                                streamPlan.transferEpaxosRange(address, cf.cfId, range,
+                                                               EpaxosState.getInstance().getActiveScopes(address));
                             }
                         }
                         streamPlan.transferRanges(address, keyspace, endpointRanges.get(address));
@@ -3392,15 +3390,13 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     {
                         logger.debug("Will request range {} of keyspace {} from endpoint {}", workMap.get(address), keyspace, address);
 
-                        // TODO: request a list of managed cfIds so we can proactively create 'recovering' token states
                         KSMetaData ks = Schema.instance.getKSMetaData(keyspace);
                         for (CFMetaData cf: ks.cfMetaData().values())
                         {
                             for (Range<Token> range: workMap.get(address))
                             {
-                                // TODO: should instances and token ranges be deleted first?
-                                // TODO: just request the keyspace + ranges, this might be a little too intense
-                                streamPlan.requestEpaxosRange(address, cf.cfId, range);
+                                streamPlan.requestEpaxosRange(address, cf.cfId, range,
+                                                              EpaxosState.getInstance().getActiveScopes(address));
                             }
                         }
 
@@ -3904,8 +3900,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
                     for (Range<Token> range: ranges)
                     {
-                        // TODO: should remote instances and token ranges be deleted first?
-                        streamPlan.transferEpaxosRange(newEndpoint, cf.cfId, range);
+                        streamPlan.transferEpaxosRange(newEndpoint, cf.cfId, range,
+                                                       EpaxosState.getInstance().getActiveScopes(newEndpoint));
                     }
                 }
 

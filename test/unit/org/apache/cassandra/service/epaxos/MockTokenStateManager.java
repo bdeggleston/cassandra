@@ -14,22 +14,23 @@ public class MockTokenStateManager extends TokenStateManager
 {
     public static final Token TOKEN0 = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(0));
 
-    private volatile Set<Range<Token>> ranges = Sets.newHashSet(new Range<Token>(TOKEN0, TOKEN0));
+    private final Set<Range<Token>> ranges = Sets.newHashSet(new Range<>(TOKEN0, TOKEN0));
 
-    public MockTokenStateManager()
+    public MockTokenStateManager(Scope scope)
     {
+        super(scope);
         start();
     }
 
-    public MockTokenStateManager(String keyspace, String table)
+    public MockTokenStateManager(String keyspace, String table, Scope scope)
     {
-        super(keyspace, table);
+        super(keyspace, table, scope);
         start();
     }
 
     public void setTokens(Token t1, Token t2, Token... tokens)
     {
-        this.ranges = Sets.newHashSet();
+        this.ranges.clear();
         ranges.add(new Range<>(t1, t2));
 
         Token last = t2;

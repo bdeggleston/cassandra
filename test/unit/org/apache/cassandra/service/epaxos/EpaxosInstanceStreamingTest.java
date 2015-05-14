@@ -15,6 +15,8 @@ import org.apache.cassandra.service.epaxos.integration.AbstractEpaxosIntegration
 import org.apache.cassandra.service.epaxos.integration.Messenger;
 import org.apache.cassandra.service.epaxos.integration.Node;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.Hex;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -52,9 +54,9 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         }
 
         @Override
-        protected TokenStateManager createTokenStateManager()
+        protected TokenStateManager createTokenStateManager(Scope scope)
         {
-            return new EpaxosTokenIntegrationTest.IntegrationTokenStateManager(getKeyspace(), getTokenStateTable());
+            return new EpaxosTokenIntegrationTest.IntegrationTokenStateManager(getKeyspace(), getTokenStateTable(), scope);
         }
     }
 
@@ -72,19 +74,19 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
     }
 
 
-    private UUID executeInstance(int k, long epoch, EpaxosState state)
+    private UUID executeInstance(int k, long epoch, EpaxosState state, Scope scope)
     {
-        Instance instance = newInstance(state, k, ConsistencyLevel.SERIAL);
+        Instance instance = newInstance(state, k, scope.cl);
         instance.setDependencies(state.getCurrentDependencies(instance).left);
         instance.setExecuted(epoch);
         state.saveInstance(instance);
 
         ByteBuffer key = ByteBufferUtil.bytes(k);
 
-        KeyState ks = state.keyStateManager.loadKeyState(key, cfm.cfId);
+        KeyState ks = state.getKeyStateManager(scope).loadKeyState(key, cfm.cfId);
         ks.markExecuted(instance.getId(), EMPTY, epoch, null, 0);
         ks.markAcknowledged(instance.getDependencies(), instance.getId());
-        state.keyStateManager.saveKeyState(key, cfm.cfId, ks);
+        state.getKeyStateManager(scope).saveKeyState(key, cfm.cfId, ks);
         return instance.getId();
     }
 
@@ -96,10 +98,10 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
 
         ByteBuffer key = ByteBufferUtil.bytes(k);
 
-        KeyState ks = state.keyStateManager.loadKeyState(key, cfm.cfId);
+        KeyState ks = state.getKeyStateManager(DEFAULT_SCOPE).loadKeyState(key, cfm.cfId);
         ks.recordInstance(instance.getId());
         ks.markAcknowledged(instance.getDependencies(), instance.getId());
-        state.keyStateManager.saveKeyState(key, cfm.cfId, ks);
+        state.getKeyStateManager(DEFAULT_SCOPE).saveKeyState(key, cfm.cfId, ks);
         return instance.getId();
     }
 
@@ -117,6 +119,14 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         return ids;
     }
 
+    private static void assertKeyAndTokenStateEpoch(EpaxosState state, ByteBuffer key, UUID cfId, long epoch, Scope scope)
+    {
+        KeyState ks = state.getKeyStateManager(scope).loadKeyState(key, cfId);
+        TokenState ts = state.getTokenStateManager(scope).get(key, cfId);
+        Assert.assertEquals(String.format("Key: %s", Hex.bytesToHex(key.array())), epoch, ks.getEpoch());
+        Assert.assertEquals(String.format("Key: %s", Hex.bytesToHex(key.array())), epoch, ts.getEpoch());
+    }
+
     /**
      * Test token states being streamed
      * from one node to another
@@ -132,12 +142,14 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         Token token200 = partitioner.getToken(ByteBufferUtil.bytes(200));
         Token token300 = partitioner.getToken(ByteBufferUtil.bytes(300));
 
-        TokenStateManager fTsm = fromNode.tokenStateManager;
-        TokenStateManager.ManagedCf fCf = fTsm.getOrInitManagedCf(cfId);
-        fCf.putIfAbsent(new TokenState(range(token100, token200), cfId, 10, 0));
-        fCf.putIfAbsent(new TokenState(range(token200, token300), cfId, 20, 0));
+        for (Scope scope: Scope.BOTH)
+        {
+            TokenStateManager fTsm = fromNode.getTokenStateManager(scope);
+            TokenStateManager.ManagedCf fCf = fTsm.getOrInitManagedCf(cfId);
+            fCf.putIfAbsent(new TokenState(range(token100, token200), cfId, 10, 0));
+            fCf.putIfAbsent(new TokenState(range(token200, token300), cfId, 20, 0));
+        }
 
-        KeyStateManager fKsm = fromNode.keyStateManager;
         Set<UUID> includedIds = Sets.newHashSet();
         Set<UUID> excludedIds = Sets.newHashSet();
 
@@ -147,19 +159,16 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
 
             boolean included = k > 100 && k <= 300;
             ByteBuffer key = ByteBufferUtil.bytes(k);
-            KeyState ks = fKsm.loadKeyState(key, cfId);
-            TokenState ts = fTsm.get(key, cfId);
 
-            Assert.assertEquals(String.format("Key: %s", k), epoch, ks.getEpoch());
-            Assert.assertEquals(String.format("Key: %s", k), epoch, ts.getEpoch());
+            assertKeyAndTokenStateEpoch(fromNode, key, cfId, epoch, Scope.GLOBAL);
 
             // execute and instance in epoch, epoch -1, and epoch -2
             // and add an 'active' instance
-            excludedIds.add(executeInstance(k, epoch - 2, fromNode));
+            excludedIds.add(executeInstance(k, epoch - 2, fromNode, Scope.GLOBAL));
 
             Set<UUID> maybeTransmitted = Sets.newHashSet();
-            maybeTransmitted.add(executeInstance(k, epoch - 1, fromNode));
-            maybeTransmitted.add(executeInstance(k, epoch, fromNode));
+            maybeTransmitted.add(executeInstance(k, epoch - 1, fromNode, Scope.GLOBAL));
+            maybeTransmitted.add(executeInstance(k, epoch, fromNode, Scope.GLOBAL));
             maybeTransmitted.add(activeInstance(k, fromNode));
             if (included)
             {
@@ -169,12 +178,15 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
             {
                 excludedIds.addAll(maybeTransmitted);
             }
+
+            // should be excluded from the stream
+            excludedIds.add(executeInstance(k, epoch, fromNode, Scope.LOCAL));
         }
 
         final Range<Token> range = new Range<>(token100, token300);
 
-        InstanceStreamWriter writer = new InstanceStreamWriter(fromNode, cfId, range, toNode.getEndpoint());
-        InstanceStreamReader reader = new InstanceStreamReader(toNode, cfId, range);
+        InstanceStreamWriter writer = new InstanceStreamWriter(fromNode, cfId, range, Scope.GLOBAL, toNode.getEndpoint());
+        InstanceStreamReader reader = new InstanceStreamReader(toNode, cfId, range, Scope.GLOBAL, fromNode.getEndpoint());
 
         DataOutputBuffer outputBuffer = new DataOutputBuffer();
         WritableByteChannel outputChannel = Channels.newChannel(outputBuffer);
@@ -183,7 +195,7 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         ReadableByteChannel inputChannel = Channels.newChannel(new ByteArrayInputStream(outputBuffer.getData()));
         reader.read(inputChannel, null);
 
-        TokenStateManager tTsm = fromNode.tokenStateManager;
+        TokenStateManager tTsm = fromNode.getTokenStateManager(Scope.GLOBAL);
         TokenStateManager.ManagedCf tCf = tTsm.getOrInitManagedCf(cfId);
         Assert.assertEquals(2, tCf.allTokens().size());
 
@@ -202,7 +214,7 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         Set<UUID> expectedIds = Sets.newHashSet(actualIds);
         for (int k=150; k<=300; k+=50)
         {
-            KeyState ks = toNode.keyStateManager.loadKeyState(ByteBufferUtil.bytes(k), cfId);
+            KeyState ks = toNode.getKeyStateManager(Scope.GLOBAL).loadKeyState(ByteBufferUtil.bytes(k), cfId);
             Assert.assertNotNull(ks);
             Set<UUID> activeIds = ks.getActiveInstanceIds();
             Assert.assertEquals(1, activeIds.size());
@@ -220,6 +232,12 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         }
 
         Assert.assertEquals(0, expectedIds.size());
+
+        // check that the none of the excluded ids exist
+        for (UUID id: excludedIds)
+        {
+            Assert.assertNull(toNode.getInstance(id));
+        }
     }
 
     /**
@@ -246,11 +264,11 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         Token token100 = partitioner.getToken(ByteBufferUtil.bytes(100));
         Token token200 = partitioner.getToken(ByteBufferUtil.bytes(200));
 
-        TokenStateManager fTsm = fromNode.tokenStateManager;
+        TokenStateManager fTsm = fromNode.getTokenStateManager(DEFAULT_SCOPE);
         TokenStateManager.ManagedCf fCf = fTsm.getOrInitManagedCf(cfId);
         fCf.putIfAbsent(new TokenState(range(token100, token200), cfId, 10, 0));
 
-        KeyStateManager fKsm = fromNode.keyStateManager;
+        KeyStateManager fKsm = fromNode.getKeyStateManager(DEFAULT_SCOPE);
 
         for (int k=150; k<=200; k+=50)
         {
@@ -265,23 +283,23 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
 
             // execute and instance in epoch, epoch -1, and epoch -2
             // and add an 'active' instance
-            executeInstance(k, epoch - 2, fromNode);
-            executeInstance(k, epoch - 1, fromNode);
-            executeInstance(k, epoch, fromNode);
+            executeInstance(k, epoch - 2, fromNode, Scope.GLOBAL);
+            executeInstance(k, epoch - 1, fromNode, Scope.GLOBAL);
+            executeInstance(k, epoch, fromNode, Scope.GLOBAL);
             activeInstance(k, fromNode);
         }
 
 
         // set the to-node token state to the same epoch as the from-node
-        TokenStateManager tTsm = toNode.tokenStateManager;
+        TokenStateManager tTsm = toNode.getTokenStateManager(DEFAULT_SCOPE);
         TokenStateManager.ManagedCf tCf = tTsm.getOrInitManagedCf(cfId);
         tCf.putIfAbsent(new TokenState(range(token100, token200), cfId, 10, 0));
 
         final Range<Token> range = new Range<>(token100, token200);
 
-        InstanceStreamWriter writer = new InstanceStreamWriter(fromNode, cfId, range, toNode.getEndpoint());
+        InstanceStreamWriter writer = new InstanceStreamWriter(fromNode, cfId, range, DEFAULT_SCOPE, toNode.getEndpoint());
         final AtomicBoolean wasDrained = new AtomicBoolean(false);
-        InstanceStreamReader reader = new InstanceStreamReader(toNode, cfId, range) {
+        InstanceStreamReader reader = new InstanceStreamReader(toNode, cfId, range, DEFAULT_SCOPE, fromNode.getEndpoint()) {
             @Override
             protected int drainInstanceStream(DataInputStream in) throws IOException
             {
@@ -304,5 +322,32 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
     public void tokenStatesAreIncremented()
     {
 
+    }
+
+    @Test
+    public void illegalScopePeerCombo()
+    {
+        // doing stupid things is not allowed
+        MockMultiDcState state = new MockMultiDcState();
+
+        try
+        {
+            new InstanceStreamReader(state, CFID, null, Scope.LOCAL, REMOTE_ADDRESS);
+            Assert.fail();
+        }
+        catch (AssertionError e)
+        {
+            // expected
+        }
+
+        try
+        {
+            new InstanceStreamWriter(state, CFID, null, Scope.LOCAL, REMOTE_ADDRESS);
+            Assert.fail();
+        }
+        catch (AssertionError e)
+        {
+            // expected
+        }
     }
 }

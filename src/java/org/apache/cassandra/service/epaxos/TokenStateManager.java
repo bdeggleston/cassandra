@@ -46,6 +46,7 @@ public class TokenStateManager
 
     private final String keyspace;
     private final String table;
+    private final Scope scope;
     private volatile boolean started = false;
 
     class ManagedCf
@@ -173,15 +174,16 @@ public class TokenStateManager
 
     private final ConcurrentMap<UUID, ManagedCf> states = Maps.newConcurrentMap();
 
-    public TokenStateManager()
+    public TokenStateManager(Scope scope)
     {
-        this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
+        this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE, scope);
     }
 
-    public TokenStateManager(String keyspace, String table)
+    public TokenStateManager(String keyspace, String table, Scope scope)
     {
         this.keyspace = keyspace;
         this.table = table;
+        this.scope = scope;
     }
 
     public synchronized void start()
@@ -190,6 +192,9 @@ public class TokenStateManager
         UntypedResultSet rows = QueryProcessor.executeInternal(String.format("SELECT * FROM %s.%s", keyspace, table));
         for (UntypedResultSet.Row row: rows)
         {
+            if (row.getInt("scope") != scope.ordinal())
+                continue;
+
             ByteBuffer data = row.getBlob("data");
             DataInput in = new DataInputStream(ByteBufferUtil.inputStream(data));
             try
@@ -227,6 +232,13 @@ public class TokenStateManager
     void setStarted()
     {
         started = true;
+    }
+
+    @VisibleForTesting
+    int numManagedTokensFor(UUID cfId)
+    {
+        ManagedCf cf = states.get(cfId);
+        return cf != null ? cf.tokens.size() : 0;
     }
 
     protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
@@ -283,6 +295,11 @@ public class TokenStateManager
     public synchronized TokenState putState(TokenState state)
     {
         return getOrInitManagedCf(state.getCfId()).putIfAbsent(state);
+    }
+
+    public Scope getScope()
+    {
+        return scope;
     }
 
     public TokenState get(CfKey cfKey)
@@ -355,20 +372,6 @@ public class TokenStateManager
         try
         {
             return ts.getEpoch();
-        }
-        finally
-        {
-            ts.lock.readLock().unlock();
-        }
-    }
-
-    public boolean isLocalOnly(Token token, UUID cfId)
-    {
-        TokenState ts = get(token, cfId);
-        ts.lock.readLock().lock();
-        try
-        {
-            return ts.localOnly();
         }
         finally
         {
@@ -487,10 +490,11 @@ public class TokenStateManager
         {
             throw new AssertionError(e);
         }
-        String depsReq = "INSERT INTO %s.%s (cf_id, token_bytes, data) VALUES (?, ?, ?)";
+        String depsReq = "INSERT INTO %s.%s (cf_id, token_bytes, scope, data) VALUES (?, ?, ?, ?)";
         QueryProcessor.executeInternal(String.format(depsReq, keyspace, table),
                                        state.getCfId(),
                                        ByteBuffer.wrap(tokenOut.getData()),
+                                       scope.ordinal(),
                                        ByteBuffer.wrap(stateOut.getData()));
 
         state.onSave();
@@ -507,10 +511,11 @@ public class TokenStateManager
         {
             throw new AssertionError(e);
         }
-        String depsReq = "DELETE FROM %s.%s WHERE cf_id=? AND token_bytes=?";
+        String depsReq = "DELETE FROM %s.%s WHERE cf_id=? AND token_bytes=? AND scope=?";
         QueryProcessor.executeInternal(String.format(depsReq, keyspace, table),
                                        state.getCfId(),
-                                       ByteBuffer.wrap(tokenOut.getData()));
+                                       ByteBuffer.wrap(tokenOut.getData()),
+                                       scope.ordinal());
     }
 
     /**
@@ -544,29 +549,9 @@ public class TokenStateManager
         return  states.get(cfId).epochThreshold;
     }
 
-    private int getUnsavedExecutionThreshold(UUID cfId)
+    protected int getUnsavedExecutionThreshold(UUID cfId)
     {
         return  states.get(cfId).unsavedExecutionThreshold;
-    }
-
-    public void maybeRecordSerialInstance(QueryInstance instance)
-    {
-        if (instance.getQuery().getConsistencyLevel() == ConsistencyLevel.SERIAL)
-        {
-            TokenState ts = get(instance.getToken(), instance.getCfId());
-            if (ts.recordSerialCommit())
-            {
-                ts.lock.writeLock().lock();
-                try
-                {
-                    save(ts);
-                }
-                finally
-                {
-                    ts.lock.writeLock().unlock();
-                }
-            }
-        }
     }
 
     public List<Token> getManagedTokensForCf(UUID cfId)

@@ -17,6 +17,7 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
 {
     static final InetAddress LOCAL;
     static final InetAddress LEADER;
+    static final String LEADER_DC = "DC1";
 
     static
     {
@@ -34,7 +35,7 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
     MessageIn<MessageEnvelope<Instance>> createMessage(Instance instance)
     {
         return MessageIn.create(LEADER,
-                                new MessageEnvelope<>(instance.getToken(), instance.getCfId(), 0, instance),
+                                new MessageEnvelope<>(instance.getToken(), instance.getCfId(), 0, instance.getScope(), instance),
                                 Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.EPAXOS_COMMIT,
                                 0);

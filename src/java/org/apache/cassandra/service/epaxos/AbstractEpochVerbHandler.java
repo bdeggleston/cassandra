@@ -23,6 +23,13 @@ public abstract class AbstractEpochVerbHandler<T extends IEpochMessage> implemen
     public final void doVerb(MessageIn<T> message, int id)
     {
 
+        Scope scope = message.payload.getScope();
+        if (scope == Scope.LOCAL && !state.isInSameDC(message.from))
+        {
+            logger.warn("Received message with LOCAL scope from other dc");
+            // ignore completely
+            return;
+        }
         TokenState tokenState = state.getTokenState(message.payload);
         logger.debug("Epoch message received from {} regarding {}", message.from, tokenState);
         tokenState.lock.readLock().lock();
@@ -32,7 +39,7 @@ public abstract class AbstractEpochVerbHandler<T extends IEpochMessage> implemen
             TokenState.State s = tokenState.getState();
             if (s == TokenState.State.RECOVERY_REQUIRED)
             {
-                state.startLocalFailureRecovery(tokenState.getToken(), tokenState.getCfId(), 0);
+                state.startLocalFailureRecovery(tokenState.getToken(), tokenState.getCfId(), 0, scope);
                 return;
             }
             else if (!s.isOkToParticipate())
@@ -54,11 +61,11 @@ public abstract class AbstractEpochVerbHandler<T extends IEpochMessage> implemen
         {
             case LOCAL_FAILURE:
                 logger.debug("Unrecoverable local state", decision);
-                state.startLocalFailureRecovery(decision.token, tokenState.getCfId(), decision.remoteEpoch);
+                state.startLocalFailureRecovery(decision.token, tokenState.getCfId(), decision.remoteEpoch, scope);
                 break;
             case REMOTE_FAILURE:
                 logger.debug("Unrecoverable remote state", decision);
-                state.startRemoteFailureRecovery(message.from, decision.token, tokenState.getCfId(), decision.localEpoch);
+                state.startRemoteFailureRecovery(message.from, decision.token, tokenState.getCfId(), decision.localEpoch, scope);
                 break;
             case OK:
                 doEpochVerb(message, id);

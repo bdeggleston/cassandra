@@ -12,8 +12,10 @@ import org.apache.cassandra.utils.UUIDSerializer;
 import java.io.DataInput;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -144,6 +146,46 @@ public class Serializers
             for (Row row: rows)
             {
                 size += Row.serializer.serializedSize(row, version);
+            }
+            return size;
+        }
+    };
+
+    public static final IVersionedSerializer<Map<Scope, ExecutionInfo>> executionMap = new IVersionedSerializer<Map<Scope, ExecutionInfo>>()
+    {
+        @Override
+        public void serialize(Map<Scope, ExecutionInfo> executionInfoMap, DataOutputPlus out, int version) throws IOException
+        {
+            out.writeInt(executionInfoMap.size());
+            for (Map.Entry<Scope, ExecutionInfo> entry: executionInfoMap.entrySet())
+            {
+                Scope.serializer.serialize(entry.getKey(), out, version);
+                ExecutionInfo.serializer.serialize(entry.getValue(), out, version);
+            }
+        }
+
+        @Override
+        public Map<Scope, ExecutionInfo> deserialize(DataInput in, int version) throws IOException
+        {
+            int num = in.readInt();
+            Map<Scope, ExecutionInfo> info = new HashMap<>(num);
+            for (int i=0; i<num; i++)
+            {
+                info.put(Scope.serializer.deserialize(in, version),
+                         ExecutionInfo.serializer.deserialize(in, version));
+            }
+
+            return info;
+        }
+
+        @Override
+        public long serializedSize(Map<Scope, ExecutionInfo> executionInfoMap, int version)
+        {
+            long size = 4;
+            for (Map.Entry<Scope, ExecutionInfo> entry: executionInfoMap.entrySet())
+            {
+                size += Scope.serializer.serializedSize(entry.getKey(), version);
+                size += ExecutionInfo.serializer.serializedSize(entry.getValue(), version);
             }
             return size;
         }

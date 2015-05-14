@@ -12,13 +12,13 @@ import org.apache.cassandra.utils.Pair;
 import java.net.InetAddress;
 import java.util.*;
 
-public class MockVerbHandlerState extends EpaxosState
+public class MockVerbHandlerState extends MockMultiDcState
 {
 
     @Override
-    protected TokenStateManager createTokenStateManager()
+    protected TokenStateManager createTokenStateManager(Scope scope)
     {
-        return new MockTokenStateManager();
+        return new MockTokenStateManager(scope);
     }
 
     @Override

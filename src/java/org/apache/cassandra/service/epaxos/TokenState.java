@@ -43,12 +43,6 @@ public class TokenState
     // instances cannot be gc'd unless this is 0
     private final AtomicInteger recoveryStreams = new AtomicInteger(0);
 
-    // set to false if there were any SERIAL queries committed in the current epoch
-    // this is used to determine if epoch and token instances should be executed at
-    // SERIAL or LOCAL_SERIAL
-    private final AtomicBoolean localOnly = new AtomicBoolean(true);
-    private volatile boolean lastEpochLocalOnly = false;
-
     // the minimum epoch this token state will need to be in to stream instances
     // to a new node. After a token range is split, this prevents instances being
     // transmitted to a node that doesn't replicate them
@@ -172,8 +166,6 @@ public class TokenState
         this.epoch = epoch;
 
         executions.set(0);
-        lastEpochLocalOnly = localOnly();
-        localOnly.set(true);
         resetUnrecordedExecutions();
         cleanEpochInstances();
     }
@@ -285,15 +277,6 @@ public class TokenState
         }
     }
 
-    /**
-     * records a serial commit. Returns true if this is the first serial commit
-     * seen in this epoch, and the token state needs to be saved
-     */
-    public boolean recordSerialCommit()
-    {
-        return localOnly.compareAndSet(true, false);
-    }
-
     public Set<UUID> getCurrentEpochInstances()
     {
         return ImmutableSet.copyOf(epochInstances.values());
@@ -334,23 +317,6 @@ public class TokenState
                                  remoteEpoch);
     }
 
-    /**
-     * returns true if every instance for the current and last epoch used
-     * the LOCAL_SERIAL consistency level
-     */
-    public boolean localOnly()
-    {
-        if (executions.get() == 0)
-        {
-            // if we don't have any info, defer to the last epoch
-            return lastEpochLocalOnly;
-        }
-        else
-        {
-            return localOnly.get();
-        }
-    }
-
     public long getMinStreamEpoch()
     {
         return minStreamEpoch;
@@ -385,8 +351,6 @@ public class TokenState
             out.writeLong(tokenState.epoch);
             out.writeInt(tokenState.executions.get());
             out.writeInt(tokenState.state.ordinal());
-            out.writeBoolean(tokenState.lastEpochLocalOnly);
-            out.writeBoolean(tokenState.localOnly.get());
             out.writeLong(tokenState.minStreamEpoch);
             out.writeBoolean(tokenState.creatorToken != null);
             if (tokenState.creatorToken != null)
@@ -421,8 +385,6 @@ public class TokenState
                                            in.readInt(),
                                            State.values()[in.readInt()]);
 
-            ts.lastEpochLocalOnly = in.readBoolean();
-            ts.localOnly.set(in.readBoolean());
             ts.minStreamEpoch = in.readLong();
 
             if (in.readBoolean())
@@ -453,7 +415,7 @@ public class TokenState
             long size = Token.serializer.serializedSize(tokenState.predecessor, TypeSizes.NATIVE);
             size += Token.serializer.serializedSize(tokenState.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(tokenState.cfId, version);
-            size += 8 + 4 + 4 + 1 + 1 + 8;
+            size += 8 + 4 + 4 + 8;
 
             size += 1;
             if (tokenState.creatorToken != null)

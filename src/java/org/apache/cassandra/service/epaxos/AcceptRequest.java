@@ -22,7 +22,7 @@ public class AcceptRequest extends AbstractEpochMessage
 
     public AcceptRequest(Instance instance, long epoch, List<Instance> missingInstances)
     {
-        super(instance.getToken(), instance.getCfId(), epoch);
+        super(instance.getToken(), instance.getCfId(), epoch, instance.getScope());
         this.instance = instance;
         this.missingInstances = missingInstances != null ? missingInstances : Collections.<Instance>emptyList();
     }

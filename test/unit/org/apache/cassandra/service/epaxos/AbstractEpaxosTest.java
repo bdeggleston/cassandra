@@ -31,6 +31,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 
@@ -54,6 +55,11 @@ public abstract class AbstractEpaxosTest
     protected static CFMetaData cfm;
     protected static CFMetaData thriftcf;
     protected static final InetAddress LOCALHOST;
+    protected static InetAddress LOCAL_ADDRESS;
+    protected static InetAddress REMOTE_ADDRESS;
+    protected static final Scope DEFAULT_SCOPE = Scope.GLOBAL;
+    protected static final String DC1 = "DC1";
+    protected static final String DC2 = "DC2";
 
     static
     {
@@ -64,6 +70,8 @@ public abstract class AbstractEpaxosTest
         try
         {
             LOCALHOST = InetAddress.getByName("127.0.0.1");
+            LOCAL_ADDRESS = InetAddress.getByName("127.0.0.2");
+            REMOTE_ADDRESS = InetAddress.getByName("127.0.0.3");
         }
         catch (UnknownHostException e)
         {
@@ -128,7 +136,7 @@ public abstract class AbstractEpaxosTest
         Schema.instance.load(ksm);
     }
 
-    protected void clearInstances()
+    protected static void clearInstances()
     {
         String select = String.format("SELECT id FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE);
         String delete = String.format("DELETE FROM %s.%s WHERE id=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE);
@@ -146,7 +154,7 @@ public abstract class AbstractEpaxosTest
         Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
     }
 
-    protected void clearKeyStates()
+    protected static void clearKeyStates()
     {
         String select = String.format("SELECT row_key FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
         String delete = String.format("DELETE FROM %s.%s WHERE row_key=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
@@ -164,7 +172,7 @@ public abstract class AbstractEpaxosTest
         Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
     }
 
-    protected void clearTokenStates()
+    protected static void clearTokenStates()
     {
         String select = String.format("SELECT cf_id FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
         String delete = String.format("DELETE FROM %s.%s WHERE cf_id=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
@@ -182,6 +190,19 @@ public abstract class AbstractEpaxosTest
         Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
     }
 
+    protected static void clearAll()
+    {
+        clearInstances();
+        clearKeyStates();
+        clearTokenStates();
+    }
+
+    @Before
+    public void cleanup()
+    {
+        clearAll();
+    }
+
     protected MessageEnvelope<Instance> wrapInstance(Instance instance)
     {
         return wrapInstance(instance, 0);
@@ -189,7 +210,7 @@ public abstract class AbstractEpaxosTest
 
     protected MessageEnvelope<Instance> wrapInstance(Instance instance, long epoch)
     {
-        return new MessageEnvelope<>(instance.getToken(), instance.getCfId(), epoch, instance);
+        return new MessageEnvelope<>(instance.getToken(), instance.getCfId(), epoch, instance.getScope(), instance);
     }
 
     protected static ThriftCASRequest getThriftCasRequest()

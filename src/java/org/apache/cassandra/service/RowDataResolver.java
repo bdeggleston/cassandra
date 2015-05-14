@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -125,29 +126,13 @@ public class RowDataResolver extends AbstractRowResolver
             assert mutation.getColumnFamilyIds().size() == 1;
             UUID cfId = mutation.getColumnFamilyIds().iterator().next();
 
-            ExecutionInfo epaxosInfo = EpaxosState.getInstance().getEpochExecutionInfo(mutation.key(), cfId);
-
             // use a separate verb here because we don't want these to be get the white glove hint-
             // on-timeout behavior that a "real" mutation gets
-            if (epaxosInfo != null)
-            {
-
-                // we need to send the current state of this key in epaxos to prevent the repairee from becoming inconsistent
-                MessageOut<ExecutionInfo.Tuple<Mutation>> msg = new MessageOut<>(MessagingService.Verb.EPAXOS_READ_REPAIR,
-                                                                                 new ExecutionInfo.Tuple<>(epaxosInfo, mutation),
-                                                                                 ReadRepairVerbHandler.Epaxos.serializer);
-                results.add(MessagingService.instance().sendRR(msg, endpoints.get(i)));
-
-                if (logger.isDebugEnabled())
-                {
-                    logger.debug("Sending epaxos read repair for to {}", endpoints.get(i));
-                }
-            }
-            else
-            {
-                results.add(MessagingService.instance().sendRR(mutation.createMessage(MessagingService.Verb.READ_REPAIR),
-                                                               endpoints.get(i)));
-            }
+            InetAddress endpoint = endpoints.get(i);
+            int msVersion = MessagingService.instance().getVersion(endpoint);
+            MessageOut<Mutation> msg = mutation.createMessage(MessagingService.Verb.READ_REPAIR);
+            msg = EpaxosState.getInstance().maybeAddExecutionInfo(mutation.key(), cfId, msg, msVersion, endpoint);
+            results.add(MessagingService.instance().sendRR(msg, endpoint));
         }
 
         return results;

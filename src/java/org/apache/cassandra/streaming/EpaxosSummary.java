@@ -5,6 +5,7 @@ import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.service.epaxos.Scope;
 import org.apache.cassandra.utils.UUIDSerializer;
 
 import java.io.DataInput;
@@ -16,12 +17,14 @@ public class EpaxosSummary
     public final UUID taskId;
     public final UUID cfId;
     public final Range<Token> range;
+    public final Scope scope;
 
-    public EpaxosSummary(UUID taskId, UUID cfId, Range<Token> range)
+    public EpaxosSummary(UUID taskId, UUID cfId, Range<Token> range, Scope scope)
     {
         this.taskId = taskId;
         this.cfId = cfId;
         this.range = range;
+        this.scope = scope;
     }
 
     public static final IVersionedSerializer<EpaxosSummary> serializer = new IVersionedSerializer<EpaxosSummary>()
@@ -33,6 +36,7 @@ public class EpaxosSummary
             UUIDSerializer.serializer.serialize(request.cfId, out, version);
             Token.serializer.serialize(request.range.left, out);
             Token.serializer.serialize(request.range.right, out);
+            Scope.serializer.serialize(request.scope, out, version);
         }
 
         @Override
@@ -40,7 +44,8 @@ public class EpaxosSummary
         {
             return new EpaxosSummary(UUIDSerializer.serializer.deserialize(in, version),
                                              UUIDSerializer.serializer.deserialize(in, version),
-                                             new Range<>(Token.serializer.deserialize(in), Token.serializer.deserialize(in)));
+                                             new Range<>(Token.serializer.deserialize(in), Token.serializer.deserialize(in)),
+                                             Scope.serializer.deserialize(in, version));
         }
 
         @Override
@@ -51,6 +56,7 @@ public class EpaxosSummary
             size += UUIDSerializer.serializer.serializedSize(request.cfId, version);
             size += Token.serializer.serializedSize(request.range.left, TypeSizes.NATIVE);
             size += Token.serializer.serializedSize(request.range.right, TypeSizes.NATIVE);
+            size += Scope.serializer.serializedSize(request.scope, version);
             return size;
         }
     };

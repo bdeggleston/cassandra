@@ -29,15 +29,15 @@ public class TokenInstance extends AbstractTokenInstance
     private volatile Range<Token> splitRange;
     private volatile boolean leaderRangeMatched = true;
 
-    public TokenInstance(InetAddress leader, UUID cfId, Token token, Range<Token> splitRange, boolean local)
+    public TokenInstance(InetAddress leader, UUID cfId, Token token, Range<Token> splitRange, Scope type)
     {
-        super(leader, cfId, token, local);
+        super(leader, cfId, token, type);
         this.splitRange = splitRange;
     }
 
-    public TokenInstance(UUID id, InetAddress leader, UUID cfId, Token token, Range<Token> splitRange, boolean local)
+    public TokenInstance(UUID id, InetAddress leader, UUID cfId, Token token, Range<Token> splitRange, Scope type)
     {
-        super(id, leader, cfId, token, local);
+        super(id, leader, cfId, token, type);
         this.splitRange = splitRange;
     }
 
@@ -135,7 +135,7 @@ public class TokenInstance extends AbstractTokenInstance
             Token.serializer.serialize(instance.token, out);
             Token.serializer.serialize(instance.splitRange.left, out);
             Token.serializer.serialize(instance.splitRange.right, out);
-            out.writeBoolean(instance.local);
+            out.writeInt(instance.scope.ordinal());
         }
 
         @Override
@@ -146,7 +146,7 @@ public class TokenInstance extends AbstractTokenInstance
                                                        UUIDSerializer.serializer.deserialize(in, version),
                                                        Token.serializer.deserialize(in),
                                                        new Range<>(Token.serializer.deserialize(in), Token.serializer.deserialize(in)),
-                                                       in.readBoolean());
+                                                       Scope.values()[in.readInt()]);
 
             return instance;
         }
@@ -161,7 +161,7 @@ public class TokenInstance extends AbstractTokenInstance
             size += Token.serializer.serializedSize(instance.token, TypeSizes.NATIVE);
             size += Token.serializer.serializedSize(instance.splitRange.left, TypeSizes.NATIVE);
             size += Token.serializer.serializedSize(instance.splitRange.right, TypeSizes.NATIVE);
-            size += 1;
+            size += 4;
             return size;
         }
     };

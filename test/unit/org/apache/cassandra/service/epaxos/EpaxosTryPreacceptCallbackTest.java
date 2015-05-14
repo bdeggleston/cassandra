@@ -24,6 +24,7 @@ public class EpaxosTryPreacceptCallbackTest extends AbstractEpaxosTest
         TryPreacceptResponse response = new TryPreacceptResponse(instance.getToken(),
                                                                  instance.getCfId(),
                                                                  0,
+                                                                 instance.getScope(),
                                                                  instance.getId(),
                                                                  decision,
                                                                  vetoed,

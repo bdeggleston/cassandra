@@ -23,7 +23,8 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
     MessageIn<TryPreacceptRequest> createMessage(Instance instance, Set<UUID> deps) throws UnknownHostException
     {
         return MessageIn.create(InetAddress.getByName("127.0.0.1"),
-                                new TryPreacceptRequest(instance.getToken(), instance.getCfId(), 0, instance.getId(), deps, instance.getBallot()),
+                                new TryPreacceptRequest(instance.getToken(), instance.getCfId(), 0, instance.getScope(),
+                                                        instance.getId(),  deps,  instance.getBallot()),
                                 Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.EPAXOS_TRYPREACCEPT,
                                 0);
@@ -260,7 +261,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         };
 
         // initially preaccept with no deps
-        Instance missed = state.createEpochInstance(TOKEN0, CFID, 2);
+        Instance missed = state.createEpochInstance(TOKEN0, CFID, 2, DEFAULT_SCOPE);
         missed.preaccept(state.getCurrentDependencies(missed).left);
         state.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());

@@ -48,6 +48,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
             response = new TryPreacceptResponse(instance.getToken(),
                                                 instance.getCfId(),
                                                 state.getCurrentEpoch(instance),
+                                                instance.getScope(),
                                                 instance.getId(),
                                                 decision.left,
                                                 decision.right,
@@ -65,6 +66,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
             response = new TryPreacceptResponse(instance.getToken(),
                                                 instance.getCfId(),
                                                 state.getCurrentEpoch(instance),
+                                                instance.getScope(),
                                                 instance.getId(),
                                                 TryPreacceptDecision.REJECTED,
                                                 false,
@@ -88,7 +90,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
         }
 
         EpochInstance instance = (EpochInstance) inst;
-        long currentEpoch = state.tokenStateManager.getEpoch(instance);
+        long currentEpoch = state.getTokenStateManager(inst).getEpoch(instance);
 
         if (!instance.isVetoed() && instance.getEpoch() > currentEpoch + 1)
         {

@@ -40,6 +40,7 @@ import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.locator.TokenMetadata;
+import org.apache.cassandra.service.epaxos.Scope;
 import org.apache.cassandra.streaming.StreamPlan;
 import org.apache.cassandra.streaming.StreamResultFuture;
 import org.apache.cassandra.utils.FBUtilities;
@@ -322,7 +323,8 @@ public class RangeStreamer
                     // TODO: should instances and token ranges be deleted first?
                     // TODO: maybe assert JOINING?
                     // TODO: just request the keyspace + ranges, this might be a little too intense
-                    streamPlan.requestEpaxosRange(source, cf.cfId, range);
+                    streamPlan.requestEpaxosRange(source, cf.cfId, range, Scope.GLOBAL);
+                    streamPlan.requestEpaxosRange(source, cf.cfId, range, Scope.LOCAL);
                 }
             }
             streamPlan.requestRanges(source, keyspace, ranges);

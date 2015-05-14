@@ -52,13 +52,17 @@ public class FailureRecoveryTask implements Runnable
 
     // the remote epoch that caused the failure recovery
     private final long epoch;
+    public final Scope scope;
+    private final TokenStateManager tsm;
 
-    public FailureRecoveryTask(EpaxosState state, Token token, UUID cfId, long epoch)
+    public FailureRecoveryTask(EpaxosState state, Token token, UUID cfId, long epoch, Scope scope)
     {
         this.state = state;
         this.token = token;
         this.cfId = cfId;
         this.epoch = epoch;
+        this.scope = scope;
+        tsm = state.getTokenStateManager(scope);
     }
 
     @Override
@@ -67,11 +71,13 @@ public class FailureRecoveryTask implements Runnable
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        FailureRecoveryTask that = (FailureRecoveryTask) o;
+        FailureRecoveryTask task = (FailureRecoveryTask) o;
 
-        if (epoch != that.epoch) return false;
-        if (!cfId.equals(that.cfId)) return false;
-        if (!token.equals(that.token)) return false;
+        if (epoch != task.epoch) return false;
+        if (!cfId.equals(task.cfId)) return false;
+        if (scope != task.scope) return false;
+        if (!state.equals(task.state)) return false;
+        if (!token.equals(task.token)) return false;
 
         return true;
     }
@@ -79,15 +85,17 @@ public class FailureRecoveryTask implements Runnable
     @Override
     public int hashCode()
     {
-        int result = token.hashCode();
+        int result = state.hashCode();
+        result = 31 * result + token.hashCode();
         result = 31 * result + cfId.hashCode();
         result = 31 * result + (int) (epoch ^ (epoch >>> 32));
+        result = 31 * result + scope.hashCode();
         return result;
     }
 
     protected TokenState getTokenState()
     {
-        return state.tokenStateManager.get(token, cfId);
+        return tsm.get(token, cfId);
     }
 
     protected String getKeyspace()
@@ -125,7 +133,7 @@ public class FailureRecoveryTask implements Runnable
         try
         {
             tokenState.setState(TokenState.State.PRE_RECOVERY);
-            state.tokenStateManager.save(tokenState);
+            tsm.save(tokenState);
         }
         finally
         {
@@ -133,7 +141,7 @@ public class FailureRecoveryTask implements Runnable
         }
 
         // erase data for all keys owned by recovering token manager
-        KeyStateManager ksm = state.keyStateManager;
+        KeyStateManager ksm = state.getKeyStateManager(scope);
         Iterator<CfKey> cfKeys = ksm.getCfKeyIterator(tokenState);
         while (cfKeys.hasNext())
         {
@@ -186,23 +194,37 @@ public class FailureRecoveryTask implements Runnable
             }
 
             tokenState.setState(TokenState.State.RECOVERING_INSTANCES);
-            state.tokenStateManager.save(tokenState);
-            range = state.tokenStateManager.rangeFor(tokenState);
+            tsm.save(tokenState);
+            range = tsm.rangeFor(tokenState);
         }
         finally
         {
             tokenState.lock.writeLock().unlock();
         }
 
-        StreamPlan streamPlan = new StreamPlan(tokenState.toString() + "-Instance-Recovery");
+        StreamPlan streamPlan = createStreamPlan(tokenState.toString() + "-Instance-Recovery");
 
         for (InetAddress endpoint: getEndpoints(range))
         {
             if (endpoint.equals(state.getEndpoint()))
                 continue;
-            streamPlan.requestEpaxosRange(endpoint, cfId, range);
+
+            if (scope == Scope.LOCAL && !state.isInSameDC(endpoint))
+                continue;
+
+            streamPlan.requestEpaxosRange(endpoint, cfId, range, scope);
         }
 
+        runStreamPlan(streamPlan);
+    }
+
+    protected StreamPlan createStreamPlan(String name)
+    {
+        return new StreamPlan(name);
+    }
+
+    protected void runStreamPlan(StreamPlan streamPlan)
+    {
         streamPlan.listeners(new StreamEventHandler()
         {
             private boolean submitted = false;
@@ -239,7 +261,6 @@ public class FailureRecoveryTask implements Runnable
     {
         TokenState tokenState = getTokenState();
         Range<Token> range;
-        boolean localOnly;
         tokenState.lock.writeLock().lock();
         try
         {
@@ -252,23 +273,22 @@ public class FailureRecoveryTask implements Runnable
             }
 
             tokenState.setState(TokenState.State.RECOVERING_DATA);
-            state.tokenStateManager.save(tokenState);
-            range = state.tokenStateManager.rangeFor(tokenState);
-            localOnly = tokenState.localOnly();
+            tsm.save(tokenState);
+            range = tsm.rangeFor(tokenState);
         }
         finally
         {
             tokenState.lock.writeLock().unlock();
         }
 
-        Pair<String, String> cfName = Schema.instance.getCF(cfId);
-        FutureTask<Object> future = StorageService.instance.createRepairTask(cfName.left,
-                                                                             Collections.singleton(range),
-                                                                             false,
-                                                                             localOnly,
-                                                                             true,
-                                                                             cfName.right);
+        runRepair(range, (scope == Scope.LOCAL));
+    }
 
+    protected void runRepair(Range<Token> range, boolean isLocal)
+    {
+        Pair<String, String> cfName = Schema.instance.getCF(cfId);
+        FutureTask<Object> future = StorageService.instance.createRepairTask(cfName.left,  Collections.singleton(range),
+                                                                             false, isLocal, true, cfName.right);
         new Thread(new FutureTask<Object>(future, null) {
             @Override
             protected void done()
@@ -289,7 +309,7 @@ public class FailureRecoveryTask implements Runnable
         try
         {
             tokenState.setState(TokenState.State.NORMAL);
-            state.tokenStateManager.save(tokenState);
+            tsm.save(tokenState);
         }
         finally
         {
@@ -297,7 +317,7 @@ public class FailureRecoveryTask implements Runnable
             tokenState.lock.writeLock().unlock();
         }
         logger.info("Epaxos failure recovery task for {} on {} to {} completed", token, cfId, epoch);
-        // TODO: execute all committed instances
+        // TODO: iterate over keystates for affected range and execute active instances
     }
 
     @Override

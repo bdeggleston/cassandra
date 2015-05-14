@@ -63,10 +63,12 @@ public class PrepareVerbHandler extends AbstractEpochVerbHandler<PrepareRequest>
 
             Token token = instance != null ? instance.getToken() : message.payload.getToken();
             UUID cfId = instance != null ? instance.getCfId() : message.payload.getCfId();
+            Scope scope = instance != null ? instance.getScope() : message.payload.getScope();
             MessageOut<MessageEnvelope<Instance>> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                            new MessageEnvelope<>(token,
                                                                                                  cfId,
-                                                                                                 state.getCurrentEpoch(token, cfId),
+                                                                                                 state.getCurrentEpoch(token, cfId, scope),
+                                                                                                 scope,
                                                                                                  instance),
                                                                            Instance.envelopeSerializer);
             state.sendReply(reply, id, message.from);

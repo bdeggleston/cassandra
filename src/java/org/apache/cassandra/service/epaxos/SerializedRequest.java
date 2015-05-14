@@ -208,7 +208,7 @@ public abstract class SerializedRequest <T>
                 logger.debug("CAS precondition does not match current values {}", current);
                 // We should not return null as this means success
                 ColumnFamily rCF = current == null ? ArrayBackedSortedColumns.factory.create(metadata) : current;
-                return new ExecutionMetaData<>(rCF, null, 0);
+                return new ExecutionMetaData<>(rCF, null, 0, null);
             }
             else
             {
@@ -220,7 +220,7 @@ public abstract class SerializedRequest <T>
                     Mutation mutation = new Mutation(key, cf);
                     rp = Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
                     logger.debug("Applying mutation {} at {}", mutation, current);
-                    return new ExecutionMetaData<>(null, rp, maxTimestamp);
+                    return new ExecutionMetaData<>(null, rp, maxTimestamp, mutation);
                 }
                 catch (InvalidRequestException e)
                 {
@@ -255,7 +255,7 @@ public abstract class SerializedRequest <T>
             Keyspace keyspace = Keyspace.open(command.ksName);
             Row row = withTs(command, minTimestamp).getRow(keyspace);
             List<Row> result = Lists.newArrayList(row);
-            return new ExecutionMetaData<>(result, null, minTimestamp);
+            return new ExecutionMetaData<>(result, null, minTimestamp, null);
         }
     }
 
@@ -264,12 +264,14 @@ public abstract class SerializedRequest <T>
         public final T result;
         public final ReplayPosition replayPosition;
         public final long maxTimestamp;
+        public final Mutation mutation;
 
-        public ExecutionMetaData(T result, ReplayPosition replayPosition, long maxTimestamp)
+        public ExecutionMetaData(T result, ReplayPosition replayPosition, long maxTimestamp, Mutation mutation)
         {
             this.result = result;
             this.replayPosition = replayPosition;
             this.maxTimestamp = maxTimestamp;
+            this.mutation = mutation;
         }
     }
 

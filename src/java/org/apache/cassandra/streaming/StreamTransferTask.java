@@ -55,7 +55,7 @@ public class StreamTransferTask extends StreamTask
         OutgoingFileMessage message = new OutgoingFileMessage(sstable, sequenceNumber.getAndIncrement(), estimatedKeys, sections, ranges, repairedAt);
 
         // add epaxos data
-        EpaxosState.getInstance().writeStreamHeader(sstable, ranges, message.header);
+        EpaxosState.getInstance().writeStreamHeader(sstable, ranges, message.header, session.peer);
 
         files.put(message.header.sequenceNumber, message);
         totalSize += message.header.size();

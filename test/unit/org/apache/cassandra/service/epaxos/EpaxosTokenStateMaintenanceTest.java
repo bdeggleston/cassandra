@@ -18,8 +18,10 @@
 
 package org.apache.cassandra.service.epaxos;
 
+import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.collect.Sets;
@@ -45,9 +47,9 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
 
     private static class EpochMaintenanceTask extends TokenStateMaintenanceTask
     {
-        private EpochMaintenanceTask(EpaxosState state, TokenStateManager tokenStateManager)
+        private EpochMaintenanceTask(EpaxosState state, Collection<TokenStateManager> tokenStateManagers)
         {
-            super(state, tokenStateManager);
+            super(state, tokenStateManagers);
         }
 
         @Override
@@ -71,9 +73,9 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
 
     private static class TokenCoverageMaintenanceTask extends TokenStateMaintenanceTask
     {
-        private TokenCoverageMaintenanceTask(EpaxosState state, TokenStateManager tokenStateManager)
+        private TokenCoverageMaintenanceTask(EpaxosState state, Collection<TokenStateManager> tokenStateManagers)
         {
-            super(state, tokenStateManager);
+            super(state, tokenStateManagers);
         }
 
         @Override
@@ -123,19 +125,19 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
             }
         };
 
-        TokenState ts = state.tokenStateManager.get(TOKEN0, CFID);
+        TokenState ts = state.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN0, CFID);
         ts.setEpoch(5);
         Assert.assertNotNull(ts);
 
-        int threshold = state.getEpochIncrementThreshold(CFID);
+        int threshold = state.getEpochIncrementThreshold(CFID, DEFAULT_SCOPE);
         while (ts.getExecutions() < threshold)
         {
-            new EpochMaintenanceTask(state, state.tokenStateManager).run();
+            new EpochMaintenanceTask(state, state.tokenStateManagers.values()).run();
             Assert.assertNull(preaccepted.get());
             ts.recordExecution();
         }
         Assert.assertEquals(threshold, ts.getExecutions());
-        new EpochMaintenanceTask(state, state.tokenStateManager).run();
+        new EpochMaintenanceTask(state, state.tokenStateManagers.values()).run();
 
         EpochInstance instance = preaccepted.get();
         Assert.assertNotNull(instance);
@@ -156,54 +158,59 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
             public final Token token;
             public final UUID cfId;
             public final long epoch;
+            public final Scope scope;
 
-            FRCall(Token token, UUID cfId, long epoch)
+            FRCall(Token token, UUID cfId, long epoch, Scope scope)
             {
                 this.token = token;
                 this.cfId = cfId;
                 this.epoch = epoch;
+                this.scope = scope;
             }
         }
 
         final AtomicReference<FRCall> call = new AtomicReference<>();
         MockCallbackState state = new MockCallbackState(3, 0) {
             @Override
-            public void startLocalFailureRecovery(Token token, UUID cfId, long epoch)
+            public void startLocalFailureRecovery(Token token, UUID cfId, long epoch, Scope scope)
             {
-                call.set(new FRCall(token, cfId, epoch));
+                call.set(new FRCall(token, cfId, epoch, scope));
             }
         };
 
-        TokenState ts = state.tokenStateManager.get(TOKEN0, CFID);
+        TokenState ts = state.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN0, CFID);
         Assert.assertNotNull(ts);
         ts.setState(TokenState.State.RECOVERY_REQUIRED);
 
         Assert.assertNull(call.get());
-        new EpochMaintenanceTask(state, state.tokenStateManager).run();
+        new EpochMaintenanceTask(state, state.tokenStateManagers.values()).run();
         FRCall frCall = call.get();
         Assert.assertNotNull(frCall);
         Assert.assertEquals(ts.getToken(), frCall.token);
         Assert.assertEquals(ts.getCfId(), frCall.cfId);
         Assert.assertEquals(0, frCall.epoch);
+        Assert.assertEquals(DEFAULT_SCOPE, frCall.scope);
     }
 
     @Test
     public void tokenCoverageNewToken()
     {
         final AtomicReference<TokenInstance> preaccepted = new AtomicReference<>();
+        final AtomicInteger preacceptCalls = new AtomicInteger(0);
         MockCallbackState state = new MockCallbackState(3, 0) {
             @Override
             public Object process(Instance instance) throws WriteTimeoutException
             {
                 preaccepted.set((TokenInstance) instance);
+                preacceptCalls.incrementAndGet();
                 return null;
             }
         };
 
-        state.tokenStateManager.get(MockTokenStateManager.TOKEN0, CFID);
+        state.getTokenStateManager(DEFAULT_SCOPE).get(MockTokenStateManager.TOKEN0, CFID);
         Token newToken = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(5));
 
-        TokenCoverageMaintenanceTask task = new TokenCoverageMaintenanceTask(state, state.tokenStateManager);
+        TokenCoverageMaintenanceTask task = new TokenCoverageMaintenanceTask(state, state.tokenStateManagers.values());
         task.normalTokens.add(MockTokenStateManager.TOKEN0);
         task.normalTokens.add(newToken);
 
@@ -214,5 +221,7 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
         Assert.assertEquals(CFID, instance.getCfId());
         Assert.assertEquals(newToken, instance.getToken());
 
+        // should only have run an instance for the GLOBAL scope
+        Assert.assertEquals(1, preacceptCalls.get());
     }
 }

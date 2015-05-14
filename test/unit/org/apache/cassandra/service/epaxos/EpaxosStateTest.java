@@ -7,6 +7,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -60,9 +62,9 @@ public class EpaxosStateTest extends AbstractEpaxosTest
         final Set<UUID> commitNotifications = new HashSet<>();
         EpaxosState state = new EpaxosState() {
             @Override
-            protected TokenStateManager createTokenStateManager()
+            protected TokenStateManager createTokenStateManager(Scope scope)
             {
-                return new MockTokenStateManager();
+                return new MockTokenStateManager(scope);
             }
 
             @Override
@@ -98,4 +100,14 @@ public class EpaxosStateTest extends AbstractEpaxosTest
         Assert.assertEquals(localInstance.getId(), executed.get());
         Assert.assertEquals(Sets.newHashSet(extInstance.getId()), commitNotifications);
     }
+
+    @Test
+    public void activeScopes() throws UnknownHostException
+    {
+        MockMultiDcState state = new MockMultiDcState();
+
+        Assert.assertArrayEquals(Scope.BOTH, state.getActiveScopes(LOCAL_ADDRESS));
+        Assert.assertArrayEquals(Scope.GLOBAL_ONLY, state.getActiveScopes(REMOTE_ADDRESS));
+    }
+
 }

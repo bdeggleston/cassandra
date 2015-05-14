@@ -17,6 +17,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
 {
     static final InetAddress LOCAL;
     static final InetAddress LEADER;
+    static final String LEADER_DC = "DC1";
 
     static
     {
@@ -39,7 +40,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
     MessageIn<PrepareRequest> createMessage(UUID id, int ballot)
     {
         return MessageIn.create(LEADER,
-                                new PrepareRequest(TOKEN0, CFID, 0, id, ballot),
+                                new PrepareRequest(TOKEN0, CFID, 0, DEFAULT_SCOPE, id, ballot),
                                 Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.EPAXOS_ACCEPT,
                                 0);
