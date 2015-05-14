@@ -21,6 +21,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
 {
     static final InetAddress LOCAL;
     static final InetAddress LEADER;
+    static final String LEADER_DC = "DC1";
 
     static
     {
@@ -56,7 +57,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
 
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.preaccept(expectedDeps);
 
         state.currentDeps.addAll(expectedDeps);
@@ -84,7 +85,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
 
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.preaccept(expectedDeps);
 
         Instance copy = instance.copy();
@@ -118,7 +119,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.preaccept(Sets.newHashSet(dep1, dep2));
 
         state.currentDeps.add(dep1);
@@ -148,7 +149,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
 
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.preaccept(expectedDeps);
 
         Instance copy = instance.copy();
@@ -177,9 +178,9 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         PreacceptVerbHandler handler = new PreacceptVerbHandler(state);
 
         UUID dep1 = UUIDGen.getTimeUUID();
-        Instance missingInstance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance missingInstance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.preaccept(Sets.newHashSet(dep1));
 
         state.currentDeps.add(dep1);
@@ -217,7 +218,7 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         tokenState.setEpoch(currentEpoch);
         state.tokenStateManager.save(tokenState);
 
-        EpochInstance instance = new EpochInstance(LEADER, token, cfId, proposedEpoch, false);
+        EpochInstance instance = new EpochInstance(LEADER, LEADER_DC, token, cfId, proposedEpoch, false);
         instance.preaccept(Collections.EMPTY_SET);
         handler.doVerb(createMessage(instance, remoteEpoch), 0);
 

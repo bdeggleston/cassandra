@@ -17,6 +17,7 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
 {
     static final InetAddress LOCAL;
     static final InetAddress LEADER;
+    static final String LEADER_DC = "DC1";
 
     static
     {
@@ -49,7 +50,7 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.accept(Sets.newHashSet(dep1));
 
         state.instanceMap.put(instance.getId(), instance.copy());
@@ -83,7 +84,7 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
     {
         MockVerbHandlerState state = new MockVerbHandlerState();
         CommitVerbHandler handler = new CommitVerbHandler(state);
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.accept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         Assert.assertEquals(0, state.missingRecoreded.size());
@@ -112,7 +113,7 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
         MockVerbHandlerState state = new MockVerbHandlerState();
         CommitVerbHandler handler = new CommitVerbHandler(state);
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.commit(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         Assert.assertFalse(state.acknowledgedRecoreded.contains(instance.getId()));
@@ -141,7 +142,7 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.preaccept(Sets.<UUID>newHashSet());
         instance.makePlacehoder();
 

@@ -15,17 +15,17 @@ public abstract class AbstractTokenInstance extends Instance
     protected final Token token;
     protected final boolean local;
 
-    protected AbstractTokenInstance(InetAddress leader, UUID cfId, Token token, boolean local)
+    protected AbstractTokenInstance(InetAddress leader, String leaderDc, UUID cfId, Token token, boolean local)
     {
-        super(leader);
+        super(leader, leaderDc);
         this.cfId = cfId;
         this.token = token;
         this.local = local;
     }
 
-    protected AbstractTokenInstance(UUID id, InetAddress leader, UUID cfId, Token token, boolean local)
+    protected AbstractTokenInstance(UUID id, InetAddress leader, String leaderDc, UUID cfId, Token token, boolean local)
     {
-        super(id, leader);
+        super(id, leader, leaderDc);
         this.cfId = cfId;
         this.token = token;
         this.local = local;

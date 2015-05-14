@@ -17,6 +17,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
 {
     static final InetAddress LOCAL;
     static final InetAddress LEADER;
+    static final String LEADER_DC = "DC1";
 
     static
     {
@@ -50,7 +51,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         MockVerbHandlerState state = new MockVerbHandlerState();
         PrepareVerbHandler handler = new PrepareVerbHandler(state);
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         state.instanceMap.put(instance.getId(), instance.copy());
@@ -71,7 +72,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         MockVerbHandlerState state = new MockVerbHandlerState();
         PrepareVerbHandler handler = new PrepareVerbHandler(state);
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         instance.incrementBallot();
@@ -90,7 +91,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         MockVerbHandlerState state = new MockVerbHandlerState();
         PrepareVerbHandler handler = new PrepareVerbHandler(state);
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         state.instanceMap.put(instance.getId(), instance.copy());
@@ -112,7 +113,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         MockVerbHandlerState state = new MockVerbHandlerState();
         PrepareVerbHandler handler = new PrepareVerbHandler(state);
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         state.instanceMap.put(instance.getId(), instance.copy());
@@ -134,7 +135,7 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         MockVerbHandlerState state = new MockVerbHandlerState();
         PrepareVerbHandler handler = new PrepareVerbHandler(state);
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         state.instanceMap.put(instance.getId(), instance.copy());

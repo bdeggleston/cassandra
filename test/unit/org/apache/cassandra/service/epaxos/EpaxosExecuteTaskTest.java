@@ -29,6 +29,8 @@ import java.util.UUID;
 
 public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
 {
+    static final InetAddress LEADER = FBUtilities.getBroadcastAddress();
+    static final String LEADER_DC = "DC1";
 
     @Before
     public void clearTables()
@@ -85,13 +87,11 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
     {
         MockExecutionState state = new MockExecutionState();
 
-        QueryInstance instance1 = new QueryInstance(getSerializedCQLRequest(0, 1),
-                                                   FBUtilities.getBroadcastAddress());
+        QueryInstance instance1 = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER, LEADER_DC);
         instance1.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance1);
 
-        QueryInstance instance2 = new QueryInstance(getSerializedCQLRequest(0, 1),
-                                                   FBUtilities.getBroadcastAddress());
+        QueryInstance instance2 = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER, LEADER_DC);
         instance2.commit(Sets.newHashSet(instance1.getId()));
         state.saveInstance(instance2);
 
@@ -109,8 +109,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
     public void skipExecution() throws Exception
     {
         MockExecutionState state = new MockExecutionState();
-        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1),
-                                                   FBUtilities.getBroadcastAddress());
+        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER, LEADER_DC);
         instance.commit(Collections.<UUID>emptySet());
         instance.setNoop(true);
         state.saveInstance(instance);
@@ -129,8 +128,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
     public void tokenStateReport() throws Exception
     {
         MockExecutionState state = new MockExecutionState();
-        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1),
-                                                   FBUtilities.getBroadcastAddress());
+        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER, LEADER_DC);
         instance.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance);
 
@@ -152,8 +150,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
     public void serialQueryReport() throws Exception
     {
         MockExecutionState state = new MockExecutionState();
-        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1, ConsistencyLevel.SERIAL),
-                                                   FBUtilities.getBroadcastAddress());
+        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1, ConsistencyLevel.SERIAL), LEADER, LEADER_DC);
         instance.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance);
 
@@ -176,8 +173,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
     public void keyStateCantExecute() throws Exception
     {
         MockExecutionState state = new MockExecutionState();
-        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1),
-                                                   FBUtilities.getBroadcastAddress());
+        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER, LEADER_DC);
         instance.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance);
 

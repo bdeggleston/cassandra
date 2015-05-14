@@ -16,7 +16,7 @@ public class EpaxosInstanceTest
     @Test
     public void instanceIdIsntRecordedAsDep() throws Exception
     {
-        Instance instance = new QueryInstance(null, null);
+        Instance instance = new QueryInstance(null, null, null);
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID(), instance.getId());
 
         instance.setDependencies(deps);
@@ -28,7 +28,7 @@ public class EpaxosInstanceTest
     @Test(expected = InvalidInstanceStateChange.class)
     public void invalidPromotionFailure() throws Exception
     {
-        Instance instance = new QueryInstance(null, null);
+        Instance instance = new QueryInstance(null, null, null);
         instance.setState(Instance.State.ACCEPTED);
         instance.setState(Instance.State.PREACCEPTED);
     }
@@ -36,7 +36,7 @@ public class EpaxosInstanceTest
     @Test(expected = BallotException.class)
     public void invalidBallot() throws Exception
     {
-        Instance instance = new QueryInstance(null, null);
+        Instance instance = new QueryInstance(null, null, null);
         instance.updateBallot(5);
         instance.checkBallot(4);
     }
@@ -44,7 +44,7 @@ public class EpaxosInstanceTest
     @Test
     public void preacceptSuccess() throws Exception
     {
-        Instance instance = new QueryInstance(null, null);
+        Instance instance = new QueryInstance(null, null, null);
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
 
         instance.preaccept(expectedDeps);
@@ -56,7 +56,7 @@ public class EpaxosInstanceTest
     @Test
     public void preacceptSuccessLeaderAgree() throws Exception
     {
-        Instance instance = new QueryInstance(null, null);
+        Instance instance = new QueryInstance(null, null, null);
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
         Set<UUID> leaderDeps = new HashSet<>(expectedDeps);
 
@@ -69,7 +69,7 @@ public class EpaxosInstanceTest
     @Test
     public void preacceptSuccessLeaderDisagree() throws Exception
     {
-        Instance instance = new QueryInstance(null, null);
+        Instance instance = new QueryInstance(null, null, null);
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
         Set<UUID> leaderDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
 
@@ -82,7 +82,7 @@ public class EpaxosInstanceTest
     @Test
     public void acceptSuccess() throws Exception
     {
-        Instance instance = new QueryInstance(null, null);
+        Instance instance = new QueryInstance(null, null, null);
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
 
         instance.accept(expectedDeps);
@@ -94,7 +94,7 @@ public class EpaxosInstanceTest
     @Test
     public void commitSuccess() throws Exception
     {
-        Instance instance = new QueryInstance(null, null);
+        Instance instance = new QueryInstance(null, null, null);
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
 
         instance.commit(expectedDeps);
@@ -106,7 +106,7 @@ public class EpaxosInstanceTest
     @Test
     public void setExecutedSuccess() throws Exception
     {
-        Instance instance = new QueryInstance(null, null);
+        Instance instance = new QueryInstance(null, null, null);
         Assert.assertEquals(-1, instance.getExecutionEpoch());
         instance.setExecuted(5);
         Assert.assertEquals(Instance.State.EXECUTED, instance.getState());

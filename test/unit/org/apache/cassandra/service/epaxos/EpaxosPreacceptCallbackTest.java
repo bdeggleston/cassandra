@@ -179,7 +179,8 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         // add a missing instance to the response
         response.missingInstances = Lists.newArrayList((Instance) new QueryInstance(dep2,
                                                                                     getSerializedCQLRequest(0, 1),
-                                                                                    InetAddress.getByName("127.0.0.100")));
+                                                                                    InetAddress.getByName("127.0.0.100"),
+                                                                                    "DC1"));
         callback.response(createResponse(state.localEndpoints.get(1), response));
         Assert.assertEquals(1, state.accepts.size());
         Assert.assertEquals(0, state.commits.size());
@@ -407,7 +408,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     public void convergingDisagreeingRanges() throws Exception
     {
         MockCallbackState state = new MockCallbackState(5, 0);
-        TokenInstance instance = new TokenInstance(LOCALHOST, CFID, token(50), range(0, 100), false);
+        TokenInstance instance = new TokenInstance(LOCALHOST, "DC1", CFID, token(50), range(0, 100), false);
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         UUID dep3 = UUIDGen.getTimeUUID();

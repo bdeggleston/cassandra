@@ -29,15 +29,15 @@ public class TokenInstance extends AbstractTokenInstance
     private volatile Range<Token> splitRange;
     private volatile boolean leaderRangeMatched = true;
 
-    public TokenInstance(InetAddress leader, UUID cfId, Token token, Range<Token> splitRange, boolean local)
+    public TokenInstance(InetAddress leader, String leaderDc, UUID cfId, Token token, Range<Token> splitRange, boolean local)
     {
-        super(leader, cfId, token, local);
+        super(leader, leaderDc, cfId, token, local);
         this.splitRange = splitRange;
     }
 
-    public TokenInstance(UUID id, InetAddress leader, UUID cfId, Token token, Range<Token> splitRange, boolean local)
+    public TokenInstance(UUID id, InetAddress leader, String leaderDc, UUID cfId, Token token, Range<Token> splitRange, boolean local)
     {
-        super(id, leader, cfId, token, local);
+        super(id, leader, leaderDc, cfId, token, local);
         this.splitRange = splitRange;
     }
 
@@ -131,6 +131,7 @@ public class TokenInstance extends AbstractTokenInstance
         {
             UUIDSerializer.serializer.serialize(instance.getId(), out, version);
             CompactEndpointSerializationHelper.serialize(instance.getLeader(), out);
+            out.writeUTF(instance.leaderDc);
             UUIDSerializer.serializer.serialize(instance.cfId, out, version);
             Token.serializer.serialize(instance.token, out);
             Token.serializer.serialize(instance.splitRange.left, out);
@@ -143,6 +144,7 @@ public class TokenInstance extends AbstractTokenInstance
         {
             TokenInstance instance = new TokenInstance(UUIDSerializer.serializer.deserialize(in, version),
                                                        CompactEndpointSerializationHelper.deserialize(in),
+                                                       in.readUTF(),
                                                        UUIDSerializer.serializer.deserialize(in, version),
                                                        Token.serializer.deserialize(in),
                                                        new Range<>(Token.serializer.deserialize(in), Token.serializer.deserialize(in)),
@@ -157,6 +159,7 @@ public class TokenInstance extends AbstractTokenInstance
             long size = 0;
             size += UUIDSerializer.serializer.serializedSize(instance.getId(), version);
             size += CompactEndpointSerializationHelper.serializedSize(instance.getLeader());
+            size += TypeSizes.NATIVE.sizeof(instance.leaderDc);
             size += UUIDSerializer.serializer.serializedSize(instance.cfId, version);
             size += Token.serializer.serializedSize(instance.token, TypeSizes.NATIVE);
             size += Token.serializer.serializedSize(instance.splitRange.left, TypeSizes.NATIVE);

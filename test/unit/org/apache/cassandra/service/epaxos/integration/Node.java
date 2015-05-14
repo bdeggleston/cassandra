@@ -295,7 +295,7 @@ public class Node extends EpaxosState
     public static QueuedExecutor queuedExecutor = new QueuedExecutor();
 
     @Override
-    protected String getDc()
+    public String getDc()
     {
         return dc;
     }

@@ -3,6 +3,7 @@ package org.apache.cassandra.service.epaxos;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
@@ -26,15 +27,15 @@ public class QueryInstance extends Instance
         query = i.query;
     }
 
-    public QueryInstance(SerializedRequest query, InetAddress leader)
+    public QueryInstance(SerializedRequest query, InetAddress leader, String leaderDc)
     {
-        super(leader);
+        super(leader, leaderDc);
         this.query = query;
     }
 
-    public QueryInstance(UUID id, SerializedRequest query, InetAddress leader)
+    public QueryInstance(UUID id, SerializedRequest query, InetAddress leader, String leaderDc)
     {
-        super(id, leader);
+        super(id, leader, leaderDc);
         this.query = query;
     }
 
@@ -53,7 +54,7 @@ public class QueryInstance extends Instance
 
     public Instance copyRemote()
     {
-        Instance instance = new QueryInstance(this.id, this.query, this.leader);
+        Instance instance = new QueryInstance(this.id, this.query, this.leader, this.leaderDc);
         instance.ballot = ballot;
         instance.noop = noop;
         instance.state = state;
@@ -93,6 +94,7 @@ public class QueryInstance extends Instance
             UUIDSerializer.serializer.serialize(instance.id, out, version);
             SerializedRequest.serializer.serialize(instance.getQuery(), out, version);
             CompactEndpointSerializationHelper.serialize(instance.leader, out);
+            out.writeUTF(instance.leaderDc);
         }
 
         @Override
@@ -100,7 +102,8 @@ public class QueryInstance extends Instance
         {
             return new QueryInstance(UUIDSerializer.serializer.deserialize(in, version),
                                      SerializedRequest.serializer.deserialize(in, version),
-                                     CompactEndpointSerializationHelper.deserialize(in));
+                                     CompactEndpointSerializationHelper.deserialize(in),
+                                     in.readUTF());
         }
 
         @Override
@@ -110,6 +113,7 @@ public class QueryInstance extends Instance
             size += UUIDSerializer.serializer.serializedSize(instance.id, version);
             size += SerializedRequest.serializer.serializedSize(instance.getQuery(), version);
             size += CompactEndpointSerializationHelper.serializedSize(instance.leader);
+            size += TypeSizes.NATIVE.sizeof(instance.leaderDc);
             return size;
         }
     };
