@@ -98,9 +98,6 @@ public class EpaxosState
 
     private final Map<UUID, SettableFuture> resultFutures = Maps.newConcurrentMap();
 
-    protected final TokenStateManager tokenStateManager;
-    protected final KeyStateManager keyStateManager;
-
     public class ParticipantInfo
     {
 
@@ -169,6 +166,10 @@ public class EpaxosState
     private final String keyStateTable;
     private final String tokenStateTable;
 
+    protected final Map<Scope, TokenStateManager> tokenStateManagers = new EnumMap<>(Scope.class);
+    protected final Map<Scope, KeyStateManager> keyStateManagers = new EnumMap<>(Scope.class);
+    protected final RemoteActivity remoteActivity = new RemoteActivity();
+
     public EpaxosState()
     {
         this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE, SystemKeyspace.EPAXOS_KEY_STATE, SystemKeyspace.EPAXOS_TOKEN_STATE);
@@ -182,8 +183,8 @@ public class EpaxosState
         this.tokenStateTable = tokenStateTable;
 
         instanceCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(10000).build();
-        tokenStateManager = createTokenStateManager();
-        keyStateManager = createKeyStateManager();
+        createScope(Scope.GLOBAL);
+        createScope(Scope.LOCAL);
     }
 
     public void start()
@@ -193,7 +194,10 @@ public class EpaxosState
 
     public void start(boolean startMaintenanceTasks)
     {
-        tokenStateManager.start();
+        for (TokenStateManager tsm: tokenStateManagers.values())
+        {
+            tsm.start();
+        }
 
         if (startMaintenanceTasks)
         {
@@ -201,19 +205,28 @@ public class EpaxosState
         }
     }
 
-    protected KeyStateManager createKeyStateManager()
+    protected KeyStateManager createKeyStateManager(TokenStateManager tsm, Scope scope)
     {
-        return new KeyStateManager(getKeyspace(), getKeyStateTable(), tokenStateManager);
+        return new KeyStateManager(getKeyspace(), getKeyStateTable(), tsm, scope);
     }
 
-    protected TokenStateManager createTokenStateManager()
+    protected TokenStateManager createTokenStateManager(Scope scope)
     {
-        return new TokenStateManager(getKeyspace(), getTokenStateTable());
+        return new TokenStateManager(getKeyspace(), getTokenStateTable(), scope);
+    }
+
+    private void createScope(Scope scope)
+    {
+        TokenStateManager tsm = createTokenStateManager(scope);
+        KeyStateManager ksm = createKeyStateManager(tsm, scope);
+        tokenStateManagers.put(scope, tsm);
+        keyStateManagers.put(scope, ksm);
     }
 
     protected void scheduleTokenStateMaintenanceTask()
     {
-        StorageService.scheduledTasks.scheduleAtFixedRate(new TokenStateMaintenanceTask(this, tokenStateManager),
+        Runnable task = new TokenStateMaintenanceTask(this, tokenStateManagers.values());
+        StorageService.scheduledTasks.scheduleAtFixedRate(task,
                                                           0,
                                                           TOKEN_MAINTENANCE_INTERVAL,
                                                           TimeUnit.SECONDS);
@@ -244,9 +257,29 @@ public class EpaxosState
         return random;
     }
 
-    public int getEpochIncrementThreshold(UUID cfId)
+    protected TokenStateManager getTokenStateManager(Instance instance)
     {
-        return tokenStateManager.getEpochIncrementThreshold(cfId);
+        return getTokenStateManager(Scope.get(instance));
+    }
+
+    protected TokenStateManager getTokenStateManager(Scope scope)
+    {
+        return tokenStateManagers.get(scope);
+    }
+
+    protected KeyStateManager getKeyStateManager(Instance instance)
+    {
+        return getKeyStateManager(Scope.get(instance));
+    }
+
+    protected KeyStateManager getKeyStateManager(Scope scope)
+    {
+        return keyStateManagers.get(scope);
+    }
+
+    public int getEpochIncrementThreshold(UUID cfId, Scope scope)
+    {
+        return getTokenStateManager(scope).getEpochIncrementThreshold(cfId);
     }
 
     protected long getQueryTimeout(long start)
@@ -364,21 +397,22 @@ public class EpaxosState
         return instance;
     }
 
-    protected EpochInstance createEpochInstance(Token token, UUID cfId, long epoch)
+    protected EpochInstance createEpochInstance(Token token, UUID cfId, long epoch, Scope scope)
     {
-        EpochInstance instance = new EpochInstance(getEndpoint(), getDc(), token, cfId, epoch, tokenStateManager.isLocalOnly(token, cfId));
+        EpochInstance instance = new EpochInstance(getEndpoint(), getDc(), token, cfId, epoch, scope);
         logger.debug("Created EpochInstance {} for epoch {} on token {}", instance.getId(), instance.getEpoch(), instance.getToken());
         return instance;
     }
 
-    protected TokenInstance createTokenInstance(Token token, UUID cfId)
+    protected TokenInstance createTokenInstance(Token token, UUID cfId, Scope scope)
     {
+        // TODO: take consistency level as an argument
         TokenInstance instance;
-        TokenState ts = tokenStateManager.get(token, cfId);
+        TokenState ts = getTokenStateManager(scope).get(token, cfId);
         ts.lock.readLock().lock();
         try
         {
-            instance = new TokenInstance(getEndpoint(), getDc(), cfId, token, ts.getRange(), ts.localOnly());
+            instance = new TokenInstance(getEndpoint(), getDc(), cfId, token, ts.getRange(), scope);
         }
         finally
         {
@@ -555,7 +589,7 @@ public class EpaxosState
 
             ParticipantInfo participantInfo = getParticipants(instance);
             MessageOut<MessageEnvelope<Instance>> message = instance.getMessage(MessagingService.Verb.EPAXOS_COMMIT,
-                                                                                tokenStateManager.getEpoch(instance));
+                                                                                getTokenStateManager(instance).getEpoch(instance));
             for (InetAddress endpoint : participantInfo.liveEndpoints)
             {
                 logger.debug("sending commit request to {} for instance {}", endpoint, instance.getId());
@@ -621,7 +655,7 @@ public class EpaxosState
 
         SerializedRequest request = instance.getQuery();
 
-        long maxTimestamp = keyStateManager.getMaxTimestamp(request.getCfKey());
+        long maxTimestamp = getKeyStateManager(instance).getMaxTimestamp(request.getCfKey());
         long minTimestamp = Math.max(maxTimestamp + 1, UUIDGen.unixTimestamp(instance.getId()) * 1000);
         SerializedRequest.ExecutionMetaData metaData = request.execute(minTimestamp);
         maybeSetResultFuture(instance.getId(), metaData.result);
@@ -635,6 +669,7 @@ public class EpaxosState
      */
     protected void executeEpochInstance(EpochInstance instance)
     {
+        TokenStateManager tokenStateManager = getTokenStateManager(instance);
         TokenState tokenState = tokenStateManager.getExact(instance.getToken(), instance.getCfId());
         if (tokenState == null)
         {
@@ -659,13 +694,14 @@ public class EpaxosState
         }
 
         maybeSetResultFuture(instance.getId(), null);
-        startTokenStateGc(tokenState);
+        startTokenStateGc(tokenState, instance.getScope());
     }
 
     protected synchronized void executeTokenInstance(TokenInstance instance)
     {
         UUID cfId = instance.getCfId();
         Token token = instance.getToken();
+        TokenStateManager tokenStateManager = getTokenStateManager(instance);
 
         logger.debug("Executing token state instance: {}", instance);
 
@@ -752,9 +788,9 @@ public class EpaxosState
         maybeSetResultFuture(instance.getId(), null);
     }
 
-    void startTokenStateGc(TokenState tokenState)
+    void startTokenStateGc(TokenState tokenState, Scope scope)
     {
-        getStage(Stage.MUTATION).submit(new GarbageCollectionTask(this, tokenState, keyStateManager));
+        getStage(Stage.MUTATION).submit(new GarbageCollectionTask(this, tokenState, getKeyStateManager(scope)));
     }
 
     protected PrepareCallback getPrepareCallback(UUID id, int ballot, ParticipantInfo participantInfo, PrepareGroup group, int attempt)
@@ -839,6 +875,7 @@ public class EpaxosState
         Token token;
         UUID cfId;
         long epoch;
+        Scope scope;
         int ballot;
         boolean localAttempt = attempt.toConvince.contains(getEndpoint());
         Lock lock = localAttempt ? getInstanceLock(iid).readLock() : getInstanceLock(iid).writeLock();
@@ -849,6 +886,7 @@ public class EpaxosState
             token = instance.getToken();
             cfId = instance.getCfId();
             epoch = getCurrentEpoch(instance);
+            scope = instance.getScope();
             ballot = instance.getBallot() + 1;
 
             // if the prepare leader isn't being sent a trypreaccept message, update
@@ -864,7 +902,7 @@ public class EpaxosState
             lock.unlock();
         }
 
-        TryPreacceptRequest request = new TryPreacceptRequest(token, cfId, epoch, iid, attempt.dependencies, ballot);
+        TryPreacceptRequest request = new TryPreacceptRequest(token, cfId, epoch, scope, iid, attempt.dependencies, ballot);
         MessageOut<TryPreacceptRequest> message = request.getMessage();
 
         TryPreacceptCallback callback = getTryPreacceptCallback(iid, attempt, nextAttempts, participantInfo, failureCallback);
@@ -971,17 +1009,17 @@ public class EpaxosState
     // failure recovery
     public long getCurrentEpoch(Instance i)
     {
-        return getCurrentEpoch(i.getToken(), i.getCfId());
+        return getCurrentEpoch(i.getToken(), i.getCfId(), i.getScope());
     }
 
-    public long getCurrentEpoch(Token token, UUID cfId)
+    public long getCurrentEpoch(Token token, UUID cfId, Scope scope)
     {
-        return tokenStateManager.get(token, cfId).getEpoch();
+        return getTokenStateManager(scope).get(token, cfId).getEpoch();
     }
 
     public EpochDecision validateMessageEpoch(IEpochMessage message)
     {
-        long localEpoch = getCurrentEpoch(message.getToken(), message.getCfId());
+        long localEpoch = getCurrentEpoch(message.getToken(), message.getCfId(), message.getScope());
         long remoteEpoch = message.getEpoch();
         return new EpochDecision(EpochDecision.evaluate(localEpoch, remoteEpoch),
                                  message.getToken(),
@@ -991,7 +1029,7 @@ public class EpaxosState
 
     public TokenState getTokenState(IEpochMessage message)
     {
-        return tokenStateManager.get(message.getToken(), message.getCfId());
+        return getTokenStateManager(message.getScope()).get(message.getToken(), message.getCfId());
     }
 
     private final Set<FailureRecoveryTask> failureRecoveryTasks = new HashSet<>();
@@ -999,9 +1037,9 @@ public class EpaxosState
     /**
      * starts a new local failure recovery task for the given token.
      */
-    public void startLocalFailureRecovery(Token token, UUID cfId, long epoch)
+    public void startLocalFailureRecovery(Token token, UUID cfId, long epoch, Scope scope)
     {
-        FailureRecoveryTask task = new FailureRecoveryTask(this, token, cfId, epoch);
+        FailureRecoveryTask task = new FailureRecoveryTask(this, token, cfId, epoch, scope);
         synchronized (failureRecoveryTasks)
         {
             if (failureRecoveryTasks.contains(task))
@@ -1043,11 +1081,11 @@ public class EpaxosState
     /**
      * starts a new failure recovery task for the given endpoint and token.
      */
-    public void startRemoteFailureRecovery(InetAddress endpoint, Token token, UUID cfId, long epoch)
+    public void startRemoteFailureRecovery(InetAddress endpoint, Token token, UUID cfId, long epoch, Scope scope)
     {
         if (FailureDetector.instance.isAlive(endpoint))
         {
-            FailureRecoveryRequest request = new FailureRecoveryRequest(token, cfId, epoch);
+            FailureRecoveryRequest request = new FailureRecoveryRequest(token, cfId, epoch, scope);
             logger.debug("Sending {} to {}", request, endpoint);
             if (shouldSendFailureRecoverMessage(request, endpoint))
             {
@@ -1065,7 +1103,7 @@ public class EpaxosState
     }
 
     // duplicates a lot of the FailureRecoveryTask.preRecover
-    public boolean prepareForIncomingStream(Range<Token> range, UUID cfId)
+    public boolean prepareForIncomingStream(Range<Token> range, UUID cfId, Scope scope)
     {
         // check that this isn't for an existing failure recovery task
         synchronized (failureRecoveryTasks)
@@ -1077,6 +1115,9 @@ public class EpaxosState
             }
 
         }
+        TokenStateManager tokenStateManager = getTokenStateManager(scope);
+        KeyStateManager keyStateManager = getKeyStateManager(scope);
+
         tokenStateManager.prepareForIncomingStream(range, cfId);
         Iterator<CfKey> cfKeys = keyStateManager.getCfKeyIterator(range, cfId, 10000);
         while (cfKeys.hasNext())
@@ -1112,40 +1153,51 @@ public class EpaxosState
     }
 
     // repair / streaming support
+    // TODO: maybe rename to hasExecutionInfoForTable:w
     public boolean managesCfId(UUID cfId)
     {
-        return tokenStateManager.managesCfId(cfId);
+        for (TokenStateManager tokenStateManager: tokenStateManagers.values())
+        {
+            if (tokenStateManager.managesCfId(cfId))
+                return true;
+        }
+        return remoteActivity.managesCfId(cfId);
     }
 
     /**
      * Returns a tuple containing the current epoch, and instances executed in the current epoch for the given key/cfId
      */
-    public ExecutionInfo getEpochExecutionInfo(ByteBuffer key, UUID cfId)
+    public Map<Scope.DC, ExecutionInfo> getEpochExecutionInfo(ByteBuffer key, UUID cfId)
     {
+        // TODO: test
         if (!managesCfId(cfId))
         {
             return null;
         }
+
         CfKey cfKey = new CfKey(key, cfId);
-        Lock lock = keyStateManager.getCfKeyLock(cfKey);
-        lock.lock();
-        try
-        {
-            KeyState keyState = keyStateManager.loadKeyState(key, cfId);
-            return keyState != null ? new ExecutionInfo(keyState.getEpoch(), keyState.getExecutionCount()) : null;
-        }
-        finally
-        {
-            lock.unlock();
-        }
+        Map<Scope.DC, ExecutionInfo> rmap = new HashMap<>();
+
+
+        ExecutionInfo info;
+        info = keyStateManagers.get(Scope.GLOBAL).getExecutionInfo(cfKey);
+        if (info != null) rmap.put(Scope.DC.global(), info);
+
+        info = keyStateManagers.get(Scope.LOCAL).getExecutionInfo(cfKey);
+        if (info != null) rmap.put(getLocalScope(), info);
+
+        rmap.putAll(remoteActivity.getExecutionInfo(key, cfId));
+
+        return rmap;
     }
 
     /**
      * Determines if a repair can be applied to a key.
      */
-    public boolean canApplyRepair(ByteBuffer key, UUID cfId, long epoch, long executionCount)
+    public boolean canApplyRepair(ByteBuffer key, UUID cfId, long epoch, long executionCount, Scope scope)
     {
-        ExecutionInfo local = getEpochExecutionInfo(key, cfId);
+        // TODO: used by read repair, fix read repair
+        ExecutionInfo local = getKeyStateManager(scope).getExecutionInfo(new CfKey(key, cfId));
 
         if (local == null || local.epoch > epoch)
         {
@@ -1166,20 +1218,36 @@ public class EpaxosState
         if (instance.getType() == Instance.Type.QUERY)
         {
             QueryInstance queryInstance = (QueryInstance) instance;
-            return keyStateManager.canExecute(queryInstance.getQuery().getCfKey());
+            return getKeyStateManager(instance).canExecute(queryInstance.getQuery().getCfKey());
         }
 
         return true;
     }
 
-    public boolean reportFutureExecution(ByteBuffer key, UUID cfId, ExecutionInfo info)
+    public boolean reportFutureExecution(ByteBuffer key, UUID cfId, Scope.DC dcScope, ExecutionInfo info)
     {
-        return keyStateManager.reportFutureRepair(new CfKey(key, cfId), info);
+        if (dcScope.equals(Scope.DC.global()))
+        {
+            return getKeyStateManager(Scope.GLOBAL).reportFutureRepair(new CfKey(key, cfId), info);
+        }
+        else if (dcScope.equals(getLocalScope()))
+        {
+            return getKeyStateManager(Scope.LOCAL).reportFutureRepair(new CfKey(key, cfId), info);
+        }
+        else
+        {
+            // TODO: how does this fit into the blind writes?
+            // TODO: execution info could include the highest timestamp for a keystate?
+            remoteActivity.recordMutation(dcScope.dc, key, cfId, info);
+            return true;
+        }
     }
 
     public Iterator<Pair<ByteBuffer, ExecutionInfo>> getRangeExecutionInfo(UUID cfId, Range<Token> range, ReplayPosition position)
     {
-        return keyStateManager.getRangeExecutionInfo(cfId, range, position);
+        // TODO: merge data from both ksms and the remote activity
+        // return keyStateManager.getRangeExecutionInfo(cfId, range, position);
+        return new ArrayList<Pair<ByteBuffer, ExecutionInfo>>().iterator();  // FIXME: this
     }
 
     /**
@@ -1256,7 +1324,7 @@ public class EpaxosState
 
             saveInstance(instance);
 
-            keyStateManager.recordMissingInstance(instance);
+            getKeyStateManager(instance).recordMissingInstance(instance);
 
             if (instance.getState().atLeast(Instance.State.COMMITTED))
             {
@@ -1298,9 +1366,9 @@ public class EpaxosState
         return instances;
     }
 
-    public UUID addToken(UUID cfId, Token token)
+    public UUID addToken(UUID cfId, Token token, Scope scope)
     {
-        TokenInstance instance = createTokenInstance(token, cfId);
+        TokenInstance instance = createTokenInstance(token, cfId, scope);
         preaccept(instance);
         return instance.getId();
     }
@@ -1308,23 +1376,23 @@ public class EpaxosState
     // key state methods
     public Pair<Set<UUID>, Range<Token>> getCurrentDependencies(Instance instance)
     {
-        return keyStateManager.getCurrentDependencies(instance);
+        return getKeyStateManager(instance).getCurrentDependencies(instance);
     }
 
     public void recordMissingInstance(Instance instance)
     {
-        keyStateManager.recordMissingInstance(instance);
+        getKeyStateManager(instance).recordMissingInstance(instance);
     }
 
     public void recordAcknowledgedDeps(Instance instance)
     {
-        keyStateManager.recordAcknowledgedDeps(instance);
+        getKeyStateManager(instance).recordAcknowledgedDeps(instance);
     }
 
     public void recordExecuted(Instance instance, ReplayPosition position, long maxTimestamp)
     {
-        keyStateManager.recordExecuted(instance, position, maxTimestamp);
-        tokenStateManager.reportExecution(instance.getToken(), instance.getCfId());
+        getKeyStateManager(instance).recordExecuted(instance, position, maxTimestamp);
+        getTokenStateManager(instance).reportExecution(instance.getToken(), instance.getCfId());
     }
 
     public ReadWriteLock getInstanceLock(UUID iid)
@@ -1371,6 +1439,11 @@ public class EpaxosState
     protected String getDc()
     {
         return DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+    }
+
+    protected Scope.DC getLocalScope()
+    {
+        return Scope.DC.local(getDc());
     }
 
     protected String getInstanceKeyspace(Instance instance)

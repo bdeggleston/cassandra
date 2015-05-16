@@ -18,7 +18,6 @@ import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
 
-import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,16 +33,19 @@ public class KeyStateManager
     private final String keyspace;
     private final String table;
     protected final TokenStateManager tokenStateManager;
+    private final Scope type;
 
-    public KeyStateManager(TokenStateManager tokenStateManager)
+    public KeyStateManager(TokenStateManager tokenStateManager, Scope type)
     {
-        this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE, tokenStateManager);
+        this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE, tokenStateManager, type);
     }
-    public KeyStateManager(String keyspace, String table, TokenStateManager tokenStateManager)
+
+    public KeyStateManager(String keyspace, String table, TokenStateManager tokenStateManager, Scope type)
     {
         this.keyspace = keyspace;
         this.table = table;
         this.tokenStateManager = tokenStateManager;
+        this.type = type;
         cache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(1000).build();
     }
 
@@ -514,6 +516,21 @@ public class KeyStateManager
         }
     }
 
+    public ExecutionInfo getExecutionInfo(CfKey cfKey)
+    {
+        Lock lock = getCfKeyLock(cfKey);
+        lock.lock();
+        try
+        {
+            KeyState keyState = loadKeyState(cfKey);
+            return keyState != null ? new ExecutionInfo(keyState.getEpoch(), keyState.getExecutionCount()) : null;
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
     /**
      * Returns execution info for the given token range and replay position. If the replay position is too far in the
      * past to have data, the execution position directly before the first known mutation is returned. This is ok since
@@ -604,6 +621,7 @@ public class KeyStateManager
                 {
                     bounds = new Range<RowPosition>(leftToken.maxKeyBound(), right.maxKeyBound());
                 }
+                // FIXME: filter on scope
                 List<Row> partitions = cfs.getRangeSlice(bounds,
                                                          null,
                                                          new IdentityQueryFilter(),

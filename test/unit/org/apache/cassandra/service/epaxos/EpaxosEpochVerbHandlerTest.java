@@ -26,7 +26,7 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
     private static MessageIn<Message> getMessage(long epoch) throws UnknownHostException
     {
         return MessageIn.create(LOCALHOST,
-                                new Message(MESSAGE_TOKEN, CFID, epoch),
+                                new Message(MESSAGE_TOKEN, CFID, epoch, Scope.GLOBAL),
                                 Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.ECHO,
                                 0);
@@ -34,9 +34,9 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
 
     private static class Message extends AbstractEpochMessage
     {
-        private Message(Token token, UUID cfId, long epoch)
+        private Message(Token token, UUID cfId, long epoch, Scope scope)
         {
-            super(token, cfId, epoch);
+            super(token, cfId, epoch, scope);
         }
     }
 

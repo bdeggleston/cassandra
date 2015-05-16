@@ -21,6 +21,6 @@ public class FailureRecoveryVerbHandler implements IVerbHandler<FailureRecoveryR
     {
         logger.info("Received {} from {}", message.payload, message.from);
         FailureRecoveryRequest request = message.payload;
-        state.startLocalFailureRecovery(request.token, request.cfId, request.epoch);
+        state.startLocalFailureRecovery(request.token, request.cfId, request.epoch, request.scope);
     }
 }

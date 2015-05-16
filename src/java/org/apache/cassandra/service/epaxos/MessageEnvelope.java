@@ -19,13 +19,15 @@ public class MessageEnvelope<T> implements IEpochMessage
     public final Token token;
     public final UUID cfId;
     public final long epoch;
+    public final Scope scope;
     public final T contents;
 
-    public MessageEnvelope(Token token, UUID cfId, long epoch, T contents)
+    public MessageEnvelope(Token token, UUID cfId, long epoch, Scope scope, T contents)
     {
         this.token = token;
         this.cfId = cfId;
         this.epoch = epoch;
+        this.scope = scope;
         this.contents = contents;
     }
 
@@ -45,6 +47,12 @@ public class MessageEnvelope<T> implements IEpochMessage
     public long getEpoch()
     {
         return epoch;
+    }
+
+    @Override
+    public Scope getScope()
+    {
+        return scope;
     }
 
     public static <T> Serializer<T> getSerializer(IVersionedSerializer<T> payloadSerializer)
@@ -67,6 +75,7 @@ public class MessageEnvelope<T> implements IEpochMessage
             Token.serializer.serialize(envelope.token, out);
             UUIDSerializer.serializer.serialize(envelope.cfId, out, version);
             out.writeLong(envelope.epoch);
+            Scope.serializer.serialize(envelope.scope, out, version);
 
             out.writeBoolean(envelope.contents != null);
             if (envelope.contents != null)
@@ -81,6 +90,7 @@ public class MessageEnvelope<T> implements IEpochMessage
             return new MessageEnvelope<>(Token.serializer.deserialize(in),
                                          UUIDSerializer.serializer.deserialize(in, version),
                                          in.readLong(),
+                                         Scope.serializer.deserialize(in, version),
                                          in.readBoolean() ? payloadSerializer.deserialize(in, version) : null);
         }
 
@@ -90,6 +100,7 @@ public class MessageEnvelope<T> implements IEpochMessage
             long size = Token.serializer.serializedSize(envelope.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(envelope.cfId, version);
             size += 8;  // envelope.epoch
+            size += Scope.serializer.serializedSize(envelope.scope, version);
 
             size += 1;
             if (envelope.contents != null)

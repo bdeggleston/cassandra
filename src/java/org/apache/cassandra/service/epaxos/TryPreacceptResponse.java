@@ -18,9 +18,9 @@ public class TryPreacceptResponse extends AbstractEpochMessage
     public final boolean vetoed;
     public final int ballotFailure;
 
-    public TryPreacceptResponse(Token token, UUID cfId, long epoch, UUID iid, TryPreacceptDecision decision, boolean vetoed, int ballotFailure)
+    public TryPreacceptResponse(Token token, UUID cfId, long epoch, Scope scope, UUID iid, TryPreacceptDecision decision, boolean vetoed, int ballotFailure)
     {
-        super(token, cfId, epoch);
+        super(token, cfId, epoch, scope);
         this.iid = iid;
         this.decision = decision;
         this.vetoed = vetoed;
@@ -47,6 +47,7 @@ public class TryPreacceptResponse extends AbstractEpochMessage
                     epochInfo.token,
                     epochInfo.cfId,
                     epochInfo.epoch,
+                    epochInfo.scope,
                     UUIDSerializer.serializer.deserialize(in, version),
                     TryPreacceptDecision.values()[in.readInt()],
                     in.readBoolean(),

@@ -88,7 +88,7 @@ public class ExecuteTask implements Runnable
 
                         if (instance.getType() == Instance.Type.QUERY)
                         {
-                            state.tokenStateManager.maybeRecordSerialInstance((QueryInstance) instance);
+                            state.getTokenStateManager(instance).maybeRecordSerialInstance((QueryInstance) instance);
                         }
                     }
                     catch (InvalidRequestException | WriteTimeoutException | ReadTimeoutException e)

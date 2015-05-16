@@ -91,7 +91,7 @@ public abstract class Instance
 
     protected final UUID id;
     protected final InetAddress leader;
-    protected final String leaderDc;
+    protected final String leaderDc; // TODO: maybe remove
     protected volatile State state = State.INITIALIZED;
     protected volatile int ballot = 0;
     protected volatile long executionEpoch = -1;
@@ -365,6 +365,7 @@ public abstract class Instance
     public abstract Token getToken();
     public abstract UUID getCfId();
     public abstract ConsistencyLevel getConsistencyLevel();
+    public abstract Scope getScope();
 
     /**
      * Applies mutable non-dependency attributes from remote instance copies
@@ -377,7 +378,7 @@ public abstract class Instance
 
     public MessageOut<MessageEnvelope<Instance>> getMessage(MessagingService.Verb verb, long epoch)
     {
-        return new MessageOut<>(verb, new MessageEnvelope<>(getToken(), getCfId(), epoch, this), envelopeSerializer);
+        return new MessageOut<>(verb, new MessageEnvelope<>(getToken(), getCfId(), epoch, getScope(), this), envelopeSerializer);
     }
 
     @Deprecated

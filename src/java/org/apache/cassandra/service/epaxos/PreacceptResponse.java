@@ -33,6 +33,7 @@ public class PreacceptResponse extends AbstractEpochMessage
     public PreacceptResponse(Token token,
                              UUID cfId,
                              long epoch,
+                             Scope scope,
                              boolean success,
                              int ballotFailure,
                              Set<UUID> dependencies,
@@ -40,7 +41,7 @@ public class PreacceptResponse extends AbstractEpochMessage
                              Range<Token> splitRange,
                              List<Instance> missingInstances)
     {
-        super(token, cfId, epoch);
+        super(token, cfId, epoch, scope);
         this.success = success;
         this.ballotFailure = ballotFailure;
         this.dependencies = dependencies;
@@ -69,17 +70,17 @@ public class PreacceptResponse extends AbstractEpochMessage
 
     public static PreacceptResponse success(Token token, long epoch, Instance instance)
     {
-        return new PreacceptResponse(token, instance.getCfId(), epoch, instance.getLeaderAttrsMatch(), 0, instance.getDependencies(), getVetoed(instance), getSplitRange(instance), NO_INSTANCES);
+        return new PreacceptResponse(token, instance.getCfId(), epoch, instance.getScope(), instance.getLeaderAttrsMatch(), 0, instance.getDependencies(), getVetoed(instance), getSplitRange(instance), NO_INSTANCES);
     }
 
     public static PreacceptResponse failure(Token token, long epoch, Instance instance)
     {
-        return new PreacceptResponse(token, instance.getCfId(), epoch, false, 0, instance.getDependencies(), getVetoed(instance), getSplitRange(instance), NO_INSTANCES);
+        return new PreacceptResponse(token, instance.getCfId(), epoch, instance.getScope(), false, 0, instance.getDependencies(), getVetoed(instance), getSplitRange(instance), NO_INSTANCES);
     }
 
-    public static PreacceptResponse ballotFailure(Token token, UUID cfId, long epoch, int localBallot)
+    public static PreacceptResponse ballotFailure(Token token, UUID cfId, long epoch, Scope scope, int localBallot)
     {
-        return new PreacceptResponse(token, cfId, epoch, false, localBallot, NO_DEPS, false, null, NO_INSTANCES);
+        return new PreacceptResponse(token, cfId, epoch, scope, false, localBallot, NO_DEPS, false, null, NO_INSTANCES);
     }
 
     @Override
@@ -103,6 +104,7 @@ public class PreacceptResponse extends AbstractEpochMessage
             Token.serializer.serialize(response.token, out);
             UUIDSerializer.serializer.serialize(response.cfId, out, version);
             out.writeLong(response.epoch);
+            Scope.serializer.serialize(response.scope, out, version);
 
             out.writeBoolean(response.success);
             out.writeInt(response.ballotFailure);
@@ -130,6 +132,7 @@ public class PreacceptResponse extends AbstractEpochMessage
             Token token = Token.serializer.deserialize(in);
             UUID cfId = UUIDSerializer.serializer.deserialize(in, version);
             long epoch = in.readLong();
+            Scope scope = Scope.serializer.deserialize(in, version);
 
             boolean successful = in.readBoolean();
             int ballotFailure = in.readInt();
@@ -152,6 +155,7 @@ public class PreacceptResponse extends AbstractEpochMessage
             return new PreacceptResponse(token,
                                          cfId,
                                          epoch,
+                                         scope,
                                          successful,
                                          ballotFailure,
                                          ImmutableSet.copyOf(deps),
@@ -166,6 +170,7 @@ public class PreacceptResponse extends AbstractEpochMessage
             long size = Token.serializer.serializedSize(response.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(response.cfId, version);
             size += 8;  // response.epoch
+            size += Scope.serializer.serializedSize(response.scope, version);
 
             size += 1;  //out.writeBoolean(response.success);
             size += 4;  //out.writeInt(response.ballotFailure);

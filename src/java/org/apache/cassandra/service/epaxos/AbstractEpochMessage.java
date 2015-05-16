@@ -18,12 +18,14 @@ public abstract class AbstractEpochMessage implements IEpochMessage
     public final Token token;
     public final UUID cfId;
     public final long epoch;
+    public final Scope scope;
 
-    public AbstractEpochMessage(Token token, UUID cfId, long epoch)
+    public AbstractEpochMessage(Token token, UUID cfId, long epoch, Scope scope)
     {
         this.token = token;
         this.cfId = cfId;
         this.epoch = epoch;
+        this.scope = scope;
     }
 
     protected AbstractEpochMessage(AbstractEpochMessage epochInfo)
@@ -31,6 +33,7 @@ public abstract class AbstractEpochMessage implements IEpochMessage
         this.token = epochInfo.token;
         this.cfId = epochInfo.cfId;
         this.epoch = epochInfo.epoch;
+        this.scope = epochInfo.scope;
     }
 
     @Override
@@ -51,11 +54,18 @@ public abstract class AbstractEpochMessage implements IEpochMessage
         return epoch;
     }
 
+    @Override
+    public Scope getScope()
+    {
+        // TODO: test epochs aren't compared against the wrong scope
+        return scope;
+    }
+
     private static class EpochInfo extends AbstractEpochMessage
     {
-        public EpochInfo(Token token, UUID cfId, long epoch)
+        public EpochInfo(Token token, UUID cfId, long epoch, Scope scope)
         {
-            super(token, cfId, epoch);
+            super(token, cfId, epoch, scope);
         }
     }
 
@@ -67,6 +77,7 @@ public abstract class AbstractEpochMessage implements IEpochMessage
             Token.serializer.serialize(msg.token, out);
             UUIDSerializer.serializer.serialize(msg.cfId, out, version);
             out.writeLong(msg.epoch);
+            Scope.serializer.serialize(msg.scope, out, version);
         }
 
         @Override
@@ -74,7 +85,8 @@ public abstract class AbstractEpochMessage implements IEpochMessage
         {
             return new EpochInfo(Token.serializer.deserialize(in),
                                  UUIDSerializer.serializer.deserialize(in, version),
-                                 in.readLong());
+                                 in.readLong(),
+                                 Scope.serializer.deserialize(in, version));
         }
 
         @Override
@@ -83,6 +95,7 @@ public abstract class AbstractEpochMessage implements IEpochMessage
             long size = Token.serializer.serializedSize(msg.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(msg.cfId, version);
             size += 8;  // response.epoch
+            size += Scope.serializer.serializedSize(msg.scope, version);
             return size;
         }
     };

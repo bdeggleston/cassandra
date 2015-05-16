@@ -40,6 +40,7 @@ public class InstanceStreamWriter
     private final StreamManager.StreamRateLimiter limiter;
     private long bytesSinceFlush = 0;
 
+    // FIXME: work out how to stream multiple scopes
     public InstanceStreamWriter(UUID cfId, Range<Token> range, InetAddress peer)
     {
         this(EpaxosState.getInstance(), cfId, range, peer);

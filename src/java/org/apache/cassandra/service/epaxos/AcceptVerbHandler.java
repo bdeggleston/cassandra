@@ -58,7 +58,9 @@ public class AcceptVerbHandler extends AbstractEpochVerbHandler<AcceptRequest>
             state.saveInstance(instance);
 
             logger.debug("Accept request from {} successful for {}", message.from, remoteInstance.getId());
-            AcceptResponse response = new AcceptResponse(instance.getToken(), instance.getCfId(), state.getCurrentEpoch(instance), true, 0);
+            AcceptResponse response = new AcceptResponse(instance.getToken(), instance.getCfId(),
+                                                         state.getCurrentEpoch(instance),
+                                                         instance.getScope(), true, 0);
             state.sendReply(response.getMessage(), id, message.from);
 
             if (recordDeps)
@@ -70,7 +72,9 @@ public class AcceptVerbHandler extends AbstractEpochVerbHandler<AcceptRequest>
         catch (BallotException e)
         {
             logger.debug("Accept request from {} for {}, rejected. Old ballot", message.from, remoteInstance.getId());
-            AcceptResponse response = new AcceptResponse(instance.getToken(), instance.getCfId(), state.getCurrentEpoch(instance), false, e.localBallot);
+            AcceptResponse response = new AcceptResponse(instance.getToken(), instance.getCfId(),
+                                                         state.getCurrentEpoch(instance),
+                                                         instance.getScope(), false, e.localBallot);
             state.sendReply(response.getMessage(), id, message.from);
         }
         catch (InvalidInstanceStateChange e)
@@ -82,7 +86,9 @@ public class AcceptVerbHandler extends AbstractEpochVerbHandler<AcceptRequest>
                     String.format("Proposed accept phase deps don't match. \n\tLocal: %s \n\tRemote: %s", instance, remoteInstance);
 
             logger.debug("Accept request from {} for {}, rejected. State demotion", message.from, remoteInstance.getId());
-            AcceptResponse response = new AcceptResponse(instance.getToken(), instance.getCfId(), state.getCurrentEpoch(instance), true, 0);
+            AcceptResponse response = new AcceptResponse(instance.getToken(), instance.getCfId(),
+                                                         state.getCurrentEpoch(instance),
+                                                        instance.getScope(), true, 0);
             state.sendReply(response.getMessage(), id, message.from);
         }
         finally

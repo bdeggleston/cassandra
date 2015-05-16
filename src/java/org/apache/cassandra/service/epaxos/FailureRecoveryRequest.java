@@ -15,12 +15,14 @@ public class FailureRecoveryRequest
     public final Token token;
     public final UUID cfId;
     public final long epoch;
+    public final Scope scope;
 
-    public FailureRecoveryRequest(Token token, UUID cfId, long epoch)
+    public FailureRecoveryRequest(Token token, UUID cfId, long epoch, Scope scope)
     {
         this.token = token;
         this.cfId = cfId;
         this.epoch = epoch;
+        this.scope = scope;
     }
 
     @Override
@@ -33,6 +35,7 @@ public class FailureRecoveryRequest
 
         if (epoch != request.epoch) return false;
         if (!cfId.equals(request.cfId)) return false;
+        if (scope != request.scope) return false;
         if (!token.equals(request.token)) return false;
 
         return true;
@@ -44,6 +47,7 @@ public class FailureRecoveryRequest
         int result = token.hashCode();
         result = 31 * result + cfId.hashCode();
         result = 31 * result + (int) (epoch ^ (epoch >>> 32));
+        result = 31 * result + scope.hashCode();
         return result;
     }
 
@@ -51,10 +55,11 @@ public class FailureRecoveryRequest
     public String toString()
     {
         return "FailureRecoveryRequest{" +
-                "token=" + token +
-                ", cfId=" + cfId +
-                ", epoch=" + epoch +
-                '}';
+               "token=" + token +
+               ", cfId=" + cfId +
+               ", epoch=" + epoch +
+               ", scope=" + scope +
+               '}';
     }
 
     public static final IVersionedSerializer<FailureRecoveryRequest> serializer = new IVersionedSerializer<FailureRecoveryRequest>()
@@ -65,6 +70,7 @@ public class FailureRecoveryRequest
             Token.serializer.serialize(request.token, out);
             UUIDSerializer.serializer.serialize(request.cfId, out, version);
             out.writeLong(request.epoch);
+            Scope.serializer.serialize(request.scope, out, version);
         }
 
         @Override
@@ -72,7 +78,8 @@ public class FailureRecoveryRequest
         {
             return new FailureRecoveryRequest(Token.serializer.deserialize(in),
                                               UUIDSerializer.serializer.deserialize(in, version),
-                                              in.readLong());
+                                              in.readLong(),
+                                              Scope.serializer.deserialize(in, version));
         }
 
         @Override
@@ -80,7 +87,8 @@ public class FailureRecoveryRequest
         {
             return Token.serializer.serializedSize(request.token, TypeSizes.NATIVE)
                     + UUIDSerializer.serializer.serializedSize(request.cfId, version)
-                    + 8;
+                    + 8
+                    + Scope.serializer.serializedSize(request.scope, version);
         }
     };
 }

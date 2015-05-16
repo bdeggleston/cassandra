@@ -145,8 +145,8 @@ public class RowDataResolver extends AbstractRowResolver
             }
             else
             {
-                results.add(MessagingService.instance().sendRR(mutation.createMessage(MessagingService.Verb.READ_REPAIR),
-                                                               endpoints.get(i)));
+                MessageOut<Mutation> msg = mutation.createMessage(MessagingService.Verb.READ_REPAIR);
+                results.add(MessagingService.instance().sendRR(msg, endpoints.get(i)));
             }
         }
 

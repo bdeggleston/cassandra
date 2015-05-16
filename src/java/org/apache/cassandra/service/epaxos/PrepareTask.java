@@ -101,7 +101,12 @@ public class PrepareTask implements Runnable, ICommitCallback
 
             Instance pInstance = state.getInstanceCopy(group.getParentId());
             participantInfo = state.getParticipants(pInstance);
-            request = new PrepareRequest(pInstance.getToken(), pInstance.getCfId(), state.getCurrentEpoch(pInstance), id, 0);
+            request = new PrepareRequest(pInstance.getToken(),
+                                         pInstance.getCfId(),
+                                         state.getCurrentEpoch(pInstance),
+                                         pInstance.getScope(),
+                                         id,
+                                         0);
             callback = state.getPrepareCallback(id, 0, participantInfo, group, attempt);
         }
 

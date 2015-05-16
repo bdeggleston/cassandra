@@ -43,17 +43,19 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
             return;
 
         EpochInstance instance = (EpochInstance) inst;
-        TokenState tokenState = state.tokenStateManager.get(instance);
-        long currentEpoch = state.tokenStateManager.getEpoch(instance);
+        TokenStateManager tokenStateManager = state.getTokenStateManager(instance);
+        KeyStateManager keyStateManager = state.getKeyStateManager(instance);
+        TokenState tokenState = tokenStateManager.get(instance);
+        long currentEpoch = tokenStateManager.getEpoch(instance);
 
         if (instance.getEpoch() > currentEpoch + 1)
         {
             logger.debug("Epoch {} is greater than {} + 1", instance.getEpoch(), currentEpoch);
             instance.setVetoed(true);
         }
-        else if (!state.keyStateManager.canIncrementToEpoch(tokenState, instance.getEpoch()))
+        else if (!keyStateManager.canIncrementToEpoch(tokenState, instance.getEpoch()))
         {
-            state.keyStateManager.canIncrementToEpoch(tokenState, instance.getEpoch());
+            keyStateManager.canIncrementToEpoch(tokenState, instance.getEpoch());
             logger.debug("KeyStateManager can't increment epoch to {}", instance.getEpoch());
             instance.setVetoed(true);
         }
@@ -122,6 +124,7 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
                 response = PreacceptResponse.ballotFailure(instance.getToken(),
                                                            instance.getCfId(),
                                                            state.getCurrentEpoch(instance),
+                                                           instance.getScope(),
                                                            e.localBallot);
             }
             catch (InvalidInstanceStateChange e)

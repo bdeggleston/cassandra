@@ -21,9 +21,9 @@ public class TryPreacceptRequest extends AbstractEpochMessage
     public final Set<UUID> dependencies;
     public final int ballot;
 
-    public TryPreacceptRequest(Token token, UUID cfId, long epoch, UUID iid, Set<UUID> dependencies, int ballot)
+    public TryPreacceptRequest(Token token, UUID cfId, long epoch, Scope scope, UUID iid, Set<UUID> dependencies, int ballot)
     {
-        super(token, cfId, epoch);
+        super(token, cfId, epoch, scope);
         this.iid = iid;
         this.dependencies = dependencies;
         this.ballot = ballot;
@@ -59,6 +59,7 @@ public class TryPreacceptRequest extends AbstractEpochMessage
             return new TryPreacceptRequest(epochInfo.token,
                                            epochInfo.cfId,
                                            epochInfo.epoch,
+                                           epochInfo.scope,
                                            iid,
                                            ImmutableSet.copyOf(deps),
                                            in.readInt());

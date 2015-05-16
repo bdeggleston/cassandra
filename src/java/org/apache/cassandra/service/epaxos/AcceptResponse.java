@@ -16,9 +16,9 @@ public class AcceptResponse extends AbstractEpochMessage
     public final boolean success;
     public final int ballot;
 
-    public AcceptResponse(Token token, UUID cfId, long epoch, boolean success, int ballot)
+    public AcceptResponse(Token token, UUID cfId, long epoch, Scope scope, boolean success, int ballot)
     {
-        super(token, cfId, epoch);
+        super(token, cfId, epoch, scope);
         this.success = success;
         this.ballot = ballot;
     }
@@ -42,7 +42,7 @@ public class AcceptResponse extends AbstractEpochMessage
         public AcceptResponse deserialize(DataInput in, int version) throws IOException
         {
             AbstractEpochMessage epochInfo = AbstractEpochMessage.serializer.deserialize(in, version);
-            return new AcceptResponse(epochInfo.token, epochInfo.cfId, epochInfo.epoch, in.readBoolean(), in.readInt());
+            return new AcceptResponse(epochInfo.token, epochInfo.cfId, epochInfo.epoch, epochInfo.scope, in.readBoolean(), in.readInt());
         }
 
         @Override

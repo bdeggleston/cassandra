@@ -46,6 +46,7 @@ public class TokenStateManager
 
     private final String keyspace;
     private final String table;
+    private final Scope scope;
     private volatile boolean started = false;
 
     class ManagedCf
@@ -173,19 +174,21 @@ public class TokenStateManager
 
     private final ConcurrentMap<UUID, ManagedCf> states = Maps.newConcurrentMap();
 
-    public TokenStateManager()
+    public TokenStateManager(Scope scope)
     {
-        this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
+        this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE, scope);
     }
 
-    public TokenStateManager(String keyspace, String table)
+    public TokenStateManager(String keyspace, String table, Scope scope)
     {
         this.keyspace = keyspace;
         this.table = table;
+        this.scope = scope;  // TODO: use this in queries
     }
 
     public synchronized void start()
     {
+        // TODO: test we're only loading the token states in our scope
         assert !started;
         UntypedResultSet rows = QueryProcessor.executeInternal(String.format("SELECT * FROM %s.%s", keyspace, table));
         for (UntypedResultSet.Row row: rows)
@@ -231,6 +234,7 @@ public class TokenStateManager
 
     protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
     {
+        // TODO: return different ranges for GLOBAL vs LOCAL
         TokenMetadata tkm = StorageService.instance.getTokenMetadata();
         ArrayList<Token> tokens = tkm.sortedTokens();
         InetAddress localEndpoint = FBUtilities.getLocalAddress();
@@ -283,6 +287,11 @@ public class TokenStateManager
     public synchronized TokenState putState(TokenState state)
     {
         return getOrInitManagedCf(state.getCfId()).putIfAbsent(state);
+    }
+
+    public Scope getScope()
+    {
+        return scope;
     }
 
     public TokenState get(CfKey cfKey)

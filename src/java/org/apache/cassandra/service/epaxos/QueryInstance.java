@@ -81,6 +81,12 @@ public class QueryInstance extends Instance
     }
 
     @Override
+    public Scope getScope()
+    {
+        return Scope.get(getConsistencyLevel());
+    }
+
+    @Override
     public ConsistencyLevel getConsistencyLevel()
     {
         return query.getConsistencyLevel();
