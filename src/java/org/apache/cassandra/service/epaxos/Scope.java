@@ -22,6 +22,7 @@ import java.io.DataInput;
 import java.io.IOException;
 
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 
@@ -126,5 +127,42 @@ public enum Scope
             result = 31 * result + dc.hashCode();
             return result;
         }
+
+        public static final IVersionedSerializer<DC> serializer = new IVersionedSerializer<DC>()
+        {
+            @Override
+            public void serialize(DC dc, DataOutputPlus out, int version) throws IOException
+            {
+                Scope.serializer.serialize(dc.scope, out, version);
+                if (dc.scope != GLOBAL)
+                {
+                    out.writeUTF(dc.dc);
+                }
+            }
+
+            @Override
+            public DC deserialize(DataInput in, int version) throws IOException
+            {
+                Scope scope = Scope.serializer.deserialize(in, version);
+                switch (scope)
+                {
+                    case GLOBAL: return global();
+                    case LOCAL: return local(in.readUTF());
+                    default:
+                        throw new IOException("Unsupported scope: " + scope);
+                }
+            }
+
+            @Override
+            public long serializedSize(DC dc, int version)
+            {
+                long size = Scope.serializer.serializedSize(dc.scope, version);
+                if (dc.scope != GLOBAL)
+                {
+                    size += TypeSizes.NATIVE.sizeof(dc.dc);
+                }
+                return size;
+            }
+        };
     }
 }

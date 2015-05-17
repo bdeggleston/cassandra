@@ -262,7 +262,8 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         PreacceptCallback callback = getCallback(state, instance, null, false);
 
         callback.response(createResponse(state.localEndpoints.get(1),
-                                         PreacceptResponse.ballotFailure(instance.getToken(), instance.getCfId(), 0, 5)));
+                                         PreacceptResponse.ballotFailure(instance.getToken(), instance.getCfId(), 0,
+                                                                         DEFAULT_SCOPE, 5)));
         Assert.assertEquals(0, state.accepts.size());
         Assert.assertEquals(0, state.commits.size());
         Assert.assertEquals(1, state.ballotUpdates.size());
@@ -408,7 +409,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     public void convergingDisagreeingRanges() throws Exception
     {
         MockCallbackState state = new MockCallbackState(5, 0);
-        TokenInstance instance = new TokenInstance(LOCALHOST, "DC1", CFID, token(50), range(0, 100), false);
+        TokenInstance instance = new TokenInstance(LOCALHOST, "DC1", CFID, token(50), range(0, 100), DEFAULT_SCOPE);
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         UUID dep3 = UUIDGen.getTimeUUID();

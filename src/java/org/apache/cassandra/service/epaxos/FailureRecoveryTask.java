@@ -52,7 +52,7 @@ public class FailureRecoveryTask implements Runnable
 
     // the remote epoch that caused the failure recovery
     private final long epoch;
-    private final Scope scope;
+    public final Scope scope;
     private final TokenStateManager tsm;
 
     public FailureRecoveryTask(EpaxosState state, Token token, UUID cfId, long epoch, Scope scope)
@@ -208,7 +208,8 @@ public class FailureRecoveryTask implements Runnable
         {
             if (endpoint.equals(state.getEndpoint()))
                 continue;
-            streamPlan.requestEpaxosRange(endpoint, cfId, range);
+            // TODO: test that only one scope is streamed
+            streamPlan.requestEpaxosRange(endpoint, cfId, range, scope);
         }
 
         streamPlan.listeners(new StreamEventHandler()

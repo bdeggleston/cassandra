@@ -125,7 +125,8 @@ public class RowDataResolver extends AbstractRowResolver
             assert mutation.getColumnFamilyIds().size() == 1;
             UUID cfId = mutation.getColumnFamilyIds().iterator().next();
 
-            ExecutionInfo epaxosInfo = EpaxosState.getInstance().getEpochExecutionInfo(mutation.key(), cfId);
+            //ExecutionInfo epaxosInfo = EpaxosState.getInstance().getEpochExecutionInfo(mutation.key(), cfId);
+            ExecutionInfo epaxosInfo = null; // FIXME: all this read repair stuff
 
             // use a separate verb here because we don't want these to be get the white glove hint-
             // on-timeout behavior that a "real" mutation gets

@@ -30,6 +30,7 @@ import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.service.epaxos.EpaxosState;
 import org.apache.cassandra.service.epaxos.ExecutionInfo;
+import org.apache.cassandra.service.epaxos.Scope;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 
@@ -125,9 +126,10 @@ public class StreamReceiveTask extends StreamTask
                 throw new AssertionError("We shouldn't fail acquiring a reference on a sstable that has just been transferred");
             try
             {
-                for (Map.Entry<ByteBuffer, ExecutionInfo> entry: task.session.getExpaxosCorrections().entrySet())
+                // FIXME: pause execution for affected token states until sstables are added
+                for (Map.Entry<ByteBuffer, Map<Scope.DC, ExecutionInfo>> entry: task.session.getExpaxosCorrections().entrySet())
                 {
-                    EpaxosState.getInstance().reportFutureExecution(entry.getKey(), task.cfId, entry.getValue());
+                    EpaxosState.getInstance().reportFutureExecutions(entry.getKey(), task.cfId, entry.getValue());
                 }
                 // add sstables and build secondary indexes
                 cfs.addSSTables(readers);

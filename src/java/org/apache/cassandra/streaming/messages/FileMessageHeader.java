@@ -28,6 +28,7 @@ import org.apache.cassandra.io.compress.CompressionMetadata;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.epaxos.ExecutionInfo;
+import org.apache.cassandra.service.epaxos.Scope;
 import org.apache.cassandra.streaming.compress.CompressionInfo;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
@@ -48,7 +49,7 @@ public class FileMessageHeader
     public final List<Pair<Long, Long>> sections;
     public final CompressionInfo compressionInfo;
     public final long repairedAt;
-    public final Map<ByteBuffer, ExecutionInfo> epaxos;
+    public final Map<ByteBuffer, Map<Scope.DC, ExecutionInfo>> epaxos;
 
     public FileMessageHeader(UUID cfId,
                              int sequenceNumber,
@@ -58,7 +59,7 @@ public class FileMessageHeader
                              CompressionInfo compressionInfo,
                              long repairedAt)
     {
-        this(cfId, sequenceNumber, version, estimatedKeys, sections, compressionInfo, repairedAt, new HashMap<ByteBuffer, ExecutionInfo>());
+        this(cfId, sequenceNumber, version, estimatedKeys, sections, compressionInfo, repairedAt, new HashMap<ByteBuffer, Map<Scope.DC, ExecutionInfo>>());
     }
 
     public FileMessageHeader(UUID cfId,
@@ -68,7 +69,7 @@ public class FileMessageHeader
                              List<Pair<Long, Long>> sections,
                              CompressionInfo compressionInfo,
                              long repairedAt,
-                             Map<ByteBuffer, ExecutionInfo> epaxos)
+                             Map<ByteBuffer, Map<Scope.DC, ExecutionInfo>> epaxos)
     {
         this.cfId = cfId;
         this.sequenceNumber = sequenceNumber;
@@ -152,10 +153,16 @@ public class FileMessageHeader
 
             // TODO: do the version thing
             out.writeInt(header.epaxos.size());
-            for (Map.Entry<ByteBuffer, ExecutionInfo> entry: header.epaxos.entrySet())
+            for (Map.Entry<ByteBuffer, Map<Scope.DC, ExecutionInfo>> keyEntry: header.epaxos.entrySet())
             {
-                ByteBufferUtil.writeWithShortLength(entry.getKey(), out);
-                ExecutionInfo.serializer.serialize(entry.getValue(), out, version);
+                ByteBufferUtil.writeWithShortLength(keyEntry.getKey(), out);
+                out.writeInt(keyEntry.getValue().size());
+
+                for (Map.Entry<Scope.DC, ExecutionInfo> scopeEntry: keyEntry.getValue().entrySet())
+                {
+                    Scope.DC.serializer.serialize(scopeEntry.getKey(), out, version);
+                    ExecutionInfo.serializer.serialize(scopeEntry.getValue(), out, version);
+                }
             }
         }
 
@@ -173,10 +180,20 @@ public class FileMessageHeader
             long repairedAt = in.readLong();
 
             int epaxosSize = in.readInt();
-            HashMap<ByteBuffer, ExecutionInfo> epaxos = new HashMap<>(epaxosSize);
+            Map<ByteBuffer, Map<Scope.DC, ExecutionInfo>> epaxos = new HashMap<>(epaxosSize);
             for (int i=0; i<epaxosSize; i++)
             {
-                epaxos.put(ByteBufferUtil.readWithShortLength(in), ExecutionInfo.serializer.deserialize(in, version));
+                ByteBuffer key = ByteBufferUtil.readWithShortLength(in);
+
+                int numEntry = in.readInt();
+                Map<Scope.DC, ExecutionInfo> entry = new HashMap<>(numEntry);
+                for (int j=0; j<numEntry; j++)
+                {
+                    entry.put(Scope.DC.serializer.deserialize(in, version),
+                              ExecutionInfo.serializer.deserialize(in, version));
+
+                }
+                epaxos.put(key, entry);
             }
             return new FileMessageHeader(cfId, sequenceNumber, sstableVersion, estimatedKeys, sections, compressionInfo, repairedAt, epaxos);
         }
@@ -197,10 +214,16 @@ public class FileMessageHeader
             size += CompressionInfo.serializer.serializedSize(header.compressionInfo, version);
 
             size += 4;
-            for (Map.Entry<ByteBuffer, ExecutionInfo> entry: header.epaxos.entrySet())
+            for (Map.Entry<ByteBuffer, Map<Scope.DC, ExecutionInfo>> keyEntry: header.epaxos.entrySet())
             {
-                size += TypeSizes.NATIVE.sizeofWithShortLength(entry.getKey());
-                size += ExecutionInfo.serializer.serializedSize(entry.getValue(), version);
+                size += TypeSizes.NATIVE.sizeofWithShortLength(keyEntry.getKey());
+
+                size += 4;
+                for (Map.Entry<Scope.DC, ExecutionInfo> scopeEntry: keyEntry.getValue().entrySet())
+                {
+                    size += Scope.DC.serializer.serializedSize(scopeEntry.getKey(), version);
+                    size += ExecutionInfo.serializer.serializedSize(scopeEntry.getValue(), version);
+                }
             }
             return size;
         }

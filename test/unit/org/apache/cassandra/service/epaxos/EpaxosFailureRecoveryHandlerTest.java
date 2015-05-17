@@ -32,9 +32,9 @@ public class EpaxosFailureRecoveryHandlerTest
         final AtomicReference<FailureRecoveryRequest> params = new AtomicReference<>();
         MockVerbHandlerState state = new MockVerbHandlerState() {
             @Override
-            public void startLocalFailureRecovery(Token token, UUID cfId, long epoch)
+            public void startLocalFailureRecovery(Token token, UUID cfId, long epoch, Scope scope)
             {
-                params.set(new FailureRecoveryRequest(token, cfId, epoch));
+                params.set(new FailureRecoveryRequest(token, cfId, epoch, scope));
             }
         };
         FailureRecoveryVerbHandler handler = new FailureRecoveryVerbHandler(state);
@@ -42,7 +42,7 @@ public class EpaxosFailureRecoveryHandlerTest
         Token token = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
         UUID cfId = UUIDGen.getTimeUUID();
         long epoch = 200;
-        handler.doVerb(createMessage(new FailureRecoveryRequest(token, cfId, epoch)), 1);
+        handler.doVerb(createMessage(new FailureRecoveryRequest(token, cfId, epoch, Scope.GLOBAL)), 1);
 
         FailureRecoveryRequest request = params.get();
         Assert.assertNotNull(request);
@@ -50,4 +50,6 @@ public class EpaxosFailureRecoveryHandlerTest
         Assert.assertEquals(cfId, request.cfId);
         Assert.assertEquals(epoch, request.epoch);
     }
+
+    // TODO: add some checks around the handling of different scopes
 }

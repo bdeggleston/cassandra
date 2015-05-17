@@ -54,6 +54,7 @@ public abstract class AbstractEpaxosTest
     protected static CFMetaData cfm;
     protected static CFMetaData thriftcf;
     protected static final InetAddress LOCALHOST;
+    protected static final Scope DEFAULT_SCOPE = Scope.GLOBAL;
 
     static
     {
@@ -189,7 +190,7 @@ public abstract class AbstractEpaxosTest
 
     protected MessageEnvelope<Instance> wrapInstance(Instance instance, long epoch)
     {
-        return new MessageEnvelope<>(instance.getToken(), instance.getCfId(), epoch, instance);
+        return new MessageEnvelope<>(instance.getToken(), instance.getCfId(), epoch, instance.getScope(), instance);
     }
 
     protected static ThriftCASRequest getThriftCasRequest()

@@ -39,10 +39,10 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
             }
         };
 
-        KeyState keyState = state.keyStateManager.loadKeyState(key, cfId);
+        KeyState keyState = state.getKeyStateManager(DEFAULT_SCOPE).loadKeyState(key, cfId);
         keyState.setEpoch(5);
         keyState.setExecutionCount(3);
-        state.keyStateManager.saveKeyState(key, cfId, keyState);
+        state.getKeyStateManager(DEFAULT_SCOPE).saveKeyState(key, cfId, keyState);
 
         Mutation mutation = new Mutation("como estas", key) {
             @Override
@@ -95,10 +95,10 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
             }
         };
 
-        KeyState keyState = state.keyStateManager.loadKeyState(key, cfId);
+        KeyState keyState = state.getKeyStateManager(DEFAULT_SCOPE).loadKeyState(key, cfId);
         keyState.setEpoch(5);
         keyState.setExecutionCount(3);
-        state.keyStateManager.saveKeyState(key, cfId, keyState);
+        state.getKeyStateManager(DEFAULT_SCOPE).saveKeyState(key, cfId, keyState);
 
         Mutation mutation = new Mutation("muy bien", key) {
             @Override

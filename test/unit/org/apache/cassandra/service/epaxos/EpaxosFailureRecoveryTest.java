@@ -48,7 +48,7 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
             ByteBuffer key = ByteBufferUtil.bytes(i);
             keys.add(key);
 
-            KeyState ks = state.keyStateManager.loadKeyState(key, CFID);
+            KeyState ks = state.getKeyStateManager(DEFAULT_SCOPE).loadKeyState(key, CFID);
             UUID prev = null;
             for (int j=0; j<9; j++)
             {
@@ -69,7 +69,7 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
             Assert.assertTrue(ks.getEpochExecutions().size() > 0);
         }
 
-        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN0, CFID, 3)
+        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN0, CFID, 3, DEFAULT_SCOPE)
         {
             @Override
             protected TokenState getTokenState()
@@ -82,7 +82,7 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
         Assert.assertTrue(deleted.isEmpty());
         for (ByteBuffer key: keys)
         {
-            Assert.assertTrue(state.keyStateManager.managesKey(key, CFID));
+            Assert.assertTrue(state.getKeyStateManager(DEFAULT_SCOPE).managesKey(key, CFID));
         }
 
         task.preRecover();
@@ -92,7 +92,7 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
         Assert.assertEquals(expectedIds, deleted);
         for (ByteBuffer key: keys)
         {
-            Assert.assertFalse(state.keyStateManager.managesKey(key, CFID));
+            Assert.assertFalse(state.getKeyStateManager(DEFAULT_SCOPE).managesKey(key, CFID));
         }
     }
 
@@ -100,11 +100,11 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     public void preRecoverBailsIfNotBehindRemoteEpoch()
     {
         EpaxosState state = new MockVerbHandlerState();
-        TokenState tokenState = state.tokenStateManager.get(TOKEN0, CFID);
+        TokenState tokenState = state.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN0, CFID);
         tokenState.setEpoch(2);
-        state.tokenStateManager.save(tokenState);
+        state.getTokenStateManager(DEFAULT_SCOPE).save(tokenState);
         Assert.assertEquals(TokenState.State.NORMAL, tokenState.getState());
-        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN0, CFID, 2);
+        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN0, CFID, 2, DEFAULT_SCOPE);
 
         task.preRecover();
         Assert.assertEquals(TokenState.State.NORMAL, tokenState.getState());
@@ -116,10 +116,10 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     {
 
         EpaxosState state = new MockVerbHandlerState();
-        TokenState tokenState = state.tokenStateManager.get(TOKEN0, CFID);
+        TokenState tokenState = state.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN0, CFID);
         tokenState.setEpoch(2);
         tokenState.setState(TokenState.State.RECOVERY_REQUIRED);
-        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN0, CFID, 0);
+        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN0, CFID, 0, DEFAULT_SCOPE);
 
         task.preRecover();
         Assert.assertEquals(TokenState.State.PRE_RECOVERY, tokenState.getState());

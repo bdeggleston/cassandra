@@ -29,6 +29,7 @@ import com.google.common.collect.*;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.service.epaxos.EpaxosState;
 import org.apache.cassandra.service.epaxos.ExecutionInfo;
+import org.apache.cassandra.service.epaxos.Scope;
 import org.apache.cassandra.utils.UUIDGen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -145,7 +146,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     private AtomicBoolean isAborted = new AtomicBoolean(false);
 
-    private final ConcurrentMap<ByteBuffer, ExecutionInfo> epaxosCorrections = new ConcurrentHashMap<>();
+    private final Map<ByteBuffer, Map<Scope.DC, ExecutionInfo>> epaxosCorrections = new HashMap<>();
 
     public static enum State
     {
@@ -244,12 +245,12 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         requests.add(new StreamRequest(keyspace, ranges, columnFamilies, repairedAt));
     }
 
-    public void addEpaxosRequest(UUID cfId, Range<Token> range)
+    public void addEpaxosRequest(UUID cfId, Range<Token> range, Scope scope)
     {
-        epaxosRequests.add(new EpaxosRequest(cfId, range));
+        epaxosRequests.add(new EpaxosRequest(cfId, range, scope));
     }
 
-    public void addEpaxosTransfer(UUID cfId, Range<Token> range)
+    public void addEpaxosTransfer(UUID cfId, Range<Token> range, Scope scope)
     {
         if (!EpaxosState.getInstance().managesCfId(cfId))
         {
@@ -257,7 +258,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
             logger.info("Table {} not managed by epaxos, skipping token state transfer", cf != null ? cf : cfId);
         }
         UUID taskId = UUIDGen.getTimeUUID();
-        epaxosTransfers.put(taskId, new EpaxosTransferTask(this, taskId, cfId, range));
+        epaxosTransfers.put(taskId, new EpaxosTransferTask(this, taskId, cfId, range, scope));
         logger.debug("adding epaxos transfer {} for {} on ", taskId, range, cfId);
     }
 
@@ -368,33 +369,31 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         }
     }
 
-    public boolean addEpaxosCorrection(ByteBuffer key, ExecutionInfo info)
+    public boolean addEpaxosCorrection(ByteBuffer key, Scope.DC scope, ExecutionInfo info)
     {
-        ExecutionInfo previous = epaxosCorrections.putIfAbsent(key, info);
-
-        if (previous == null )
+        synchronized (epaxosCorrections)
         {
-            return true;
-        }
-        else if (previous.compareTo(info) > 0)
-        {
-            return false;
-        }
-
-        while (!epaxosCorrections.replace(key, previous, info))
-        {
-            previous = epaxosCorrections.get(key);
-            if (previous.compareTo(info) > 0)
+            Map<Scope.DC, ExecutionInfo> scopeMap = epaxosCorrections.get(key);
+            if (scopeMap == null)
             {
-                // there's a higher correction for this
-                // key, so don't do anything
+                scopeMap = new ConcurrentHashMap<>();
+                epaxosCorrections.put(key, scopeMap);
+            }
+
+            ExecutionInfo previous = scopeMap.get(scope);
+            if (previous == null || previous.compareTo(info) <= 0)
+            {
+                scopeMap.put(scope, info);
+                return true;
+            }
+            else
+            {
                 return false;
             }
         }
-        return true;
     }
 
-    public Map<ByteBuffer, ExecutionInfo> getExpaxosCorrections()
+    public Map<ByteBuffer, Map<Scope.DC, ExecutionInfo>> getExpaxosCorrections()
     {
         return epaxosCorrections;
     }
@@ -557,7 +556,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         for (StreamSummary summary : summaries)
             prepareReceiving(summary);
         for (EpaxosRequest request: epaxosRequests)
-            addEpaxosTransfer(request.cfId, request.range);
+            addEpaxosTransfer(request.cfId, request.range, request.scope);
         for (EpaxosSummary summary: epaxosSummaries)
             prepareEpaxosReceiving(summary);
 
@@ -787,7 +786,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     private void prepareEpaxosReceiving(EpaxosSummary summary)
     {
-        epaxosReceivers.put(summary.taskId, new EpaxosReceiveTask(this, summary.taskId, summary.cfId, summary.range));
+        epaxosReceivers.put(summary.taskId, new EpaxosReceiveTask(this, summary.taskId, summary.cfId, summary.range, summary.scope));
         logger.debug("adding epaxos receive {} for {} on ", summary.taskId, summary.range, summary.cfId);
     }
 

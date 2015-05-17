@@ -34,35 +34,53 @@ public class InstanceStreamWriter
     private static final int CFKEY_ITER_CHUNK = 10000;
 
     private final EpaxosState state;
-    private final TokenStateManager manager;
     private final UUID cfId;
     private final Range<Token> range;
+    private final Scope scope;
+
+    private final TokenStateManager tsm;
+    private final KeyStateManager ksm;
+
     private final StreamManager.StreamRateLimiter limiter;
     private long bytesSinceFlush = 0;
 
+    // TODO: test that both scopes are streamed on bootstrap
+    // TODO: test that 'ghost' scopes aren't created (ie: streams shouldn't create a local scope if the remote node doesn't have one)
+    // TODO: check your TODOs in streaming/storage service
+
     // FIXME: work out how to stream multiple scopes
-    public InstanceStreamWriter(UUID cfId, Range<Token> range, InetAddress peer)
+    public InstanceStreamWriter(UUID cfId, Range<Token> range, Scope scope, InetAddress peer)
     {
-        this(EpaxosState.getInstance(), cfId, range, peer);
+        this(EpaxosState.getInstance(), cfId, range, scope, peer);
     }
 
-    public InstanceStreamWriter(EpaxosState state, UUID cfId, Range<Token> range, InetAddress peer)
+    public InstanceStreamWriter(EpaxosState state, UUID cfId, Range<Token> range, Scope scope, InetAddress peer)
     {
         this.state = state;
-        manager = state.tokenStateManager;
         this.cfId = cfId;
         this.range = range;
+
+        // TODO: test
+        if (scope == Scope.LOCAL && !state.getDc().equals(state.getDc(peer)))
+        {
+            throw new AssertionError("Can't stream local scope instances to another datacenter");
+        }
+
+        this.scope = scope;
+        tsm = state.getTokenStateManager(scope);
+        ksm = state.getKeyStateManager(scope);
+
         limiter = StreamManager.getRateLimiter(peer);
     }
 
     protected TokenState getTokenState()
     {
-        return state.tokenStateManager.get(range.left, cfId);
+        return tsm.get(range.left, cfId);
     }
 
     private TokenState getExact(Token token)
     {
-        return state.tokenStateManager.getExact(token, cfId);
+        return tsm.getExact(token, cfId);
     }
 
     private Token getNext(Token last)
@@ -76,7 +94,7 @@ public class InstanceStreamWriter
             }
         };
 
-        Set<Token> tokenSet = Sets.newHashSet(Iterables.filter(state.tokenStateManager.allTokenStatesForCf(cfId), covered));
+        Set<Token> tokenSet = Sets.newHashSet(Iterables.filter(tsm.allTokenStatesForCf(cfId), covered));
         Collections.addAll(tokenSet, range.left, range.right, last);
         ArrayList<Token> tokens = Lists.newArrayList(tokenSet);
         Collections.sort(tokens);
@@ -98,7 +116,7 @@ public class InstanceStreamWriter
         if (getExact(range.right) == null)
         {
             logger.debug("Creating token state for right token {}", range.right);
-            TokenInstance leftTokenInstance = state.createTokenInstance(range.right, cfId);
+            TokenInstance leftTokenInstance = state.createTokenInstance(range.right, cfId, scope);
             try
             {
                 state.process(leftTokenInstance);
@@ -158,7 +176,10 @@ public class InstanceStreamWriter
             {
                 try
                 {
-                    state.process(state.createEpochInstance(tokenState.getToken(), tokenState.getCfId(), tokenState.getEpoch() + 1));
+                    state.process(state.createEpochInstance(tokenState.getToken(),
+                                                            tokenState.getCfId(),
+                                                            tokenState.getEpoch() + 1,
+                                                            scope));
                     logger.debug("Incremented token state for streaming");
                 }
                 catch (WriteTimeoutException e)
@@ -177,7 +198,7 @@ public class InstanceStreamWriter
                 continue;
             }
 
-            Iterator<CfKey> cfKeyIter = state.keyStateManager.getCfKeyIterator(tokenRange, cfId, CFKEY_ITER_CHUNK);
+            Iterator<CfKey> cfKeyIter = ksm.getCfKeyIterator(tokenRange, cfId, CFKEY_ITER_CHUNK);
             tokenState.lockGc();
             try
             {
@@ -205,16 +226,16 @@ public class InstanceStreamWriter
                     // the ids of all the instances we need to send
                     Map<Long, List<UUID>> executed;
                     Set<UUID> active;
-                    state.keyStateManager.getCfKeyLock(cfKey).lock();
+                    ksm.getCfKeyLock(cfKey).lock();
                     try
                     {
-                        KeyState keyState = state.keyStateManager.loadKeyState(cfKey);
+                        KeyState keyState = ksm.loadKeyState(cfKey);
                         executed = keyState.getOrderedEpochExecutions();
                         active = keyState.getActiveInstanceIds();
                     }
                     finally
                     {
-                        state.keyStateManager.getCfKeyLock(cfKey).unlock();
+                        ksm.getCfKeyLock(cfKey).unlock();
                     }
 
                     out.writeBoolean(true);
@@ -260,7 +281,7 @@ public class InstanceStreamWriter
                 tokenState.unlockGc();
 
                 // in case we prevented any from running
-                state.startTokenStateGc(tokenState);
+                state.startTokenStateGc(tokenState, scope);
             }
             logger.info("Wrote {} instances for token {} on {}", instancesWritten, token, cfId);
         }

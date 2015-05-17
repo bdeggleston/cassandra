@@ -37,7 +37,7 @@ public class EpaxosTokenStateManagerTest extends AbstractEpaxosTest
 
     private static TokenStateManager getTokenStateManager()
     {
-        return new TokenStateManager() {
+        return new TokenStateManager(DEFAULT_SCOPE) {
             @Override
             protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
             {
@@ -95,7 +95,7 @@ public class EpaxosTokenStateManagerTest extends AbstractEpaxosTest
     public void unsavedExecutionThreshold()
     {
         final AtomicBoolean wasSaved = new AtomicBoolean(false);
-        TokenStateManager tsm = new TokenStateManager() {
+        TokenStateManager tsm = new TokenStateManager(DEFAULT_SCOPE) {
             @Override
             protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
             {
@@ -109,6 +109,8 @@ public class EpaxosTokenStateManagerTest extends AbstractEpaxosTest
                 super.save(state);
             }
         };
+
+        // TODO: the rest of this test
     }
 
     /**

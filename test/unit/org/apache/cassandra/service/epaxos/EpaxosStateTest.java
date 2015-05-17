@@ -60,9 +60,9 @@ public class EpaxosStateTest extends AbstractEpaxosTest
         final Set<UUID> commitNotifications = new HashSet<>();
         EpaxosState state = new EpaxosState() {
             @Override
-            protected TokenStateManager createTokenStateManager()
+            protected TokenStateManager createTokenStateManager(Scope scope)
             {
-                return new MockTokenStateManager();
+                return new MockTokenStateManager(scope);
             }
 
             @Override

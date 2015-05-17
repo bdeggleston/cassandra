@@ -73,14 +73,14 @@ public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
         }
 
         @Override
-        public void startRemoteFailureRecovery(InetAddress endpoint, Token token, UUID cfId, long epoch)
+        public void startRemoteFailureRecovery(InetAddress endpoint, Token token, UUID cfId, long epoch, Scope scope)
         {
             remoteFailureCalls++;
             Assert.assertEquals(MANAGED_TOKEN, token);
         }
 
         @Override
-        public void startLocalFailureRecovery(Token token, UUID cfId, long epoch)
+        public void startLocalFailureRecovery(Token token, UUID cfId, long epoch, Scope scope)
         {
             localFailureCalls++;
             Assert.assertEquals(MANAGED_TOKEN, token);

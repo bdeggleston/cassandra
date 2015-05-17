@@ -1,6 +1,7 @@
 package org.apache.cassandra.streaming;
 
 import org.apache.cassandra.service.epaxos.ExecutionInfo;
+import org.apache.cassandra.service.epaxos.Scope;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.junit.Assert;
 import org.junit.Test;
@@ -21,11 +22,11 @@ public class StreamSessionTest
         ExecutionInfo executionInfo2 = new ExecutionInfo(2, 6);
         ExecutionInfo executionInfo3 = new ExecutionInfo(1, 3);
 
-        Assert.assertTrue(session.addEpaxosCorrection(key, executionInfo1));
-        Assert.assertTrue(session.addEpaxosCorrection(key, executionInfo2));
-        Assert.assertFalse(session.addEpaxosCorrection(key, executionInfo3));
-        Assert.assertFalse(session.addEpaxosCorrection(key, executionInfo3));
-        ExecutionInfo actual = session.getExpaxosCorrections().get(key);
+        Assert.assertTrue(session.addEpaxosCorrection(key, Scope.DC.global(), executionInfo1));
+        Assert.assertTrue(session.addEpaxosCorrection(key, Scope.DC.global(), executionInfo2));
+        Assert.assertFalse(session.addEpaxosCorrection(key, Scope.DC.global(), executionInfo3));
+        Assert.assertFalse(session.addEpaxosCorrection(key, Scope.DC.global(), executionInfo3));
+        ExecutionInfo actual = session.getExpaxosCorrections().get(Scope.DC.global()).get(key);
         Assert.assertEquals(executionInfo2, actual);
     }
 }

@@ -16,14 +16,15 @@ public class MockTokenStateManager extends TokenStateManager
 
     private volatile Set<Range<Token>> ranges = Sets.newHashSet(new Range<Token>(TOKEN0, TOKEN0));
 
-    public MockTokenStateManager()
+    public MockTokenStateManager(Scope scope)
     {
+        super(scope);
         start();
     }
 
-    public MockTokenStateManager(String keyspace, String table)
+    public MockTokenStateManager(String keyspace, String table, Scope scope)
     {
-        super(keyspace, table);
+        super(keyspace, table, scope);
         start();
     }
 

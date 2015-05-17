@@ -35,7 +35,7 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
     MessageIn<MessageEnvelope<Instance>> createMessage(Instance instance)
     {
         return MessageIn.create(LEADER,
-                                new MessageEnvelope<>(instance.getToken(), instance.getCfId(), 0, instance),
+                                new MessageEnvelope<>(instance.getToken(), instance.getCfId(), 0, instance.getScope(), instance),
                                 Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.EPAXOS_COMMIT,
                                 0);

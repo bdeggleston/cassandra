@@ -75,7 +75,9 @@ public abstract class ReadRepairVerbHandler <T> implements IVerbHandler<T>
             assert mutation.getColumnFamilyIds().size() == 1;
             UUID cfId = mutation.getColumnFamilyIds().iterator().next();
 
-            if (state.canApplyRepair(mutation.key(), cfId, info.epoch, info.executed))
+            //boolean canApply = state.canApplyRepair(mutation.key(), cfId, info.epoch, info.executed);
+            boolean canApply = true; // FIXME: this
+            if (canApply)
             {
                 logger.debug("Allowing read repair message for epaxos managed table");
                 doRepair(mutation, id, message.from);

@@ -70,9 +70,9 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         }
 
         @Override
-        protected TokenStateManager createTokenStateManager()
+        protected TokenStateManager createTokenStateManager(Scope scope)
         {
-            return new MockTokenStateManager();
+            return new MockTokenStateManager(scope);
         }
 
         @Override
@@ -132,13 +132,13 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         instance.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance);
 
-        TokenState ts = state.tokenStateManager.get(instance);
+        TokenState ts = state.getTokenStateManager(DEFAULT_SCOPE).get(instance);
         Assert.assertEquals(0, ts.getExecutions());
 
         ExecuteTask task = new ExecuteTask(state, instance.getId());
         task.run();
 
-        ts = state.tokenStateManager.get(instance);
+        ts = state.getTokenStateManager(DEFAULT_SCOPE).get(instance);
         Assert.assertEquals(1, ts.getExecutions());
     }
 
@@ -154,14 +154,14 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         instance.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance);
 
-        TokenState ts = state.tokenStateManager.get(instance);
+        TokenState ts = state.getTokenStateManager(DEFAULT_SCOPE).get(instance);
         ts.recordExecution();
         Assert.assertTrue(ts.localOnly());
 
         ExecuteTask task = new ExecuteTask(state, instance.getId());
         task.run();
 
-        ts = state.tokenStateManager.get(instance);
+        ts = state.getTokenStateManager(DEFAULT_SCOPE).get(instance);
         Assert.assertFalse(ts.localOnly());
     }
 
@@ -177,8 +177,8 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         instance.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance);
 
-        TokenState ts = state.tokenStateManager.get(instance);
-        KeyState ks = state.keyStateManager.loadKeyState(instance.getQuery().getCfKey());
+        TokenState ts = state.getTokenStateManager(DEFAULT_SCOPE).get(instance);
+        KeyState ks = state.getKeyStateManager(DEFAULT_SCOPE).loadKeyState(instance.getQuery().getCfKey());
 
         Assert.assertEquals(0, ts.getEpoch());
         Assert.assertEquals(0, ks.getEpoch());
@@ -187,7 +187,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         ExecuteTask task = new ExecuteTask(state, instance.getId());
         task.run();
 
-        ts = state.tokenStateManager.get(instance);
+        ts = state.getTokenStateManager(DEFAULT_SCOPE).get(instance);
         Assert.assertEquals(0, state.executedIds.size());
     }
 
@@ -222,7 +222,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         Thread.sleep(5);
 
         CfKey cfKey = instance1.getQuery().getCfKey();
-        long firstTs = state.keyStateManager.getMaxTimestamp(cfKey);
+        long firstTs = state.getKeyStateManager(DEFAULT_SCOPE).getMaxTimestamp(cfKey);
         Assert.assertNotSame(KeyState.MIN_TIMESTAMP, firstTs);
 
         instance2.commit(Sets.newHashSet(instance1.getId()));
@@ -235,7 +235,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
 
         // since the timestamp we supplied was less than the previously executed
         // one the timestamp actually executed should be lastTs + 1
-        Assert.assertEquals(firstTs + 1, state.keyStateManager.getMaxTimestamp(cfKey));
+        Assert.assertEquals(firstTs + 1, state.getKeyStateManager(DEFAULT_SCOPE).getMaxTimestamp(cfKey));
 
         instance3.commit(Sets.newHashSet(instance2.getId()));
         state.saveInstance(instance3);
@@ -244,7 +244,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         Assert.assertTrue(future.isDone());
         Assert.assertNull(future.get());
 
-        Assert.assertEquals(firstTs + 2, state.keyStateManager.getMaxTimestamp(cfKey));
+        Assert.assertEquals(firstTs + 2, state.getKeyStateManager(DEFAULT_SCOPE).getMaxTimestamp(cfKey));
     }
 
 }

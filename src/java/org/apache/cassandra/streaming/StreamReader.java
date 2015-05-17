@@ -45,6 +45,7 @@ import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.epaxos.Scope;
 import org.apache.cassandra.streaming.messages.FileMessageHeader;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.BytesReadTracker;
@@ -62,7 +63,7 @@ public class StreamReader
     protected final StreamSession session;
     protected final Descriptor.Version inputVersion;
     protected final long repairedAt;
-    protected final Map<ByteBuffer, ExecutionInfo> epaxos;
+    protected final Map<ByteBuffer, Map<Scope.DC, ExecutionInfo>> epaxos;
 
     protected Descriptor desc;
 
@@ -158,11 +159,13 @@ public class StreamReader
 
     private void maybeReportEpaxosCorrection(ByteBuffer key)
     {
-        ExecutionInfo info = epaxos.get(key);
-        if (info != null && !EpaxosState.getInstance().canApplyRepair(key, cfId, info.epoch, info.executed))
+        Map<Scope.DC, ExecutionInfo> executions = epaxos.get(key);
+        if (executions == null)
+            return;
+
+        for (Map.Entry<Scope.DC, ExecutionInfo> entry: executions.entrySet())
         {
-            logger.debug("Key has data from unexecuted epaxos instance {}: {}", key, info);
-            session.addEpaxosCorrection(key, info);
+            session.addEpaxosCorrection(key, entry.getKey(), entry.getValue());
         }
     }
 

@@ -3380,7 +3380,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                             for (Range<Token> range: endpointRanges.get(address))
                             {
                                 // TODO: should remote instances and token ranges be deleted first?
-                                streamPlan.transferEpaxosRange(address, cf.cfId, range);
+                                streamPlan.transferEpaxosRange(address, cf.cfId, range,
+                                                               EpaxosState.getInstance().getActiveScopes(cf.cfId, range, address));
                             }
                         }
                         streamPlan.transferRanges(address, keyspace, endpointRanges.get(address));
@@ -3400,7 +3401,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                             {
                                 // TODO: should instances and token ranges be deleted first?
                                 // TODO: just request the keyspace + ranges, this might be a little too intense
-                                streamPlan.requestEpaxosRange(address, cf.cfId, range);
+                                streamPlan.requestEpaxosRange(address, cf.cfId, range,
+                                                              EpaxosState.getInstance().getActiveScopes(cf.cfId, range, address));
                             }
                         }
 
@@ -3905,7 +3907,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     for (Range<Token> range: ranges)
                     {
                         // TODO: should remote instances and token ranges be deleted first?
-                        streamPlan.transferEpaxosRange(newEndpoint, cf.cfId, range);
+                        streamPlan.transferEpaxosRange(newEndpoint, cf.cfId, range,
+                                                       EpaxosState.getInstance().getActiveScopes(cf.cfId, range, newEndpoint));
                     }
                 }
 

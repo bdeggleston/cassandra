@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
@@ -31,26 +32,38 @@ public class InstanceStreamReader
     private final UUID cfId;
     private final Range<Token> range;
 
-    public InstanceStreamReader(UUID cfId, Range<Token> range)
+    private final TokenStateManager tsm;
+    private final KeyStateManager ksm;
+
+    public InstanceStreamReader(UUID cfId, Range<Token> range, Scope scope, InetAddress peer)
     {
-        this(EpaxosState.getInstance(), cfId, range);
+        this(EpaxosState.getInstance(), cfId, range, scope, peer);
     }
 
-    public InstanceStreamReader(EpaxosState state, UUID cfId, Range<Token> range)
+    public InstanceStreamReader(EpaxosState state, UUID cfId, Range<Token> range, Scope scope, InetAddress peer)
     {
         this.state = state;
         this.cfId = cfId;
         this.range = range;
+
+        // TODO: test
+        if (scope == Scope.LOCAL && !state.getDc().equals(state.getDc(peer)))
+        {
+            throw new AssertionError("Can't stream local scope instances from another datacenter");
+        }
+
+        tsm = state.getTokenStateManager(scope);
+        ksm = state.getKeyStateManager(scope);
     }
 
     protected TokenState getTokenState()
     {
-        return state.tokenStateManager.get(range.left, cfId);
+        return tsm.get(range.left, cfId);
     }
 
     protected TokenState getExact(Token token)
     {
-        return state.tokenStateManager.getExact(token, cfId);
+        return tsm.getExact(token, cfId);
     }
 
     protected int drainEpochKeyState(DataInputStream in) throws IOException
@@ -99,7 +112,7 @@ public class InstanceStreamReader
             if (ts == null)
             {
                 ts = new TokenState(range, cfId, 0, 0, TokenState.State.RECOVERING_INSTANCES);
-                TokenState previous = state.tokenStateManager.putState(ts);
+                TokenState previous = tsm.putState(ts);
                 if (previous == ts)
                 {
                     canSkip = false;
@@ -117,7 +130,7 @@ public class InstanceStreamReader
                     if (ts.getState() == TokenState.State.PRE_RECOVERY)
                     {
                         ts.setState(TokenState.State.RECOVERING_INSTANCES);
-                        state.tokenStateManager.save(ts);
+                        tsm.save(ts);
                         canSkip = false;
                     }
                 }
@@ -159,7 +172,7 @@ public class InstanceStreamReader
                     CfKey cfKey = new CfKey(key, cfId);
                     // this will instantiate the key state (if it doesn't already exist) in the epoch
                     // of the token state manager
-                    KeyState ks = state.keyStateManager.loadKeyState(cfKey);
+                    KeyState ks = ksm.loadKeyState(cfKey);
 
                     boolean last = false;
                     while (!last)
@@ -194,14 +207,14 @@ public class InstanceStreamReader
                                 continue;
 
                             Lock instanceLock = state.getInstanceLock(instance.getId()).writeLock();
-                            Lock ksLock = state.keyStateManager.getCfKeyLock(cfKey);
+                            Lock ksLock = ksm.getCfKeyLock(cfKey);
                             instanceLock.lock();
                             ksLock.lock();
                             try
                             {
                                 // reload the key state in case there are other threads receiving instances
                                 // it should be cached anyway
-                                ks = state.keyStateManager.loadKeyState(cfKey);
+                                ks = ksm.loadKeyState(cfKey);
                                 // don't add the same instance multiple times
                                 if (!ks.contains(instance.getId()))
                                 {
@@ -224,7 +237,7 @@ public class InstanceStreamReader
                                             }
                                             ks.markExecuted(instance.getId(), stronglyConnected, null, ks.getMaxTimestamp());
                                         }
-                                        state.keyStateManager.saveKeyState(cfKey, ks);
+                                        ksm.saveKeyState(cfKey, ks);
                                         // the instance is persisted after the keystate is, so if this bootstrap/recovery
                                         // fails, and another failure recovery starts, we know to delete the instance
                                         state.saveInstance(instance);
@@ -261,7 +274,7 @@ public class InstanceStreamReader
                     try
                     {
                         tokenState.setState(TokenState.State.RECOVERING_DATA);
-                        state.tokenStateManager.save(tokenState);
+                        tsm.save(tokenState);
                     }
                     finally
                     {
@@ -280,7 +293,7 @@ public class InstanceStreamReader
                                 try
                                 {
                                     tokenState.setState(TokenState.State.NORMAL);
-                                    state.tokenStateManager.save(tokenState);
+                                    tsm.save(tokenState);
                                 }
                                 finally
                                 {
@@ -305,7 +318,7 @@ public class InstanceStreamReader
             }
 
             logger.info("Read in {} instances for token {} on {}", instancesRead, token, cfId);
-            state.tokenStateManager.save(tokenState);
+            tsm.save(tokenState);
         }
     }
 }

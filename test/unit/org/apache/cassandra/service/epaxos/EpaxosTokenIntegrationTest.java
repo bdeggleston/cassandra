@@ -34,9 +34,9 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
     static class IntegrationTokenStateManager extends TokenStateManager
     {
-        IntegrationTokenStateManager(String keyspace, String table)
+        IntegrationTokenStateManager(String keyspace, String table, Scope scope)
         {
-            super(keyspace, table);
+            super(keyspace, table, scope);
             start();
         }
 
@@ -69,9 +69,9 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         }
 
         @Override
-        protected TokenStateManager createTokenStateManager()
+        protected TokenStateManager createTokenStateManager(Scope scope)
         {
-            return new IntegrationTokenStateManager(getKeyspace(), getTokenStateTable());
+            return new IntegrationTokenStateManager(getKeyspace(), getTokenStateTable(), scope);
         }
     }
 
@@ -87,16 +87,16 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         // check baseline
         for (Node node: nodes)
         {
-            IntegrationTokenStateManager tsm = (IntegrationTokenStateManager) node.tokenStateManager;
+            IntegrationTokenStateManager tsm = (IntegrationTokenStateManager) node.getTokenStateManager(DEFAULT_SCOPE);
             tsm.setReplicatedRanges(Sets.newHashSet(range(TOKEN0, TOKEN2)));
 
             // token states for the currently replicated tokens should be implicitly initialized
             tsm.getOrInitManagedCf(CFID);
-            Assert.assertEquals(Lists.newArrayList(TOKEN2), node.tokenStateManager.getManagedTokensForCf(CFID));
-            Assert.assertEquals(0, node.getCurrentEpoch(TOKEN2, CFID));
+            Assert.assertEquals(Lists.newArrayList(TOKEN2), node.getTokenStateManager(DEFAULT_SCOPE).getManagedTokensForCf(CFID));
+            Assert.assertEquals(0, node.getCurrentEpoch(TOKEN2, CFID, DEFAULT_SCOPE));
 
             // add some key states
-            KeyStateManager ksm = node.keyStateManager;
+            KeyStateManager ksm = node.getKeyStateManager(DEFAULT_SCOPE);
             for (int i=0; i<4; i++)
             {
                 ByteBuffer key = ByteBufferUtil.bytes(i);
@@ -104,38 +104,38 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             }
         }
 
-        nodes.get(0).addToken(CFID, TOKEN1);
+        nodes.get(0).addToken(CFID, TOKEN1, DEFAULT_SCOPE);
 
         // check new token exists, and epochs have been incremented
         for (Node node: nodes)
         {
             List<Token> expectedTokens = Lists.newArrayList(TOKEN1, TOKEN2);
-            List<Token> actualTokens = node.tokenStateManager.allTokenStatesForCf(CFID);
+            List<Token> actualTokens = node.getTokenStateManager(DEFAULT_SCOPE).allTokenStatesForCf(CFID);
             Assert.assertEquals(expectedTokens, actualTokens);
 
-            TokenState ts1 = node.tokenStateManager.get(TOKEN1, CFID);
+            TokenState ts1 = node.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN1, CFID);
             Assert.assertNotNull(ts1);
             Assert.assertEquals(1, ts1.getEpoch());
 
-            TokenState ts2 = node.tokenStateManager.get(TOKEN2, CFID);
+            TokenState ts2 = node.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN2, CFID);
             Assert.assertNotNull(ts2);
             Assert.assertEquals(1, ts2.getEpoch());
         }
 
         // check that duplicate token inserts are ignored
-        nodes.get(1).addToken(CFID, TOKEN1);
+        nodes.get(1).addToken(CFID, TOKEN1, DEFAULT_SCOPE);
 
         for (Node node: nodes)
         {
             List<Token> expectedTokens = Lists.newArrayList(TOKEN1, TOKEN2);
-            List<Token> actualTokens = node.tokenStateManager.allTokenStatesForCf(CFID);
+            List<Token> actualTokens = node.getTokenStateManager(DEFAULT_SCOPE).allTokenStatesForCf(CFID);
             Assert.assertEquals(expectedTokens, actualTokens);
 
-            TokenState ts1 = node.tokenStateManager.get(TOKEN1, CFID);
+            TokenState ts1 = node.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN1, CFID);
             Assert.assertNotNull(ts1);
             Assert.assertEquals(1, ts1.getEpoch());
 
-            TokenState ts2 = node.tokenStateManager.get(TOKEN2, CFID);
+            TokenState ts2 = node.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN2, CFID);
             Assert.assertNotNull(ts2);
             Assert.assertEquals(1, ts2.getEpoch());
         }
@@ -146,7 +146,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
     {
         Node node = nodes.get(0);
 
-        IntegrationTokenStateManager tsm = (IntegrationTokenStateManager) node.tokenStateManager;
+        IntegrationTokenStateManager tsm = (IntegrationTokenStateManager) node.getTokenStateManager(DEFAULT_SCOPE);
         tsm.setReplicatedRanges(Sets.newHashSet(range(TOKEN0, TOKEN2)));
         tsm.getOrInitManagedCf(CFID);
 
@@ -159,7 +159,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         // add some key states and pending token instances
         // this will create a key state for tokens 50, 100, 150, & 200, as well as token state
         // dependencies at 50 & 150
-        KeyStateManager ksm = node.keyStateManager;
+        KeyStateManager ksm = node.getKeyStateManager(DEFAULT_SCOPE);
         for (int i=0; i<4; i++)
         {
             int iKey = (i * 50) + 50;
@@ -175,7 +175,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
             }
         }
 
-        TokenInstance instance = new TokenInstance(node.getEndpoint(), node.getDc(), CFID, TOKEN1, ts.getRange(), false);
+        TokenInstance instance = new TokenInstance(node.getEndpoint(), node.getDc(), CFID, TOKEN1, ts.getRange(), DEFAULT_SCOPE);
         node.getCurrentDependencies(instance);
         instance.setDependencies(Collections.<UUID>emptySet());
         instance.setState(Instance.State.COMMITTED);
@@ -217,7 +217,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
         }
 
         // increment the epoch for just the first token state
-        EpochInstance epochInstance = node.createEpochInstance(TOKEN2, CFID, 2);
+        EpochInstance epochInstance = node.createEpochInstance(TOKEN2, CFID, 2, DEFAULT_SCOPE);
         epochInstance.setDependencies(node.getCurrentDependencies(epochInstance).left);
         epochInstance.setState(Instance.State.COMMITTED);
         node.saveInstance(epochInstance);
@@ -253,7 +253,7 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
 
         for (Node node: nodes)
         {
-            IntegrationTokenStateManager tsm = (IntegrationTokenStateManager) node.tokenStateManager;
+            IntegrationTokenStateManager tsm = (IntegrationTokenStateManager) node.getTokenStateManager(DEFAULT_SCOPE);
             tsm.setReplicatedRanges(Sets.newHashSet(range(TOKEN0, token300)));
             tsm.getOrInitManagedCf(cfm.cfId);
 
@@ -293,8 +293,8 @@ public class EpaxosTokenIntegrationTest extends AbstractEpaxosIntegrationTest.Si
                 // setting node2 down will force an accept because node 1 & 3
                 // are guaranteed to have different deps
                 node2.setState(Node.State.DOWN);
-                node1.addToken(cfm.cfId, token100);
-                node3.addToken(cfm.cfId, token200);
+                node1.addToken(cfm.cfId, token100, DEFAULT_SCOPE);
+                node3.addToken(cfm.cfId, token200, DEFAULT_SCOPE);
             }
         });
 

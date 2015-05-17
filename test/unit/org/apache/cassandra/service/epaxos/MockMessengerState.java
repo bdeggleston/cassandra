@@ -68,9 +68,9 @@ public class MockMessengerState extends EpaxosState
     }
 
     @Override
-    protected TokenStateManager createTokenStateManager()
+    protected TokenStateManager createTokenStateManager(Scope scope)
     {
-        return new MockTokenStateManager();
+        return new MockTokenStateManager(scope);
     }
 
     @Override
