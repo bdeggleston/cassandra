@@ -659,6 +659,7 @@ public class EpaxosState
         long minTimestamp = Math.max(maxTimestamp + 1, UUIDGen.unixTimestamp(instance.getId()) * 1000);
         SerializedRequest.ExecutionMetaData metaData = request.execute(minTimestamp);
         maybeSetResultFuture(instance.getId(), metaData.result);
+        // TODO: disseminate mutations to remote dcs for LOCAL_SERIAL instances
         return Pair.create(metaData.replayPosition, metaData.maxTimestamp);
     }
 
@@ -1204,6 +1205,12 @@ public class EpaxosState
         return rmap;
     }
 
+    // TODO: rename to data is from future, or something
+    public boolean canApplyRepair(ByteBuffer key, UUID cfId, ExecutionInfo info, Scope scope)
+    {
+        return canApplyRepair(key, cfId, info.epoch, info.executed, scope);
+    }
+
     /**
      * Determines if a repair can be applied to a key.
      */
@@ -1270,20 +1277,49 @@ public class EpaxosState
 
     public static String EXECUTION_INFO_PARAMETER = "EPX_NFO";
 
-    /**
-     * Adds epaxos execution info for the given key and cfid to the outgoing message
-     */
-    public <T> void maybeAddExecutionInfo(ByteBuffer key, UUID cfId, MessageOut<T> msg, int version) throws IOException
+    protected static <T> Map<Scope.DC, ExecutionInfo> getMessageExecutionInfo(Map<String, byte[]> parameters, int version) throws IOException
     {
-        Map<Scope.DC, ExecutionInfo> info = getEpochExecutionInfo(key, cfId);
-        if (info == null)
-            return;
+        byte[] d = parameters.get(EXECUTION_INFO_PARAMETER);
+        if (d == null)
+            return null;
+
+        try (DataInputStream in = new DataInputStream(ByteBufferUtil.inputStream(ByteBuffer.wrap(d))))
+        {
+            return Serializers.executionMap.deserialize(in, version);
+        }
+    }
+
+    protected static Map<String, byte[]> applyMessageExecutionInfo(Map<Scope.DC, ExecutionInfo> info, Map<String, byte[]> parameters, int version) throws IOException
+    {
+        if (parameters == null)
+            parameters = new HashMap<>();
 
         try (DataOutputBuffer out = new DataOutputBuffer((int) Serializers.executionMap.serializedSize(info, version)))
         {
             Serializers.executionMap.serialize(info, out, version);
-            msg.parameters.put(EXECUTION_INFO_PARAMETER, out.getData());
-            // TODO: finish
+            parameters.put(EXECUTION_INFO_PARAMETER, out.getData());
+            return parameters;
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError(e);
+        }
+    }
+
+    /**
+     * Adds epaxos execution info for the given key and cfid to the outgoing message
+     */
+    public <T> void maybeAddExecutionInfo(ByteBuffer key, UUID cfId, MessageOut<T> msg, int version)
+    {
+        // TODO: test
+        Map<Scope.DC, ExecutionInfo> info = getEpochExecutionInfo(key, cfId);
+        try
+        {
+            applyMessageExecutionInfo(info, msg.parameters, version);
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError(e);
         }
     }
 
@@ -1292,34 +1328,61 @@ public class EpaxosState
      */
     public <T> void maybeRecordExecutionInfo(ByteBuffer key, UUID cfId, MessageIn<T> msg) throws IOException
     {
-        byte[] d = msg.parameters.get(EXECUTION_INFO_PARAMETER);
-        if (d == null)
-            return;
-
-        try (DataInputStream in = new DataInputStream(ByteBufferUtil.inputStream(ByteBuffer.wrap(d))))
-        {
-            Map<Scope.DC, ExecutionInfo> info = Serializers.executionMap.deserialize(in, msg.version);
-            // TODO: finish
-        }
+        Map<Scope.DC, ExecutionInfo> info = getMessageExecutionInfo(msg.parameters, msg.version);
+        // TODO: finish
     }
 
     /**
      * Checks message parameters for execution info, and returns true if the
      * execution info is from instances that haven't been recorded yet
      */
-    public <T> void shouldSkipMutation(ByteBuffer key, UUID cfId, MessageIn<T> msg) throws IOException
+    public <T> boolean shouldApplyRepair(ByteBuffer key, UUID cfId, MessageIn<T> msg)
     {
         // TODO: test
         // TODO: only apply to remote activity if we can apply to to global and local
         // TODO: will inactive scope prevent any mutations
+        // TODO: check that
 
         byte[] d = msg.parameters.get(EXECUTION_INFO_PARAMETER);
         if (d == null)
-            return;
+            return true;
 
         try (DataInputStream in = new DataInputStream(ByteBufferUtil.inputStream(ByteBuffer.wrap(d))))
         {
             Map<Scope.DC, ExecutionInfo> info = Serializers.executionMap.deserialize(in, msg.version);
+            Map<Scope.DC, ExecutionInfo> applyRemote = new HashMap<>();
+
+            for (Map.Entry<Scope.DC, ExecutionInfo> entry: info.entrySet())
+            {
+                Scope.DC scope = entry.getKey();
+                if (scope.equals(Scope.DC.global()))
+                {
+                    if (!canApplyRepair(key, cfId, entry.getValue(), Scope.GLOBAL))
+                        return false;
+                }
+                else if (scope.equals(getLocalScope()))
+                {
+                    if (!canApplyRepair(key, cfId, entry.getValue(), Scope.LOCAL))
+                        return false;
+                }
+                else
+                {
+                    applyRemote.put(entry.getKey(), entry.getValue());
+                }
+            }
+
+            // record any remote activity
+            // TODO: test remote entries are recorded
+            for (Map.Entry<Scope.DC, ExecutionInfo> entry: applyRemote.entrySet())
+            {
+                remoteActivity.recordMutation(entry.getKey().dc, key, cfId, entry.getValue());
+            }
+
+            return true;
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError(e);
         }
     }
 

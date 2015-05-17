@@ -146,7 +146,6 @@ public final class MessagingService implements MessagingServiceMBean
         EPAXOS_TRYPREACCEPT,
         EPAXOS_FORWARD_QUERY,
         //
-        EPAXOS_READ_REPAIR,
         EPAXOS_FAILURE_RECOVERY
 
         ;
@@ -242,7 +241,6 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.EPAXOS_TRYPREACCEPT, Stage.MUTATION);
         put(Verb.EPAXOS_FORWARD_QUERY, Stage.MISC);
 
-        put(Verb.EPAXOS_READ_REPAIR, Stage.MUTATION);
         put(Verb.EPAXOS_FAILURE_RECOVERY, Stage.MISC);
 
         put(Verb.UNUSED_1, Stage.INTERNAL_RESPONSE);
@@ -291,7 +289,6 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.EPAXOS_TRYPREACCEPT, TryPreacceptRequest.serializer);
         put(Verb.EPAXOS_FORWARD_QUERY, SerializedRequest.serializer);
 
-        put(Verb.EPAXOS_READ_REPAIR, ReadRepairVerbHandler.Epaxos.serializer);
         put(Verb.EPAXOS_FAILURE_RECOVERY, FailureRecoveryRequest.serializer);
     }};
 
@@ -322,8 +319,6 @@ public final class MessagingService implements MessagingServiceMBean
         put(Verb.EPAXOS_PREPARE, MessageEnvelope.getSerializer(Instance.serializer));
         put(Verb.EPAXOS_TRYPREACCEPT, TryPreacceptResponse.serializer);
         put(Verb.EPAXOS_FORWARD_QUERY, SerializedRequest.Result.serializer);
-
-        put(Verb.EPAXOS_READ_REPAIR, WriteResponse.serializer);
     }};
 
     /* This records all the results mapped by message Id */
@@ -377,8 +372,7 @@ public final class MessagingService implements MessagingServiceMBean
                                                                    Verb.READ,
                                                                    Verb.RANGE_SLICE,
                                                                    Verb.PAGED_RANGE,
-                                                                   Verb.REQUEST_RESPONSE,
-                                                                   Verb.EPAXOS_READ_REPAIR);
+                                                                   Verb.REQUEST_RESPONSE);
 
     // total dropped message counts for server lifetime
     private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<Verb, DroppedMessageMetrics>(Verb.class);

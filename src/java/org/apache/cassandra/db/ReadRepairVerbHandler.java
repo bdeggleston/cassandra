@@ -17,21 +17,31 @@
  */
 package org.apache.cassandra.db;
 
-import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.epaxos.EpaxosState;
-import org.apache.cassandra.service.epaxos.ExecutionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.UUID;
 
-public abstract class ReadRepairVerbHandler <T> implements IVerbHandler<T>
+public class ReadRepairVerbHandler implements IVerbHandler<Mutation>
 {
     private static final Logger logger = LoggerFactory.getLogger(ReadRepairVerbHandler.class);
+
+    private final EpaxosState state;
+
+    public ReadRepairVerbHandler()
+    {
+        this(EpaxosState.getInstance());
+    }
+
+    public ReadRepairVerbHandler(EpaxosState state)
+    {
+        this.state = state;
+    }
 
     protected void sendResponse(int id, InetAddress from)
     {
@@ -39,58 +49,25 @@ public abstract class ReadRepairVerbHandler <T> implements IVerbHandler<T>
         MessagingService.instance().sendReply(response.createMessage(), id, from);
     }
 
-    protected void doRepair(Mutation mutation, int id, InetAddress from)
+    protected void applyMutation(Mutation mutation)
     {
         mutation.apply();
-        sendResponse(id, from);
     }
 
-    public static class Normal extends ReadRepairVerbHandler<Mutation>
+    @Override
+    public void doVerb(MessageIn<Mutation> message, int id)
     {
-        @Override
-        public void doVerb(MessageIn<Mutation> message, int id)
+        Mutation mutation = message.payload;
+        assert mutation.getColumnFamilyIds().size() == 1;
+        UUID cfId = mutation.getColumnFamilyIds().iterator().next();
+        if (state.shouldApplyRepair(mutation.key(), cfId, message))
         {
-            doRepair(message.payload, id, message.from);
+            applyMutation(mutation);
         }
+        else
+        {
+            logger.debug("Skipping read repair message with data from unexecuted epaxos instance");
+        }
+        sendResponse(id, message.from);
     }
-
-    /**
-     * Applies read repairs to epaxos managed tables, as long as the local epaxos state
-     * is at or past the remote state
-     */
-    public static class Epaxos extends ReadRepairVerbHandler<ExecutionInfo.Tuple<Mutation>>
-    {
-        private final EpaxosState state;
-
-        public Epaxos(EpaxosState state)
-        {
-            this.state = state;
-        }
-
-        @Override
-        public void doVerb(MessageIn<ExecutionInfo.Tuple<Mutation>> message, int id)
-        {
-            ExecutionInfo info = message.payload.executionInfo;
-            Mutation mutation = message.payload.payload;
-            assert mutation.getColumnFamilyIds().size() == 1;
-            UUID cfId = mutation.getColumnFamilyIds().iterator().next();
-
-            //boolean canApply = state.canApplyRepair(mutation.key(), cfId, info.epoch, info.executed);
-            boolean canApply = true; // FIXME: this
-            if (canApply)
-            {
-                logger.debug("Allowing read repair message for epaxos managed table");
-                doRepair(mutation, id, message.from);
-            }
-            else
-            {
-                logger.debug("Ignoring read repair message with data from a locally un-executed epaxos instance");
-                sendResponse(id, message.from);
-            }
-        }
-
-        public static final IVersionedSerializer<ExecutionInfo.Tuple<Mutation>> serializer
-                = ExecutionInfo.Tuple.createSerializer(Mutation.serializer);
-    }
-
 }

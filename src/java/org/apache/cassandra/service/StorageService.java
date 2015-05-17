@@ -238,7 +238,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         /* register the verb handlers */
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.MUTATION, new MutationVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.READ_REPAIR, new ReadRepairVerbHandler.Normal());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.READ_REPAIR, new ReadRepairVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.READ, new ReadVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.RANGE_SLICE, new RangeSliceVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.PAGED_RANGE, new RangeSliceVerbHandler());
@@ -272,8 +272,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_PREPARE, EpaxosState.getInstance().getPrepareVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_TRYPREACCEPT, EpaxosState.getInstance().getTryPreacceptVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_FORWARD_QUERY, EpaxosState.getInstance().getForwardQueryVerbHandler());
-
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_READ_REPAIR, new ReadRepairVerbHandler.Epaxos(EpaxosState.getInstance()));
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.EPAXOS_FAILURE_RECOVERY, EpaxosState.getInstance().getFailureRecoveryVerbHandler());
     }
 

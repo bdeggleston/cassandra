@@ -130,25 +130,9 @@ public class RowDataResolver extends AbstractRowResolver
 
             // use a separate verb here because we don't want these to be get the white glove hint-
             // on-timeout behavior that a "real" mutation gets
-            if (epaxosInfo != null)
-            {
-
-                // we need to send the current state of this key in epaxos to prevent the repairee from becoming inconsistent
-                MessageOut<ExecutionInfo.Tuple<Mutation>> msg = new MessageOut<>(MessagingService.Verb.EPAXOS_READ_REPAIR,
-                                                                                 new ExecutionInfo.Tuple<>(epaxosInfo, mutation),
-                                                                                 ReadRepairVerbHandler.Epaxos.serializer);
-                results.add(MessagingService.instance().sendRR(msg, endpoints.get(i)));
-
-                if (logger.isDebugEnabled())
-                {
-                    logger.debug("Sending epaxos read repair for to {}", endpoints.get(i));
-                }
-            }
-            else
-            {
-                MessageOut<Mutation> msg = mutation.createMessage(MessagingService.Verb.READ_REPAIR);
-                results.add(MessagingService.instance().sendRR(msg, endpoints.get(i)));
-            }
+            MessageOut<Mutation> msg = mutation.createMessage(MessagingService.Verb.READ_REPAIR);
+            EpaxosState.getInstance().maybeAddExecutionInfo(mutation.key(), cfId, msg, MessagingService.instance().getVersion(endpoints.get(i)));
+            results.add(MessagingService.instance().sendRR(msg, endpoints.get(i)));
         }
 
         return results;
