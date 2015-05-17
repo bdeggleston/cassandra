@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -130,9 +131,11 @@ public class RowDataResolver extends AbstractRowResolver
 
             // use a separate verb here because we don't want these to be get the white glove hint-
             // on-timeout behavior that a "real" mutation gets
+            InetAddress endpoint = endpoints.get(i);
+            int msVersion = MessagingService.instance().getVersion(endpoint);
             MessageOut<Mutation> msg = mutation.createMessage(MessagingService.Verb.READ_REPAIR);
-            EpaxosState.getInstance().maybeAddExecutionInfo(mutation.key(), cfId, msg, MessagingService.instance().getVersion(endpoints.get(i)));
-            results.add(MessagingService.instance().sendRR(msg, endpoints.get(i)));
+            msg = EpaxosState.getInstance().maybeAddExecutionInfo(mutation.key(), cfId, msg, msVersion);
+            results.add(MessagingService.instance().sendRR(msg, endpoint));
         }
 
         return results;

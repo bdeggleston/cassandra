@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -63,14 +64,15 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
         };
 
         Map<Scope.DC, ExecutionInfo> info;
-        Map<String, byte[]> parameters;
+        byte[] data;
         MessageIn<Mutation> msg;
 
         // check epoch validation
         mutationApplied.set(false);
         info = ImmutableMap.<Scope.DC, ExecutionInfo>builder().put(Scope.DC.global(), new ExecutionInfo(4, 0)).build();
-        parameters = EpaxosState.applyMessageExecutionInfo(info, null, 0);
-        msg = MessageIn.create(null, mutation, parameters, MessagingService.Verb.READ_REPAIR, 0);
+        data = EpaxosState.serializeMessageExecutionParameters(info, 0);
+        msg = MessageIn.create(null, mutation, new HashMap<String, byte[]>(), MessagingService.Verb.READ_REPAIR, 0);
+        msg.parameters.put(EpaxosState.EXECUTION_INFO_PARAMETER, data);
 
         verbHandler.doVerb(msg, 0);
         Assert.assertTrue(mutationApplied.get());
@@ -80,8 +82,9 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
         mutationApplied.set(false);
         responseSent.set(false);
         info = ImmutableMap.<Scope.DC, ExecutionInfo>builder().put(Scope.DC.global(), new ExecutionInfo(5, 3)).build();
-        parameters = EpaxosState.applyMessageExecutionInfo(info, null, 0);
-        msg = MessageIn.create(null, mutation, parameters, MessagingService.Verb.READ_REPAIR, 0);
+        data = EpaxosState.serializeMessageExecutionParameters(info, 0);
+        msg = MessageIn.create(null, mutation, new HashMap<String, byte[]>(), MessagingService.Verb.READ_REPAIR, 0);
+        msg.parameters.put(EpaxosState.EXECUTION_INFO_PARAMETER, data);
 
         verbHandler.doVerb(msg, 0);
         Assert.assertTrue(mutationApplied.get());
@@ -132,15 +135,16 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
 
 
         Map<Scope.DC, ExecutionInfo> info;
-        Map<String, byte[]> parameters;
+        byte[] data;
         MessageIn<Mutation> msg;
 
         // check epoch validation
         mutationApplied.set(false);
         responseSent.set(false);
         info = ImmutableMap.<Scope.DC, ExecutionInfo>builder().put(Scope.DC.global(), new ExecutionInfo(6, 0)).build();
-        parameters = EpaxosState.applyMessageExecutionInfo(info, null, 0);
-        msg = MessageIn.create(null, mutation, parameters, MessagingService.Verb.READ_REPAIR, 0);
+        data = EpaxosState.serializeMessageExecutionParameters(info, 0);
+        msg = MessageIn.create(null, mutation, new HashMap<String, byte[]>(), MessagingService.Verb.READ_REPAIR, 0);
+        msg.parameters.put(EpaxosState.EXECUTION_INFO_PARAMETER, data);
 
         verbHandler.doVerb(msg, 0);
         Assert.assertFalse(mutationApplied.get());
@@ -150,8 +154,9 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
         mutationApplied.set(false);
         responseSent.set(false);
         info = ImmutableMap.<Scope.DC, ExecutionInfo>builder().put(Scope.DC.global(), new ExecutionInfo(5, 4)).build();
-        parameters = EpaxosState.applyMessageExecutionInfo(info, null, 0);
-        msg = MessageIn.create(null, mutation, parameters, MessagingService.Verb.READ_REPAIR, 0);
+        data = EpaxosState.serializeMessageExecutionParameters(info, 0);
+        msg = MessageIn.create(null, mutation, new HashMap<String, byte[]>(), MessagingService.Verb.READ_REPAIR, 0);
+        msg.parameters.put(EpaxosState.EXECUTION_INFO_PARAMETER, data);
 
         verbHandler.doVerb(msg, 0);
         Assert.assertFalse(mutationApplied.get());

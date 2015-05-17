@@ -1289,16 +1289,14 @@ public class EpaxosState
         }
     }
 
-    protected static Map<String, byte[]> applyMessageExecutionInfo(Map<Scope.DC, ExecutionInfo> info, Map<String, byte[]> parameters, int version) throws IOException
+    protected static byte[] serializeMessageExecutionParameters(Map<Scope.DC, ExecutionInfo> info, int version) throws IOException
     {
-        if (parameters == null)
-            parameters = new HashMap<>();
+        Map<String, byte[]> parameters = new HashMap<>();
 
         try (DataOutputBuffer out = new DataOutputBuffer((int) Serializers.executionMap.serializedSize(info, version)))
         {
             Serializers.executionMap.serialize(info, out, version);
-            parameters.put(EXECUTION_INFO_PARAMETER, out.getData());
-            return parameters;
+            return out.getData();
         }
         catch (IOException e)
         {
@@ -1309,13 +1307,18 @@ public class EpaxosState
     /**
      * Adds epaxos execution info for the given key and cfid to the outgoing message
      */
-    public <T> void maybeAddExecutionInfo(ByteBuffer key, UUID cfId, MessageOut<T> msg, int version)
+    public <T> MessageOut<T> maybeAddExecutionInfo(ByteBuffer key, UUID cfId, MessageOut<T> msg, int version)
     {
         // TODO: test
         Map<Scope.DC, ExecutionInfo> info = getEpochExecutionInfo(key, cfId);
+        if (info == null)
+            return msg;
+
         try
         {
-            applyMessageExecutionInfo(info, msg.parameters, version);
+            byte[] data = serializeMessageExecutionParameters(info, version);
+            assert data != null && data.length > 0;
+            return msg.withParameter(EXECUTION_INFO_PARAMETER, data);
         }
         catch (IOException e)
         {
