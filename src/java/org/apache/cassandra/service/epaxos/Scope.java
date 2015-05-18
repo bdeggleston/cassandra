@@ -128,6 +128,39 @@ public enum Scope
             return result;
         }
 
+        @Override
+        public String toString()
+        {
+            switch (scope)
+            {
+                case GLOBAL:
+                    return "G:*";
+                case LOCAL:
+                    return "L:" + dc;
+                default:
+                    throw new IllegalStateException("Unsupported scope: " + scope);
+            }
+        }
+
+        public static DC fromString(String s)
+        {
+            char scope = s.charAt(0);
+            if (s.length() < 3 || s.charAt(1) != ':')
+            {
+                throw new IllegalArgumentException("Invalid scope string: " + s);
+            }
+
+            switch (scope)
+            {
+                case 'G':
+                    return global();
+                case 'L':
+                    return local(s.substring(2));
+                default:
+                    throw new IllegalArgumentException("Unsupported scope prefix: " + scope);
+            }
+        }
+
         public static final IVersionedSerializer<DC> serializer = new IVersionedSerializer<DC>()
         {
             @Override

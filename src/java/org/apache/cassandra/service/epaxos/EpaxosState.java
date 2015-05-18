@@ -406,7 +406,6 @@ public class EpaxosState
 
     protected TokenInstance createTokenInstance(Token token, UUID cfId, Scope scope)
     {
-        // TODO: take consistency level as an argument
         TokenInstance instance;
         TokenState ts = getTokenStateManager(scope).get(token, cfId);
         ts.lock.readLock().lock();
@@ -1105,7 +1104,6 @@ public class EpaxosState
 
     private void prepareForIncomingStream(Range<Token> range, UUID cfId, Scope scope)
     {
-        // FIXME: what if the token ranges of the local and global don't match?
         //   -- this might be a good argument to have token states for every token, across all DCs
         TokenStateManager tokenStateManager = getTokenStateManager(scope);
         KeyStateManager keyStateManager = getKeyStateManager(scope);
@@ -1179,8 +1177,6 @@ public class EpaxosState
     /**
      * Returns a tuple containing the current epoch, and instances executed in the current epoch for the given key/cfId
      */
-    // TODO: fix RowDataResolver.scheduleRepairs
-    // TODO: fix ReadRepairVerbHandler
     public Map<Scope.DC, ExecutionInfo> getEpochExecutionInfo(ByteBuffer key, UUID cfId)
     {
         // TODO: test
@@ -1217,7 +1213,6 @@ public class EpaxosState
     // TODO: rename to data is from future, or something
     public boolean canApplyRepair(ByteBuffer key, UUID cfId, long epoch, long executionCount, Scope scope)
     {
-        // TODO: used by read repair, fix read repair
         ExecutionInfo local = getKeyStateManager(scope).getExecutionInfo(new CfKey(key, cfId));
 
         if (local == null || local.epoch > epoch)
@@ -1344,7 +1339,6 @@ public class EpaxosState
         // TODO: test
         // TODO: only apply to remote activity if we can apply to to global and local
         // TODO: will inactive scope prevent any mutations
-        // TODO: check that
 
         byte[] d = msg.parameters.get(EXECUTION_INFO_PARAMETER);
         if (d == null)
@@ -1592,6 +1586,19 @@ public class EpaxosState
     protected String getDc(InetAddress endpoint)
     {
         return DatabaseDescriptor.getEndpointSnitch().getDatacenter(endpoint);
+    }
+
+    protected Scope.DC getDcScope(Scope scope)
+    {
+        switch (scope)
+        {
+            case GLOBAL:
+                return Scope.DC.global();
+            case LOCAL:
+                return getLocalScope();
+            default:
+                throw new IllegalArgumentException("Unsupported scope: " + scope);
+        }
     }
 
     protected Scope.DC getLocalScope()

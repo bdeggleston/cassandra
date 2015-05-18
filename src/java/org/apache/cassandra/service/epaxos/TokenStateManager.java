@@ -193,6 +193,9 @@ public class TokenStateManager
         UntypedResultSet rows = QueryProcessor.executeInternal(String.format("SELECT * FROM %s.%s", keyspace, table));
         for (UntypedResultSet.Row row: rows)
         {
+            if (row.getInt("scope") != scope.ordinal())
+                continue;
+
             ByteBuffer data = row.getBlob("data");
             DataInput in = new DataInputStream(ByteBufferUtil.inputStream(data));
             try
@@ -496,10 +499,11 @@ public class TokenStateManager
         {
             throw new AssertionError(e);
         }
-        String depsReq = "INSERT INTO %s.%s (cf_id, token_bytes, data) VALUES (?, ?, ?)";
+        String depsReq = "INSERT INTO %s.%s (cf_id, token_bytes, scope, data) VALUES (?, ?, ?, ?)";
         QueryProcessor.executeInternal(String.format(depsReq, keyspace, table),
                                        state.getCfId(),
                                        ByteBuffer.wrap(tokenOut.getData()),
+                                       scope.ordinal(),
                                        ByteBuffer.wrap(stateOut.getData()));
 
         state.onSave();
@@ -516,10 +520,11 @@ public class TokenStateManager
         {
             throw new AssertionError(e);
         }
-        String depsReq = "DELETE FROM %s.%s WHERE cf_id=? AND token_bytes=?";
+        String depsReq = "DELETE FROM %s.%s WHERE cf_id=? AND token_bytes=? AND scope=?";
         QueryProcessor.executeInternal(String.format(depsReq, keyspace, table),
                                        state.getCfId(),
-                                       ByteBuffer.wrap(tokenOut.getData()));
+                                       ByteBuffer.wrap(tokenOut.getData()),
+                                       scope.ordinal());
     }
 
     /**

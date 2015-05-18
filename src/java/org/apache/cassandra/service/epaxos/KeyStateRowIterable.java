@@ -155,31 +155,21 @@ public class KeyStateRowIterable implements Iterable<UntypedResultSet.Row>
         }
     }
 
-    public static class IncludeScopePredicate implements Predicate<UntypedResultSet.Row>
+    public static class ScopePredicate implements Predicate<UntypedResultSet.Row>
     {
-        private final String[] scopes;
+        private final Scope scope;
 
-        public IncludeScopePredicate(Scope.DC... scopes)
+        public ScopePredicate(Scope scope)
         {
-            this.scopes = new String[scopes.length];
-            for (int i=0; i< scopes.length; i++)
-            {
-                this.scopes[i] = scopes[i].toString();
-            }
+            this.scope = scope;
         }
 
         @Override
-        public boolean apply(@Nullable UntypedResultSet.Row row)
+        public boolean apply(UntypedResultSet.Row row)
         {
-            String rowScope = row.getString("scope");
-            for (String scope: scopes)
-            {
-                if (scope.equals(rowScope))
-                {
-                    return true;
-                }
-            }
-            return false;
+            return row.getInt("scope") == scope.ordinal();
         }
     }
+
+
 }

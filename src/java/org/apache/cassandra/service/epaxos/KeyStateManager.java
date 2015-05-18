@@ -33,19 +33,19 @@ public class KeyStateManager
     private final String keyspace;
     private final String table;
     protected final TokenStateManager tokenStateManager;
-    private final Scope type;
+    private final Scope scope;
 
-    public KeyStateManager(TokenStateManager tokenStateManager, Scope type)
+    public KeyStateManager(TokenStateManager tokenStateManager, Scope scope)
     {
-        this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE, tokenStateManager, type);
+        this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE, tokenStateManager, scope);
     }
 
-    public KeyStateManager(String keyspace, String table, TokenStateManager tokenStateManager, Scope type)
+    public KeyStateManager(String keyspace, String table, TokenStateManager tokenStateManager, Scope scope)
     {
         this.keyspace = keyspace;
         this.table = table;
         this.tokenStateManager = tokenStateManager;
-        this.type = type;
+        this.scope = scope;
         cache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(1000).build();
     }
 
@@ -375,8 +375,8 @@ public class KeyStateManager
         KeyState ks = cache.getIfPresent(cfKey);
         if (ks == null)
         {
-            String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=?";
-            UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace, table), key, cfId);
+            String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=? AND scope=?";
+            UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace, table), key, cfId, scope.ordinal());
 
             if (results.isEmpty())
             {
@@ -409,8 +409,8 @@ public class KeyStateManager
         }
         else
         {
-            String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=?";
-            UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace, table), key, cfId);
+            String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=? AND scope=?";
+            UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace, table), key, cfId, scope.ordinal());
             return !results.isEmpty();
         }
     }
@@ -440,10 +440,11 @@ public class KeyStateManager
         {
             throw new AssertionError(e);
         }
-        String depsReq = "INSERT INTO %s.%s (row_key, cf_id, data) VALUES (?, ?, ?)";
+        String depsReq = "INSERT INTO %s.%s (row_key, cf_id, scope, data) VALUES (?, ?, ?, ?)";
         QueryProcessor.executeInternal(String.format(depsReq, keyspace, table),
                                        key,
                                        cfId,
+                                       scope.ordinal(),
                                        ByteBuffer.wrap(out.getData()));
 
         if (cache)
@@ -455,8 +456,8 @@ public class KeyStateManager
     void deleteKeyState(CfKey cfKey)
     {
         cache.invalidate(cfKey);
-        String deleteReq = "DELETE FROM %s.%s WHERE row_key=? AND cf_id=?";
-        QueryProcessor.executeInternal(String.format(deleteReq, keyspace, table), cfKey.key, cfKey.cfId);
+        String deleteReq = "DELETE FROM %s.%s WHERE row_key=? AND cf_id=? AND scope=?";
+        QueryProcessor.executeInternal(String.format(deleteReq, keyspace, table), cfKey.key, cfKey.cfId, scope.ordinal());
     }
 
     /**
