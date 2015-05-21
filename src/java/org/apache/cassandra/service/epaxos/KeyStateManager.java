@@ -325,7 +325,12 @@ public class KeyStateManager
 
     public KeyState loadKeyState(CfKey cfKey)
     {
-        return loadKeyState(cfKey.key, cfKey.cfId);
+        return loadKeyState(cfKey.key, cfKey.cfId, true);
+    }
+
+    public KeyState loadKeyState(CfKey cfKey, boolean createIfMissing)
+    {
+        return loadKeyState(cfKey.key, cfKey.cfId, createIfMissing);
     }
 
     public KeyState loadKeyStateIfExists(CfKey cfKey)
@@ -365,11 +370,15 @@ public class KeyStateManager
         }
     }
 
+    public KeyState loadKeyState(ByteBuffer key, UUID cfId)
+    {
+        return loadKeyState(key, cfId, true);
+    }
     /**
      * loads a dependency manager. Must be called within a lock held for this key & cfid pair
      */
     @VisibleForTesting
-    public KeyState loadKeyState(ByteBuffer key, UUID cfId)
+    public KeyState loadKeyState(ByteBuffer key, UUID cfId, boolean createIfMissing)
     {
         CfKey cfKey = new CfKey(key, cfId);
         KeyState ks = cache.getIfPresent(cfKey);
@@ -377,6 +386,11 @@ public class KeyStateManager
         {
             String query = "SELECT * FROM %s.%s WHERE row_key=? AND cf_id=? AND scope=?";
             UntypedResultSet results = QueryProcessor.executeInternal(String.format(query, keyspace, table), key, cfId, scope.ordinal());
+
+            if (results.isEmpty() && !createIfMissing)
+            {
+                return null;
+            }
 
             if (results.isEmpty())
             {
@@ -523,7 +537,7 @@ public class KeyStateManager
         lock.lock();
         try
         {
-            KeyState keyState = loadKeyState(cfKey);
+            KeyState keyState = loadKeyState(cfKey, false);
             return keyState != null ? new ExecutionInfo(keyState.getEpoch(), keyState.getExecutionCount()) : null;
         }
         finally

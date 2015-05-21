@@ -923,4 +923,20 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         ks = ksm.loadKeyState(key, CFID);
         Assert.assertEquals(6, ks.getEpoch());
     }
+
+    /**
+     * getExecutionInfo shouldn't create a key state
+     * that wasn't there previously
+     */
+    @Test
+    public void getExecutionInfoGhostKeyStates()
+    {
+        TokenStateManager tsm = new MockTokenStateManager(DEFAULT_SCOPE);
+        KeyStateManager ksm = new KeyStateManager(tsm, DEFAULT_SCOPE);
+
+        CfKey cfKey = new CfKey(key(5), CFID);
+        Assert.assertFalse(ksm.exists(cfKey));
+        Assert.assertNull(ksm.getExecutionInfo(cfKey));
+        Assert.assertFalse(ksm.exists(cfKey));
+    }
 }

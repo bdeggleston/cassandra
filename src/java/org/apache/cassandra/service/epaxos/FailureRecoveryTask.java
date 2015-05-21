@@ -206,6 +206,7 @@ public class FailureRecoveryTask implements Runnable
 
         for (InetAddress endpoint: getEndpoints(range))
         {
+            // TODO: skip dc-remote endpoints if scope is local
             if (endpoint.equals(state.getEndpoint()))
                 continue;
             // TODO: test that only one scope is streamed
@@ -307,6 +308,7 @@ public class FailureRecoveryTask implements Runnable
         }
         logger.info("Epaxos failure recovery task for {} on {} to {} completed", token, cfId, epoch);
         // TODO: execute all committed instances
+        // TODO: iterate over keystates for affected range and execute active instances
     }
 
     @Override

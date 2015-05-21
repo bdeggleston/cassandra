@@ -1185,7 +1185,7 @@ public class EpaxosState
             if (info != null) rmap.put(Scope.LOCAL, info);
         }
 
-        return rmap;
+        return !rmap.isEmpty() ? rmap : null;
     }
 
     public boolean hasExecutedLocally(ByteBuffer key, UUID cfId, ExecutionInfo info, Scope scope)
@@ -1304,31 +1304,17 @@ public class EpaxosState
     }
 
     /**
-     * Record execution info from incoming stream/repair data
-     */
-    public <T> void maybeRecordExecutionInfo(ByteBuffer key, UUID cfId, MessageIn<T> msg) throws IOException
-    {
-        Map<Scope, ExecutionInfo> info = getMessageExecutionInfo(msg.parameters, msg.version);
-        // TODO: finish
-    }
-
-    /**
      * Checks message parameters for execution info, and returns true if the
      * execution info is from instances that haven't been recorded yet
      */
     public <T> boolean shouldApplyRepair(ByteBuffer key, UUID cfId, MessageIn<T> msg)
     {
-        // TODO: test
-        // TODO: only apply to remote activity if we can apply to to global and local
-        // TODO: will inactive scope prevent any mutations
-
-        byte[] d = msg.parameters.get(EXECUTION_INFO_PARAMETER);
-        if (d == null)
+        if (msg.parameters == null || !msg.parameters.containsKey(EXECUTION_INFO_PARAMETER))
             return true;
 
-        try (DataInputStream in = new DataInputStream(ByteBufferUtil.inputStream(ByteBuffer.wrap(d))))
+        try
         {
-            Map<Scope, ExecutionInfo> info = Serializers.executionMap.deserialize(in, msg.version);
+            Map<Scope, ExecutionInfo> info = getMessageExecutionInfo(msg.parameters, msg.version);
 
             for (Map.Entry<Scope, ExecutionInfo> entry: info.entrySet())
             {
@@ -1338,7 +1324,7 @@ public class EpaxosState
                     if (!hasExecutedLocally(key, cfId, entry.getValue(), Scope.GLOBAL))
                         return false;
                 }
-                else if (scope == Scope.LOCAL)
+                else if (scope == Scope.LOCAL && getDc().equals(getDc(msg.from)))
                 {
                     if (!hasExecutedLocally(key, cfId, entry.getValue(), Scope.LOCAL))
                         return false;
