@@ -1165,7 +1165,7 @@ public class EpaxosState
     /**
      * Returns a tuple containing the current epoch, and instances executed in the current epoch for the given key/cfId
      */
-    public Map<Scope.DC, ExecutionInfo> getEpochExecutionInfo(ByteBuffer key, UUID cfId, InetAddress to)
+    public Map<Scope, ExecutionInfo> getEpochExecutionInfo(ByteBuffer key, UUID cfId, InetAddress to)
     {
         if (!managesCfId(cfId))
         {
@@ -1173,16 +1173,16 @@ public class EpaxosState
         }
 
         CfKey cfKey = new CfKey(key, cfId);
-        Map<Scope.DC, ExecutionInfo> rmap = new HashMap<>();
+        Map<Scope, ExecutionInfo> rmap = new HashMap<>();
 
         ExecutionInfo info;
         info = keyStateManagers.get(Scope.GLOBAL).getExecutionInfo(cfKey);
-        if (info != null) rmap.put(Scope.DC.global(), info);
+        if (info != null) rmap.put(Scope.GLOBAL, info);
 
         if (getDc().equals(getDc(to)))
         {
             info = keyStateManagers.get(Scope.LOCAL).getExecutionInfo(cfKey);
-            if (info != null) rmap.put(getLocalScope(), info);
+            if (info != null) rmap.put(Scope.LOCAL, info);
         }
 
         return rmap;
@@ -1225,10 +1225,10 @@ public class EpaxosState
         return true;
     }
 
-    public boolean reportFutureExecutions(ByteBuffer key, UUID cfId, Map<Scope.DC, ExecutionInfo> executions)
+    public boolean reportFutureExecutions(ByteBuffer key, UUID cfId, Map<Scope, ExecutionInfo> executions)
     {
         boolean result = false;
-        for (Map.Entry<Scope.DC, ExecutionInfo> entry: executions.entrySet())
+        for (Map.Entry<Scope, ExecutionInfo> entry: executions.entrySet())
         {
             boolean added = reportFutureExecution(key, cfId, entry.getKey(), entry.getValue());
             result |= added;
@@ -1236,13 +1236,13 @@ public class EpaxosState
         return result;
     }
 
-    public boolean reportFutureExecution(ByteBuffer key, UUID cfId, Scope.DC dcScope, ExecutionInfo info)
+    public boolean reportFutureExecution(ByteBuffer key, UUID cfId, Scope dcScope, ExecutionInfo info)
     {
-        if (dcScope.equals(Scope.DC.global()))
+        if (dcScope == Scope.GLOBAL)
         {
             return getKeyStateManager(Scope.GLOBAL).reportFutureRepair(new CfKey(key, cfId), info);
         }
-        else if (dcScope.equals(getLocalScope()))
+        else if (dcScope == Scope.LOCAL)
         {
             return getKeyStateManager(Scope.LOCAL).reportFutureRepair(new CfKey(key, cfId), info);
         }
@@ -1254,7 +1254,7 @@ public class EpaxosState
 
     public static String EXECUTION_INFO_PARAMETER = "EPX_NFO";
 
-    protected static <T> Map<Scope.DC, ExecutionInfo> getMessageExecutionInfo(Map<String, byte[]> parameters, int version) throws IOException
+    protected static <T> Map<Scope, ExecutionInfo> getMessageExecutionInfo(Map<String, byte[]> parameters, int version) throws IOException
     {
         byte[] d = parameters.get(EXECUTION_INFO_PARAMETER);
         if (d == null)
@@ -1266,7 +1266,7 @@ public class EpaxosState
         }
     }
 
-    protected static byte[] serializeMessageExecutionParameters(Map<Scope.DC, ExecutionInfo> info, int version) throws IOException
+    protected static byte[] serializeMessageExecutionParameters(Map<Scope, ExecutionInfo> info, int version) throws IOException
     {
         Map<String, byte[]> parameters = new HashMap<>();
 
@@ -1287,7 +1287,7 @@ public class EpaxosState
     public <T> MessageOut<T> maybeAddExecutionInfo(ByteBuffer key, UUID cfId, MessageOut<T> msg, int version, InetAddress to)
     {
         // TODO: test
-        Map<Scope.DC, ExecutionInfo> info = getEpochExecutionInfo(key, cfId, to);
+        Map<Scope, ExecutionInfo> info = getEpochExecutionInfo(key, cfId, to);
         if (info == null)
             return msg;
 
@@ -1308,7 +1308,7 @@ public class EpaxosState
      */
     public <T> void maybeRecordExecutionInfo(ByteBuffer key, UUID cfId, MessageIn<T> msg) throws IOException
     {
-        Map<Scope.DC, ExecutionInfo> info = getMessageExecutionInfo(msg.parameters, msg.version);
+        Map<Scope, ExecutionInfo> info = getMessageExecutionInfo(msg.parameters, msg.version);
         // TODO: finish
     }
 
@@ -1328,17 +1328,17 @@ public class EpaxosState
 
         try (DataInputStream in = new DataInputStream(ByteBufferUtil.inputStream(ByteBuffer.wrap(d))))
         {
-            Map<Scope.DC, ExecutionInfo> info = Serializers.executionMap.deserialize(in, msg.version);
+            Map<Scope, ExecutionInfo> info = Serializers.executionMap.deserialize(in, msg.version);
 
-            for (Map.Entry<Scope.DC, ExecutionInfo> entry: info.entrySet())
+            for (Map.Entry<Scope, ExecutionInfo> entry: info.entrySet())
             {
-                Scope.DC scope = entry.getKey();
-                if (scope.equals(Scope.DC.global()))
+                Scope scope = entry.getKey();
+                if (scope == Scope.GLOBAL)
                 {
                     if (!hasExecutedLocally(key, cfId, entry.getValue(), Scope.GLOBAL))
                         return false;
                 }
-                else if (scope.equals(getLocalScope()))
+                else if (scope == Scope.LOCAL)
                 {
                     if (!hasExecutedLocally(key, cfId, entry.getValue(), Scope.LOCAL))
                         return false;
@@ -1558,34 +1558,11 @@ public class EpaxosState
         return DatabaseDescriptor.getEndpointSnitch().getDatacenter(endpoint);
     }
 
-    protected Scope.DC getDcScope(Scope scope)
-    {
-        switch (scope)
-        {
-            case GLOBAL:
-                return Scope.DC.global();
-            case LOCAL:
-                return getLocalScope();
-            default:
-                throw new IllegalArgumentException("Unsupported scope: " + scope);
-        }
-    }
-
-    protected Scope.DC getLocalScope()
-    {
-        return Scope.DC.local(getDc());
-    }
-
     public Scope[] getActiveScopes(UUID cfId, Range<Token> range, InetAddress address)
     {
         // TODO: don't request local if the address is in another DC
         // TODO: this
         return new Scope[]{Scope.GLOBAL, Scope.LOCAL};
-    }
-
-    public boolean coversScope(Scope.DC scope)
-    {
-        return Scope.DC.global().equals(scope) || getLocalScope().equals(scope);
     }
 
     protected String getInstanceKeyspace(Instance instance)

@@ -151,27 +151,27 @@ public class Serializers
         }
     };
 
-    public static final IVersionedSerializer<Map<Scope.DC, ExecutionInfo>> executionMap = new IVersionedSerializer<Map<Scope.DC, ExecutionInfo>>()
+    public static final IVersionedSerializer<Map<Scope, ExecutionInfo>> executionMap = new IVersionedSerializer<Map<Scope, ExecutionInfo>>()
     {
         @Override
-        public void serialize(Map<Scope.DC, ExecutionInfo> executionInfoMap, DataOutputPlus out, int version) throws IOException
+        public void serialize(Map<Scope, ExecutionInfo> executionInfoMap, DataOutputPlus out, int version) throws IOException
         {
             out.writeInt(executionInfoMap.size());
-            for (Map.Entry<Scope.DC, ExecutionInfo> entry: executionInfoMap.entrySet())
+            for (Map.Entry<Scope, ExecutionInfo> entry: executionInfoMap.entrySet())
             {
-                Scope.DC.serializer.serialize(entry.getKey(), out, version);
+                Scope.serializer.serialize(entry.getKey(), out, version);
                 ExecutionInfo.serializer.serialize(entry.getValue(), out, version);
             }
         }
 
         @Override
-        public Map<Scope.DC, ExecutionInfo> deserialize(DataInput in, int version) throws IOException
+        public Map<Scope, ExecutionInfo> deserialize(DataInput in, int version) throws IOException
         {
             int num = in.readInt();
-            Map<Scope.DC, ExecutionInfo> info = new HashMap<>(num);
+            Map<Scope, ExecutionInfo> info = new HashMap<>(num);
             for (int i=0; i<num; i++)
             {
-                info.put(Scope.DC.serializer.deserialize(in, version),
+                info.put(Scope.serializer.deserialize(in, version),
                          ExecutionInfo.serializer.deserialize(in, version));
             }
 
@@ -179,12 +179,12 @@ public class Serializers
         }
 
         @Override
-        public long serializedSize(Map<Scope.DC, ExecutionInfo> executionInfoMap, int version)
+        public long serializedSize(Map<Scope, ExecutionInfo> executionInfoMap, int version)
         {
             long size = 4;
-            for (Map.Entry<Scope.DC, ExecutionInfo> entry: executionInfoMap.entrySet())
+            for (Map.Entry<Scope, ExecutionInfo> entry: executionInfoMap.entrySet())
             {
-                size += Scope.DC.serializer.serializedSize(entry.getKey(), version);
+                size += Scope.serializer.serializedSize(entry.getKey(), version);
                 size += ExecutionInfo.serializer.serializedSize(entry.getValue(), version);
             }
             return size;

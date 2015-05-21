@@ -127,7 +127,7 @@ public class StreamReceiveTask extends StreamTask
             try
             {
                 // FIXME: pause execution for affected token states until sstables are added
-                for (Map.Entry<ByteBuffer, Map<Scope.DC, ExecutionInfo>> entry: task.session.getExpaxosCorrections().entrySet())
+                for (Map.Entry<ByteBuffer, Map<Scope, ExecutionInfo>> entry: task.session.getExpaxosCorrections().entrySet())
                 {
                     EpaxosState.getInstance().reportFutureExecutions(entry.getKey(), task.cfId, entry.getValue());
                 }

@@ -22,11 +22,11 @@ public class StreamSessionTest
         ExecutionInfo executionInfo2 = new ExecutionInfo(2, 6);
         ExecutionInfo executionInfo3 = new ExecutionInfo(1, 3);
 
-        Assert.assertTrue(session.addEpaxosCorrection(key, Scope.DC.global(), executionInfo1));
-        Assert.assertTrue(session.addEpaxosCorrection(key, Scope.DC.global(), executionInfo2));
-        Assert.assertFalse(session.addEpaxosCorrection(key, Scope.DC.global(), executionInfo3));
-        Assert.assertFalse(session.addEpaxosCorrection(key, Scope.DC.global(), executionInfo3));
-        ExecutionInfo actual = session.getExpaxosCorrections().get(Scope.DC.global()).get(key);
+        Assert.assertTrue(session.addEpaxosCorrection(key, Scope.GLOBAL, executionInfo1));
+        Assert.assertTrue(session.addEpaxosCorrection(key, Scope.GLOBAL, executionInfo2));
+        Assert.assertFalse(session.addEpaxosCorrection(key, Scope.GLOBAL, executionInfo3));
+        Assert.assertFalse(session.addEpaxosCorrection(key, Scope.GLOBAL, executionInfo3));
+        ExecutionInfo actual = session.getExpaxosCorrections().get(Scope.GLOBAL).get(key);
         Assert.assertEquals(executionInfo2, actual);
     }
 }

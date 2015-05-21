@@ -146,7 +146,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     private AtomicBoolean isAborted = new AtomicBoolean(false);
 
-    private final Map<ByteBuffer, Map<Scope.DC, ExecutionInfo>> epaxosCorrections = new HashMap<>();
+    private final Map<ByteBuffer, Map<Scope, ExecutionInfo>> epaxosCorrections = new HashMap<>();
 
     public static enum State
     {
@@ -369,11 +369,11 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         }
     }
 
-    public boolean addEpaxosCorrection(ByteBuffer key, Scope.DC scope, ExecutionInfo info)
+    public boolean addEpaxosCorrection(ByteBuffer key, Scope scope, ExecutionInfo info)
     {
         synchronized (epaxosCorrections)
         {
-            Map<Scope.DC, ExecutionInfo> scopeMap = epaxosCorrections.get(key);
+            Map<Scope, ExecutionInfo> scopeMap = epaxosCorrections.get(key);
             if (scopeMap == null)
             {
                 scopeMap = new ConcurrentHashMap<>();
@@ -393,7 +393,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         }
     }
 
-    public Map<ByteBuffer, Map<Scope.DC, ExecutionInfo>> getExpaxosCorrections()
+    public Map<ByteBuffer, Map<Scope, ExecutionInfo>> getExpaxosCorrections()
     {
         return epaxosCorrections;
     }

@@ -49,7 +49,7 @@ public class FileMessageHeader
     public final List<Pair<Long, Long>> sections;
     public final CompressionInfo compressionInfo;
     public final long repairedAt;
-    public final Map<ByteBuffer, Map<Scope.DC, ExecutionInfo>> epaxos;
+    public final Map<ByteBuffer, Map<Scope, ExecutionInfo>> epaxos;
 
     public FileMessageHeader(UUID cfId,
                              int sequenceNumber,
@@ -59,7 +59,7 @@ public class FileMessageHeader
                              CompressionInfo compressionInfo,
                              long repairedAt)
     {
-        this(cfId, sequenceNumber, version, estimatedKeys, sections, compressionInfo, repairedAt, new HashMap<ByteBuffer, Map<Scope.DC, ExecutionInfo>>());
+        this(cfId, sequenceNumber, version, estimatedKeys, sections, compressionInfo, repairedAt, new HashMap<ByteBuffer, Map<Scope, ExecutionInfo>>());
     }
 
     public FileMessageHeader(UUID cfId,
@@ -69,7 +69,7 @@ public class FileMessageHeader
                              List<Pair<Long, Long>> sections,
                              CompressionInfo compressionInfo,
                              long repairedAt,
-                             Map<ByteBuffer, Map<Scope.DC, ExecutionInfo>> epaxos)
+                             Map<ByteBuffer, Map<Scope, ExecutionInfo>> epaxos)
     {
         this.cfId = cfId;
         this.sequenceNumber = sequenceNumber;
@@ -153,14 +153,14 @@ public class FileMessageHeader
 
             // TODO: do the version thing
             out.writeInt(header.epaxos.size());
-            for (Map.Entry<ByteBuffer, Map<Scope.DC, ExecutionInfo>> keyEntry: header.epaxos.entrySet())
+            for (Map.Entry<ByteBuffer, Map<Scope, ExecutionInfo>> keyEntry: header.epaxos.entrySet())
             {
                 ByteBufferUtil.writeWithShortLength(keyEntry.getKey(), out);
                 out.writeInt(keyEntry.getValue().size());
 
-                for (Map.Entry<Scope.DC, ExecutionInfo> scopeEntry: keyEntry.getValue().entrySet())
+                for (Map.Entry<Scope, ExecutionInfo> scopeEntry: keyEntry.getValue().entrySet())
                 {
-                    Scope.DC.serializer.serialize(scopeEntry.getKey(), out, version);
+                    Scope.serializer.serialize(scopeEntry.getKey(), out, version);
                     ExecutionInfo.serializer.serialize(scopeEntry.getValue(), out, version);
                 }
             }
@@ -180,16 +180,16 @@ public class FileMessageHeader
             long repairedAt = in.readLong();
 
             int epaxosSize = in.readInt();
-            Map<ByteBuffer, Map<Scope.DC, ExecutionInfo>> epaxos = new HashMap<>(epaxosSize);
+            Map<ByteBuffer, Map<Scope, ExecutionInfo>> epaxos = new HashMap<>(epaxosSize);
             for (int i=0; i<epaxosSize; i++)
             {
                 ByteBuffer key = ByteBufferUtil.readWithShortLength(in);
 
                 int numEntry = in.readInt();
-                Map<Scope.DC, ExecutionInfo> entry = new HashMap<>(numEntry);
+                Map<Scope, ExecutionInfo> entry = new HashMap<>(numEntry);
                 for (int j=0; j<numEntry; j++)
                 {
-                    entry.put(Scope.DC.serializer.deserialize(in, version),
+                    entry.put(Scope.serializer.deserialize(in, version),
                               ExecutionInfo.serializer.deserialize(in, version));
 
                 }
@@ -214,14 +214,14 @@ public class FileMessageHeader
             size += CompressionInfo.serializer.serializedSize(header.compressionInfo, version);
 
             size += 4;
-            for (Map.Entry<ByteBuffer, Map<Scope.DC, ExecutionInfo>> keyEntry: header.epaxos.entrySet())
+            for (Map.Entry<ByteBuffer, Map<Scope, ExecutionInfo>> keyEntry: header.epaxos.entrySet())
             {
                 size += TypeSizes.NATIVE.sizeofWithShortLength(keyEntry.getKey());
 
                 size += 4;
-                for (Map.Entry<Scope.DC, ExecutionInfo> scopeEntry: keyEntry.getValue().entrySet())
+                for (Map.Entry<Scope, ExecutionInfo> scopeEntry: keyEntry.getValue().entrySet())
                 {
-                    size += Scope.DC.serializer.serializedSize(scopeEntry.getKey(), version);
+                    size += Scope.serializer.serializedSize(scopeEntry.getKey(), version);
                     size += ExecutionInfo.serializer.serializedSize(scopeEntry.getValue(), version);
                 }
             }

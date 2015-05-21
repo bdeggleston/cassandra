@@ -92,16 +92,16 @@ public class EpaxosExecutionInfoTest extends AbstractEpaxosTest
         Assert.assertTrue(ksManagerContains(state, Scope.LOCAL, localInstance));
         Assert.assertFalse(ksManagerContains(state, Scope.LOCAL, globalInstance));
 
-        Map<Scope.DC, ExecutionInfo> infos;
+        Map<Scope, ExecutionInfo> infos;
         // dc local nodes should receive info for both scopes
         infos = state.getEpochExecutionInfo(cfKey.key, cfKey.cfId, localAddr);
         Assert.assertEquals(2, infos.size());
-        Assert.assertEquals(new ExecutionInfo(0l, 1l), infos.get(Scope.DC.global()));
-        Assert.assertEquals(new ExecutionInfo(0l, 1l), infos.get(Scope.DC.local(DC1)));
+        Assert.assertEquals(new ExecutionInfo(0l, 1l), infos.get(Scope.GLOBAL));
+        Assert.assertEquals(new ExecutionInfo(0l, 1l), infos.get(Scope.LOCAL));
 
         // check that the local execution info is only added for dc-local nodes
         infos = state.getEpochExecutionInfo(cfKey.key, cfKey.cfId, remoteAddr);
         Assert.assertEquals(1, infos.size());
-        Assert.assertEquals(new ExecutionInfo(0l, 1l), infos.get(Scope.DC.global()));
+        Assert.assertEquals(new ExecutionInfo(0l, 1l), infos.get(Scope.GLOBAL));
     }
 }

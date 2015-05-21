@@ -63,7 +63,7 @@ public class StreamReader
     protected final StreamSession session;
     protected final Descriptor.Version inputVersion;
     protected final long repairedAt;
-    protected final Map<ByteBuffer, Map<Scope.DC, ExecutionInfo>> epaxos;
+    protected final Map<ByteBuffer, Map<Scope, ExecutionInfo>> epaxos;
 
     protected Descriptor desc;
 
@@ -159,11 +159,11 @@ public class StreamReader
 
     private void maybeReportEpaxosCorrection(ByteBuffer key)
     {
-        Map<Scope.DC, ExecutionInfo> executions = epaxos.get(key);
+        Map<Scope, ExecutionInfo> executions = epaxos.get(key);
         if (executions == null)
             return;
 
-        for (Map.Entry<Scope.DC, ExecutionInfo> entry: executions.entrySet())
+        for (Map.Entry<Scope, ExecutionInfo> entry: executions.entrySet())
         {
             session.addEpaxosCorrection(key, entry.getKey(), entry.getValue());
         }
