@@ -55,6 +55,7 @@ public abstract class AbstractEpaxosTest
     protected static CFMetaData thriftcf;
     protected static final InetAddress LOCALHOST;
     protected static final Scope DEFAULT_SCOPE = Scope.GLOBAL;
+    protected static final String DC1 = "DC1";
 
     static
     {

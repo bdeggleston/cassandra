@@ -134,7 +134,7 @@ public class RowDataResolver extends AbstractRowResolver
             InetAddress endpoint = endpoints.get(i);
             int msVersion = MessagingService.instance().getVersion(endpoint);
             MessageOut<Mutation> msg = mutation.createMessage(MessagingService.Verb.READ_REPAIR);
-            msg = EpaxosState.getInstance().maybeAddExecutionInfo(mutation.key(), cfId, msg, msVersion);
+            msg = EpaxosState.getInstance().maybeAddExecutionInfo(mutation.key(), cfId, msg, msVersion, endpoint);
             results.add(MessagingService.instance().sendRR(msg, endpoint));
         }
 

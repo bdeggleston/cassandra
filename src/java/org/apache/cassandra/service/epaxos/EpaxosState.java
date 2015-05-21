@@ -168,7 +168,6 @@ public class EpaxosState
 
     protected final Map<Scope, TokenStateManager> tokenStateManagers = new EnumMap<>(Scope.class);
     protected final Map<Scope, KeyStateManager> keyStateManagers = new EnumMap<>(Scope.class);
-    protected final RemoteActivity remoteActivity = new RemoteActivity();
 
     public EpaxosState()
     {
@@ -956,9 +955,7 @@ public class EpaxosState
 
         UntypedResultSet.Row row = results.one();
 
-        DataInput in = new DataInputStream(ByteBufferUtil.inputStream(row.getBlob("data")));
-
-        try
+        try (DataInputStream in = new DataInputStream(ByteBufferUtil.inputStream(row.getBlob("data"))))
         {
             instance = Instance.internalSerializer.deserialize(in, row.getInt("version"));
             instanceCache.put(instanceId, instance);
@@ -1102,9 +1099,19 @@ public class EpaxosState
         return new FailureRecoveryVerbHandler(this);
     }
 
-    private void prepareForIncomingStream(Range<Token> range, UUID cfId, Scope scope)
+    // duplicates a lot of the FailureRecoveryTask.preRecover
+    public boolean prepareForIncomingStream(Range<Token> range, UUID cfId, Scope scope)
     {
-        //   -- this might be a good argument to have token states for every token, across all DCs
+        // check that this isn't for an existing failure recovery task
+        synchronized (failureRecoveryTasks)
+        {
+            for (FailureRecoveryTask task: failureRecoveryTasks)
+            {
+                if (task.token.equals(range.right) && task.cfId.equals(cfId) && task.scope == scope)
+                    return false;
+            }
+        }
+
         TokenStateManager tokenStateManager = getTokenStateManager(scope);
         KeyStateManager keyStateManager = getKeyStateManager(scope);
 
@@ -1139,26 +1146,7 @@ public class EpaxosState
                 deleteInstance(id);
             }
         }
-    }
 
-    // duplicates a lot of the FailureRecoveryTask.preRecover
-    // TODO: rethink this method, it should work with multiple scopes and dcs gracefully
-    public boolean prepareForIncomingStream(Range<Token> range, UUID cfId)
-    {
-        // check that this isn't for an existing failure recovery task
-        synchronized (failureRecoveryTasks)
-        {
-            for (FailureRecoveryTask task: failureRecoveryTasks)
-            {
-                if (task.token.equals(range.right) && task.cfId.equals(cfId))
-                    return false;
-            }
-        }
-
-        // TODO: only delete local scope if the stream is coming from local DC
-        // TODO: think through implications of multiple streams from multiple dcs happening
-        prepareForIncomingStream(range, cfId, Scope.GLOBAL);
-        prepareForIncomingStream(range, cfId, Scope.LOCAL);
         return true;
     }
 
@@ -1171,15 +1159,14 @@ public class EpaxosState
             if (tokenStateManager.managesCfId(cfId))
                 return true;
         }
-        return remoteActivity.managesCfId(cfId);
+        return false;
     }
 
     /**
      * Returns a tuple containing the current epoch, and instances executed in the current epoch for the given key/cfId
      */
-    public Map<Scope.DC, ExecutionInfo> getEpochExecutionInfo(ByteBuffer key, UUID cfId)
+    public Map<Scope.DC, ExecutionInfo> getEpochExecutionInfo(ByteBuffer key, UUID cfId, InetAddress to)
     {
-        // TODO: test
         if (!managesCfId(cfId))
         {
             return null;
@@ -1188,30 +1175,28 @@ public class EpaxosState
         CfKey cfKey = new CfKey(key, cfId);
         Map<Scope.DC, ExecutionInfo> rmap = new HashMap<>();
 
-
         ExecutionInfo info;
         info = keyStateManagers.get(Scope.GLOBAL).getExecutionInfo(cfKey);
         if (info != null) rmap.put(Scope.DC.global(), info);
 
-        info = keyStateManagers.get(Scope.LOCAL).getExecutionInfo(cfKey);
-        if (info != null) rmap.put(getLocalScope(), info);
-
-        rmap.putAll(remoteActivity.getExecutionInfo(key, cfId));
+        if (getDc().equals(getDc(to)))
+        {
+            info = keyStateManagers.get(Scope.LOCAL).getExecutionInfo(cfKey);
+            if (info != null) rmap.put(getLocalScope(), info);
+        }
 
         return rmap;
     }
 
-    // TODO: rename to data is from future, or something
-    public boolean canApplyRepair(ByteBuffer key, UUID cfId, ExecutionInfo info, Scope scope)
+    public boolean hasExecutedLocally(ByteBuffer key, UUID cfId, ExecutionInfo info, Scope scope)
     {
-        return canApplyRepair(key, cfId, info.epoch, info.executed, scope);
+        return hasExecutedLocally(key, cfId, info.epoch, info.executed, scope);
     }
 
     /**
      * Determines if a repair can be applied to a key.
      */
-    // TODO: rename to data is from future, or something
-    public boolean canApplyRepair(ByteBuffer key, UUID cfId, long epoch, long executionCount, Scope scope)
+    public boolean hasExecutedLocally(ByteBuffer key, UUID cfId, long epoch, long executionCount, Scope scope)
     {
         ExecutionInfo local = getKeyStateManager(scope).getExecutionInfo(new CfKey(key, cfId));
 
@@ -1263,10 +1248,7 @@ public class EpaxosState
         }
         else
         {
-            // TODO: how does this fit into the blind writes?
-            // TODO: execution info could include the highest timestamp for a keystate?
-            remoteActivity.recordMutation(dcScope.dc, key, cfId, info);
-            return true;
+            return false;
         }
     }
 
@@ -1302,10 +1284,10 @@ public class EpaxosState
     /**
      * Adds epaxos execution info for the given key and cfid to the outgoing message
      */
-    public <T> MessageOut<T> maybeAddExecutionInfo(ByteBuffer key, UUID cfId, MessageOut<T> msg, int version)
+    public <T> MessageOut<T> maybeAddExecutionInfo(ByteBuffer key, UUID cfId, MessageOut<T> msg, int version, InetAddress to)
     {
         // TODO: test
-        Map<Scope.DC, ExecutionInfo> info = getEpochExecutionInfo(key, cfId);
+        Map<Scope.DC, ExecutionInfo> info = getEpochExecutionInfo(key, cfId, to);
         if (info == null)
             return msg;
 
@@ -1347,32 +1329,20 @@ public class EpaxosState
         try (DataInputStream in = new DataInputStream(ByteBufferUtil.inputStream(ByteBuffer.wrap(d))))
         {
             Map<Scope.DC, ExecutionInfo> info = Serializers.executionMap.deserialize(in, msg.version);
-            Map<Scope.DC, ExecutionInfo> applyRemote = new HashMap<>();
 
             for (Map.Entry<Scope.DC, ExecutionInfo> entry: info.entrySet())
             {
                 Scope.DC scope = entry.getKey();
                 if (scope.equals(Scope.DC.global()))
                 {
-                    if (!canApplyRepair(key, cfId, entry.getValue(), Scope.GLOBAL))
+                    if (!hasExecutedLocally(key, cfId, entry.getValue(), Scope.GLOBAL))
                         return false;
                 }
                 else if (scope.equals(getLocalScope()))
                 {
-                    if (!canApplyRepair(key, cfId, entry.getValue(), Scope.LOCAL))
+                    if (!hasExecutedLocally(key, cfId, entry.getValue(), Scope.LOCAL))
                         return false;
                 }
-                else
-                {
-                    applyRemote.put(entry.getKey(), entry.getValue());
-                }
-            }
-
-            // record any remote activity
-            // TODO: test remote entries are recorded
-            for (Map.Entry<Scope.DC, ExecutionInfo> entry: applyRemote.entrySet())
-            {
-                remoteActivity.recordMutation(entry.getKey().dc, key, cfId, entry.getValue());
             }
 
             return true;

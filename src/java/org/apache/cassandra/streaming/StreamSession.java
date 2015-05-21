@@ -796,7 +796,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         {
             for (EpaxosReceiveTask receiveTask: epaxosReceivers.values())
             {
-                EpaxosState.getInstance().prepareForIncomingStream(receiveTask.range, receiveTask.cfId);
+                EpaxosState.getInstance().prepareForIncomingStream(receiveTask.range, receiveTask.cfId, receiveTask.scope);
             }
         }
     }

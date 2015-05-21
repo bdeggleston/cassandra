@@ -83,6 +83,7 @@ public enum Scope
         }
     };
 
+    // TODO: remove
     public static class DC
     {
         private static final DC GLOBAL_DC = new DC(GLOBAL, "*");
