@@ -12,7 +12,8 @@ import java.util.UUID;
 
 public class MockTokenStateManager extends TokenStateManager
 {
-    public static final Token TOKEN0 = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(0));
+    public static final Token TOKEN0 = AbstractEpaxosTest.token(0);
+    public static final Token TOKEN100 = AbstractEpaxosTest.token(100);
 
     private final Set<Range<Token>> ranges = Sets.newHashSet(new Range<>(TOKEN0, TOKEN0));
 

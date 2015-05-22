@@ -16,6 +16,7 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -290,5 +291,73 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
         Assert.assertEquals(1, task.repairRequests.size());
         Assert.assertTrue(task.repairRequests.get(0).isLocal);
         Assert.assertEquals(tokenState.getRange(), task.repairRequests.get(0).range);
+    }
+
+    @Test
+    public void postRecoveryTask() throws Exception
+    {
+        final Set<UUID> executed = new HashSet<>();
+        EpaxosState state = new MockMultiDcState() {
+            @Override
+            public void execute(UUID instanceId)
+            {
+                executed.add(instanceId);
+            }
+        };
+        ((MockTokenStateManager) state.getTokenStateManager(Scope.GLOBAL)).setTokens(TOKEN0, token(100));
+
+        TokenState tokenState = state.getTokenStateManager(Scope.GLOBAL).get(token(50), cfm.cfId);
+        tokenState.setEpoch(2);
+        tokenState.setState(TokenState.State.RECOVERING_DATA);
+
+        UUID lastId;
+        QueryInstance instance;
+        Set<UUID> expected = new HashSet<>();
+
+        // key1, nothing committed
+        instance = state.createQueryInstance(getSerializedCQLRequest(10, 10));
+        instance.preaccept(state.getCurrentDependencies(instance).left);
+        state.saveInstance(instance);
+
+        // key2, 2 instances committed
+        instance = state.createQueryInstance(getSerializedCQLRequest(20, 10));
+        instance.commit(state.getCurrentDependencies(instance).left);
+        state.saveInstance(instance);
+
+        lastId = instance.getId();
+        instance = state.createQueryInstance(getSerializedCQLRequest(20, 10));
+        instance.commit(state.getCurrentDependencies(instance).left);
+        state.saveInstance(instance);
+        expected.add(instance.getId());
+
+        Assert.assertEquals(Sets.newHashSet(lastId), instance.getDependencies());
+
+        // key3, 1 committed, head executed
+        // executed head will prevent 1st instance from being executed
+        instance = state.createQueryInstance(getSerializedCQLRequest(30, 10));
+        instance.commit(state.getCurrentDependencies(instance).left);
+        state.saveInstance(instance);
+
+        lastId = instance.getId();
+        instance = state.createQueryInstance(getSerializedCQLRequest(30, 10));
+        instance.commit(state.getCurrentDependencies(instance).left);
+        instance.setExecuted(2);
+        state.saveInstance(instance);
+
+        Assert.assertEquals(Sets.newHashSet(lastId), instance.getDependencies());
+
+        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(state, TOKEN0, cfm.cfId, 0, Scope.GLOBAL) {
+            @Override
+            protected void runPostCompleteTask(TokenState tokenState)
+            {
+                new PostStreamTask(state, tokenState.getRange(), cfId, scope).run();
+            }
+        };
+
+        Assert.assertEquals(TokenState.State.RECOVERING_DATA, tokenState.getState());
+        task.complete();
+
+        Assert.assertEquals(TokenState.State.NORMAL, tokenState.getState());
+        Assert.assertEquals(expected, executed);
     }
 }

@@ -14,7 +14,6 @@ import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.Hex;
 import org.apache.cassandra.utils.Pair;
 
 import java.io.DataInputStream;
@@ -23,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
+import javax.annotation.Nullable;
 
 public class KeyStateManager
 {
@@ -575,5 +575,26 @@ public class KeyStateManager
         iterable = Iterables.filter(iterable, new KeyTableIterable.CfIdPredicate(cfId));
         iterable = Iterables.filter(iterable, new KeyTableIterable.ScopePredicate(scope));
         return Iterables.transform(iterable, f).iterator();
+    }
+
+    /**
+     * Returns key states for the purpose of post stream / failure recovery cleanup
+     */
+    public Iterator<KeyState> getStaleKeyStateRange(UUID cfId, Range<Token> range)
+    {
+        Function<UntypedResultSet.Row, KeyState> f = new Function<UntypedResultSet.Row, KeyState>()
+        {
+            @Override
+            public KeyState apply(UntypedResultSet.Row row)
+            {
+                return deserialize(row.getBlob("data"));
+            }
+        };
+        Iterable<UntypedResultSet.Row> iterable;
+        iterable = new KeyTableIterable(keyspace, table, range, true);
+        iterable = Iterables.filter(iterable, new KeyTableIterable.CfIdPredicate(cfId));
+        iterable = Iterables.filter(iterable, new KeyTableIterable.ScopePredicate(scope));
+        return Iterables.transform(iterable, f).iterator();
+
     }
 }
