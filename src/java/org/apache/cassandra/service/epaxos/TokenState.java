@@ -340,6 +340,7 @@ public class TokenState
      */
     public boolean localOnly()
     {
+        // TODO: remove
         if (executions.get() == 0)
         {
             // if we don't have any info, defer to the last epoch

@@ -202,17 +202,29 @@ public class FailureRecoveryTask implements Runnable
             tokenState.lock.writeLock().unlock();
         }
 
-        StreamPlan streamPlan = new StreamPlan(tokenState.toString() + "-Instance-Recovery");
+        StreamPlan streamPlan = createStreamPlan(tokenState.toString() + "-Instance-Recovery");
 
         for (InetAddress endpoint: getEndpoints(range))
         {
-            // TODO: skip dc-remote endpoints if scope is local
             if (endpoint.equals(state.getEndpoint()))
                 continue;
-            // TODO: test that only one scope is streamed
+
+            if (scope == Scope.LOCAL && !state.isInSameDC(endpoint))
+                continue;
+
             streamPlan.requestEpaxosRange(endpoint, cfId, range, scope);
         }
 
+        runStreamPlan(streamPlan);
+    }
+
+    protected StreamPlan createStreamPlan(String name)
+    {
+        return new StreamPlan(name);
+    }
+
+    protected void runStreamPlan(StreamPlan streamPlan)
+    {
         streamPlan.listeners(new StreamEventHandler()
         {
             private boolean submitted = false;
@@ -249,7 +261,6 @@ public class FailureRecoveryTask implements Runnable
     {
         TokenState tokenState = getTokenState();
         Range<Token> range;
-        boolean localOnly;
         tokenState.lock.writeLock().lock();
         try
         {
@@ -264,21 +275,20 @@ public class FailureRecoveryTask implements Runnable
             tokenState.setState(TokenState.State.RECOVERING_DATA);
             tsm.save(tokenState);
             range = tsm.rangeFor(tokenState);
-            localOnly = tokenState.localOnly();
         }
         finally
         {
             tokenState.lock.writeLock().unlock();
         }
 
-        Pair<String, String> cfName = Schema.instance.getCF(cfId);
-        FutureTask<Object> future = StorageService.instance.createRepairTask(cfName.left,
-                                                                             Collections.singleton(range),
-                                                                             false,
-                                                                             (scope == Scope.LOCAL),
-                                                                             true,
-                                                                             cfName.right);
+        runRepair(range, (scope == Scope.LOCAL));
+    }
 
+    protected void runRepair(Range<Token> range, boolean isLocal)
+    {
+        Pair<String, String> cfName = Schema.instance.getCF(cfId);
+        FutureTask<Object> future = StorageService.instance.createRepairTask(cfName.left,  Collections.singleton(range),
+                                                                             false, isLocal, true, cfName.right);
         new Thread(new FutureTask<Object>(future, null) {
             @Override
             protected void done()

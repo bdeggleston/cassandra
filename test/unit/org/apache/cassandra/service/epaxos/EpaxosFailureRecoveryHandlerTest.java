@@ -50,6 +50,4 @@ public class EpaxosFailureRecoveryHandlerTest
         Assert.assertEquals(cfId, request.cfId);
         Assert.assertEquals(epoch, request.epoch);
     }
-
-    // TODO: add some checks around the handling of different scopes
 }

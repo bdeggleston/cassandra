@@ -12,6 +12,8 @@ import org.junit.Test;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collections;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
@@ -22,8 +24,13 @@ public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
 
     private static MessageIn<Message> getMessage(long epoch)
     {
+        return getMessage(epoch, DEFAULT_SCOPE);
+    }
+
+    private static MessageIn<Message> getMessage(long epoch, Scope scope)
+    {
         return MessageIn.create(LOCALHOST,
-                                new Message(MESSAGE_TOKEN, CFID, epoch, Scope.GLOBAL),
+                                new Message(MESSAGE_TOKEN, CFID, epoch, scope),
                                 Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.ECHO,
                                 0);
@@ -58,7 +65,7 @@ public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
         public volatile int remoteFailureCalls = 0;
         public volatile int localFailureCalls = 0;
 
-        public final long epoch;
+        public final Map<Scope, Long> epochs = new EnumMap<>(Scope.class);
         public final TokenState.State state;
 
         private State(long epoch)
@@ -68,7 +75,8 @@ public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
 
         private State(long epoch, TokenState.State state)
         {
-            this.epoch = epoch;
+            epochs.put(Scope.GLOBAL, epoch);
+            epochs.put(Scope.LOCAL, epoch);
             this.state = state;
         }
 
@@ -89,7 +97,7 @@ public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
         @Override
         public TokenState getTokenState(IEpochMessage message)
         {
-            return new TokenState(range(TOKEN0, MANAGED_TOKEN), message.getCfId(), epoch, 0, state);
+            return new TokenState(range(TOKEN0, MANAGED_TOKEN), message.getCfId(), epochs.get(message.getScope()), 0, state);
         }
     }
 
@@ -97,6 +105,7 @@ public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
     public void successCase() throws Exception
     {
         State state = new State(5);
+        state.epochs.put(Scope.LOCAL, 100l);  // should be ignored
         Callback callback = new Callback(state);
 
         Assert.assertEquals(0, callback.epochResponseCalls);
@@ -126,6 +135,7 @@ public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
     public void localFailure() throws Exception
     {
         State state = new State(5);
+        state.epochs.put(Scope.LOCAL, 7l);  // should be ignored
         Callback callback = new Callback(state);
 
         Assert.assertEquals(0, callback.epochResponseCalls);
@@ -143,6 +153,7 @@ public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
     public void remoteFailure() throws Exception
     {
         State state = new State(5);
+        state.epochs.put(Scope.LOCAL, 3l);  // should be ignored
         Callback callback = new Callback(state);
 
         Assert.assertEquals(0, callback.epochResponseCalls);
@@ -154,7 +165,6 @@ public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
         Assert.assertEquals(0, callback.epochResponseCalls);
         Assert.assertEquals(1, state.remoteFailureCalls);
         Assert.assertEquals(0, state.localFailureCalls);
-
     }
 
     private void assertModeResponse(TokenState.State mode, boolean doCallbackExpected) throws UnknownHostException

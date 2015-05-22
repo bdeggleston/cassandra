@@ -1,14 +1,22 @@
 package org.apache.cassandra.service.epaxos;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.streaming.StreamPlan;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -19,6 +27,80 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     {
         clearKeyStates();
         clearTokenStates();
+    }
+
+    private static class InstrumentedFailureRecoveryTask extends FailureRecoveryTask
+    {
+        private InstrumentedFailureRecoveryTask(EpaxosState state, Token token, UUID cfId, long epoch, Scope scope)
+        {
+            super(state, token, cfId, epoch, scope);
+        }
+
+        @Override
+        protected Collection<InetAddress> getEndpoints(Range<Token> range)
+        {
+            return Lists.newArrayList(LOCALHOST, LOCAL_ADDRESS, REMOTE_ADDRESS);
+        }
+
+        static class InstanceStreamRequest
+        {
+            private final InetAddress endpoint;
+            private final UUID cfId;
+            private final Range<Token> range;
+            private final Scope[] scopes;
+
+            private InstanceStreamRequest(InetAddress endpoint, UUID cfId, Range<Token> range, Scope... scopes)
+            {
+                this.endpoint = endpoint;
+                this.cfId = cfId;
+                this.range = range;
+                this.scopes = scopes;
+            }
+        }
+
+        List<InstanceStreamRequest> rangeRequests = new ArrayList<>();
+
+        @Override
+        protected StreamPlan createStreamPlan(String name)
+        {
+            return new StreamPlan(name) {
+
+                @Override
+                public StreamPlan requestEpaxosRange(InetAddress from, UUID cfId, Range<Token> range, Scope... scopes)
+                {
+                    rangeRequests.add(new InstanceStreamRequest(from, cfId, range, scopes));
+                    return super.requestEpaxosRange(from, cfId, range, scopes);
+                }
+            };
+        }
+
+        StreamPlan streamPlan = null;
+
+        @Override
+        protected void runStreamPlan(StreamPlan streamPlan)
+        {
+            this.streamPlan = streamPlan;
+        }
+
+        static class RepairRequest
+        {
+            private final Range<Token> range;
+            private final boolean isLocal;
+
+            RepairRequest(Range<Token> range, boolean isLocal)
+            {
+                this.range = range;
+                this.isLocal = isLocal;
+            }
+        }
+
+        List<RepairRequest> repairRequests = new ArrayList<>();
+
+        @Override
+        protected void runRepair(Range<Token> range, boolean isLocal)
+        {
+            repairRequests.add(new RepairRequest(range, isLocal));
+        }
     }
 
     @Test
@@ -123,5 +205,90 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
 
         task.preRecover();
         Assert.assertEquals(TokenState.State.PRE_RECOVERY, tokenState.getState());
+    }
+
+    @Test
+    public void recoverInstancesTestGlobalScope()
+    {
+        EpaxosState state = new MockVerbHandlerState();
+        TokenState tokenState = state.getTokenStateManager(Scope.GLOBAL).get(TOKEN0, CFID);
+        tokenState.setEpoch(2);
+        tokenState.setState(TokenState.State.PRE_RECOVERY);
+
+        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(state, TOKEN0, CFID, 0, Scope.GLOBAL);
+
+        task.recoverInstances();
+        Assert.assertEquals(TokenState.State.RECOVERING_INSTANCES, tokenState.getState());
+
+        Assert.assertNotNull(task.streamPlan);
+
+        Assert.assertEquals(2, task.rangeRequests.size());
+        Assert.assertEquals(LOCAL_ADDRESS, task.rangeRequests.get(0).endpoint);
+        Assert.assertEquals(REMOTE_ADDRESS, task.rangeRequests.get(1).endpoint);
+
+        for (InstrumentedFailureRecoveryTask.InstanceStreamRequest request: task.rangeRequests)
+        {
+            Assert.assertEquals(CFID, request.cfId);
+            Assert.assertEquals(tokenState.getRange(), request.range);
+            Assert.assertArrayEquals(Scope.GLOBAL_ONLY, request.scopes);
+        }
+    }
+
+    @Test
+    public void recoverInstancesTestLocalScope()
+    {
+        EpaxosState state = new MockVerbHandlerState();
+        TokenState tokenState = state.getTokenStateManager(Scope.LOCAL).get(TOKEN0, CFID);
+        tokenState.setEpoch(2);
+        tokenState.setState(TokenState.State.PRE_RECOVERY);
+
+        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(state, TOKEN0, CFID, 0, Scope.LOCAL);
+
+        task.recoverInstances();
+        Assert.assertEquals(TokenState.State.RECOVERING_INSTANCES, tokenState.getState());
+
+        Assert.assertNotNull(task.streamPlan);
+
+        Assert.assertEquals(1, task.rangeRequests.size());
+
+        InstrumentedFailureRecoveryTask.InstanceStreamRequest request = task.rangeRequests.get(0);
+        Assert.assertEquals(LOCAL_ADDRESS, request.endpoint);
+        Assert.assertEquals(CFID, request.cfId);
+        Assert.assertEquals(tokenState.getRange(), request.range);
+        Assert.assertArrayEquals(Scope.LOCAL_ONLY, request.scopes);
+    }
+
+    @Test
+    public void recoverDataGlobalScope()
+    {
+        EpaxosState state = new MockVerbHandlerState();
+        TokenState tokenState = state.getTokenStateManager(Scope.GLOBAL).get(TOKEN0, CFID);
+        tokenState.setEpoch(2);
+        tokenState.setState(TokenState.State.RECOVERING_INSTANCES);
+
+        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(state, TOKEN0, CFID, 0, Scope.GLOBAL);
+
+        task.recoverData();
+        Assert.assertEquals(TokenState.State.RECOVERING_DATA, tokenState.getState());
+        Assert.assertEquals(1, task.repairRequests.size());
+        Assert.assertFalse(task.repairRequests.get(0).isLocal);
+        Assert.assertEquals(tokenState.getRange(), task.repairRequests.get(0).range);
+    }
+
+    @Test
+    public void recoverDataLocalcope()
+    {
+        EpaxosState state = new MockVerbHandlerState();
+        TokenState tokenState = state.getTokenStateManager(Scope.LOCAL).get(TOKEN0, CFID);
+        tokenState.setEpoch(2);
+        tokenState.setState(TokenState.State.RECOVERING_INSTANCES);
+
+        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(state, TOKEN0, CFID, 0, Scope.LOCAL);
+
+        task.recoverData();
+        Assert.assertEquals(TokenState.State.RECOVERING_DATA, tokenState.getState());
+        Assert.assertEquals(1, task.repairRequests.size());
+        Assert.assertTrue(task.repairRequests.get(0).isLocal);
+        Assert.assertEquals(tokenState.getRange(), task.repairRequests.get(0).range);
     }
 }

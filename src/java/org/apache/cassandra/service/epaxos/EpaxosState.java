@@ -1599,14 +1599,7 @@ public class EpaxosState
 
     public Scope[] getActiveScopes(InetAddress address)
     {
-        if (isInSameDC(address))
-        {
-            return new Scope[]{Scope.GLOBAL, Scope.LOCAL};
-        }
-        else
-        {
-            return new Scope[]{Scope.GLOBAL};
-        }
+        return isInSameDC(address) ? Scope.BOTH : Scope.GLOBAL_ONLY;
     }
 
     protected String getInstanceKeyspace(Instance instance)

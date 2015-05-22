@@ -11,6 +11,8 @@ import org.junit.Test;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collections;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -61,7 +63,7 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         public volatile int remoteFailureCalls = 0;
         public volatile int localFailureCalls = 0;
 
-        public final long epoch;
+        public final Map<Scope, Long> epochs = new EnumMap<>(Scope.class);
         public final TokenState.State state;
 
         private State(long epoch)
@@ -71,7 +73,8 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
 
         private State(long epoch, TokenState.State state)
         {
-            this.epoch = epoch;
+            this.epochs.put(Scope.GLOBAL, epoch);
+            this.epochs.put(Scope.LOCAL, epoch);
             this.state = state;
         }
 
@@ -92,7 +95,7 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         @Override
         public TokenState getTokenState(IEpochMessage message)
         {
-            return new TokenState(MANAGED_RANGE, message.getCfId(), epoch, 0, state);
+            return new TokenState(MANAGED_RANGE, message.getCfId(), epochs.get(message.getScope()), 0, state);
         }
     }
 
@@ -100,6 +103,7 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
     public void successCase() throws Exception
     {
         State state = new State(5);
+        state.epochs.put(Scope.LOCAL, 100l); // should be ignored
         Handler handler = new Handler(state);
 
         Assert.assertEquals(0, handler.doEpochVerbCalls);
@@ -129,6 +133,7 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
     public void localFailure() throws Exception
     {
         State state = new State(5);
+        state.epochs.put(Scope.LOCAL, 7l); // should be ignored
         Handler handler = new Handler(state);
 
         Assert.assertEquals(0, handler.doEpochVerbCalls);
@@ -146,6 +151,7 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
     public void remoteFailure() throws Exception
     {
         State state = new State(5);
+        state.epochs.put(Scope.LOCAL, 3l); // should be ignored
         Handler handler = new Handler(state);
 
         Assert.assertEquals(0, handler.doEpochVerbCalls);

@@ -57,7 +57,6 @@ public abstract class AbstractEpochMessage implements IEpochMessage
     @Override
     public Scope getScope()
     {
-        // TODO: test epochs aren't compared against the wrong scope
         return scope;
     }
 

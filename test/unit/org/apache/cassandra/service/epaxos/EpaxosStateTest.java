@@ -106,8 +106,8 @@ public class EpaxosStateTest extends AbstractEpaxosTest
     {
         MockMultiDcState state = new MockMultiDcState();
 
-        Assert.assertArrayEquals(new Scope[]{Scope.GLOBAL, Scope.LOCAL}, state.getActiveScopes(LOCAL_ADDRESS));
-        Assert.assertArrayEquals(new Scope[]{Scope.GLOBAL}, state.getActiveScopes(REMOTE_ADDRESS));
+        Assert.assertArrayEquals(Scope.BOTH, state.getActiveScopes(LOCAL_ADDRESS));
+        Assert.assertArrayEquals(Scope.GLOBAL_ONLY, state.getActiveScopes(REMOTE_ADDRESS));
     }
 
 }

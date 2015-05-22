@@ -40,6 +40,10 @@ public enum Scope
     GLOBAL(ConsistencyLevel.SERIAL),
     LOCAL(ConsistencyLevel.LOCAL_SERIAL);
 
+    public static final Scope[] BOTH = { GLOBAL, LOCAL};
+    public static final Scope[] GLOBAL_ONLY = { GLOBAL };
+    public static final Scope[] LOCAL_ONLY = { LOCAL };
+
     final ConsistencyLevel cl;
 
     Scope(ConsistencyLevel cl)
