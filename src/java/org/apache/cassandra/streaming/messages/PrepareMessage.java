@@ -44,14 +44,16 @@ public class PrepareMessage extends StreamMessage
             for (int i = 0; i < numSummaries; i++)
                 message.summaries.add(StreamSummary.serializer.deserialize(input, version));
 
-            // FIXME: figure out what to do about the stream version
-            numRequests = input.readInt();
-            for (int i = 0; i < numRequests; i++)
-                message.epaxosRequests.add(EpaxosRequest.serializer.deserialize(input, version));
-            // summaries
-            numSummaries = input.readInt();
-            for (int i = 0; i < numSummaries; i++)
-                message.epaxosSummaries.add(EpaxosSummary.serializer.deserialize(input, version));
+            if (version >= MessagingService.VERSION_30)
+            {
+                numRequests = input.readInt();
+                for (int i = 0; i < numRequests; i++)
+                    message.epaxosRequests.add(EpaxosRequest.serializer.deserialize(input, version));
+                // summaries
+                numSummaries = input.readInt();
+                for (int i = 0; i < numSummaries; i++)
+                    message.epaxosSummaries.add(EpaxosSummary.serializer.deserialize(input, version));
+            }
             return message;
         }
 
@@ -66,13 +68,15 @@ public class PrepareMessage extends StreamMessage
             for (StreamSummary summary : message.summaries)
                 StreamSummary.serializer.serialize(summary, out, version);
 
-            // FIXME: figure out what to do about the stream version
-            out.writeInt(message.epaxosRequests.size());
-            for (EpaxosRequest request: message.epaxosRequests)
-                EpaxosRequest.serializer.serialize(request, out, version);
-            out.writeInt(message.epaxosSummaries.size());
-            for (EpaxosSummary summary: message.epaxosSummaries)
-                EpaxosSummary.serializer.serialize(summary, out, version);
+            if (version >= MessagingService.VERSION_30)
+            {
+                out.writeInt(message.epaxosRequests.size());
+                for (EpaxosRequest request: message.epaxosRequests)
+                    EpaxosRequest.serializer.serialize(request, out, version);
+                out.writeInt(message.epaxosSummaries.size());
+                for (EpaxosSummary summary: message.epaxosSummaries)
+                    EpaxosSummary.serializer.serialize(summary, out, version);
+            }
         }
     };
 
