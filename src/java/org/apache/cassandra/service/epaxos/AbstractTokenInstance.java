@@ -15,17 +15,17 @@ public abstract class AbstractTokenInstance extends Instance
     protected final Token token;
     protected final Scope scope;
 
-    protected AbstractTokenInstance(InetAddress leader, String leaderDc, UUID cfId, Token token, Scope scope)
+    protected AbstractTokenInstance(InetAddress leader, UUID cfId, Token token, Scope scope)
     {
-        super(leader, leaderDc);
+        super(leader);
         this.cfId = cfId;
         this.token = token;
         this.scope = scope;
     }
 
-    protected AbstractTokenInstance(UUID id, InetAddress leader, String leaderDc, UUID cfId, Token token, Scope scope)
+    protected AbstractTokenInstance(UUID id, InetAddress leader, UUID cfId, Token token, Scope scope)
     {
-        super(id, leader, leaderDc);
+        super(id, leader);
         this.cfId = cfId;
         this.token = token;
         this.scope = scope;

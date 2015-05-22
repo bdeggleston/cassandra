@@ -55,12 +55,12 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
     {
         Node node = nodes.get(0);
 
-        Instance oldInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint(), node.getDc());
+        Instance oldInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         oldInstance.commit(Sets.<UUID>newHashSet());
         for (Node n: nodes)
             n.addMissingInstance(oldInstance);
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint(), node.getDc());
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
 
         node.preaccept(instance);
 
@@ -78,7 +78,7 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
     {
         setState(nodes.subList(1, nodes.size()), Node.State.DOWN);
         Node node = nodes.get(0);
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint(), node.getDc());
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
 
         node.preaccept(instance);
         Assert.assertNull(lastAcceptDecision);
@@ -92,13 +92,13 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
         Node node = nodes.get(0);
 
         // add an instance the leader doesn't know about
-        Instance oldInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint(), node.getDc());
+        Instance oldInstance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         oldInstance.commit(Sets.<UUID>newHashSet());
         for (Node n: nodes.subList(1, nodes.size()))
             n.addMissingInstance(oldInstance);
 
         Assert.assertNull(node.getInstance(oldInstance.getId()));
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint(), node.getDc());
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), node.getEndpoint());
         node.preaccept(instance);
 
         Assert.assertNotNull(lastAcceptDecision);

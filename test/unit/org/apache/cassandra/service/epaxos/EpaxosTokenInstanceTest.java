@@ -81,7 +81,7 @@ public class EpaxosTokenInstanceTest extends AbstractEpaxosTest
     @Test
     public void disagreeingRanges() throws InvalidInstanceStateChange
     {
-        TokenInstance instance = new TokenInstance(LOCALHOST, "DC1", CFID, TOKEN0, range(1, 2), DEFAULT_SCOPE);
+        TokenInstance instance = new TokenInstance(LOCALHOST, CFID, TOKEN0, range(1, 2), DEFAULT_SCOPE);
         instance.preaccept(Collections.<UUID>emptySet(), Collections.<UUID>emptySet());
         Assert.assertTrue(instance.getLeaderAttrsMatch());
 

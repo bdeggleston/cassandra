@@ -82,11 +82,11 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
     {
         MockExecutionState state = new MockExecutionState();
 
-        QueryInstance instance1 = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER, LEADER_DC);
+        QueryInstance instance1 = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER);
         instance1.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance1);
 
-        QueryInstance instance2 = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER, LEADER_DC);
+        QueryInstance instance2 = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER);
         instance2.commit(Sets.newHashSet(instance1.getId()));
         state.saveInstance(instance2);
 
@@ -104,7 +104,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
     public void skipExecution() throws Exception
     {
         MockExecutionState state = new MockExecutionState();
-        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER, LEADER_DC);
+        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER);
         instance.commit(Collections.<UUID>emptySet());
         instance.setNoop(true);
         state.saveInstance(instance);
@@ -123,7 +123,7 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
     public void keyStateCantExecute() throws Exception
     {
         MockExecutionState state = new MockExecutionState();
-        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER, LEADER_DC);
+        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER);
         instance.commit(Collections.<UUID>emptySet());
         state.saveInstance(instance);
 

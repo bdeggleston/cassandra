@@ -27,15 +27,15 @@ public class QueryInstance extends Instance
         query = i.query;
     }
 
-    public QueryInstance(SerializedRequest query, InetAddress leader, String leaderDc)
+    public QueryInstance(SerializedRequest query, InetAddress leader)
     {
-        super(leader, leaderDc);
+        super(leader);
         this.query = query;
     }
 
-    public QueryInstance(UUID id, SerializedRequest query, InetAddress leader, String leaderDc)
+    public QueryInstance(UUID id, SerializedRequest query, InetAddress leader)
     {
-        super(id, leader, leaderDc);
+        super(id, leader);
         this.query = query;
     }
 
@@ -54,7 +54,7 @@ public class QueryInstance extends Instance
 
     public Instance copyRemote()
     {
-        Instance instance = new QueryInstance(this.id, this.query, this.leader, this.leaderDc);
+        Instance instance = new QueryInstance(this.id, this.query, this.leader);
         instance.ballot = ballot;
         instance.noop = noop;
         instance.state = state;
@@ -100,7 +100,6 @@ public class QueryInstance extends Instance
             UUIDSerializer.serializer.serialize(instance.id, out, version);
             SerializedRequest.serializer.serialize(instance.getQuery(), out, version);
             CompactEndpointSerializationHelper.serialize(instance.leader, out);
-            out.writeUTF(instance.leaderDc);
         }
 
         @Override
@@ -108,8 +107,7 @@ public class QueryInstance extends Instance
         {
             return new QueryInstance(UUIDSerializer.serializer.deserialize(in, version),
                                      SerializedRequest.serializer.deserialize(in, version),
-                                     CompactEndpointSerializationHelper.deserialize(in),
-                                     in.readUTF());
+                                     CompactEndpointSerializationHelper.deserialize(in));
         }
 
         @Override
@@ -119,7 +117,6 @@ public class QueryInstance extends Instance
             size += UUIDSerializer.serializer.serializedSize(instance.id, version);
             size += SerializedRequest.serializer.serializedSize(instance.getQuery(), version);
             size += CompactEndpointSerializationHelper.serializedSize(instance.leader);
-            size += TypeSizes.NATIVE.sizeof(instance.leaderDc);
             return size;
         }
     };

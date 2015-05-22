@@ -91,7 +91,6 @@ public abstract class Instance
 
     protected final UUID id;
     protected final InetAddress leader;
-    protected final String leaderDc; // TODO: maybe remove
     protected volatile State state = State.INITIALIZED;
     protected volatile int ballot = 0;
     protected volatile long executionEpoch = -1;
@@ -115,22 +114,21 @@ public abstract class Instance
 
     private final DependencyFilter dependencyFilter;
 
-    Instance(InetAddress leader, String leaderDc)
+    Instance(InetAddress leader)
     {
-        this(UUIDGen.getTimeUUID(), leader, leaderDc);
+        this(UUIDGen.getTimeUUID(), leader);
     }
 
-    Instance(UUID id, InetAddress leader, String leaderDc)
+    Instance(UUID id, InetAddress leader)
     {
         this.id = id;
         this.dependencyFilter = new DependencyFilter();
         this.leader = leader;
-        this.leaderDc = leaderDc;
     }
 
     protected Instance(Instance i)
     {
-        this(i.id, i.leader, i.leaderDc);
+        this(i.id, i.leader);
         state = i.state;
         ballot = i.ballot;
         noop = i.noop;
@@ -190,11 +188,6 @@ public abstract class Instance
     public InetAddress getLeader()
     {
         return leader;
-    }
-
-    public String getLeaderDc()
-    {
-        return leaderDc;
     }
 
     public void setNoop(boolean noop)

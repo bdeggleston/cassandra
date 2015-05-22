@@ -398,14 +398,14 @@ public class EpaxosState
      */
     protected QueryInstance createQueryInstance(SerializedRequest request)
     {
-        QueryInstance instance = new QueryInstance(request, getEndpoint(), getDc());
+        QueryInstance instance = new QueryInstance(request, getEndpoint());
         logger.debug("Created QueryInstance {} on token {}", instance.getId(), instance.getToken());
         return instance;
     }
 
     protected EpochInstance createEpochInstance(Token token, UUID cfId, long epoch, Scope scope)
     {
-        EpochInstance instance = new EpochInstance(getEndpoint(), getDc(), token, cfId, epoch, scope);
+        EpochInstance instance = new EpochInstance(getEndpoint(), token, cfId, epoch, scope);
         logger.debug("Created EpochInstance {} for epoch {} on token {}", instance.getId(), instance.getEpoch(), instance.getToken());
         return instance;
     }
@@ -417,7 +417,7 @@ public class EpaxosState
         ts.lock.readLock().lock();
         try
         {
-            instance = new TokenInstance(getEndpoint(), getDc(), cfId, token, ts.getRange(), scope);
+            instance = new TokenInstance(getEndpoint(), cfId, token, ts.getRange(), scope);
         }
         finally
         {

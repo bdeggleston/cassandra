@@ -21,15 +21,15 @@ public class EpochInstance extends AbstractTokenInstance
     private final long epoch;
     private volatile boolean vetoed;
 
-    public EpochInstance(InetAddress leader, String leaderDc, Token token, UUID cfId, long epoch, Scope type)
+    public EpochInstance(InetAddress leader, Token token, UUID cfId, long epoch, Scope type)
     {
-        super(leader, leaderDc, cfId, token, type);
+        super(leader, cfId, token, type);
         this.epoch = epoch;
     }
 
-    public EpochInstance(UUID id, InetAddress leader, String leaderDc, Token token, UUID cfId, long epoch, Scope type)
+    public EpochInstance(UUID id, InetAddress leader, Token token, UUID cfId, long epoch, Scope type)
     {
-        super(id, leader, leaderDc, cfId, token, type);
+        super(id, leader, cfId, token, type);
         this.epoch = epoch;
     }
 
@@ -49,7 +49,7 @@ public class EpochInstance extends AbstractTokenInstance
     @Override
     public Instance copyRemote()
     {
-        Instance instance = new EpochInstance(this.id, this.leader, this.leaderDc, this.token, this.cfId, this.epoch, this.scope);
+        Instance instance = new EpochInstance(this.id, this.leader, this.token, this.cfId, this.epoch, this.scope);
         instance.ballot = ballot;
         instance.noop = noop;
         instance.state = state;
@@ -123,7 +123,6 @@ public class EpochInstance extends AbstractTokenInstance
         {
             UUIDSerializer.serializer.serialize(instance.getId(), out, version);
             CompactEndpointSerializationHelper.serialize(instance.getLeader(), out);
-            out.writeUTF(instance.leaderDc);
             Token.serializer.serialize(instance.token, out);
             UUIDSerializer.serializer.serialize(instance.cfId, out, version);
             out.writeLong(instance.epoch);
@@ -136,7 +135,6 @@ public class EpochInstance extends AbstractTokenInstance
         {
             EpochInstance instance = new EpochInstance(UUIDSerializer.serializer.deserialize(in, version),
                                                        CompactEndpointSerializationHelper.deserialize(in),
-                                                       in.readUTF(),
                                                        Token.serializer.deserialize(in),
                                                        UUIDSerializer.serializer.deserialize(in, version),
                                                        in.readLong(),
@@ -152,7 +150,6 @@ public class EpochInstance extends AbstractTokenInstance
             long size = 0;
             size += UUIDSerializer.serializer.serializedSize(instance.getId(), version);
             size += CompactEndpointSerializationHelper.serializedSize(instance.getLeader());
-            size += TypeSizes.NATIVE.sizeof(instance.leaderDc);
             size += Token.serializer.serializedSize(instance.token, TypeSizes.NATIVE);
             size += UUIDSerializer.serializer.serializedSize(instance.cfId, version);
             size += 8;

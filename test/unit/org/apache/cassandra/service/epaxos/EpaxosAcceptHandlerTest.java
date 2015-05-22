@@ -56,7 +56,7 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
     {
         MockVerbHandlerState state = new MockVerbHandlerState();
         AcceptVerbHandler handler = new AcceptVerbHandler(state);
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         state.instanceMap.put(instance.getId(), instance.copy());
@@ -94,7 +94,7 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
     {
         MockVerbHandlerState state = new MockVerbHandlerState();
         AcceptVerbHandler handler = new AcceptVerbHandler(state);
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         Assert.assertEquals(0, state.missingRecoreded.size());
@@ -121,7 +121,7 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
     {
         MockVerbHandlerState state = new MockVerbHandlerState();
         AcceptVerbHandler handler = new AcceptVerbHandler(state);
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         state.instanceMap.put(instance.getId(), instance.copy());
@@ -149,7 +149,7 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
         MockVerbHandlerState state = new MockVerbHandlerState();
         AcceptVerbHandler handler = new AcceptVerbHandler(state);
 
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.accept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
         Assert.assertFalse(state.acknowledgedRecoreded.contains(instance.getId()));
@@ -171,7 +171,7 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
     {
         MockVerbHandlerState state = new MockVerbHandlerState();
         AcceptVerbHandler handler = new AcceptVerbHandler(state);
-        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER, LEADER_DC);
+        Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
         instance.makePlacehoder();
 

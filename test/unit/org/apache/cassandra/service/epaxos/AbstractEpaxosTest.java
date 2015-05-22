@@ -31,6 +31,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 
@@ -194,6 +195,12 @@ public abstract class AbstractEpaxosTest
         clearInstances();
         clearKeyStates();
         clearTokenStates();
+    }
+
+    @Before
+    public void cleanup()
+    {
+        clearAll();
     }
 
     protected MessageEnvelope<Instance> wrapInstance(Instance instance)

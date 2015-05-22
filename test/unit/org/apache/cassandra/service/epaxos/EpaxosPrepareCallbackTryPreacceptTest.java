@@ -227,7 +227,7 @@ public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
     public void differentSplitRanges() throws InvalidInstanceStateChange
     {
         TryPreacceptOnlyState state = new TryPreacceptOnlyState(3, 0);
-        TokenInstance instance = new TokenInstance(state.getEndpoint(), state.getDc(), CFID, token(50), range(0, 100), DEFAULT_SCOPE);
+        TokenInstance instance = new TokenInstance(state.getEndpoint(), CFID, token(50), range(0, 100), DEFAULT_SCOPE);
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
 
