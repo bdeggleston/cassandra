@@ -165,7 +165,6 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
                 this.cfId = cfId;
                 this.epoch = epoch;
                 this.scope = scope;
-                // TODO: add scope to FRCall checks
             }
         }
 
@@ -189,6 +188,7 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
         Assert.assertEquals(ts.getToken(), frCall.token);
         Assert.assertEquals(ts.getCfId(), frCall.cfId);
         Assert.assertEquals(0, frCall.epoch);
+        Assert.assertEquals(DEFAULT_SCOPE, frCall.scope);
     }
 
     @Test

@@ -46,7 +46,6 @@ public class InstanceStreamReader
         this.cfId = cfId;
         this.range = range;
 
-        // TODO: test
         if (scope == Scope.LOCAL && !state.isInSameDC(peer))
         {
             throw new AssertionError("Can't stream local scope instances from another datacenter");
@@ -111,7 +110,7 @@ public class InstanceStreamReader
             TokenState ts = getExact(token);
             if (ts == null)
             {
-                ts = new TokenState(range, cfId, 0, 0, TokenState.State.RECOVERING_INSTANCES);
+                ts = new TokenState(range, cfId, 0, 0, TokenState.State.RECOVERY_REQUIRED);
                 TokenState previous = tsm.putState(ts);
                 if (previous == ts)
                 {

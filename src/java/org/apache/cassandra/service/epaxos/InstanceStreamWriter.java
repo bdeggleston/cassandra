@@ -59,7 +59,6 @@ public class InstanceStreamWriter
         this.cfId = cfId;
         this.range = range;
 
-        // TODO: test
         if (scope == Scope.LOCAL && !state.isInSameDC(peer))
         {
             throw new AssertionError("Can't stream local scope instances to another datacenter");
