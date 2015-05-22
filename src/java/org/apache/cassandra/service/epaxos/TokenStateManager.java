@@ -557,7 +557,7 @@ public class TokenStateManager
         return  states.get(cfId).epochThreshold;
     }
 
-    private int getUnsavedExecutionThreshold(UUID cfId)
+    protected int getUnsavedExecutionThreshold(UUID cfId)
     {
         return  states.get(cfId).unsavedExecutionThreshold;
     }

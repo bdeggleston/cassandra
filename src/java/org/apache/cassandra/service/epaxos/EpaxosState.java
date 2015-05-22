@@ -16,14 +16,18 @@ import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
+import org.apache.cassandra.db.marshal.InetAddressType;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.DataOutputBuffer;
+import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.net.*;
+import org.apache.cassandra.service.AbstractWriteResponseHandler;
+import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.streaming.messages.FileMessageHeader;
@@ -597,6 +601,7 @@ public class EpaxosState
                 sendOneWay(message, endpoint);
             }
 
+            // TODO: remove and test epaxos messages are never sent to remote endpoints
             // send to remote datacenters for LOCAL_SERIAL queries
             for (InetAddress endpoint : participantInfo.remoteEndpoints)
             {
@@ -660,8 +665,37 @@ public class EpaxosState
         long minTimestamp = Math.max(maxTimestamp + 1, UUIDGen.unixTimestamp(instance.getId()) * 1000);
         SerializedRequest.ExecutionMetaData metaData = request.execute(minTimestamp);
         maybeSetResultFuture(instance.getId(), metaData.result);
-        // TODO: disseminate mutations to remote dcs for LOCAL_SERIAL instances
+        if (instance.getScope() == Scope.LOCAL && metaData.mutation != null)
+        {
+            disseminateMutation(instance, metaData.mutation);
+        }
         return Pair.create(metaData.replayPosition, metaData.maxTimestamp);
+    }
+
+    protected void sendToHintedEndpoints(Mutation mutation, Collection<InetAddress> endpoints)
+    {
+        AbstractReplicationStrategy rs = Keyspace.open(mutation.getKeyspaceName()).getReplicationStrategy();
+        AbstractWriteResponseHandler responseHandler = rs.getWriteResponseHandler(endpoints,
+                                                                                  Collections.EMPTY_LIST,
+                                                                                  ConsistencyLevel.ONE,
+                                                                                  null, WriteType.SIMPLE);
+        try
+        {
+            StorageProxy.sendToHintedEndpoints(mutation, endpoints, responseHandler, getDc());
+        }
+        catch (OverloadedException e)
+        {
+            // do nothing
+        }
+    }
+
+    protected void disseminateMutation(QueryInstance instance, Mutation mutation)
+    {
+        ParticipantInfo pi = getParticipants(instance);
+        if (!pi.remoteEndpoints.isEmpty())
+        {
+            sendToHintedEndpoints(mutation, pi.remoteEndpoints);
+        }
     }
 
     /**
