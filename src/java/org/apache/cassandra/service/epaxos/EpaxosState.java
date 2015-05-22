@@ -1172,15 +1172,15 @@ public class EpaxosState
         return true;
     }
 
+    public boolean managesCfId(UUID cfId, Scope scope)
+    {
+        return getTokenStateManager(scope).managesCfId(cfId);
+    }
+
     // repair / streaming support
     public boolean managesCfId(UUID cfId)
     {
-        for (TokenStateManager tokenStateManager: tokenStateManagers.values())
-        {
-            if (tokenStateManager.managesCfId(cfId))
-                return true;
-        }
-        return false;
+        return managesCfId(cfId, Scope.GLOBAL) || managesCfId(cfId, Scope.LOCAL);
     }
 
     /**

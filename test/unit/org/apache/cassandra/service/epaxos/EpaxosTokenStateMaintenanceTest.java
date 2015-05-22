@@ -21,6 +21,7 @@ package org.apache.cassandra.service.epaxos;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.collect.Sets;
@@ -194,13 +195,14 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
     @Test
     public void tokenCoverageNewToken()
     {
-        // TODO: test that tokens aren't created for inactive scopes
         final AtomicReference<TokenInstance> preaccepted = new AtomicReference<>();
+        final AtomicInteger preacceptCalls = new AtomicInteger(0);
         MockCallbackState state = new MockCallbackState(3, 0) {
             @Override
             public Object process(Instance instance) throws WriteTimeoutException
             {
                 preaccepted.set((TokenInstance) instance);
+                preacceptCalls.incrementAndGet();
                 return null;
             }
         };
@@ -219,5 +221,7 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
         Assert.assertEquals(CFID, instance.getCfId());
         Assert.assertEquals(newToken, instance.getToken());
 
+        // should only have run an instance for the GLOBAL scope
+        Assert.assertEquals(1, preacceptCalls.get());
     }
 }

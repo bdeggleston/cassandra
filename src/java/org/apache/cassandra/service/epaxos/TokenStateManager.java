@@ -188,7 +188,6 @@ public class TokenStateManager
 
     public synchronized void start()
     {
-        // TODO: test we're only loading the token states in our scope
         assert !started;
         UntypedResultSet rows = QueryProcessor.executeInternal(String.format("SELECT * FROM %s.%s", keyspace, table));
         for (UntypedResultSet.Row row: rows)
@@ -233,6 +232,13 @@ public class TokenStateManager
     void setStarted()
     {
         started = true;
+    }
+
+    @VisibleForTesting
+    int numManagedTokensFor(UUID cfId)
+    {
+        ManagedCf cf = states.get(cfId);
+        return cf != null ? cf.tokens.size() : 0;
     }
 
     protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)

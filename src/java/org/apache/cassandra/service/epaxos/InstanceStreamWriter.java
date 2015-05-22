@@ -44,8 +44,6 @@ public class InstanceStreamWriter
     private final StreamManager.StreamRateLimiter limiter;
     private long bytesSinceFlush = 0;
 
-    // TODO: test that both scopes are streamed on bootstrap
-    // TODO: test that 'ghost' scopes aren't created (ie: streams shouldn't create a local scope if the remote node doesn't have one)
     // TODO: check your TODOs in streaming/storage service
 
     public InstanceStreamWriter(UUID cfId, Range<Token> range, Scope scope, InetAddress peer)

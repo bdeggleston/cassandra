@@ -2,7 +2,12 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
+
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.LongToken;
 import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.dht.Range;
@@ -37,7 +42,12 @@ public class EpaxosTokenStateManagerTest extends AbstractEpaxosTest
 
     private static TokenStateManager getTokenStateManager()
     {
-        return new TokenStateManager(DEFAULT_SCOPE) {
+        return getTokenStateManager(Scope.GLOBAL);
+    }
+
+    private static TokenStateManager getTokenStateManager(Scope scope)
+    {
+        return new TokenStateManager(scope) {
             @Override
             protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
             {
@@ -152,5 +162,45 @@ public class EpaxosTokenStateManagerTest extends AbstractEpaxosTest
 
         ts = tsm.get(TOKEN100, CFID);
         Assert.assertEquals(TokenState.State.RECOVERY_REQUIRED, ts.getState());
+    }
+
+    @Test
+    public void otherScopeIsntLoadedOnStart()
+    {
+        TokenStateManager global = new TokenStateManager(Scope.GLOBAL) {
+            @Override
+            protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
+            {
+                return Sets.newHashSet(new Range<Token>(token(0), token(100)));
+            }
+        };
+        global.start();
+        global.get(token(100), CFID);
+
+
+        TokenStateManager local = new TokenStateManager(Scope.LOCAL) {
+            @Override
+            protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
+            {
+                return Sets.newHashSet(new Range<Token>(token(100), token(200)));
+            }
+        };
+        local.start();
+        local.get(token(200), CFID);
+
+        Assert.assertEquals(1, global.numManagedTokensFor(CFID));
+        Assert.assertEquals(1, local.numManagedTokensFor(CFID));
+
+        String query = String.format("SELECT * FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
+        Assert.assertEquals(2, QueryProcessor.executeInternal(query).size());
+
+        TokenStateManager global2 = new TokenStateManager(Scope.GLOBAL);
+        global2.start();
+
+        TokenStateManager local2 = new TokenStateManager(Scope.LOCAL);
+        local2.start();
+
+        Assert.assertEquals(1, global2.numManagedTokensFor(CFID));
+        Assert.assertEquals(1, local2.numManagedTokensFor(CFID));
     }
 }

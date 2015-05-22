@@ -252,10 +252,11 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     public void addEpaxosTransfer(UUID cfId, Range<Token> range, Scope scope)
     {
-        if (!EpaxosState.getInstance().managesCfId(cfId))
+        if (!EpaxosState.getInstance().managesCfId(cfId, scope))
         {
             Pair<String, String> cf = Schema.instance.getCF(cfId);
             logger.info("Table {} not managed by epaxos, skipping token state transfer", cf != null ? cf : cfId);
+            return;
         }
         UUID taskId = UUIDGen.getTimeUUID();
         epaxosTransfers.put(taskId, new EpaxosTransferTask(this, taskId, cfId, range, scope));
