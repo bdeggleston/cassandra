@@ -7,6 +7,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -98,4 +100,19 @@ public class EpaxosStateTest extends AbstractEpaxosTest
         Assert.assertEquals(localInstance.getId(), executed.get());
         Assert.assertEquals(Sets.newHashSet(extInstance.getId()), commitNotifications);
     }
+
+    @Test
+    public void activeScopes() throws UnknownHostException
+    {
+        String dc2 = "DC2";
+        InetAddress localAddress = InetAddress.getByName("127.0.0.2");
+        InetAddress remoteAddress = InetAddress.getByName("127.0.0.3");
+        MockMultiDcState state = new MockMultiDcState();
+        state.dcs.put(localAddress, DC1);
+        state.dcs.put(remoteAddress, dc2);
+
+        Assert.assertArrayEquals(new Scope[]{Scope.GLOBAL, Scope.LOCAL}, state.getActiveScopes(localAddress));
+        Assert.assertArrayEquals(new Scope[]{Scope.GLOBAL}, state.getActiveScopes(remoteAddress));
+    }
+
 }

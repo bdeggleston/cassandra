@@ -26,8 +26,15 @@ import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 
 /**
-* TODO: explain why this is neccesary
-*/
+ * This is used to provide separate TokenStateManagers and KeyStateManagers for SERIAL
+ * and LOCAL_SERIAL instances. Although it's not a good idea to mix SERIAL and LOCAL_SERIAL
+ * consistency levels, that doesn't mean it won't happen. Segregating the bookkeeping for
+ * the two consistency levels prevents inconsistent views across datacenters of which instances
+ * are required for token and epoch instances. It also prevents edge cases where the inability
+ * to communicate with a datacenter prevents progress in general for LOCAL_SERIAL instances. Of
+ * course, this means there's no attempt serialization on SERIAL and LOCAL_SERIAL instances on
+ * the same partition, but you give up those guarantees when you mix them anyway.
+ */
 public enum Scope
 {
     GLOBAL(ConsistencyLevel.SERIAL),

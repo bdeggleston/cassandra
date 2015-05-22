@@ -183,7 +183,7 @@ public class TokenStateManager
     {
         this.keyspace = keyspace;
         this.table = table;
-        this.scope = scope;  // TODO: use this in queries
+        this.scope = scope;
     }
 
     public synchronized void start()
@@ -237,7 +237,6 @@ public class TokenStateManager
 
     protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
     {
-        // TODO: return different ranges for GLOBAL vs LOCAL
         TokenMetadata tkm = StorageService.instance.getTokenMetadata();
         ArrayList<Token> tokens = tkm.sortedTokens();
         InetAddress localEndpoint = FBUtilities.getLocalAddress();

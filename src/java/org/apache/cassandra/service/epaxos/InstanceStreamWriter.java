@@ -48,7 +48,6 @@ public class InstanceStreamWriter
     // TODO: test that 'ghost' scopes aren't created (ie: streams shouldn't create a local scope if the remote node doesn't have one)
     // TODO: check your TODOs in streaming/storage service
 
-    // FIXME: work out how to stream multiple scopes
     public InstanceStreamWriter(UUID cfId, Range<Token> range, Scope scope, InetAddress peer)
     {
         this(EpaxosState.getInstance(), cfId, range, scope, peer);

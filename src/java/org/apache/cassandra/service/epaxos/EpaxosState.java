@@ -1595,11 +1595,16 @@ public class EpaxosState
         return DatabaseDescriptor.getEndpointSnitch().getDatacenter(endpoint);
     }
 
-    public Scope[] getActiveScopes(UUID cfId, Range<Token> range, InetAddress address)
+    public Scope[] getActiveScopes(InetAddress address)
     {
-        // TODO: don't request local if the address is in another DC
-        // TODO: this
-        return new Scope[]{Scope.GLOBAL, Scope.LOCAL};
+        if (getDc().equals(getDc(address)))
+        {
+            return new Scope[]{Scope.GLOBAL, Scope.LOCAL};
+        }
+        else
+        {
+            return new Scope[]{Scope.GLOBAL};
+        }
     }
 
     protected String getInstanceKeyspace(Instance instance)

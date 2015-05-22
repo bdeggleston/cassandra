@@ -33,6 +33,12 @@ class MockMultiDcState extends EpaxosState
     }
 
     @Override
+    protected String getDc()
+    {
+        return AbstractEpaxosTest.DC1;
+    }
+
+    @Override
     protected String getDc(InetAddress endpoint)
     {
         String dc = dcs.get(endpoint);
