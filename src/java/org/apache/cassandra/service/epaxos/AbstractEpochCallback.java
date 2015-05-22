@@ -20,6 +20,12 @@ public abstract class AbstractEpochCallback<T extends IEpochMessage> implements 
     public final void response(MessageIn<T> message)
     {
         Scope scope = message.payload.getScope();
+        if (scope == Scope.LOCAL && !state.isInSameDC(message.from))
+        {
+            logger.warn("Received message with LOCAL scope from other dc");
+            // ignore completely
+            return;
+        }
         TokenState tokenState = state.getTokenState(message.payload);
         tokenState.lock.readLock().lock();
         EpochDecision decision;

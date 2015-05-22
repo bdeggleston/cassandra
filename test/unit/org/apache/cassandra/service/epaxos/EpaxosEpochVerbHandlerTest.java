@@ -27,8 +27,14 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
 
     private static MessageIn<Message> getMessage(long epoch) throws UnknownHostException
     {
-        return MessageIn.create(LOCALHOST,
-                                new Message(MESSAGE_TOKEN, CFID, epoch, Scope.GLOBAL),
+
+        return getMessage(epoch, LOCALHOST, Scope.GLOBAL);
+    }
+
+    private static MessageIn<Message> getMessage(long epoch, InetAddress from, Scope scope) throws UnknownHostException
+    {
+        return MessageIn.create(from,
+                                new Message(MESSAGE_TOKEN, CFID, epoch, scope),
                                 Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.ECHO,
                                 0);
@@ -210,5 +216,35 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         Handler handler = new Handler(state);
         handler.doVerb(getMessage(5), 0);
         Assert.assertEquals(1, state.localFailureCalls);
+    }
+
+    @Test
+    public void localScopeMessagesFromRemoteDCsAreIgnored() throws Exception
+    {
+        State state = new State(5) {
+            @Override
+            public TokenState getTokenState(IEpochMessage message)
+            {
+                throw new AssertionError();
+            }
+        };
+
+        Handler handler = new Handler(state) {
+            @Override
+            public void doEpochVerb(MessageIn<Message> message, int id)
+            {
+                throw new AssertionError();
+            }
+        };
+
+        Assert.assertEquals(0, handler.doEpochVerbCalls);
+        Assert.assertEquals(0, state.remoteFailureCalls);
+        Assert.assertEquals(0, state.localFailureCalls);
+
+        handler.doVerb(getMessage(4, REMOTE_ADDRESS, Scope.LOCAL), 0);
+
+        Assert.assertEquals(0, handler.doEpochVerbCalls);
+        Assert.assertEquals(0, state.remoteFailureCalls);
+        Assert.assertEquals(0, state.localFailureCalls);
     }
 }

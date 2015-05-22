@@ -496,7 +496,14 @@ public class EpaxosState
             return;
         }
 
-        instance.setDependencies(decision.acceptDeps);
+        try
+        {
+            instance.accept(decision.acceptDeps);
+        }
+        catch (InvalidInstanceStateChange e)
+        {
+            throw new RuntimeException(e);
+        }
 
         if (instance instanceof EpochInstance)
         {
@@ -516,16 +523,6 @@ public class EpaxosState
                                                       getCurrentEpoch(instance),
                                                       missingInstances.get(endpoint));
             sendRR(request.getMessage(), endpoint, callback);
-        }
-
-        // send to remote datacenters for LOCAL_SERIAL queries
-        for (InetAddress endpoint : participantInfo.remoteEndpoints)
-        {
-            logger.debug("sending accept request to non-local dc {} for instance {}", endpoint, instance.getId());
-            AcceptRequest request = new AcceptRequest(instance,
-                                                      getCurrentEpoch(instance),
-                                                      null);
-            sendOneWay(request.getMessage(), endpoint);
         }
     }
 
@@ -599,17 +596,6 @@ public class EpaxosState
             {
                 logger.debug("sending commit request to {} for instance {}", endpoint, instance.getId());
                 sendOneWay(message, endpoint);
-            }
-
-            // TODO: remove and test epaxos messages are never sent to remote endpoints
-            // send to remote datacenters for LOCAL_SERIAL queries
-            for (InetAddress endpoint : participantInfo.remoteEndpoints)
-            {
-                if (isAlive(endpoint))
-                {
-                    logger.debug("sending commit request to non-local dc {} for instance {}", endpoint, instance.getId());
-                    sendOneWay(message, endpoint);
-                }
             }
         }
         catch (InvalidInstanceStateChange e)

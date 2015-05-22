@@ -24,6 +24,12 @@ public abstract class AbstractEpochVerbHandler<T extends IEpochMessage> implemen
     {
 
         Scope scope = message.payload.getScope();
+        if (scope == Scope.LOCAL && !state.isInSameDC(message.from))
+        {
+            logger.warn("Received message with LOCAL scope from other dc");
+            // ignore completely
+            return;
+        }
         TokenState tokenState = state.getTokenState(message.payload);
         logger.debug("Epoch message received from {} regarding {}", message.from, tokenState);
         tokenState.lock.readLock().lock();

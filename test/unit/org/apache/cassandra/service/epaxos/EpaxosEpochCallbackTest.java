@@ -24,12 +24,12 @@ public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
 
     private static MessageIn<Message> getMessage(long epoch)
     {
-        return getMessage(epoch, DEFAULT_SCOPE);
+        return getMessage(epoch, LOCALHOST, DEFAULT_SCOPE);
     }
 
-    private static MessageIn<Message> getMessage(long epoch, Scope scope)
+    private static MessageIn<Message> getMessage(long epoch, InetAddress from, Scope scope)
     {
-        return MessageIn.create(LOCALHOST,
+        return MessageIn.create(from,
                                 new Message(MESSAGE_TOKEN, CFID, epoch, scope),
                                 Collections.<String, byte[]>emptyMap(),
                                 MessagingService.Verb.ECHO,
@@ -199,5 +199,35 @@ public class EpaxosEpochCallbackTest extends AbstractEpaxosTest
         Callback callback = new Callback(state);
         callback.response(getMessage(5));
         Assert.assertEquals(1, state.localFailureCalls);
+    }
+
+    @Test
+    public void localScopeMessagesFromRemoteDCsAreIgnored() throws Exception
+    {
+        State state = new State(5) {
+            @Override
+            public TokenState getTokenState(IEpochMessage message)
+            {
+                throw new AssertionError();
+            }
+        };
+
+        Callback callback = new Callback(state) {
+            @Override
+            public void epochResponse(MessageIn<Message> msg)
+            {
+                throw new AssertionError();
+            }
+        };
+
+        Assert.assertEquals(0, callback.epochResponseCalls);
+        Assert.assertEquals(0, state.remoteFailureCalls);
+        Assert.assertEquals(0, state.localFailureCalls);
+
+        callback.response(getMessage(5, REMOTE_ADDRESS, Scope.LOCAL));
+
+        Assert.assertEquals(0, callback.epochResponseCalls);
+        Assert.assertEquals(0, state.remoteFailureCalls);
+        Assert.assertEquals(0, state.localFailureCalls);
     }
 }
