@@ -16,7 +16,6 @@ import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
-import org.apache.cassandra.db.marshal.InetAddressType;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.exceptions.*;
@@ -30,6 +29,8 @@ import org.apache.cassandra.service.AbstractWriteResponseHandler;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
+import org.apache.cassandra.streaming.StreamSession;
+import org.apache.cassandra.streaming.StreamTask;
 import org.apache.cassandra.streaming.messages.FileMessageHeader;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
@@ -38,16 +39,15 @@ import org.apache.cassandra.utils.IFilter;
 import org.apache.cassandra.utils.MergeIterator;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDGen;
+import org.apache.mina.util.ConcurrentHashSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
@@ -69,8 +69,7 @@ public class EpaxosState
 
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
 
-    // the amount of time the prepare phase will wait for the leader to commit an instance before
-    // attempting a prepare phase. This is multiplied by a replica's position in the successor list
+    // the amount of time the prepare phase will wait for the leader to commit an instance before attempting a prepare phase.
     protected static long PREPARE_GRACE_MILLIS = Long.getLong("cassandra.epaxos.prepare_grace_millis",
                                                               DatabaseDescriptor.getMinRpcTimeout() / 2);
 
@@ -94,16 +93,52 @@ public class EpaxosState
 
     private final Random random = new Random();
 
-    private final Predicate<InetAddress> nonLocalPredicate = new Predicate<InetAddress>()
-    {
-        @Override
-        public boolean apply(InetAddress inetAddress)
-        {
-            return !getEndpoint().equals(inetAddress);
-        }
-    };
-
     private final Map<UUID, SettableFuture> resultFutures = Maps.newConcurrentMap();
+
+    public static class PausedKeys
+    {
+        // the keys that are paused (immutable)
+        private final Set<ByteBuffer> keys;
+        private final UUID cfId;
+
+        // keys that had skipped executions because of pause
+        private final Set<Pair<ByteBuffer, Scope>> skipped = new ConcurrentHashSet<>();
+
+        public PausedKeys(Set<ByteBuffer> keys, UUID cfId)
+        {
+            this.keys = keys;
+            this.cfId = cfId;
+        }
+
+        @VisibleForTesting
+        Set<Pair<ByteBuffer, Scope>> getSkipped()
+        {
+            return skipped;
+        }
+
+        private boolean shouldSkip(ByteBuffer key, UUID cfId, Scope scope)
+        {
+            if (!this.cfId.equals(cfId))
+            {
+                return false;
+            }
+
+            if (keys.contains(key))
+            {
+                skipped.add(Pair.create(key, scope));
+
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        // don't implement equals or hashCode
+    }
+
+    private volatile Set<PausedKeys> pausedKeys = ImmutableSet.of();
 
     public class ParticipantInfo
     {
@@ -811,7 +846,7 @@ public class EpaxosState
 
     void startTokenStateGc(TokenState tokenState, Scope scope)
     {
-        getStage(Stage.MUTATION).submit(new GarbageCollectionTask(this, tokenState, getKeyStateManager(scope)));
+        getStage(Stage.MUTATION).submit(new GarbageCollectionTask(this, tokenState, scope));
     }
 
     protected PrepareCallback getPrepareCallback(UUID id, int ballot, ParticipantInfo participantInfo, PrepareGroup group, int attempt)
@@ -1235,8 +1270,74 @@ public class EpaxosState
         }
     }
 
+    public PausedKeys pauseKeys(Set<ByteBuffer> keys, UUID cfId)
+    {
+        if (!managesCfId(cfId))
+        {
+            return null;
+        }
+
+        PausedKeys keySet = new PausedKeys(keys, cfId);
+        synchronized (this)
+        {
+            pausedKeys = ImmutableSet.<PausedKeys>builder().addAll(pausedKeys).add(keySet).build();
+        }
+        return keySet;
+        // TODO: test
+    }
+
+    public void unPauseKeys(PausedKeys keySet)
+    {
+        if (keySet == null)
+        {
+            return;
+        }
+
+        synchronized (this)
+        {
+            Set<PausedKeys> temp = new HashSet<>(pausedKeys);
+            temp.remove(keySet);
+            pausedKeys = ImmutableSet.copyOf(temp);
+        }
+
+        getStage(Stage.READ).submit(new PostStreamTask.KeyCollection(this, keySet.cfId, keySet.skipped));
+        // TODO: test
+    }
+
+    boolean isPaused(Instance instance)
+    {
+        if (instance.getType() != Instance.Type.QUERY)
+            return false;
+
+        return isPaused(((QueryInstance) instance).getQuery().getKey(),
+                        instance.getCfId(), instance.getScope());
+    }
+
+    boolean isPaused(ByteBuffer key, UUID cfId, Scope scope)
+    {
+        boolean paused = false;
+        for (PausedKeys keySet: pausedKeys)
+        {
+            paused = keySet.shouldSkip(key, cfId, scope) || paused;
+        }
+        return paused;
+        // TODO: test
+    }
+
+    @VisibleForTesting
+    int numPauseSets()
+    {
+        return pausedKeys.size();
+    }
+
     public boolean canExecute(Instance instance)
     {
+        TokenState ts = getTokenStateManager(instance).get(instance);
+        if (!ts.getState().isOkToExecute())
+        {
+            return false;
+        }
+
         if (instance.getType() == Instance.Type.QUERY)
         {
             QueryInstance queryInstance = (QueryInstance) instance;
@@ -1616,7 +1717,6 @@ public class EpaxosState
     {
         return getDc().equals(getDc(peer));
     }
-
     public Scope[] getActiveScopes(InetAddress address)
     {
         return isInSameDC(address) ? Scope.BOTH : Scope.GLOBAL_ONLY;

@@ -43,6 +43,9 @@ import java.util.*;
 public class KeyState
 {
     public static final long MIN_TIMESTAMP = 0l;
+
+    static final ReplayPosition MAX_POSITION = new ReplayPosition(Long.MAX_VALUE, Integer.MAX_VALUE);
+
     private static final Logger logger = LoggerFactory.getLogger(KeyState.class);
 
     static class Entry
@@ -207,6 +210,8 @@ public class KeyState
      */
     private ExecutionInfo futureExecution = null;
 
+    private ExecutionInfo lastQueryExecution = null;
+
     private final SetMultimap<UUID, UUID> pendingAcknowledgements = HashMultimap.create();
     private final SetMultimap<Long, UUID> pendingEpochAcknowledgements = HashMultimap.create(); // for gc'ing pendingEpochAcknowledgements
 
@@ -291,8 +296,7 @@ public class KeyState
         return entry;
     }
 
-    @VisibleForTesting
-    Set<UUID> getActiveInstanceIds()
+    public Set<UUID> getActiveInstanceIds()
     {
         return ImmutableSet.copyOf(entries.keySet());
     }
@@ -335,9 +339,25 @@ public class KeyState
             maybeEvict(iid);
         }
     }
+
     public void markExecuted(UUID iid, Set<UUID> stronglyConnected, ReplayPosition position, long maxTimestamp)
     {
         markExecuted(iid, stronglyConnected, epoch, position, maxTimestamp);
+    }
+
+    public void markQueryExecution()
+    {
+        lastQueryExecution = new ExecutionInfo(epoch, executionCount);
+    }
+
+    public ExecutionInfo getLastQueryExecution()
+    {
+        return lastQueryExecution;
+    }
+
+    public ExecutionInfo getCurrentExecutionPosition()
+    {
+        return new ExecutionInfo(epoch, executionCount);
     }
 
     void markExecuted(UUID iid, Set<UUID> stronglyConnected, long execEpoch, ReplayPosition position, long maxTimestamp)
@@ -617,6 +637,20 @@ public class KeyState
         }
     }
 
+    /**
+     * To delete a key state, the only active instances it can have must be recent
+     * epoch/token instances, and it can't have executed any instances for the last
+     * 2 epochs
+     */
+    public boolean canGc(Set<UUID> extDeps)
+    {
+        if (!Sets.difference(getActiveInstanceIds(), extDeps).isEmpty())
+        {
+            return false;
+        }
+        return lastQueryExecution == null || lastQueryExecution.epoch < epoch - 1;
+    }
+
     private static class EpochExecutionInfo
     {
         public transient ReplayPosition min = null;
@@ -738,6 +772,12 @@ public class KeyState
             {
                 ExecutionInfo.serializer.serialize(deps.futureExecution, out, version);
             }
+
+            out.writeBoolean(deps.lastQueryExecution != null);
+            if (deps.lastQueryExecution != null)
+            {
+                ExecutionInfo.serializer.serialize(deps.lastQueryExecution, out, version);
+            }
         }
 
         @Override
@@ -779,6 +819,11 @@ public class KeyState
                 deps.setFutureExecution(ExecutionInfo.serializer.deserialize(in, version));
             }
 
+            if (in.readBoolean())
+            {
+                deps.lastQueryExecution = ExecutionInfo.serializer.deserialize(in, version);
+            }
+
             return deps;
         }
 
@@ -817,6 +862,13 @@ public class KeyState
             if (deps.futureExecution != null)
             {
                 size += ExecutionInfo.serializer.serializedSize(deps.futureExecution, version);
+            }
+
+            // lastQueryExecution
+            size += 1;
+            if (deps.lastQueryExecution != null)
+            {
+                size += ExecutionInfo.serializer.serializedSize(deps.lastQueryExecution, version);
             }
 
             return size;

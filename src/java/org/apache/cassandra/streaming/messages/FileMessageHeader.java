@@ -151,17 +151,19 @@ public class FileMessageHeader
             CompressionInfo.serializer.serialize(header.compressionInfo, out, version);
             out.writeLong(header.repairedAt);
 
-            // TODO: do the version thing
-            out.writeInt(header.epaxos.size());
-            for (Map.Entry<ByteBuffer, Map<Scope, ExecutionInfo>> keyEntry: header.epaxos.entrySet())
+            if (version >= MessagingService.VERSION_30)
             {
-                ByteBufferUtil.writeWithShortLength(keyEntry.getKey(), out);
-                out.writeInt(keyEntry.getValue().size());
-
-                for (Map.Entry<Scope, ExecutionInfo> scopeEntry: keyEntry.getValue().entrySet())
+                out.writeInt(header.epaxos.size());
+                for (Map.Entry<ByteBuffer, Map<Scope, ExecutionInfo>> keyEntry: header.epaxos.entrySet())
                 {
-                    Scope.serializer.serialize(scopeEntry.getKey(), out, version);
-                    ExecutionInfo.serializer.serialize(scopeEntry.getValue(), out, version);
+                    ByteBufferUtil.writeWithShortLength(keyEntry.getKey(), out);
+                    out.writeInt(keyEntry.getValue().size());
+
+                    for (Map.Entry<Scope, ExecutionInfo> scopeEntry: keyEntry.getValue().entrySet())
+                    {
+                        Scope.serializer.serialize(scopeEntry.getKey(), out, version);
+                        ExecutionInfo.serializer.serialize(scopeEntry.getValue(), out, version);
+                    }
                 }
             }
         }
@@ -179,22 +181,32 @@ public class FileMessageHeader
             CompressionInfo compressionInfo = CompressionInfo.serializer.deserialize(in, MessagingService.current_version);
             long repairedAt = in.readLong();
 
-            int epaxosSize = in.readInt();
-            Map<ByteBuffer, Map<Scope, ExecutionInfo>> epaxos = new HashMap<>(epaxosSize);
-            for (int i=0; i<epaxosSize; i++)
+
+            Map<ByteBuffer, Map<Scope, ExecutionInfo>> epaxos;
+            if (version >= MessagingService.VERSION_30)
             {
-                ByteBuffer key = ByteBufferUtil.readWithShortLength(in);
-
-                int numEntry = in.readInt();
-                Map<Scope, ExecutionInfo> entry = new HashMap<>(numEntry);
-                for (int j=0; j<numEntry; j++)
+                int epaxosSize = in.readInt();
+                epaxos = new HashMap<>(epaxosSize);
+                for (int i=0; i<epaxosSize; i++)
                 {
-                    entry.put(Scope.serializer.deserialize(in, version),
-                              ExecutionInfo.serializer.deserialize(in, version));
+                    ByteBuffer key = ByteBufferUtil.readWithShortLength(in);
 
+                    int numEntry = in.readInt();
+                    Map<Scope, ExecutionInfo> entry = new HashMap<>(numEntry);
+                    for (int j=0; j<numEntry; j++)
+                    {
+                        entry.put(Scope.serializer.deserialize(in, version),
+                                  ExecutionInfo.serializer.deserialize(in, version));
+
+                    }
+                    epaxos.put(key, entry);
                 }
-                epaxos.put(key, entry);
             }
+            else
+            {
+                epaxos = Collections.emptyMap();
+            }
+
             return new FileMessageHeader(cfId, sequenceNumber, sstableVersion, estimatedKeys, sections, compressionInfo, repairedAt, epaxos);
         }
 
@@ -213,16 +225,19 @@ public class FileMessageHeader
             }
             size += CompressionInfo.serializer.serializedSize(header.compressionInfo, version);
 
-            size += 4;
-            for (Map.Entry<ByteBuffer, Map<Scope, ExecutionInfo>> keyEntry: header.epaxos.entrySet())
+            if (version >= MessagingService.VERSION_30)
             {
-                size += TypeSizes.NATIVE.sizeofWithShortLength(keyEntry.getKey());
-
                 size += 4;
-                for (Map.Entry<Scope, ExecutionInfo> scopeEntry: keyEntry.getValue().entrySet())
+                for (Map.Entry<ByteBuffer, Map<Scope, ExecutionInfo>> keyEntry: header.epaxos.entrySet())
                 {
-                    size += Scope.serializer.serializedSize(scopeEntry.getKey(), version);
-                    size += ExecutionInfo.serializer.serializedSize(scopeEntry.getValue(), version);
+                    size += TypeSizes.NATIVE.sizeofWithShortLength(keyEntry.getKey());
+
+                    size += 4;
+                    for (Map.Entry<Scope, ExecutionInfo> scopeEntry: keyEntry.getValue().entrySet())
+                    {
+                        size += Scope.serializer.serializedSize(scopeEntry.getKey(), version);
+                        size += ExecutionInfo.serializer.serializedSize(scopeEntry.getValue(), version);
+                    }
                 }
             }
             return size;

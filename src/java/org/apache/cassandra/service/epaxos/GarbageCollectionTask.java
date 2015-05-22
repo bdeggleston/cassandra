@@ -17,15 +17,20 @@ public class GarbageCollectionTask implements Runnable
 {
     private static final Logger logger = LoggerFactory.getLogger(GarbageCollectionTask.class);
 
-    private final EpaxosState epaxosState;
+    private final EpaxosState state;
     private final TokenState tokenState;
+    private final Scope scope;
+    private final TokenStateManager tokenStateManager;
     private final KeyStateManager keyStateManager;
 
-    public GarbageCollectionTask(EpaxosState epaxosState, TokenState tokenState, KeyStateManager keyStateManager)
+    public GarbageCollectionTask(EpaxosState state, TokenState tokenState, Scope scope)
     {
-        this.epaxosState = epaxosState;
+        this.state = state;
         this.tokenState = tokenState;
-        this.keyStateManager = keyStateManager;
+        this.scope = scope;
+
+        tokenStateManager = state.getTokenStateManager(scope);
+        keyStateManager = state.getKeyStateManager(scope);
     }
 
     @Override
@@ -84,7 +89,7 @@ public class GarbageCollectionTask implements Runnable
             for (UUID id: entry.getValue())
             {
                 logger.debug("deleting instance {}", id);
-                epaxosState.deleteInstance(id);
+                state.deleteInstance(id);
             }
         }
 
@@ -98,6 +103,12 @@ public class GarbageCollectionTask implements Runnable
                 keyState.removeEpoch(expiredEpoch);
             }
             keyStateManager.saveKeyState(cfKey.key, cfKey.cfId, keyState);
+
+            Set<UUID> tokenDeps = tokenStateManager.getCurrentTokenDependencies(cfKey);
+            if (keyState.canGc(tokenDeps))
+            {
+                keyStateManager.gcKeyState(cfKey);
+            }
         }
         finally
         {

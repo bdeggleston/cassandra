@@ -482,5 +482,50 @@ public class EpaxosKeyStateTest
         KeyState.Entry deserialized = KeyState.Entry.serializer.deserialize(ByteStreams.newDataInput(out.getData()), 0);
         Assert.assertEquals(entry, deserialized);
     }
+
+    @Test
+    public void markQueryExecution()
+    {
+        KeyState ks = new KeyState(0);
+        Assert.assertNull(ks.getLastQueryExecution());
+
+        ks.setExecutionCount(5);
+        ks.markQueryExecution();
+        Assert.assertEquals(new ExecutionInfo(0, 5), ks.getLastQueryExecution());
+
+        ks.setEpoch(3);
+        Assert.assertEquals(new ExecutionInfo(0, 5), ks.getLastQueryExecution());
+
+        ks.markQueryExecution();
+        Assert.assertEquals(new ExecutionInfo(3, 0), ks.getLastQueryExecution());
+    }
+
+    @Test
+    public void canGc() throws Exception
+    {
+        KeyState ks = new KeyState(0);
+        Set<UUID> expectedDeps = new HashSet<>();
+
+        UUID queryId = UUIDGen.getTimeUUID();
+        UUID epochId1 = UUIDGen.getTimeUUID();
+        UUID epochId2 = UUIDGen.getTimeUUID();
+
+        for (UUID id: new UUID[]{queryId, epochId1, epochId2})
+        {
+            ks.getDepsAndAdd(id);
+            expectedDeps.add(id);
+        }
+
+        ks.markQueryExecution();
+        Assert.assertEquals(expectedDeps, ks.getActiveInstanceIds());
+        Assert.assertEquals(new ExecutionInfo(0, 0), ks.getLastQueryExecution());
+        Assert.assertFalse(ks.canGc(expectedDeps));
+
+        ks.setEpoch(1);
+        Assert.assertFalse(ks.canGc(expectedDeps));
+
+        ks.setEpoch(2);
+        Assert.assertTrue(ks.canGc(expectedDeps));
+    }
 }
 

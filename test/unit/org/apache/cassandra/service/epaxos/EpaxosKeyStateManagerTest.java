@@ -938,4 +938,92 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         Assert.assertNull(ksm.getExecutionInfo(cfKey));
         Assert.assertFalse(ksm.exists(cfKey));
     }
+
+    @Test
+    public void lastQueryExecution()
+    {
+        MockTokenStateManager tsm = new MockTokenStateManager(DEFAULT_SCOPE);
+        tsm.setTokens(TOKEN0, TOKEN100);
+
+        KeyStateManager ksm = new KeyStateManager(tsm, DEFAULT_SCOPE);
+
+        SerializedRequest request = getSerializedCQLRequest(1, 1);
+        CfKey cfKey = request.getCfKey();
+        QueryInstance instance = new QueryInstance(request, ADDRESS);
+
+        Assert.assertFalse(ksm.exists(cfKey));
+
+        KeyState ks;
+        ks = ksm.loadKeyState(cfKey);
+        Assert.assertNull(ks.getLastQueryExecution());
+
+        ksm.recordExecuted(instance, null, 0);
+        ks = ksm.loadKeyState(cfKey);
+        ExecutionInfo queryPosition = new ExecutionInfo(0, 1);
+        Assert.assertEquals(queryPosition, ks.getCurrentExecutionPosition());
+        Assert.assertEquals(queryPosition, ks.getLastQueryExecution());
+
+        EpochInstance epochInstance = new EpochInstance(ADDRESS, TOKEN100, cfm.cfId, 0, DEFAULT_SCOPE);
+        ksm.recordExecuted(epochInstance, null, 0);
+        ks = ksm.loadKeyState(cfKey);
+        ExecutionInfo expectedPosition = new ExecutionInfo(0, 2);
+        Assert.assertEquals(expectedPosition, ks.getCurrentExecutionPosition());
+        Assert.assertEquals(queryPosition, ks.getLastQueryExecution());
+    }
+
+    @Test
+    public void gcKeyState() throws Exception
+    {
+        MockTokenStateManager tsm = new MockTokenStateManager(DEFAULT_SCOPE);
+        tsm.setTokens(TOKEN0, TOKEN100);
+        KeyStateManager ksm = new KeyStateManager(tsm, DEFAULT_SCOPE);
+
+        SerializedRequest request = getSerializedCQLRequest(1, 1);
+        CfKey cfKey = request.getCfKey();
+        QueryInstance query1 = new QueryInstance(request, ADDRESS);
+        query1.preaccept(ksm.getCurrentDependencies(query1).left);
+
+        QueryInstance query2 = new QueryInstance(request, ADDRESS);
+        query2.preaccept(ksm.getCurrentDependencies(query2).left);
+
+        ksm.recordExecuted(query1, null, 0);
+        ksm.recordAcknowledgedDeps(query1);
+        ksm.recordExecuted(query2, null, 0);
+        ksm.recordAcknowledgedDeps(query2);
+
+        KeyState ks;
+        ks = ksm.loadKeyState(cfKey);
+        Assert.assertEquals(new ExecutionInfo(0, 2), ks.getCurrentExecutionPosition());
+        Assert.assertEquals(new ExecutionInfo(0, 2), ks.getLastQueryExecution());
+        Assert.assertFalse(ksm.gcKeyState(cfKey));
+        Assert.assertTrue(ksm.exists(cfKey));
+
+        EpochInstance epochInstance1 = new EpochInstance(ADDRESS, TOKEN100, cfm.cfId, 1, DEFAULT_SCOPE);
+        epochInstance1.preaccept(ksm.getCurrentDependencies(epochInstance1).left);
+        ks = ksm.loadKeyState(cfKey);
+        ks.setEpoch(epochInstance1.getEpoch());
+        ksm.saveKeyState(cfKey, ks);
+        ksm.recordExecuted(epochInstance1, null, 0);
+        ksm.recordAcknowledgedDeps(epochInstance1);
+
+        ks = ksm.loadKeyState(cfKey);
+        Assert.assertEquals(new ExecutionInfo(1, 1), ks.getCurrentExecutionPosition());
+        Assert.assertEquals(new ExecutionInfo(0, 2), ks.getLastQueryExecution());
+        Assert.assertFalse(ksm.gcKeyState(cfKey));
+        Assert.assertTrue(ksm.exists(cfKey));
+
+        EpochInstance epochInstance2 = new EpochInstance(ADDRESS, TOKEN100, cfm.cfId, 2, DEFAULT_SCOPE);
+        epochInstance2.preaccept(ksm.getCurrentDependencies(epochInstance2).left);
+        ks = ksm.loadKeyState(cfKey);
+        ks.setEpoch(epochInstance2.getEpoch());
+        ksm.saveKeyState(cfKey, ks);
+        ksm.recordExecuted(epochInstance2, null, 0);
+        ksm.recordAcknowledgedDeps(epochInstance2);
+
+        ks = ksm.loadKeyState(cfKey);
+        Assert.assertEquals(new ExecutionInfo(2, 1), ks.getCurrentExecutionPosition());
+        Assert.assertEquals(new ExecutionInfo(0, 2), ks.getLastQueryExecution());
+        Assert.assertTrue(ksm.gcKeyState(cfKey));
+        Assert.assertFalse(ksm.exists(cfKey));
+    }
 }

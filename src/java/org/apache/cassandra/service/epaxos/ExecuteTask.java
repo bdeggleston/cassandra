@@ -65,6 +65,12 @@ public class ExecuteTask implements Runnable
                         continue;
                     }
 
+                    if (state.isPaused(toExecute))
+                    {
+                        logger.debug("Execution is paused for instance {}. Deferring until unpause", toExecuteId);
+                        return;
+                    }
+
                     assert toExecute.getState() == Instance.State.COMMITTED;
 
                     ReplayPosition position = null;

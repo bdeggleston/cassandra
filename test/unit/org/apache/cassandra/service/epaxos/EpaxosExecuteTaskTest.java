@@ -141,6 +141,25 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
         Assert.assertEquals(0, state.executedIds.size());
     }
 
+    @Test
+    public void tokenStateCantExecute() throws Exception
+    {
+        MockExecutionState state = new MockExecutionState();
+        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER);
+        instance.commit(Collections.<UUID>emptySet());
+        state.saveInstance(instance);
+
+        TokenState ts = state.getTokenStateManager(DEFAULT_SCOPE).get(instance);
+        ts.setState(TokenState.State.RECOVERING_DATA);
+
+        Assert.assertEquals(0, ts.getEpoch());
+
+        ExecuteTask task = new ExecuteTask(state, instance.getId());
+        task.run();
+
+        Assert.assertEquals(0, state.executedIds.size());
+    }
+
     private SerializedRequest adHocCqlRequest(String query, ByteBuffer key)
     {
         return newSerializedRequest(getCqlCasRequest(query, Collections.<ByteBuffer>emptyList(), ConsistencyLevel.SERIAL), key);

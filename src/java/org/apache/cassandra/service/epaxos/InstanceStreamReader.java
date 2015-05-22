@@ -1,6 +1,7 @@
 package org.apache.cassandra.service.epaxos;
 
 import com.ning.compress.lzf.LZFInputStream;
+import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -31,6 +32,7 @@ public class InstanceStreamReader
     private final EpaxosState state;
     private final UUID cfId;
     private final Range<Token> range;
+    private final Scope scope;
 
     private final TokenStateManager tsm;
     private final KeyStateManager ksm;
@@ -45,6 +47,7 @@ public class InstanceStreamReader
         this.state = state;
         this.cfId = cfId;
         this.range = range;
+        this.scope = scope;
 
         if (scope == Scope.LOCAL && !state.isInSameDC(peer))
         {
@@ -298,6 +301,7 @@ public class InstanceStreamReader
                                 {
                                     tokenState.lock.writeLock().unlock();
                                 }
+                                state.getStage(Stage.READ).submit(new PostStreamTask.Ranged(state, cfId, tokenState.getRange(), scope));
                             }
                         }
 

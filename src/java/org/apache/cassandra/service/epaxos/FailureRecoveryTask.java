@@ -317,7 +317,13 @@ public class FailureRecoveryTask implements Runnable
             tokenState.lock.writeLock().unlock();
         }
         logger.info("Epaxos failure recovery task for {} on {} to {} completed", token, cfId, epoch);
-        // TODO: iterate over keystates for affected range and execute active instances
+
+        runPostCompleteTask(tokenState);
+    }
+
+    protected void runPostCompleteTask(TokenState tokenState)
+    {
+        state.getStage(Stage.READ).submit(new PostStreamTask.Ranged(state, cfId, tokenState.getRange(), scope));
     }
 
     @Override

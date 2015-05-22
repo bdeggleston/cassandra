@@ -14,7 +14,6 @@ import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.Hex;
 import org.apache.cassandra.utils.Pair;
 
 import java.io.DataInputStream;
@@ -23,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
+import javax.annotation.Nullable;
 
 public class KeyStateManager
 {
@@ -46,6 +46,11 @@ public class KeyStateManager
         this.tokenStateManager = tokenStateManager;
         this.scope = scope;
         cache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(1000).build();
+    }
+
+    public Scope getScope()
+    {
+        return scope;
     }
 
     public Lock getCfKeyLock(CfKey cfKey)
@@ -282,6 +287,10 @@ public class KeyStateManager
         {
             KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
             dm.markExecuted(instance.getId(), instance.getStronglyConnected(), position, maxTimestamp);
+            if (instance.getType() == Instance.Type.QUERY)
+            {
+                dm.markQueryExecution();
+            }
             saveKeyState(cfKey, dm);
         }
         finally
@@ -548,6 +557,27 @@ public class KeyStateManager
         }
     }
 
+    public boolean gcKeyState(CfKey cfKey)
+    {
+        Lock lock = getCfKeyLock(cfKey);
+        lock.lock();
+        try
+        {
+            KeyState keyState = loadKeyState(cfKey, false);
+            // double check with lock aquired
+            if (keyState.canGc(tokenStateManager.getCurrentTokenDependencies(cfKey)))
+            {
+                deleteKeyState(cfKey);
+                return true;
+            }
+            return false;
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
     /**
      * Returns execution info for the given token range and replay position. If the replay position is too far in the
      * past to have data, the execution position directly before the first known mutation is returned. This is ok since
@@ -575,5 +605,26 @@ public class KeyStateManager
         iterable = Iterables.filter(iterable, new KeyTableIterable.CfIdPredicate(cfId));
         iterable = Iterables.filter(iterable, new KeyTableIterable.ScopePredicate(scope));
         return Iterables.transform(iterable, f).iterator();
+    }
+
+    /**
+     * Returns key states for the purpose of post stream / failure recovery cleanup
+     */
+    public Iterator<KeyState> getStaleKeyStateRange(UUID cfId, Range<Token> range)
+    {
+        Function<UntypedResultSet.Row, KeyState> f = new Function<UntypedResultSet.Row, KeyState>()
+        {
+            @Override
+            public KeyState apply(UntypedResultSet.Row row)
+            {
+                return deserialize(row.getBlob("data"));
+            }
+        };
+        Iterable<UntypedResultSet.Row> iterable;
+        iterable = new KeyTableIterable(keyspace, table, range, true);
+        iterable = Iterables.filter(iterable, new KeyTableIterable.CfIdPredicate(cfId));
+        iterable = Iterables.filter(iterable, new KeyTableIterable.ScopePredicate(scope));
+        return Iterables.transform(iterable, f).iterator();
+
     }
 }

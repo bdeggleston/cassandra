@@ -7,6 +7,7 @@ import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.streaming.StreamPlan;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Before;
@@ -16,6 +17,8 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -290,5 +293,146 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
         Assert.assertEquals(1, task.repairRequests.size());
         Assert.assertTrue(task.repairRequests.get(0).isLocal);
         Assert.assertEquals(tokenState.getRange(), task.repairRequests.get(0).range);
+    }
+
+    @Test
+    public void postRecoveryTask() throws Exception
+    {
+        final Set<UUID> executed = new HashSet<>();
+        EpaxosState state = new MockMultiDcState() {
+            @Override
+            public void execute(UUID instanceId)
+            {
+                executed.add(instanceId);
+            }
+        };
+        ((MockTokenStateManager) state.getTokenStateManager(Scope.GLOBAL)).setTokens(TOKEN0, token(100));
+
+        TokenState tokenState = state.getTokenStateManager(Scope.GLOBAL).get(token(50), cfm.cfId);
+        tokenState.setEpoch(2);
+        tokenState.setState(TokenState.State.RECOVERING_DATA);
+
+        UUID lastId;
+        QueryInstance instance;
+        Set<UUID> expected = new HashSet<>();
+
+        // key1, nothing committed
+        instance = state.createQueryInstance(getSerializedCQLRequest(10, 10));
+        instance.preaccept(state.getCurrentDependencies(instance).left);
+        state.saveInstance(instance);
+
+        // key2, 2 instances committed
+        instance = state.createQueryInstance(getSerializedCQLRequest(20, 10));
+        instance.commit(state.getCurrentDependencies(instance).left);
+        state.saveInstance(instance);
+
+        lastId = instance.getId();
+        instance = state.createQueryInstance(getSerializedCQLRequest(20, 10));
+        instance.commit(state.getCurrentDependencies(instance).left);
+        state.saveInstance(instance);
+        expected.add(instance.getId());
+
+        Assert.assertEquals(Sets.newHashSet(lastId), instance.getDependencies());
+
+        // key3, 1 committed, head executed
+        // executed head will prevent 1st instance from being executed
+        instance = state.createQueryInstance(getSerializedCQLRequest(30, 10));
+        instance.commit(state.getCurrentDependencies(instance).left);
+        state.saveInstance(instance);
+
+        lastId = instance.getId();
+        instance = state.createQueryInstance(getSerializedCQLRequest(30, 10));
+        instance.commit(state.getCurrentDependencies(instance).left);
+        instance.setExecuted(2);
+        state.saveInstance(instance);
+
+        Assert.assertEquals(Sets.newHashSet(lastId), instance.getDependencies());
+
+        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(state, TOKEN0, cfm.cfId, 0, Scope.GLOBAL) {
+            @Override
+            protected void runPostCompleteTask(TokenState tokenState)
+            {
+                new PostStreamTask.Ranged(state, cfId, tokenState.getRange(), scope).run();
+            }
+        };
+
+        Assert.assertEquals(TokenState.State.RECOVERING_DATA, tokenState.getState());
+        task.complete();
+
+        Assert.assertEquals(TokenState.State.NORMAL, tokenState.getState());
+        Assert.assertEquals(expected, executed);
+    }
+
+    @Test
+    public void pausedInstance() throws Exception
+    {
+        MockMultiDcState state = new MockMultiDcState() {
+            @Override
+            public boolean replicates(Instance instance)
+            {
+                return true;
+            }
+        };
+        ((MockTokenStateManager) state.createTokenStateManager(Scope.GLOBAL)).setTokens(TOKEN0, TOKEN100);
+
+        QueryInstance i1 = state.createQueryInstance(getSerializedCQLRequest(1, 1));
+        i1.commit(state.getCurrentDependencies(i1).left);
+        state.saveInstance(i1);
+        QueryInstance i2 = state.createQueryInstance(getSerializedCQLRequest(2, 2));
+        i2.commit(state.getCurrentDependencies(i2).left);
+        state.saveInstance(i2);
+        QueryInstance i3 = state.createQueryInstance(getSerializedCQLRequest(3, 3));
+        i3.commit(state.getCurrentDependencies(i3).left);
+        state.saveInstance(i3);
+
+        for (Instance instance: new Instance[]{i1, i2, i3})
+            Assert.assertTrue(state.canExecute(instance));
+
+        ByteBuffer k1 = i1.getQuery().getKey();
+        ByteBuffer k2 = i2.getQuery().getKey();
+        ByteBuffer k3 = i3.getQuery().getKey();
+
+        Set<ByteBuffer> keys1 = Sets.newHashSet(k1, k2);
+        Set<ByteBuffer> keys2 = Sets.newHashSet(k2, k3);
+
+        EpaxosState.PausedKeys pause1 = state.pauseKeys(keys1, cfm.cfId);
+        Assert.assertEquals(1, state.numPauseSets());
+        EpaxosState.PausedKeys pause2 = state.pauseKeys(keys2, cfm.cfId);
+        Assert.assertEquals(2, state.numPauseSets());
+
+        for (Instance instance: new Instance[]{i1, i2, i3})
+            Assert.assertTrue(state.isPaused(instance));
+
+        Assert.assertEquals(Sets.newHashSet(Pair.create(k1, Scope.GLOBAL), Pair.create(k2, Scope.GLOBAL)), pause1.getSkipped());
+        Assert.assertEquals(Sets.newHashSet(Pair.create(k2, Scope.GLOBAL), Pair.create(k3, Scope.GLOBAL)), pause2.getSkipped());
+
+        for (UUID id: new UUID[]{i1.getId(), i2.getId(), i3.getId()})
+        {
+            Assert.assertEquals(Instance.State.COMMITTED, state.loadInstance(id).getState());
+        }
+
+        state.unPauseKeys(pause1); // should submit keys to be executed
+        Assert.assertEquals(1, state.numPauseSets());
+
+        Assert.assertFalse(state.isPaused(i1));
+        for (Instance instance: new Instance[]{i2, i3})
+            Assert.assertTrue(state.isPaused(instance));
+
+        Assert.assertEquals(Instance.State.EXECUTED, state.loadInstance(i1.getId()).getState());
+        for (UUID id: new UUID[]{i2.getId(), i3.getId()})
+        {
+            Assert.assertEquals(Instance.State.COMMITTED, state.loadInstance(id).getState());
+        }
+
+        state.unPauseKeys(pause2); // should submit keys to be executed
+        Assert.assertEquals(0, state.numPauseSets());
+
+        for (Instance instance: new Instance[]{i1, i2, i3})
+            Assert.assertFalse(state.isPaused(instance));
+
+        for (UUID id: new UUID[]{i1.getId(), i2.getId(), i3.getId()})
+        {
+            Assert.assertEquals(Instance.State.EXECUTED, state.loadInstance(id).getState());
+        }
     }
 }

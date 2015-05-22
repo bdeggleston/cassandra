@@ -44,8 +44,6 @@ public class InstanceStreamWriter
     private final StreamManager.StreamRateLimiter limiter;
     private long bytesSinceFlush = 0;
 
-    // TODO: check your TODOs in streaming/storage service
-
     public InstanceStreamWriter(UUID cfId, Range<Token> range, Scope scope, InetAddress peer)
     {
         this(EpaxosState.getInstance(), cfId, range, scope, peer);

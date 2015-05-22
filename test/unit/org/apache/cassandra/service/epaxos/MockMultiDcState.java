@@ -22,6 +22,10 @@ import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.cassandra.concurrent.Stage;
+import org.apache.cassandra.concurrent.TracingAwareExecutorService;
+import org.apache.cassandra.service.epaxos.integration.DumbExecutor;
+
 class MockMultiDcState extends EpaxosState
 {
     final Map<InetAddress, String> dcs = new HashMap<>();
@@ -49,5 +53,11 @@ class MockMultiDcState extends EpaxosState
         String dc = dcs.get(endpoint);
         assert dc != null : endpoint + " not in dc map";
         return dc;
+    }
+
+    @Override
+    public TracingAwareExecutorService getStage(Stage stage)
+    {
+        return DumbExecutor.instance;
     }
 }
