@@ -95,11 +95,18 @@ public class EpaxosTokenStateManagerTest extends AbstractEpaxosTest
     public void unsavedExecutionThreshold()
     {
         final AtomicBoolean wasSaved = new AtomicBoolean(false);
+        final int unsavedThreshold = 5;
         TokenStateManager tsm = new TokenStateManager(DEFAULT_SCOPE) {
             @Override
             protected Set<Range<Token>> getReplicatedRangesForCf(UUID cfId)
             {
                 return TOKEN_SET;
+            }
+
+            @Override
+            protected int getUnsavedExecutionThreshold(UUID cfId)
+            {
+                return unsavedThreshold;
             }
 
             @Override
@@ -109,8 +116,17 @@ public class EpaxosTokenStateManagerTest extends AbstractEpaxosTest
                 super.save(state);
             }
         };
+        tsm.setStarted();
+        Token token = token(5);
+        tsm.get(token, CFID);
+        wasSaved.set(false);
 
-        // TODO: the rest of this test
+        for (int i=0; i<unsavedThreshold+1; i++)
+        {
+            Assert.assertFalse(wasSaved.get());
+            tsm.reportExecution(token, CFID);
+        }
+        Assert.assertTrue(wasSaved.get());
     }
 
     /**
