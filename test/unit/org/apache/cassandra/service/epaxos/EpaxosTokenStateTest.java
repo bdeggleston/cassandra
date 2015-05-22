@@ -130,31 +130,4 @@ public class EpaxosTokenStateTest extends AbstractEpaxosTest
         Assert.assertEquals(Sets.newHashSet(tId0), ts.getCurrentTokenInstances(rangeFor(token(75))));
         Assert.assertEquals(Sets.<UUID>newHashSet(), ts.getCurrentTokenInstances(rangeFor(token(50))));
     }
-
-    /**
-     * Test the behavior of local only
-     */
-    @Test
-    public void localOnly()
-    {
-        TokenState ts = new TokenState(range(TOKEN0, token(200)), CFID, 0, 0);
-
-        // a brand new token state with no executions should default to serial
-        Assert.assertFalse(ts.localOnly());
-
-        // but if there have only been local serial instances, it should return true for localOnly
-        ts.recordExecution();
-        Assert.assertTrue(ts.localOnly());
-
-        // record a serial instance
-        ts.recordSerialCommit();
-        Assert.assertFalse(ts.localOnly());
-
-        // the non-localOnly state should carry over to the next epoch...
-        ts.setEpoch(1);
-
-        // ...unless only local-serial instances are recorded this time around
-        ts.recordExecution();
-        Assert.assertTrue(ts.localOnly());
-    }
 }

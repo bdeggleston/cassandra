@@ -373,20 +373,6 @@ public class TokenStateManager
         }
     }
 
-    public boolean isLocalOnly(Token token, UUID cfId)
-    {
-        TokenState ts = get(token, cfId);
-        ts.lock.readLock().lock();
-        try
-        {
-            return ts.localOnly();
-        }
-        finally
-        {
-            ts.lock.readLock().unlock();
-        }
-    }
-
     public Set<UUID> getCurrentDependencies(AbstractTokenInstance instance)
     {
         TokenState ts = get(instance.getToken(), instance.getCfId());
@@ -560,26 +546,6 @@ public class TokenStateManager
     protected int getUnsavedExecutionThreshold(UUID cfId)
     {
         return  states.get(cfId).unsavedExecutionThreshold;
-    }
-
-    public void maybeRecordSerialInstance(QueryInstance instance)
-    {
-        if (instance.getQuery().getConsistencyLevel() == ConsistencyLevel.SERIAL)
-        {
-            TokenState ts = get(instance.getToken(), instance.getCfId());
-            if (ts.recordSerialCommit())
-            {
-                ts.lock.writeLock().lock();
-                try
-                {
-                    save(ts);
-                }
-                finally
-                {
-                    ts.lock.writeLock().unlock();
-                }
-            }
-        }
     }
 
     public List<Token> getManagedTokensForCf(UUID cfId)

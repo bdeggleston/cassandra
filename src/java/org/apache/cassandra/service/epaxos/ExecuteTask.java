@@ -85,11 +85,6 @@ public class ExecuteTask implements Runnable
                             state.maybeSetResultFuture(instance.getId(), null);
                             logger.debug("Skipping execution for {}.", instance);
                         }
-
-                        if (instance.getType() == Instance.Type.QUERY)
-                        {
-                            state.getTokenStateManager(instance).maybeRecordSerialInstance((QueryInstance) instance);
-                        }
                     }
                     catch (InvalidRequestException | WriteTimeoutException | ReadTimeoutException e)
                     {

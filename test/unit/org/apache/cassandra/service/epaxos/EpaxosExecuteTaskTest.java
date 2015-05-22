@@ -116,53 +116,6 @@ public class EpaxosExecuteTaskTest extends AbstractEpaxosTest
     }
 
     /**
-     * tests that the execution was reported
-     * to the token state
-     */
-    @Test
-    public void tokenStateReport() throws Exception
-    {
-        // TODO: remove
-        MockExecutionState state = new MockExecutionState();
-        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1), LEADER, LEADER_DC);
-        instance.commit(Collections.<UUID>emptySet());
-        state.saveInstance(instance);
-
-        TokenState ts = state.getTokenStateManager(DEFAULT_SCOPE).get(instance);
-        Assert.assertEquals(0, ts.getExecutions());
-
-        ExecuteTask task = new ExecuteTask(state, instance.getId());
-        task.run();
-
-        ts = state.getTokenStateManager(DEFAULT_SCOPE).get(instance);
-        Assert.assertEquals(1, ts.getExecutions());
-    }
-
-    /**
-     * Tests that a QueryInstance's token state
-     * is notified if a SERIAL query is executed.
-     */
-    @Test
-    public void serialQueryReport() throws Exception
-    {
-        // TODO: remove
-        MockExecutionState state = new MockExecutionState();
-        QueryInstance instance = new QueryInstance(getSerializedCQLRequest(0, 1, ConsistencyLevel.SERIAL), LEADER, LEADER_DC);
-        instance.commit(Collections.<UUID>emptySet());
-        state.saveInstance(instance);
-
-        TokenState ts = state.getTokenStateManager(DEFAULT_SCOPE).get(instance);
-        ts.recordExecution();
-        Assert.assertTrue(ts.localOnly());
-
-        ExecuteTask task = new ExecuteTask(state, instance.getId());
-        task.run();
-
-        ts = state.getTokenStateManager(DEFAULT_SCOPE).get(instance);
-        Assert.assertFalse(ts.localOnly());
-    }
-
-    /**
      * tests that execution is skipped if the keystate prevents it
      * because it has repair data from unexecuted instances
      */
