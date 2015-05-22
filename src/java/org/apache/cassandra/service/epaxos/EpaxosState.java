@@ -1339,8 +1339,28 @@ public class EpaxosState
         }
     }
 
-    public Iterator<Pair<ByteBuffer, ExecutionInfo>> getRangeExecutionInfo(UUID cfId, Range<Token> range, ReplayPosition position)
+//    public Iterator<Pair<ByteBuffer, Map<Scope, ExecutionInfo>>> getRangeExecutionInfo(UUID cfId, Range<Token> range, ReplayPosition position, InetAddress to)
+    public Iterator<Pair<ByteBuffer, ExecutionInfo>> getRangeExecutionInfo(UUID cfId, Range<Token> range, ReplayPosition position, InetAddress to)
     {
+        boolean isLocalDc = getDc().equals(getDc(to));
+        boolean globalManaged = getTokenStateManager(Scope.GLOBAL).managesCfId(cfId);
+        boolean localManaged = isLocalDc && getTokenStateManager(Scope.LOCAL).managesCfId(cfId);
+
+        if (globalManaged && localManaged)
+        {
+
+        }
+        else if (globalManaged)
+        {
+
+        }
+
+        else if (localManaged)
+        {
+
+        }
+
+
         // TODO: merge data from both ksms and the remote activity
         // return keyStateManager.getRangeExecutionInfo(cfId, range, position);
         return new ArrayList<Pair<ByteBuffer, ExecutionInfo>>().iterator();  // FIXME: this
@@ -1349,7 +1369,7 @@ public class EpaxosState
     /**
      * writes metadata about the state of epaxos when the given sstable was flushed.
      */
-    public void writeStreamHeader(SSTableReader ssTable, Collection<Range<Token>> ranges, FileMessageHeader header)
+    public void writeStreamHeader(SSTableReader ssTable, Collection<Range<Token>> ranges, FileMessageHeader header, InetAddress to)
     {
         UUID cfId = ssTable.metadata.cfId;
         ReplayPosition position = ssTable.getReplayPosition();
@@ -1365,7 +1385,7 @@ public class EpaxosState
             }
 
             // FIXME: doesn't work at all I think
-            Iterator<Pair<ByteBuffer, ExecutionInfo>> iter = getRangeExecutionInfo(cfId, range, position);
+            Iterator<Pair<ByteBuffer, ExecutionInfo>> iter = getRangeExecutionInfo(cfId, range, position, to);
 
             while (iter.hasNext())
             {

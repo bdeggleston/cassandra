@@ -27,6 +27,7 @@ import javax.annotation.Nullable;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.AbstractIterator;
+import com.google.common.collect.Iterators;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
@@ -41,24 +42,29 @@ import org.apache.cassandra.dht.Bounds;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 
-public class KeyStateRowIterable implements Iterable<UntypedResultSet.Row>
+public class KeyTableIterable implements Iterable<UntypedResultSet.Row>
 {
+    private static final int DEFAULT_CHUNK_SIZE = 1000;
     private final String keyspace;
     private final String table;
-    private final Range<Token> range;
+    private final List<Range<Token>> ranges;
     private final Boolean inclusive;
     private final int chunkSize;
     private final ColumnFamilyStore cfs;
 
-    private volatile Iterator<UntypedResultSet.Row> rowIterator = null;
     private volatile boolean endReached = false;
     private volatile ByteBuffer lastKey = null;
 
-    public KeyStateRowIterable(String keyspace, String table, Range<Token> range, Boolean inclusive, int chunkSize)
+    public KeyTableIterable(String keyspace, String table, Range<Token> range, Boolean inclusive)
+    {
+        this(keyspace, table, range, inclusive, DEFAULT_CHUNK_SIZE);
+    }
+
+    public KeyTableIterable(String keyspace, String table, Range<Token> range, Boolean inclusive, int chunkSize)
     {
         this.keyspace = keyspace;
         this.table = table;
-        this.range = range;
+        this.ranges = range.unwrap();
         this.inclusive = inclusive;
         this.chunkSize = chunkSize;
         cfs = Keyspace.open(keyspace).getColumnFamilyStore(table);
@@ -67,11 +73,54 @@ public class KeyStateRowIterable implements Iterable<UntypedResultSet.Row>
     @Override
     public Iterator<UntypedResultSet.Row> iterator()
     {
-        return new RowIterator();
+        final Iterator<Range<Token>> rangeIterator = ranges.iterator();
+        return new AbstractIterator<UntypedResultSet.Row>()
+        {
+            private RowIterator current = null;
+
+            @Override
+            protected UntypedResultSet.Row computeNext()
+            {
+                while (true)
+                {
+                    if (current == null && rangeIterator.hasNext())
+                    {
+                        current = new RowIterator(rangeIterator.next());
+                        continue;
+                    }
+
+                    if (current != null)
+                    {
+                        if (current.hasNext())
+                        {
+                            return current.next();
+                        }
+                        else
+                        {
+                            current = null;
+                            continue;
+                        }
+                    }
+
+                    break;
+                }
+
+                return endOfData();
+            }
+        };
     }
 
     private class RowIterator extends AbstractIterator<UntypedResultSet.Row>
     {
+
+        private final Range<Token> range;
+        private volatile Iterator<UntypedResultSet.Row> rowIterator = null;
+
+        private RowIterator(Range<Token> range)
+        {
+            this.range = range;
+        }
+
         Iterator<UntypedResultSet.Row> getRowIterator(Token left, Token right, boolean inclusive)
         {
             Token leftToken = left;
@@ -103,9 +152,11 @@ public class KeyStateRowIterable implements Iterable<UntypedResultSet.Row>
                 if (rows.isEmpty() && !endReached)
                 {
                     leftToken = DatabaseDescriptor.getPartitioner().getToken(partitions.get(partitions.size() - 1).key.getKey());
-                    continue;
+                    if (!leftToken.equals(right))
+                        continue;
                 }
 
+                endReached |= rows.isEmpty();
                 return rows.iterator();
             }
         }
@@ -120,13 +171,15 @@ public class KeyStateRowIterable implements Iterable<UntypedResultSet.Row>
                     rowIterator = getRowIterator(range.left, range.right, inclusive);
                 }
 
-                if (!rowIterator.hasNext() && endReached)
+                if (!rowIterator.hasNext())
                 {
-                    return endOfData();
-                }
-                else if (!rowIterator.hasNext())
-                {
+                    if (endReached)
+                        return endOfData();
+
                     Token lastToken = DatabaseDescriptor.getPartitioner().getToken(lastKey);
+                    if (lastToken.equals(range.right))
+                        return endOfData();
+
                     rowIterator = getRowIterator(lastToken, range.right, false);
                     continue;
                 }
@@ -136,7 +189,6 @@ public class KeyStateRowIterable implements Iterable<UntypedResultSet.Row>
                 return next;
             }
         }
-
     }
 
     public static class CfIdPredicate implements Predicate<UntypedResultSet.Row>

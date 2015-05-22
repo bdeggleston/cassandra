@@ -2,7 +2,6 @@ package org.apache.cassandra.service.epaxos;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
-import com.google.common.base.Predicate;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Iterables;
@@ -11,7 +10,6 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.io.util.DataOutputBuffer;
@@ -79,8 +77,9 @@ public class KeyStateManager
                 return new CfKey(row.getBlob("row_key"), row.getUUID("cf_id"));
             }
         };
-        TableIterable i = new TableIterable(cfId, range, limit, false);
-        return Iterables.transform(i, f).iterator();
+        KeyTableIterable keyTableIterable = new KeyTableIterable(keyspace, table, range, false, limit);
+        Iterable<UntypedResultSet.Row> iterable = Iterables.filter(keyTableIterable, new KeyTableIterable.CfIdPredicate(cfId));
+        return Iterables.transform(iterable, f).iterator();
     }
 
     public Pair<Set<UUID>, Range<Token>> getCurrentDependencies(Instance instance)
@@ -566,171 +565,8 @@ public class KeyStateManager
                 return Pair.create(key, keyState.getExecutionInfoAtPosition(replayPosition));
             }
         };
-        TableIterable i = new TableIterable(cfId, range, 10000, true);
-        return Iterables.transform(i, f).iterator();
-    }
-
-    private class TableIterable implements Iterable<UntypedResultSet.Row>
-    {
-        final UUID cfId;
-        final Range<Token> range;
-        final int limit;
-        final boolean inclusive;
-
-        private TableIterable(UUID cfId, Range<Token> range, int limit, boolean inclusive)
-        {
-            this.cfId = cfId;
-            this.range = range;
-            this.limit = limit;
-            this.inclusive = inclusive;
-        }
-
-        @Override
-        public Iterator<UntypedResultSet.Row> iterator()
-        {
-            return new TableIterator(cfId, range, limit, inclusive);
-        }
-    }
-
-    private class TableIterator implements Iterator<UntypedResultSet.Row>
-    {
-        final UUID cfId;
-        final Iterator<Range<Token>> rangeIterator;
-        final int limit;
-        final boolean inclusive;
-        final ColumnFamilyStore cfs;
-
-        volatile UntypedResultSet.Row next;
-        volatile boolean endReached = false;
-        volatile Iterator<UntypedResultSet.Row> rowIterator = null;
-        volatile Range<Token> currentRange;
-        volatile ByteBuffer lastKey = null;
-
-        private TableIterator(UUID cfId, Range<Token> range, int limit, boolean inclusive)
-        {
-            this.cfId = cfId;
-            rangeIterator = range.unwrap().iterator();
-            currentRange = rangeIterator.next();
-            this.limit = limit;
-            this.inclusive = inclusive;
-            cfs = Keyspace.open(keyspace).getColumnFamilyStore(table);
-        }
-
-
-        Iterator<UntypedResultSet.Row> getRowIterator(Token left, Token right)
-        {
-            return getRowIterator(left, right, false);
-        }
-
-        Iterator<UntypedResultSet.Row> getRowIterator(Token left, Token right, boolean inclusive)
-        {
-            Token leftToken = left;
-            while (true)
-            {
-                AbstractBounds<RowPosition> bounds;
-                if (inclusive)
-                {
-                    bounds = new Bounds<RowPosition>(leftToken.minKeyBound(), right.maxKeyBound());
-                }
-                else
-                {
-                    bounds = new Range<RowPosition>(leftToken.maxKeyBound(), right.maxKeyBound());
-                }
-                // FIXME: filter on scope
-                List<Row> partitions = cfs.getRangeSlice(bounds,
-                                                         null,
-                                                         new IdentityQueryFilter(),
-                                                         limit,
-                                                         System.currentTimeMillis());
-
-                endReached = partitions.size() < limit;
-
-                String query = String.format("SELECT * FROM %s.%s", keyspace, table);
-
-                UntypedResultSet rows = QueryProcessor.resultify(query, partitions);
-
-
-                // in case we get a bunch of tombstones
-                if (rows.isEmpty() && !endReached)
-                {
-                    leftToken = DatabaseDescriptor.getPartitioner().getToken(partitions.get(partitions.size() - 1).key.getKey());
-                    continue;
-                }
-
-                return Iterables.filter(rows, new Predicate<UntypedResultSet.Row>()
-                {
-                    @Override
-                    public boolean apply(UntypedResultSet.Row row)
-                    {
-                        return row.getUUID("cf_id").equals(cfId);
-                    }
-                }).iterator();
-            }
-        }
-
-        void maybeSetNext()
-        {
-            if (next == null)
-            {
-                if (rowIterator == null)
-                {
-                    rowIterator = getRowIterator(currentRange.left, currentRange.right, inclusive);
-                    if (!rowIterator.hasNext())
-                    {
-                        endReached = true;
-                    }
-                    maybeSetNext();
-                }
-                else if (rowIterator.hasNext())
-                {
-                    next = rowIterator.next();
-                    lastKey = next.getBlob("row_key");
-                }
-                else if (!rowIterator.hasNext() && !endReached)
-                {
-                    Token lastToken = DatabaseDescriptor.getPartitioner().getToken(lastKey);
-                    if (lastToken.equals(currentRange.right))
-                    {
-                        endReached = true;
-                    }
-                    else
-                    {
-                        rowIterator = getRowIterator(lastToken, currentRange.right);
-                    }
-                    maybeSetNext();
-                }
-                else if (!rowIterator.hasNext() && rangeIterator.hasNext())
-                {
-                    currentRange = rangeIterator.next();
-                    rowIterator = null;
-                    lastKey = null;
-                    maybeSetNext();
-                }
-            }
-        }
-
-        @Override
-        public boolean hasNext()
-        {
-            maybeSetNext();
-            maybeSetNext();
-            return next != null;
-        }
-
-        @Override
-        public UntypedResultSet.Row next()
-        {
-            maybeSetNext();
-            maybeSetNext();
-            UntypedResultSet.Row row = next;
-            next = null;
-            return row;
-        }
-
-        @Override
-        public void remove()
-        {
-            throw new UnsupportedOperationException();
-        }
+        KeyTableIterable keyTableIterable = new KeyTableIterable(keyspace, table, range, true);
+        Iterable<UntypedResultSet.Row> iterable = Iterables.filter(keyTableIterable, new KeyTableIterable.CfIdPredicate(cfId));
+        return Iterables.transform(iterable, f).iterator();
     }
 }

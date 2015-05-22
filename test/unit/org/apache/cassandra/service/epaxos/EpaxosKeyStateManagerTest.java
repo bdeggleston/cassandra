@@ -84,8 +84,7 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
     @Before
     public void setUp() throws Exception
     {
-        clearKeyStates();
-        clearTokenStates();
+        clearAll();
         Assert.assertTrue(DatabaseDescriptor.getPartitioner() instanceof ByteOrderedPartitioner);
     }
 
