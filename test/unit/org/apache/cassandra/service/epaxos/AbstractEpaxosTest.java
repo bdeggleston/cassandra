@@ -54,8 +54,11 @@ public abstract class AbstractEpaxosTest
     protected static CFMetaData cfm;
     protected static CFMetaData thriftcf;
     protected static final InetAddress LOCALHOST;
+    protected static InetAddress LOCAL_ADDRESS;
+    protected static InetAddress REMOTE_ADDRESS;
     protected static final Scope DEFAULT_SCOPE = Scope.GLOBAL;
     protected static final String DC1 = "DC1";
+    protected static final String DC2 = "DC2";
 
     static
     {
@@ -66,6 +69,8 @@ public abstract class AbstractEpaxosTest
         try
         {
             LOCALHOST = InetAddress.getByName("127.0.0.1");
+            LOCAL_ADDRESS = InetAddress.getByName("127.0.0.2");
+            REMOTE_ADDRESS = InetAddress.getByName("127.0.0.3");
         }
         catch (UnknownHostException e)
         {

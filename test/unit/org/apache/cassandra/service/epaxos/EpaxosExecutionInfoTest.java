@@ -20,7 +20,6 @@ package org.apache.cassandra.service.epaxos;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,25 +36,8 @@ import org.apache.cassandra.net.MessagingService;
 
 public class EpaxosExecutionInfoTest extends AbstractEpaxosTest
 {
-    private static String DC2 = "DC2";
-    private static int VERSION = MessagingService.current_version;
-    private static MessagingService.Verb VERB = MessagingService.Verb.READ_REPAIR;
-
-    private static InetAddress LOCAL_ADDRESS;
-    private static InetAddress REMOTE_ADDRESS;
-
-    static
-    {
-        try
-        {
-            LOCAL_ADDRESS = InetAddress.getByName("127.0.0.2");
-            REMOTE_ADDRESS = InetAddress.getByName("127.0.0.3");
-        }
-        catch (UnknownHostException e)
-        {
-            throw new AssertionError(e);
-        }
-    }
+    private static final int VERSION = MessagingService.current_version;
+    private static final MessagingService.Verb VERB = MessagingService.Verb.READ_REPAIR;
 
     private static boolean ksManagerContains(EpaxosState state, Scope scope, QueryInstance instance)
     {

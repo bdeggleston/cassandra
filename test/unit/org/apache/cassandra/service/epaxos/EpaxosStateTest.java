@@ -104,15 +104,10 @@ public class EpaxosStateTest extends AbstractEpaxosTest
     @Test
     public void activeScopes() throws UnknownHostException
     {
-        String dc2 = "DC2";
-        InetAddress localAddress = InetAddress.getByName("127.0.0.2");
-        InetAddress remoteAddress = InetAddress.getByName("127.0.0.3");
         MockMultiDcState state = new MockMultiDcState();
-        state.dcs.put(localAddress, DC1);
-        state.dcs.put(remoteAddress, dc2);
 
-        Assert.assertArrayEquals(new Scope[]{Scope.GLOBAL, Scope.LOCAL}, state.getActiveScopes(localAddress));
-        Assert.assertArrayEquals(new Scope[]{Scope.GLOBAL}, state.getActiveScopes(remoteAddress));
+        Assert.assertArrayEquals(new Scope[]{Scope.GLOBAL, Scope.LOCAL}, state.getActiveScopes(LOCAL_ADDRESS));
+        Assert.assertArrayEquals(new Scope[]{Scope.GLOBAL}, state.getActiveScopes(REMOTE_ADDRESS));
     }
 
 }

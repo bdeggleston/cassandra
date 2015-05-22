@@ -25,6 +25,11 @@ import java.util.Map;
 class MockMultiDcState extends EpaxosState
 {
     final Map<InetAddress, String> dcs = new HashMap<>();
+    {{
+        dcs.put(AbstractEpaxosTest.LOCALHOST, AbstractEpaxosTest.DC1);
+        dcs.put(AbstractEpaxosTest.LOCAL_ADDRESS, AbstractEpaxosTest.DC1);
+        dcs.put(AbstractEpaxosTest.REMOTE_ADDRESS, AbstractEpaxosTest.DC2);
+    }}
 
     @Override
     protected TokenStateManager createTokenStateManager(Scope scope)
