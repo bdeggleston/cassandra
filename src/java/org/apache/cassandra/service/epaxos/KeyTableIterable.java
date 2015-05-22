@@ -223,5 +223,4 @@ public class KeyTableIterable implements Iterable<UntypedResultSet.Row>
         }
     }
 
-
 }

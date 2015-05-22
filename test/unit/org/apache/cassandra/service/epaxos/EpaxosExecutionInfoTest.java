@@ -57,36 +57,12 @@ public class EpaxosExecutionInfoTest extends AbstractEpaxosTest
         }
     }
 
-    private static class MockDcState extends EpaxosState
-    {
-        final Map<InetAddress, String> dcs = new HashMap<>();
-        {{
-            dcs.put(LOCALHOST, DC1);
-            dcs.put(LOCAL_ADDRESS, DC1);
-            dcs.put(REMOTE_ADDRESS, DC2);
-        }}
-
-        @Override
-        protected TokenStateManager createTokenStateManager(Scope scope)
-        {
-            return new MockTokenStateManager(scope);
-        }
-
-        @Override
-        protected String getDc(InetAddress endpoint)
-        {
-            String dc = dcs.get(endpoint);
-            assert dc != null : endpoint + " not in dc map";
-            return dc;
-        }
-    }
-
     private static boolean ksManagerContains(EpaxosState state, Scope scope, QueryInstance instance)
     {
         return state.getKeyStateManager(scope).loadKeyState(instance.getQuery().getCfKey()).contains(instance.getId());
     }
 
-    private MockDcState state = null;
+    private MockMultiDcState state = null;
     private QueryInstance globalInstance = null;
     private QueryInstance localInstance = null;
     private CfKey cfKey = null;
@@ -100,7 +76,10 @@ public class EpaxosExecutionInfoTest extends AbstractEpaxosTest
     {
         clearAll();
 
-        state = new MockDcState();
+        state = new MockMultiDcState();
+        state.dcs.put(LOCALHOST, DC1);
+        state.dcs.put(LOCAL_ADDRESS, DC1);
+        state.dcs.put(REMOTE_ADDRESS, DC2);
 
         globalInstance = state.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.SERIAL));
         globalInstance.preaccept(state.getCurrentDependencies(globalInstance).left);

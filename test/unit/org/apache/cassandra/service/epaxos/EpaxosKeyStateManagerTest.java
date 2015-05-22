@@ -751,11 +751,11 @@ public class EpaxosKeyStateManagerTest extends AbstractEpaxosTest
         Token start = tokens.get(1);
         Token stop = tokens.get(2);
 
-        Iterator<Pair<ByteBuffer, ExecutionInfo>> iter = ksm.getRangeExecutionInfo(cfId,
-                                                                                   new Range<>(start, stop),
-                                                                                   new ReplayPosition(0, 0));
+        Iterator<Pair<ByteBuffer, Map<Scope, ExecutionInfo>>> iter = ksm.getRangeExecutionInfo(cfId,
+                                                                                               new Range<>(start, stop),
+                                                                                               new ReplayPosition(0, 0));
 
-        List<Pair<ByteBuffer, ExecutionInfo>> infos = Lists.newArrayList(iter);
+        List<Pair<ByteBuffer, Map<Scope, ExecutionInfo>>> infos = Lists.newArrayList(iter);
         Assert.assertEquals(2, infos.size());
         Assert.assertEquals(tokenMap.get(tokens.get(1)), infos.get(0).left);
         Assert.assertEquals(tokenMap.get(tokens.get(2)), infos.get(1).left);

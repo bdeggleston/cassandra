@@ -29,7 +29,9 @@ import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange
 import org.apache.cassandra.streaming.messages.FileMessageHeader;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.Hex;
 import org.apache.cassandra.utils.IFilter;
+import org.apache.cassandra.utils.MergeIterator;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDGen;
 
@@ -41,6 +43,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
@@ -1339,31 +1342,61 @@ public class EpaxosState
         }
     }
 
-//    public Iterator<Pair<ByteBuffer, Map<Scope, ExecutionInfo>>> getRangeExecutionInfo(UUID cfId, Range<Token> range, ReplayPosition position, InetAddress to)
-    public Iterator<Pair<ByteBuffer, ExecutionInfo>> getRangeExecutionInfo(UUID cfId, Range<Token> range, ReplayPosition position, InetAddress to)
+    private static class RangeExecutionInfoReducer extends MergeIterator.Reducer<Pair<ByteBuffer, Map<Scope, ExecutionInfo>>, Pair<ByteBuffer, Map<Scope, ExecutionInfo>>>
+    {
+        private volatile ByteBuffer key = null;
+        private volatile Map<Scope, ExecutionInfo> currentMap = null;
+
+        @Override
+        public void reduce(Pair<ByteBuffer, Map<Scope, ExecutionInfo>> current)
+        {
+            key = current.left;
+            currentMap.putAll(current.right);
+        }
+
+        @Override
+        protected Pair<ByteBuffer, Map<Scope, ExecutionInfo>> getReduced()
+        {
+            return Pair.create(key, currentMap);
+        }
+
+        @Override
+        protected void onKeyChange()
+        {
+            key = null;
+            currentMap = new EnumMap<>(Scope.class);
+        }
+
+        @Override
+        public boolean trivialReduceIsTrivial()
+        {
+            return true;
+        }
+    }
+
+    private static class RangeExecutionComparator implements Comparator<Pair<ByteBuffer, Map<Scope, ExecutionInfo>>>
+    {
+        @Override
+        public int compare(Pair<ByteBuffer, Map<Scope, ExecutionInfo>> o1, Pair<ByteBuffer, Map<Scope, ExecutionInfo>> o2)
+        {
+            return o1.left.compareTo(o2.left);
+        }
+    }
+
+    public Iterator<Pair<ByteBuffer, Map<Scope, ExecutionInfo>>> getRangeExecutionInfo(UUID cfId, Range<Token> range, ReplayPosition position, InetAddress to)
     {
         boolean isLocalDc = getDc().equals(getDc(to));
-        boolean globalManaged = getTokenStateManager(Scope.GLOBAL).managesCfId(cfId);
-        boolean localManaged = isLocalDc && getTokenStateManager(Scope.LOCAL).managesCfId(cfId);
+        List<Iterator<Pair<ByteBuffer, Map<Scope, ExecutionInfo>>>> sources = new ArrayList<>(2);
 
-        if (globalManaged && localManaged)
-        {
+        if (getTokenStateManager(Scope.GLOBAL).managesCfId(cfId))
+            sources.add(getKeyStateManager(Scope.GLOBAL).getRangeExecutionInfo(cfId, range, position));
 
-        }
-        else if (globalManaged)
-        {
+        if (isLocalDc && getTokenStateManager(Scope.LOCAL).managesCfId(cfId))
+            sources.add(getKeyStateManager(Scope.LOCAL).getRangeExecutionInfo(cfId, range, position));
 
-        }
-
-        else if (localManaged)
-        {
-
-        }
-
-
-        // TODO: merge data from both ksms and the remote activity
-        // return keyStateManager.getRangeExecutionInfo(cfId, range, position);
-        return new ArrayList<Pair<ByteBuffer, ExecutionInfo>>().iterator();  // FIXME: this
+        if (sources.isEmpty())
+            return Iterators.emptyIterator();
+        return MergeIterator.get(sources, new RangeExecutionComparator(), new RangeExecutionInfoReducer());
     }
 
     /**
@@ -1384,19 +1417,17 @@ public class EpaxosState
                 continue;
             }
 
-            // FIXME: doesn't work at all I think
-            Iterator<Pair<ByteBuffer, ExecutionInfo>> iter = getRangeExecutionInfo(cfId, range, position, to);
+            Iterator<Pair<ByteBuffer, Map<Scope, ExecutionInfo>>> iter = getRangeExecutionInfo(cfId, range, position, to);
 
             while (iter.hasNext())
             {
-                Pair<ByteBuffer, ExecutionInfo> next = iter.next();
+                Pair<ByteBuffer, Map<Scope, ExecutionInfo>> next = iter.next();
                 if (!filter.isPresent(next.left))
                 {
                     logger.debug("skipping key not contained by sstable {}", range);
                     continue;
                 }
-                // TODO: uncomment
-                // header.epaxos.put(next.left, next.right);
+                header.epaxos.put(next.left, next.right);
                 if (logger.isDebugEnabled())
                 {
                     logger.debug("Added {} {} to outgoing epaxos header", next.left, next.right);

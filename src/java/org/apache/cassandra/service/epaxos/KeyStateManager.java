@@ -14,6 +14,7 @@ import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.Hex;
 import org.apache.cassandra.utils.Pair;
 
 import java.io.DataInputStream;
@@ -77,8 +78,10 @@ public class KeyStateManager
                 return new CfKey(row.getBlob("row_key"), row.getUUID("cf_id"));
             }
         };
-        KeyTableIterable keyTableIterable = new KeyTableIterable(keyspace, table, range, false, limit);
-        Iterable<UntypedResultSet.Row> iterable = Iterables.filter(keyTableIterable, new KeyTableIterable.CfIdPredicate(cfId));
+        Iterable<UntypedResultSet.Row> iterable;
+        iterable = new KeyTableIterable(keyspace, table, range, false, limit);
+        iterable = Iterables.filter(iterable, new KeyTableIterable.CfIdPredicate(cfId));
+        iterable = Iterables.filter(iterable, new KeyTableIterable.ScopePredicate(scope));
         return Iterables.transform(iterable, f).iterator();
     }
 
@@ -553,20 +556,24 @@ public class KeyStateManager
      * This reads the current key state data off of disk, bypassing the cache and locks. So the likelihood of getting
      * stale data is high. This exists to generate metadata for streams.
      */
-    public Iterator<Pair<ByteBuffer, ExecutionInfo>> getRangeExecutionInfo(UUID cfId, Range<Token> range, final ReplayPosition replayPosition)
+    public Iterator<Pair<ByteBuffer, Map<Scope, ExecutionInfo>>> getRangeExecutionInfo(UUID cfId, Range<Token> range, final ReplayPosition replayPosition)
     {
-        Function<UntypedResultSet.Row, Pair<ByteBuffer, ExecutionInfo>> f;
-        f = new Function<UntypedResultSet.Row, Pair<ByteBuffer, ExecutionInfo>>()
+        Function<UntypedResultSet.Row, Pair<ByteBuffer, Map<Scope, ExecutionInfo>>> f;
+        f = new Function<UntypedResultSet.Row, Pair<ByteBuffer, Map<Scope, ExecutionInfo>>>()
         {
-            public Pair<ByteBuffer, ExecutionInfo> apply(UntypedResultSet.Row row)
+            public Pair<ByteBuffer, Map<Scope, ExecutionInfo>> apply(UntypedResultSet.Row row)
             {
                 ByteBuffer key = row.getBlob("row_key");
                 KeyState keyState = deserialize(row.getBlob("data"));
-                return Pair.create(key, keyState.getExecutionInfoAtPosition(replayPosition));
+                Map<Scope, ExecutionInfo> m = new EnumMap<>(Scope.class);
+                m.put(scope, keyState.getExecutionInfoAtPosition(replayPosition));
+                return Pair.create(key, m);
             }
         };
-        KeyTableIterable keyTableIterable = new KeyTableIterable(keyspace, table, range, true);
-        Iterable<UntypedResultSet.Row> iterable = Iterables.filter(keyTableIterable, new KeyTableIterable.CfIdPredicate(cfId));
+        Iterable<UntypedResultSet.Row> iterable;
+        iterable = new KeyTableIterable(keyspace, table, range, true);
+        iterable = Iterables.filter(iterable, new KeyTableIterable.CfIdPredicate(cfId));
+        iterable = Iterables.filter(iterable, new KeyTableIterable.ScopePredicate(scope));
         return Iterables.transform(iterable, f).iterator();
     }
 }
