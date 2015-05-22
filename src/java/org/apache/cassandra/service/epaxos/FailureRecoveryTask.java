@@ -275,7 +275,7 @@ public class FailureRecoveryTask implements Runnable
         FutureTask<Object> future = StorageService.instance.createRepairTask(cfName.left,
                                                                              Collections.singleton(range),
                                                                              false,
-                                                                             localOnly,
+                                                                             (scope == Scope.LOCAL),
                                                                              true,
                                                                              cfName.right);
 

@@ -776,7 +776,6 @@ public class EpaxosState
                 // can be removed from the neighbor if initialization doesn't complete
                 tokenStateManager.save(tokenState);
                 tokenStateManager.save(neighbor);
-                // TODO: have the token state manager check for inconsistencies introduced here
             }
             finally
             {
@@ -1154,7 +1153,6 @@ public class EpaxosState
     }
 
     // repair / streaming support
-    // TODO: maybe rename to hasExecutionInfoForTable:w
     public boolean managesCfId(UUID cfId)
     {
         for (TokenStateManager tokenStateManager: tokenStateManagers.values())
@@ -1182,7 +1180,7 @@ public class EpaxosState
         info = keyStateManagers.get(Scope.GLOBAL).getExecutionInfo(cfKey);
         if (info != null) rmap.put(Scope.GLOBAL, info);
 
-        if (getDc().equals(getDc(to)))
+        if (isInSameDC(to))
         {
             info = keyStateManagers.get(Scope.LOCAL).getExecutionInfo(cfKey);
             if (info != null) rmap.put(Scope.LOCAL, info);
@@ -1289,7 +1287,6 @@ public class EpaxosState
      */
     public <T> MessageOut<T> maybeAddExecutionInfo(ByteBuffer key, UUID cfId, MessageOut<T> msg, int version, InetAddress to)
     {
-        // TODO: test
         Map<Scope, ExecutionInfo> info = getEpochExecutionInfo(key, cfId, to);
         if (info == null)
             return msg;
@@ -1327,7 +1324,7 @@ public class EpaxosState
                     if (!hasExecutedLocally(key, cfId, entry.getValue(), Scope.GLOBAL))
                         return false;
                 }
-                else if (scope == Scope.LOCAL && getDc().equals(getDc(msg.from)))
+                else if (scope == Scope.LOCAL && isInSameDC(msg.from))
                 {
                     if (!hasExecutedLocally(key, cfId, entry.getValue(), Scope.LOCAL))
                         return false;
@@ -1385,7 +1382,7 @@ public class EpaxosState
 
     public Iterator<Pair<ByteBuffer, Map<Scope, ExecutionInfo>>> getRangeExecutionInfo(UUID cfId, Range<Token> range, ReplayPosition position, InetAddress to)
     {
-        boolean isLocalDc = getDc().equals(getDc(to));
+        boolean isLocalDc = isInSameDC(to);
         List<Iterator<Pair<ByteBuffer, Map<Scope, ExecutionInfo>>>> sources = new ArrayList<>(2);
 
         if (getTokenStateManager(Scope.GLOBAL).managesCfId(cfId))
@@ -1595,9 +1592,14 @@ public class EpaxosState
         return DatabaseDescriptor.getEndpointSnitch().getDatacenter(endpoint);
     }
 
+    protected boolean isInSameDC(InetAddress peer)
+    {
+        return getDc().equals(getDc(peer));
+    }
+
     public Scope[] getActiveScopes(InetAddress address)
     {
-        if (getDc().equals(getDc(address)))
+        if (isInSameDC(address))
         {
             return new Scope[]{Scope.GLOBAL, Scope.LOCAL};
         }

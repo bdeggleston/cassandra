@@ -60,7 +60,7 @@ public class InstanceStreamWriter
         this.range = range;
 
         // TODO: test
-        if (scope == Scope.LOCAL && !state.getDc().equals(state.getDc(peer)))
+        if (scope == Scope.LOCAL && !state.isInSameDC(peer))
         {
             throw new AssertionError("Can't stream local scope instances to another datacenter");
         }
