@@ -18,34 +18,35 @@
 
 package org.apache.cassandra.service.epaxos;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
+import com.google.common.collect.AbstractIterator;
+
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.utils.Pair;
 
 /**
  * Since execution of instances is suspended during some stream tasks,
  * this works it's way through a range and executes any instances that
  * would have been skipped
  */
-public class PostStreamTask implements Runnable
+public abstract class PostStreamTask implements Runnable
 {
-    private final EpaxosState state;
-    private final Range<Token> range;
-    private final UUID cfId;
-    private final Scope scope;
+    protected final EpaxosState state;
+    protected final UUID cfId;
 
-    public PostStreamTask(EpaxosState state, Range<Token> range, UUID cfId, Scope scope)
+    protected PostStreamTask(EpaxosState state, UUID cfId)
     {
         this.state = state;
-        this.range = range;
         this.cfId = cfId;
-        this.scope = scope;
     }
 
     Comparator<UUID> comparator = new Comparator<UUID>()
@@ -57,10 +58,12 @@ public class PostStreamTask implements Runnable
         }
     };
 
+    protected abstract Iterator<KeyState> getIterator();
+
     @Override
     public void run()
     {
-        Iterator<KeyState> iter = state.getKeyStateManager(scope).getStaleKeyStateRange(cfId, range);
+        Iterator<KeyState> iter = getIterator();
         while (iter.hasNext())
         {
             KeyState ks = iter.next();
@@ -87,6 +90,55 @@ public class PostStreamTask implements Runnable
                     }
                 }
             }
+        }
+    }
+
+    public static class Ranged extends PostStreamTask
+    {
+        private final Range<Token> range;
+        private final Scope scope;
+
+        public Ranged(EpaxosState state, UUID cfId, Range<Token> range, Scope scope)
+        {
+            super(state, cfId);
+            this.range = range;
+            this.scope = scope;
+        }
+
+        @Override
+        protected Iterator<KeyState> getIterator()
+        {
+            return state.getKeyStateManager(scope).getStaleKeyStateRange(cfId, range);
+        }
+    }
+
+    public static class KeyCollection extends PostStreamTask
+    {
+        private final Collection<Pair<ByteBuffer, Scope>> keys;
+
+        public KeyCollection(EpaxosState state, UUID cfId, Collection<Pair<ByteBuffer, Scope>> keys)
+        {
+            super(state, cfId);
+            this.keys = keys;
+        }
+
+        @Override
+        protected Iterator<KeyState> getIterator()
+        {
+            final Iterator<Pair<ByteBuffer, Scope>> iter = keys.iterator();
+            return new AbstractIterator<KeyState>()
+            {
+                @Override
+                protected KeyState computeNext()
+                {
+                    if (!iter.hasNext())
+                    {
+                        return endOfData();
+                    }
+                    Pair<ByteBuffer, Scope> next = iter.next();
+                    return state.getKeyStateManager(next.right).loadKeyState(next.left, cfId);
+                }
+            };
         }
     }
 }

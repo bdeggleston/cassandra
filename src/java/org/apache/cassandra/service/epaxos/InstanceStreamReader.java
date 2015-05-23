@@ -301,7 +301,7 @@ public class InstanceStreamReader
                                 {
                                     tokenState.lock.writeLock().unlock();
                                 }
-                                state.getStage(Stage.READ).submit(new PostStreamTask(state, tokenState.getRange(), cfId, scope));
+                                state.getStage(Stage.READ).submit(new PostStreamTask.Ranged(state, cfId, tokenState.getRange(), scope));
                             }
                         }
 

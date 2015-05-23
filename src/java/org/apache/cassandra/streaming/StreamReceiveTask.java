@@ -124,9 +124,12 @@ public class StreamReceiveTask extends StreamTask
 
             if (!SSTableReader.acquireReferences(readers))
                 throw new AssertionError("We shouldn't fail acquiring a reference on a sstable that has just been transferred");
+
+
+            EpaxosState.PausedKeys pausedKeys = EpaxosState.getInstance().pauseKeys(task.session.getExpaxosCorrections().keySet(),
+                                                                                    task.cfId);
             try
             {
-                // FIXME: pause execution for affected token states until sstables are added
                 for (Map.Entry<ByteBuffer, Map<Scope, ExecutionInfo>> entry: task.session.getExpaxosCorrections().entrySet())
                 {
                     EpaxosState.getInstance().reportFutureExecutions(entry.getKey(), task.cfId, entry.getValue());
@@ -138,6 +141,7 @@ public class StreamReceiveTask extends StreamTask
             finally
             {
                 SSTableReader.releaseReferences(readers);
+                EpaxosState.getInstance().unPauseKeys(pausedKeys);
             }
 
             task.session.taskCompleted(task);

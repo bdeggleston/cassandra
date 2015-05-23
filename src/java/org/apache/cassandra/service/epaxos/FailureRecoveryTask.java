@@ -323,7 +323,7 @@ public class FailureRecoveryTask implements Runnable
 
     protected void runPostCompleteTask(TokenState tokenState)
     {
-        state.getStage(Stage.READ).submit(new PostStreamTask(state, tokenState.getRange(), cfId, scope));
+        state.getStage(Stage.READ).submit(new PostStreamTask.Ranged(state, cfId, tokenState.getRange(), scope));
     }
 
     @Override
