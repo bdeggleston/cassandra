@@ -811,7 +811,7 @@ public class EpaxosState
 
     void startTokenStateGc(TokenState tokenState, Scope scope)
     {
-        getStage(Stage.MUTATION).submit(new GarbageCollectionTask(this, tokenState, getKeyStateManager(scope)));
+        getStage(Stage.MUTATION).submit(new GarbageCollectionTask(this, tokenState, scope));
     }
 
     protected PrepareCallback getPrepareCallback(UUID id, int ballot, ParticipantInfo participantInfo, PrepareGroup group, int attempt)
@@ -1616,7 +1616,6 @@ public class EpaxosState
     {
         return getDc().equals(getDc(peer));
     }
-
     public Scope[] getActiveScopes(InetAddress address)
     {
         return isInSameDC(address) ? Scope.BOTH : Scope.GLOBAL_ONLY;

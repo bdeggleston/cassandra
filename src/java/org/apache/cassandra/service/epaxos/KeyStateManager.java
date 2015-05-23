@@ -48,6 +48,11 @@ public class KeyStateManager
         cache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(1000).build();
     }
 
+    public Scope getScope()
+    {
+        return scope;
+    }
+
     public Lock getCfKeyLock(CfKey cfKey)
     {
         return locks.get(cfKey);
@@ -282,6 +287,10 @@ public class KeyStateManager
         {
             KeyState dm = loadKeyState(cfKey.key, cfKey.cfId);
             dm.markExecuted(instance.getId(), instance.getStronglyConnected(), position, maxTimestamp);
+            if (instance.getType() == Instance.Type.QUERY)
+            {
+                dm.markQueryExecution();
+            }
             saveKeyState(cfKey, dm);
         }
         finally
@@ -541,6 +550,27 @@ public class KeyStateManager
         {
             KeyState keyState = loadKeyState(cfKey, false);
             return keyState != null ? new ExecutionInfo(keyState.getEpoch(), keyState.getExecutionCount()) : null;
+        }
+        finally
+        {
+            lock.unlock();
+        }
+    }
+
+    public boolean gcKeyState(CfKey cfKey)
+    {
+        Lock lock = getCfKeyLock(cfKey);
+        lock.lock();
+        try
+        {
+            KeyState keyState = loadKeyState(cfKey, false);
+            // double check with lock aquired
+            if (keyState.canGc(tokenStateManager.getCurrentTokenDependencies(cfKey)))
+            {
+                deleteKeyState(cfKey);
+                return true;
+            }
+            return false;
         }
         finally
         {
