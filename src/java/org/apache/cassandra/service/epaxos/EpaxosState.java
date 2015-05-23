@@ -1237,6 +1237,12 @@ public class EpaxosState
 
     public boolean canExecute(Instance instance)
     {
+        TokenState ts = getTokenStateManager(instance).get(instance);
+        if (!ts.getState().isOkToExecute())
+        {
+            return false;
+        }
+
         if (instance.getType() == Instance.Type.QUERY)
         {
             QueryInstance queryInstance = (QueryInstance) instance;
